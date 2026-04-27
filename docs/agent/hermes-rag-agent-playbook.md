@@ -144,6 +144,16 @@ bash ops/scripts/validate-hermes-implementation-packet.sh var/agent-task-packets
 
 By default, implementation packets stay in `IMPLEMENTATION_APPROVAL_REQUIRED`. Even with `IMPLEMENTATION_APPROVED=true`, only a future dedicated implementation worker may consume them; `run-hermes-worker-loop.sh` must refuse them.
 
+## Implementation Preview Gate
+
+Before any dedicated implementation worker is invoked, Hermes should render a non-mutating preview:
+
+```bash
+bash ops/scripts/render-hermes-implementation-preview.sh var/agent-task-packets/<implementation-packet>.json
+```
+
+The preview records selected files, packet status, patch-content count, and a decision such as `empty_envelope_only`. It always sets `mutation_allowed=false` and `apply_allowed=false`.
+
 ## Dedicated Implementation Worker
 
 The generic worker loop must never execute implementation packets. Approved implementation envelopes are consumed only by the dedicated worker:

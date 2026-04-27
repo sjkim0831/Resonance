@@ -25,6 +25,7 @@ PATCH_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-patch-packet.sh"
 IMPLEMENTATION_PACKET_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-implementation-packet.schema.json"
 IMPLEMENTATION_PACKET_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-packet.sh"
 IMPLEMENTATION_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-packet.sh"
+IMPLEMENTATION_PREVIEW_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-preview.sh"
 IMPLEMENTATION_WORKER="$ROOT_DIR/ops/scripts/run-hermes-implementation-worker.sh"
 MEMORY_CANDIDATE_SCRIPT="$ROOT_DIR/ops/scripts/promote-hermes-closeout-memory.sh"
 MEMORY_PATCH_REVIEW_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-memory-patch-review.schema.json"
@@ -78,6 +79,7 @@ require_file "$PATCH_PACKET_VALIDATOR"
 require_file "$IMPLEMENTATION_PACKET_SCHEMA"
 require_file "$IMPLEMENTATION_PACKET_SCRIPT"
 require_file "$IMPLEMENTATION_PACKET_VALIDATOR"
+require_file "$IMPLEMENTATION_PREVIEW_SCRIPT"
 require_file "$IMPLEMENTATION_WORKER"
 require_file "$MEMORY_CANDIDATE_SCRIPT"
 require_file "$MEMORY_PATCH_REVIEW_SCHEMA"
@@ -137,6 +139,14 @@ jq -e --arg file "${IMPLEMENTATION_WORKER#$ROOT_DIR/}" '
 ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${IMPLEMENTATION_WORKER#$ROOT_DIR/}"
 write "- implementation worker contract: pass"
 
+jq -e --arg file "${IMPLEMENTATION_PREVIEW_SCRIPT#$ROOT_DIR/}" '
+  .activeObjectives[]
+  | select(.id == "hermes-agent-hardening")
+  | .readFirst
+  | index($file)
+' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${IMPLEMENTATION_PREVIEW_SCRIPT#$ROOT_DIR/}"
+write "- implementation preview contract: pass"
+
 if ! jq -e '
   .intentRoutes[]
   | select((.match // []) | index("hermes"))
@@ -186,6 +196,11 @@ implementation_packet_path="$(printf '%s\n' "$implementation_output" | awk '/^IM
 [ -n "$implementation_packet_path" ] || fail "implementation packet path missing"
 "$IMPLEMENTATION_PACKET_VALIDATOR" "$ROOT_DIR/$implementation_packet_path" >/dev/null || fail "implementation packet validation failed"
 write "- implementation packet: $implementation_packet_path"
+implementation_preview_output="$("$IMPLEMENTATION_PREVIEW_SCRIPT" "$ROOT_DIR/$implementation_packet_path")" || fail "implementation preview render failed"
+implementation_preview_path="$(printf '%s\n' "$implementation_preview_output" | awk '/^IMPLEMENTATION_PREVIEW_READY / { print $2; exit }')"
+[ -n "$implementation_preview_path" ] || fail "implementation preview path missing"
+jq -e '.apply_allowed == false and .mutation_allowed == false and .preview_decision == "empty_envelope_only"' "$ROOT_DIR/$implementation_preview_path" >/dev/null || fail "implementation preview validation failed"
+write "- implementation preview: $implementation_preview_path"
 
 if [ "$SKIP_IMPLEMENTATION_WORKER_SMOKE" = "true" ]; then
   write "- implementation worker closeout: skipped to avoid recursive smoke"
