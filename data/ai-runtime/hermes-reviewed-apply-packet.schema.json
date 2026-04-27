@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0",
+  "packetType": "hermes-reviewed-apply-packet",
+  "purpose": "Final reviewed apply envelope for a future dedicated apply worker. This contract does not authorize applying changes by itself.",
+  "requiredFields": [
+    "schemaVersion",
+    "packet_type",
+    "request_id",
+    "source_implementation_packet",
+    "source_patch_content",
+    "source_patch_dry_run",
+    "source_implementation_preview",
+    "review_status",
+    "mutation_allowed",
+    "apply_allowed",
+    "selected_files",
+    "verification_gate",
+    "rollback_note",
+    "worker_contract"
+  ],
+  "constraints": {
+    "packet_type": "hermes-reviewed-apply-packet",
+    "reviewStatusMayBe": [
+      "REVIEWED_APPLY_PENDING"
+    ],
+    "mutation_allowed": false,
+    "apply_allowed": false,
+    "maxSelectedFiles": 6,
+    "futureApplyWorkerRequired": true,
+    "dangerousOperationsRemainScriptOnly": true
+  },
+  "allowedVerificationGates": [
+    "bash ops/scripts/run-hermes-rag-smoke.sh"
+  ]
+}

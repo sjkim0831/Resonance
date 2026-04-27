@@ -164,6 +164,20 @@ bash ops/scripts/dry-run-hermes-implementation-patch-content.sh var/agent-task-p
 
 The dry-run checks whether `replace_text` can find `old_text`, `append_text` targets exist, and `add_file` targets do not already exist. It still writes `mutation_allowed=false` and `apply_allowed=false`.
 
+## Reviewed Apply Packet
+
+After patch content validates and dry-runs cleanly, Hermes may render a final reviewed apply envelope:
+
+```bash
+bash ops/scripts/render-hermes-reviewed-apply-packet.sh \
+  var/agent-task-packets/<implementation-packet>.json \
+  var/agent-task-packets/<patch-content>.json \
+  var/agent-task-packets/<patch-dry-run>.json \
+  var/agent-task-packets/<implementation-preview>.json
+```
+
+This packet is still non-mutating. It binds the implementation packet, patch-content artifact, dry-run result, and preview result into one reviewed contract, but keeps `apply_allowed=false`.
+
 ## Implementation Preview Gate
 
 Before any dedicated implementation worker is invoked, Hermes should render a non-mutating preview:
