@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "statusId": "k8s-runtime-status-20260427",
+  "recordedAt": "2026-04-27T14:15:00+09:00",
+  "cluster": {
+    "context": "docker-desktop",
+    "clusterType": "docker-desktop-kind",
+    "kubernetesVersion": "v1.34.3",
+    "nodeCount": 8,
+    "readyNodeCount": 8
+  },
+  "releaseSources": {
+    "runtimeReleaseManifest": "manifests/resonance-k8s-release-manifest.example.yaml",
+    "projectRuntimeManifest": "data/version-control/project-runtime-manifest.json",
+    "packageRegistry": "data/version-control/package-registry.json",
+    "compatibilityMatrix": "data/version-control/compatibility-matrix.json"
+  },
+  "deployments": [
+    {
+      "component": "operations-console",
+      "namespace": "resonance-ops",
+      "deployment": "operations-console",
+      "service": "operations-console",
+      "expectedImage": "registry.local/operations-console:2026.04.27-opsfix8",
+      "expectedReadyReplicas": 1,
+      "status": "RUNNING"
+    },
+    {
+      "component": "carbonet-runtime",
+      "namespace": "carbonet-prod",
+      "deployment": "carbonet-runtime",
+      "service": "carbonet-runtime",
+      "expectedImage": "registry.local/carbonet-runtime:2026.04.26",
+      "expectedReadyReplicas": 2,
+      "healthEndpoint": "http://carbonet-runtime/actuator/health",
+      "status": "RUNNING"
+    }
+  ],
+  "governance": {
+    "mutationAllowed": false,
+    "verificationScript": "ops/scripts/verify-build-version-metadata.sh",
+    "notes": [
+      "This file records observed Docker Desktop Kubernetes runtime state for bounded AI/RAG reads.",
+      "Secrets are intentionally excluded.",
+      "Treat this as a verification target, not a deploy command."
+    ]
+  }
+}

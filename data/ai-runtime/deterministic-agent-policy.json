@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "1.0",
+  "policyId": "deterministic-agent-policy",
+  "generatedAt": "2026-04-27T14:45:00+09:00",
+  "purpose": "Constrain local 3B/4B agents to deterministic routing, bounded summarization, and verification-only closeouts unless an approval-gated implementation worker is explicitly used.",
+  "defaultModel": "gemma3:4b",
+  "defaultMode": "classify-route-summarize",
+  "models": [
+    {
+      "model": "gemma3:4b",
+      "status": "APPROVED",
+      "allowedStages": [
+        "classify",
+        "route",
+        "safety-summary",
+        "verification-summary",
+        "memory-writeback-hint"
+      ],
+      "forbiddenStages": [
+        "direct-k8s-apply",
+        "direct-deploy",
+        "direct-rollback",
+        "direct-db-migration",
+        "unbounded-implementation"
+      ],
+      "latestGate": "PASS route/safety"
+    },
+    {
+      "model": "qwen2.5-coder:3b",
+      "status": "RESTRICTED",
+      "allowedStages": [
+        "harmless-summary"
+      ],
+      "forbiddenStages": [
+        "safety-authority",
+        "direct-implementation",
+        "direct-k8s-apply",
+        "direct-deploy",
+        "direct-rollback",
+        "direct-db-migration"
+      ],
+      "latestGate": "FAIL safety"
+    },
+    {
+      "model": "qwen2.5-coder:14b-instruct",
+      "status": "RESTRICTED",
+      "allowedStages": [
+        "bounded-patch-draft"
+      ],
+      "forbiddenStages": [
+        "safety-authority",
+        "direct-k8s-apply",
+        "direct-deploy",
+        "direct-rollback",
+        "direct-db-migration"
+      ],
+      "latestGate": "FAIL safety"
+    },
+    {
+      "model": "gemma-4-e2b-it",
+      "status": "APPROVED",
+      "allowedStages": [
+        "bounded-plan",
+        "route-review",
+        "risk-summary"
+      ],
+      "forbiddenStages": [
+        "direct-k8s-apply",
+        "direct-deploy",
+        "direct-rollback",
+        "direct-db-migration"
+      ],
+      "latestGate": "PASS runtime/route/safety"
+    }
+  ],
+  "stageRules": [
+    {
+      "stage": "classify",
+      "mustHave": [
+        "deterministic route map loaded",
+        "intent text",
+        "read budget"
+      ],
+      "outputOnly": [
+        "zone",
+        "objective_id",
+        "route signal",
+        "NEEDS_ROUTE_MAP when unresolved"
+      ]
+    },
+    {
+      "stage": "plan",
+      "mustHave": [
+        "selected files",
+        "reason per file",
+        "verification gate",
+        "rollback note"
+      ],
+      "outputOnly": [
+        "non-mutating plan",
+        "risk list",
+        "verification command"
+      ]
+    },
+    {
+      "stage": "implement",
+      "mustHave": [
+        "approval-gated implementation packet",
+        "selected files within max_files",
+        "dedicated implementation worker"
+      ],
+      "outputOnly": [
+        "patch limited to selected files",
+        "changed file list",
+        "verification result"
+      ]
+    },
+    {
+      "stage": "verify",
+      "mustHave": [
+        "allowlisted script gate"
+      ],
+      "outputOnly": [
+        "pass/fail",
+        "log path",
+        "cluster/runtime impact",
+        "route-map update needed"
+      ]
+    }
+  ],
+  "dangerousOperationPolicy": {
+    "scriptOnly": [
+      "deploy",
+      "backup",
+      "rollback",
+      "restart",
+      "k8s apply",
+      "db migration"
+    ],
+    "directModelExecutionAllowed": false
+  },
+  "workerPolicy": {
+    "genericWorker": {
+      "script": "ops/scripts/run-hermes-worker-loop.sh",
+      "allowedPacketTypes": [
+        "hermes-task-packet"
+      ],
+      "mutationAllowed": false,
+      "verificationOnly": true
+    },
+    "implementationWorker": {
+      "requiredPacketStatus": "READY_FOR_IMPLEMENTATION_WORKER",
+      "requiresHumanApprovalFlag": true,
+      "mutationAllowed": true,
+      "genericWorkerMayHandle": false
+    }
+  },
+  "verification": {
+    "script": "ops/scripts/verify-deterministic-agent-policy.sh",
+    "optionalLiveModelGate": "RUN_MODEL_GATE=true MODEL=gemma3:4b bash ops/scripts/run-hermes-rag-smoke.sh"
+  }
+}

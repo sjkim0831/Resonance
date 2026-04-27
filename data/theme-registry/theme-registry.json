@@ -1,0 +1,119 @@
+{
+  "schemaVersion": "1.0",
+  "registryId": "resonance-theme-registry",
+  "generatedAt": "2026-04-27T14:25:00+09:00",
+  "purpose": "Central governance registry for theme bundles, route-family bindings, token categories, preview requirements, and AI edit policy.",
+  "ownership": {
+    "lane": "THEME_PRESENTATION",
+    "systemOwner": "builder-system",
+    "businessLogicAllowed": false,
+    "notes": [
+      "Theme tokens describe presentation only.",
+      "Project business rules must stay in project adapters, menus, routes, or backend services.",
+      "AI-generated theme edits must update this registry and pass the verification script before implementation."
+    ]
+  },
+  "tokenCategories": [
+    "color",
+    "typography",
+    "spacing",
+    "radius",
+    "shadow",
+    "motion",
+    "surface",
+    "density"
+  ],
+  "themes": [
+    {
+      "themeId": "carbonet-default-dark",
+      "displayName": "Carbonet Default Dark",
+      "version": "1.0.0",
+      "status": "ACTIVE",
+      "scope": "PROJECT",
+      "projectId": "P001",
+      "bundleVersion": "project-carbonet-v2026.04",
+      "installManifest": "templates/screenbuilder-project-bootstrap/manifests/theme-install-manifest.json",
+      "bindingTargets": [
+        "admin-ui",
+        "builder-console",
+        "home-shell"
+      ],
+      "previewRequired": true
+    },
+    {
+      "themeId": "carbonet-light-clean",
+      "displayName": "Carbonet Light Clean",
+      "version": "1.0.0",
+      "status": "REGISTERED",
+      "scope": "PROJECT",
+      "projectId": "P002",
+      "bundleVersion": "project-carbonet-v2026.04",
+      "installManifest": "templates/screenbuilder-project-bootstrap/manifests/theme-install-manifest.json",
+      "bindingTargets": [
+        "admin-ui",
+        "home-shell"
+      ],
+      "previewRequired": true
+    },
+    {
+      "themeId": "carbonet-default-light",
+      "displayName": "Carbonet Default Light",
+      "version": "1.0.0",
+      "status": "REGISTERED",
+      "scope": "PROJECT",
+      "projectId": "P003",
+      "bundleVersion": "project-carbonet-v2026.04",
+      "installManifest": "templates/screenbuilder-project-bootstrap/manifests/theme-install-manifest.json",
+      "bindingTargets": [
+        "admin-ui",
+        "builder-console",
+        "home-shell"
+      ],
+      "previewRequired": true
+    }
+  ],
+  "routeFamilyBindings": [
+    {
+      "routeFamily": "screen-builder",
+      "allowedThemeIds": [
+        "carbonet-default-dark",
+        "carbonet-default-light"
+      ],
+      "source": "projects/carbonet-frontend/source/src/features/screen-builder/screenBuilderFamily.ts"
+    },
+    {
+      "routeFamily": "project-runtime",
+      "allowedThemeIds": [
+        "carbonet-default-dark",
+        "carbonet-light-clean",
+        "carbonet-default-light"
+      ],
+      "source": "data/version-control/project-runtime-manifest.json"
+    }
+  ],
+  "aiEditPolicy": {
+    "mutationAllowedByDefault": false,
+    "requiredBeforeThemeWrite": [
+      "resolve deterministic route",
+      "include registry diff",
+      "verify token categories",
+      "verify route-family binding",
+      "produce preview verification note"
+    ],
+    "forbiddenTokenContent": [
+      "role",
+      "permission",
+      "approval",
+      "workflow",
+      "database",
+      "tenant",
+      "pricing",
+      "emission factor"
+    ]
+  },
+  "verification": {
+    "script": "ops/scripts/verify-theme-registry.sh",
+    "requiresInstallManifest": true,
+    "requiresPreviewForProjectThemes": true
+  }
+}

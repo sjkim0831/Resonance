@@ -117,8 +117,11 @@
         "template"
       ],
       "readFirst": [
+        "data/theme-registry/theme-registry.json",
+        "ops/scripts/verify-theme-registry.sh",
+        "docs/resonance-authority-builder-theme-review.md",
         "docs/resonance-builder-evolution-plan.md",
-        "templates",
+        "templates/screenbuilder-project-bootstrap/manifests/theme-install-manifest.json",
         "modules/resonance-builder",
         "data/screen-builder",
         "projects/project-template"
@@ -153,6 +156,31 @@
     },
     {
       "match": [
+        "build version",
+        "version metadata",
+        "release manifest",
+        "package registry",
+        "compatibility matrix",
+        "runtime status",
+        "image tag"
+      ],
+      "readFirst": [
+        "data/version-control/project-runtime-manifest.json",
+        "data/version-control/package-registry.json",
+        "data/version-control/compatibility-matrix.json",
+        "data/version-control/k8s-runtime-status-20260427.json",
+        "manifests/resonance-k8s-release-manifest.example.yaml",
+        "ops/scripts/verify-build-version-metadata.sh",
+        "docs/agent/resonance-hermes-rag-workboard-20260427.md"
+      ],
+      "doNotStartWith": [
+        "whole repository scan",
+        "apps/*/target",
+        "projects/carbonet-frontend/source/node_modules"
+      ]
+    },
+    {
+      "match": [
         "ollama",
         "3b",
         "local model",
@@ -160,6 +188,8 @@
         "ai runtime"
       ],
       "readFirst": [
+        "data/ai-runtime/deterministic-agent-policy.json",
+        "ops/scripts/verify-deterministic-agent-policy.sh",
         "data/ai-runtime/ollama-control-plane.json",
         "docs/agent/deterministic-3b-agent-playbook.md",
         "modules/resonance-ops/ollama-control-plane",
@@ -171,13 +201,48 @@
     },
     {
       "match": [
+        "hermes",
+        "rag",
+        "context pack",
+        "agent orchestration",
+        "bounded context"
+      ],
+      "readFirst": [
+        "data/ai-runtime/hermes-rag-context-pack.json",
+        "docs/agent/hermes-rag-agent-playbook.md",
+        "ops/scripts/run-hermes-rag-smoke.sh",
+        "ops/scripts/render-hermes-task-packet.sh",
+        "ops/scripts/run-hermes-worker-loop.sh",
+        "data/ai-runtime/hermes-patch-packet.schema.json",
+        "ops/scripts/render-hermes-patch-packet.sh",
+        "ops/scripts/validate-hermes-patch-packet.sh",
+        "data/ai-runtime/hermes-implementation-packet.schema.json",
+        "ops/scripts/render-hermes-implementation-packet.sh",
+        "ops/scripts/validate-hermes-implementation-packet.sh",
+        "data/ai-runtime/agent-stage-model-matrix.json",
+        "docs/agent/deterministic-3b-agent-playbook.md",
+        "skills/resonance-workflow/SKILL.md"
+      ],
+      "doNotStartWith": [
+        "whole repository scan",
+        "projects/carbonet-frontend/source/node_modules",
+        "apps/carbonet-app/target",
+        "var"
+      ]
+    },
+    {
+      "match": [
         "project split",
+        "project boundary",
+        "boundary contract",
         "common jar",
         "adapter",
         "carbonet",
         "resonance"
       ],
       "readFirst": [
+        "data/project-boundary/resonance-carbonet-boundary-contract.json",
+        "ops/scripts/verify-project-boundary.sh",
         "docs/resonance-carbonet-boundary-matrix.md",
         "docs/resonance-common-jar-governance.md",
         "projects/pom.xml",

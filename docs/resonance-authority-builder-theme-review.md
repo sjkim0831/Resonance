@@ -110,6 +110,19 @@ Recommendation:
 - add/strengthen a central theme registry model in Resonance docs and manifests
 - avoid pushing project business logic into theme files
 
+### Theme registry gate added
+
+Central files:
+
+- `data/theme-registry/theme-registry.json`
+- `ops/scripts/verify-theme-registry.sh`
+
+Gate rule:
+
+- AI theme edits must resolve through the deterministic route map first.
+- Theme writes require a registry diff, token category verification, route-family binding verification, and preview verification note.
+- Business rules such as role, permission, approval, workflow, database, tenant, pricing, or emission-factor decisions must not be encoded as theme tokens.
+
 ## Path review
 
 ### Why `/opt/Resonance` was used first

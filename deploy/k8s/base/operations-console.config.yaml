@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: operations-console-config
+  namespace: resonance-ops
+  labels:
+    app: operations-console
+    framework: resonance
+    tier: control-plane
+data:
+  SERVER_PORT: "18000"
+  CUBRID_HOST: "host.docker.internal"
+  LOG_DIR: "/tmp"
+  SECURITY_CODEX_ENABLED: "false"
+  SECURITY_CODEX_RUNNER_ENABLED: "false"

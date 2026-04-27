@@ -17,10 +17,15 @@ spec:
     spec:
       containers:
         - name: operations-console
-          image: registry.local/operations-console:2026.04.26
+          image: registry.local/operations-console:2026.04.27-opsfix8
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 18000
+          envFrom:
+            - configMapRef:
+                name: operations-console-config
+            - secretRef:
+                name: operations-console-secret
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness

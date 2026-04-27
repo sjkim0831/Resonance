@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "packetType": "hermes-implementation-plan",
+  "purpose": "Implementation packet contract. This packet may describe exact file edits, but generic worker loops must not execute it. A dedicated implementation worker and explicit approval are required.",
+  "requiredFields": [
+    "schemaVersion",
+    "packet_type",
+    "request_id",
+    "source_patch_packet",
+    "objective_id",
+    "zone",
+    "status",
+    "approval_required",
+    "implementation_allowed",
+    "selected_files",
+    "proposed_changes",
+    "verification_gate",
+    "dangerous_operation",
+    "rollback_plan",
+    "worker_contract"
+  ],
+  "constraints": {
+    "statusWithoutApproval": "IMPLEMENTATION_APPROVAL_REQUIRED",
+    "statusWithApproval": "READY_FOR_IMPLEMENTATION_WORKER",
+    "genericWorkerMustRefuse": true,
+    "maxSelectedFiles": 6,
+    "dangerousOperationsMustRemainScriptOnly": [
+      "deploy",
+      "backup",
+      "rollback",
+      "restart",
+      "k8s apply",
+      "db migration"
+    ]
+  },
+  "allowedVerificationGates": [
+    "bash ops/scripts/run-hermes-rag-smoke.sh"
+  ]
+}

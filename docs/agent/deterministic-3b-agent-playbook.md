@@ -35,3 +35,17 @@ Expected output before implementation:
 - reason_per_file
 - verification_gate
 - rollback_note
+
+## Policy gate
+
+Central files:
+
+- `data/ai-runtime/deterministic-agent-policy.json`
+- `ops/scripts/verify-deterministic-agent-policy.sh`
+
+Rules:
+
+- `gemma3:4b` is the default classify/route/safety-summary model.
+- restricted coder models may draft bounded patches, but they are not safety authority.
+- deploy, backup, rollback, restart, k8s apply, and DB migration remain script-only.
+- the generic Hermes worker loop is verification-only and must refuse implementation packets.

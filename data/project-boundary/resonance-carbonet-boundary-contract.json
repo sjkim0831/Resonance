@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "1.0",
+  "contractId": "resonance-carbonet-boundary-contract",
+  "generatedAt": "2026-04-27T14:35:00+09:00",
+  "purpose": "Keep reusable Resonance framework logic separated from thin Carbonet project binding and runtime assembly code.",
+  "zones": [
+    {
+      "zoneId": "resonance-common",
+      "owner": "Resonance",
+      "roots": [
+        "modules/resonance-common"
+      ],
+      "allowedResponsibilities": [
+        "common auth/account/menu/board implementation",
+        "common database policy",
+        "reusable validation and calculation",
+        "adapter contracts",
+        "common jar set governance"
+      ],
+      "forbiddenResponsibilities": [
+        "project-only wording",
+        "project route/menu/theme/page binding",
+        "project runtime assembly"
+      ]
+    },
+    {
+      "zoneId": "resonance-builder",
+      "owner": "Resonance",
+      "roots": [
+        "modules/resonance-builder",
+        "templates",
+        "data/screen-builder",
+        "data/theme-registry"
+      ],
+      "allowedResponsibilities": [
+        "screen builder engine",
+        "component composition",
+        "theme registry governance",
+        "project scaffold generation"
+      ],
+      "forbiddenResponsibilities": [
+        "project business rules",
+        "project database decisions"
+      ]
+    },
+    {
+      "zoneId": "operations-platform",
+      "owner": "Resonance",
+      "roots": [
+        "apps/operations-console",
+        "modules/resonance-ops",
+        "ops",
+        "deploy",
+        "data/version-control",
+        "data/ai-runtime"
+      ],
+      "allowedResponsibilities": [
+        "runtime lifecycle",
+        "deployment gates",
+        "backup rollback promotion",
+        "AI control plane",
+        "version control"
+      ],
+      "forbiddenResponsibilities": [
+        "project page composition",
+        "project-only UI wording"
+      ]
+    },
+    {
+      "zoneId": "project-carbonet",
+      "owner": "Carbonet",
+      "roots": [
+        "projects/carbonet-adapter",
+        "projects/carbonet-runtime",
+        "projects/carbonet-config",
+        "projects/carbonet-frontend",
+        "apps/carbonet-app",
+        "package-sets/projects/carbonet-package-set.example.yaml"
+      ],
+      "allowedResponsibilities": [
+        "route binding",
+        "menu binding",
+        "theme binding",
+        "page composition",
+        "project labels and wording",
+        "thin runtime assembly",
+        "project manifest wiring"
+      ],
+      "forbiddenResponsibilities": [
+        "common auth implementation",
+        "common database policy",
+        "broad migration logic",
+        "reusable builder engine",
+        "AI control plane",
+        "deployment rollback engine"
+      ]
+    }
+  ],
+  "mavenBoundary": {
+    "projectParent": "projects/pom.xml",
+    "moduleParent": "modules/pom.xml",
+    "projectModules": [
+      "carbonet-adapter",
+      "carbonet-runtime"
+    ],
+    "forbiddenProjectModules": [
+      "resonance-common",
+      "resonance-builder",
+      "resonance-ops"
+    ],
+    "legacySamplesAllowedOutsideDefaultParent": true
+  },
+  "packageSets": {
+    "commonJarSet": "package-sets/common/resonance-common-jar-set.example.yaml",
+    "carbonetPackageSet": "package-sets/projects/carbonet-package-set.example.yaml"
+  },
+  "aiEditPolicy": {
+    "mutationAllowedByDefault": false,
+    "requiredBeforeCrossZoneMove": [
+      "resolve deterministic route",
+      "name source zone and target zone",
+      "state whether logic is reusable or project-only",
+      "update boundary contract or stop with NEEDS_BOUNDARY_DECISION",
+      "run ops/scripts/verify-project-boundary.sh"
+    ],
+    "defaultWhenUncertain": "Resonance first, expose through adapter"
+  },
+  "verification": {
+    "script": "ops/scripts/verify-project-boundary.sh",
+    "documents": [
+      "docs/resonance-carbonet-boundary-matrix.md",
+      "docs/resonance-common-jar-governance.md"
+    ]
+  }
+}

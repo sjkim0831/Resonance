@@ -1,0 +1,171 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-04-27T14:15:00+09:00",
+  "canonicalRoot": "/opt/Resonance",
+  "purpose": "Bounded RAG context pack for Hermes and deterministic 3B agents. Use this before model calls; do not scan the whole repository.",
+  "clusterState": {
+    "currentContext": "docker-desktop",
+    "clusterType": "kind via Docker Desktop",
+    "nodeCount": 8,
+    "kubernetesVersion": "v1.34.3",
+    "namespaces": [
+      "resonance-ops",
+      "carbonet-prod"
+    ],
+    "workloadStatus": "operations-console is Running 1/1 in resonance-ops; carbonet-runtime is Running 2/2 in carbonet-prod.",
+    "services": [
+      {
+        "name": "operations-console",
+        "namespace": "resonance-ops",
+        "type": "ClusterIP",
+        "port": 80,
+        "image": "registry.local/operations-console:2026.04.27-opsfix8",
+        "status": "Running 1/1"
+      },
+      {
+        "name": "carbonet-runtime",
+        "namespace": "carbonet-prod",
+        "type": "ClusterIP",
+        "port": 80,
+        "image": "registry.local/carbonet-runtime:2026.04.26",
+        "status": "Running 2/2",
+        "health": "UP"
+      }
+    ]
+  },
+  "modelState": {
+    "smallClassifier": "gemma3:4b",
+    "gpuPlanner": "gemma-4-e2b-it",
+    "boundedCoder": "qwen2.5-coder:14b-instruct",
+    "safetyAuthority": "deterministic scripts plus gemma3:4b summaries",
+    "note": "Qwen family remains restricted for bounded code assistance only because strict safety gates failed."
+  },
+  "activeObjectives": [
+    {
+      "id": "project-split-hardening",
+      "zone": "project-carbonet",
+      "status": "boundary-contract-ready",
+      "summary": "Keep Carbonet project runtime thin while common framework and builder modules stay reusable through a verified boundary contract.",
+      "readFirst": [
+        "data/project-boundary/resonance-carbonet-boundary-contract.json",
+        "ops/scripts/verify-project-boundary.sh",
+        "docs/resonance-carbonet-boundary-matrix.md",
+        "docs/resonance-common-jar-governance.md",
+        "projects/pom.xml",
+        "modules/pom.xml",
+        "package-sets"
+      ]
+    },
+    {
+      "id": "build-version-control",
+      "zone": "operations-platform",
+      "status": "metadata-gate-ready",
+      "summary": "Use package registry, compatibility matrix, release manifests, and verified Kubernetes runtime status as the source of truth for runtime/build version decisions.",
+      "readFirst": [
+        "data/version-control/project-runtime-manifest.json",
+        "data/version-control/package-registry.json",
+        "data/version-control/compatibility-matrix.json",
+        "manifests/resonance-k8s-release-manifest.example.yaml",
+        "data/version-control/k8s-runtime-status-20260427.json",
+        "ops/scripts/verify-build-version-metadata.sh"
+      ]
+    },
+    {
+      "id": "theme-management",
+      "zone": "builder-system",
+      "status": "registry-gate-ready",
+      "summary": "Keep family-level theme bindings while central theme registry governance controls AI-generated theme edits.",
+      "readFirst": [
+        "data/theme-registry/theme-registry.json",
+        "ops/scripts/verify-theme-registry.sh",
+        "docs/resonance-authority-builder-theme-review.md",
+        "templates/screenbuilder-project-bootstrap/manifests/theme-install-manifest.json",
+        "projects/carbonet-frontend/source/src/features/screen-builder"
+      ]
+    },
+    {
+      "id": "docker-desktop-k8s",
+      "zone": "operations-platform",
+      "status": "workloads-running",
+      "summary": "Docker Desktop cluster is created, WSL kubectl can manage it through docker-desktop context, and ops/runtime workloads are running.",
+      "readFirst": [
+        "docs/resonance-k8s-3b-agent-operations.md",
+        "deploy/k8s",
+        "ops/scripts/build-kind-runtime-image.sh"
+      ]
+    },
+    {
+      "id": "ai-3b-deterministic",
+      "zone": "operations-platform",
+      "status": "policy-gate-ready",
+      "summary": "Deterministic route map, model matrix, and agent policy are active. 3B/4B models classify, route, and summarize while deterministic scripts remain safety authority.",
+      "readFirst": [
+        "data/ai-runtime/deterministic-agent-policy.json",
+        "ops/scripts/verify-deterministic-agent-policy.sh",
+        "data/ai-runtime/deterministic-route-map.json",
+        "data/ai-runtime/agent-stage-model-matrix.json",
+        "docs/agent/deterministic-3b-agent-playbook.md"
+      ]
+    },
+    {
+      "id": "hermes-agent-hardening",
+      "zone": "operations-platform",
+      "status": "implementation-envelope-ready",
+      "summary": "Hermes can now render bounded worker task packets, create non-mutating patch plans, create approval-gated implementation envelopes, run deterministic smoke checks, optionally verify gemma3:4b route/safety behavior, and execute verification-only worker closeouts.",
+      "readFirst": [
+        "data/ai-runtime/hermes-rag-context-pack.json",
+        "docs/agent/hermes-rag-agent-playbook.md",
+        "data/ai-runtime/agent-stage-model-matrix.json",
+        "ops/scripts/run-hermes-rag-smoke.sh",
+        "ops/scripts/render-hermes-task-packet.sh",
+        "ops/scripts/run-hermes-worker-loop.sh",
+        "data/ai-runtime/hermes-patch-packet.schema.json",
+        "ops/scripts/render-hermes-patch-packet.sh",
+        "ops/scripts/validate-hermes-patch-packet.sh",
+        "data/ai-runtime/hermes-implementation-packet.schema.json",
+        "ops/scripts/render-hermes-implementation-packet.sh",
+        "ops/scripts/validate-hermes-implementation-packet.sh",
+        "docs/agent/deterministic-3b-agent-playbook.md",
+        "skills/resonance-workflow/SKILL.md"
+      ]
+    }
+  ],
+  "dangerousOperationPolicy": {
+    "scriptOnly": [
+      "deploy",
+      "backup",
+      "rollback",
+      "restart",
+      "k8s apply",
+      "db migration"
+    ],
+    "beforeExecution": [
+      "resolve route/files from deterministic map",
+      "validate manifest or script arguments",
+      "run smallest build or smoke gate",
+      "record rollback note"
+    ],
+    "neverAllow": [
+      "whole repository scan as first step",
+      "raw kubectl apply generated directly by a model",
+      "DB destructive migration without rollback/check SQL",
+      "cross-zone refactor without wave split"
+    ]
+  },
+  "nextSafeMoves": [
+    "Keep resonance-ops and carbonet-prod unless a dedicated namespace rename wave is opened.",
+    "Use ops/scripts/prepare-docker-desktop-k8s-gate.sh for config, secret, and runtime deployment gates.",
+    "Treat tmux lane execution as a separate image hardening move because current runtime images start without tmux installed.",
+    "Render a worker packet with ops/scripts/render-hermes-task-packet.sh before Hermes delegates work.",
+    "Render and validate non-mutating patch plans with ops/scripts/render-hermes-patch-packet.sh and ops/scripts/validate-hermes-patch-packet.sh before any implementation packet exists.",
+    "Render implementation packets with ops/scripts/render-hermes-implementation-packet.sh only as approval-gated envelopes; generic worker loops must refuse them.",
+    "Verify build version metadata with ops/scripts/verify-build-version-metadata.sh before changing runtime image tags or release manifests.",
+    "Verify theme registry governance with ops/scripts/verify-theme-registry.sh before changing theme tokens, bundles, or route-family theme bindings.",
+    "Verify project/common/builder/ops boundaries with ops/scripts/verify-project-boundary.sh before moving code across zones.",
+    "Verify deterministic agent policy with ops/scripts/verify-deterministic-agent-policy.sh before changing model roles or worker authority.",
+    "Consume verification-only packets with ops/scripts/run-hermes-worker-loop.sh and keep closeouts under var/agent-closeouts.",
+    "Run Hermes/RAG checks against the service layer before giving agents deploy, rollback, restart, backup, or DB migration authority.",
+    "Use RUN_MODEL_GATE=true MODEL=gemma3:4b bash ops/scripts/run-hermes-rag-smoke.sh when local Ollama safety and route behavior must be revalidated.",
+    "Use this RAG context pack as Hermes' opening book."
+  ]
+}

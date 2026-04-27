@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "packetType": "hermes-patch-plan",
+  "purpose": "Non-mutating patch packet contract. A patch worker may only act after this packet validates and a separate implementation approval path is selected.",
+  "requiredFields": [
+    "schemaVersion",
+    "packet_type",
+    "request_id",
+    "source_task_packet",
+    "objective_id",
+    "zone",
+    "status",
+    "mutation_allowed",
+    "selected_files",
+    "planned_edits",
+    "verification_gate",
+    "dangerous_operation",
+    "rollback_note",
+    "worker_contract"
+  ],
+  "constraints": {
+    "status": "PATCH_PLAN_READY",
+    "mutation_allowed": false,
+    "maxSelectedFiles": 6,
+    "plannedEditsMayNotContainPatchContent": true,
+    "selectedFilesMayNotInclude": [
+      "absolute paths",
+      "parent traversal",
+      "var/",
+      "node_modules",
+      "target"
+    ],
+    "dangerousOperationsMustRemainScriptOnly": [
+      "deploy",
+      "backup",
+      "rollback",
+      "restart",
+      "k8s apply",
+      "db migration"
+    ]
+  },
+  "allowedVerificationGates": [
+    "bash ops/scripts/run-hermes-rag-smoke.sh"
+  ]
+}

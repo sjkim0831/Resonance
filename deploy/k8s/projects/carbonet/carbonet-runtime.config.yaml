@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: carbonet-runtime-config
+  namespace: carbonet-prod
+  labels:
+    app: carbonet-runtime
+    framework: resonance
+    project: carbonet
+data:
+  PROJECT_ID: "carbonet"
+  SERVER_PORT: "18081"
+  CUBRID_HOST: "host.docker.internal"
+  LOG_DIR: "/tmp"
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "cubrid.jdbc.driver.CUBRIDDriver"
+  SPRING_DATASOURCE_URL: "jdbc:cubrid:host.docker.internal:33000:carbonet:::?charset=UTF-8"
+  SPRING_PROFILES_ACTIVE: "prod"
+  APP_PROJECT_ID: "carbonet"
+  RESONANCE_RUNTIME_MODE: "isolated"
+  RESONANCE_FRAMEWORK: "resonance"
+  RESONANCE_PROJECT: "carbonet"

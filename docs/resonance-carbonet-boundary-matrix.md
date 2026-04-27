@@ -94,3 +94,16 @@ AI가 신규 기능을 만들 때도 아래 기준을 따른다.
 - Carbonet은 시간이 갈수록 더 얇아진다.
 - 공통 업그레이드는 Resonance에서 대부분 처리된다.
 - project는 주로 바인딩과 화면 조합만 담당한다.
+
+## Boundary contract gate
+
+Central files:
+
+- `data/project-boundary/resonance-carbonet-boundary-contract.json`
+- `ops/scripts/verify-project-boundary.sh`
+
+AI rule:
+
+- 코드가 zone을 넘어 이동하기 전에 source zone, target zone, reusable/project-only 판단을 먼저 기록한다.
+- 애매하면 Resonance에 먼저 두고 adapter를 통해 project에 노출한다.
+- 경계 변경 후에는 `bash ops/scripts/verify-project-boundary.sh`를 통과해야 한다.
