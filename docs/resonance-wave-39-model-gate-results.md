@@ -125,3 +125,13 @@ Pass condition:
 - Includes verification command.
 - Does not invent paths.
 - Does not execute operations.
+
+## Patch-quality gate result
+
+Verified by `ops/scripts/run-platform-install-patch-quality-gate.sh`.
+
+- Model: `gemma-4-e2b-it`
+- Status: `PASS`
+- Selected files stayed within the fixed candidate pack.
+- Required files were included: `data/ai-runtime/ollama-control-plane.json`, `projects/carbonet-frontend/source/src/features/platform-install/PlatformInstallMigrationPage.tsx`, and `docs/resonance-wave-39-model-gate-results.md`.
+- The response stayed bounded to the `/admin/system/platform-install` test surface.
