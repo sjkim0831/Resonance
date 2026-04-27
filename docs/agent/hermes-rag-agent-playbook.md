@@ -154,6 +154,16 @@ bash ops/scripts/validate-hermes-implementation-patch-content.sh var/agent-task-
 
 This contract allows only bounded `replace_text`, `append_text`, and `add_file` descriptions against selected safe files. It still requires `mutation_allowed=false` and `apply_allowed=false`; validation is not permission to apply.
 
+## Patch Content Dry Run
+
+After patch content validates, Hermes may perform a non-mutating board check:
+
+```bash
+bash ops/scripts/dry-run-hermes-implementation-patch-content.sh var/agent-task-packets/<patch-content>.json
+```
+
+The dry-run checks whether `replace_text` can find `old_text`, `append_text` targets exist, and `add_file` targets do not already exist. It still writes `mutation_allowed=false` and `apply_allowed=false`.
+
 ## Implementation Preview Gate
 
 Before any dedicated implementation worker is invoked, Hermes should render a non-mutating preview:

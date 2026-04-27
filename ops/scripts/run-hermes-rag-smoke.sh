@@ -27,6 +27,7 @@ IMPLEMENTATION_PATCH_CONTENT_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-implementa
 IMPLEMENTATION_PACKET_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-packet.sh"
 IMPLEMENTATION_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-packet.sh"
 IMPLEMENTATION_PATCH_CONTENT_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-patch-content.sh"
+IMPLEMENTATION_PATCH_CONTENT_DRY_RUN="$ROOT_DIR/ops/scripts/dry-run-hermes-implementation-patch-content.sh"
 IMPLEMENTATION_PREVIEW_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-preview.sh"
 IMPLEMENTATION_WORKER="$ROOT_DIR/ops/scripts/run-hermes-implementation-worker.sh"
 MEMORY_CANDIDATE_SCRIPT="$ROOT_DIR/ops/scripts/promote-hermes-closeout-memory.sh"
@@ -83,6 +84,7 @@ require_file "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA"
 require_file "$IMPLEMENTATION_PACKET_SCRIPT"
 require_file "$IMPLEMENTATION_PACKET_VALIDATOR"
 require_file "$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR"
+require_file "$IMPLEMENTATION_PATCH_CONTENT_DRY_RUN"
 require_file "$IMPLEMENTATION_PREVIEW_SCRIPT"
 require_file "$IMPLEMENTATION_WORKER"
 require_file "$MEMORY_CANDIDATE_SCRIPT"
@@ -151,7 +153,7 @@ jq -e --arg file "${IMPLEMENTATION_PREVIEW_SCRIPT#$ROOT_DIR/}" '
 ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${IMPLEMENTATION_PREVIEW_SCRIPT#$ROOT_DIR/}"
 write "- implementation preview contract: pass"
 
-for required in "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA" "$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR"; do
+for required in "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA" "$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR" "$IMPLEMENTATION_PATCH_CONTENT_DRY_RUN"; do
   jq -e --arg file "${required#$ROOT_DIR/}" '
     .activeObjectives[]
     | select(.id == "hermes-agent-hardening")
@@ -246,6 +248,11 @@ jq -n \
   }' > "$patch_content_fixture"
 "$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR" "$patch_content_fixture" >/dev/null || fail "implementation patch content validation failed"
 write "- implementation patch content: ${patch_content_fixture#$ROOT_DIR/}"
+patch_dry_run_output="$("$IMPLEMENTATION_PATCH_CONTENT_DRY_RUN" "$patch_content_fixture")" || fail "implementation patch content dry-run failed"
+patch_dry_run_path="$(printf '%s\n' "$patch_dry_run_output" | awk '/^IMPLEMENTATION_PATCH_DRY_RUN_READY / { print $2; exit }')"
+[ -n "$patch_dry_run_path" ] || fail "implementation patch dry-run path missing"
+jq -e '.apply_allowed == false and .mutation_allowed == false and .status == "pass"' "$ROOT_DIR/$patch_dry_run_path" >/dev/null || fail "implementation patch dry-run validation failed"
+write "- implementation patch dry-run: $patch_dry_run_path"
 
 if [ "$SKIP_IMPLEMENTATION_WORKER_SMOKE" = "true" ]; then
   write "- implementation worker closeout: skipped to avoid recursive smoke"
