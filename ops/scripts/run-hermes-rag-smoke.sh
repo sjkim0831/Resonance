@@ -23,8 +23,10 @@ PATCH_PACKET_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-patch-packet.schema.json"
 PATCH_PACKET_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-patch-packet.sh"
 PATCH_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-patch-packet.sh"
 IMPLEMENTATION_PACKET_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-implementation-packet.schema.json"
+IMPLEMENTATION_PATCH_CONTENT_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-implementation-patch-content.schema.json"
 IMPLEMENTATION_PACKET_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-packet.sh"
 IMPLEMENTATION_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-packet.sh"
+IMPLEMENTATION_PATCH_CONTENT_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-patch-content.sh"
 IMPLEMENTATION_PREVIEW_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-preview.sh"
 IMPLEMENTATION_WORKER="$ROOT_DIR/ops/scripts/run-hermes-implementation-worker.sh"
 MEMORY_CANDIDATE_SCRIPT="$ROOT_DIR/ops/scripts/promote-hermes-closeout-memory.sh"
@@ -77,8 +79,10 @@ require_file "$PATCH_PACKET_SCHEMA"
 require_file "$PATCH_PACKET_SCRIPT"
 require_file "$PATCH_PACKET_VALIDATOR"
 require_file "$IMPLEMENTATION_PACKET_SCHEMA"
+require_file "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA"
 require_file "$IMPLEMENTATION_PACKET_SCRIPT"
 require_file "$IMPLEMENTATION_PACKET_VALIDATOR"
+require_file "$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR"
 require_file "$IMPLEMENTATION_PREVIEW_SCRIPT"
 require_file "$IMPLEMENTATION_WORKER"
 require_file "$MEMORY_CANDIDATE_SCRIPT"
@@ -92,7 +96,7 @@ require_file "$PROJECT_BOUNDARY_CONTRACT"
 require_file "$PROJECT_BOUNDARY_VALIDATOR"
 require_file "$DETERMINISTIC_AGENT_POLICY"
 require_file "$DETERMINISTIC_AGENT_POLICY_VALIDATOR"
-jq empty "$CONTEXT_PACK" "$ROUTE_MAP" "$MODEL_MATRIX" "$MEMORY_PATCH_REVIEW_SCHEMA" "$THEME_REGISTRY" "$PROJECT_BOUNDARY_CONTRACT" "$DETERMINISTIC_AGENT_POLICY" || fail "json validation failed"
+jq empty "$CONTEXT_PACK" "$ROUTE_MAP" "$MODEL_MATRIX" "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA" "$MEMORY_PATCH_REVIEW_SCHEMA" "$THEME_REGISTRY" "$PROJECT_BOUNDARY_CONTRACT" "$DETERMINISTIC_AGENT_POLICY" || fail "json validation failed"
 write "- JSON validation: pass"
 
 canonical_root="$(json_value '.canonicalRoot')"
@@ -147,6 +151,16 @@ jq -e --arg file "${IMPLEMENTATION_PREVIEW_SCRIPT#$ROOT_DIR/}" '
 ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${IMPLEMENTATION_PREVIEW_SCRIPT#$ROOT_DIR/}"
 write "- implementation preview contract: pass"
 
+for required in "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA" "$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR"; do
+  jq -e --arg file "${required#$ROOT_DIR/}" '
+    .activeObjectives[]
+    | select(.id == "hermes-agent-hardening")
+    | .readFirst
+    | index($file)
+  ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${required#$ROOT_DIR/}"
+done
+write "- implementation patch content contract: pass"
+
 if ! jq -e '
   .intentRoutes[]
   | select((.match // []) | index("hermes"))
@@ -170,6 +184,8 @@ write "- deterministic agent policy: pass"
 
 write ""
 write "## Task Packet"
+fixture_dir="$ROOT_DIR/var/hermes-smoke-fixtures"
+mkdir -p "$fixture_dir"
 packet_output="$(INTENT="${INTENT:-hermes rag bounded orchestration}" "$TASK_PACKET_SCRIPT")" || fail "task packet render failed"
 printf '%s\n' "$packet_output" | tee -a "$REPORT" >/dev/null
 packet_path="$(printf '%s\n' "$packet_output" | awk '/^PACKET_READY / { print $2; exit }')"
@@ -202,6 +218,35 @@ implementation_preview_path="$(printf '%s\n' "$implementation_preview_output" | 
 jq -e '.apply_allowed == false and .mutation_allowed == false and .preview_decision == "empty_envelope_only"' "$ROOT_DIR/$implementation_preview_path" >/dev/null || fail "implementation preview validation failed"
 write "- implementation preview: $implementation_preview_path"
 
+patch_content_fixture="$fixture_dir/hermes-implementation-patch-content-smoke.json"
+mkdir -p "$fixture_dir"
+jq -n \
+  --arg generatedAt "$(date -Is)" \
+  --arg packet "$implementation_packet_path" \
+  '{
+    schemaVersion: "1.0",
+    content_type: "hermes-implementation-patch-content",
+    request_id: "PATCH-CONTENT-SMOKE",
+    source_implementation_packet: $packet,
+    generated_at: $generatedAt,
+    mutation_allowed: false,
+    apply_allowed: false,
+    target_files: [
+      "docs/agent/hermes-rag-agent-playbook.md"
+    ],
+    patches: [
+      {
+        operation: "append_text",
+        file: "docs/agent/hermes-rag-agent-playbook.md",
+        text: "\n<!-- smoke-only patch content fixture; do not apply -->\n"
+      }
+    ],
+    verification_gate: "bash ops/scripts/run-hermes-rag-smoke.sh",
+    rollback_note: "Do not apply this smoke fixture. It validates patch-content shape only."
+  }' > "$patch_content_fixture"
+"$IMPLEMENTATION_PATCH_CONTENT_VALIDATOR" "$patch_content_fixture" >/dev/null || fail "implementation patch content validation failed"
+write "- implementation patch content: ${patch_content_fixture#$ROOT_DIR/}"
+
 if [ "$SKIP_IMPLEMENTATION_WORKER_SMOKE" = "true" ]; then
   write "- implementation worker closeout: skipped to avoid recursive smoke"
 else
@@ -214,8 +259,6 @@ else
   write "- implementation worker closeout: $worker_status"
 fi
 
-fixture_dir="$ROOT_DIR/var/hermes-smoke-fixtures"
-mkdir -p "$fixture_dir"
 fixture_candidate="$fixture_dir/hermes-rag-memory-candidate-smoke.json"
 jq -n \
   --arg generatedAt "$(date -Is)" \

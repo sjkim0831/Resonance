@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "packetType": "hermes-implementation-patch-content",
+  "purpose": "Patch content contract for a future reviewed apply worker. This schema does not authorize applying patches.",
+  "requiredFields": [
+    "schemaVersion",
+    "content_type",
+    "request_id",
+    "source_implementation_packet",
+    "mutation_allowed",
+    "apply_allowed",
+    "target_files",
+    "patches",
+    "verification_gate",
+    "rollback_note"
+  ],
+  "constraints": {
+    "content_type": "hermes-implementation-patch-content",
+    "mutation_allowed": false,
+    "apply_allowed": false,
+    "maxTargetFiles": 6,
+    "allowedPatchOperations": [
+      "replace_text",
+      "append_text",
+      "add_file"
+    ],
+    "targetFilesMayNotInclude": [
+      "absolute paths",
+      "parent traversal",
+      "var/",
+      "node_modules",
+      "target"
+    ],
+    "dangerousOperationsRemainScriptOnly": true,
+    "futureApplyWorkerRequired": true
+  },
+  "allowedVerificationGates": [
+    "bash ops/scripts/run-hermes-rag-smoke.sh"
+  ]
+}

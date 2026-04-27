@@ -144,6 +144,16 @@ bash ops/scripts/validate-hermes-implementation-packet.sh var/agent-task-packets
 
 By default, implementation packets stay in `IMPLEMENTATION_APPROVAL_REQUIRED`. Even with `IMPLEMENTATION_APPROVED=true`, only a future dedicated implementation worker may consume them; `run-hermes-worker-loop.sh` must refuse them.
 
+## Patch Content Contract
+
+If a future agent proposes concrete patch content, it must first validate as a non-applying patch-content artifact:
+
+```bash
+bash ops/scripts/validate-hermes-implementation-patch-content.sh var/agent-task-packets/<patch-content>.json
+```
+
+This contract allows only bounded `replace_text`, `append_text`, and `add_file` descriptions against selected safe files. It still requires `mutation_allowed=false` and `apply_allowed=false`; validation is not permission to apply.
+
 ## Implementation Preview Gate
 
 Before any dedicated implementation worker is invoked, Hermes should render a non-mutating preview:
