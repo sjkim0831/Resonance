@@ -144,6 +144,17 @@ bash ops/scripts/validate-hermes-implementation-packet.sh var/agent-task-packets
 
 By default, implementation packets stay in `IMPLEMENTATION_APPROVAL_REQUIRED`. Even with `IMPLEMENTATION_APPROVED=true`, only a future dedicated implementation worker may consume them; `run-hermes-worker-loop.sh` must refuse them.
 
+## Dedicated Implementation Worker
+
+The generic worker loop must never execute implementation packets. Approved implementation envelopes are consumed only by the dedicated worker:
+
+```bash
+IMPLEMENTATION_APPROVED=true bash ops/scripts/render-hermes-implementation-packet.sh var/agent-task-packets/<patch-packet>.json
+bash ops/scripts/run-hermes-implementation-worker.sh var/agent-task-packets/<implementation-packet>.json
+```
+
+The current implementation worker is intentionally conservative. It requires `READY_FOR_IMPLEMENTATION_WORKER`, refuses dangerous operations, refuses embedded patch content, and records an empty-patch closeout after rerunning the Hermes RAG smoke gate.
+
 ## K8s deployment rule
 
 For Docker Desktop Kubernetes, Hermes may prepare these moves:
