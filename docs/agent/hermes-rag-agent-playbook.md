@@ -101,6 +101,16 @@ bash ops/scripts/run-hermes-worker-loop.sh var/agent-task-packets/<packet>.json
 
 The generic worker loop may only consume `READY_FOR_WORKER` packets whose verification gate is allowlisted. It writes closeout artifacts under `var/agent-closeouts/` and refuses dangerous-operation packets.
 
+## Memory Candidate Gate
+
+Passing closeouts are not automatically RAG memory. They must first become non-mutating memory candidates:
+
+```bash
+bash ops/scripts/promote-hermes-closeout-memory.sh var/agent-closeouts/<closeout>.json
+```
+
+The promotion gate refuses failed closeouts, dangerous-operation packets, implementation packets, and unsafe selected files. It writes candidate artifacts under `var/rag-memory-candidates/` with `apply_to_context_pack=false`; a separate reviewed patch packet is required before updating the context pack or route map.
+
 ## Patch Plan Gate
 
 Before any patch worker is allowed to edit files, Hermes must create a non-mutating patch plan:

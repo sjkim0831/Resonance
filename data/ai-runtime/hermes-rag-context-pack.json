@@ -125,6 +125,7 @@
         "data/ai-runtime/hermes-implementation-packet.schema.json",
         "ops/scripts/render-hermes-implementation-packet.sh",
         "ops/scripts/validate-hermes-implementation-packet.sh",
+        "ops/scripts/promote-hermes-closeout-memory.sh",
         "docs/agent/deterministic-3b-agent-playbook.md",
         "skills/resonance-workflow/SKILL.md"
       ]
@@ -164,6 +165,7 @@
     "Verify project/common/builder/ops boundaries with ops/scripts/verify-project-boundary.sh before moving code across zones.",
     "Verify deterministic agent policy with ops/scripts/verify-deterministic-agent-policy.sh before changing model roles or worker authority.",
     "Consume verification-only packets with ops/scripts/run-hermes-worker-loop.sh and keep closeouts under var/agent-closeouts.",
+    "Promote passing verification-only closeouts to non-mutating memory candidates with ops/scripts/promote-hermes-closeout-memory.sh before any RAG context update.",
     "Run Hermes/RAG checks against the service layer before giving agents deploy, rollback, restart, backup, or DB migration authority.",
     "Use RUN_MODEL_GATE=true MODEL=gemma3:4b bash ops/scripts/run-hermes-rag-smoke.sh when local Ollama safety and route behavior must be revalidated.",
     "Use this RAG context pack as Hermes' opening book."

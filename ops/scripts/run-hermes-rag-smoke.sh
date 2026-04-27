@@ -24,6 +24,7 @@ PATCH_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-patch-packet.sh"
 IMPLEMENTATION_PACKET_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-implementation-packet.schema.json"
 IMPLEMENTATION_PACKET_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-packet.sh"
 IMPLEMENTATION_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-packet.sh"
+MEMORY_CANDIDATE_SCRIPT="$ROOT_DIR/ops/scripts/promote-hermes-closeout-memory.sh"
 BUILD_VERSION_METADATA_VALIDATOR="$ROOT_DIR/ops/scripts/verify-build-version-metadata.sh"
 THEME_REGISTRY="$ROOT_DIR/data/theme-registry/theme-registry.json"
 THEME_REGISTRY_VALIDATOR="$ROOT_DIR/ops/scripts/verify-theme-registry.sh"
@@ -72,6 +73,7 @@ require_file "$PATCH_PACKET_VALIDATOR"
 require_file "$IMPLEMENTATION_PACKET_SCHEMA"
 require_file "$IMPLEMENTATION_PACKET_SCRIPT"
 require_file "$IMPLEMENTATION_PACKET_VALIDATOR"
+require_file "$MEMORY_CANDIDATE_SCRIPT"
 require_file "$BUILD_VERSION_METADATA_VALIDATOR"
 require_file "$THEME_REGISTRY"
 require_file "$THEME_REGISTRY_VALIDATOR"
@@ -99,6 +101,14 @@ for required in "$CONTEXT_PACK" "$PLAYBOOK" "$MODEL_MATRIX"; do
   ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${required#$ROOT_DIR/}"
 done
 write "- Hermes readFirst contract: pass"
+
+jq -e --arg file "${MEMORY_CANDIDATE_SCRIPT#$ROOT_DIR/}" '
+  .activeObjectives[]
+  | select(.id == "hermes-agent-hardening")
+  | .readFirst
+  | index($file)
+' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${MEMORY_CANDIDATE_SCRIPT#$ROOT_DIR/}"
+write "- memory candidate gate contract: pass"
 
 if ! jq -e '
   .intentRoutes[]
