@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "packetType": "hermes-memory-patch-review",
+  "purpose": "Reviewed RAG memory patch gate. This packet may identify context-pack or route-map updates suggested by a memory candidate, but it may not apply them.",
+  "requiredFields": [
+    "schemaVersion",
+    "packet_type",
+    "request_id",
+    "source_memory_candidate",
+    "objective_id",
+    "zone",
+    "status",
+    "review_status",
+    "mutation_allowed",
+    "apply_allowed",
+    "target_files",
+    "review_findings",
+    "verification_gate",
+    "dangerous_operation",
+    "rollback_note",
+    "worker_contract"
+  ],
+  "constraints": {
+    "status": "MEMORY_PATCH_REVIEW_READY",
+    "reviewStatusMayBe": [
+      "NO_UPDATE_RECOMMENDED",
+      "REVIEW_REQUIRED"
+    ],
+    "mutation_allowed": false,
+    "apply_allowed": false,
+    "maxTargetFiles": 2,
+    "targetFilesMayOnlyBe": [
+      "data/ai-runtime/hermes-rag-context-pack.json",
+      "data/ai-runtime/deterministic-route-map.json"
+    ],
+    "dangerousOperationsMustRemainScriptOnly": [
+      "deploy",
+      "backup",
+      "rollback",
+      "restart",
+      "k8s apply",
+      "db migration"
+    ]
+  },
+  "allowedVerificationGates": [
+    "bash ops/scripts/run-hermes-rag-smoke.sh"
+  ]
+}

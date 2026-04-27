@@ -111,6 +111,17 @@ bash ops/scripts/promote-hermes-closeout-memory.sh var/agent-closeouts/<closeout
 
 The promotion gate refuses failed closeouts, dangerous-operation packets, implementation packets, and unsafe selected files. It writes candidate artifacts under `var/rag-memory-candidates/` with `apply_to_context_pack=false`; a separate reviewed patch packet is required before updating the context pack or route map.
 
+## Memory Patch Review Gate
+
+Memory candidates still cannot change RAG files. Hermes must render and validate a review packet before any context-pack or route-map update is proposed:
+
+```bash
+bash ops/scripts/render-hermes-memory-patch-review.sh var/rag-memory-candidates/<candidate>.json
+bash ops/scripts/validate-hermes-memory-patch-review.sh var/agent-task-packets/<review-packet>.json
+```
+
+The review packet is non-mutating: `mutation_allowed=false` and `apply_allowed=false`. It may only target `data/ai-runtime/hermes-rag-context-pack.json` and `data/ai-runtime/deterministic-route-map.json`, and it must not embed patch content.
+
 ## Patch Plan Gate
 
 Before any patch worker is allowed to edit files, Hermes must create a non-mutating patch plan:

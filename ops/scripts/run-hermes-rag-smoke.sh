@@ -25,6 +25,9 @@ IMPLEMENTATION_PACKET_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-implementation-pa
 IMPLEMENTATION_PACKET_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-implementation-packet.sh"
 IMPLEMENTATION_PACKET_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-implementation-packet.sh"
 MEMORY_CANDIDATE_SCRIPT="$ROOT_DIR/ops/scripts/promote-hermes-closeout-memory.sh"
+MEMORY_PATCH_REVIEW_SCHEMA="$ROOT_DIR/data/ai-runtime/hermes-memory-patch-review.schema.json"
+MEMORY_PATCH_REVIEW_SCRIPT="$ROOT_DIR/ops/scripts/render-hermes-memory-patch-review.sh"
+MEMORY_PATCH_REVIEW_VALIDATOR="$ROOT_DIR/ops/scripts/validate-hermes-memory-patch-review.sh"
 BUILD_VERSION_METADATA_VALIDATOR="$ROOT_DIR/ops/scripts/verify-build-version-metadata.sh"
 THEME_REGISTRY="$ROOT_DIR/data/theme-registry/theme-registry.json"
 THEME_REGISTRY_VALIDATOR="$ROOT_DIR/ops/scripts/verify-theme-registry.sh"
@@ -74,6 +77,9 @@ require_file "$IMPLEMENTATION_PACKET_SCHEMA"
 require_file "$IMPLEMENTATION_PACKET_SCRIPT"
 require_file "$IMPLEMENTATION_PACKET_VALIDATOR"
 require_file "$MEMORY_CANDIDATE_SCRIPT"
+require_file "$MEMORY_PATCH_REVIEW_SCHEMA"
+require_file "$MEMORY_PATCH_REVIEW_SCRIPT"
+require_file "$MEMORY_PATCH_REVIEW_VALIDATOR"
 require_file "$BUILD_VERSION_METADATA_VALIDATOR"
 require_file "$THEME_REGISTRY"
 require_file "$THEME_REGISTRY_VALIDATOR"
@@ -81,7 +87,7 @@ require_file "$PROJECT_BOUNDARY_CONTRACT"
 require_file "$PROJECT_BOUNDARY_VALIDATOR"
 require_file "$DETERMINISTIC_AGENT_POLICY"
 require_file "$DETERMINISTIC_AGENT_POLICY_VALIDATOR"
-jq empty "$CONTEXT_PACK" "$ROUTE_MAP" "$MODEL_MATRIX" "$THEME_REGISTRY" "$PROJECT_BOUNDARY_CONTRACT" "$DETERMINISTIC_AGENT_POLICY" || fail "json validation failed"
+jq empty "$CONTEXT_PACK" "$ROUTE_MAP" "$MODEL_MATRIX" "$MEMORY_PATCH_REVIEW_SCHEMA" "$THEME_REGISTRY" "$PROJECT_BOUNDARY_CONTRACT" "$DETERMINISTIC_AGENT_POLICY" || fail "json validation failed"
 write "- JSON validation: pass"
 
 canonical_root="$(json_value '.canonicalRoot')"
@@ -109,6 +115,16 @@ jq -e --arg file "${MEMORY_CANDIDATE_SCRIPT#$ROOT_DIR/}" '
   | index($file)
 ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${MEMORY_CANDIDATE_SCRIPT#$ROOT_DIR/}"
 write "- memory candidate gate contract: pass"
+
+for required in "$MEMORY_PATCH_REVIEW_SCHEMA" "$MEMORY_PATCH_REVIEW_SCRIPT" "$MEMORY_PATCH_REVIEW_VALIDATOR"; do
+  jq -e --arg file "${required#$ROOT_DIR/}" '
+    .activeObjectives[]
+    | select(.id == "hermes-agent-hardening")
+    | .readFirst
+    | index($file)
+  ' "$CONTEXT_PACK" >/dev/null || fail "Hermes readFirst missing ${required#$ROOT_DIR/}"
+done
+write "- memory patch review gate contract: pass"
 
 if ! jq -e '
   .intentRoutes[]
@@ -159,6 +175,41 @@ implementation_packet_path="$(printf '%s\n' "$implementation_output" | awk '/^IM
 [ -n "$implementation_packet_path" ] || fail "implementation packet path missing"
 "$IMPLEMENTATION_PACKET_VALIDATOR" "$ROOT_DIR/$implementation_packet_path" >/dev/null || fail "implementation packet validation failed"
 write "- implementation packet: $implementation_packet_path"
+
+fixture_dir="$ROOT_DIR/var/hermes-smoke-fixtures"
+mkdir -p "$fixture_dir"
+fixture_candidate="$fixture_dir/hermes-rag-memory-candidate-smoke.json"
+jq -n \
+  --arg generatedAt "$(date -Is)" \
+  --arg packet "$packet_path" \
+  '{
+    schemaVersion: "1.0",
+    candidate_type: "hermes-rag-memory-candidate",
+    request_id: "HERMES-SMOKE",
+    objective_id: "hermes-agent-hardening",
+    zone: "operations-platform",
+    generated_at: $generatedAt,
+    closeout: "var/agent-closeouts/hermes-worker-closeout-smoke.json",
+    source_packet: $packet,
+    verification_command: "bash ops/scripts/run-hermes-rag-smoke.sh",
+    verification_result: "pass",
+    changed_files: [],
+    selected_files: [
+      "data/ai-runtime/hermes-rag-context-pack.json",
+      "docs/agent/hermes-rag-agent-playbook.md"
+    ],
+    route_map_or_rag_memory_update_needed: false,
+    memory_decision: "archive_as_verified_no_update",
+    mutation_allowed: false,
+    apply_to_context_pack: false,
+    reviewer_note: "Smoke fixture for memory patch review gate."
+  }' > "$fixture_candidate"
+memory_review_output="$("$MEMORY_PATCH_REVIEW_SCRIPT" "$fixture_candidate")" || fail "memory patch review render failed"
+printf '%s\n' "$memory_review_output" | tee -a "$REPORT" >/dev/null
+memory_review_path="$(printf '%s\n' "$memory_review_output" | awk '/^MEMORY_PATCH_REVIEW_READY / { print $2; exit }')"
+[ -n "$memory_review_path" ] || fail "memory patch review path missing"
+"$MEMORY_PATCH_REVIEW_VALIDATOR" "$ROOT_DIR/$memory_review_path" >/dev/null || fail "memory patch review validation failed"
+write "- memory patch review: $memory_review_path"
 
 write ""
 write "## Cluster Smoke"
