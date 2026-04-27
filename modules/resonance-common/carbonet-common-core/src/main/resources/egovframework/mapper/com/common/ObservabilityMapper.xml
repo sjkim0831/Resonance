@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ObservabilityMapper">
+
+    <insert id="insertAuditEvent" parameterType="egovframework.com.common.audit.AuditEvent">
+        INSERT INTO AUDIT_EVENT (
+            AUDIT_ID,
+            PROJECT_ID,
+            TRACE_ID,
+            REQUEST_ID,
+            ACTOR_ID,
+            ACTOR_ROLE,
+            MENU_CODE,
+            PAGE_ID,
+            ACTION_CODE,
+            ENTITY_TYPE,
+            ENTITY_ID,
+            BEFORE_SUMMARY,
+            AFTER_SUMMARY,
+            RESULT_STATUS,
+            REASON_SUMMARY,
+            IP_ADDRESS,
+            USER_AGENT,
+            CREATED_AT
+        ) VALUES (
+            #{auditId},
+            #{projectId},
+            #{traceId},
+            #{requestId},
+            #{actorId},
+            #{actorRole},
+            #{menuCode},
+            #{pageId},
+            #{actionCode},
+            #{entityType},
+            #{entityId},
+            #{beforeSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{afterSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{resultStatus},
+            #{reasonSummary},
+            #{ipAddress},
+            #{userAgent},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <insert id="insertTraceEvent" parameterType="egovframework.com.common.trace.TraceEventRecordVO">
+        INSERT INTO TRACE_EVENT (
+            EVENT_ID,
+            PROJECT_ID,
+            TRACE_ID,
+            SPAN_ID,
+            PARENT_SPAN_ID,
+            EVENT_TYPE,
+            PAGE_ID,
+            COMPONENT_ID,
+            FUNCTION_ID,
+            API_ID,
+            RESULT_CODE,
+            DURATION_MS,
+            PAYLOAD_SUMMARY,
+            CREATED_AT
+        ) VALUES (
+            #{eventId},
+            #{projectId},
+            #{traceId},
+            #{spanId},
+            #{parentSpanId},
+            #{eventType},
+            #{pageId},
+            #{componentId},
+            #{functionId},
+            #{apiId},
+            #{resultCode},
+            #{durationMs},
+            #{payloadSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <insert id="insertAccessEvent" parameterType="egovframework.com.common.logging.AccessEventRecordVO">
+        INSERT INTO ACCESS_EVENT (
+            EVENT_ID,
+            PROJECT_ID,
+            TRACE_ID,
+            REQUEST_ID,
+            PAGE_ID,
+            API_ID,
+            REQUEST_URI,
+            HTTP_METHOD,
+            FEATURE_TYPE,
+            ACTOR_ID,
+            ACTOR_TYPE,
+            ACTOR_ROLE,
+            ACTOR_INSTT_ID,
+            COMPANY_CONTEXT_ID,
+            TARGET_COMPANY_CONTEXT_ID,
+            REMOTE_ADDR,
+            RESPONSE_STATUS,
+            DURATION_MS,
+            REQUEST_CONTENT_TYPE,
+            "QUERY_STRING",
+            PARAMETER_SUMMARY,
+            ERROR_MESSAGE,
+            COMPANY_SCOPE_DECISION,
+            COMPANY_SCOPE_REASON,
+            CREATED_AT
+        ) VALUES (
+            #{eventId},
+            #{projectId},
+            #{traceId},
+            #{requestId},
+            #{pageId},
+            #{apiId},
+            #{requestUri},
+            #{httpMethod},
+            #{featureType},
+            #{actorId},
+            #{actorType},
+            #{actorRole},
+            #{actorInsttId},
+            #{companyContextId},
+            #{targetCompanyContextId},
+            #{remoteAddr},
+            #{responseStatus},
+            #{durationMs},
+            #{requestContentType},
+            #{queryString},
+            #{parameterSummary, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{errorMessage, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{companyScopeDecision},
+            #{companyScopeReason, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <insert id="insertErrorEvent" parameterType="egovframework.com.common.error.ErrorEventRecordVO">
+        INSERT INTO ERROR_EVENT (
+            ERROR_ID,
+            PROJECT_ID,
+            TRACE_ID,
+            REQUEST_ID,
+            PAGE_ID,
+            API_ID,
+            SOURCE_TYPE,
+            ERROR_TYPE,
+            ACTOR_ID,
+            ACTOR_ROLE,
+            ACTOR_INSTT_ID,
+            REQUEST_URI,
+            REMOTE_ADDR,
+            MESSAGE,
+            STACK_SUMMARY,
+            RESULT_STATUS,
+            USER_AGENT,
+            CREATED_AT
+        ) VALUES (
+            #{errorId},
+            #{projectId},
+            #{traceId},
+            #{requestId},
+            #{pageId},
+            #{apiId},
+            #{sourceType},
+            #{errorType},
+            #{actorId},
+            #{actorRole},
+            #{actorInsttId},
+            #{requestUri},
+            #{remoteAddr},
+            #{message, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{stackSummary, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{resultStatus},
+            #{userAgent},
+            CURRENT_DATETIME
+        )
+    </insert>
+</mapper>

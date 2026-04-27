@@ -1,0 +1,44 @@
+{
+  "projectId": "P_TEMPLATE",
+  "projectName": "Project Template",
+  "ownership": {
+    "commonRuntime": "versioned-common-jars",
+    "projectAdapter": "project-template-adapter",
+    "projectRuntime": "project-template"
+  },
+  "versions": {
+    "commonCore": "1.1.0",
+    "stableGate": "v1",
+    "adapterArtifact": "1.0.0",
+    "adapterContract": "v1"
+  },
+  "db": {
+    "commonDb": {
+      "name": "carbonet_common",
+      "role": "COMMON_DB"
+    },
+    "projectDb": {
+      "name": "carbonet_p_template",
+      "role": "PROJECT_DB"
+    },
+    "bindingLayer": {
+      "mode": "manifest-and-common-db-binding"
+    }
+  },
+  "runtime": {
+    "packagePath": "apps/project-runtime/target/project-runtime.jar",
+    "adapterArtifactPath": "var/run/project-runtime/P_TEMPLATE/lib/project-adapter.jar",
+    "bootTarget": "var/run/project-runtime/P_TEMPLATE/project-runtime.jar",
+    "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+    "lane": "PROJECT_RUNTIME",
+    "sharedRuntimeId": "project-runtime-common",
+    "routing": {
+      "selectorPath": "/projects/P_TEMPLATE",
+      "routePrefix": "/r/P_TEMPLATE",
+      "externalBaseUrl": "https://project-template.example.com",
+      "domainHost": "project-template.example.com",
+      "managementPath": "/api/operations/governance/runtime/projects/P_TEMPLATE",
+      "infoPath": "/api/runtime/project-info"
+    }
+  }
+}

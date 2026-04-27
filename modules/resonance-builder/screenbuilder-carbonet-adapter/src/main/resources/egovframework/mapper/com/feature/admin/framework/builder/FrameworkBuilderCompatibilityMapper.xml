@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="FrameworkBuilderCompatibilityMapper">
+
+    <select id="selectCompatibilityDeclarations" resultType="map">
+        SELECT
+            COMPATIBILITY_DECLARATION_ID AS compatibilityDeclarationId,
+            BUILDER_VERSION AS builderVersion,
+            BUILDER_RULE_PACK_VERSION AS builderRulePackVersion,
+            TEMPLATE_PACK_VERSION AS templatePackVersion,
+            SUPPORTED_SOURCE_CONTRACT_RANGE AS supportedSourceContractRange,
+            SUPPORTED_OVERLAY_SCHEMA_RANGE AS supportedOverlaySchemaRange,
+            EMITTED_MANIFEST_CONTRACT_VERSION AS emittedManifestContractVersion,
+            EMITTED_AUTHORITY_CONTRACT_VERSION AS emittedAuthorityContractVersion,
+            RELEASE_COMPATIBILITY_VERSION AS releaseCompatibilityVersion,
+            BREAKING_CHANGE_YN AS breakingChangeYn,
+            COMPATIBILITY_VERDICT AS compatibilityVerdict,
+            STATUS AS status
+        FROM BUILDER_COMPATIBILITY_DECLARATION
+        ORDER BY BUILDER_VERSION ASC
+    </select>
+
+    <select id="selectMigrationPlans" resultType="map">
+        SELECT
+            MIGRATION_PLAN_ID AS migrationPlanId,
+            FROM_BUILDER_VERSION AS fromBuilderVersion,
+            TO_BUILDER_VERSION AS toBuilderVersion,
+            FROM_SOURCE_CONTRACT_RANGE AS fromSourceContractRange,
+            TO_SOURCE_CONTRACT_RANGE AS toSourceContractRange,
+            FROM_OVERLAY_SCHEMA_RANGE AS fromOverlaySchemaRange,
+            TO_OVERLAY_SCHEMA_RANGE AS toOverlaySchemaRange,
+            MANUAL_REVIEW_REQUIRED_YN AS manualReviewRequiredYn,
+            STATUS AS status
+        FROM BUILDER_MIGRATION_PLAN
+        ORDER BY FROM_BUILDER_VERSION ASC, TO_BUILDER_VERSION ASC
+    </select>
+
+    <insert id="insertCompatibilityCheckRun" parameterType="map">
+        INSERT INTO BUILDER_COMPATIBILITY_CHECK_RUN (
+            COMPATIBILITY_CHECK_RUN_ID,
+            PROJECT_ID,
+            BUILDER_VERSION,
+            BUILDER_RULE_PACK_VERSION,
+            TEMPLATE_PACK_VERSION,
+            SOURCE_CONTRACT_VERSION,
+            OVERLAY_SCHEMA_VERSION,
+            OVERLAY_SET_ID,
+            MIGRATION_PLAN_ID,
+            CHECK_SCOPE,
+            COMPATIBILITY_VERDICT,
+            BLOCKING_ISSUE_COUNT,
+            STARTED_AT,
+            COMPLETED_AT,
+            REQUESTED_BY
+        ) VALUES (
+            #{compatibilityCheckRunId},
+            #{projectId},
+            #{builderVersion},
+            #{builderRulePackVersion},
+            #{templatePackVersion},
+            #{sourceContractVersion},
+            #{overlaySchemaVersion},
+            #{overlaySetId},
+            #{migrationPlanId},
+            #{checkScope},
+            #{compatibilityVerdict},
+            #{blockingIssueCount},
+            #{startedAt},
+            #{completedAt},
+            #{requestedBy}
+        )
+    </insert>
+
+    <insert id="insertCompatibilityCheckResult" parameterType="map">
+        INSERT INTO BUILDER_COMPATIBILITY_CHECK_RESULT (
+            COMPATIBILITY_RESULT_ID,
+            COMPATIBILITY_CHECK_RUN_ID,
+            RESULT_TYPE,
+            TARGET_SCOPE,
+            TARGET_KEY,
+            SEVERITY,
+            RULE_CODE,
+            SUMMARY,
+            DETAILS_JSON,
+            BLOCKING_YN,
+            CREATED_AT
+        ) VALUES (
+            #{compatibilityResultId},
+            #{compatibilityCheckRunId},
+            #{resultType},
+            #{targetScope},
+            #{targetKey},
+            #{severity},
+            #{ruleCode},
+            #{summary},
+            #{detailsJson},
+            #{blockingYn},
+            #{createdAt}
+        )
+    </insert>
+
+    <select id="selectCompatibilityCheckRun" parameterType="string" resultType="map">
+        SELECT
+            COMPATIBILITY_CHECK_RUN_ID AS compatibilityCheckRunId,
+            PROJECT_ID AS projectId,
+            BUILDER_VERSION AS builderVersion,
+            BUILDER_RULE_PACK_VERSION AS builderRulePackVersion,
+            TEMPLATE_PACK_VERSION AS templatePackVersion,
+            SOURCE_CONTRACT_VERSION AS sourceContractVersion,
+            OVERLAY_SCHEMA_VERSION AS overlaySchemaVersion,
+            OVERLAY_SET_ID AS overlaySetId,
+            MIGRATION_PLAN_ID AS migrationPlanId,
+            CHECK_SCOPE AS checkScope,
+            COMPATIBILITY_VERDICT AS compatibilityVerdict,
+            BLOCKING_ISSUE_COUNT AS blockingIssueCount,
+            STARTED_AT AS startedAt,
+            COMPLETED_AT AS completedAt,
+            REQUESTED_BY AS requestedBy
+        FROM BUILDER_COMPATIBILITY_CHECK_RUN
+        WHERE COMPATIBILITY_CHECK_RUN_ID = #{value}
+    </select>
+
+    <select id="selectCompatibilityCheckResults" parameterType="string" resultType="map">
+        SELECT
+            COMPATIBILITY_RESULT_ID AS compatibilityResultId,
+            COMPATIBILITY_CHECK_RUN_ID AS compatibilityCheckRunId,
+            RESULT_TYPE AS resultType,
+            TARGET_SCOPE AS targetScope,
+            TARGET_KEY AS targetKey,
+            SEVERITY AS severity,
+            RULE_CODE AS ruleCode,
+            SUMMARY AS summary,
+            DETAILS_JSON AS detailsJson,
+            BLOCKING_YN AS blockingYn,
+            CREATED_AT AS createdAt
+        FROM BUILDER_COMPATIBILITY_CHECK_RESULT
+        WHERE COMPATIBILITY_CHECK_RUN_ID = #{value}
+        ORDER BY CREATED_AT ASC, COMPATIBILITY_RESULT_ID ASC
+    </select>
+
+</mapper>

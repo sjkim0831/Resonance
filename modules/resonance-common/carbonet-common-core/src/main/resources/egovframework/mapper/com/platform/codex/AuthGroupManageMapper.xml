@@ -1,0 +1,920 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AuthGroupManageMapper">
+
+    <select id="selectAuthorList" resultType="egovframework.com.platform.codex.model.AuthorInfoVO">
+        SELECT
+            AUTHOR_CODE AS authorCode,
+            AUTHOR_NM AS authorNm,
+            AUTHOR_DC AS authorDc
+        FROM COMTNAUTHORINFO
+        WHERE AUTHOR_CODE NOT LIKE 'IS_AUTHENTICATED_%'
+          AND AUTHOR_CODE != 'ROLE_ANONYMOUS'
+        ORDER BY
+            CASE WHEN AUTHOR_CODE = 'ROLE_ADMIN' THEN 0 ELSE 1 END,
+            AUTHOR_CODE
+    </select>
+
+    <select id="selectAuthor" parameterType="string" resultType="egovframework.com.platform.codex.model.AuthorInfoVO">
+        SELECT
+            AUTHOR_CODE AS authorCode,
+            AUTHOR_NM AS authorNm,
+            AUTHOR_DC AS authorDc,
+            AUTHOR_CREAT_DE AS authorCreatDe
+        FROM COMTNAUTHORINFO
+        WHERE AUTHOR_CODE = #{_parameter}
+    </select>
+
+    <select id="selectFeatureCatalog" resultType="egovframework.com.platform.codex.model.FeatureCatalogItemVO">
+        SELECT
+            F.MENU_CODE AS menuCode,
+            COALESCE(D.CODE_NM, F.MENU_CODE) AS menuNm,
+            COALESCE(NULLIF(D.CODE_DC, ''), D.CODE_NM, F.MENU_CODE) AS menuNmEn,
+            COALESCE(M.MENU_URL, '') AS menuUrl,
+            F.FEATURE_CODE AS featureCode,
+            F.FEATURE_NM AS featureNm,
+            F.FEATURE_NM_EN AS featureNmEn,
+            F.FEATURE_DC AS featureDc,
+            F.USE_AT AS useAt
+        FROM COMTNMENUFUNCTIONINFO F
+        LEFT JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = F.MENU_CODE
+           AND (
+                (F.MENU_CODE LIKE 'A%' AND D.CODE_ID = 'AMENU1')
+                OR (F.MENU_CODE LIKE 'H%' AND D.CODE_ID = 'HMENU1')
+           )
+        ORDER BY F.MENU_CODE, F.FEATURE_CODE
+    </select>
+
+    <select id="selectActiveMenuUrlRows" resultType="map">
+        SELECT
+            M.MENU_CODE AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl
+        FROM COMTNMENUINFO M
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.MENU_URL, '') != ''
+        ORDER BY M.MENU_URL, M.MENU_CODE
+    </select>
+
+    <select id="selectActiveMenuViewFeatureRows" resultType="map">
+        SELECT
+            M.MENU_CODE AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl,
+            F.FEATURE_CODE AS featureCode
+        FROM COMTNMENUINFO M
+        INNER JOIN COMTNMENUFUNCTIONINFO F
+            ON F.MENU_CODE = M.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND COALESCE(F.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.MENU_URL, '') != ''
+          AND F.FEATURE_CODE LIKE '%\_VIEW' ESCAPE '\'
+        ORDER BY M.MENU_URL, M.MENU_CODE, F.FEATURE_CODE
+    </select>
+
+    <select id="selectActiveMenusMissingViewRows" resultType="map">
+        SELECT
+            M.MENU_CODE AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl
+        FROM COMTNMENUINFO M
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.MENU_URL, '') LIKE '/admin/%'
+          AND COALESCE(M.MENU_URL, '') != '#'
+          AND NOT EXISTS (
+                SELECT 1
+                FROM COMTNMENUFUNCTIONINFO F
+                WHERE F.MENU_CODE = M.MENU_CODE
+                  AND COALESCE(F.USE_AT, 'Y') = 'Y'
+                  AND F.FEATURE_CODE LIKE '%\_VIEW' ESCAPE '\'
+          )
+        ORDER BY M.MENU_URL, M.MENU_CODE
+    </select>
+
+    <select id="selectInactiveAuthorFeatureRelationRows" resultType="map">
+        SELECT
+            R.AUTHOR_CODE AS authorCode,
+            COALESCE(A.AUTHOR_NM, R.AUTHOR_CODE) AS authorNm,
+            R.FEATURE_CODE AS featureCode,
+            COALESCE(F.MENU_CODE, '') AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl,
+            CASE
+                WHEN F.FEATURE_CODE IS NULL THEN 'FEATURE_MISSING'
+                WHEN COALESCE(F.USE_AT, 'Y') != 'Y' THEN 'FEATURE_INACTIVE'
+                WHEN COALESCE(M.USE_AT, 'Y') != 'Y' THEN 'MENU_INACTIVE'
+                WHEN COALESCE(D.USE_AT, 'Y') != 'Y' THEN 'MENU_CODE_INACTIVE'
+                ELSE 'UNKNOWN'
+            END AS issueType
+        FROM COMTNAUTHORFUNCTIONRELATE R
+        LEFT JOIN COMTNMENUFUNCTIONINFO F
+            ON F.FEATURE_CODE = R.FEATURE_CODE
+        LEFT JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = R.AUTHOR_CODE
+        WHERE F.FEATURE_CODE IS NULL
+           OR COALESCE(F.USE_AT, 'Y') != 'Y'
+           OR COALESCE(M.USE_AT, 'Y') != 'Y'
+           OR COALESCE(D.USE_AT, 'Y') != 'Y'
+        ORDER BY issueType, R.AUTHOR_CODE, R.FEATURE_CODE
+    </select>
+
+    <select id="selectInactiveUserFeatureOverrideRows" resultType="map">
+        SELECT
+            O.SCRTY_DTRMN_TRGET_ID AS targetId,
+            COALESCE(O.MBER_TY_CODE, '') AS memberTypeCode,
+            O.FEATURE_CODE AS featureCode,
+            COALESCE(F.MENU_CODE, '') AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl,
+            COALESCE(O.OVERRIDE_TYPE, '') AS overrideType,
+            CASE
+                WHEN F.FEATURE_CODE IS NULL THEN 'FEATURE_MISSING'
+                WHEN COALESCE(F.USE_AT, 'Y') != 'Y' THEN 'FEATURE_INACTIVE'
+                WHEN COALESCE(M.USE_AT, 'Y') != 'Y' THEN 'MENU_INACTIVE'
+                WHEN COALESCE(D.USE_AT, 'Y') != 'Y' THEN 'MENU_CODE_INACTIVE'
+                ELSE 'UNKNOWN'
+            END AS issueType
+        FROM COMTNUSERFEATUREOVERRIDE O
+        LEFT JOIN COMTNMENUFUNCTIONINFO F
+            ON F.FEATURE_CODE = O.FEATURE_CODE
+        LEFT JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE COALESCE(O.USE_AT, 'Y') = 'Y'
+          AND (
+                F.FEATURE_CODE IS NULL
+             OR COALESCE(F.USE_AT, 'Y') != 'Y'
+             OR COALESCE(M.USE_AT, 'Y') != 'Y'
+             OR COALESCE(D.USE_AT, 'Y') != 'Y'
+          )
+        ORDER BY issueType, O.SCRTY_DTRMN_TRGET_ID, O.FEATURE_CODE
+    </select>
+
+    <sql id="securitySensitiveMenuUrlPredicate">
+        (
+               COALESCE(M.MENU_URL, '') LIKE '/admin/system/backup%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/restore%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/version%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/security%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/ip_whitelist%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/blocklist%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/access_history%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/error-log%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/unified_log%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/observability%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/code%'
+            OR COALESCE(M.MENU_URL, '') LIKE '/admin/auth/group%'
+        )
+    </sql>
+
+    <sql id="securitySensitiveRoleAllowlistPredicate">
+        (
+               (R.AUTHOR_CODE = 'ROLE_SYSTEM_ADMIN' AND (
+                      COALESCE(M.MENU_URL, '') LIKE '/admin/system/backup%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/restore%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/version%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/access_history%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/error-log%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/unified_log%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/observability%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/security-audit%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/codex-request%'
+               ))
+            OR (R.AUTHOR_CODE = 'ROLE_ADMIN' AND (
+                      COALESCE(M.MENU_URL, '') LIKE '/admin/system/access_history%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/observability%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/security-audit%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/codex-request%'
+               ))
+            OR (R.AUTHOR_CODE = 'ROLE_OPERATION_ADMIN' AND (
+                      COALESCE(M.MENU_URL, '') LIKE '/admin/system/backup%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/restore%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/version%'
+                   OR COALESCE(M.MENU_URL, '') LIKE '/admin/system/access_history%'
+               ))
+        )
+    </sql>
+
+    <select id="selectSensitiveFeatureRoleExposureRows" resultType="map">
+        SELECT
+            R.AUTHOR_CODE AS authorCode,
+            COALESCE(A.AUTHOR_NM, R.AUTHOR_CODE) AS authorNm,
+            F.MENU_CODE AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl,
+            F.FEATURE_CODE AS featureCode
+        FROM COMTNAUTHORFUNCTIONRELATE R
+        INNER JOIN COMTNMENUFUNCTIONINFO F
+            ON F.FEATURE_CODE = R.FEATURE_CODE
+        INNER JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = R.AUTHOR_CODE
+        WHERE COALESCE(F.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND <include refid="securitySensitiveMenuUrlPredicate" />
+          AND R.AUTHOR_CODE != 'ROLE_SYSTEM_MASTER'
+          AND NOT <include refid="securitySensitiveRoleAllowlistPredicate" />
+        ORDER BY M.MENU_URL, R.AUTHOR_CODE, F.FEATURE_CODE
+    </select>
+
+    <select id="selectAuthorCodesByFeatureCode" parameterType="string" resultType="string">
+        SELECT AUTHOR_CODE
+        FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE FEATURE_CODE = #{_parameter}
+        ORDER BY AUTHOR_CODE
+    </select>
+
+    <select id="selectCompanyScopeSensitiveFeatureExposureRows" resultType="map">
+        SELECT
+            R.AUTHOR_CODE AS authorCode,
+            COALESCE(A.AUTHOR_NM, R.AUTHOR_CODE) AS authorNm,
+            F.MENU_CODE AS menuCode,
+            COALESCE(M.MENU_URL, '') AS menuUrl,
+            F.FEATURE_CODE AS featureCode
+        FROM COMTNAUTHORFUNCTIONRELATE R
+        INNER JOIN COMTNMENUFUNCTIONINFO F
+            ON F.FEATURE_CODE = R.FEATURE_CODE
+        INNER JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = R.AUTHOR_CODE
+        WHERE COALESCE(F.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND <include refid="securitySensitiveMenuUrlPredicate" />
+          AND R.AUTHOR_CODE IN ('ROLE_OPERATION_ADMIN', 'ROLE_COMPANY_ADMIN', 'ROLE_CS_ADMIN')
+          AND NOT <include refid="securitySensitiveRoleAllowlistPredicate" />
+        ORDER BY M.MENU_URL, R.AUTHOR_CODE, F.FEATURE_CODE
+    </select>
+
+    <update id="disableMenusByMenuCodes" parameterType="list">
+        UPDATE COMTNMENUINFO
+        SET USE_AT = 'N'
+        WHERE MENU_CODE IN
+        <foreach collection="list" item="menuCode" open="(" separator="," close=")">
+            #{menuCode}
+        </foreach>
+    </update>
+
+    <update id="disableFeaturesByFeatureCodes" parameterType="list">
+        UPDATE COMTNMENUFUNCTIONINFO
+        SET USE_AT = 'N'
+        WHERE FEATURE_CODE IN
+        <foreach collection="list" item="featureCode" open="(" separator="," close=")">
+            #{featureCode}
+        </foreach>
+    </update>
+
+    <update id="enableFeaturesByFeatureCodes" parameterType="list">
+        UPDATE COMTNMENUFUNCTIONINFO
+        SET USE_AT = 'Y'
+        WHERE FEATURE_CODE IN
+        <foreach collection="list" item="featureCode" open="(" separator="," close=")">
+            #{featureCode}
+        </foreach>
+    </update>
+
+    <update id="deactivateUserFeatureOverride" parameterType="map">
+        UPDATE COMTNUSERFEATUREOVERRIDE
+        SET USE_AT = 'N',
+            LAST_UPDT_DT = CURRENT_DATETIME
+        WHERE SCRTY_DTRMN_TRGET_ID = #{targetId}
+          AND FEATURE_CODE = #{featureCode}
+          AND COALESCE(USE_AT, 'Y') = 'Y'
+    </update>
+
+    <update id="reactivateUserFeatureOverride" parameterType="map">
+        UPDATE COMTNUSERFEATUREOVERRIDE
+        SET USE_AT = 'Y',
+            LAST_UPDT_DT = CURRENT_DATETIME
+        WHERE SCRTY_DTRMN_TRGET_ID = #{targetId}
+          AND FEATURE_CODE = #{featureCode}
+          AND COALESCE(USE_AT, 'N') != 'Y'
+    </update>
+
+    <select id="selectFeatureAssignmentStats" resultType="egovframework.com.platform.codex.model.FeatureAssignmentStatVO">
+        SELECT
+            FEATURE_CODE AS featureCode,
+            COUNT(*) AS assignedRoleCount
+        FROM COMTNAUTHORFUNCTIONRELATE
+        GROUP BY FEATURE_CODE
+    </select>
+
+    <select id="selectAuthorFeatureCodes" parameterType="string" resultType="string">
+        SELECT FEATURE_CODE
+        FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE AUTHOR_CODE = #{_parameter}
+        ORDER BY FEATURE_CODE
+    </select>
+
+    <select id="countAuthorCode" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNAUTHORINFO
+        WHERE AUTHOR_CODE = #{_parameter}
+    </select>
+
+    <insert id="insertAuthor" parameterType="egovframework.com.platform.codex.model.AuthorInfoVO">
+        INSERT INTO COMTNAUTHORINFO (
+            AUTHOR_CODE,
+            AUTHOR_NM,
+            AUTHOR_DC,
+            AUTHOR_CREAT_DE
+        ) VALUES (
+            #{authorCode},
+            #{authorNm},
+            #{authorDc},
+            #{authorCreatDe}
+        )
+    </insert>
+
+    <delete id="deleteAuthorFeatureRelations" parameterType="string">
+        DELETE FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE AUTHOR_CODE = #{_parameter}
+    </delete>
+
+    <delete id="deleteAuthorFeatureRelationsByFeatureCode" parameterType="string">
+        DELETE FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE FEATURE_CODE = #{_parameter}
+    </delete>
+
+    <delete id="deleteAuthorFeatureRelation" parameterType="map">
+        DELETE FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE AUTHOR_CODE = #{authorCode}
+          AND FEATURE_CODE = #{featureCode}
+    </delete>
+
+    <insert id="insertAuthorFeatureRelation" parameterType="map">
+        INSERT INTO COMTNAUTHORFUNCTIONRELATE (
+            AUTHOR_CODE,
+            FEATURE_CODE,
+            GRANT_AUTHORITY_YN,
+            CREAT_DT
+        ) VALUES (
+            #{authorCode},
+            #{featureCode},
+            'N',
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <select id="selectAuthorCodeByUserId" parameterType="string" resultType="string">
+        SELECT S.AUTHOR_CODE
+        FROM COMTNEMPLYRINFO E
+        INNER JOIN COMTNEMPLYRSCRTYESTBS S
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        WHERE E.EMPLYR_ID = #{_parameter}
+    </select>
+
+    <select id="selectRequiredViewFeatureCodeByMenuUrl" parameterType="string" resultType="string">
+        SELECT F.FEATURE_CODE
+        FROM COMTNMENUINFO M
+        INNER JOIN COMTNMENUFUNCTIONINFO F
+            ON F.MENU_CODE = M.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND COALESCE(F.USE_AT, 'Y') = 'Y'
+          AND (
+                M.MENU_URL = #{_parameter}
+             OR ('/' || M.MENU_URL) = #{_parameter}
+             OR (
+                    #{_parameter} = '/admin/member/approve'
+                AND M.MENU_URL = '/admin/app?route=member-approve'
+             ) OR (
+                    #{_parameter} = '/admin/member/company-approve'
+                AND M.MENU_URL = '/admin/app?route=company-approve'
+             ) OR (
+                    #{_parameter} = '/admin/member/edit'
+                AND M.MENU_URL = '/admin/app?route=member-edit'
+             ) OR (
+                    #{_parameter} = '/admin/member/detail'
+                AND M.MENU_URL = '/admin/app?route=member-detail'
+             ) OR (
+                    #{_parameter} = '/admin/member/reset_password'
+                AND M.MENU_URL = '/admin/app?route=password-reset'
+             ) OR (
+                    #{_parameter} = '/admin/member/list'
+                AND M.MENU_URL = '/admin/app?route=member-list'
+             ) OR (
+                    #{_parameter} IN ('/admin/member/admin_list', '/admin/member/admin-list')
+                AND M.MENU_URL = '/admin/app?route=admin-list'
+             ) OR (
+                    #{_parameter} = '/admin/member/company_list'
+                AND M.MENU_URL = '/admin/app?route=company-list'
+             ) OR (
+                    #{_parameter} = '/admin/member/company_detail'
+                AND M.MENU_URL = '/admin/app?route=company-detail'
+             ) OR (
+                    #{_parameter} = '/admin/member/company_account'
+                AND M.MENU_URL = '/admin/app?route=company-account'
+             ) OR (
+                    #{_parameter} = '/admin/member/admin_account'
+                AND M.MENU_URL = '/admin/app?route=admin-create'
+             ) OR (
+                    #{_parameter} = '/admin/member/admin_account/permissions'
+                AND M.MENU_URL = '/admin/app?route=admin-permission'
+             ) OR (
+                    #{_parameter} IN ('/admin/auth/group', '/admin/member/auth-group', '/admin/system/role')
+                AND M.MENU_URL = '/admin/app?route=auth-group'
+             ) OR (
+                    #{_parameter} IN ('/admin/member/auth-change', '/admin/system/auth-change')
+                AND M.MENU_URL = '/admin/app?route=auth-change'
+             ) OR (
+                    #{_parameter} IN ('/admin/member/dept-role-mapping', '/admin/system/dept-role-mapping')
+                AND M.MENU_URL = '/admin/app?route=dept-role'
+             ) OR (
+                    #{_parameter} = '/admin/system/sr-workbench'
+                AND M.MENU_URL = '/admin/app?route=sr-workbench'
+             )
+        )
+          AND F.FEATURE_CODE LIKE '%\_VIEW' ESCAPE '\'
+        ORDER BY F.FEATURE_CODE
+    </select>
+
+    <select id="selectMenuCodeByMenuUrl" parameterType="string" resultType="string">
+        SELECT MENU_CODE
+        FROM COMTNMENUINFO M
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+          AND (
+                M.MENU_URL = #{_parameter}
+             OR ('/' || M.MENU_URL) = #{_parameter}
+             OR (
+                #{_parameter} = '/admin/member/approve'
+                AND M.MENU_URL = '/admin/app?route=member-approve'
+             ) OR (
+                #{_parameter} = '/admin/member/company-approve'
+                AND M.MENU_URL = '/admin/app?route=company-approve'
+             ) OR (
+                #{_parameter} = '/admin/member/edit'
+                AND M.MENU_URL = '/admin/app?route=member-edit'
+             ) OR (
+                #{_parameter} = '/admin/member/detail'
+                AND M.MENU_URL = '/admin/app?route=member-detail'
+             ) OR (
+                #{_parameter} = '/admin/member/reset_password'
+                AND M.MENU_URL = '/admin/app?route=password-reset'
+             ) OR (
+                #{_parameter} = '/admin/member/list'
+                AND M.MENU_URL = '/admin/app?route=member-list'
+             ) OR (
+                #{_parameter} IN ('/admin/member/admin_list', '/admin/member/admin-list')
+                AND M.MENU_URL = '/admin/app?route=admin-list'
+             ) OR (
+                #{_parameter} = '/admin/member/company_list'
+                AND M.MENU_URL = '/admin/app?route=company-list'
+             ) OR (
+                #{_parameter} = '/admin/member/company_detail'
+                AND M.MENU_URL = '/admin/app?route=company-detail'
+             ) OR (
+                #{_parameter} = '/admin/member/company_account'
+                AND M.MENU_URL = '/admin/app?route=company-account'
+             ) OR (
+                #{_parameter} = '/admin/member/admin_account'
+                AND M.MENU_URL = '/admin/app?route=admin-create'
+             ) OR (
+                #{_parameter} = '/admin/member/admin_account/permissions'
+                AND M.MENU_URL = '/admin/app?route=admin-permission'
+             ) OR (
+                #{_parameter} IN ('/admin/auth/group', '/admin/member/auth-group', '/admin/system/role')
+                AND M.MENU_URL = '/admin/app?route=auth-group'
+             ) OR (
+                #{_parameter} IN ('/admin/member/auth-change', '/admin/system/auth-change')
+                AND M.MENU_URL = '/admin/app?route=auth-change'
+             ) OR (
+                #{_parameter} IN ('/admin/member/dept-role-mapping', '/admin/system/dept-role-mapping')
+                AND M.MENU_URL = '/admin/app?route=dept-role'
+             ) OR (
+                #{_parameter} = '/admin/system/sr-workbench'
+                AND M.MENU_URL = '/admin/app?route=sr-workbench'
+             )
+          )
+        ORDER BY M.MENU_CODE
+        LIMIT 1
+    </select>
+
+    <select id="selectFeatureCodesByMenuCode" parameterType="string" resultType="string">
+        SELECT FEATURE_CODE
+        FROM COMTNMENUFUNCTIONINFO
+        WHERE MENU_CODE = #{_parameter}
+        ORDER BY FEATURE_CODE
+    </select>
+
+    <select id="countAuthorFeaturePermission" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE AUTHOR_CODE = #{authorCode}
+          AND FEATURE_CODE = #{featureCode}
+    </select>
+
+    <select id="countAuthorFeatureRelationsByFeatureCode" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE FEATURE_CODE = #{_parameter}
+    </select>
+
+    <select id="countUserFeatureOverridesByFeatureCode" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNUSERFEATUREOVERRIDE
+        WHERE FEATURE_CODE = #{_parameter}
+    </select>
+
+    <select id="selectAuthorFeatureRelationCounts" parameterType="list" resultType="egovframework.com.platform.codex.model.FeatureReferenceCountVO">
+        SELECT
+            FEATURE_CODE AS featureCode,
+            COUNT(*) AS referenceCount
+        FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE FEATURE_CODE IN
+        <foreach collection="list" item="featureCode" open="(" separator="," close=")">
+            #{featureCode}
+        </foreach>
+        GROUP BY FEATURE_CODE
+    </select>
+
+    <select id="selectUserFeatureOverrideCounts" parameterType="list" resultType="egovframework.com.platform.codex.model.FeatureReferenceCountVO">
+        SELECT
+            FEATURE_CODE AS featureCode,
+            COUNT(*) AS referenceCount
+        FROM COMTNUSERFEATUREOVERRIDE
+        WHERE FEATURE_CODE IN
+        <foreach collection="list" item="featureCode" open="(" separator="," close=")">
+            #{featureCode}
+        </foreach>
+        GROUP BY FEATURE_CODE
+    </select>
+
+    <select id="selectUserFeatureOverrides" parameterType="string" resultType="egovframework.com.platform.codex.model.UserFeatureOverrideVO">
+        SELECT
+            SCRTY_DTRMN_TRGET_ID AS scrtyDtrmnTrgetId,
+            MBER_TY_CODE AS mberTyCode,
+            FEATURE_CODE AS featureCode,
+            OVERRIDE_TYPE AS overrideType,
+            USE_AT AS useAt
+        FROM COMTNUSERFEATUREOVERRIDE
+        WHERE SCRTY_DTRMN_TRGET_ID = #{_parameter}
+          AND COALESCE(USE_AT, 'Y') = 'Y'
+        ORDER BY FEATURE_CODE
+    </select>
+
+    <select id="selectAdminRoleAssignments" resultType="egovframework.com.platform.codex.model.AdminRoleAssignmentVO">
+        SELECT
+            E.EMPLYR_ID AS emplyrId,
+            E.USER_NM AS userNm,
+            COALESCE(E.ORGNZT_ID, '') AS orgnztId,
+            COALESCE(E.EMPLYR_STTUS_CODE, '') AS emplyrSttusCode,
+            COALESCE(S.AUTHOR_CODE, '') AS authorCode,
+            COALESCE(A.AUTHOR_NM, '') AS authorNm
+        FROM COMTNEMPLYRINFO E
+        LEFT JOIN COMTNEMPLYRSCRTYESTBS S
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = S.AUTHOR_CODE
+        WHERE COALESCE(S.AUTHOR_CODE, '') != ''
+        ORDER BY E.EMPLYR_ID
+    </select>
+
+    <select id="countAdminRoleAssignments" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNEMPLYRSCRTYESTBS S
+        INNER JOIN COMTNEMPLYRINFO E
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = S.AUTHOR_CODE
+        WHERE S.AUTHOR_CODE IS NOT NULL
+          AND S.AUTHOR_CODE != ''
+          <if test="orgnztId != null and orgnztId != ''">
+            AND E.ORGNZT_ID = #{orgnztId}
+          </if>
+          <if test="insttId != null and insttId != ''">
+            AND COALESCE(E.INSTT_ID, '') = #{insttId}
+          </if>
+          <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                LOWER(E.EMPLYR_ID) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                OR LOWER(COALESCE(E.USER_NM, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                OR LOWER(S.AUTHOR_CODE) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                OR LOWER(COALESCE(A.AUTHOR_NM, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+            )
+          </if>
+    </select>
+
+    <select id="selectAdminRoleAssignmentsPage" parameterType="map" resultType="egovframework.com.platform.codex.model.AdminRoleAssignmentVO">
+        SELECT
+            E.EMPLYR_ID AS emplyrId,
+            E.USER_NM AS userNm,
+            COALESCE(E.ORGNZT_ID, '') AS orgnztId,
+            COALESCE(E.EMPLYR_STTUS_CODE, '') AS emplyrSttusCode,
+            COALESCE(S.AUTHOR_CODE, '') AS authorCode,
+            COALESCE(A.AUTHOR_NM, '') AS authorNm
+        FROM COMTNEMPLYRSCRTYESTBS S
+        INNER JOIN COMTNEMPLYRINFO E
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = S.AUTHOR_CODE
+        WHERE S.AUTHOR_CODE IS NOT NULL
+          AND S.AUTHOR_CODE != ''
+          <if test="orgnztId != null and orgnztId != ''">
+            AND E.ORGNZT_ID = #{orgnztId}
+          </if>
+          <if test="insttId != null and insttId != ''">
+            AND COALESCE(E.INSTT_ID, '') = #{insttId}
+          </if>
+          <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                LOWER(E.EMPLYR_ID) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                OR LOWER(COALESCE(E.USER_NM, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                OR LOWER(S.AUTHOR_CODE) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                OR LOWER(COALESCE(A.AUTHOR_NM, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+            )
+          </if>
+        ORDER BY E.EMPLYR_ID
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectAdminInsttIdByUserId" parameterType="string" resultType="string">
+        SELECT COALESCE(INSTT_ID, '')
+        FROM COMTNEMPLYRINFO
+        WHERE EMPLYR_ID = #{value}
+    </select>
+
+    <select id="selectDepartmentRoleMappings" parameterType="map" resultType="egovframework.com.platform.codex.model.DepartmentRoleMappingVO">
+        SELECT
+            B.INSTT_ID AS insttId,
+            B.CMPNY_NM AS cmpnyNm,
+            COALESCE(B.DEPT_NM, '') AS deptNm,
+            B.MEMBER_COUNT AS memberCount,
+            COALESCE(R.AUTHOR_CODE, '') AS authorCode,
+            COALESCE(A.AUTHOR_NM, '') AS authorNm,
+            COALESCE(R.USE_AT, 'Y') AS useAt
+        FROM (
+            SELECT
+                TRIM(INSTT_ID) AS INSTT_ID,
+                MAX(CMPNY_NM) AS CMPNY_NM,
+                COALESCE(DEPT_NM, '') AS DEPT_NM,
+                COUNT(*) AS MEMBER_COUNT
+            FROM COMTNENTRPRSMBER
+            WHERE TRIM(COALESCE(INSTT_ID, '')) != ''
+            <if test="projectId != null and projectId != ''">
+              AND PROJECT_ID = #{projectId}
+            </if>
+            GROUP BY TRIM(INSTT_ID), COALESCE(DEPT_NM, '')
+        ) B
+        LEFT JOIN COMTNDEPTAUTHORRELATE R
+            ON R.INSTT_ID = B.INSTT_ID
+           AND R.DEPT_NM = B.DEPT_NM
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = R.AUTHOR_CODE
+        ORDER BY B.CMPNY_NM, B.DEPT_NM
+    </select>
+
+    <select id="selectDepartmentRoleMapping" parameterType="map" resultType="egovframework.com.platform.codex.model.DepartmentRoleMappingVO">
+        SELECT
+            B.INSTT_ID AS insttId,
+            B.CMPNY_NM AS cmpnyNm,
+            COALESCE(B.DEPT_NM, '') AS deptNm,
+            B.MEMBER_COUNT AS memberCount,
+            COALESCE(R.AUTHOR_CODE, '') AS authorCode,
+            COALESCE(A.AUTHOR_NM, '') AS authorNm,
+            COALESCE(R.USE_AT, 'Y') AS useAt
+        FROM (
+            SELECT
+                TRIM(INSTT_ID) AS INSTT_ID,
+                MAX(CMPNY_NM) AS CMPNY_NM,
+                COALESCE(DEPT_NM, '') AS DEPT_NM,
+                COUNT(*) AS MEMBER_COUNT
+            FROM COMTNENTRPRSMBER
+            WHERE TRIM(COALESCE(INSTT_ID, '')) = #{insttId}
+            <if test="projectId != null and projectId != ''">
+              AND PROJECT_ID = #{projectId}
+            </if>
+              AND COALESCE(DEPT_NM, '') = #{deptNm}
+            GROUP BY TRIM(INSTT_ID), COALESCE(DEPT_NM, '')
+        ) B
+        LEFT JOIN COMTNDEPTAUTHORRELATE R
+            ON R.INSTT_ID = B.INSTT_ID
+           AND R.DEPT_NM = B.DEPT_NM
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = R.AUTHOR_CODE
+    </select>
+
+    <select id="selectUserAuthorityTargets" parameterType="map" resultType="egovframework.com.platform.codex.model.UserAuthorityTargetVO">
+        SELECT
+            E.ENTRPRS_MBER_ID AS userId,
+            COALESCE(E.APPLCNT_NM, '') AS userNm,
+            TRIM(E.INSTT_ID) AS insttId,
+            COALESCE(E.CMPNY_NM, '') AS cmpnyNm,
+            COALESCE(E.DEPT_NM, '') AS deptNm,
+            COALESCE(S.AUTHOR_CODE, '') AS authorCode,
+            COALESCE(A.AUTHOR_NM, '') AS authorNm
+        FROM COMTNENTRPRSMBER E
+        LEFT JOIN COMTNEMPLYRSCRTYESTBS S
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = S.AUTHOR_CODE
+        WHERE TRIM(COALESCE(E.INSTT_ID, '')) = #{insttId}
+        <if test="projectId != null and projectId != ''">
+            AND E.PROJECT_ID = #{projectId}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                E.ENTRPRS_MBER_ID LIKE '%' || #{searchKeyword} || '%'
+                OR E.APPLCNT_NM LIKE '%' || #{searchKeyword} || '%'
+                OR E.CMPNY_NM LIKE '%' || #{searchKeyword} || '%'
+                OR E.DEPT_NM LIKE '%' || #{searchKeyword} || '%'
+            )
+        </if>
+        ORDER BY E.SBSCRB_DE DESC, E.ENTRPRS_MBER_ID DESC
+    </select>
+
+    <select id="selectUserAuthorityTarget" parameterType="map" resultType="egovframework.com.platform.codex.model.UserAuthorityTargetVO">
+        SELECT
+            E.ENTRPRS_MBER_ID AS userId,
+            COALESCE(E.APPLCNT_NM, '') AS userNm,
+            TRIM(E.INSTT_ID) AS insttId,
+            COALESCE(E.CMPNY_NM, '') AS cmpnyNm,
+            COALESCE(E.DEPT_NM, '') AS deptNm,
+            COALESCE(S.AUTHOR_CODE, '') AS authorCode,
+            COALESCE(A.AUTHOR_NM, '') AS authorNm
+        FROM COMTNENTRPRSMBER E
+        LEFT JOIN COMTNEMPLYRSCRTYESTBS S
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        LEFT JOIN COMTNAUTHORINFO A
+            ON A.AUTHOR_CODE = S.AUTHOR_CODE
+        WHERE TRIM(COALESCE(E.INSTT_ID, '')) = #{insttId}
+        <if test="projectId != null and projectId != ''">
+            AND E.PROJECT_ID = #{projectId}
+        </if>
+          AND E.ENTRPRS_MBER_ID = #{userId}
+    </select>
+
+    <select id="selectEssentialIdByEmplyrId" parameterType="string" resultType="string">
+        SELECT ESNTL_ID
+        FROM COMTNEMPLYRINFO
+        WHERE EMPLYR_ID = #{_parameter}
+    </select>
+
+    <select id="selectEnterpriseEssentialIdByUserId" parameterType="map" resultType="string">
+        SELECT ESNTL_ID
+        FROM COMTNENTRPRSMBER
+        WHERE ENTRPRS_MBER_ID = #{userId}
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+    </select>
+
+    <select id="selectEnterpriseAuthorCodeByUserId" parameterType="map" resultType="string">
+        SELECT S.AUTHOR_CODE
+        FROM COMTNENTRPRSMBER E
+        INNER JOIN COMTNEMPLYRSCRTYESTBS S
+            ON E.ESNTL_ID = S.SCRTY_DTRMN_TRGET_ID
+        WHERE E.ENTRPRS_MBER_ID = #{userId}
+        <if test="projectId != null and projectId != ''">
+            AND E.PROJECT_ID = #{projectId}
+        </if>
+    </select>
+
+    <select id="selectEnterpriseInsttIdByUserId" parameterType="map" resultType="string">
+        SELECT TRIM(COALESCE(INSTT_ID, ''))
+        FROM COMTNENTRPRSMBER
+        WHERE ENTRPRS_MBER_ID = #{userId}
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+    </select>
+
+    <select id="countEmployrSecurityMapping" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNEMPLYRSCRTYESTBS
+        WHERE SCRTY_DTRMN_TRGET_ID = #{_parameter}
+    </select>
+
+    <update id="updateEmployrSecurityAuthorCode" parameterType="map">
+        UPDATE COMTNEMPLYRSCRTYESTBS
+        SET AUTHOR_CODE = #{authorCode}
+        WHERE SCRTY_DTRMN_TRGET_ID = #{esntlId}
+    </update>
+
+    <insert id="insertEmployrSecurityMapping" parameterType="map">
+        INSERT INTO COMTNEMPLYRSCRTYESTBS (
+            SCRTY_DTRMN_TRGET_ID,
+            MBER_TY_CODE,
+            AUTHOR_CODE
+        ) VALUES (
+            #{esntlId},
+            'USR03',
+            #{authorCode}
+        )
+    </insert>
+
+    <insert id="insertEnterpriseSecurityMapping" parameterType="map">
+        INSERT INTO COMTNEMPLYRSCRTYESTBS (
+            SCRTY_DTRMN_TRGET_ID,
+            MBER_TY_CODE,
+            AUTHOR_CODE
+        ) VALUES (
+            #{esntlId},
+            'USR02',
+            #{authorCode}
+        )
+    </insert>
+
+    <delete id="deleteUserFeatureOverrides" parameterType="string">
+        DELETE FROM COMTNUSERFEATUREOVERRIDE
+        WHERE SCRTY_DTRMN_TRGET_ID = #{_parameter}
+    </delete>
+
+    <delete id="deleteUserFeatureOverridesByFeatureCode" parameterType="string">
+        DELETE FROM COMTNUSERFEATUREOVERRIDE
+        WHERE FEATURE_CODE = #{_parameter}
+    </delete>
+
+    <insert id="insertUserFeatureOverride" parameterType="map">
+        INSERT INTO COMTNUSERFEATUREOVERRIDE (
+            SCRTY_DTRMN_TRGET_ID,
+            MBER_TY_CODE,
+            FEATURE_CODE,
+            OVERRIDE_TYPE,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_DT,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_DT
+        ) VALUES (
+            #{scrtyDtrmnTrgetId},
+            #{mberTyCode},
+            #{featureCode},
+            #{overrideType},
+            'Y',
+            #{actorId},
+            CURRENT_DATETIME,
+            #{actorId},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <select id="countDepartmentRoleMapping" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNDEPTAUTHORRELATE
+        WHERE INSTT_ID = #{insttId}
+          AND DEPT_NM = #{deptNm}
+    </select>
+
+    <update id="updateDepartmentRoleMapping" parameterType="map">
+        UPDATE COMTNDEPTAUTHORRELATE
+        SET CMPNY_NM = #{cmpnyNm},
+            AUTHOR_CODE = #{authorCode},
+            USE_AT = 'Y',
+            LAST_UPDUSR_ID = #{actorId},
+            LAST_UPDT_DT = CURRENT_DATETIME
+        WHERE INSTT_ID = #{insttId}
+          AND DEPT_NM = #{deptNm}
+    </update>
+
+    <insert id="insertDepartmentRoleMapping" parameterType="map">
+        INSERT INTO COMTNDEPTAUTHORRELATE (
+            INSTT_ID,
+            CMPNY_NM,
+            DEPT_NM,
+            AUTHOR_CODE,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_DT,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_DT
+        ) VALUES (
+            #{insttId},
+            #{cmpnyNm},
+            #{deptNm},
+            #{authorCode},
+            'Y',
+            #{actorId},
+            CURRENT_DATETIME,
+            #{actorId},
+            CURRENT_DATETIME
+        )
+    </insert>
+</mapper>

@@ -1,0 +1,36 @@
+# Maven
+target/
+*.log
+*.out
+*.pid
+nohup.out
+
+# Node
+node_modules/
+**/node_modules/
+dist/
+build/
+.vite/
+
+# Local Codex runtime
+.codex/
+.codex-state/
+var/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# IDEs
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

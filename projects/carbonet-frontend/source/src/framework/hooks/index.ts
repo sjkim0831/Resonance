@@ -1,0 +1,1 @@
+export { useFrameworkAuthorityContract } from "./useFrameworkAuthorityContract";

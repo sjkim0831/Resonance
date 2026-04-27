@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0",
+  "models": {
+    "smallLocalDefault": "gemma3:4b for classify/route/safety; qwen2.5-coder:3b restricted to harmless summaries",
+    "smallLocalFallback": "qwen2.5-coder:7b or qwen3:4b when 3B fails verification",
+    "mediumLocalImplementation": "qwen2.5-coder:14b-instruct for selected-file patch generation only; not safety authority",
+    "vllmCandidate": "gemma-4-e2b-it verified through vLLM; qwen2.5-coder-7b failed safety; devstral timed out",
+    "largeRemotePlanning": "gemini/codex/cerebras only for uncertain architecture or cross-zone refactors",
+    "fastRemoteImplementation": "cerebras 8B/235B only after deterministic file selection"
+  },
+  "stages": [
+    {
+      "stage": "classify",
+      "model": "gemma3:4b",
+      "output": "zone, intent, max read budget"
+    },
+    {
+      "stage": "resolve-files",
+      "model": "code + 3B/4B ranking only",
+      "output": "3 to 12 candidate files from route map"
+    },
+    {
+      "stage": "plan",
+      "model": "gemma-4-e2b-it or external Codex/Hermes for risky architecture",
+      "output": "files to edit, tests to run, rollback note"
+    },
+    {
+      "stage": "implement",
+      "model": "qwen2.5-coder:14b-instruct for bounded patches; external Codex/Hermes for risky work",
+      "output": "patch only within selected files"
+    },
+    {
+      "stage": "verify",
+      "model": "deterministic scripts first, gemma3:4b summarizes only",
+      "output": "build/smoke result and changed-file list"
+    },
+    {
+      "stage": "memory-writeback",
+      "model": "3B",
+      "output": "new route-map hint only if verified"
+    }
+  ],
+  "successCriteria": [
+    "No whole-repo scan during implementation.",
+    "Build or smoke command passes.",
+    "Changed files match selected scope.",
+    "Route/file map is updated when a new pattern is discovered."
+  ],
+  "stageGate": {
+    "beforeModelCall": "route/files/test command resolved by deterministic maps",
+    "beforePatchApply": "patch touches only selected files and includes rollback note",
+    "beforeDeploy": "build/smoke passes and ROLE_SYSTEM_MASTER execution feature is present"
+  },
+  "vllmStages": [
+    {
+      "stage": "vllm-health",
+      "model": "none",
+      "output": "GET /v1/models returns exact model ids before routing uses vLLM"
+    },
+    {
+      "stage": "vllm-bounded-plan",
+      "model": "devstral or qwen3.5-coder candidate",
+      "output": "selected files, patch strategy, test command; no broad scan"
+    },
+    {
+      "stage": "vllm-bounded-implement",
+      "model": "devstral/qwen/gemma candidate only if context pack <= maxTotalLines",
+      "output": "unified diff or apply_patch payload"
+    }
+  ],
+  "latestGateResults": {
+    "gemma3:4b": "PASS route/safety",
+    "gemma-4-e2b-it": "PASS runtime/route/safety",
+    "qwen2.5-coder:3b": "FAIL safety",
+    "qwen2.5-coder:14b-instruct": "FAIL safety",
+    "qwen2.5-coder-7b-instruct": "FAIL safety",
+    "devstral-small-2505": "FAIL runtime-timeout"
+  }
+}

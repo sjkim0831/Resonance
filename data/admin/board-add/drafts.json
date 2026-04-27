@@ -1,0 +1,23 @@
+{
+  "BOARD_ADD_DEFAULT" : {
+    "draftId" : "BOARD_ADD_DEFAULT",
+    "boardType" : "NOTICE",
+    "audience" : "ALL",
+    "titleKo" : "Codex runtime save verification",
+    "titleEn" : "Codex runtime save verification",
+    "summaryKo" : "Draft used to verify runtime save linkage.",
+    "summaryEn" : "Draft used to verify runtime save linkage.",
+    "bodyKo" : "This save was triggered from a local verification script.",
+    "bodyEn" : "This save was triggered from a local verification script.",
+    "publishAt" : "2026-03-31T14:30",
+    "expireAt" : "2026-04-30T18:00",
+    "channels" : [ "PORTAL", "EMAIL" ],
+    "tags" : [ "codex", "runtime" ],
+    "pinned" : "true",
+    "urgent" : "false",
+    "allowComments" : "false",
+    "linkedPostId" : "POST_BOARD_ADD_001",
+    "lastSavedAt" : "2026-03-31 14:18",
+    "lastSavedBy" : "system"
+  }
+}

@@ -1,0 +1,25 @@
+builder_profile: carbonet-screen-first
+framework: resonance
+structure_version: 0.1.0
+builder_mode: screen-first
+
+inputs:
+  project: carbonet
+  route_family: admin-system
+  theme_bundle: project-carbonet
+  common_jar_set: common-core-v0.1
+  adapter_contract_version: 0.1.0
+
+outputs:
+  frontend:
+    - route-entry
+    - page-component
+    - page-manifest
+  backend:
+    enabled: false
+  db:
+    enabled: false
+
+future_stages:
+  backend_enabled_from: backend-connected
+  db_enabled_from: db-aware

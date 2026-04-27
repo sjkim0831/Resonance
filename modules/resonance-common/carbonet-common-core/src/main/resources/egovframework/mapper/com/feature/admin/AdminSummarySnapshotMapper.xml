@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminSummarySnapshotMapper">
+
+    <select id="selectSnapshotByKey" parameterType="string" resultType="egovframework.com.feature.admin.model.vo.AdminSummarySnapshotVO">
+        SELECT
+            SNAPSHOT_KEY AS snapshotKey,
+            SNAPSHOT_JSON AS snapshotJson,
+            SNAPSHOT_TYPE AS snapshotType,
+            TO_CHAR(SOURCE_UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS sourceUpdatedAt,
+            TO_CHAR(LAST_COMPUTED_AT, 'YYYY-MM-DD HH24:MI:SS') AS lastComputedAt,
+            USE_AT AS useAt
+        FROM COMTNADMINSUMMARYSNAPSHOT
+        WHERE SNAPSHOT_KEY = #{_parameter}
+          AND COALESCE(USE_AT, 'Y') = 'Y'
+    </select>
+
+    <select id="countSnapshotByKey" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNADMINSUMMARYSNAPSHOT
+        WHERE SNAPSHOT_KEY = #{_parameter}
+    </select>
+
+    <insert id="insertSnapshot" parameterType="egovframework.com.feature.admin.model.vo.AdminSummarySnapshotVO">
+        INSERT INTO COMTNADMINSUMMARYSNAPSHOT (
+            SNAPSHOT_KEY,
+            SNAPSHOT_JSON,
+            SNAPSHOT_TYPE,
+            SOURCE_UPDATED_AT,
+            LAST_COMPUTED_AT,
+            USE_AT
+        ) VALUES (
+            #{snapshotKey},
+            #{snapshotJson},
+            #{snapshotType},
+            CASE
+                WHEN #{sourceUpdatedAt} IS NULL OR #{sourceUpdatedAt} = '' THEN NULL
+                ELSE TO_DATETIME(#{sourceUpdatedAt}, 'YYYY-MM-DD HH24:MI:SS')
+            END,
+            CURRENT_DATETIME,
+            COALESCE(#{useAt}, 'Y')
+        )
+    </insert>
+
+    <update id="updateSnapshot" parameterType="egovframework.com.feature.admin.model.vo.AdminSummarySnapshotVO">
+        UPDATE COMTNADMINSUMMARYSNAPSHOT
+        SET SNAPSHOT_JSON = #{snapshotJson},
+            SNAPSHOT_TYPE = #{snapshotType},
+            SOURCE_UPDATED_AT = CASE
+                WHEN #{sourceUpdatedAt} IS NULL OR #{sourceUpdatedAt} = '' THEN SOURCE_UPDATED_AT
+                ELSE TO_DATETIME(#{sourceUpdatedAt}, 'YYYY-MM-DD HH24:MI:SS')
+            END,
+            LAST_COMPUTED_AT = CURRENT_DATETIME,
+            USE_AT = COALESCE(#{useAt}, USE_AT)
+        WHERE SNAPSHOT_KEY = #{snapshotKey}
+    </update>
+
+</mapper>

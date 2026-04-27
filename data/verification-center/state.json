@@ -1,0 +1,160 @@
+{
+  "serverGeneratedAt" : "2026-04-15T22:01:52.82215773+09:00",
+  "baselineRegistry" : [ {
+    "pageId" : "environment-management",
+    "routePath" : "/admin/system/environment-management",
+    "baselineId" : "BL-ENV-2026-04-14",
+    "snapshotPath" : "var/baselines/environment-management/2026-04-14",
+    "owner" : "PLATFORM_ADMIN",
+    "lastVerifiedAt" : "2026-04-14T09:10:00+09:00",
+    "stale" : false,
+    "requiredScenarioIds" : [ "ROUTE_HEAD", "SCREEN_COMMAND_METADATA", "PRIMARY_ACTION_BAR" ],
+    "profileId" : "PLATFORM_ADMIN_SANDBOX",
+    "datasetId" : "SYSTEM_ASSET_SEED_PACK"
+  }, {
+    "pageId" : "asset-inventory",
+    "routePath" : "/admin/system/asset-inventory",
+    "baselineId" : "BL-AINV-2026-04-14",
+    "snapshotPath" : "var/baselines/asset-inventory/2026-04-14",
+    "owner" : "PLATFORM_ADMIN",
+    "lastVerifiedAt" : "2026-04-14T09:18:00+09:00",
+    "stale" : false,
+    "requiredScenarioIds" : [ "ROUTE_HEAD", "SUMMARY_COUNT", "DETAIL_LINKS" ],
+    "profileId" : "PLATFORM_ADMIN_SANDBOX",
+    "datasetId" : "SYSTEM_ASSET_SEED_PACK"
+  }, {
+    "pageId" : "asset-impact",
+    "routePath" : "/admin/system/asset-impact",
+    "baselineId" : "BL-AIMP-2026-04-13",
+    "snapshotPath" : "var/baselines/asset-impact/2026-04-13",
+    "owner" : "PLATFORM_ADMIN",
+    "lastVerifiedAt" : "2026-04-13T19:05:00+09:00",
+    "stale" : true,
+    "requiredScenarioIds" : [ "ROUTE_HEAD", "MODE_SWITCH", "LINKED_CONSOLES" ],
+    "profileId" : "PLATFORM_ADMIN_SANDBOX",
+    "datasetId" : "SYSTEM_ASSET_SEED_PACK"
+  }, {
+    "pageId" : "verification-center",
+    "routePath" : "/admin/system/verification-center",
+    "baselineId" : "BL-VC-2026-04-14",
+    "snapshotPath" : "var/baselines/verification-center/2026-04-14",
+    "owner" : "OPS_AUDIT",
+    "lastVerifiedAt" : "2026-04-14T09:25:00+09:00",
+    "stale" : false,
+    "requiredScenarioIds" : [ "ROUTE_HEAD", "FULL_LISTS", "RISK_SCOPE" ],
+    "profileId" : "TOKEN_ROTATION_SANDBOX",
+    "datasetId" : "MASKED_IDENTITY_FIXTURE"
+  } ],
+  "verificationRuns" : [ {
+    "runId" : "VR-2026-04-15-001",
+    "runType" : "DAILY_SWEEP",
+    "targetScope" : "system-governed-pages",
+    "baselineId" : "BL-ENV-2026-04-14",
+    "result" : "WARN",
+    "startedAt" : "2026-04-15T06:00:00+09:00",
+    "finishedAt" : "2026-04-15T06:12:00+09:00",
+    "traceId" : "trace-verification-daily-001",
+    "profileId" : "EXPIRY_MONITORING_RULE",
+    "datasetId" : "MASKED_PAYMENT_FIXTURE",
+    "failureCount" : 2,
+    "driftCount" : 1,
+    "followupPath" : "/admin/system/current-runtime-compare"
+  }, {
+    "runId" : "VR-2026-04-14-POST-DEPLOY",
+    "runType" : "POST_DEPLOY_SMOKE",
+    "targetScope" : "asset-inventory,asset-detail,asset-impact",
+    "baselineId" : "BL-AINV-2026-04-14",
+    "result" : "PASS",
+    "startedAt" : "2026-04-14T22:11:00+09:00",
+    "finishedAt" : "2026-04-14T22:16:00+09:00",
+    "traceId" : "trace-verification-postdeploy-014",
+    "profileId" : "PLATFORM_ADMIN_SANDBOX",
+    "datasetId" : "SYSTEM_ASSET_SEED_PACK",
+    "failureCount" : 0,
+    "driftCount" : 0,
+    "followupPath" : "/admin/system/verification-center"
+  }, {
+    "runId" : "VR-2026-04-14-EXPIRY",
+    "runType" : "WEEKLY_PROFILE_AUDIT",
+    "targetScope" : "sandbox-accounts-and-datasets",
+    "baselineId" : "BL-VC-2026-04-14",
+    "result" : "TODO",
+    "startedAt" : "2026-04-14T07:30:00+09:00",
+    "finishedAt" : "2026-04-14T07:37:00+09:00",
+    "traceId" : "trace-verification-expiry-002",
+    "profileId" : "TOKEN_ROTATION_SANDBOX",
+    "datasetId" : "MASKED_IDENTITY_FIXTURE",
+    "failureCount" : 0,
+    "driftCount" : 3,
+    "followupPath" : "/admin/system/security-policy"
+  } ],
+  "vaultAccounts" : [ {
+    "profileId" : "PLATFORM_ADMIN_SANDBOX",
+    "role" : "SYSTEM_ADMIN",
+    "status" : "READY",
+    "expiresAt" : "2026-05-15T00:00:00+09:00",
+    "resetOwner" : "ops-admin",
+    "allowedRoutes" : [ "/admin/system/environment-management", "/admin/system/asset-inventory" ]
+  }, {
+    "profileId" : "TOKEN_ROTATION_SANDBOX",
+    "role" : "INTEGRATION_SANDBOX",
+    "status" : "EXPIRING_SOON",
+    "expiresAt" : "2026-04-20T00:00:00+09:00",
+    "resetOwner" : "external-auth-ops",
+    "allowedRoutes" : [ "/admin/external/keys", "/admin/system/verification-center" ]
+  }, {
+    "profileId" : "PAYMENT_SANDBOX_OPERATOR",
+    "role" : "PAYMENT_QA",
+    "status" : "READY",
+    "expiresAt" : "2026-05-01T00:00:00+09:00",
+    "resetOwner" : "payment-ops",
+    "allowedRoutes" : [ "/payment/pay", "/payment/refund" ]
+  } ],
+  "vaultDatasets" : [ {
+    "datasetId" : "SYSTEM_ASSET_SEED_PACK",
+    "type" : "WORKFLOW",
+    "status" : "READY",
+    "lastRefreshedAt" : "2026-04-14T18:00:00+09:00",
+    "retentionPolicy" : "30d",
+    "maskingPolicy" : "FULL_MASK"
+  }, {
+    "datasetId" : "MASKED_IDENTITY_FIXTURE",
+    "type" : "IDENTITY",
+    "status" : "STALE",
+    "lastRefreshedAt" : "2026-03-20T12:00:00+09:00",
+    "retentionPolicy" : "60d",
+    "maskingPolicy" : "PARTIAL_MASK"
+  }, {
+    "datasetId" : "MASKED_PAYMENT_FIXTURE",
+    "type" : "PAYMENT",
+    "status" : "READY",
+    "lastRefreshedAt" : "2026-04-10T10:30:00+09:00",
+    "retentionPolicy" : "30d",
+    "maskingPolicy" : "FULL_MASK"
+  } ],
+  "actionQueue" : [ {
+    "actionId" : "QA-001",
+    "severity" : "HIGH",
+    "category" : "STALE_BASELINE",
+    "title" : "asset-impact baseline snapshot 갱신",
+    "owner" : "platform-admin",
+    "targetId" : "asset-impact",
+    "recommendedAction" : "baseline을 다시 캡처하고 mode-switch smoke를 재실행합니다."
+  }, {
+    "actionId" : "QA-002",
+    "severity" : "HIGH",
+    "category" : "PROFILE_EXPIRY",
+    "title" : "token rotation sandbox 5일 내 만료",
+    "owner" : "external-auth-ops",
+    "targetId" : "TOKEN_ROTATION_SANDBOX",
+    "recommendedAction" : "자격을 재발급하고 reset 증적을 남깁니다."
+  }, {
+    "actionId" : "QA-003",
+    "severity" : "MEDIUM",
+    "category" : "DATASET_DRIFT",
+    "title" : "masked identity fixture 갱신 지연",
+    "owner" : "ops-audit",
+    "targetId" : "MASKED_IDENTITY_FIXTURE",
+    "recommendedAction" : "데이터셋을 갱신하고 external-auth smoke를 재실행합니다."
+  } ]
+}

@@ -1,0 +1,1476 @@
+{
+  "SET_20260407091315" : {
+    "setId" : "SET_20260407091315",
+    "setName" : "배출 설문 세트 2026-04-06 09:31:16",
+    "sourceFileName" : "데이터 수집 설문지 blank 양식_steel, electric, low-alloy (9).xlsx",
+    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "actorId" : "",
+    "savedAt" : "2026-04-07 09:13:15",
+    "sectionCount" : 8,
+    "sections" : [ {
+      "sectionCode" : "INPUT_RAW_MATERIALS",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "원료 물질 및 보조 물질",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "원료 물질 및 보조 물질",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위\n(연간)",
+        "headerPath" : "[\"단위\\n(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "origin",
+        "label" : "원산지\n(국가/업체명)",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"원산지\\n(국가/업체명)\"]"
+      }, {
+        "key" : "marineTransport",
+        "label" : "해양",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"해양\"]"
+      }, {
+        "key" : "marineTonKm",
+        "label" : "물동량\n(ton · km)",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"물동량\\n(ton · km)\"]"
+      }, {
+        "key" : "roadTransport",
+        "label" : "육로",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"육로\"]"
+      }, {
+        "key" : "roadTonKm",
+        "label" : "물동량\n(ton · km)",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"물동량\\n(ton · km)\"]"
+      }, {
+        "key" : "transportRoute",
+        "label" : "운송경로",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"운송경로\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_RAW_MATERIALS_7",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_8",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_9",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_10",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_11",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_12",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_13",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_14",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_15",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_16",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_17",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_18",
+        "values" : {
+          "group" : "a",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "origin" : "",
+          "marineTransport" : "",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "",
+          "transportRoute" : "",
+          "remark" : ""
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "INPUT_ENERGY",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "에너지",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "에너지",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_ENERGY_23",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_24",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_25",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_26",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_27",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_28",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_29",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_30",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_31",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_32",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_33",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_ENERGY_34",
+        "values" : {
+          "group" : "as",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "INPUT_STEAM",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "에너지 스팀",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "에너지 스팀",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "steamType",
+        "label" : "스팀종류\n(포화증기/습증기/과열증기)",
+        "headerPath" : "[\"스팀종류\\n(포화증기/습증기/과열증기)\"]"
+      }, {
+        "key" : "steamMass",
+        "label" : "스팀의 질량",
+        "headerPath" : "[\"스팀의 질량\"]"
+      }, {
+        "key" : "condensateMass",
+        "label" : "응축수 질량",
+        "headerPath" : "[\"응축수 질량\"]"
+      }, {
+        "key" : "condensateTemperature",
+        "label" : "응축수\n온도",
+        "headerPath" : "[\"응축수\\n온도\"]"
+      }, {
+        "key" : "steamCirculation",
+        "label" : "스팀순환여부",
+        "headerPath" : "[\"스팀순환여부\"]"
+      }, {
+        "key" : "externalSteam",
+        "label" : "외부스팀 여부",
+        "headerPath" : "[\"외부스팀 여부\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_STEAM_39",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_40",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_41",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_42",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_43",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_44",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_45",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_46",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_47",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_48",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_49",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      }, {
+        "rowId" : "INPUT_STEAM_50",
+        "values" : {
+          "group" : "asd",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "steamType" : "",
+          "steamMass" : "",
+          "condensateMass" : "",
+          "condensateTemperature" : "",
+          "steamCirculation" : "",
+          "externalSteam" : ""
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "INPUT_MISC",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "기타",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "기타",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_MISC_55",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_56",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_57",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_58",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_59",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_60",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_61",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_62",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_63",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_64",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_65",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      }, {
+        "rowId" : "INPUT_MISC_66",
+        "values" : {
+          "group" : "asdf",
+          "materialName" : "",
+          "amount" : "",
+          "annualUnit" : "",
+          "usage" : "",
+          "remark" : ""
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_PRODUCTS",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "제품 및 부산물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "제품 및 부산물",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위\n(연간)",
+        "headerPath" : "[\"단위\\n(연간)\"]"
+      }, {
+        "key" : "productionCost",
+        "label" : "생산원가",
+        "headerPath" : "[\"생산원가\"]"
+      }, {
+        "key" : "costUnit",
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_AIR",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "대기 배출물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "대기 배출물",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "collectionMethod",
+        "label" : "데이터 수집 방법",
+        "headerPath" : "[\"데이터 수집 방법\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_WATER",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "수계 배출물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "수계 배출물",
+      "guidance" : [ ],
+      "metadata" : [ {
+        "key" : "wastewaterFacilityInstalled",
+        "label" : "사업장 내 1차 하수처리장 설치여부",
+        "value" : ""
+      } ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "treatmentRoute",
+        "label" : "처리경로",
+        "headerPath" : "[\"처리경로\"]"
+      }, {
+        "key" : "treatmentMethod",
+        "label" : "처리방법",
+        "headerPath" : "[\"처리방법\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_WASTE",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "폐기물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "폐기물",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
+      }, {
+        "key" : "wasteType",
+        "label" : "구분\n(일반/지정 폐기물)",
+        "headerPath" : "[\"구분\\n(일반/지정 폐기물)\"]"
+      }, {
+        "key" : "treatmentMethod",
+        "label" : "처리방법\n(매립/소각/재활용/기타)",
+        "headerPath" : "[\"처리방법\\n(매립/소각/재활용/기타)\"]"
+      }, {
+        "key" : "transportTonKm",
+        "label" : "물동량",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"물동량\"]"
+      }, {
+        "key" : "marineTransport",
+        "label" : "해양",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"수송방법\",\"해양\"]"
+      }, {
+        "key" : "roadTransport",
+        "label" : "육로",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"수송방법\",\"육로\"]"
+      }, {
+        "key" : "transportRoute",
+        "label" : "운송경로",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"운송경로\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"비고\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    } ]
+  },
+  "SET_20260407104549" : {
+    "setId" : "SET_20260407104549",
+    "setName" : "배출 설문 세트 2026-04-07 01:45:29",
+    "sourceFileName" : "데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "actorId" : "",
+    "savedAt" : "2026-04-07 10:45:49",
+    "sectionCount" : 8,
+    "sections" : [ {
+      "sectionCode" : "INPUT_RAW_MATERIALS",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "원료 물질 및 보조 물질",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "양",
+      "guidance" : [ "※ 공정 흐름도 및 공정 설명 작성의 참고자료 정보는 '5.참고자료'에 기재" ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위\n(연간)",
+        "headerPath" : "[\"단위\\n(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "origin",
+        "label" : "원산지\n(국가/업체명)",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"원산지\\n(국가/업체명)\"]"
+      }, {
+        "key" : "marineTransport",
+        "label" : "해양",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"해양\"]"
+      }, {
+        "key" : "marineTonKm",
+        "label" : "물동량\n(ton · km)",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"물동량\\n(ton · km)\"]"
+      }, {
+        "key" : "roadTransport",
+        "label" : "육로",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"육로\"]"
+      }, {
+        "key" : "roadTonKm",
+        "label" : "물동량\n(ton · km)",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"수송방법\",\"물동량\\n(ton · km)\"]"
+      }, {
+        "key" : "transportRoute",
+        "label" : "운송경로",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"운송경로\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)\",\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_RAW_MATERIALS_14",
+        "values" : {
+          "group" : "보조 물질",
+          "materialName" : "용수",
+          "amount" : "2000",
+          "annualUnit" : "kg/yr",
+          "usage" : "살수 먼지 제거",
+          "origin" : "-",
+          "marineTransport" : "-",
+          "marineTonKm" : "-",
+          "roadTransport" : "-",
+          "roadTonKm" : "-",
+          "transportRoute" : "-",
+          "remark" : "-"
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_15",
+        "values" : {
+          "group" : "보조 물질",
+          "materialName" : "다이너마이트",
+          "amount" : "100",
+          "annualUnit" : "kg/yr",
+          "usage" : "암석을 부수는 용도",
+          "origin" : "-",
+          "marineTransport" : "-",
+          "marineTonKm" : "",
+          "roadTransport" : "",
+          "roadTonKm" : "-",
+          "transportRoute" : "-",
+          "remark" : "-"
+        }
+      }, {
+        "rowId" : "INPUT_RAW_MATERIALS_16",
+        "values" : {
+          "group" : "보조 물질",
+          "materialName" : "암포화확",
+          "amount" : "100",
+          "annualUnit" : "kg/yr",
+          "usage" : "암석을 부수는 용도",
+          "origin" : "-",
+          "marineTransport" : "-",
+          "marineTonKm" : "-",
+          "roadTransport" : "-",
+          "roadTonKm" : "-",
+          "transportRoute" : "-",
+          "remark" : "-"
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "INPUT_ENERGY",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "에너지",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "양",
+      "guidance" : [ "※ 공정 흐름도 및 공정 설명 작성의 참고자료 정보는 '5.참고자료'에 기재" ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_ENERGY_37",
+        "values" : {
+          "group" : "에너지",
+          "materialName" : "경유",
+          "amount" : "100000",
+          "annualUnit" : "kg/yr",
+          "usage" : "중장비 사용시",
+          "remark" : ""
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "INPUT_STEAM",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "에너지 스팀",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "400000",
+      "guidance" : [ "※ 공정 흐름도 및 공정 설명 작성의 참고자료 정보는 '5.참고자료'에 기재" ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "steamType",
+        "label" : "스팀종류\n(포화증기/습증기/과열증기)",
+        "headerPath" : "[\"스팀종류\\n(포화증기/습증기/과열증기)\"]"
+      }, {
+        "key" : "steamMass",
+        "label" : "스팀의 질량",
+        "headerPath" : "[\"스팀의 질량\"]"
+      }, {
+        "key" : "condensateMass",
+        "label" : "응축수 질량",
+        "headerPath" : "[\"응축수 질량\"]"
+      }, {
+        "key" : "condensateTemperature",
+        "label" : "응축수\n온도",
+        "headerPath" : "[\"응축수\\n온도\"]"
+      }, {
+        "key" : "steamCirculation",
+        "label" : "스팀순환여부",
+        "headerPath" : "[\"스팀순환여부\"]"
+      }, {
+        "key" : "externalSteam",
+        "label" : "외부스팀 여부",
+        "headerPath" : "[\"외부스팀 여부\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "INPUT_MISC",
+      "majorCode" : "INPUT",
+      "majorLabel" : "3. 투입물 데이터 수집",
+      "sectionLabel" : "기타",
+      "sheetName" : "투입물 데이터 수집",
+      "titleRowLabel" : "양",
+      "guidance" : [ "※ 공정 흐름도 및 공정 설명 작성의 참고자료 정보는 '5.참고자료'에 기재" ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "usage",
+        "label" : "용도",
+        "headerPath" : "[\"용도\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "INPUT_MISC_46",
+        "values" : {
+          "group" : "기타",
+          "materialName" : "컨베이어 벨트",
+          "amount" : "120",
+          "annualUnit" : "kg/yr",
+          "usage" : "생산 제품 이동",
+          "remark" : "1개 무게 : 10kg / 1개 크기: 1m3 / 월 1개 소모"
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_PRODUCTS",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "제품 및 부산물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "양",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위\n(연간)",
+        "headerPath" : "[\"단위\\n(연간)\"]"
+      }, {
+        "key" : "productionCost",
+        "label" : "생산원가",
+        "headerPath" : "[\"생산원가\"]"
+      }, {
+        "key" : "costUnit",
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "OUTPUT_PRODUCTS_13",
+        "values" : {
+          "group" : "부산물",
+          "materialName" : "부산물1",
+          "amount" : "5000",
+          "annualUnit" : "kg/yr",
+          "productionCost" : "200",
+          "costUnit" : "원/kg",
+          "remark" : ""
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_AIR",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "대기 배출물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "양",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "collectionMethod",
+        "label" : "데이터 수집 방법",
+        "headerPath" : "[\"데이터 수집 방법\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_WATER",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "수계 배출물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "수계 배출물",
+      "guidance" : [ ],
+      "metadata" : [ {
+        "key" : "wastewaterFacilityInstalled",
+        "label" : "사업장 내 1차 하수처리장 설치여부",
+        "value" : "물질명"
+      } ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위(연간)",
+        "headerPath" : "[\"단위(연간)\"]"
+      }, {
+        "key" : "treatmentRoute",
+        "label" : "처리경로",
+        "headerPath" : "[\"처리경로\"]"
+      }, {
+        "key" : "treatmentMethod",
+        "label" : "처리방법",
+        "headerPath" : "[\"처리방법\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"비고\"]"
+      } ],
+      "case31Rows" : [ {
+        "rowId" : "OUTPUT_WATER_61",
+        "values" : {
+          "group" : "수계 배출물",
+          "materialName" : "폐수",
+          "amount" : "20000",
+          "annualUnit" : "kg/yr",
+          "treatmentRoute" : "자체처리",
+          "treatmentMethod" : "자체처리",
+          "remark" : "활성슬러지법"
+        }
+      }, {
+        "rowId" : "OUTPUT_WATER_62",
+        "values" : {
+          "group" : "수계 배출물",
+          "materialName" : "T-N",
+          "amount" : "10000",
+          "annualUnit" : "kg/yr",
+          "treatmentRoute" : "방류",
+          "treatmentMethod" : "방류",
+          "remark" : "-"
+        }
+      }, {
+        "rowId" : "OUTPUT_WATER_63",
+        "values" : {
+          "group" : "수계 배출물",
+          "materialName" : "T-P",
+          "amount" : "10000",
+          "annualUnit" : "kg/yr",
+          "treatmentRoute" : "방류",
+          "treatmentMethod" : "방류",
+          "remark" : "-"
+        }
+      } ],
+      "case32Rows" : [ ]
+    }, {
+      "sectionCode" : "OUTPUT_WASTE",
+      "majorCode" : "OUTPUT",
+      "majorLabel" : "4. 산출물 데이터 수집",
+      "sectionLabel" : "폐기물",
+      "sheetName" : "산출물 데이터 수집",
+      "titleRowLabel" : "양",
+      "guidance" : [ ],
+      "metadata" : [ ],
+      "columns" : [ {
+        "key" : "group",
+        "label" : "구분",
+        "headerPath" : "[\"구분\"]"
+      }, {
+        "key" : "materialName",
+        "label" : "물질명",
+        "headerPath" : "[\"물질명\"]"
+      }, {
+        "key" : "amount",
+        "label" : "양",
+        "headerPath" : "[\"양\"]"
+      }, {
+        "key" : "annualUnit",
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
+      }, {
+        "key" : "wasteType",
+        "label" : "구분\n(일반/지정 폐기물)",
+        "headerPath" : "[\"구분\\n(일반/지정 폐기물)\"]"
+      }, {
+        "key" : "treatmentMethod",
+        "label" : "처리방법\n(매립/소각/재활용/기타)",
+        "headerPath" : "[\"처리방법\\n(매립/소각/재활용/기타)\"]"
+      }, {
+        "key" : "transportTonKm",
+        "label" : "물동량",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"물동량\"]"
+      }, {
+        "key" : "marineTransport",
+        "label" : "해양",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"수송방법\",\"해양\"]"
+      }, {
+        "key" : "roadTransport",
+        "label" : "육로",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"수송방법\",\"육로\"]"
+      }, {
+        "key" : "transportRoute",
+        "label" : "운송경로",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"운송경로\"]"
+      }, {
+        "key" : "remark",
+        "label" : "비고",
+        "headerPath" : "[\"재활용 및 최종폐기 과정 수송\",\"비고\"]"
+      } ],
+      "case31Rows" : [ ],
+      "case32Rows" : [ ]
+    } ]
+  }
+}

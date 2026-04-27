@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="MenuFeatureManageMapper">
+
+    <select id="selectMenuPageOptions" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO" resultType="egovframework.com.platform.codex.model.MenuFeatureVO">
+        SELECT
+            M.MENU_CODE,
+            D.CODE_NM AS MENU_NM,
+            D.CODE_DC AS MENU_NM_EN,
+            M.MENU_URL
+        FROM COMTNMENUINFO M
+        INNER JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+           AND D.CODE_ID = #{codeId}
+        WHERE LENGTH(M.MENU_CODE) = 8
+          AND COALESCE(D.USE_AT, 'Y') = 'Y'
+          AND COALESCE(M.USE_AT, 'Y') = 'Y'
+        ORDER BY D.CODE
+    </select>
+
+    <select id="selectMenuFeatureList" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO" resultType="egovframework.com.platform.codex.model.MenuFeatureVO">
+        SELECT
+            M.MENU_CODE,
+            D.CODE_NM AS MENU_NM,
+            D.CODE_DC AS MENU_NM_EN,
+            M.MENU_URL,
+            F.FEATURE_CODE,
+            F.FEATURE_NM,
+            F.FEATURE_NM_EN,
+            F.FEATURE_DC,
+            F.USE_AT
+        FROM COMTNMENUFUNCTIONINFO F
+        INNER JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        INNER JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+           AND D.CODE_ID = #{codeId}
+        WHERE 1 = 1
+          <if test="menuCode != null and menuCode != ''">
+              AND F.MENU_CODE = #{menuCode}
+          </if>
+          <if test="searchKeyword != null and searchKeyword != ''">
+              AND (
+                  LOWER(F.FEATURE_CODE) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                  OR LOWER(F.FEATURE_NM) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                  OR LOWER(F.FEATURE_NM_EN) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                  OR LOWER(F.FEATURE_DC) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+              )
+          </if>
+        ORDER BY F.MENU_CODE, F.FEATURE_CODE
+    </select>
+
+    <select id="selectMenuFeature" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO" resultType="egovframework.com.platform.codex.model.MenuFeatureVO">
+        SELECT
+            M.MENU_CODE,
+            D.CODE_NM AS MENU_NM,
+            D.CODE_DC AS MENU_NM_EN,
+            M.MENU_URL,
+            F.FEATURE_CODE,
+            F.FEATURE_NM,
+            F.FEATURE_NM_EN,
+            F.FEATURE_DC,
+            F.USE_AT
+        FROM COMTNMENUFUNCTIONINFO F
+        INNER JOIN COMTNMENUINFO M
+            ON M.MENU_CODE = F.MENU_CODE
+        LEFT JOIN COMTCCMMNDETAILCODE D
+            ON D.CODE = M.MENU_CODE
+        WHERE F.FEATURE_CODE = #{featureCode}
+        LIMIT 1
+    </select>
+
+    <select id="countFeatureCode" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNMENUFUNCTIONINFO
+        WHERE FEATURE_CODE = #{featureCode}
+    </select>
+
+    <select id="countFeaturesByMenuCode" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNMENUFUNCTIONINFO
+        WHERE MENU_CODE = #{menuCode}
+    </select>
+
+    <insert id="insertMenuFeature" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO">
+        INSERT INTO COMTNMENUFUNCTIONINFO (
+            MENU_CODE,
+            FEATURE_CODE,
+            FEATURE_NM,
+            FEATURE_NM_EN,
+            FEATURE_DC,
+            USE_AT,
+            FRST_REGIST_PNTTM,
+            LAST_UPDT_PNTTM
+        ) VALUES (
+            #{menuCode},
+            #{featureCode},
+            #{featureNm},
+            #{featureNmEn},
+            #{featureDc},
+            #{useAt},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateMenuFeatureMetadata" parameterType="egovframework.com.feature.admin.dto.request.AdminMenuFeatureCommandDTO">
+        UPDATE COMTNMENUFUNCTIONINFO
+        SET FEATURE_NM = #{featureNm},
+            FEATURE_NM_EN = #{featureNmEn},
+            FEATURE_DC = #{featureDc},
+            USE_AT = #{useAt},
+            LAST_UPDT_PNTTM = CURRENT_DATETIME
+        WHERE FEATURE_CODE = #{featureCode}
+    </update>
+
+    <delete id="deleteMenuFeature" parameterType="string">
+        DELETE FROM COMTNMENUFUNCTIONINFO
+        WHERE FEATURE_CODE = #{featureCode}
+    </delete>
+
+</mapper>

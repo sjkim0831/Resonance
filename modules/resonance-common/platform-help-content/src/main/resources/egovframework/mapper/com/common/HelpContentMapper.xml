@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="HelpContentMapper">
+
+    <select id="selectHelpPage" parameterType="string" resultType="egovframework.com.common.help.HelpPageVO">
+        SELECT
+            PAGE_ID AS pageId,
+            TITLE AS title,
+            SUMMARY AS summary,
+            HELP_VERSION AS helpVersion,
+            ACTIVE_YN AS activeYn
+        FROM UI_HELP_PAGE
+        WHERE PAGE_ID = #{value}
+    </select>
+
+    <select id="selectHelpItems" parameterType="string" resultType="egovframework.com.common.help.HelpItemVO">
+        SELECT
+            ITEM_ID AS itemId,
+            PAGE_ID AS pageId,
+            TITLE AS title,
+            BODY AS body,
+            ANCHOR_SELECTOR AS anchorSelector,
+            DISPLAY_ORDER AS displayOrder,
+            ACTIVE_YN AS activeYn,
+            PLACEMENT AS placement,
+            IMAGE_URL AS imageUrl,
+            ICON_NAME AS iconName,
+            HIGHLIGHT_STYLE AS highlightStyle,
+            CTA_LABEL AS ctaLabel,
+            CTA_URL AS ctaUrl
+        FROM UI_HELP_ITEM
+        WHERE PAGE_ID = #{value}
+        ORDER BY DISPLAY_ORDER ASC, ITEM_ID ASC
+    </select>
+
+    <select id="countHelpPage" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM UI_HELP_PAGE
+        WHERE PAGE_ID = #{value}
+    </select>
+
+    <insert id="insertHelpPage" parameterType="egovframework.com.common.help.HelpPageVO">
+        INSERT INTO UI_HELP_PAGE (
+            PAGE_ID,
+            TITLE,
+            SUMMARY,
+            HELP_VERSION,
+            ACTIVE_YN,
+            CREATED_AT,
+            UPDATED_AT
+        ) VALUES (
+            #{pageId},
+            #{title},
+            #{summary},
+            #{helpVersion},
+            #{activeYn},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateHelpPage" parameterType="egovframework.com.common.help.HelpPageVO">
+        UPDATE UI_HELP_PAGE
+        SET
+            TITLE = #{title},
+            SUMMARY = #{summary},
+            HELP_VERSION = #{helpVersion},
+            ACTIVE_YN = #{activeYn},
+            UPDATED_AT = CURRENT_DATETIME
+        WHERE PAGE_ID = #{pageId}
+    </update>
+
+    <delete id="deleteHelpItems" parameterType="string">
+        DELETE FROM UI_HELP_ITEM
+        WHERE PAGE_ID = #{value}
+    </delete>
+
+    <insert id="insertHelpItem" parameterType="egovframework.com.common.help.HelpItemVO">
+        INSERT INTO UI_HELP_ITEM (
+            ITEM_ID,
+            PAGE_ID,
+            TITLE,
+            BODY,
+            ANCHOR_SELECTOR,
+            DISPLAY_ORDER,
+            ACTIVE_YN,
+            PLACEMENT,
+            IMAGE_URL,
+            ICON_NAME,
+            HIGHLIGHT_STYLE,
+            CTA_LABEL,
+            CTA_URL,
+            CREATED_AT,
+            UPDATED_AT
+        ) VALUES (
+            #{itemId},
+            #{pageId},
+            #{title},
+            #{body},
+            #{anchorSelector},
+            #{displayOrder},
+            #{activeYn},
+            #{placement},
+            #{imageUrl},
+            #{iconName},
+            #{highlightStyle},
+            #{ctaLabel},
+            #{ctaUrl},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+    </insert>
+
+</mapper>

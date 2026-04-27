@@ -1,0 +1,74 @@
+{
+  "manifestVersion": "1.0",
+  "moduleType": "theme-package",
+  "moduleId": "theme-sample-default",
+  "moduleVersion": "1.0.0",
+  "displayName": "Sample Installable Theme",
+  "installScope": "PROJECT_BIND",
+  "ownershipLane": "THEME_PRESENTATION",
+  "projectBindingMode": "PROJECT_BIND_THEME_OVERRIDE",
+  "compatibility": {
+    "coreVersionRange": "[1.0.0,2.0.0)",
+    "requiredAdapterCapabilities": [
+      "theme-binding"
+    ],
+    "blockingChecks": [
+      "theme-token-compatibility",
+      "page-frame-override-compatibility"
+    ]
+  },
+  "requiredBindings": [
+    "projectId",
+    "themeBinding"
+  ],
+  "artifacts": [
+    "theme-assets.zip",
+    "theme-tokens.json",
+    "theme-preview-manifest.json"
+  ],
+  "validatorChecks": [
+    "theme-tokens-valid",
+    "preview-assets-loadable",
+    "page-frame-overrides-compatible"
+  ],
+  "rollback": {
+    "supported": true,
+    "rollbackUnitId": "theme-install",
+    "rollbackArtifacts": [
+      "theme-binding",
+      "theme-assets.zip"
+    ]
+  },
+  "themeTokens": [
+    "color",
+    "typography",
+    "spacing",
+    "radius",
+    "motion"
+  ],
+  "pageFrameOverrides": [
+    "home",
+    "admin-registry",
+    "admin-detail",
+    "builder-console"
+  ],
+  "componentOverrides": [
+    "button",
+    "input",
+    "table",
+    "panel"
+  ],
+  "componentOverrideGroups": [
+    "primitive-atoms",
+    "page-frame-shells",
+    "builder-console-surfaces"
+  ],
+  "bindingTargets": [
+    "admin-ui",
+    "builder-console",
+    "home-shell"
+  ],
+  "previewAssets": [
+    "theme-preview-manifest.json"
+  ]
+}

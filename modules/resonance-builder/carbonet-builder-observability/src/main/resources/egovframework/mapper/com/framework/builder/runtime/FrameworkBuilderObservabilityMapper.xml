@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="FrameworkBuilderObservabilityMapper">
+
+    <select id="selectUiPageManifestList" resultType="egovframework.com.common.trace.UiPageManifestVO">
+        SELECT
+            PAGE_ID AS pageId,
+            PAGE_NAME AS pageName,
+            ROUTE_PATH AS routePath,
+            DOMAIN_CODE AS domainCode,
+            MENU_CODE AS menuCode,
+            LAYOUT_VERSION AS layoutVersion,
+            DESIGN_TOKEN_VERSION AS designTokenVersion,
+            ACTIVE_YN AS activeYn
+        FROM UI_PAGE_MANIFEST
+        WHERE COALESCE(ACTIVE_YN, 'Y') = 'Y'
+        ORDER BY DOMAIN_CODE ASC, ROUTE_PATH ASC, PAGE_ID ASC
+    </select>
+
+    <select id="selectUiComponentRegistryList" resultType="egovframework.com.common.trace.UiComponentRegistryVO">
+        SELECT
+            COMPONENT_ID AS componentId,
+            COMPONENT_NAME AS componentName,
+            COMPONENT_TYPE AS componentType,
+            OWNER_DOMAIN AS ownerDomain,
+            PROPS_SCHEMA_JSON AS propsSchemaJson,
+            DESIGN_REFERENCE AS designReference,
+            ACTIVE_YN AS activeYn,
+            TO_CHAR(CREATED_AT, 'YYYYMMDDHH24MISS') AS createdAt,
+            TO_CHAR(UPDATED_AT, 'YYYYMMDDHH24MISS') AS updatedAt
+        FROM UI_COMPONENT_REGISTRY
+        ORDER BY COMPONENT_TYPE ASC, COMPONENT_ID ASC
+    </select>
+
+    <select id="selectUiPageComponentDetails" parameterType="string" resultType="egovframework.com.common.trace.UiPageComponentDetailVO">
+        SELECT
+            MAP.MAP_ID AS mapId,
+            MAP.PAGE_ID AS pageId,
+            MAP.LAYOUT_ZONE AS layoutZone,
+            MAP.COMPONENT_ID AS componentId,
+            MAP.INSTANCE_KEY AS instanceKey,
+            MAP.DISPLAY_ORDER AS displayOrder,
+            MAP.CONDITIONAL_RULE_SUMMARY AS conditionalRuleSummary,
+            REG.COMPONENT_NAME AS componentName,
+            REG.COMPONENT_TYPE AS componentType,
+            REG.OWNER_DOMAIN AS ownerDomain,
+            REG.PROPS_SCHEMA_JSON AS propsSchemaJson,
+            REG.DESIGN_REFERENCE AS designReference
+        FROM UI_PAGE_COMPONENT_MAP MAP
+        LEFT JOIN UI_COMPONENT_REGISTRY REG
+          ON MAP.COMPONENT_ID = REG.COMPONENT_ID
+        WHERE MAP.PAGE_ID = #{value}
+        ORDER BY MAP.DISPLAY_ORDER ASC, MAP.INSTANCE_KEY ASC
+    </select>
+
+    <select id="selectUiComponentUsageList" parameterType="string" resultType="egovframework.com.common.trace.UiComponentUsageVO">
+        SELECT
+            MAN.PAGE_ID AS pageId,
+            MAN.PAGE_NAME AS pageName,
+            MAN.ROUTE_PATH AS routePath,
+            MAN.MENU_CODE AS menuCode,
+            MAP.LAYOUT_ZONE AS layoutZone,
+            MAP.COMPONENT_ID AS componentId,
+            MAP.INSTANCE_KEY AS instanceKey,
+            MAP.DISPLAY_ORDER AS displayOrder,
+            MAP.CONDITIONAL_RULE_SUMMARY AS conditionalRuleSummary
+        FROM UI_PAGE_COMPONENT_MAP MAP
+        INNER JOIN UI_PAGE_MANIFEST MAN
+          ON MAP.PAGE_ID = MAN.PAGE_ID
+        WHERE MAP.COMPONENT_ID = #{value}
+        ORDER BY MAN.PAGE_ID ASC, MAP.DISPLAY_ORDER ASC, MAP.INSTANCE_KEY ASC
+    </select>
+
+</mapper>

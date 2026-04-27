@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="authLoginMapper">
+
+    <select id="selectLoginUser" parameterType="map"
+            resultType="egovframework.com.feature.auth.dto.response.LoginResponseDTO">
+        <choose>
+            <when test='userSe == "GNR"'>
+                SELECT
+                    GM.MBER_ID AS userId,
+                    GM.MBER_NM AS name,
+                    GM.PASSWORD AS userPw,
+                    GM.IHIDNUM AS ihidNum,
+                    GM.MBER_EMAIL_ADRES AS email,
+                    'GNR' AS userSe,
+                    '' AS orgnztId,
+                    GM.ESNTL_ID AS uniqId,
+                    '' AS ip,
+                    ES.AUTHOR_CODE AS authorCode,
+                    GM.AUTH_TY AS authTy,
+                    GM.AUTH_DN AS authDn,
+                    GM.AUTH_CI AS authCi,
+                    GM.AUTH_DI AS authDi,
+                    GM.MBER_STTUS AS memberStatus
+                FROM COMTNGNRLMBER GM
+                INNER JOIN COMTNEMPLYRSCRTYESTBS ES
+                    ON GM.ESNTL_ID = ES.SCRTY_DTRMN_TRGET_ID
+                WHERE GM.MBER_ID = #{userId}
+                  AND GM.MBER_STTUS = 'P'
+            </when>
+            <when test='userSe == "ENT"'>
+                SELECT
+                    EM.ENTRPRS_MBER_ID AS userId,
+                    EM.CMPNY_NM AS name,
+                    EM.ENTRPRS_MBER_PASSWORD AS userPw,
+                    EM.BIZRNO AS ihidNum,
+                    EM.APPLCNT_EMAIL_ADRES AS email,
+                    'ENT' AS userSe,
+                    '' AS orgnztId,
+                    EM.ESNTL_ID AS uniqId,
+                    '' AS ip,
+                    ES.AUTHOR_CODE AS authorCode,
+                    EM.AUTH_TY AS authTy,
+                    EM.AUTH_DN AS authDn,
+                    EM.AUTH_CI AS authCi,
+                    EM.AUTH_DI AS authDi,
+                    EM.ENTRPRS_MBER_STTUS AS memberStatus
+                FROM COMTNENTRPRSMBER EM
+                INNER JOIN COMTNEMPLYRSCRTYESTBS ES
+                    ON EM.ESNTL_ID = ES.SCRTY_DTRMN_TRGET_ID
+                WHERE EM.ENTRPRS_MBER_ID = #{userId}
+                <if test="projectId != null and projectId != ''">
+                  AND EM.PROJECT_ID = #{projectId}
+                </if>
+                  AND EM.ENTRPRS_MBER_STTUS IN ('A', 'P', 'R')
+            </when>
+            <otherwise>
+                SELECT
+                    EI.EMPLYR_ID AS userId,
+                    EI.USER_NM AS name,
+                    EI.PASSWORD AS userPw,
+                    EI.IHIDNUM AS ihidNum,
+                    EI.EMAIL_ADRES AS email,
+                    'USR' AS userSe,
+                    EI.ORGNZT_ID AS orgnztId,
+                    EI.ESNTL_ID AS uniqId,
+                    '' AS ip,
+                    ES.AUTHOR_CODE AS authorCode,
+                    EI.AUTH_TY AS authTy,
+                    EI.AUTH_DN AS authDn,
+                    EI.AUTH_CI AS authCi,
+                    EI.AUTH_DI AS authDi,
+                    EI.EMPLYR_STTUS_CODE AS memberStatus
+                FROM COMTNEMPLYRINFO EI
+                INNER JOIN COMTNEMPLYRSCRTYESTBS ES
+                    ON EI.ESNTL_ID = ES.SCRTY_DTRMN_TRGET_ID
+                WHERE EI.EMPLYR_ID = #{userId}
+                  AND EI.EMPLYR_STTUS_CODE = 'P'
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="selectGeneralLoginUser" parameterType="string"
+            resultType="egovframework.com.feature.auth.dto.response.LoginResponseDTO">
+        SELECT
+            GM.MBER_ID AS userId,
+            GM.MBER_NM AS name,
+            GM.PASSWORD AS userPw,
+            GM.IHIDNUM AS ihidNum,
+            GM.MBER_EMAIL_ADRES AS email,
+            'GNR' AS userSe,
+            '' AS orgnztId,
+            GM.ESNTL_ID AS uniqId,
+            '' AS ip,
+            ES.AUTHOR_CODE AS authorCode,
+            GM.AUTH_TY AS authTy,
+            GM.AUTH_DN AS authDn,
+            GM.AUTH_CI AS authCi,
+            GM.AUTH_DI AS authDi,
+            GM.MBER_STTUS AS memberStatus
+        FROM COMTNGNRLMBER GM
+        INNER JOIN COMTNEMPLYRSCRTYESTBS ES
+            ON GM.ESNTL_ID = ES.SCRTY_DTRMN_TRGET_ID
+        WHERE GM.MBER_ID = #{value}
+          AND GM.MBER_STTUS = 'P'
+    </select>
+
+    <select id="selectEnterpriseLoginUser" parameterType="map"
+            resultType="egovframework.com.feature.auth.dto.response.LoginResponseDTO">
+        SELECT
+            EM.ENTRPRS_MBER_ID AS userId,
+            EM.CMPNY_NM AS name,
+            EM.ENTRPRS_MBER_PASSWORD AS userPw,
+            EM.BIZRNO AS ihidNum,
+            EM.APPLCNT_EMAIL_ADRES AS email,
+            'ENT' AS userSe,
+            '' AS orgnztId,
+            EM.ESNTL_ID AS uniqId,
+            '' AS ip,
+            ES.AUTHOR_CODE AS authorCode,
+            EM.AUTH_TY AS authTy,
+            EM.AUTH_DN AS authDn,
+            EM.AUTH_CI AS authCi,
+            EM.AUTH_DI AS authDi,
+            EM.ENTRPRS_MBER_STTUS AS memberStatus
+        FROM COMTNENTRPRSMBER EM
+        INNER JOIN COMTNEMPLYRSCRTYESTBS ES
+            ON EM.ESNTL_ID = ES.SCRTY_DTRMN_TRGET_ID
+        WHERE EM.ENTRPRS_MBER_ID = #{userId}
+        <if test="projectId != null and projectId != ''">
+          AND EM.PROJECT_ID = #{projectId}
+        </if>
+          AND EM.ENTRPRS_MBER_STTUS IN ('A', 'P', 'R')
+    </select>
+
+    <select id="selectEmployeeLoginUser" parameterType="string"
+            resultType="egovframework.com.feature.auth.dto.response.LoginResponseDTO">
+        SELECT
+            EI.EMPLYR_ID AS userId,
+            EI.USER_NM AS name,
+            EI.PASSWORD AS userPw,
+            EI.IHIDNUM AS ihidNum,
+            EI.EMAIL_ADRES AS email,
+            'USR' AS userSe,
+            EI.ORGNZT_ID AS orgnztId,
+            EI.ESNTL_ID AS uniqId,
+            '' AS ip,
+            ES.AUTHOR_CODE AS authorCode,
+            EI.AUTH_TY AS authTy,
+            EI.AUTH_DN AS authDn,
+            EI.AUTH_CI AS authCi,
+            EI.AUTH_DI AS authDi,
+            EI.EMPLYR_STTUS_CODE AS memberStatus
+        FROM COMTNEMPLYRINFO EI
+        INNER JOIN COMTNEMPLYRSCRTYESTBS ES
+            ON EI.ESNTL_ID = ES.SCRTY_DTRMN_TRGET_ID
+        WHERE EI.EMPLYR_ID = #{value}
+          AND EI.EMPLYR_STTUS_CODE = 'P'
+    </select>
+
+    <select id="selectActiveAuthToken" parameterType="string" resultType="java.util.HashMap">
+        SELECT
+            USER_ID AS userId,
+            USER_SE AS userSe,
+            TOKEN_KEY AS tokenKey,
+            ACCESS_TOKEN_HASH AS accessTokenHash,
+            REFRESH_TOKEN_HASH AS refreshTokenHash,
+            EXPIRATION_AT AS expirationAt
+        FROM COMTNAUTHTOKENSTORE
+        WHERE USER_ID = #{value}
+          AND EXPIRATION_AT > CURRENT_DATETIME
+    </select>
+
+    <insert id="insertAuthToken" parameterType="map">
+        INSERT INTO COMTNAUTHTOKENSTORE (
+            USER_ID,
+            USER_SE,
+            TOKEN_KEY,
+            ACCESS_TOKEN_HASH,
+            REFRESH_TOKEN_HASH,
+            EXPIRATION_AT,
+            CLIENT_IP,
+            USER_AGENT,
+            CREATED_AT,
+            UPDATED_AT
+        ) VALUES (
+            #{userId},
+            #{userSe},
+            #{tokenKey},
+            #{accessTokenHash},
+            #{refreshTokenHash},
+            TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI:SS'),
+            #{clientIp},
+            #{userAgent},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <delete id="deleteAuthTokenByUserId" parameterType="string">
+        DELETE FROM COMTNAUTHTOKENSTORE
+        WHERE USER_ID = #{value}
+    </delete>
+
+    <delete id="deleteAuthTokenByTokenKey" parameterType="string">
+        DELETE FROM COMTNAUTHTOKENSTORE
+        WHERE TOKEN_KEY = #{value}
+    </delete>
+
+    <update id="touchAuthToken" parameterType="string">
+        UPDATE COMTNAUTHTOKENSTORE
+        SET LAST_USED_AT = CURRENT_DATETIME,
+            UPDATED_AT = CURRENT_DATETIME
+        WHERE TOKEN_KEY = #{value}
+    </update>
+</mapper>

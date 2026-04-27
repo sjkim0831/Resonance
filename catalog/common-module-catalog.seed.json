@@ -1,0 +1,57 @@
+{
+  "catalogVersion": "0.1.0",
+  "framework": "resonance",
+  "generatedFrom": "carbonet-reactor-review",
+  "moduleGroups": [
+    {
+      "groupId": "auth-authority",
+      "modules": [
+        "modules/common-auth"
+      ],
+      "targetLayer": "resonance-common",
+      "verificationLevel": "active-compat"
+    },
+    {
+      "groupId": "content-board",
+      "modules": [
+        "modules/common-content-runtime",
+        "modules/platform-help",
+        "modules/platform-help-content"
+      ],
+      "targetLayer": "resonance-common",
+      "verificationLevel": "active-compat"
+    },
+    {
+      "groupId": "runtime-ops",
+      "modules": [
+        "modules/platform-runtime-control",
+        "modules/platform-version-control",
+        "modules/stable-execution-gate"
+      ],
+      "targetLayer": "resonance-platform",
+      "verificationLevel": "active-verified"
+    },
+    {
+      "groupId": "builder-screen",
+      "modules": [
+        "modules/screenbuilder-core",
+        "modules/screenbuilder-runtime-common-adapter",
+        "modules/screenbuilder-carbonet-adapter"
+      ],
+      "targetLayer": "mixed",
+      "verificationLevel": "active-compat"
+    },
+    {
+      "groupId": "carbonet-shared",
+      "modules": [
+        "modules/carbonet-common-core",
+        "modules/carbonet-contract-metadata",
+        "modules/carbonet-builder-observability",
+        "modules/carbonet-mapper-infra",
+        "modules/carbonet-web-support"
+      ],
+      "targetLayer": "review-for-resonance",
+      "verificationLevel": "needs-classification"
+    }
+  ]
+}

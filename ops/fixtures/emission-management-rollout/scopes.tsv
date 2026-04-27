@@ -1,0 +1,7 @@
+# scope	category_subcode	tier	expected_input_var	fixture_file
+CEMENT:1	CEMENT	1	MCI	CEMENT-1.json
+CEMENT:2	CEMENT	2	MCL	CEMENT-2.json
+CEMENT:3	CEMENT	3	MI	CEMENT-3.json
+LIME:1	LIME	1	MLI	LIME-1.json
+LIME:2	LIME	2	MLI	LIME-2.json
+LIME:3	LIME	3	MI	LIME-3.json

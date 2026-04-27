@@ -1,0 +1,55 @@
+{
+  "projectId": "P003",
+  "projectName": "Carbonet New Project Example",
+  "ownership": {
+    "commonRuntime": "versioned-common-jars",
+    "projectAdapter": "p003-adapter",
+    "projectRuntime": "p003-runtime"
+  },
+  "versions": {
+    "commonCore": "1.1.0",
+    "stableGate": "v1",
+    "adapterArtifact": "1.0.0",
+    "adapterContract": "v1"
+  },
+  "bindings": {
+    "database": {
+      "bindingMode": "COMMON_DB + PROJECT_DB",
+      "commonDb": {
+        "url": "jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8",
+        "schema": "public"
+      },
+      "projectDb": {
+        "url": "jdbc:cubrid:localhost:33000:carbonet_p003:::?charset=utf-8",
+        "schema": "public"
+      }
+    },
+    "menu": {
+      "profile": "p003-admin-v1",
+      "rootCode": "PMENU_P003",
+      "apiPrefix": "/api/v1/p003"
+    },
+    "theme": {
+      "id": "carbonet-default-light",
+      "version": "1.0.0"
+    }
+  },
+  "runtime": {
+    "packagePath": "apps/project-runtime/target/project-runtime.jar",
+    "adapterArtifactPath": "var/run/project-runtime/P003/lib/project-adapter.jar",
+    "manifestPath": "var/run/project-runtime/P003/config/manifest.json",
+    "bootTarget": "var/run/project-runtime/P003/project-runtime.jar",
+    "bootCommand": "java -jar var/run/project-runtime/P003/project-runtime.jar --spring.profiles.active=prod --app.project-id=P003",
+    "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+    "lane": "PROJECT_RUNTIME",
+    "sharedRuntimeId": "project-runtime-common",
+    "routing": {
+      "selectorPath": "/projects/P003",
+      "routePrefix": "/r/P003",
+      "externalBaseUrl": "https://p003.example.com",
+      "domainHost": "p003.example.com",
+      "managementPath": "/api/operations/governance/runtime/projects/P003",
+      "infoPath": "/api/runtime/project-info"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+-- Seed only control-plane and binding metadata here.
+-- Do not create project business tables in COMMON_DB.
+--
+-- Typical targets:
+--   PROJECT_REGISTRY
+--   PROJECT_ARTIFACT_LOCK
+--   PROJECT_MENU_BINDING
+--   PROJECT_THEME_BINDING
+--   PROJECT_RUNTIME_BINDING
+--
+-- Replace placeholders before execution.
+
+-- Example:
+-- INSERT INTO RSN_PROJECT_REGISTRY (PROJECT_ID, PROJECT_NAME, RUNTIME_CLASS)
+-- VALUES ('P_TEMPLATE', 'Template Project Runtime', 'PROJECT_RUNTIME');

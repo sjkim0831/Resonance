@@ -1,0 +1,64 @@
+{
+  "manifestVersion": "1.0",
+  "moduleType": "business-process-package",
+  "moduleId": "sample-process-package",
+  "moduleVersion": "1.0.0",
+  "displayName": "Sample Installable Business Process",
+  "installScope": "PROJECT_BIND",
+  "compatibility": {
+    "supportedCoreRange": "[1.0.0,2.0.0)",
+    "requiredAdapterCapabilities": [
+      "process-binding",
+      "process-executor"
+    ],
+    "blockingChecks": [
+      "executor-capability-present",
+      "process-route-binding-present"
+    ]
+  },
+  "requiredBindings": [
+    "projectId",
+    "menuRoot",
+    "authorityProfile",
+    "processExecutor"
+  ],
+  "artifacts": [
+    "processManifest",
+    "screenPackage",
+    "validatorRules"
+  ],
+  "validatorChecks": [
+    "process-stage-contract-present",
+    "executor-capability-present",
+    "menu-binding-resolvable"
+  ],
+  "rollback": {
+    "supported": true,
+    "rollbackUnitId": "process-package-rollback-unit",
+    "rollbackArtifacts": [
+      "processManifest"
+    ]
+  },
+  "processStages": [
+    "REQUEST",
+    "REVIEW",
+    "APPROVE"
+  ],
+  "stateTransitions": [
+    "REQUEST->REVIEW",
+    "REVIEW->APPROVE"
+  ],
+  "executorCapabilities": [
+    "save-request",
+    "review-request",
+    "approve-request"
+  ],
+  "screenPackageDependencies": [
+    "builder-screen-package"
+  ],
+  "processBindings": [
+    "menu-binding",
+    "authority-binding",
+    "route-binding"
+  ]
+}

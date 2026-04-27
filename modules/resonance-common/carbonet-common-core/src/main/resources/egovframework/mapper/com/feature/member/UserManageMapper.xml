@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="userManageMapper">
+
+    <select id="checkIdDplct_S" parameterType="string" resultType="int">
+        SELECT COUNT(1)
+        FROM COMTNEMPLYRINFO
+        WHERE EMPLYR_ID = #{value}
+    </select>
+
+    <delete id="deleteUser_S" parameterType="string">
+        DELETE FROM COMTNEMPLYRINFO
+        WHERE ESNTL_ID = #{value}
+    </delete>
+
+    <insert id="insertUser_S" parameterType="egovframework.com.feature.member.model.vo.UserManageVO">
+        INSERT INTO COMTNEMPLYRINFO
+        (
+            ESNTL_ID,
+            EMPLYR_ID,
+            USER_NM,
+            PASSWORD,
+            PASSWORD_HINT,
+            PASSWORD_CNSR,
+            IHIDNUM,
+            SEXDSTN_CODE,
+            ZIP,
+            HOUSE_ADRES,
+            AREA_NO,
+            EMPLYR_STTUS_CODE,
+            DETAIL_ADRES,
+            HOUSE_END_TELNO,
+            MBTLNUM,
+            GROUP_ID,
+            FXNUM,
+            EMAIL_ADRES,
+            HOUSE_MIDDLE_TELNO,
+            SBSCRB_DE,
+            CHG_PWD_LAST_PNTTM,
+            ORGNZT_ID,
+            OFCPS_NM,
+            OFFM_TELNO,
+            EMPL_NO,
+            LOCK_AT,
+            LOCK_CNT
+        )
+        VALUES
+        (
+            #{uniqId},
+            #{emplyrId},
+            #{emplyrNm},
+            #{password},
+            #{passwordHint},
+            #{passwordCnsr},
+            #{ihidnum},
+            #{sexdstnCode},
+            #{zip},
+            #{homeadres},
+            #{areaNo},
+            #{emplyrSttusCode},
+            #{detailAdres},
+            #{homeendTelno},
+            #{moblphonNo},
+            #{groupId},
+            #{fxnum},
+            #{emailAdres},
+            #{homemiddleTelno},
+            SYSDATETIME,
+            SYSDATETIME,
+            #{orgnztId},
+            #{ofcpsNm},
+            #{offmTelno},
+            #{emplNo},
+            #{lockAt},
+            0
+        )
+    </insert>
+
+    <select id="selectUser_S" parameterType="string" resultType="egovframework.com.feature.member.model.vo.UserManageVO">
+        SELECT
+            ESNTL_ID AS uniqId,
+            'USR03' AS userTy,
+            EMPLYR_ID AS emplyrId,
+            USER_NM AS emplyrNm,
+            PASSWORD AS password,
+            PASSWORD_HINT AS passwordHint,
+            PASSWORD_CNSR AS passwordCnsr,
+            IHIDNUM AS ihidnum,
+            SEXDSTN_CODE AS sexdstnCode,
+            ZIP AS zip,
+            HOUSE_ADRES AS homeadres,
+            AREA_NO AS areaNo,
+            EMPLYR_STTUS_CODE AS emplyrSttusCode,
+            DETAIL_ADRES AS detailAdres,
+            HOUSE_END_TELNO AS homeendTelno,
+            MBTLNUM AS moblphonNo,
+            GROUP_ID AS groupId,
+            FXNUM AS fxnum,
+            EMAIL_ADRES AS emailAdres,
+            HOUSE_MIDDLE_TELNO AS homemiddleTelno,
+            TO_CHAR(SBSCRB_DE, 'YYYY.MM.DD HH24:MI:SS') AS sbscrbDe,
+            LOCK_AT AS lockAt,
+            ORGNZT_ID AS orgnztId,
+            OFCPS_NM AS ofcpsNm,
+            OFFM_TELNO AS offmTelno,
+            EMPL_NO AS emplNo
+        FROM COMTNEMPLYRINFO
+        WHERE ESNTL_ID = #{value}
+    </select>
+
+    <select id="selectUserList_S" parameterType="egovframework.com.feature.member.model.vo.UserDefaultVO" resultType="egovframework.com.feature.member.model.vo.UserManageVO">
+        SELECT *
+        FROM (
+            SELECT rownum AS rn, TB.*
+            FROM (
+                SELECT
+                    ESNTL_ID AS uniqId,
+                    'USR03' AS userTy,
+                    EMPLYR_ID AS emplyrId,
+                    USER_NM AS emplyrNm,
+                    EMAIL_ADRES AS emailAdres,
+                    AREA_NO AS areaNo,
+                    HOUSE_MIDDLE_TELNO AS homemiddleTelno,
+                    HOUSE_END_TELNO AS homeendTelno,
+                    MBTLNUM AS moblphonNo,
+                    GROUP_ID AS groupId,
+                    EMPLYR_STTUS_CODE AS emplyrSttusCode,
+                    TO_CHAR(SBSCRB_DE, 'YYYY.MM.DD HH24:MI:SS') AS sbscrbDe,
+                    ORGNZT_ID AS orgnztId,
+                    OFCPS_NM AS ofcpsNm,
+                    OFFM_TELNO AS offmTelno,
+                    EMPL_NO AS emplNo,
+                    LOCK_AT AS lockAt
+                FROM COMTNEMPLYRINFO
+                WHERE 1 = 1
+                <if test='sbscrbSttus != null and sbscrbSttus != "0" and sbscrbSttus != ""'>
+                    AND EMPLYR_STTUS_CODE = #{sbscrbSttus}
+                </if>
+                <if test="searchKeyword != null and searchKeyword != ''">
+                    <if test='searchCondition == "0"'>
+                        AND EMPLYR_ID LIKE '%' || #{searchKeyword} || '%'
+                    </if>
+                    <if test='searchCondition == "1"'>
+                        AND USER_NM LIKE '%' || #{searchKeyword} || '%'
+                    </if>
+                    <if test='searchCondition == null or searchCondition == "" or searchCondition == "all"'>
+                        AND (
+                            EMPLYR_ID LIKE '%' || #{searchKeyword} || '%'
+                            OR USER_NM LIKE '%' || #{searchKeyword} || '%'
+                            OR EMAIL_ADRES LIKE '%' || #{searchKeyword} || '%'
+                            OR ORGNZT_ID LIKE '%' || #{searchKeyword} || '%'
+                        )
+                    </if>
+                </if>
+                ORDER BY SBSCRB_DE DESC
+            ) TB
+        ) Z
+        WHERE rn BETWEEN #{firstIndex} + 1 AND #{firstIndex} + #{recordCountPerPage}
+    </select>
+
+    <select id="selectUserListTotCnt_S" parameterType="egovframework.com.feature.member.model.vo.UserDefaultVO" resultType="int">
+        SELECT COUNT(1)
+        FROM COMTNEMPLYRINFO
+        WHERE 1 = 1
+        <if test='sbscrbSttus != null and sbscrbSttus != "0" and sbscrbSttus != ""'>
+            AND EMPLYR_STTUS_CODE = #{sbscrbSttus}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            <if test='searchCondition == "0"'>
+                AND EMPLYR_ID LIKE '%' || #{searchKeyword} || '%'
+            </if>
+            <if test='searchCondition == "1"'>
+                AND USER_NM LIKE '%' || #{searchKeyword} || '%'
+            </if>
+            <if test='searchCondition == null or searchCondition == "" or searchCondition == "all"'>
+                AND (
+                    EMPLYR_ID LIKE '%' || #{searchKeyword} || '%'
+                    OR USER_NM LIKE '%' || #{searchKeyword} || '%'
+                    OR EMAIL_ADRES LIKE '%' || #{searchKeyword} || '%'
+                    OR ORGNZT_ID LIKE '%' || #{searchKeyword} || '%'
+                )
+            </if>
+        </if>
+    </select>
+
+    <update id="updateUser_S" parameterType="egovframework.com.feature.member.model.vo.UserManageVO">
+        UPDATE COMTNEMPLYRINFO
+        SET
+            EMPLYR_ID = #{emplyrId},
+            USER_NM = #{emplyrNm},
+            PASSWORD_HINT = #{passwordHint},
+            PASSWORD_CNSR = #{passwordCnsr},
+            IHIDNUM = #{ihidnum},
+            SEXDSTN_CODE = #{sexdstnCode},
+            ZIP = #{zip},
+            HOUSE_ADRES = #{homeadres},
+            AREA_NO = #{areaNo},
+            EMPLYR_STTUS_CODE = #{emplyrSttusCode},
+            DETAIL_ADRES = #{detailAdres},
+            HOUSE_END_TELNO = #{homeendTelno},
+            MBTLNUM = #{moblphonNo},
+            GROUP_ID = #{groupId},
+            FXNUM = #{fxnum},
+            EMAIL_ADRES = #{emailAdres},
+            HOUSE_MIDDLE_TELNO = #{homemiddleTelno},
+            ORGNZT_ID = #{orgnztId},
+            OFCPS_NM = #{ofcpsNm},
+            OFFM_TELNO = #{offmTelno},
+            EMPL_NO = #{emplNo}
+        WHERE ESNTL_ID = #{uniqId}
+    </update>
+
+    <update id="updatePassword_S" parameterType="egovframework.com.feature.member.model.vo.UserManageVO">
+        UPDATE COMTNEMPLYRINFO
+        SET
+            PASSWORD = #{password},
+            CHG_PWD_LAST_PNTTM = SYSDATETIME
+        WHERE ESNTL_ID = #{uniqId}
+    </update>
+
+    <select id="selectPassword_S" parameterType="egovframework.com.feature.member.model.vo.UserManageVO" resultType="egovframework.com.feature.member.model.vo.UserManageVO">
+        SELECT PASSWORD AS password
+        FROM COMTNEMPLYRINFO
+        WHERE ESNTL_ID = #{uniqId}
+    </select>
+
+    <update id="updateLockIncorrect" parameterType="egovframework.com.feature.member.model.vo.UserManageVO">
+        UPDATE COMTNEMPLYRINFO
+        SET
+            LOCK_AT = NULL,
+            LOCK_CNT = NULL,
+            LOCK_LAST_PNTTM = NULL
+        WHERE ESNTL_ID = #{uniqId}
+    </update>
+
+</mapper>

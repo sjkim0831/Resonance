@@ -1,0 +1,23 @@
+{
+  "menuCode" : "A0040204",
+  "pageId" : "builder-a0040204",
+  "menuTitle" : "팝업 스케줄",
+  "menuUrl" : "/admin/content/popup_edit",
+  "publishedVersionId" : "",
+  "publishedSavedAt" : "",
+  "releaseUnitId" : "draft-20260328005916",
+  "artifactTargetSystem" : "carbonet-general",
+  "runtimePackageId" : "screen-builder-runtime-a0040204-builder-a0040204",
+  "deployTraceId" : "deploy-draft-20260328005916",
+  "publishFreshnessState" : "UNPUBLISHED",
+  "publishFreshnessLabel" : "아직 발행 없음",
+  "publishFreshnessDetail" : "이 메뉴는 아직 draft 전용 빌더 상태입니다.",
+  "parityState" : "UNAVAILABLE",
+  "parityLabel" : "정합성 미확인",
+  "parityDetail" : "아직 발행이 없습니다.",
+  "parityTraceId" : "",
+  "versionCount" : 0,
+  "unregisteredCount" : 4,
+  "missingCount" : 0,
+  "deprecatedCount" : 0
+}

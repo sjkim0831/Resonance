@@ -1,0 +1,16 @@
+{
+  "frameworkId": "carbonet-ui-framework",
+  "frameworkName": "Carbonet UI Framework",
+  "contractVersion": "2026-03-24",
+  "authorityPolicyId": "carbonet-authority-model",
+  "builderProfiles": {
+    "pageFrameProfileIds": ["dashboard-page", "list-page", "detail-page", "edit-page", "builder-page"],
+    "layoutZoneIds": ["header", "sidebar", "content", "footer", "actions"],
+    "componentTypeIds": ["button", "input", "select", "textarea", "table", "pagination"],
+    "artifactUnitIds": ["page-manifest", "component-registry", "screen-builder-draft"]
+  },
+  "authorityDefaults": {
+    "allowedScopePolicies": ["global", "own-company", "department", "self", "role-scoped"],
+    "tierOrder": ["MASTER", "SYSTEM", "GENERAL_ADMIN", "OPERATION", "GENERAL_MEMBER", "COMPANY", "DEPARTMENT", "USER", "CUSTOM"]
+  }
+}

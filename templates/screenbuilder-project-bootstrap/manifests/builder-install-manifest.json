@@ -1,0 +1,72 @@
+{
+  "manifestVersion": "1.0",
+  "moduleType": "builder-package",
+  "moduleId": "screenbuilder-project-bootstrap",
+  "moduleVersion": "1.0.0",
+  "displayName": "Screen Builder Project Bootstrap",
+  "installScope": "PROJECT",
+  "compatibility": {
+    "coreVersionRange": "[1.0.0,2.0.0)",
+    "requiredAdapterCapabilities": [
+      "menu-catalog",
+      "command-page",
+      "component-registry",
+      "authority-contract",
+      "runtime-compare"
+    ],
+    "blockingChecks": [
+      "required-beans",
+      "required-properties",
+      "storage-writable"
+    ]
+  },
+  "requiredBindings": [
+    "projectId",
+    "menuRoot",
+    "runtimeClass",
+    "menuScope",
+    "releaseUnitPrefix",
+    "runtimePackagePrefix"
+  ],
+  "artifacts": [
+    "screenbuilder-core.jar",
+    "screenbuilder-project-adapter.jar",
+    "application-screenbuilder.properties"
+  ],
+  "validatorChecks": [
+    "required-beans-present",
+    "required-properties-present",
+    "menu-root-resolvable",
+    "storage-writable",
+    "builder-routes-exposed"
+  ],
+  "rollback": {
+    "supported": true,
+    "rollbackUnitId": "builder-bootstrap",
+    "rollbackArtifacts": [
+      "screenbuilder-project-adapter.jar",
+      "application-screenbuilder.properties"
+    ]
+  },
+  "coreArtifacts": [
+    "screenbuilder-core.jar"
+  ],
+  "adapterArtifacts": [
+    "screenbuilder-project-adapter.jar"
+  ],
+  "requiredPorts": [
+    "ScreenBuilderMenuCatalogPort",
+    "ScreenBuilderCommandPagePort",
+    "ScreenBuilderComponentRegistryPort",
+    "ScreenBuilderAuthorityContractPort",
+    "ScreenBuilderRuntimeComparePort",
+    "ScreenBuilderMenuBindingPolicyPort",
+    "ScreenBuilderArtifactNamingPolicyPort",
+    "ScreenBuilderRuntimeComparePolicyPort",
+    "ScreenBuilderRequestContextPolicyPort"
+  ],
+  "bootstrapDefaults": {
+    "draftStorageMode": "FILE",
+    "compareBaseline": "CURRENT_RUNTIME"
+  }
+}

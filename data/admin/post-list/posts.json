@@ -1,0 +1,17 @@
+{
+  "POST_BOARD_ADD_001" : {
+    "id" : "POST_BOARD_ADD_001",
+    "category" : "NOTICE",
+    "status" : "REVIEW",
+    "pinned" : "Y",
+    "viewCount" : "0",
+    "updatedAt" : "2026-03-31 14:18",
+    "authorKo" : "공지 배포",
+    "authorEn" : "Notice Distribution",
+    "titleKo" : "Codex runtime save verification",
+    "titleEn" : "Codex runtime save verification",
+    "summaryKo" : "Draft used to verify runtime save linkage.",
+    "summaryEn" : "Draft used to verify runtime save linkage.",
+    "lastChangedBy" : "system"
+  }
+}

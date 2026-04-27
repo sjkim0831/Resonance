@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="PlatformObservabilityQueryMapper">
+
+    <sql id="auditEventWhere">
+        <where>
+            <if test="traceId != null and traceId != ''">
+                AND TRACE_ID = #{traceId}
+            </if>
+            <if test="projectId != null and projectId != ''">
+                AND PROJECT_ID = #{projectId}
+            </if>
+            <if test="actorId != null and actorId != ''">
+                AND ACTOR_ID = #{actorId}
+            </if>
+            <if test="actionCode != null and actionCode != ''">
+                AND ACTION_CODE = #{actionCode}
+            </if>
+            <if test="menuCode != null and menuCode != ''">
+                AND MENU_CODE = #{menuCode}
+            </if>
+            <if test="pageId != null and pageId != ''">
+                AND PAGE_ID = #{pageId}
+            </if>
+            <if test="resultStatus != null and resultStatus != ''">
+                AND RESULT_STATUS = #{resultStatus}
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    LOWER(COALESCE(REASON_SUMMARY, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(ENTITY_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(ACTOR_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="traceEventWhere">
+        <where>
+            <if test="traceId != null and traceId != ''">
+                AND TRACE_ID = #{traceId}
+            </if>
+            <if test="projectId != null and projectId != ''">
+                AND PROJECT_ID = #{projectId}
+            </if>
+            <if test="pageId != null and pageId != ''">
+                AND PAGE_ID = #{pageId}
+            </if>
+            <if test="componentId != null and componentId != ''">
+                AND COMPONENT_ID = #{componentId}
+            </if>
+            <if test="functionId != null and functionId != ''">
+                AND FUNCTION_ID = #{functionId}
+            </if>
+            <if test="apiId != null and apiId != ''">
+                AND API_ID = #{apiId}
+            </if>
+            <if test="eventType != null and eventType != ''">
+                AND EVENT_TYPE = #{eventType}
+            </if>
+            <if test="resultCode != null and resultCode != ''">
+                AND RESULT_CODE = #{resultCode}
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    LOWER(COALESCE(COMPONENT_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(FUNCTION_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(API_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="accessEventWhere">
+        <where>
+            <if test="projectId != null and projectId != ''">
+                AND PROJECT_ID = #{projectId}
+            </if>
+            <if test="insttId != null and insttId != ''">
+                AND COALESCE(TARGET_COMPANY_CONTEXT_ID, COMPANY_CONTEXT_ID, ACTOR_INSTT_ID, '') = #{insttId}
+            </if>
+            <if test="actorId != null and actorId != ''">
+                AND ACTOR_ID = #{actorId}
+            </if>
+            <if test="pageId != null and pageId != ''">
+                AND PAGE_ID = #{pageId}
+            </if>
+            <if test="apiId != null and apiId != ''">
+                AND API_ID = #{apiId}
+            </if>
+            <if test="featureType != null and featureType != ''">
+                AND FEATURE_TYPE = #{featureType}
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    LOWER(COALESCE(REQUEST_URI, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(ACTOR_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(REMOTE_ADDR, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(ACTOR_INSTT_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(COMPANY_CONTEXT_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                )
+            </if>
+        </where>
+    </sql>
+
+    <sql id="errorEventWhere">
+        <where>
+            <if test="projectId != null and projectId != ''">
+                AND PROJECT_ID = #{projectId}
+            </if>
+            <if test="sourceType != null and sourceType != ''">
+                AND SOURCE_TYPE = #{sourceType}
+            </if>
+            <if test="errorType != null and errorType != ''">
+                AND ERROR_TYPE = #{errorType}
+            </if>
+            <if test="resultStatus != null and resultStatus != ''">
+                AND RESULT_STATUS = #{resultStatus}
+            </if>
+            <if test="actorId != null and actorId != ''">
+                AND ACTOR_ID = #{actorId}
+            </if>
+            <if test="insttId != null and insttId != ''">
+                AND ACTOR_INSTT_ID = #{insttId}
+            </if>
+            <if test="pageId != null and pageId != ''">
+                AND PAGE_ID = #{pageId}
+            </if>
+            <if test="apiId != null and apiId != ''">
+                AND API_ID = #{apiId}
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    LOWER(COALESCE(MESSAGE, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(REQUEST_URI, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(ACTOR_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(PAGE_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(API_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectAuditEventCount" parameterType="egovframework.com.common.audit.AuditEventSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM AUDIT_EVENT
+        <include refid="auditEventWhere" />
+    </select>
+
+    <select id="selectAuditEventList" parameterType="egovframework.com.common.audit.AuditEventSearchVO" resultType="egovframework.com.common.audit.AuditEventRecordVO">
+        SELECT
+            AUDIT_ID AS auditId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            REQUEST_ID AS requestId,
+            ACTOR_ID AS actorId,
+            ACTOR_ROLE AS actorRole,
+            MENU_CODE AS menuCode,
+            PAGE_ID AS pageId,
+            ACTION_CODE AS actionCode,
+            ENTITY_TYPE AS entityType,
+            ENTITY_ID AS entityId,
+            BEFORE_SUMMARY AS beforeSummaryJson,
+            AFTER_SUMMARY AS afterSummaryJson,
+            RESULT_STATUS AS resultStatus,
+            REASON_SUMMARY AS reasonSummary,
+            IP_ADDRESS AS ipAddress,
+            USER_AGENT AS userAgent,
+            REQUEST_URI AS requestUri,
+            HTTP_METHOD AS httpMethod,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM AUDIT_EVENT
+        <include refid="auditEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectAuditEventListCompact" parameterType="egovframework.com.common.audit.AuditEventSearchVO" resultType="egovframework.com.common.audit.AuditEventRecordVO">
+        SELECT
+            AUDIT_ID AS auditId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            REQUEST_ID AS requestId,
+            ACTOR_ID AS actorId,
+            ACTOR_ROLE AS actorRole,
+            MENU_CODE AS menuCode,
+            PAGE_ID AS pageId,
+            ACTION_CODE AS actionCode,
+            ENTITY_TYPE AS entityType,
+            ENTITY_ID AS entityId,
+            '' AS beforeSummaryJson,
+            '[after summary omitted: compact fallback]' AS afterSummaryJson,
+            RESULT_STATUS AS resultStatus,
+            REASON_SUMMARY AS reasonSummary,
+            IP_ADDRESS AS ipAddress,
+            USER_AGENT AS userAgent,
+            REQUEST_URI AS requestUri,
+            HTTP_METHOD AS httpMethod,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM AUDIT_EVENT
+        <include refid="auditEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectTraceEventCount" parameterType="egovframework.com.common.trace.TraceEventSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM TRACE_EVENT
+        <include refid="traceEventWhere" />
+    </select>
+
+    <select id="selectTraceEventList" parameterType="egovframework.com.common.trace.TraceEventSearchVO" resultType="egovframework.com.common.trace.TraceEventRecordVO">
+        SELECT
+            EVENT_ID AS eventId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            SPAN_ID AS spanId,
+            PARENT_SPAN_ID AS parentSpanId,
+            EVENT_TYPE AS eventType,
+            PAGE_ID AS pageId,
+            COMPONENT_ID AS componentId,
+            FUNCTION_ID AS functionId,
+            API_ID AS apiId,
+            RESULT_CODE AS resultCode,
+            DURATION_MS AS durationMs,
+            PAYLOAD_SUMMARY AS payloadSummaryJson,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM TRACE_EVENT
+        <include refid="traceEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectTraceEventListCompact" parameterType="egovframework.com.common.trace.TraceEventSearchVO" resultType="egovframework.com.common.trace.TraceEventRecordVO">
+        SELECT
+            EVENT_ID AS eventId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            SPAN_ID AS spanId,
+            PARENT_SPAN_ID AS parentSpanId,
+            EVENT_TYPE AS eventType,
+            PAGE_ID AS pageId,
+            COMPONENT_ID AS componentId,
+            FUNCTION_ID AS functionId,
+            API_ID AS apiId,
+            RESULT_CODE AS resultCode,
+            DURATION_MS AS durationMs,
+            '' AS payloadSummaryJson,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM TRACE_EVENT
+        <include refid="traceEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectAccessEventCount" parameterType="egovframework.com.common.logging.AccessEventSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM ACCESS_EVENT
+        <include refid="accessEventWhere" />
+    </select>
+
+    <select id="selectAccessEventList" parameterType="egovframework.com.common.logging.AccessEventSearchVO" resultType="egovframework.com.common.logging.AccessEventRecordVO">
+        SELECT
+            EVENT_ID AS eventId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            REQUEST_ID AS requestId,
+            PAGE_ID AS pageId,
+            API_ID AS apiId,
+            REQUEST_URI AS requestUri,
+            HTTP_METHOD AS httpMethod,
+            FEATURE_TYPE AS featureType,
+            ACTOR_ID AS actorId,
+            ACTOR_TYPE AS actorType,
+            ACTOR_ROLE AS actorRole,
+            ACTOR_INSTT_ID AS actorInsttId,
+            COMPANY_CONTEXT_ID AS companyContextId,
+            TARGET_COMPANY_CONTEXT_ID AS targetCompanyContextId,
+            REMOTE_ADDR AS remoteAddr,
+            RESPONSE_STATUS AS responseStatus,
+            DURATION_MS AS durationMs,
+            REQUEST_CONTENT_TYPE AS requestContentType,
+            "QUERY_STRING" AS queryString,
+            PARAMETER_SUMMARY AS parameterSummary,
+            ERROR_MESSAGE AS errorMessage,
+            COMPANY_SCOPE_DECISION AS companyScopeDecision,
+            COMPANY_SCOPE_REASON AS companyScopeReason,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM ACCESS_EVENT
+        <include refid="accessEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectAccessEventListCompact" parameterType="egovframework.com.common.logging.AccessEventSearchVO" resultType="egovframework.com.common.logging.AccessEventRecordVO">
+        SELECT
+            EVENT_ID AS eventId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            REQUEST_ID AS requestId,
+            PAGE_ID AS pageId,
+            API_ID AS apiId,
+            REQUEST_URI AS requestUri,
+            HTTP_METHOD AS httpMethod,
+            FEATURE_TYPE AS featureType,
+            ACTOR_ID AS actorId,
+            ACTOR_TYPE AS actorType,
+            ACTOR_ROLE AS actorRole,
+            ACTOR_INSTT_ID AS actorInsttId,
+            COMPANY_CONTEXT_ID AS companyContextId,
+            TARGET_COMPANY_CONTEXT_ID AS targetCompanyContextId,
+            REMOTE_ADDR AS remoteAddr,
+            RESPONSE_STATUS AS responseStatus,
+            DURATION_MS AS durationMs,
+            REQUEST_CONTENT_TYPE AS requestContentType,
+            "QUERY_STRING" AS queryString,
+            '' AS parameterSummary,
+            '' AS errorMessage,
+            COMPANY_SCOPE_DECISION AS companyScopeDecision,
+            '[company scope reason omitted: compact fallback]' AS companyScopeReason,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM ACCESS_EVENT
+        <include refid="accessEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectErrorEventCount" parameterType="egovframework.com.common.error.ErrorEventSearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM ERROR_EVENT
+        <include refid="errorEventWhere" />
+    </select>
+
+    <select id="selectErrorEventList" parameterType="egovframework.com.common.error.ErrorEventSearchVO" resultType="egovframework.com.common.error.ErrorEventRecordVO">
+        SELECT
+            ERROR_ID AS errorId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            REQUEST_ID AS requestId,
+            PAGE_ID AS pageId,
+            API_ID AS apiId,
+            SOURCE_TYPE AS sourceType,
+            ERROR_TYPE AS errorType,
+            ACTOR_ID AS actorId,
+            ACTOR_ROLE AS actorRole,
+            ACTOR_INSTT_ID AS actorInsttId,
+            REQUEST_URI AS requestUri,
+            REMOTE_ADDR AS remoteAddr,
+            MESSAGE AS message,
+            STACK_SUMMARY AS stackSummary,
+            RESULT_STATUS AS resultStatus,
+            USER_AGENT AS userAgent,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM ERROR_EVENT
+        <include refid="errorEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+    <select id="selectErrorEventListCompact" parameterType="egovframework.com.common.error.ErrorEventSearchVO" resultType="egovframework.com.common.error.ErrorEventRecordVO">
+        SELECT
+            ERROR_ID AS errorId,
+            PROJECT_ID AS projectId,
+            TRACE_ID AS traceId,
+            REQUEST_ID AS requestId,
+            PAGE_ID AS pageId,
+            API_ID AS apiId,
+            SOURCE_TYPE AS sourceType,
+            ERROR_TYPE AS errorType,
+            ACTOR_ID AS actorId,
+            ACTOR_ROLE AS actorRole,
+            ACTOR_INSTT_ID AS actorInsttId,
+            REQUEST_URI AS requestUri,
+            REMOTE_ADDR AS remoteAddr,
+            '[message omitted: compact fallback]' AS message,
+            '' AS stackSummary,
+            RESULT_STATUS AS resultStatus,
+            USER_AGENT AS userAgent,
+            TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS createdAt
+        FROM ERROR_EVENT
+        <include refid="errorEventWhere" />
+        ORDER BY CREATED_AT DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+</mapper>

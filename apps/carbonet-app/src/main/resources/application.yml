@@ -1,0 +1,251 @@
+server:
+  port: 18000
+  forward-headers-strategy: native
+  ssl:
+    enabled: ${SERVER_SSL_ENABLED:false}
+    key-store: ${SERVER_SSL_KEY_STORE:}
+    key-store-password: ${SERVER_SSL_KEY_STORE_PASSWORD:}
+    key-store-type: ${SERVER_SSL_KEY_STORE_TYPE:PKCS12}
+    key-alias: ${SERVER_SSL_KEY_ALIAS:}
+  servlet:
+    session:
+      cookie:
+        secure: ${SERVER_SSL_ENABLED:false}
+
+egov:
+  page:
+    size: 10
+    unit: 10
+  login:
+    lock: true
+    lockCount: 5
+
+spring:
+  application:
+    name: carbonet
+  main:
+    allow-bean-definition-overriding: true
+  profiles:
+    active: local
+  datasource:
+    driver-class-name: cubrid.jdbc.driver.CUBRIDDriver
+    url: jdbc:cubrid:${CUBRID_HOST:127.0.0.1}:33000:carbonet:::?charset=UTF-8
+    username: dba
+    password: ""
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      initialization-fail-timeout: -1
+  jpa:
+    database-platform: org.hibernate.community.dialect.CUBRIDDialect
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+    open-in-view: false
+    show-sql: false
+  messages:
+    encoding: UTF-8
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  thymeleaf:
+    encoding: UTF-8
+    mode: HTML
+    cache: false
+  devtools:
+    livereload:
+      enabled: false
+    restart:
+      enabled: true
+      additional-exclude:
+        - static/react-app/**
+        - static/react-app/.vite/**
+        - static/react-app/assets/**
+      additional-paths:
+        - src/main/resources/templates
+        - src/main/resources/static
+
+logging:
+  file:
+    name: /tmp/carbonet-runtime-18000.log
+  level:
+    org:
+      egovframe:
+        rte: info
+      springframework:
+        web: info
+      hibernate:
+        SQL: off
+        type:
+          descriptor:
+            sql: off
+    egovframework:
+      com: info
+
+Globals:
+  Auth: security
+
+token:
+  accessSecret: ${TOKEN_ACCESS_SECRET}
+  refreshSecret: ${TOKEN_REFRESH_SECRET}
+  accessExpiration: 3600000
+  refreshExpiration: 3600000
+
+security:
+  gateway:
+    enabled: ${SECURITY_GATEWAY_ENABLED:false}
+    code-id: ${SECURITY_GATEWAY_CODE_ID:}
+  external-auth:
+    enabled: ${SECURITY_EXTERNAL_AUTH_ENABLED:true}
+    mock-success-enabled: ${SECURITY_EXTERNAL_AUTH_MOCK_SUCCESS_ENABLED:false}
+    method-order: ${SECURITY_EXTERNAL_AUTH_METHOD_ORDER:SIMPLE,JOINT,FINANCIAL}
+    kisa:
+      enabled: ${SECURITY_EXTERNAL_AUTH_KISA_ENABLED:true}
+      adapter-version: ${SECURITY_EXTERNAL_AUTH_KISA_ADAPTER_VERSION:v1}
+      sdk-jar-path: ${SECURITY_EXTERNAL_AUTH_KISA_SDK_JAR_PATH:/mnt/c/Users/jwchoo/Downloads/kr.or.kisa.dapc.core-1.0.0.jar}
+      decrypt-tool-path: ${SECURITY_EXTERNAL_AUTH_KISA_DECRYPT_TOOL_PATH:/mnt/c/Users/jwchoo/Downloads/decrypttool.zip}
+      client-id: ${SECURITY_EXTERNAL_AUTH_KISA_CLIENT_ID:}
+      service-code: ${SECURITY_EXTERNAL_AUTH_KISA_SERVICE_CODE:}
+      ca-code: ${SECURITY_EXTERNAL_AUTH_KISA_CA_CODE:}
+      public-key-jwk: ${SECURITY_EXTERNAL_AUTH_KISA_PUBLIC_KEY_JWK:}
+      request-title: ${SECURITY_EXTERNAL_AUTH_KISA_REQUEST_TITLE:탄소중립 CCUS 통합관리본부}
+      prepare-endpoint: ${SECURITY_EXTERNAL_AUTH_KISA_PREPARE_ENDPOINT:}
+      result-endpoint: ${SECURITY_EXTERNAL_AUTH_KISA_RESULT_ENDPOINT:}
+      callback-scheme: ${SECURITY_EXTERNAL_AUTH_KISA_CALLBACK_SCHEME:}
+  codex:
+    enabled: ${SECURITY_CODEX_ENABLED:false}
+    api-key: ${SECURITY_CODEX_API_KEY:}
+    history-file: ${SECURITY_CODEX_HISTORY_FILE:/tmp/carbonet-codex-history.jsonl}
+    runner:
+      enabled: ${SECURITY_CODEX_RUNNER_ENABLED:false}
+      repo-root: ${SECURITY_CODEX_RUNNER_REPO_ROOT:}
+      workspace-root: ${SECURITY_CODEX_RUNNER_WORKSPACE_ROOT:/tmp/carbonet-sr-codex-runner}
+      history-file: ${SECURITY_CODEX_RUNNER_HISTORY_FILE:/tmp/carbonet-sr-codex-runner-history.jsonl}
+      allowed-path-prefixes: ${SECURITY_CODEX_RUNNER_ALLOWED_PATH_PREFIXES:src/main/java,src/main/resources,frontend/src,docs/ai,ops/scripts}
+      codex-command: ${SECURITY_CODEX_RUNNER_CODEX_COMMAND:}
+      plan-command: ${SECURITY_CODEX_RUNNER_PLAN_COMMAND:}
+      build-command: ${SECURITY_CODEX_RUNNER_BUILD_COMMAND:}
+      backend-verify-command: ${SECURITY_CODEX_RUNNER_BACKEND_VERIFY_COMMAND:mvn -q -DskipTests package}
+      frontend-verify-command: ${SECURITY_CODEX_RUNNER_FRONTEND_VERIFY_COMMAND:bash {repoRoot}/ops/scripts/codex-frontend-verify.sh {repoRoot} {diffFile}}
+      frontend-verify-workdir: ${SECURITY_CODEX_RUNNER_FRONTEND_VERIFY_WORKDIR:frontend}
+      deploy-command: ${SECURITY_CODEX_RUNNER_DEPLOY_COMMAND:bash {repoRoot}/ops/scripts/codex-apply-and-deploy.sh {repoRoot} {diffFile}}
+      health-check-url: ${SECURITY_CODEX_RUNNER_HEALTH_CHECK_URL:${CARBONET_HEALTH_CHECK_URL:http://127.0.0.1:18000/actuator/health}}
+      health-check-timeout-seconds: ${SECURITY_CODEX_RUNNER_HEALTH_CHECK_TIMEOUT_SECONDS:60}
+      health-check-interval-seconds: ${SECURITY_CODEX_RUNNER_HEALTH_CHECK_INTERVAL_SECONDS:5}
+      rollback-command: ${SECURITY_CODEX_RUNNER_ROLLBACK_COMMAND:}
+      command-timeout-seconds: ${SECURITY_CODEX_RUNNER_COMMAND_TIMEOUT_SECONDS:1800}
+      verify-timeout-seconds: ${SECURITY_CODEX_RUNNER_VERIFY_TIMEOUT_SECONDS:1800}
+      require-approval-token: ${SECURITY_CODEX_RUNNER_REQUIRE_APPROVAL_TOKEN:false}
+  request-log:
+    enabled: ${SECURITY_REQUEST_LOG_ENABLED:true}
+    file: ${SECURITY_REQUEST_LOG_FILE:/tmp/carbonet-request-execution-history.jsonl}
+
+observability:
+  trace:
+    enabled: ${OBSERVABILITY_TRACE_ENABLED:true}
+    response-headers-enabled: ${OBSERVABILITY_TRACE_RESPONSE_HEADERS_ENABLED:true}
+  audit:
+    enabled: ${OBSERVABILITY_AUDIT_ENABLED:true}
+    log-writer-enabled: ${OBSERVABILITY_AUDIT_LOG_WRITER_ENABLED:true}
+  ui:
+    manifest-enabled: ${OBSERVABILITY_UI_MANIFEST_ENABLED:true}
+
+carbonet:
+  react-bootstrap-adapter:
+    bindings:
+      - bootstrap-endpoint: /en/admin/login/api/app/bootstrap
+        requested-path: /en/admin/login/loginView
+        default-route: admin-login
+        admin: true
+      - bootstrap-endpoint: /admin/login/api/app/bootstrap
+        requested-path: /admin/login/loginView
+        default-route: admin-login
+        admin: true
+      - bootstrap-endpoint: /en/signin/api/app/bootstrap
+        requested-path: /en/signin/loginView
+        default-route: signin-login
+        admin: false
+      - bootstrap-endpoint: /signin/api/app/bootstrap
+        requested-path: /signin/loginView
+        default-route: signin-login
+        admin: false
+      - bootstrap-endpoint: /en/api/admin/app/bootstrap
+        requested-path: /en/admin/
+        default-route: admin-home
+        admin: true
+      - bootstrap-endpoint: /api/admin/app/bootstrap
+        requested-path: /admin/
+        default-route: admin-home
+        admin: true
+      - bootstrap-endpoint: /en/api/app/bootstrap
+        requested-path: /en/home
+        default-route: home
+        admin: false
+      - bootstrap-endpoint: /api/app/bootstrap
+        requested-path: /home
+        default-route: home
+        admin: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,mappings
+
+org:
+  egovframe:
+    crypto:
+      algorithm: SHA-256
+      algorithmKey: ${CARBONET_CRYPTO_ALGORITHM_KEY:carbonet-local-boot-2026-04}
+      algorithmKeyHash: ${CARBONET_CRYPTO_ALGORITHM_KEY_HASH:fQcqhjtd7uTxAUvw3iDoarzye1P0SfYJPYJM5s9G60w=}
+
+    security:
+      loginUrl: /signin/loginView
+      logoutSuccessUrl: /signin/loginView
+      loginFailureUrl: /signin/loginFailure
+      accessDeniedUrl: /signin/accessDenied
+      csrfAccessDeniedUrl: /signin/csrfAccessDenied
+      defaultTargetUrl: /main
+      dataSource: dataSource
+      permitAllList: ^/css/.*$,^/images/.*$,^/js/.*$,^/uat/.*$,^/home(?:/.*)?$,^/signin/.*$,^/en/signin/.*$,^/join/.*$,^/en/join/.*$,^/admin/login/.*$,^/en/admin/login/.*$,^/react-shell/.*$,^/assets/react/.*$,^/admin/assets/react/.*$,^/en/admin/assets/react/.*$,^/actuator/.*$,^/api/telemetry/.*$,^/api/frontend/session$,^/api/frontend/error/report$,^/api/app/bootstrap(?:\\?.*)?$,^/en/api/app/bootstrap(?:\\?.*)?$,^/api/admin/app/bootstrap(?:\\?.*)?$,^/en/api/admin/app/bootstrap(?:\\?.*)?$,^/admin(?:/.*)?(?:\\?.*)?$,^/en/admin(?:/.*)?(?:\\?.*)?$
+      csrf: true
+      xframeOptions: sameorigin
+      sniff: false
+      xssProtection: true
+      cacheControl: false
+      concurrentMaxSessons: 1
+      errorIfMaximumExceeded: false
+      concurrentExpiredUrl: /signin/loginView
+      hash: plaintext
+      hashBase64: false
+      requestMatcherType: ant
+      jdbcMapClass: org.egovframe.boot.security.userdetails.DefaultMapUserDetailsMapping
+      jdbcUsersByUsernameQuery: >
+        SELECT USER_ID, PASSWORD, 'TRUE' AS ENABLED
+        FROM COMVNUSERMASTER
+        WHERE USER_ID = ?
+      jdbcAuthoritiesByUsernameQuery: >
+        SELECT A.SCRTY_DTRMN_TRGET_ID USER_ID, A.AUTHOR_CODE AUTHORITY
+        FROM MSATNEMPLYRSCRTYESTBS A, COMVNUSERMASTER B WHERE
+        A.SCRTY_DTRMN_TRGET_ID = B.ESNTL_ID AND B.USER_ID = ?
+      sqlRolesAndUrl: >
+        SELECT A.ROLE_PTTRN URL, B.AUTHOR_CODE AUTHORITY
+        FROM MSATNROLEINFO A, MSATNAUTHORROLERELATE B
+        WHERE A.ROLE_CODE = B.ROLE_CODE  AND A.ROLE_TY = 'url'
+        ORDER BY A.ROLE_SORT
+      sqlHierarchicalRoles: >
+        SELECT CHLDRN_ROLE AS CHILD, PARNTS_ROLE PARENT FROM MSATNROLES_HIERARCHY
+      roleHierarchyString: |
+        IS_AUTHENTICATED_ANONYMOUSLY > ROLE_ANONYMOUS
+        IS_AUTHENTICATED_REMEMBERED > IS_AUTHENTICATED_ANONYMOUSLY
+        IS_AUTHENTICATED_FULLY > IS_AUTHENTICATED_REMEMBERED
+        ROLE_USER > IS_AUTHENTICATED_FULLY
+        ROLE_ADMIN > ROLE_USER

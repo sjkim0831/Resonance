@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminEmissionManagementMapper">
+
+    <select id="selectEmissionCategories" parameterType="string" resultType="egovframework.com.feature.admin.model.vo.EmissionCategoryVO">
+        SELECT
+            category_id AS categoryId,
+            major_code AS majorCode,
+            major_name AS majorName,
+            sub_code AS subCode,
+            sub_name AS subName,
+            use_yn AS useYn
+        FROM emission_category
+        WHERE use_yn = 'Y'
+          <if test="_parameter != null and _parameter != ''">
+              AND (
+                  LOWER(major_code) LIKE '%' || LOWER(#{_parameter}) || '%'
+                  OR LOWER(major_name) LIKE '%' || LOWER(#{_parameter}) || '%'
+                  OR LOWER(sub_code) LIKE '%' || LOWER(#{_parameter}) || '%'
+                  OR LOWER(sub_name) LIKE '%' || LOWER(#{_parameter}) || '%'
+              )
+          </if>
+        ORDER BY major_name, sub_name
+    </select>
+
+    <select id="selectEmissionCategory" parameterType="long" resultType="egovframework.com.feature.admin.model.vo.EmissionCategoryVO">
+        SELECT
+            category_id AS categoryId,
+            major_code AS majorCode,
+            major_name AS majorName,
+            sub_code AS subCode,
+            sub_name AS subName,
+            use_yn AS useYn
+        FROM emission_category
+        WHERE category_id = #{_parameter}
+    </select>
+
+    <select id="selectEmissionCategoryBySubCode" parameterType="string" resultType="egovframework.com.feature.admin.model.vo.EmissionCategoryVO">
+        SELECT
+            category_id AS categoryId,
+            major_code AS majorCode,
+            major_name AS majorName,
+            sub_code AS subCode,
+            sub_name AS subName,
+            use_yn AS useYn
+        FROM emission_category
+        WHERE sub_code = #{_parameter}
+        ORDER BY category_id
+        LIMIT 1
+    </select>
+
+    <select id="selectEmissionTierList" parameterType="long" resultType="int">
+        SELECT DISTINCT tier
+        FROM emission_variable_def
+        WHERE category_id = #{_parameter}
+          AND use_yn = 'Y'
+        ORDER BY tier
+    </select>
+
+    <select id="selectEmissionVariableDefinitions" parameterType="map" resultType="egovframework.com.feature.admin.model.vo.EmissionVariableDefinitionVO">
+        SELECT
+            variable_id AS variableId,
+            category_id AS categoryId,
+            tier,
+            var_code AS varCode,
+            var_name AS varName,
+            var_desc AS varDesc,
+            unit,
+            input_type AS inputType,
+            source_type AS sourceType,
+            is_repeatable AS repeatable,
+            is_required AS required,
+            sort_order AS sortOrder,
+            use_yn AS useYn
+            , display_name AS displayName
+            , display_code AS displayCode
+            , ui_hint AS uiHint
+            , derived_yn AS derivedYn
+            , supplemental_yn AS supplementalYn
+            , repeat_group_key AS repeatGroupKey
+            , section_id AS sectionId
+            , section_title AS sectionTitle
+            , section_description AS sectionDescription
+            , section_formula AS sectionFormula
+        FROM emission_variable_def
+        WHERE category_id = #{categoryId}
+          AND tier = #{tier}
+          AND use_yn = 'Y'
+        ORDER BY sort_order, variable_id
+    </select>
+
+    <select id="selectEmissionVariableDefinition" parameterType="map" resultType="hashmap">
+        SELECT
+            variable_id AS variableId,
+            category_id AS categoryId,
+            tier,
+            var_code AS varCode
+        FROM emission_variable_def
+        WHERE category_id = #{categoryId}
+          AND tier = #{tier}
+          AND var_code = #{varCode}
+        LIMIT 1
+    </select>
+
+    <select id="selectEmissionVariableDefinitionCount" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM emission_variable_def
+        WHERE category_id = #{categoryId}
+          AND tier = #{tier}
+    </select>
+
+    <select id="selectEmissionVariableDefinitionLastUpdatedAt" parameterType="map" resultType="string">
+        SELECT TO_CHAR(MAX(updated_at), 'YYYY-MM-DD HH24:MI:SS')
+        FROM emission_variable_def
+        WHERE category_id = #{categoryId}
+          AND tier = #{tier}
+    </select>
+
+    <select id="selectEmissionFactors" parameterType="map" resultType="egovframework.com.feature.admin.model.vo.EmissionFactorVO">
+        SELECT
+            factor_id AS factorId,
+            category_id AS categoryId,
+            tier,
+            factor_code AS factorCode,
+            factor_name AS factorName,
+            factor_value AS factorValue,
+            unit,
+            default_yn AS defaultYn,
+            remark
+        FROM emission_factor
+        WHERE category_id = #{categoryId}
+          AND tier = #{tier}
+        ORDER BY factor_id
+    </select>
+
+    <insert id="insertEmissionInputSession" parameterType="map">
+        INSERT INTO emission_input_session (
+            category_id,
+            tier,
+            created_by,
+            calc_status,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{categoryId},
+            #{tier},
+            #{createdBy},
+            #{calcStatus},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+        <selectKey keyProperty="sessionId" resultType="long" order="AFTER">
+            SELECT emission_input_session_ai_session_id.current_value
+            FROM db_root
+        </selectKey>
+    </insert>
+
+    <insert id="insertEmissionInputValue" parameterType="map">
+        INSERT INTO emission_input_value (
+            session_id,
+            var_code,
+            line_no,
+            value_num,
+            value_text,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{sessionId},
+            #{varCode},
+            #{lineNo},
+            #{valueNum},
+            #{valueText},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+        <selectKey keyProperty="inputValueId" resultType="long" order="AFTER">
+            SELECT emission_input_value_ai_input_value_id.current_value
+            FROM db_root
+        </selectKey>
+    </insert>
+
+    <select id="selectEmissionInputSession" parameterType="long" resultType="hashmap">
+        SELECT
+            s.session_id AS sessionId,
+            s.category_id AS categoryId,
+            s.tier AS tier,
+            s.created_by AS createdBy,
+            s.calc_status AS calcStatus,
+            s.created_at AS createdAt,
+            s.updated_at AS updatedAt,
+            c.major_code AS majorCode,
+            c.major_name AS majorName,
+            c.sub_code AS subCode,
+            c.sub_name AS subName
+        FROM emission_input_session s
+        INNER JOIN emission_category c ON c.category_id = s.category_id
+        WHERE s.session_id = #{_parameter}
+    </select>
+
+    <select id="selectEmissionInputValues" parameterType="long" resultType="hashmap">
+        SELECT
+            input_value_id AS inputValueId,
+            session_id AS sessionId,
+            var_code AS varCode,
+            line_no AS lineNo,
+            value_num AS valueNum,
+            value_text AS valueText,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+        FROM emission_input_value
+        WHERE session_id = #{_parameter}
+        ORDER BY line_no, input_value_id
+    </select>
+
+    <insert id="insertEmissionCalcResult" parameterType="map">
+        INSERT INTO emission_calc_result (
+            session_id,
+            co2_total,
+            formula_summary,
+            factor_snapshot_json,
+            default_applied_yn,
+            created_at
+        ) VALUES (
+            #{sessionId},
+            #{co2Total},
+            #{formulaSummary},
+            #{factorSnapshotJson},
+            #{defaultAppliedYn},
+            CURRENT_DATETIME
+        )
+        <selectKey keyProperty="resultId" resultType="long" order="AFTER">
+            SELECT emission_calc_result_ai_result_id.current_value
+            FROM db_root
+        </selectKey>
+    </insert>
+
+    <insert id="insertEmissionCategory" parameterType="map">
+        INSERT INTO emission_category (
+            major_code,
+            major_name,
+            sub_code,
+            sub_name,
+            use_yn,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{majorCode},
+            #{majorName},
+            #{subCode},
+            #{subName},
+            #{useYn},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+        <selectKey keyProperty="categoryId" resultType="long" order="AFTER">
+            SELECT emission_category_ai_category_id.current_value
+            FROM db_root
+        </selectKey>
+    </insert>
+
+    <insert id="insertEmissionVariableDefinition" parameterType="map">
+        <selectKey keyProperty="variableId" resultType="long" order="BEFORE">
+            SELECT COALESCE(MAX(variable_id), 0) + 1
+            FROM emission_variable_def
+        </selectKey>
+        INSERT INTO emission_variable_def (
+            variable_id,
+            category_id,
+            tier,
+            var_code,
+            var_name,
+            var_desc,
+            unit,
+            input_type,
+            source_type,
+            is_repeatable,
+            is_required,
+            sort_order,
+            display_name,
+            display_code,
+            ui_hint,
+            derived_yn,
+            supplemental_yn,
+            repeat_group_key,
+            section_id,
+            section_title,
+            section_description,
+            section_formula,
+            use_yn,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{variableId},
+            #{categoryId},
+            #{tier},
+            #{varCode},
+            #{varName},
+            #{varDesc},
+            #{unit},
+            #{inputType},
+            #{sourceType},
+            #{repeatable},
+            #{required},
+            #{sortOrder},
+            #{displayName},
+            #{displayCode},
+            #{uiHint},
+            #{derivedYn},
+            #{supplementalYn},
+            #{repeatGroupKey},
+            #{sectionId},
+            #{sectionTitle},
+            #{sectionDescription},
+            #{sectionFormula},
+            #{useYn},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateEmissionVariableDefinition" parameterType="map">
+        UPDATE emission_variable_def
+        SET var_name = #{varName},
+            var_desc = #{varDesc},
+            unit = #{unit},
+            input_type = #{inputType},
+            source_type = #{sourceType},
+            is_repeatable = #{repeatable},
+            is_required = #{required},
+            sort_order = #{sortOrder},
+            display_name = #{displayName},
+            display_code = #{displayCode},
+            ui_hint = #{uiHint},
+            derived_yn = #{derivedYn},
+            supplemental_yn = #{supplementalYn},
+            repeat_group_key = #{repeatGroupKey},
+            section_id = #{sectionId},
+            section_title = #{sectionTitle},
+            section_description = #{sectionDescription},
+            section_formula = #{sectionFormula},
+            use_yn = #{useYn},
+            updated_at = CURRENT_DATETIME
+        WHERE category_id = #{categoryId}
+          AND tier = #{tier}
+          AND var_code = #{varCode}
+    </update>
+
+    <insert id="insertEmissionMaterializationHistory" parameterType="map">
+        INSERT INTO emission_materialization_history (
+            scope,
+            category_code,
+            tier,
+            draft_id,
+            published_version_id,
+            materialized_by,
+            materialized_at,
+            created_category_yn,
+            inserted_variable_count,
+            updated_variable_count
+        ) VALUES (
+            #{scope},
+            #{categoryCode},
+            #{tier},
+            #{draftId},
+            #{publishedVersionId},
+            #{materializedBy},
+            CURRENT_DATETIME,
+            #{createdCategoryYn},
+            #{insertedVariableCount},
+            #{updatedVariableCount}
+        )
+    </insert>
+
+    <select id="selectLatestEmissionMaterializationHistory" parameterType="map" resultType="hashmap">
+        SELECT
+            history_id AS historyId,
+            scope,
+            category_code AS categoryCode,
+            tier,
+            draft_id AS draftId,
+            published_version_id AS publishedVersionId,
+            materialized_by AS materializedBy,
+            TO_CHAR(materialized_at, 'YYYY-MM-DD HH24:MI:SS') AS materializedAt,
+            created_category_yn AS createdCategoryYn,
+            inserted_variable_count AS insertedVariableCount,
+            updated_variable_count AS updatedVariableCount
+        FROM emission_materialization_history
+        WHERE category_code = #{categoryCode}
+          AND tier = #{tier}
+        ORDER BY history_id DESC
+        LIMIT 1
+    </select>
+
+    <insert id="insertEmissionRuntimeTransitionHistory" parameterType="map">
+        INSERT INTO emission_runtime_transition_history (
+            scope,
+            category_code,
+            tier,
+            transitioned_by,
+            transitioned_at,
+            session_id,
+            result_id,
+            runtime_mode,
+            promotion_status,
+            promotion_message,
+            definition_formula_adopted_yn,
+            legacy_total,
+            definition_total,
+            delta
+        ) VALUES (
+            #{scope},
+            #{categoryCode},
+            #{tier},
+            #{transitionedBy},
+            CURRENT_DATETIME,
+            #{sessionId},
+            #{resultId},
+            #{runtimeMode},
+            #{promotionStatus},
+            #{promotionMessage},
+            #{definitionFormulaAdoptedYn},
+            #{legacyTotal},
+            #{definitionTotal},
+            #{delta}
+        )
+    </insert>
+
+    <select id="selectLatestEmissionRuntimeTransitionHistory" parameterType="map" resultType="hashmap">
+        SELECT
+            history_id AS historyId,
+            scope,
+            category_code AS categoryCode,
+            tier,
+            transitioned_by AS transitionedBy,
+            TO_CHAR(transitioned_at, 'YYYY-MM-DD HH24:MI:SS') AS transitionedAt,
+            session_id AS sessionId,
+            result_id AS resultId,
+            runtime_mode AS runtimeMode,
+            promotion_status AS promotionStatus,
+            promotion_message AS promotionMessage,
+            definition_formula_adopted_yn AS definitionFormulaAdoptedYn,
+            legacy_total AS legacyTotal,
+            definition_total AS definitionTotal,
+            delta
+        FROM emission_runtime_transition_history
+        WHERE category_code = #{categoryCode}
+          AND tier = #{tier}
+        ORDER BY history_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectLatestEmissionCalcResult" parameterType="long" resultType="hashmap">
+        SELECT
+            result_id AS resultId,
+            session_id AS sessionId,
+            co2_total AS co2Total,
+            formula_summary AS formulaSummary,
+            factor_snapshot_json AS factorSnapshotJson,
+            default_applied_yn AS defaultAppliedYn,
+            created_at AS createdAt
+        FROM emission_calc_result
+        WHERE session_id = #{_parameter}
+        ORDER BY created_at DESC, result_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectLatestEmissionCalcResultsByScope" resultType="hashmap">
+        SELECT
+            c.category_id AS categoryId,
+            c.sub_code AS categoryCode,
+            c.sub_name AS categoryName,
+            s.tier AS tier,
+            r.result_id AS resultId,
+            r.session_id AS sessionId,
+            r.co2_total AS co2Total,
+            r.formula_summary AS formulaSummary,
+            r.factor_snapshot_json AS factorSnapshotJson,
+            r.default_applied_yn AS defaultAppliedYn,
+            r.created_at AS createdAt
+        FROM emission_calc_result r
+        INNER JOIN emission_input_session s ON s.session_id = r.session_id
+        INNER JOIN emission_category c ON c.category_id = s.category_id
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM emission_calc_result newer
+            INNER JOIN emission_input_session newer_session ON newer_session.session_id = newer.session_id
+            WHERE newer_session.category_id = s.category_id
+              AND newer_session.tier = s.tier
+              AND (
+                  newer.created_at > r.created_at
+                  OR (newer.created_at = r.created_at AND newer.result_id > r.result_id)
+              )
+        )
+        ORDER BY c.sub_name, s.tier
+    </select>
+
+</mapper>

@@ -1,0 +1,24 @@
+# Base image using Eclipse Temurin (Java 17)
+FROM eclipse-temurin:17-jre-focal
+
+# Arguments for flexible builds
+ARG PROJECT_ID
+ENV PROJECT_ID=${PROJECT_ID}
+ENV SERVER_PORT=8080
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
+
+# Create standard directory
+RUN mkdir -p /app/config /app/lib /app/db /var/logs/project-runtime/${PROJECT_ID}
+WORKDIR /app
+
+# Copy the assembled release files into the container
+# This assumes the build context is var/releases/[PROJECT_ID]
+COPY project-runtime.jar /app/
+COPY lib/ /app/lib/
+COPY config/ /app/config/
+
+# Expose the default application port (can be overridden by K8s/Docker settings)
+EXPOSE ${SERVER_PORT}
+
+# Run the application with dynamic classpath
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Dloader.path=lib/ -jar project-runtime.jar --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=${SERVER_PORT} --spring.config.additional-location=optional:file:./config/"]

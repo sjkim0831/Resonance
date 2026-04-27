@@ -1,0 +1,46 @@
+{
+  "rules": [
+    {
+      "sourceComponent": "commonCore",
+      "sourceVersion": "1.1.0",
+      "dependencies": {
+        "stableGate": ">=v1",
+        "adapterContract": "v1"
+      },
+      "compatibilityClass": "IMPLEMENTATION_SAFE",
+      "impact": "Low",
+      "notes": "Internal observability and performance optimization. No contract changes."
+    },
+    {
+      "sourceComponent": "commonCore",
+      "sourceVersion": "1.2.0-SNAPSHOT",
+      "dependencies": {
+        "stableGate": ">=v1",
+        "adapterContract": "v2"
+      },
+      "compatibilityClass": "CONTRACT_AWARE",
+      "impact": "Medium",
+      "notes": "Introduces enhanced async execution gate. v1 projects require adapter update to v2 for full capability."
+    },
+    {
+      "sourceComponent": "commonCore",
+      "sourceVersion": "1.0.0",
+      "dependencies": {
+        "stableGate": "v1",
+        "adapterContract": "v1"
+      },
+      "compatibilityClass": "IMPLEMENTATION_SAFE",
+      "impact": "None",
+      "notes": "Initial baseline."
+    }
+  ],
+  "contracts": {
+    "adapter": {
+      "v1": { "status": "ACTIVE", "deprecatedAt": null },
+      "v2": { "status": "BETA", "deprecatedAt": null }
+    },
+    "gate": {
+      "v1": { "status": "ACTIVE", "deprecatedAt": null }
+    }
+  }
+}

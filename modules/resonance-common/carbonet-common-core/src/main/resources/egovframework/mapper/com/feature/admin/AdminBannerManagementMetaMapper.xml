@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminBannerManagementMetaMapper">
+
+    <select id="selectBannerMetaRows" resultType="hashmap">
+        SELECT
+            BANNER_ID AS "bannerId",
+            BANNER_NM_EN AS "bannerNameEn",
+            PLACEMENT_KO AS "placementKo",
+            PLACEMENT_EN AS "placementEn",
+            STATUS_CODE AS "statusCode",
+            CASE WHEN START_AT IS NULL THEN NULL ELSE TO_CHAR(START_AT, 'YYYY-MM-DD HH24:MI') END AS "startAt",
+            CASE WHEN END_AT IS NULL THEN NULL ELSE TO_CHAR(END_AT, 'YYYY-MM-DD HH24:MI') END AS "endAt",
+            CLICK_COUNT AS "clickCount",
+            NOTE_EN AS "noteEn",
+            LAST_UPDUSR_ID AS "updatedBy",
+            CASE WHEN LAST_UPDT_PNTTM IS NULL THEN NULL ELSE TO_CHAR(LAST_UPDT_PNTTM, 'YYYY-MM-DD HH24:MI') END AS "updatedAt"
+        FROM COMTNBANNERMETA
+    </select>
+
+    <select id="selectBannerMetaById" parameterType="string" resultType="hashmap">
+        SELECT
+            BANNER_ID AS "bannerId",
+            BANNER_NM_EN AS "bannerNameEn",
+            PLACEMENT_KO AS "placementKo",
+            PLACEMENT_EN AS "placementEn",
+            STATUS_CODE AS "statusCode",
+            CASE WHEN START_AT IS NULL THEN NULL ELSE TO_CHAR(START_AT, 'YYYY-MM-DD HH24:MI') END AS "startAt",
+            CASE WHEN END_AT IS NULL THEN NULL ELSE TO_CHAR(END_AT, 'YYYY-MM-DD HH24:MI') END AS "endAt",
+            CLICK_COUNT AS "clickCount",
+            NOTE_EN AS "noteEn",
+            LAST_UPDUSR_ID AS "updatedBy",
+            CASE WHEN LAST_UPDT_PNTTM IS NULL THEN NULL ELSE TO_CHAR(LAST_UPDT_PNTTM, 'YYYY-MM-DD HH24:MI') END AS "updatedAt"
+        FROM COMTNBANNERMETA
+        WHERE BANNER_ID = #{_parameter}
+    </select>
+
+    <select id="countBannerMetaById" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNBANNERMETA
+        WHERE BANNER_ID = #{_parameter}
+    </select>
+
+    <insert id="insertBannerMetaRow" parameterType="hashmap">
+        INSERT INTO COMTNBANNERMETA (
+            BANNER_ID,
+            BANNER_NM_EN,
+            PLACEMENT_KO,
+            PLACEMENT_EN,
+            STATUS_CODE,
+            START_AT,
+            END_AT,
+            CLICK_COUNT,
+            NOTE_EN,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        ) VALUES (
+            #{bannerId},
+            #{bannerNameEn},
+            #{placementKo},
+            #{placementEn},
+            #{statusCode},
+            CASE WHEN #{startAt} IS NULL OR #{startAt} = '' THEN NULL ELSE TO_DATETIME(#{startAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{endAt} IS NULL OR #{endAt} = '' THEN NULL ELSE TO_DATETIME(#{endAt}, 'YYYY-MM-DD HH24:MI') END,
+            #{clickCount},
+            #{noteEn},
+            #{updatedBy},
+            CURRENT_DATETIME,
+            #{updatedBy},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateBannerMetaRow" parameterType="hashmap">
+        UPDATE COMTNBANNERMETA
+        SET BANNER_NM_EN = #{bannerNameEn},
+            PLACEMENT_KO = #{placementKo},
+            PLACEMENT_EN = #{placementEn},
+            STATUS_CODE = #{statusCode},
+            START_AT = CASE WHEN #{startAt} IS NULL OR #{startAt} = '' THEN NULL ELSE TO_DATETIME(#{startAt}, 'YYYY-MM-DD HH24:MI') END,
+            END_AT = CASE WHEN #{endAt} IS NULL OR #{endAt} = '' THEN NULL ELSE TO_DATETIME(#{endAt}, 'YYYY-MM-DD HH24:MI') END,
+            CLICK_COUNT = #{clickCount},
+            NOTE_EN = #{noteEn},
+            LAST_UPDUSR_ID = #{updatedBy},
+            LAST_UPDT_PNTTM = CURRENT_DATETIME
+        WHERE BANNER_ID = #{bannerId}
+    </update>
+
+</mapper>

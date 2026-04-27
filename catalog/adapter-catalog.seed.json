@@ -1,0 +1,27 @@
+{
+  "catalogVersion": "0.1.0",
+  "adapterFamilies": [
+    {
+      "adapterId": "resonance-adapter-contracts",
+      "adapterType": "common-boundary",
+      "status": "planned",
+      "responsibilities": [
+        "canonical contract normalization",
+        "common version-difference absorption",
+        "empty/common adapter baseline"
+      ]
+    },
+    {
+      "adapterId": "projects/carbonet-adapter",
+      "adapterType": "project-binding",
+      "status": "active",
+      "responsibilities": [
+        "route binding",
+        "menu binding",
+        "theme binding",
+        "page composition",
+        "project-specific exception mapping"
+      ]
+    }
+  ]
+}

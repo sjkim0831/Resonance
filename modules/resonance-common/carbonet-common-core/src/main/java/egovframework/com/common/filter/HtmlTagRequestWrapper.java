@@ -1,0 +1,55 @@
+package egovframework.com.common.filter;
+
+import org.apache.commons.text.StringEscapeUtils;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import java.util.HashMap;
+import java.util.Map;
+
+public class HtmlTagRequestWrapper extends HttpServletRequestWrapper {
+
+    public HtmlTagRequestWrapper(HttpServletRequest request) {
+        super(request);
+    }
+
+    @Override
+    public String getParameter(String name) {
+        String value = super.getParameter(name);
+        return sanitize(value);
+    }
+
+    @Override
+    public String[] getParameterValues(String name) {
+        String[] values = super.getParameterValues(name);
+        if (values == null) {
+            return new String[0]; // 빈 배열 반환
+        }
+        for (int i = 0; i < values.length; i++) {
+            values[i] = sanitize(values[i]);
+        }
+        return values;
+    }
+
+    @Override
+    public Map<String, String[]> getParameterMap() {
+        Map<String, String[]> parameterMap = super.getParameterMap();
+        Map<String, String[]> sanitizedMap = new HashMap<>();
+        parameterMap.forEach((key, value) -> {
+            String[] sanitizedValues = new String[value.length];
+            for (int i = 0; i < value.length; i++) {
+                sanitizedValues[i] = sanitize(value[i]);
+            }
+            sanitizedMap.put(key, sanitizedValues);
+        });
+        return sanitizedMap;
+    }
+
+    private String sanitize(String value) {
+        if (value == null) {
+            return null;
+        }
+        return StringEscapeUtils.escapeHtml4(value);
+    }
+
+}

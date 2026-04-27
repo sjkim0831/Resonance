@@ -1,0 +1,23 @@
+{
+  "menuCode" : "A0010201",
+  "pageId" : "company-list",
+  "menuTitle" : "회원사 목록",
+  "menuUrl" : "/admin/member/company_list",
+  "publishedVersionId" : "",
+  "publishedSavedAt" : "",
+  "releaseUnitId" : "draft-20260328005913",
+  "artifactTargetSystem" : "carbonet-general",
+  "runtimePackageId" : "screen-builder-runtime-a0010201-company-list",
+  "deployTraceId" : "deploy-draft-20260328005913",
+  "publishFreshnessState" : "UNPUBLISHED",
+  "publishFreshnessLabel" : "아직 발행 없음",
+  "publishFreshnessDetail" : "이 메뉴는 아직 draft 전용 빌더 상태입니다.",
+  "parityState" : "UNAVAILABLE",
+  "parityLabel" : "정합성 미확인",
+  "parityDetail" : "아직 발행이 없습니다.",
+  "parityTraceId" : "",
+  "versionCount" : 0,
+  "unregisteredCount" : 10,
+  "missingCount" : 0,
+  "deprecatedCount" : 0
+}

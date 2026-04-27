@@ -1,0 +1,65 @@
+{
+  "categoryCode": "LIME",
+  "categoryName": "Lime definition-backed verification",
+  "tierLabel": "Tier 4",
+  "formula": "SUM(Ml,i)",
+  "formulaTree": [
+    {
+      "joiner": "",
+      "kind": "sum",
+      "iterator": "i",
+      "items": [
+        {
+          "joiner": "",
+          "kind": "token",
+          "token": "Ml,i"
+        }
+      ]
+    }
+  ],
+  "inputMode": "NUMBER",
+  "policies": [
+    "input_required_yn"
+  ],
+  "directRequiredCodes": [
+    "MLI"
+  ],
+  "fallbackCodes": [],
+  "autoCalculatedCodes": [],
+  "supplementalCodes": [],
+  "sections": [
+    {
+      "sectionId": "lime-tier4-production",
+      "sectionOrder": 1,
+      "sectionTitle": "활동자료 입력",
+      "sectionDescription": "정의 기반 검증용 Tier 4 활동자료를 입력합니다.",
+      "sectionFormula": "SUM(Ml,i)"
+    }
+  ],
+  "variableDefinitions": [
+    {
+      "varCode": "MLI",
+      "varName": "Lime production quantity",
+      "varDesc": "Definition-backed verification quantity input",
+      "unit": "t",
+      "inputType": "NUMBER",
+      "sourceType": "USER",
+      "isRepeatable": "Y",
+      "isRequired": "Y",
+      "sortOrder": 10,
+      "displayName": "석회 생산량",
+      "displayCode": "Ml,i",
+      "uiHint": "Definition-backed Tier 4 검증 입력값입니다.",
+      "derivedYn": "N",
+      "supplementalYn": "N",
+      "repeatGroupKey": "lime-tier4-line",
+      "sectionId": "lime-tier4-production",
+      "sectionOrder": 1,
+      "sectionTitle": "활동자료 입력",
+      "sectionDescription": "정의 기반 검증용 Tier 4 활동자료를 입력합니다.",
+      "sectionFormula": "SUM(Ml,i)"
+    }
+  ],
+  "runtimeMode": "PRIMARY",
+  "note": "Codex definition-backed runtime verification fixture"
+}

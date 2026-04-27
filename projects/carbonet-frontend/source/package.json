@@ -1,0 +1,41 @@
+{
+  "name": "carbonet-react-app",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/fix-playwright-responses-output.mjs",
+    "generate:system-component-catalog": "node scripts/generate-system-component-catalog.mjs",
+    "generate:framework-contract-metadata": "node scripts/generate-framework-contract-metadata.mjs",
+    "generate:verification-center-inventory": "node scripts/generate-verification-center-inventory.mjs",
+    "predev": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:system-component-catalog && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:framework-contract-metadata && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:verification-center-inventory",
+    "dev": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" vite",
+    "prebuild": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:system-component-catalog && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:framework-contract-metadata && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:verification-center-inventory",
+    "build": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" tsc -b && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" vite build",
+    "preview": "vite preview",
+    "audit:component-standardization": "node scripts/component-standardization-audit.mjs",
+    "audit:framework-contract-metadata": "node scripts/check-framework-contract-metadata.mjs",
+    "audit:generated-output": "npm run audit:framework-contract-metadata && node scripts/check-generated-output-governance.mjs",
+    "audit:ui-governance": "node scripts/check-ui-governance.mjs",
+    "lane:05:loop": "bash scripts/run-resonance-lane-05-loop.sh",
+    "lane:06:loop": "bash scripts/run-resonance-lane-06-loop.sh",
+    "lane:09:loop": "bash scripts/run-resonance-lane-09-loop.sh",
+    "test:e2e": "playwright test",
+    "test:e2e:member-list": "playwright test e2e/member-list.spec.ts"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2",
+    "vite": "^5.4.10"
+  }
+}

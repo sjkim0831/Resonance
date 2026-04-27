@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminEmissionSurveyDraftMapper">
+
+    <select id="countCaseTable" resultType="int">
+        SELECT COUNT(*)
+        FROM ADMIN_EMISSION_SURVEY_CASE
+    </select>
+
+    <select id="countUploadLogTable" resultType="int">
+        SELECT COUNT(*)
+        FROM ADMIN_EMISSION_SURVEY_UPLOAD_LOG
+    </select>
+
+    <select id="selectCaseHeaders" resultType="hashmap">
+        SELECT
+            CASE_ID AS "caseId",
+            OWNER_ACTOR_ID AS "ownerActorId",
+            DATASET_ID AS "datasetId",
+            DATASET_NAME AS "datasetName",
+            SECTION_CODE AS "sectionCode",
+            CASE_CODE AS "caseCode",
+            MAJOR_CODE AS "majorCode",
+            LCI_MAJOR_CODE AS "lciMajorCode",
+            LCI_MAJOR_LABEL AS "lciMajorLabel",
+            LCI_MIDDLE_CODE AS "lciMiddleCode",
+            LCI_MIDDLE_LABEL AS "lciMiddleLabel",
+            LCI_SMALL_CODE AS "lciSmallCode",
+            LCI_SMALL_LABEL AS "lciSmallLabel",
+            SECTION_LABEL AS "sectionLabel",
+            SOURCE_FILE_NM AS "sourceFileName",
+            SOURCE_PATH AS "sourcePath",
+            TARGET_PATH AS "targetPath",
+            CASE_STATUS AS "caseStatus",
+            ROW_COUNT AS "rowCount",
+            ROW_SCHEMA_JSON AS "rowSchemaJson",
+            GUIDANCE_JSON AS "guidanceJson",
+            LAST_SAVED_BY AS "lastSavedBy",
+            TO_CHAR(LAST_SAVED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "savedAt"
+        FROM ADMIN_EMISSION_SURVEY_CASE
+        ORDER BY MAJOR_CODE, SECTION_CODE, CASE_CODE
+    </select>
+
+    <select id="selectCaseHeadersByClassification" parameterType="hashmap" resultType="hashmap">
+        SELECT
+            CASE_ID AS "caseId",
+            OWNER_ACTOR_ID AS "ownerActorId",
+            DATASET_ID AS "datasetId",
+            DATASET_NAME AS "datasetName",
+            SECTION_CODE AS "sectionCode",
+            CASE_CODE AS "caseCode",
+            MAJOR_CODE AS "majorCode",
+            LCI_MAJOR_CODE AS "lciMajorCode",
+            LCI_MAJOR_LABEL AS "lciMajorLabel",
+            LCI_MIDDLE_CODE AS "lciMiddleCode",
+            LCI_MIDDLE_LABEL AS "lciMiddleLabel",
+            LCI_SMALL_CODE AS "lciSmallCode",
+            LCI_SMALL_LABEL AS "lciSmallLabel",
+            SECTION_LABEL AS "sectionLabel",
+            SOURCE_FILE_NM AS "sourceFileName",
+            SOURCE_PATH AS "sourcePath",
+            TARGET_PATH AS "targetPath",
+            CASE_STATUS AS "caseStatus",
+            ROW_COUNT AS "rowCount",
+            ROW_SCHEMA_JSON AS "rowSchemaJson",
+            GUIDANCE_JSON AS "guidanceJson",
+            LAST_SAVED_BY AS "lastSavedBy",
+            TO_CHAR(LAST_SAVED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "savedAt"
+        FROM ADMIN_EMISSION_SURVEY_CASE
+        WHERE CASE_CODE = #{caseCode}
+          AND OWNER_ACTOR_ID = #{ownerActorId}
+          AND LCI_MAJOR_CODE = #{lciMajorCode}
+          AND LCI_MIDDLE_CODE = #{lciMiddleCode}
+          AND (
+                (#{lciSmallCode} IS NULL OR #{lciSmallCode} = '')
+                AND (LCI_SMALL_CODE IS NULL OR LCI_SMALL_CODE = '')
+              OR LCI_SMALL_CODE = #{lciSmallCode}
+          )
+        ORDER BY MAJOR_CODE, SECTION_CODE, LAST_SAVED_AT DESC
+    </select>
+
+    <select id="selectDatasetSummaries" parameterType="hashmap" resultType="hashmap">
+        SELECT
+            DATASET_ID AS "datasetId",
+            MAX(DATASET_NAME) AS "datasetName",
+            MAX(OWNER_ACTOR_ID) AS "ownerActorId",
+            MAX(LCI_MAJOR_CODE) AS "lciMajorCode",
+            MAX(LCI_MAJOR_LABEL) AS "lciMajorLabel",
+            MAX(LCI_MIDDLE_CODE) AS "lciMiddleCode",
+            MAX(LCI_MIDDLE_LABEL) AS "lciMiddleLabel",
+            MAX(LCI_SMALL_CODE) AS "lciSmallCode",
+            MAX(LCI_SMALL_LABEL) AS "lciSmallLabel",
+            MAX(SOURCE_FILE_NM) AS "sourceFileName",
+            MAX(CASE_STATUS) AS "caseStatus",
+            COUNT(*) AS "sectionCount",
+            COALESCE(SUM(ROW_COUNT), 0) AS "rowCount",
+            TO_CHAR(MAX(LAST_SAVED_AT), 'YYYY-MM-DD HH24:MI:SS') AS "savedAt"
+        FROM ADMIN_EMISSION_SURVEY_CASE
+        WHERE OWNER_ACTOR_ID = #{ownerActorId}
+          AND DATASET_ID IS NOT NULL
+          AND DATASET_ID &lt;&gt; ''
+        <if test="lciMajorCode != null and lciMajorCode != ''">
+          AND LCI_MAJOR_CODE = #{lciMajorCode}
+        </if>
+        <if test="lciMiddleCode != null and lciMiddleCode != ''">
+          AND LCI_MIDDLE_CODE = #{lciMiddleCode}
+        </if>
+        <if test="lciSmallCode != null and lciSmallCode != ''">
+          AND LCI_SMALL_CODE = #{lciSmallCode}
+        </if>
+        GROUP BY DATASET_ID
+        ORDER BY MAX(LAST_SAVED_AT) DESC
+    </select>
+
+    <select id="selectDatasetSections" parameterType="hashmap" resultType="hashmap">
+        SELECT
+            CASE_ID AS "caseId",
+            OWNER_ACTOR_ID AS "ownerActorId",
+            DATASET_ID AS "datasetId",
+            DATASET_NAME AS "datasetName",
+            SECTION_CODE AS "sectionCode",
+            SECTION_LABEL AS "sectionLabel",
+            CASE_CODE AS "caseCode",
+            MAJOR_CODE AS "majorCode",
+            LCI_MAJOR_CODE AS "lciMajorCode",
+            LCI_MAJOR_LABEL AS "lciMajorLabel",
+            LCI_MIDDLE_CODE AS "lciMiddleCode",
+            LCI_MIDDLE_LABEL AS "lciMiddleLabel",
+            LCI_SMALL_CODE AS "lciSmallCode",
+            LCI_SMALL_LABEL AS "lciSmallLabel",
+            SOURCE_FILE_NM AS "sourceFileName",
+            ROW_COUNT AS "rowCount",
+            ROW_SCHEMA_JSON AS "rowSchemaJson",
+            GUIDANCE_JSON AS "guidanceJson",
+            TO_CHAR(LAST_SAVED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "savedAt"
+        FROM ADMIN_EMISSION_SURVEY_CASE
+        WHERE OWNER_ACTOR_ID = #{ownerActorId}
+          AND DATASET_ID = #{datasetId}
+        ORDER BY MAJOR_CODE, SECTION_CODE, CASE_CODE
+    </select>
+
+    <select id="selectUploadLogs" parameterType="hashmap" resultType="hashmap">
+        SELECT
+            LOG_ID AS "logId",
+            DATASET_ID AS "datasetId",
+            OWNER_ACTOR_ID AS "ownerActorId",
+            SOURCE_FILE_NM AS "sourceFileName",
+            LCI_MAJOR_CODE AS "lciMajorCode",
+            LCI_MAJOR_LABEL AS "lciMajorLabel",
+            LCI_MIDDLE_CODE AS "lciMiddleCode",
+            LCI_MIDDLE_LABEL AS "lciMiddleLabel",
+            LCI_SMALL_CODE AS "lciSmallCode",
+            LCI_SMALL_LABEL AS "lciSmallLabel",
+            RESULT_STATUS AS "resultStatus",
+            MESSAGE AS "message",
+            SECTION_COUNT AS "sectionCount",
+            ROW_COUNT AS "rowCount",
+            STORAGE_MODE AS "storageMode",
+            SECTION_RESULT_JSON AS "sectionResultJson",
+            TO_CHAR(UPLOADED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "uploadedAt"
+        FROM ADMIN_EMISSION_SURVEY_UPLOAD_LOG
+        WHERE OWNER_ACTOR_ID = #{ownerActorId}
+        <if test="lciMajorCode != null and lciMajorCode != ''">
+          AND LCI_MAJOR_CODE = #{lciMajorCode}
+        </if>
+        <if test="lciMiddleCode != null and lciMiddleCode != ''">
+          AND LCI_MIDDLE_CODE = #{lciMiddleCode}
+        </if>
+        <if test="lciSmallCode != null and lciSmallCode != ''">
+          AND LCI_SMALL_CODE = #{lciSmallCode}
+        </if>
+        <if test="status != null and status != ''">
+          AND RESULT_STATUS = #{status}
+        </if>
+        ORDER BY UPLOADED_AT DESC
+    </select>
+
+    <select id="selectCaseRows" parameterType="string" resultType="hashmap">
+        SELECT
+            CASE_ROW_ID AS "caseRowId",
+            CASE_ID AS "caseId",
+            ROW_ORDR AS "rowOrder",
+            ROW_KEY AS "rowKey",
+            ROW_VALUES_JSON AS "rowValuesJson"
+        FROM ADMIN_EMISSION_SURVEY_CASE_ROW
+        WHERE CASE_ID = #{_parameter}
+          AND USE_AT = 'Y'
+        ORDER BY ROW_ORDR
+    </select>
+
+    <insert id="insertCaseHeader" parameterType="hashmap">
+        INSERT INTO ADMIN_EMISSION_SURVEY_CASE (
+            CASE_ID, OWNER_ACTOR_ID, DATASET_ID, DATASET_NAME, SECTION_CODE, CASE_CODE, MAJOR_CODE, SECTION_LABEL,
+            LCI_MAJOR_CODE, LCI_MAJOR_LABEL, LCI_MIDDLE_CODE, LCI_MIDDLE_LABEL, LCI_SMALL_CODE, LCI_SMALL_LABEL,
+            SOURCE_FILE_NM, SOURCE_PATH, TARGET_PATH, CASE_STATUS, ROW_COUNT,
+            ROW_SCHEMA_JSON, GUIDANCE_JSON, LAST_SAVED_BY, LAST_SAVED_AT,
+            FRST_REGIST_PNTTM, FRST_REGISTER_ID, LAST_UPDT_PNTTM, LAST_UPDUSR_ID
+        ) VALUES (
+            #{caseId}, #{ownerActorId}, #{datasetId}, #{datasetName}, #{sectionCode}, #{caseCode}, #{majorCode}, #{sectionLabel},
+            #{lciMajorCode}, #{lciMajorLabel}, #{lciMiddleCode}, #{lciMiddleLabel}, #{lciSmallCode}, #{lciSmallLabel},
+            #{sourceFileName}, #{sourcePath}, #{targetPath}, #{caseStatus}, #{rowCount},
+            #{rowSchemaJson}, #{guidanceJson}, #{actorId}, CURRENT_DATETIME,
+            CURRENT_DATETIME, #{actorId}, CURRENT_DATETIME, #{actorId}
+        )
+    </insert>
+
+    <update id="updateCaseHeaderByCaseId" parameterType="hashmap">
+        UPDATE ADMIN_EMISSION_SURVEY_CASE
+        SET OWNER_ACTOR_ID = #{ownerActorId},
+            DATASET_ID = #{datasetId},
+            DATASET_NAME = #{datasetName},
+            MAJOR_CODE = #{majorCode},
+            SECTION_LABEL = #{sectionLabel},
+            LCI_MAJOR_CODE = #{lciMajorCode},
+            LCI_MAJOR_LABEL = #{lciMajorLabel},
+            LCI_MIDDLE_CODE = #{lciMiddleCode},
+            LCI_MIDDLE_LABEL = #{lciMiddleLabel},
+            LCI_SMALL_CODE = #{lciSmallCode},
+            LCI_SMALL_LABEL = #{lciSmallLabel},
+            SOURCE_FILE_NM = #{sourceFileName},
+            SOURCE_PATH = #{sourcePath},
+            TARGET_PATH = #{targetPath},
+            CASE_STATUS = #{caseStatus},
+            ROW_COUNT = #{rowCount},
+            ROW_SCHEMA_JSON = #{rowSchemaJson},
+            GUIDANCE_JSON = #{guidanceJson},
+            LAST_SAVED_BY = #{actorId},
+            LAST_SAVED_AT = CURRENT_DATETIME,
+            LAST_UPDT_PNTTM = CURRENT_DATETIME,
+            LAST_UPDUSR_ID = #{actorId}
+        WHERE CASE_ID = #{caseId}
+    </update>
+
+    <delete id="deleteCaseRows" parameterType="string">
+        DELETE FROM ADMIN_EMISSION_SURVEY_CASE_ROW
+        WHERE CASE_ID = #{_parameter}
+    </delete>
+
+    <delete id="deleteCaseHeader" parameterType="string">
+        DELETE FROM ADMIN_EMISSION_SURVEY_CASE
+        WHERE CASE_ID = #{_parameter}
+    </delete>
+
+    <insert id="insertCaseRow" parameterType="hashmap">
+        INSERT INTO ADMIN_EMISSION_SURVEY_CASE_ROW (
+            CASE_ROW_ID, CASE_ID, ROW_ORDR, ROW_KEY, ROW_VALUES_JSON, USE_AT,
+            FRST_REGIST_PNTTM, FRST_REGISTER_ID, LAST_UPDT_PNTTM, LAST_UPDUSR_ID
+        ) VALUES (
+            #{caseRowId}, #{caseId}, #{rowOrder}, #{rowKey}, #{rowValuesJson}, 'Y',
+            CURRENT_DATETIME, #{actorId}, CURRENT_DATETIME, #{actorId}
+        )
+    </insert>
+
+    <insert id="insertUploadLog" parameterType="hashmap">
+        INSERT INTO ADMIN_EMISSION_SURVEY_UPLOAD_LOG (
+            LOG_ID, DATASET_ID, OWNER_ACTOR_ID, SOURCE_FILE_NM,
+            LCI_MAJOR_CODE, LCI_MAJOR_LABEL, LCI_MIDDLE_CODE, LCI_MIDDLE_LABEL, LCI_SMALL_CODE, LCI_SMALL_LABEL,
+            RESULT_STATUS, MESSAGE, SECTION_COUNT, ROW_COUNT, STORAGE_MODE, SECTION_RESULT_JSON, UPLOADED_AT
+        ) VALUES (
+            #{logId}, #{datasetId}, #{ownerActorId}, #{sourceFileName},
+            #{lciMajorCode}, #{lciMajorLabel}, #{lciMiddleCode}, #{lciMiddleLabel}, #{lciSmallCode}, #{lciSmallLabel},
+            #{resultStatus}, #{message}, #{sectionCount}, #{rowCount}, #{storageMode}, #{sectionResultJson}, CURRENT_DATETIME
+        )
+    </insert>
+
+    <delete id="deleteUploadLogsByOwnerActorId" parameterType="string">
+        DELETE FROM ADMIN_EMISSION_SURVEY_UPLOAD_LOG
+        WHERE OWNER_ACTOR_ID = #{_parameter}
+    </delete>
+
+</mapper>

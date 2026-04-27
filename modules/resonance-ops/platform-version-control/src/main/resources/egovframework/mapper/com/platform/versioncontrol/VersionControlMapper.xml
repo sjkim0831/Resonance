@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="VersionControlMapper">
+
+    <resultMap id="ReleaseUnitMap" type="egovframework.com.platform.versioncontrol.model.vo.ReleaseUnitVO">
+        <result property="releaseUnitId" column="RELEASE_UNIT_ID"/>
+        <result property="projectId" column="PROJECT_ID"/>
+        <result property="releaseVersion" column="RELEASE_VERSION"/>
+        <result property="releaseStatus" column="RELEASE_STATUS"/>
+        <result property="description" column="DESCRIPTION"/>
+        <result property="createdBy" column="CREATED_BY"/>
+        <result property="updatedBy" column="UPDATED_BY"/>
+        <result property="createdAt" column="CREATED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+        <result property="updatedAt" column="UPDATED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+    </resultMap>
+
+    <insert id="insertReleaseUnit" parameterType="egovframework.com.platform.versioncontrol.model.vo.ReleaseUnitVO">
+        INSERT INTO RSN_RELEASE_UNIT (
+            RELEASE_UNIT_ID, PROJECT_ID, RELEASE_VERSION, RELEASE_STATUS, DESCRIPTION,
+            CREATED_BY, UPDATED_BY, CREATED_AT, UPDATED_AT
+        ) VALUES (
+            #{releaseUnitId}, #{projectId}, #{releaseVersion}, #{releaseStatus}, #{description},
+            #{createdBy}, #{createdBy}, CURRENT_DATETIME, CURRENT_DATETIME
+        )
+    </insert>
+
+    <select id="selectReleaseUnit" parameterType="string" resultMap="ReleaseUnitMap">
+        SELECT * FROM RSN_RELEASE_UNIT WHERE RELEASE_UNIT_ID = #{_parameter}
+    </select>
+
+    <select id="selectReleaseUnitsByProject" parameterType="string" resultMap="ReleaseUnitMap">
+        SELECT * FROM RSN_RELEASE_UNIT WHERE PROJECT_ID = #{_parameter} ORDER BY CREATED_AT ASC
+    </select>
+
+    <update id="updateReleaseStatus" parameterType="egovframework.com.platform.versioncontrol.model.vo.ReleaseUnitVO">
+        UPDATE RSN_RELEASE_UNIT
+        SET RELEASE_STATUS = #{releaseStatus},
+            UPDATED_AT = #{updatedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+        WHERE RELEASE_UNIT_ID = #{releaseUnitId}
+    </update>
+
+    <!-- Runtime Package -->
+    <resultMap id="RuntimePackageMap" type="egovframework.com.platform.versioncontrol.model.vo.RuntimePackageVO">
+        <result property="runtimePackageId" column="RUNTIME_PACKAGE_ID"/>
+        <result property="releaseUnitId" column="RELEASE_UNIT_ID"/>
+        <result property="packageType" column="PACKAGE_TYPE"/>
+        <result property="packageHash" column="PACKAGE_HASH"/>
+        <result property="artifactPath" column="ARTIFACT_PATH"/>
+        <result property="fileSize" column="FILE_SIZE"/>
+        <result property="buildRunId" column="BUILD_RUN_ID"/>
+        <result property="createdAt" column="CREATED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+    </resultMap>
+
+    <insert id="insertRuntimePackage" parameterType="egovframework.com.platform.versioncontrol.model.vo.RuntimePackageVO">
+        INSERT INTO RSN_RUNTIME_PACKAGE (
+            RUNTIME_PACKAGE_ID, RELEASE_UNIT_ID, PACKAGE_TYPE, PACKAGE_HASH,
+            ARTIFACT_PATH, FILE_SIZE, BUILD_RUN_ID,
+            CREATED_BY, UPDATED_BY, CREATED_AT, UPDATED_AT
+        ) VALUES (
+            #{runtimePackageId}, #{releaseUnitId}, #{packageType}, #{packageHash},
+            #{artifactPath}, #{fileSize}, #{buildRunId},
+            'SYSTEM', 'SYSTEM',
+            #{createdAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
+            #{createdAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+        )
+    </insert>
+
+    <select id="selectRuntimePackage" parameterType="string" resultMap="RuntimePackageMap">
+        SELECT * FROM RSN_RUNTIME_PACKAGE WHERE RUNTIME_PACKAGE_ID = #{_parameter}
+    </select>
+
+    <select id="selectPackagesByReleaseUnit" parameterType="string" resultMap="RuntimePackageMap">
+        SELECT * FROM RSN_RUNTIME_PACKAGE WHERE RELEASE_UNIT_ID = #{_parameter} ORDER BY CREATED_AT ASC
+    </select>
+
+    <!-- Deploy Trace -->
+    <resultMap id="DeployTraceMap" type="egovframework.com.platform.versioncontrol.model.vo.DeployTraceVO">
+        <result property="deployTraceId" column="DEPLOY_TRACE_ID"/>
+        <result property="runtimePackageId" column="RUNTIME_PACKAGE_ID"/>
+        <result property="targetEnv" column="TARGET_ENV"/>
+        <result property="deployStatus" column="DEPLOY_STATUS"/>
+        <result property="operatorId" column="OPERATOR_ID"/>
+        <result property="deployLog" column="DEPLOY_LOG"/>
+        <result property="startedAt" column="STARTED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+        <result property="finishedAt" column="FINISHED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+    </resultMap>
+
+    <insert id="insertDeployTrace" parameterType="egovframework.com.platform.versioncontrol.model.vo.DeployTraceVO">
+        INSERT INTO RSN_DEPLOY_TRACE (
+            DEPLOY_TRACE_ID, RUNTIME_PACKAGE_ID, TARGET_ENV, DEPLOY_STATUS,
+            OPERATOR_ID, DEPLOY_LOG, STARTED_AT,
+            CREATED_BY, UPDATED_BY, CREATED_AT, UPDATED_AT
+        ) VALUES (
+            #{deployTraceId}, #{runtimePackageId}, #{targetEnv}, #{deployStatus},
+            #{operatorId}, #{deployLog},
+            #{startedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
+            #{operatorId}, #{operatorId},
+            #{startedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
+            #{startedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+        )
+    </insert>
+
+    <update id="updateDeployResult" parameterType="egovframework.com.platform.versioncontrol.model.vo.DeployTraceVO">
+        UPDATE RSN_DEPLOY_TRACE
+        SET DEPLOY_STATUS = #{deployStatus},
+            DEPLOY_LOG = #{deployLog},
+            FINISHED_AT = #{finishedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
+            UPDATED_AT = #{finishedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+        WHERE DEPLOY_TRACE_ID = #{deployTraceId}
+    </update>
+
+    <select id="selectLatestDeployTrace" parameterType="egovframework.com.platform.versioncontrol.model.vo.DeployTraceVO" resultMap="DeployTraceMap">
+        SELECT * FROM RSN_DEPLOY_TRACE
+        WHERE RUNTIME_PACKAGE_ID = #{runtimePackageId}
+          AND TARGET_ENV = #{targetEnv}
+        ORDER BY STARTED_AT DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectDeployHistory" parameterType="egovframework.com.platform.versioncontrol.model.vo.DeployTraceVO" resultMap="DeployTraceMap">
+        SELECT T.*
+        FROM RSN_DEPLOY_TRACE T
+        JOIN RSN_RUNTIME_PACKAGE P ON T.RUNTIME_PACKAGE_ID = P.RUNTIME_PACKAGE_ID
+        JOIN RSN_RELEASE_UNIT R ON P.RELEASE_UNIT_ID = R.RELEASE_UNIT_ID
+        WHERE T.TARGET_ENV = #{targetEnv}
+          AND R.PROJECT_ID = #{projectId}
+        ORDER BY T.STARTED_AT DESC
+    </select>
+
+</mapper>

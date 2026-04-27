@@ -1,0 +1,552 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.com.platform.versioncontrol.mapper.ProjectVersionManagementMapper">
+
+    <select id="selectProjectOverview" parameterType="string" resultType="map">
+        SELECT
+            P.PROJECT_ID AS projectId,
+            P.PROJECT_NAME AS projectDisplayName,
+            R.PROJECT_RUNTIME_VERSION AS activeRuntimeVersion,
+            R.COMMON_ARTIFACT_SET_JSON AS commonArtifactSet,
+            R.ADAPTER_CONTRACT_VERSION AS activeAdapterContractVersion,
+            R.ADAPTER_ARTIFACT_VERSION AS activeAdapterArtifactVersion,
+            R.ROLLBACK_TARGET_RELEASE_ID AS rollbackReadyReleaseUnitId
+        FROM PROJECT_REGISTRY P
+        LEFT JOIN RELEASE_UNIT_REGISTRY R
+               ON R.PROJECT_ID = P.PROJECT_ID
+        WHERE P.PROJECT_ID = #{projectId}
+        ORDER BY R.BUILT_AT DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectProjectRegistry" parameterType="string" resultType="map">
+        SELECT
+            PROJECT_ID AS projectId,
+            PROJECT_ID AS projectCode,
+            '' AS deploymentTarget
+        FROM PROJECT_REGISTRY
+        WHERE PROJECT_ID = #{projectId}
+        LIMIT 1
+    </select>
+
+    <select id="selectInstalledArtifactList" parameterType="string" resultType="map">
+        SELECT
+            A.ARTIFACT_ID AS artifactId,
+            A.ARTIFACT_FAMILY AS artifactFamily,
+            A.ARTIFACT_VERSION AS installedArtifactVersion,
+            I.INSTALL_SCOPE AS installScope,
+            CASE WHEN I.ACTIVE_YN = 'Y' THEN 1 ELSE 0 END AS activeYn
+        FROM PROJECT_ARTIFACT_INSTALL I
+        JOIN ARTIFACT_VERSION_REGISTRY A
+          ON A.ARTIFACT_VERSION_ID = I.ARTIFACT_VERSION_ID
+        WHERE I.PROJECT_ID = #{projectId}
+        ORDER BY I.INSTALLED_AT DESC
+    </select>
+
+    <select id="selectInstalledPackageList" parameterType="string" resultType="map">
+        SELECT
+            PACKAGE_ID AS packageId,
+            MODULE_TYPE AS packageType,
+            MODULE_VERSION AS installedVersion
+        FROM INSTALL_UNIT
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY UPDATED_AT DESC
+    </select>
+
+    <select id="selectAdapterHistoryList" parameterType="map" resultType="map">
+        SELECT
+            RECORDED_AT AS recordedAt,
+            ADAPTER_CONTRACT_VERSION AS adapterContractVersion,
+            ADAPTER_ARTIFACT_VERSION AS adapterArtifactVersion,
+            COMPATIBILITY_CLASS AS compatibilityClass,
+            CASE WHEN MIGRATION_REQUIRED_YN = 'Y' THEN 1 ELSE 0 END AS migrationRequiredYn,
+            CHANGED_PORT_SET_JSON AS changedPortSet,
+            CHANGED_DTO_SET_JSON AS changedDtoSet,
+            MAPPING_IMPACT_SUMMARY AS mappingImpactSummary,
+            RELATED_RELEASE_UNIT_ID AS relatedReleaseUnitId
+        FROM ADAPTER_CHANGE_LOG
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY RECORDED_AT DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countAdapterHistory" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM ADAPTER_CHANGE_LOG
+        WHERE PROJECT_ID = #{projectId}
+    </select>
+
+    <select id="selectReleaseUnitList" parameterType="map" resultType="map">
+        SELECT
+            RELEASE_UNIT_ID AS releaseUnitId,
+            RUNTIME_PACKAGE_ID AS runtimePackageId,
+            PROJECT_RUNTIME_VERSION AS projectRuntimeVersion,
+            ADAPTER_ARTIFACT_VERSION AS adapterArtifactVersion,
+            ADAPTER_CONTRACT_VERSION AS adapterContractVersion,
+            COMMON_ARTIFACT_SET_JSON AS commonArtifactSet,
+            PACKAGE_VERSION_SET_JSON AS packageVersionSet,
+            BUILT_AT AS builtAt,
+            APPROVED_AT AS approvedAt,
+            ROLLBACK_TARGET_RELEASE_ID AS rollbackTargetReleaseId
+        FROM RELEASE_UNIT_REGISTRY
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY BUILT_AT DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countReleaseUnits" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM RELEASE_UNIT_REGISTRY
+        WHERE PROJECT_ID = #{projectId}
+    </select>
+
+    <select id="countArtifactVersionRegistry" resultType="int">
+        SELECT COUNT(*)
+        FROM ARTIFACT_VERSION_REGISTRY
+    </select>
+
+    <select id="countProjectArtifactInstall" resultType="int">
+        SELECT COUNT(*)
+        FROM PROJECT_ARTIFACT_INSTALL
+    </select>
+
+    <select id="countReleaseUnitRegistry" resultType="int">
+        SELECT COUNT(*)
+        FROM RELEASE_UNIT_REGISTRY
+    </select>
+
+    <select id="selectServerDeploymentStateList" parameterType="string" resultType="map">
+        SELECT
+            S.SERVER_ID AS serverId,
+            COALESCE(S.SERVER_ROLE, '') AS serverRole,
+            S.RELEASE_UNIT_ID AS activeReleaseUnitId,
+            S.DEPLOY_TRACE_ID AS deployTraceId,
+            S.DEPLOYED_AT AS deployedAt,
+            S.HEALTH_STATUS AS healthStatus,
+            0 AS runtimeTruthYn
+        FROM SERVER_DEPLOYMENT_STATE S
+        WHERE S.PROJECT_ID = #{projectId}
+          AND NOT EXISTS (
+              SELECT 1
+              FROM SERVER_DEPLOYMENT_STATE S2
+              WHERE S2.PROJECT_ID = S.PROJECT_ID
+                AND S2.SERVER_ID = S.SERVER_ID
+                AND (
+                    S2.DEPLOYED_AT > S.DEPLOYED_AT
+                    OR (
+                        S2.DEPLOYED_AT = S.DEPLOYED_AT
+                        AND S2.SERVER_DEPLOYMENT_ID > S.SERVER_DEPLOYMENT_ID
+                    )
+                )
+          )
+        ORDER BY S.DEPLOYED_AT DESC
+    </select>
+
+    <select id="selectCandidateArtifactList" parameterType="map" resultType="map">
+        SELECT
+            A.ARTIFACT_ID AS artifactId,
+            A.ARTIFACT_FAMILY AS artifactFamily,
+            A.ARTIFACT_VERSION AS artifactVersion,
+            A.ADAPTER_CONTRACT_VERSION AS adapterContractVersion,
+            A.API_CONTRACT_VERSION AS apiContractVersion,
+            A.MANIFEST_CONTRACT_VERSION AS manifestContractVersion,
+            A.CAPABILITY_CATALOG_VERSION AS capabilityCatalogVersion,
+            A.PUBLISHED_AT AS publishedAt,
+            CASE
+                WHEN I.ARTIFACT_VERSION_ID IS NOT NULL THEN 1
+                ELSE 0
+            END AS installedYn
+        FROM ARTIFACT_VERSION_REGISTRY A
+        LEFT JOIN PROJECT_ARTIFACT_INSTALL I
+               ON I.PROJECT_ID = #{projectId}
+              AND I.ARTIFACT_VERSION_ID = A.ARTIFACT_VERSION_ID
+        WHERE A.ARTIFACT_ID IN (
+            SELECT DISTINCT A2.ARTIFACT_ID
+            FROM PROJECT_ARTIFACT_INSTALL I2
+            JOIN ARTIFACT_VERSION_REGISTRY A2
+              ON A2.ARTIFACT_VERSION_ID = I2.ARTIFACT_VERSION_ID
+            WHERE I2.PROJECT_ID = #{projectId}
+        )
+        ORDER BY A.ARTIFACT_ID ASC, A.PUBLISHED_AT DESC, A.ARTIFACT_VERSION DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countCandidateArtifacts" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM ARTIFACT_VERSION_REGISTRY A
+        WHERE A.ARTIFACT_ID IN (
+            SELECT DISTINCT A2.ARTIFACT_ID
+            FROM PROJECT_ARTIFACT_INSTALL I2
+            JOIN ARTIFACT_VERSION_REGISTRY A2
+              ON A2.ARTIFACT_VERSION_ID = I2.ARTIFACT_VERSION_ID
+            WHERE I2.PROJECT_ID = #{projectId}
+        )
+    </select>
+
+    <select id="selectArtifactLockList" parameterType="map" resultType="map">
+        SELECT
+            PROJECT_ID AS projectId,
+            RELEASE_UNIT_ID AS releaseUnitId,
+            GROUP_ID AS groupId,
+            ARTIFACT_ID AS artifactId,
+            ARTIFACT_VERSION AS artifactVersion,
+            ARTIFACT_SHA256 AS artifactSha256,
+            LOCK_SOURCE AS lockSource,
+            CREATED_AT AS createdAt
+        FROM ARTIFACT_LOCK
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY CREATED_AT DESC, RELEASE_UNIT_ID DESC, ARTIFACT_ID ASC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countArtifactLocks" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM ARTIFACT_LOCK
+        WHERE PROJECT_ID = #{projectId}
+    </select>
+
+    <select id="selectCompatibilityRunList" parameterType="map" resultType="map">
+        SELECT
+            RUN_ID AS runId,
+            PROJECT_ID AS projectId,
+            SOURCE_RELEASE_UNIT_ID AS sourceReleaseUnitId,
+            TARGET_COMMON_VERSION AS targetCommonVersion,
+            BUILD_STATUS AS buildStatus,
+            ADAPTER_CONTRACT_STATUS AS adapterContractStatus,
+            DB_DIFF_STATUS AS dbDiffStatus,
+            SMOKE_STATUS AS smokeStatus,
+            COMPATIBILITY_STATUS AS compatibilityStatus,
+            BLOCKING_REASON AS blockingReason,
+            ROLLBACK_RELEASE_UNIT_ID AS rollbackReleaseUnitId,
+            TESTED_AT AS testedAt,
+            TESTED_BY AS testedBy
+        FROM PROJECT_COMPATIBILITY_RUN
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY TESTED_AT DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countCompatibilityRuns" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM PROJECT_COMPATIBILITY_RUN
+        WHERE PROJECT_ID = #{projectId}
+    </select>
+
+    <select id="selectArtifactVersion" parameterType="map" resultType="map">
+        SELECT
+            ARTIFACT_VERSION_ID AS artifactVersionId,
+            ARTIFACT_ID AS artifactId,
+            ARTIFACT_FAMILY AS artifactFamily,
+            ARTIFACT_VERSION AS artifactVersion,
+            CHECKSUM_SHA256 AS checksumSha256,
+            ADAPTER_CONTRACT_VERSION AS adapterContractVersion,
+            API_CONTRACT_VERSION AS apiContractVersion,
+            MANIFEST_CONTRACT_VERSION AS manifestContractVersion,
+            CAPABILITY_CATALOG_VERSION AS capabilityCatalogVersion
+        FROM ARTIFACT_VERSION_REGISTRY
+        WHERE ARTIFACT_ID = #{artifactId}
+          AND ARTIFACT_VERSION = #{artifactVersion}
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveInstalledArtifact" parameterType="map" resultType="map">
+        SELECT
+            I.PROJECT_ARTIFACT_INSTALL_ID AS projectArtifactInstallId,
+            A.ARTIFACT_VERSION_ID AS artifactVersionId,
+            A.ARTIFACT_ID AS artifactId,
+            A.ARTIFACT_FAMILY AS artifactFamily,
+            A.ARTIFACT_VERSION AS installedArtifactVersion,
+            I.INSTALL_SCOPE AS installScope,
+            I.RELEASE_UNIT_ID AS releaseUnitId,
+            I.ROLLBACK_TARGET_VERSION AS rollbackTargetVersion
+        FROM PROJECT_ARTIFACT_INSTALL I
+        JOIN ARTIFACT_VERSION_REGISTRY A
+          ON A.ARTIFACT_VERSION_ID = I.ARTIFACT_VERSION_ID
+        WHERE I.PROJECT_ID = #{projectId}
+          AND I.ACTIVE_YN = 'Y'
+          AND A.ARTIFACT_ID = #{artifactId}
+        ORDER BY I.INSTALLED_AT DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectReleaseUnit" parameterType="string" resultType="map">
+        SELECT
+            RELEASE_UNIT_ID AS releaseUnitId,
+            PROJECT_ID AS projectId,
+            RUNTIME_PACKAGE_ID AS runtimePackageId,
+            PROJECT_RUNTIME_VERSION AS projectRuntimeVersion,
+            ADAPTER_ARTIFACT_VERSION AS adapterArtifactVersion,
+            ADAPTER_CONTRACT_VERSION AS adapterContractVersion,
+            COMMON_ARTIFACT_SET_JSON AS commonArtifactSet,
+            PACKAGE_VERSION_SET_JSON AS packageVersionSet,
+            ROLLBACK_TARGET_RELEASE_ID AS rollbackTargetReleaseId
+        FROM RELEASE_UNIT_REGISTRY
+        WHERE RELEASE_UNIT_ID = #{releaseUnitId}
+        LIMIT 1
+    </select>
+
+    <update id="deactivateArtifactInstall" parameterType="map">
+        UPDATE PROJECT_ARTIFACT_INSTALL
+        SET ACTIVE_YN = 'N'
+        WHERE PROJECT_ID = #{projectId}
+          AND ACTIVE_YN = 'Y'
+          AND ARTIFACT_VERSION_ID IN (
+              SELECT ARTIFACT_VERSION_ID
+              FROM ARTIFACT_VERSION_REGISTRY
+              WHERE ARTIFACT_ID = #{artifactId}
+          )
+    </update>
+
+    <update id="deactivateProjectArtifactInstalls" parameterType="string">
+        UPDATE PROJECT_ARTIFACT_INSTALL
+        SET ACTIVE_YN = 'N'
+        WHERE PROJECT_ID = #{projectId}
+          AND ACTIVE_YN = 'Y'
+    </update>
+
+    <insert id="insertReleaseUnitRegistry" parameterType="map">
+        INSERT INTO RELEASE_UNIT_REGISTRY (
+            RELEASE_UNIT_ID,
+            PROJECT_ID,
+            RUNTIME_PACKAGE_ID,
+            PROJECT_RUNTIME_VERSION,
+            ADAPTER_ARTIFACT_VERSION,
+            ADAPTER_CONTRACT_VERSION,
+            COMMON_ARTIFACT_SET_JSON,
+            PACKAGE_VERSION_SET_JSON,
+            ROLLBACK_TARGET_RELEASE_ID,
+            BUILT_AT,
+            APPROVED_AT,
+            APPROVED_BY
+        ) VALUES (
+            #{releaseUnitId},
+            #{projectId},
+            #{runtimePackageId},
+            #{projectRuntimeVersion},
+            #{adapterArtifactVersion},
+            #{adapterContractVersion},
+            #{commonArtifactSetJson},
+            #{packageVersionSetJson},
+            #{rollbackTargetReleaseId},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME,
+            #{approvedBy}
+        )
+    </insert>
+
+    <insert id="insertProjectArtifactInstall" parameterType="map">
+        INSERT INTO PROJECT_ARTIFACT_INSTALL (
+            PROJECT_ARTIFACT_INSTALL_ID,
+            PROJECT_ID,
+            ARTIFACT_VERSION_ID,
+            INSTALL_SCOPE,
+            RELEASE_UNIT_ID,
+            ACTIVE_YN,
+            ROLLBACK_TARGET_VERSION,
+            INSTALLED_AT,
+            INSTALLED_BY
+        ) VALUES (
+            #{projectArtifactInstallId},
+            #{projectId},
+            #{artifactVersionId},
+            #{installScope},
+            #{releaseUnitId},
+            'Y',
+            #{rollbackTargetVersion},
+            CURRENT_DATETIME,
+            #{installedBy}
+        )
+    </insert>
+
+    <insert id="insertAdapterChangeLog" parameterType="map">
+        INSERT INTO ADAPTER_CHANGE_LOG (
+            ADAPTER_CHANGE_ID,
+            PROJECT_ID,
+            ADAPTER_ARTIFACT_VERSION,
+            ADAPTER_CONTRACT_VERSION,
+            CHANGED_PORT_SET_JSON,
+            CHANGED_DTO_SET_JSON,
+            MAPPING_IMPACT_SUMMARY,
+            COMPATIBILITY_CLASS,
+            MIGRATION_REQUIRED_YN,
+            RELATED_RELEASE_UNIT_ID,
+            RECORDED_AT,
+            RECORDED_BY
+        ) VALUES (
+            #{adapterChangeId},
+            #{projectId},
+            #{adapterArtifactVersion},
+            #{adapterContractVersion},
+            #{changedPortSetJson},
+            #{changedDtoSetJson},
+            #{mappingImpactSummary},
+            #{compatibilityClass},
+            #{migrationRequiredYn},
+            #{relatedReleaseUnitId},
+            CURRENT_DATETIME,
+            #{recordedBy}
+        )
+    </insert>
+
+    <insert id="insertServerDeploymentState" parameterType="map">
+        INSERT INTO SERVER_DEPLOYMENT_STATE (
+            SERVER_DEPLOYMENT_ID,
+            SERVER_ID,
+            SERVER_ROLE,
+            PROJECT_ID,
+            RELEASE_UNIT_ID,
+            DEPLOY_TRACE_ID,
+            HEALTH_STATUS,
+            DEPLOYED_AT,
+            DEPLOYED_BY
+        ) VALUES (
+            #{serverDeploymentId},
+            #{serverId},
+            #{serverRole},
+            #{projectId},
+            #{releaseUnitId},
+            #{deployTraceId},
+            #{healthStatus},
+            CURRENT_DATETIME,
+            #{deployedBy}
+        )
+    </insert>
+
+    <delete id="deleteArtifactLock" parameterType="map">
+        DELETE FROM ARTIFACT_LOCK
+        WHERE PROJECT_ID = #{projectId}
+          AND RELEASE_UNIT_ID = #{releaseUnitId}
+          AND GROUP_ID = #{groupId}
+          AND ARTIFACT_ID = #{artifactId}
+    </delete>
+
+    <insert id="insertArtifactLock" parameterType="map">
+        INSERT INTO ARTIFACT_LOCK (
+            PROJECT_ID,
+            RELEASE_UNIT_ID,
+            GROUP_ID,
+            ARTIFACT_ID,
+            ARTIFACT_VERSION,
+            ARTIFACT_SHA256,
+            LOCK_SOURCE,
+            CREATED_AT
+        ) VALUES (
+            #{projectId},
+            #{releaseUnitId},
+            #{groupId},
+            #{artifactId},
+            #{artifactVersion},
+            #{artifactSha256},
+            #{lockSource},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <insert id="insertCompatibilityRun" parameterType="map">
+        INSERT INTO PROJECT_COMPATIBILITY_RUN (
+            RUN_ID,
+            PROJECT_ID,
+            SOURCE_RELEASE_UNIT_ID,
+            TARGET_COMMON_VERSION,
+            BUILD_STATUS,
+            ADAPTER_CONTRACT_STATUS,
+            DB_DIFF_STATUS,
+            SMOKE_STATUS,
+            COMPATIBILITY_STATUS,
+            BLOCKING_REASON,
+            ROLLBACK_RELEASE_UNIT_ID,
+            TESTED_AT,
+            TESTED_BY
+        ) VALUES (
+            #{runId},
+            #{projectId},
+            #{sourceReleaseUnitId},
+            #{targetCommonVersion},
+            #{buildStatus},
+            #{adapterContractStatus},
+            #{dbDiffStatus},
+            #{smokeStatus},
+            #{compatibilityStatus},
+            #{blockingReason},
+            #{rollbackReleaseUnitId},
+            CURRENT_DATETIME,
+            #{testedBy}
+        )
+    </insert>
+
+    <select id="selectRecentDeploymentHistory" parameterType="map" resultType="map">
+        SELECT
+            DEPLOYMENT_HISTORY_ID AS deploymentHistoryId,
+            PROJECT_ID AS projectId,
+            RELEASE_VERSION AS releaseVersion,
+            RELEASE_TITLE AS releaseTitle,
+            RELEASE_CONTENT AS releaseContent,
+            STATUS AS status,
+            SERVER_TARGET AS serverTarget,
+            RELEASE_UNIT_ID AS releaseUnitId,
+            DEPLOY_TRACE_ID AS deployTraceId,
+            GIT_COMMIT_SHA AS gitCommitSha,
+            RESULT_MESSAGE AS resultMessage,
+            STARTED_AT AS startedAt,
+            FINISHED_AT AS finishedAt,
+            UPDATED_AT AS updatedAt,
+            CREATED_BY AS createdBy
+        FROM PROJECT_DEPLOYMENT_HISTORY
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY STARTED_AT DESC
+        LIMIT 10
+    </select>
+
+    <insert id="insertProjectDeploymentHistory" parameterType="map">
+        INSERT INTO PROJECT_DEPLOYMENT_HISTORY (
+            DEPLOYMENT_HISTORY_ID,
+            PROJECT_ID,
+            RELEASE_VERSION,
+            RELEASE_TITLE,
+            RELEASE_CONTENT,
+            STATUS,
+            SERVER_TARGET,
+            RELEASE_UNIT_ID,
+            DEPLOY_TRACE_ID,
+            GIT_COMMIT_SHA,
+            RESULT_MESSAGE,
+            STARTED_AT,
+            UPDATED_AT,
+            CREATED_BY
+        ) VALUES (
+            #{deploymentHistoryId},
+            #{projectId},
+            #{releaseVersion},
+            #{releaseTitle},
+            #{releaseContent, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{status},
+            #{serverTarget},
+            #{releaseUnitId},
+            #{deployTraceId},
+            #{gitCommitSha},
+            #{resultMessage},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME,
+            #{createdBy}
+        )
+    </insert>
+
+    <update id="updateProjectDeploymentHistory" parameterType="map">
+        UPDATE PROJECT_DEPLOYMENT_HISTORY
+        <set>
+            <if test="status != null">STATUS = #{status},</if>
+            <if test="serverTarget != null">SERVER_TARGET = #{serverTarget},</if>
+            <if test="releaseUnitId != null">RELEASE_UNIT_ID = #{releaseUnitId},</if>
+            <if test="deployTraceId != null">DEPLOY_TRACE_ID = #{deployTraceId},</if>
+            <if test="gitCommitSha != null">GIT_COMMIT_SHA = #{gitCommitSha},</if>
+            <if test="resultMessage != null">RESULT_MESSAGE = #{resultMessage},</if>
+            UPDATED_AT = CURRENT_DATETIME,
+            <if test='finishedYn != null and finishedYn == "Y"'>FINISHED_AT = CURRENT_DATETIME,</if>
+        </set>
+        WHERE DEPLOYMENT_HISTORY_ID = #{deploymentHistoryId}
+    </update>
+
+</mapper>

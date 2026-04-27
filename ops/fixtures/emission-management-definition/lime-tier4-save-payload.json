@@ -1,0 +1,12 @@
+{
+  "categoryId": __CATEGORY_ID__,
+  "tier": __TIER__,
+  "createdBy": "codex-definition-backed-verify",
+  "values": [
+    {
+      "varCode": "MLI",
+      "lineNo": 1,
+      "valueNum": 10.0
+    }
+  ]
+}

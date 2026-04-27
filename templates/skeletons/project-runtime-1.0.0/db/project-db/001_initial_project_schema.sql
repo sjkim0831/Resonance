@@ -1,0 +1,21 @@
+-- Create only project-owned business tables here.
+-- Keep COMMON_DB metadata out of this migration set.
+--
+-- Typical targets:
+--   project business master/detail tables
+--   project workflow state
+--   project-local settings
+--   project-local integration state
+--
+-- Example placeholder:
+-- CREATE TABLE PROJECT_SAMPLE_ENTITY (
+--   SAMPLE_ID VARCHAR(64) PRIMARY KEY,
+--   PROJECT_ID VARCHAR(80) NOT NULL,
+--   INSTT_ID VARCHAR(60),
+--   SAMPLE_NAME VARCHAR(200) NOT NULL,
+--   CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- );
+--
+-- Recommended index pattern for project-owned business tables:
+-- CREATE INDEX IDX_PROJECT_SAMPLE_ENTITY_PROJECT_INSTT
+--   ON PROJECT_SAMPLE_ENTITY (PROJECT_ID, INSTT_ID);

@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  project-runtime:
+    build:
+      context: ../../var/releases/${PROJECT_ID:-p003}
+      dockerfile: ../../ops/docker/Dockerfile.project-runtime
+      args:
+        PROJECT_ID: ${PROJECT_ID:-p003}
+    image: carbonet-local/carbonet-${PROJECT_ID:-p003}:latest
+    container_name: carbonet-${PROJECT_ID:-p003}-local
+    ports:
+      - "${HOST_PORT:-18000}:${SERVER_PORT:-8080}"
+    environment:
+      - PROJECT_ID=${PROJECT_ID:-p003}
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      - JAVA_OPTS=-Xms256m -Xmx512m
+      # 로컬 테스트용 DB 자격 증명 (개발 환경에 맞게 오버라이드 가능)
+      - DB_USERNAME=${DB_USERNAME:-dba}
+      - DB_PASSWORD=${DB_PASSWORD:-dba123}
+      - SPRING_PROFILES_ACTIVE=local
+    volumes:
+      # 로컬 로그를 호스트에서 바로 확인할 수 있도록 마운트
+      - ../../var/logs/project-runtime/${PROJECT_ID:-p003}:/var/logs/project-runtime/${PROJECT_ID:-p003}
+    restart: unless-stopped

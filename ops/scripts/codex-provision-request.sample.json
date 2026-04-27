@@ -1,0 +1,75 @@
+{
+  "requestId": "REQ-20260313-001",
+  "actorId": "CODEX",
+  "menuType": "ADMIN",
+  "reloadSecurityMetadata": true,
+  "page": {
+    "domainCode": "A101",
+    "domainName": "시스템관리",
+    "domainNameEn": "System Management",
+    "groupCode": "A10102",
+    "groupName": "Codex 관리",
+    "groupNameEn": "Codex Management",
+    "code": "A1010201",
+    "codeNm": "Codex 요청 관리",
+    "codeDc": "Codex Request Management",
+    "menuUrl": "/admin/system/codex-request",
+    "menuIcon": "smart_toy",
+    "useAt": "Y"
+  },
+  "features": [
+    {
+      "menuCode": "A1010201",
+      "featureCode": "A1010201_VIEW",
+      "featureNm": "Codex 요청 조회",
+      "featureNmEn": "View Codex Requests",
+      "featureDc": "Codex request list view",
+      "useAt": "Y"
+    },
+    {
+      "menuCode": "A1010201",
+      "featureCode": "A1010201_CREATE",
+      "featureNm": "Codex 요청 등록",
+      "featureNmEn": "Create Codex Requests",
+      "featureDc": "Codex request creation",
+      "useAt": "Y"
+    }
+  ],
+  "authors": [
+    {
+      "authorCode": "ROLE_CODEX_ADMIN",
+      "authorNm": "Codex 관리자",
+      "authorDc": "Codex automation administrator",
+      "featureCodes": [
+        "A1010201_VIEW",
+        "A1010201_CREATE"
+      ]
+    }
+  ],
+  "commonCodeGroups": [
+    {
+      "classCode": "CODX",
+      "classCodeNm": "Codex",
+      "classCodeDc": "Codex",
+      "classUseAt": "Y",
+      "codeId": "CODEX_STATUS",
+      "codeIdNm": "Codex 요청 상태",
+      "codeIdDc": "Codex Request Status",
+      "useAt": "Y",
+      "details": [
+        {
+          "code": "READY",
+          "codeNm": "대기",
+          "codeDc": "Ready",
+          "useAt": "Y"
+        },
+        {
+          "code": "DONE",
+          "codeNm": "완료",
+          "codeDc": "Done",
+          "useAt": "Y"
+        }
+      ]
+    }
+  ]
+}

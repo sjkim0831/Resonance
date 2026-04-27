@@ -1,0 +1,29 @@
+promotion_wave: 2
+mode: mirror-seed
+framework: resonance
+
+promoted_modules:
+  - source: /opt/Resonance/modules/platform-runtime-control
+    target: /opt/Resonance/modules/resonance-ops/platform-runtime-control
+    status: mirrored
+    switch_ready: false
+  - source: /opt/Resonance/modules/platform-version-control
+    target: /opt/Resonance/modules/resonance-ops/platform-version-control
+    status: mirrored
+    switch_ready: false
+  - source: /opt/Resonance/modules/stable-execution-gate
+    target: /opt/Resonance/modules/resonance-common/stable-execution-gate
+    status: mirrored
+    switch_ready: false
+  - source: /opt/Resonance/modules/common-auth
+    target: /opt/Resonance/modules/resonance-common/common-auth
+    status: mirrored
+    switch_ready: false
+  - source: /opt/Resonance/modules/screenbuilder-core
+    target: /opt/Resonance/modules/resonance-builder/screenbuilder-core
+    status: mirrored
+    switch_ready: false
+  - source: /opt/Resonance/modules/screenbuilder-runtime-common-adapter
+    target: /opt/Resonance/modules/resonance-builder/screenbuilder-runtime-common-adapter
+    status: mirrored
+    switch_ready: false

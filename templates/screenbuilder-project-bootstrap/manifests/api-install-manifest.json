@@ -1,0 +1,60 @@
+{
+  "manifestVersion": "1.0",
+  "moduleType": "api-package",
+  "moduleId": "api-sample-default",
+  "moduleVersion": "1.0.0",
+  "displayName": "Sample Installable API Module",
+  "installScope": "PROJECT_BIND",
+  "compatibility": {
+    "coreVersionRange": "[1.0.0,2.0.0)",
+    "requiredAdapterCapabilities": [
+      "api-binding",
+      "authority-contract"
+    ],
+    "blockingChecks": [
+      "api-contract-compatibility",
+      "auth-scope-compatibility"
+    ]
+  },
+  "requiredBindings": [
+    "projectId",
+    "apiNamespace",
+    "authorityProfile"
+  ],
+  "artifacts": [
+    "api-contracts.json",
+    "api-routes.json",
+    "api-schemas.json"
+  ],
+  "validatorChecks": [
+    "api-contract-valid",
+    "request-response-schema-valid",
+    "auth-scope-compatible"
+  ],
+  "rollback": {
+    "supported": true,
+    "rollbackUnitId": "api-install",
+    "rollbackArtifacts": [
+      "api-binding",
+      "api-contracts.json"
+    ]
+  },
+  "apiContracts": [
+    "list",
+    "detail",
+    "save",
+    "delete"
+  ],
+  "authScopes": [
+    "builder.read",
+    "builder.write"
+  ],
+  "requestSchemas": [
+    "query",
+    "save-request"
+  ],
+  "responseSchemas": [
+    "list-response",
+    "detail-response"
+  ]
+}

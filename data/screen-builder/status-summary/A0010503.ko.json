@@ -1,0 +1,23 @@
+{
+  "menuCode" : "A0010503",
+  "pageId" : "reset-password",
+  "menuTitle" : "비밀번호 초기화 이력",
+  "menuUrl" : "/admin/member/reset_password",
+  "publishedVersionId" : "",
+  "publishedSavedAt" : "",
+  "releaseUnitId" : "draft-20260328005915",
+  "artifactTargetSystem" : "carbonet-general",
+  "runtimePackageId" : "screen-builder-runtime-a0010503-reset-password",
+  "deployTraceId" : "deploy-draft-20260328005915",
+  "publishFreshnessState" : "UNPUBLISHED",
+  "publishFreshnessLabel" : "아직 발행 없음",
+  "publishFreshnessDetail" : "이 메뉴는 아직 draft 전용 빌더 상태입니다.",
+  "parityState" : "UNAVAILABLE",
+  "parityLabel" : "정합성 미확인",
+  "parityDetail" : "아직 발행이 없습니다.",
+  "parityTraceId" : "",
+  "versionCount" : 0,
+  "unregisteredCount" : 4,
+  "missingCount" : 0,
+  "deprecatedCount" : 0
+}

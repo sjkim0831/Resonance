@@ -1,0 +1,45 @@
+{
+  "screenId": "project-governance-center",
+  "title": "Project Fleet & Version Governance",
+  "sections": [
+    {
+      "id": "project-status-list",
+      "type": "GRID",
+      "title": "Project Fleet Status",
+      "dataSource": "data/version-control/project-runtime-manifest.json#/projects",
+      "columns": [
+        { "key": "metadata.projectId", "label": "ID", "width": "80px" },
+        { "key": "metadata.projectName", "label": "Project Name", "width": "200px" },
+        { "key": "installations.commonCore", "label": "Core Ver", "highlight": "version-tag" },
+        { "key": "governance.compatibilityClass", "label": "Compatibility", "type": "BADGE" },
+        { "key": "runtime.status", "label": "Runtime Status", "type": "STATUS_DOT" }
+      ],
+      "actions": [
+        { "id": "view-detail", "label": "Detail/Edit", "target": "project-detail-panel" },
+        { "id": "upgrade-check", "label": "Upgrade Candidate", "type": "PRIMARY" }
+      ]
+    },
+    {
+      "id": "upgrade-wizard",
+      "type": "MODAL",
+      "title": "Common Core Upgrade Wizard",
+      "logic": {
+        "checkCompatibility": "MatrixLookup(currentVersion, targetVersion)",
+        "validateBindings": "PingDatabase(targetProject.bindings.database)",
+        "preCheck": "ExecuteGate('v1', 'system-builder.upgrade.precheck')"
+      },
+      "steps": [
+        "1. Select Target Version",
+        "2. Review Compatibility & Impact",
+        "3. Validate Project Bindings",
+        "4. Execute Rollout (Staging/Prod)"
+      ]
+    }
+  ],
+  "tooltips": {
+    "IMPLEMENTATION_SAFE": "Internal change only. Safe to auto-upgrade.",
+    "ADAPTER_SAFE": "Requires adapter verification but no code change.",
+    "CONTRACT_AWARE": "Contract changed. Project validation required.",
+    "BREAKING": "Breaking change. Manual migration mandatory."
+  }
+}

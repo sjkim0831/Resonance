@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="DbChangeCaptureMapper">
+
+    <select id="selectAllPromotionPolicies" resultType="map">
+        SELECT
+            POLICY_ID AS policyId,
+            TABLE_NAME AS tableName,
+            POLICY_CODE AS policyCode,
+            CHANGE_TYPES_JSON AS changeTypesJson,
+            MASKING_PROFILE_CODE AS maskingProfileCode,
+            SQL_RENDER_MODE AS sqlRenderMode,
+            ACTIVE_YN AS activeYn,
+            POLICY_REASON AS policyReason,
+            CREATED_AT AS createdAt,
+            UPDATED_AT AS updatedAt,
+            CREATED_BY AS createdBy,
+            UPDATED_BY AS updatedBy
+        FROM DB_CHANGE_PROMOTION_POLICY
+        ORDER BY TABLE_NAME ASC
+    </select>
+
+    <select id="selectPromotionPolicyByTableName" parameterType="string" resultType="map">
+        SELECT
+            POLICY_ID AS policyId,
+            TABLE_NAME AS tableName,
+            POLICY_CODE AS policyCode,
+            CHANGE_TYPES_JSON AS changeTypesJson,
+            MASKING_PROFILE_CODE AS maskingProfileCode,
+            SQL_RENDER_MODE AS sqlRenderMode,
+            ACTIVE_YN AS activeYn,
+            POLICY_REASON AS policyReason
+        FROM DB_CHANGE_PROMOTION_POLICY
+        WHERE ACTIVE_YN = 'Y'
+          AND UPPER(TABLE_NAME) = UPPER(#{_parameter})
+        LIMIT 1
+    </select>
+
+    <insert id="insertPromotionPolicy" parameterType="map">
+        INSERT INTO DB_CHANGE_PROMOTION_POLICY (
+            POLICY_ID,
+            TABLE_NAME,
+            POLICY_CODE,
+            CHANGE_TYPES_JSON,
+            MASKING_PROFILE_CODE,
+            SQL_RENDER_MODE,
+            ACTIVE_YN,
+            POLICY_REASON,
+            CREATED_AT,
+            UPDATED_AT,
+            CREATED_BY,
+            UPDATED_BY
+        ) VALUES (
+            #{policyId},
+            #{tableName},
+            #{policyCode},
+            #{changeTypesJson},
+            #{maskingProfileCode},
+            #{sqlRenderMode},
+            #{activeYn},
+            #{policyReason},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME,
+            #{createdBy},
+            #{updatedBy}
+        )
+    </insert>
+
+    <update id="updatePromotionPolicy" parameterType="map">
+        UPDATE DB_CHANGE_PROMOTION_POLICY
+        SET POLICY_CODE = #{policyCode},
+            CHANGE_TYPES_JSON = #{changeTypesJson},
+            MASKING_PROFILE_CODE = #{maskingProfileCode},
+            SQL_RENDER_MODE = #{sqlRenderMode},
+            ACTIVE_YN = #{activeYn},
+            POLICY_REASON = #{policyReason},
+            UPDATED_AT = CURRENT_DATETIME,
+            UPDATED_BY = #{updatedBy}
+        WHERE UPPER(TABLE_NAME) = UPPER(#{tableName})
+    </update>
+
+    <insert id="insertBusinessChangeLog" parameterType="map">
+        INSERT INTO BUSINESS_CHANGE_LOG (
+            CHANGE_LOG_ID,
+            TRACE_ID,
+            REQUEST_ID,
+            PROJECT_ID,
+            MENU_CODE,
+            PAGE_ID,
+            API_PATH,
+            HTTP_METHOD,
+            ACTOR_ID,
+            ACTOR_ROLE,
+            ACTOR_SCOPE_ID,
+            TARGET_TABLE_NAME,
+            TARGET_PK_JSON,
+            ENTITY_TYPE,
+            ENTITY_ID,
+            CHANGE_TYPE,
+            BEFORE_SUMMARY_JSON,
+            AFTER_SUMMARY_JSON,
+            CHANGE_SUMMARY,
+            PROMOTION_POLICY_CODE,
+            QUEUE_DECISION_CODE,
+            QUEUE_REQUESTED_YN,
+            QUEUE_ID,
+            APPROVAL_REQUIRED_YN,
+            APPROVAL_STATUS,
+            CAPTURED_AT,
+            CREATED_AT
+        ) VALUES (
+            #{changeLogId},
+            #{traceId},
+            #{requestId},
+            #{projectId},
+            #{menuCode},
+            #{pageId},
+            #{apiPath},
+            #{httpMethod},
+            #{actorId},
+            #{actorRole},
+            #{actorScopeId},
+            #{targetTableName},
+            #{targetPkJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{entityType},
+            #{entityId},
+            #{changeType},
+            #{beforeSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{afterSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{changeSummary},
+            #{promotionPolicyCode},
+            #{queueDecisionCode},
+            #{queueRequestedYn},
+            #{queueId},
+            #{approvalRequiredYn},
+            #{approvalStatus},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <insert id="insertDeployableDbPatchQueue" parameterType="map">
+        INSERT INTO DEPLOYABLE_DB_PATCH_QUEUE (
+            QUEUE_ID,
+            PROJECT_ID,
+            SOURCE_CHANGE_IDS_JSON,
+            TARGET_ENV,
+            PATCH_FORMAT_CODE,
+            PATCH_KIND_CODE,
+            TARGET_TABLE_NAME,
+            TARGET_KEYS_JSON,
+            PATCH_PAYLOAD_JSON,
+            RENDERED_SQL_PREVIEW,
+            CHECKSUM_SHA256,
+            RISK_LEVEL,
+            APPROVAL_STATUS,
+            APPLY_STATUS,
+            BLOCK_REASON,
+            APPROVED_BY,
+            APPROVED_AT,
+            REJECTED_BY,
+            REJECTED_AT,
+            CREATED_AT,
+            UPDATED_AT,
+            CREATED_BY,
+            UPDATED_BY
+        ) VALUES (
+            #{queueId},
+            #{projectId},
+            #{sourceChangeIdsJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{targetEnv},
+            #{patchFormatCode},
+            #{patchKindCode},
+            #{targetTableName},
+            #{targetKeysJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{patchPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{renderedSqlPreview, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{checksumSha256},
+            #{riskLevel},
+            #{approvalStatus},
+            #{applyStatus},
+            #{blockReason},
+            #{approvedBy},
+            <choose>
+                <when test="approvedBy != null and approvedBy != ''">CURRENT_DATETIME</when>
+                <otherwise>null</otherwise>
+            </choose>,
+            #{rejectedBy},
+            null,
+            CURRENT_DATETIME,
+            CURRENT_DATETIME,
+            #{createdBy},
+            #{updatedBy}
+        )
+    </insert>
+
+    <select id="selectChangeCaptureSummary" parameterType="string" resultType="map">
+        SELECT
+            PROJECT_ID AS projectId,
+            (SELECT COUNT(*) FROM BUSINESS_CHANGE_LOG WHERE PROJECT_ID = #{_parameter}) AS totalChangeCount,
+            (SELECT COUNT(*) FROM BUSINESS_CHANGE_LOG WHERE PROJECT_ID = #{_parameter} AND QUEUE_DECISION_CODE = 'AUTO_QUEUED') AS autoQueuedChangeCount,
+            (SELECT COUNT(*) FROM BUSINESS_CHANGE_LOG WHERE PROJECT_ID = #{_parameter} AND QUEUE_DECISION_CODE = 'APPROVAL_REQUIRED') AS approvalRequiredChangeCount,
+            (SELECT COUNT(*) FROM BUSINESS_CHANGE_LOG WHERE PROJECT_ID = #{_parameter} AND QUEUE_DECISION_CODE = 'BLOCKED') AS blockedChangeCount,
+            (SELECT COUNT(*) FROM DEPLOYABLE_DB_PATCH_QUEUE WHERE PROJECT_ID = #{_parameter} AND APPLY_STATUS = 'PENDING') AS pendingQueueCount,
+            (SELECT COUNT(*) FROM DEPLOYABLE_DB_PATCH_QUEUE WHERE PROJECT_ID = #{_parameter} AND APPROVAL_STATUS = 'PENDING') AS pendingApprovalQueueCount
+        FROM PROJECT_REGISTRY
+        WHERE PROJECT_ID = #{_parameter}
+        LIMIT 1
+    </select>
+
+    <select id="selectRecentBusinessChangeLogs" parameterType="map" resultType="map">
+        SELECT
+            CHANGE_LOG_ID AS changeLogId,
+            PROJECT_ID AS projectId,
+            MENU_CODE AS menuCode,
+            PAGE_ID AS pageId,
+            API_PATH AS apiPath,
+            HTTP_METHOD AS httpMethod,
+            ACTOR_ID AS actorId,
+            TARGET_TABLE_NAME AS targetTableName,
+            ENTITY_TYPE AS entityType,
+            ENTITY_ID AS entityId,
+            CHANGE_TYPE AS changeType,
+            CHANGE_SUMMARY AS changeSummary,
+            PROMOTION_POLICY_CODE AS promotionPolicyCode,
+            QUEUE_DECISION_CODE AS queueDecisionCode,
+            QUEUE_REQUESTED_YN AS queueRequestedYn,
+            QUEUE_ID AS queueId,
+            APPROVAL_REQUIRED_YN AS approvalRequiredYn,
+            APPROVAL_STATUS AS approvalStatus,
+            TARGET_PK_JSON AS targetPkJson,
+            BEFORE_SUMMARY_JSON AS beforeSummaryJson,
+            AFTER_SUMMARY_JSON AS afterSummaryJson,
+            CAPTURED_AT AS capturedAt,
+            CREATED_AT AS createdAt
+        FROM BUSINESS_CHANGE_LOG
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY CAPTURED_AT DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectBusinessChangeLogsForProjectTable" parameterType="map" resultType="map">
+        SELECT
+            CHANGE_LOG_ID AS changeLogId,
+            PROJECT_ID AS projectId,
+            MENU_CODE AS menuCode,
+            PAGE_ID AS pageId,
+            API_PATH AS apiPath,
+            HTTP_METHOD AS httpMethod,
+            ACTOR_ID AS actorId,
+            TARGET_TABLE_NAME AS targetTableName,
+            ENTITY_TYPE AS entityType,
+            ENTITY_ID AS entityId,
+            CHANGE_TYPE AS changeType,
+            CHANGE_SUMMARY AS changeSummary,
+            PROMOTION_POLICY_CODE AS promotionPolicyCode,
+            QUEUE_DECISION_CODE AS queueDecisionCode,
+            QUEUE_REQUESTED_YN AS queueRequestedYn,
+            QUEUE_ID AS queueId,
+            APPROVAL_REQUIRED_YN AS approvalRequiredYn,
+            APPROVAL_STATUS AS approvalStatus,
+            TARGET_PK_JSON AS targetPkJson,
+            BEFORE_SUMMARY_JSON AS beforeSummaryJson,
+            AFTER_SUMMARY_JSON AS afterSummaryJson,
+            CAPTURED_AT AS capturedAt,
+            CREATED_AT AS createdAt
+        FROM BUSINESS_CHANGE_LOG
+        WHERE PROJECT_ID = #{projectId}
+          AND TARGET_TABLE_NAME = #{targetTableName}
+        ORDER BY CAPTURED_AT ASC, CREATED_AT ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectDeployableDbPatchQueueList" parameterType="map" resultType="map">
+        SELECT
+            QUEUE_ID AS queueId,
+            PROJECT_ID AS projectId,
+            SOURCE_CHANGE_IDS_JSON AS sourceChangeIdsJson,
+            TARGET_ENV AS targetEnv,
+            PATCH_FORMAT_CODE AS patchFormatCode,
+            PATCH_KIND_CODE AS patchKindCode,
+            TARGET_TABLE_NAME AS targetTableName,
+            TARGET_KEYS_JSON AS targetKeysJson,
+            PATCH_PAYLOAD_JSON AS patchPayloadJson,
+            RENDERED_SQL_PREVIEW AS renderedSqlPreview,
+            CHECKSUM_SHA256 AS checksumSha256,
+            RISK_LEVEL AS riskLevel,
+            APPROVAL_STATUS AS approvalStatus,
+            APPLY_STATUS AS applyStatus,
+            BLOCK_REASON AS blockReason,
+            APPROVED_BY AS approvedBy,
+            APPROVED_AT AS approvedAt,
+            REJECTED_BY AS rejectedBy,
+            REJECTED_AT AS rejectedAt,
+            CREATED_AT AS createdAt,
+            UPDATED_AT AS updatedAt,
+            CREATED_BY AS createdBy,
+            UPDATED_BY AS updatedBy
+        FROM DEPLOYABLE_DB_PATCH_QUEUE
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY CREATED_AT DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectDeployableDbPatchResultList" parameterType="map" resultType="map">
+        SELECT
+            RESULT_ID AS resultId,
+            QUEUE_ID AS queueId,
+            EXECUTION_BATCH_ID AS executionBatchId,
+            PROJECT_ID AS projectId,
+            TARGET_ENV AS targetEnv,
+            EXECUTION_STATUS AS executionStatus,
+            EXECUTION_MESSAGE AS executionMessage,
+            RESULT_SQL_PREVIEW AS resultSqlPreview,
+            CHECKSUM_SHA256 AS checksumSha256,
+            DB_PATCH_HISTORY_ID AS dbPatchHistoryId,
+            STARTED_AT AS startedAt,
+            FINISHED_AT AS finishedAt,
+            EXECUTED_BY AS executedBy,
+            CREATED_AT AS createdAt
+        FROM DEPLOYABLE_DB_PATCH_RESULT
+        WHERE PROJECT_ID = #{projectId}
+        ORDER BY STARTED_AT DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectBusinessChangeLogById" parameterType="string" resultType="map">
+        SELECT
+            CHANGE_LOG_ID AS changeLogId,
+            PROJECT_ID AS projectId,
+            TARGET_TABLE_NAME AS targetTableName,
+            TARGET_PK_JSON AS targetPkJson,
+            BEFORE_SUMMARY_JSON AS beforeSummaryJson,
+            AFTER_SUMMARY_JSON AS afterSummaryJson,
+            PROMOTION_POLICY_CODE AS promotionPolicyCode,
+            QUEUE_ID AS queueId,
+            CHANGE_TYPE AS changeType,
+            CHANGE_SUMMARY AS changeSummary,
+            API_PATH AS apiPath,
+            HTTP_METHOD AS httpMethod,
+            ENTITY_TYPE AS entityType,
+            ENTITY_ID AS entityId
+        FROM BUSINESS_CHANGE_LOG
+        WHERE CHANGE_LOG_ID = #{_parameter}
+        LIMIT 1
+    </select>
+
+    <select id="selectDeployableDbPatchQueueById" parameterType="string" resultType="map">
+        SELECT
+            QUEUE_ID AS queueId,
+            PROJECT_ID AS projectId,
+            SOURCE_CHANGE_IDS_JSON AS sourceChangeIdsJson,
+            TARGET_ENV AS targetEnv,
+            PATCH_FORMAT_CODE AS patchFormatCode,
+            PATCH_KIND_CODE AS patchKindCode,
+            TARGET_TABLE_NAME AS targetTableName,
+            TARGET_KEYS_JSON AS targetKeysJson,
+            PATCH_PAYLOAD_JSON AS patchPayloadJson,
+            RENDERED_SQL_PREVIEW AS renderedSqlPreview,
+            CHECKSUM_SHA256 AS checksumSha256,
+            RISK_LEVEL AS riskLevel,
+            APPROVAL_STATUS AS approvalStatus,
+            APPLY_STATUS AS applyStatus,
+            BLOCK_REASON AS blockReason,
+            CREATED_AT AS createdAt
+        FROM DEPLOYABLE_DB_PATCH_QUEUE
+        WHERE QUEUE_ID = #{_parameter}
+        LIMIT 1
+    </select>
+
+    <update id="updateBusinessChangeLogQueueLink" parameterType="map">
+        UPDATE BUSINESS_CHANGE_LOG
+        SET QUEUE_REQUESTED_YN = #{queueRequestedYn},
+            QUEUE_ID = #{queueId},
+            QUEUE_DECISION_CODE = #{queueDecisionCode},
+            APPROVAL_REQUIRED_YN = #{approvalRequiredYn},
+            APPROVAL_STATUS = #{approvalStatus}
+        WHERE CHANGE_LOG_ID = #{changeLogId}
+    </update>
+
+    <update id="updateBusinessChangeLogApprovalByQueueId" parameterType="map">
+        UPDATE BUSINESS_CHANGE_LOG
+        SET APPROVAL_STATUS = #{approvalStatus},
+            QUEUE_DECISION_CODE = #{queueDecisionCode}
+        WHERE QUEUE_ID = #{queueId}
+    </update>
+
+    <update id="updateDeployableDbPatchQueueApproval" parameterType="map">
+        UPDATE DEPLOYABLE_DB_PATCH_QUEUE
+        SET APPROVAL_STATUS = #{approvalStatus},
+            BLOCK_REASON = #{blockReason},
+            APPROVED_BY = #{approvedBy},
+            APPROVED_AT =
+            <choose>
+                <when test="approvalStatus == 'APPROVED'">CURRENT_DATETIME</when>
+                <otherwise>null</otherwise>
+            </choose>,
+            REJECTED_BY = #{rejectedBy},
+            REJECTED_AT =
+            <choose>
+                <when test="approvalStatus == 'REJECTED'">CURRENT_DATETIME</when>
+                <otherwise>null</otherwise>
+            </choose>,
+            UPDATED_AT = CURRENT_DATETIME,
+            UPDATED_BY = #{updatedBy}
+        WHERE QUEUE_ID = #{queueId}
+    </update>
+
+    <update id="updateDeployableDbPatchQueueApply" parameterType="map">
+        UPDATE DEPLOYABLE_DB_PATCH_QUEUE
+        SET APPLY_STATUS = #{applyStatus},
+            BLOCK_REASON = #{blockReason},
+            UPDATED_AT = CURRENT_DATETIME,
+            UPDATED_BY = #{updatedBy}
+        WHERE QUEUE_ID = #{queueId}
+    </update>
+
+    <insert id="insertDeployableDbPatchResult" parameterType="map">
+        INSERT INTO DEPLOYABLE_DB_PATCH_RESULT (
+            RESULT_ID,
+            QUEUE_ID,
+            EXECUTION_BATCH_ID,
+            PROJECT_ID,
+            TARGET_ENV,
+            EXECUTION_STATUS,
+            EXECUTION_MESSAGE,
+            RESULT_SQL_PREVIEW,
+            CHECKSUM_SHA256,
+            DB_PATCH_HISTORY_ID,
+            STARTED_AT,
+            FINISHED_AT,
+            EXECUTED_BY,
+            CREATED_AT
+        ) VALUES (
+            #{resultId},
+            #{queueId},
+            #{executionBatchId},
+            #{projectId},
+            #{targetEnv},
+            #{executionStatus},
+            #{executionMessage},
+            #{resultSqlPreview, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{checksumSha256},
+            #{dbPatchHistoryId},
+            CURRENT_DATETIME,
+            CURRENT_DATETIME,
+            #{executedBy},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+</mapper>

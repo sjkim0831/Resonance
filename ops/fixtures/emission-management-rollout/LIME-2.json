@@ -1,0 +1,11 @@
+{"categoryId":2,"tier":2,"createdBy":"codex-rollout-fill","values":[
+  {"varCode":"LIME_TYPE","lineNo":1,"valueText":"고칼슘석회"},
+  {"varCode":"MLI","lineNo":1,"valueNum":10.0},
+  {"varCode":"CAO_CONTENT","lineNo":1,"valueNum":95.0},
+  {"varCode":"MD","lineNo":1,"valueNum":2.0},
+  {"varCode":"CD","lineNo":1,"valueNum":40.0},
+  {"varCode":"FD","lineNo":1,"valueNum":50.0},
+  {"varCode":"HYDRATED_LIME_PRODUCTION_YN","lineNo":1,"valueText":"Y"},
+  {"varCode":"X","lineNo":1,"valueNum":10.0},
+  {"varCode":"Y","lineNo":1,"valueNum":20.0}
+]}

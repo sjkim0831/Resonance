@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminLoginHistoryMapper">
+
+    <insert id="insertLoginHistory" parameterType="egovframework.com.platform.observability.model.LoginHistoryVO">
+        INSERT INTO COMTNLOGINHIST (
+            HIST_ID,
+            USER_ID,
+            USER_NM,
+            USER_SE,
+            LOGIN_RESULT,
+            LOGIN_IP,
+            LOGIN_MESSAGE,
+            LOGIN_PNTTM
+        ) VALUES (
+            #{histId},
+            #{userId},
+            #{userNm},
+            #{userSe},
+            #{loginResult},
+            #{loginIp},
+            #{loginMessage},
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <sql id="loginHistoryWhere">
+        <where>
+            <if test="insttId != null and insttId != ''">
+                AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM COMTNEMPLYRINFO E
+                        WHERE E.EMPLYR_ID = USER_ID
+                          AND COALESCE(E.INSTT_ID, '') = #{insttId}
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM COMTNENTRPRSMBER M
+                        WHERE M.ENTRPRS_MBER_ID = USER_ID
+                        <if test="projectId != null and projectId != ''">
+                          AND M.PROJECT_ID = #{projectId}
+                        </if>
+                          AND COALESCE(M.INSTT_ID, '') = #{insttId}
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM COMTNGNRLMBER G
+                        WHERE G.MBER_ID = USER_ID
+                          AND COALESCE(G.GROUP_ID, '') = #{insttId}
+                    )
+                )
+            </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    LOWER(COALESCE(USER_ID, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(USER_NM, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE(LOGIN_IP, '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                    OR LOWER(COALESCE((
+                        SELECT I.INSTT_NM
+                        FROM COMTNINSTTINFO I
+                        WHERE I.INSTT_ID = COALESCE(
+                            (SELECT E.INSTT_ID FROM COMTNEMPLYRINFO E WHERE E.EMPLYR_ID = USER_ID),
+                            (SELECT M.INSTT_ID FROM COMTNENTRPRSMBER M WHERE M.ENTRPRS_MBER_ID = USER_ID
+                            <if test="projectId != null and projectId != ''">
+                                AND M.PROJECT_ID = #{projectId}
+                            </if>
+                            ),
+                            (SELECT G.GROUP_ID FROM COMTNGNRLMBER G WHERE G.MBER_ID = USER_ID)
+                        )
+                        <if test="projectId != null and projectId != ''">
+                          AND I.PROJECT_ID = #{projectId}
+                        </if>
+                    ), '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
+                )
+            </if>
+            <if test="userSe != null and userSe != ''">
+                AND USER_SE = #{userSe}
+            </if>
+            <if test="loginResult != null and loginResult != ''">
+                AND LOGIN_RESULT = #{loginResult}
+            </if>
+            <if test='blockedOnly != null and blockedOnly.equals("Y")'>
+                AND LOGIN_RESULT = 'FAIL'
+                AND (
+                    LOWER(COALESCE(LOGIN_MESSAGE, '')) LIKE '%lock%'
+                    OR LOWER(COALESCE(LOGIN_MESSAGE, '')) LIKE '%block%'
+                    OR LOWER(COALESCE(LOGIN_MESSAGE, '')) LIKE '%refused%'
+                    OR COALESCE(LOGIN_MESSAGE, '') LIKE '%잠%'
+                    OR COALESCE(LOGIN_MESSAGE, '') LIKE '%차단%'
+                    OR COALESCE(LOGIN_MESSAGE, '') LIKE '%거부%'
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectLoginHistoryListTotCnt" parameterType="egovframework.com.platform.observability.model.LoginHistorySearchVO" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNLOGINHIST
+        <include refid="loginHistoryWhere" />
+    </select>
+
+    <select id="selectLoginHistoryList" parameterType="egovframework.com.platform.observability.model.LoginHistorySearchVO" resultType="egovframework.com.platform.observability.model.LoginHistoryVO">
+        SELECT
+            HIST_ID AS histId,
+            USER_ID AS userId,
+            USER_NM AS userNm,
+            USER_SE AS userSe,
+            LOGIN_RESULT AS loginResult,
+            LOGIN_IP AS loginIp,
+            COALESCE(LOGIN_MESSAGE, '') AS loginMessage,
+            TO_CHAR(LOGIN_PNTTM, 'YYYY-MM-DD HH24:MI:SS') AS loginPnttm,
+            COALESCE(
+                (SELECT E.INSTT_ID FROM COMTNEMPLYRINFO E WHERE E.EMPLYR_ID = USER_ID),
+                (SELECT M.INSTT_ID FROM COMTNENTRPRSMBER M WHERE M.ENTRPRS_MBER_ID = USER_ID
+                <if test="projectId != null and projectId != ''">
+                    AND M.PROJECT_ID = #{projectId}
+                </if>
+                ),
+                (SELECT G.GROUP_ID FROM COMTNGNRLMBER G WHERE G.MBER_ID = USER_ID),
+                ''
+            ) AS insttId,
+            COALESCE(
+                (
+                    SELECT I.INSTT_NM
+                    FROM COMTNINSTTINFO I
+                    WHERE I.INSTT_ID = COALESCE(
+                        (SELECT E.INSTT_ID FROM COMTNEMPLYRINFO E WHERE E.EMPLYR_ID = USER_ID),
+                        (SELECT M.INSTT_ID FROM COMTNENTRPRSMBER M WHERE M.ENTRPRS_MBER_ID = USER_ID
+                        <if test="projectId != null and projectId != ''">
+                            AND M.PROJECT_ID = #{projectId}
+                        </if>
+                        ),
+                        (SELECT G.GROUP_ID FROM COMTNGNRLMBER G WHERE G.MBER_ID = USER_ID)
+                    )
+                    <if test="projectId != null and projectId != ''">
+                        AND I.PROJECT_ID = #{projectId}
+                    </if>
+                ),
+                ''
+            ) AS companyName
+        FROM COMTNLOGINHIST
+        <include refid="loginHistoryWhere" />
+        ORDER BY LOGIN_PNTTM DESC
+        LIMIT #{recordCountPerPage}
+        OFFSET #{firstIndex}
+    </select>
+
+</mapper>

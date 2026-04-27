@@ -1,0 +1,2 @@
+screen_id,screen_family,actor,locale,route_type,route_or_url,controller_or_router,target_file,auth_required,notes
+COMMON-EXAMPLE,common-example,USER,ko,server,/example,ExampleController,/src/main/resources/templates/example.html,Y,Replace example row

@@ -1,0 +1,82 @@
+upstream carbonet_ops {
+    server 127.0.0.1:18001 max_fails=3 fail_timeout=5s;
+    keepalive 32;
+}
+
+# Example: Project P001 upstream
+upstream project_p001 {
+    server 127.0.0.1:18000 max_fails=3 fail_timeout=5s;
+    keepalive 32;
+}
+
+# Example: Project P002 upstream
+upstream project_p002 {
+    server 127.0.0.1:18002 max_fails=3 fail_timeout=5s;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name carbonet.duckdns.org;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name carbonet.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/carbonet.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/carbonet.duckdns.org/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:CarbonetSSL:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
+    add_header Content-Security-Policy "upgrade-insecure-requests" always;
+
+    proxy_http_version 1.1;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_ssl_server_name on;
+    proxy_ssl_name localhost;
+    proxy_ssl_verify off;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port 443;
+
+    location = / {
+        return 301 https://carbonet.duckdns.org/home;
+    }
+
+    # Route Admin and Ops API to Operations Console (18001)
+    location /admin {
+        proxy_pass http://carbonet_ops;
+    }
+
+    location /api/operations {
+        proxy_pass http://carbonet_ops;
+    }
+
+    # Route specific project prefixes to their respective upstreams
+    location /r/P001/ {
+        proxy_pass https://project_p001/;
+    }
+
+    location /r/P002/ {
+        proxy_pass http://project_p002/;
+    }
+
+    location / {
+        # Fallback to ops console or a default landing page
+        proxy_pass http://carbonet_ops;
+    }
+}

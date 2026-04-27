@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: project-runtime
+  datasource:
+    common:
+      driver-class-name: cubrid.jdbc.driver.CUBRIDDriver
+      url: jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8
+      username: carbonet_common
+      password: change-me
+    project:
+      driver-class-name: cubrid.jdbc.driver.CUBRIDDriver
+      url: jdbc:cubrid:localhost:33000:carbonet_p_template:::?charset=utf-8
+      username: carbonet_project
+      password: change-me
+
+app:
+  project-id: P_TEMPLATE
+  db-binding-mode: COMMON_DB_AND_PROJECT_DB
+  manifest-path: config/manifest.json
+  storage-root: var/file/P_TEMPLATE
+
+logging:
+  file:
+    name: logs/project-runtime.log

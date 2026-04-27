@@ -1,0 +1,234 @@
+{
+  "settings" : {
+    "backupRootPath" : "/opt/projects/carbonet/var/backup-bundle",
+    "retentionDays" : "35",
+    "cronExpression" : "0 0 2 * * *",
+    "offsiteSyncEnabled" : "Y",
+    "gitEnabled" : "Y",
+    "gitRepositoryPath" : "/opt/projects/carbonet",
+    "gitRemoteName" : "origin",
+    "gitRemoteUrl" : "https://github.com/sjkim0831/2026_carbonet.git",
+    "gitUsername" : "sjkim0831",
+    "gitAuthToken" : "",
+    "gitBranchPattern" : "main",
+    "gitBundlePrefix" : "carbonet-src",
+    "gitBackupMode" : "PUSH_BASE_BRANCH",
+    "gitRestoreBranchPrefix" : "backup/restore",
+    "gitTagPrefix" : "backup",
+    "dbEnabled" : "Y",
+    "dbHost" : "127.0.0.1",
+    "dbPort" : "33000",
+    "dbName" : "carbonet",
+    "dbUser" : "dba",
+    "dbDumpCommand" : "/opt/util/cubrid/11.2/scripts/backup_sql.sh",
+    "dbSchemaScope" : "FULL"
+  },
+  "updatedAt" : "2026-03-28 06:11:29",
+  "updatedBy" : "webmaster",
+  "executionRows" : [ {
+    "executedAt" : "2026-03-28 06:15:48",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "성공",
+    "duration" : "1s",
+    "note" : "commit-created=false, base-branch=main, status=already-up-to-date, head=8029ceb6590f05fee7e6fed7768ec23278b45b5c"
+  }, {
+    "executedAt" : "2026-03-28 06:11:34",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "성공",
+    "duration" : "1s",
+    "note" : "commit-created=false, base-branch=main, status=pushed, head=8029ceb6590f05fee7e6fed7768ec23278b45b5c"
+  }, {
+    "executedAt" : "2026-03-28 06:11:29",
+    "profileName" : "설정 저장",
+    "result" : "성공",
+    "duration" : "instant",
+    "note" : "Git/DB 백업 설정 갱신"
+  }, {
+    "executedAt" : "2026-03-28 06:10:37",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "실패",
+    "duration" : "0s",
+    "note" : "remote: Invalid username or token. Password authentication is not supported for Git operations.\nfatal: Authentication failed for 'https://github.com/sjkim0831/2026_carbonet.git/'"
+  }, {
+    "executedAt" : "2026-03-28 06:09:50",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "실패",
+    "duration" : "2s",
+    "note" : "remote: Invalid username or token. Password authentication is not supported for Git operations.\nfatal: Authentication failed for 'https://github.com/sjkim0831/2026_carbonet.git/'"
+  }, {
+    "executedAt" : "2026-03-28 06:07:15",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "실패",
+    "duration" : "0s",
+    "note" : "자동 커밋 금지 경로 변경이 감지되었습니다: docs/ai/00-governance/ai-fast-path.md, docs/ai/80-skills/skill-boundaries.md, docs/ai/80-skills/skill-index.md, docs/architecture/codex-execution-console-handoff.md, ops/codex-launcher/README.md, ops/codex-launcher/app/__pycache__/server.cpython-312.pyc, ops/codex-launcher/app/server.py, ops/codex-launcher/static/app.css, ops/codex-launcher/static/app.js, ops/codex-launcher/static/index.html, .codex/skills/carbonet-fast-bootstrap-ops/, AGENTS.md, docs/ai/10-architecture/workspace-ownership-map.md, docs/architecture/workspace-state-machine-map.md, docs/operations/fast-bootstrap-runtime-freshness.md, ops/codex-launcher/app/.gitignore, ops/codex-launcher/data/, ops/scripts/codex-verify-18000-freshness.sh"
+  }, {
+    "executedAt" : "2026-03-28 06:07:12",
+    "profileName" : "산출물 자동 정리",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "자동 정리 범위를 index에서 갱신했습니다: var/backup, var/backups, BOOT-INF, target, frontend/test-results, frontend/.codex-state"
+  }, {
+    "executedAt" : "2026-03-28 06:07:08",
+    "profileName" : "Git Push 사전 점검",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "추적 중인 백업/빌드 산출물이 없습니다."
+  }, {
+    "executedAt" : "2026-03-28 06:04:50",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "실패",
+    "duration" : "0s",
+    "note" : "자동 커밋 금지 경로 변경이 감지되었습니다: docs/ai/00-governance/ai-fast-path.md, docs/ai/80-skills/skill-boundaries.md, docs/ai/80-skills/skill-index.md, docs/architecture/codex-execution-console-handoff.md, ops/codex-launcher/README.md, ops/codex-launcher/app/__pycache__/server.cpython-312.pyc, ops/codex-launcher/app/server.py, ops/codex-launcher/static/app.css, ops/codex-launcher/static/app.js, ops/codex-launcher/static/index.html, .codex/skills/carbonet-fast-bootstrap-ops/, AGENTS.md, docs/ai/10-architecture/workspace-ownership-map.md, docs/architecture/workspace-state-machine-map.md, docs/operations/fast-bootstrap-runtime-freshness.md, ops/codex-launcher/app/.gitignore, ops/codex-launcher/data/, ops/scripts/codex-verify-18000-freshness.sh"
+  }, {
+    "executedAt" : "2026-03-28 05:42:16",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "실패",
+    "duration" : "0s",
+    "note" : "자동 커밋 금지 경로 변경이 감지되었습니다: docs/ai/00-governance/ai-fast-path.md, docs/ai/80-skills/skill-boundaries.md, docs/ai/80-skills/skill-index.md, docs/architecture/codex-execution-console-handoff.md, ops/codex-launcher/README.md, ops/codex-launcher/app/__pycache__/server.cpython-312.pyc, ops/codex-launcher/app/server.py, ops/codex-launcher/static/app.css, ops/codex-launcher/static/app.js, ops/codex-launcher/static/index.html, .codex/skills/carbonet-fast-bootstrap-ops/, AGENTS.md, docs/ai/10-architecture/workspace-ownership-map.md, docs/architecture/workspace-state-machine-map.md, docs/operations/fast-bootstrap-runtime-freshness.md, ops/codex-launcher/app/.gitignore, ops/codex-launcher/data/, ops/scripts/codex-verify-18000-freshness.sh"
+  }, {
+    "executedAt" : "2026-03-28 05:33:54",
+    "profileName" : "산출물 자동 정리",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "자동 정리 범위를 index에서 갱신했습니다: var/backup, var/backups, BOOT-INF, target, frontend/test-results, frontend/.codex-state"
+  }, {
+    "executedAt" : "2026-03-28 05:33:50",
+    "profileName" : "Git Push 사전 점검",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "추적 중인 백업/빌드 산출물이 없습니다."
+  }, {
+    "executedAt" : "2026-03-28 05:33:37",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "실패",
+    "duration" : "0s",
+    "note" : "자동 커밋 금지 경로 변경이 감지되었습니다: docs/ai/00-governance/ai-fast-path.md, docs/ai/80-skills/skill-boundaries.md, docs/ai/80-skills/skill-index.md, docs/architecture/codex-execution-console-handoff.md, ops/codex-launcher/README.md, ops/codex-launcher/app/__pycache__/server.cpython-312.pyc, ops/codex-launcher/app/server.py, ops/codex-launcher/static/app.css, ops/codex-launcher/static/app.js, ops/codex-launcher/static/index.html, .codex/skills/carbonet-fast-bootstrap-ops/, AGENTS.md, docs/ai/10-architecture/workspace-ownership-map.md, docs/architecture/workspace-state-machine-map.md, docs/operations/fast-bootstrap-runtime-freshness.md, ops/codex-launcher/app/.gitignore, ops/codex-launcher/data/, ops/scripts/codex-verify-18000-freshness.sh"
+  }, {
+    "executedAt" : "2026-03-27 10:56:24",
+    "profileName" : "Git 전체 커밋 후 기준 브랜치 Push 실행",
+    "result" : "성공",
+    "duration" : "3s",
+    "note" : "commit-created=true, base-branch=main, status=pushed, head=12dbb975deb6c87869412d4ce6ed6ecd360c4bbb"
+  }, {
+    "executedAt" : "2026-03-27 10:55:46",
+    "profileName" : "Git 기준 브랜치 Push 실행",
+    "result" : "성공",
+    "duration" : "1s",
+    "note" : "base-branch=main, status=already-up-to-date, head=ee0cf5c49c11e196c45e04225cb955d4d2bef150"
+  }, {
+    "executedAt" : "2026-03-27 10:55:45",
+    "profileName" : "산출물 자동 정리",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "자동 정리 범위를 index에서 갱신했습니다: var/backup, var/backups, BOOT-INF, target, frontend/test-results, frontend/.codex-state"
+  }, {
+    "executedAt" : "2026-03-27 10:55:44",
+    "profileName" : "Git Push 사전 점검",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "추적 중인 백업/빌드 산출물이 없습니다."
+  }, {
+    "executedAt" : "2026-03-27 10:55:06",
+    "profileName" : "산출물 자동 정리",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "자동 정리 범위를 index에서 갱신했습니다: var/backup, var/backups, BOOT-INF, target, frontend/test-results, frontend/.codex-state"
+  }, {
+    "executedAt" : "2026-03-27 10:55:04",
+    "profileName" : "Git Push 사전 점검",
+    "result" : "성공",
+    "duration" : "0s",
+    "note" : "추적 중인 백업/빌드 산출물이 없습니다."
+  }, {
+    "executedAt" : "2026-03-27 02:14:46",
+    "profileName" : "DB SQL 복구",
+    "result" : "실패",
+    "duration" : "12s",
+    "note" : "backup dir: /opt/util/cubrid/11.2/backup/sql/20260327_021230\ndb name: carbonet\n\nServer carbonet notified of shutdown.\nThis may take several minutes. Please wait.\n@ cubrid server stop: carbonet\n++ cubrid server stop: success\nCreating database with 512.0M size using locale ko_KR.utf8. The total amount of disk space needed is 1.5G.\n\nCUBRID 11.2\n\njava_stored_procedure system parameter is not enabled\n@ cubrid server start: carbonet\n++ cubrid server start: success\nCalling java stored procedure is not allowed\n@ cubrid broker stop\nCannot stop CUBRID Broker. (Not owner)\n\n@ cubrid broker stop\n@ cubrid broker stop\n++ cubrid broker stop: fail\n@ cubrid broker start\n@ cubrid broker stop\n++ cubrid broker stop: fail\n@ cubrid broker start\n++ cubrid broker is running."
+  } ],
+  "versionRows" : [ {
+    "versionId" : "cfg-1f93260a",
+    "savedAt" : "2026-03-28 06:11:29",
+    "savedBy" : "webmaster",
+    "versionMemo" : "",
+    "backupRootPath" : "/opt/projects/carbonet/var/backup-bundle",
+    "cronExpression" : "0 0 2 * * *",
+    "retentionDays" : "35",
+    "offsiteSyncEnabled" : "Y",
+    "gitEnabled" : "Y",
+    "gitRepositoryPath" : "/opt/projects/carbonet",
+    "gitRemoteName" : "origin",
+    "gitRemoteUrl" : "https://github.com/sjkim0831/2026_carbonet.git",
+    "gitUsername" : "sjkim0831",
+    "gitBranchPattern" : "main",
+    "gitBackupMode" : "PUSH_BASE_BRANCH",
+    "gitBundlePrefix" : "carbonet-src",
+    "gitRestoreBranchPrefix" : "backup/restore",
+    "gitTagPrefix" : "backup",
+    "gitSummary" : "PUSH_BASE_BRANCH | main | https://github.com/sjkim0831/2026_carbonet.git",
+    "dbEnabled" : "Y",
+    "dbHost" : "127.0.0.1",
+    "dbPort" : "33000",
+    "dbName" : "carbonet",
+    "dbUser" : "dba",
+    "dbDumpCommand" : "/opt/util/cubrid/11.2/scripts/backup_sql.sh",
+    "dbSchemaScope" : "FULL",
+    "dbSummary" : "carbonet | 127.0.0.1:33000 | FULL"
+  }, {
+    "versionId" : "cfg-7d556d96",
+    "savedAt" : "2026-03-27 00:23:47",
+    "savedBy" : "webmaster",
+    "backupRootPath" : "/opt/carbonet-backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  }, {
+    "versionId" : "cfg-661dcb4c",
+    "savedAt" : "2026-03-27 00:22:51",
+    "savedBy" : "webmaster",
+    "backupRootPath" : "/opt/carbonet-backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  }, {
+    "versionId" : "cfg-0eccadd8",
+    "savedAt" : "2026-03-26 20:42:59",
+    "savedBy" : "webmaster",
+    "backupRootPath" : "/opt/projects/carbonet/var/backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  }, {
+    "versionId" : "cfg-717727a2",
+    "savedAt" : "2026-03-26 20:36:37",
+    "savedBy" : "webmaster",
+    "backupRootPath" : "/opt/projects/carbonet/var/backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  }, {
+    "versionId" : "cfg-d3df3513",
+    "savedAt" : "2026-03-26 20:36:28",
+    "savedBy" : "webmaster",
+    "backupRootPath" : "/opt/projects/carbonet/var/backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  }, {
+    "versionId" : "cfg-8bb3bca1",
+    "savedAt" : "2026-03-26 19:34:40",
+    "savedBy" : "webmaster",
+    "backupRootPath" : "/opt/projects/carbonet/var/backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  }, {
+    "versionId" : "cfg-seed",
+    "savedAt" : "2026-03-26 19:31:07",
+    "savedBy" : "system",
+    "backupRootPath" : "/opt/projects/carbonet/var/backup",
+    "cronExpression" : "0 0 2 * * *",
+    "gitEnabled" : "Y",
+    "dbEnabled" : "Y"
+  } ]
+}

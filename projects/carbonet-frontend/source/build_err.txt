@@ -1,0 +1,11 @@
+src/app/routes/definitions.ts(302,5): error TS2322: Type '"co2-search"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(304,5): error TS2322: Type '"join-wizard"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(305,5): error TS2322: Type '"join-terms"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(306,5): error TS2322: Type '"join-auth"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(307,5): error TS2322: Type '"join-info"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(308,5): error TS2322: Type '"join-complete"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(309,5): error TS2322: Type '"mypage"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(310,5): error TS2322: Type '"sitemap"' is not assignable to type 'MigrationPageId'.
+src/app/routes/definitions.ts(311,5): error TS2820: Type '"home-menu-placeholder"' is not assignable to type 'MigrationPageId'. Did you mean '"admin-menu-placeholder"'?
+src/app/routes/pageRegistry.tsx(158,3): error TS2353: Object literal may only specify known properties, and '"co2-search"' does not exist in type 'Record<MigrationPageId, ComponentType>'.
+src/app/routes/pageRegistry.tsx(305,3): error TS2353: Object literal may only specify known properties, and '"co2-search"' does not exist in type 'Partial<Record<MigrationPageId, () => Promise<unknown>>>'.

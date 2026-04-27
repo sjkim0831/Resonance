@@ -1,0 +1,34 @@
+release_id: carbonet-2026.04.26
+project: carbonet
+framework: resonance
+runtime_mode: isolated
+
+package_set:
+  runtime:
+    image: registry.local/carbonet-runtime:2026.04.26
+  adapter:
+    image: registry.local/carbonet-adapter:2026.04.26
+  common_jar_set:
+    version: common-core-v0.1
+  theme_bundle:
+    version: project-carbonet-v2026.04
+  migration_bundle:
+    version: carbonet-db-v2026.04
+
+k8s:
+  namespace: carbonet-prod
+  deployment: carbonet-runtime
+  service: carbonet-runtime
+  ingress: carbonet.example.internal
+  config_map: carbonet-runtime-config
+  secret: carbonet-runtime-secret
+  rollout_strategy: rolling
+  hpa_enabled: true
+  probes:
+    readiness: /actuator/health/readiness
+    liveness: /actuator/health/liveness
+
+verification:
+  require_adapter_compatibility: true
+  require_common_jar_set_verification: true
+  require_deployment_health: true

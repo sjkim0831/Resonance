@@ -1,0 +1,181 @@
+{
+  "projects": {
+    "P001": {
+      "metadata": {
+        "projectId": "P001",
+        "projectName": "Carbonet Standard Project",
+        "owner": "carbonet-core-team",
+        "description": "Default standard project for Carbonet platform"
+      },
+      "installations": {
+        "commonCore": "1.1.0",
+        "stableGate": "v1",
+        "adapter": "1.0.0",
+        "adapterContract": "v1"
+      },
+      "bindings": {
+        "database": {
+          "bindingMode": "COMMON_DB + PROJECT_DB",
+          "commonDb": {
+            "url": "jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8",
+            "schema": "public"
+          },
+          "projectDb": {
+            "url": "jdbc:cubrid:localhost:33000:carbonet_p001:::?charset=utf-8",
+            "schema": "public"
+          }
+        },
+        "theme": {
+          "id": "carbonet-default-dark",
+          "version": "1.0.0"
+        },
+        "menu": {
+          "profile": "standard-admin-v1",
+          "apiPrefix": "/api/v1/p001"
+        }
+      },
+      "runtime": {
+        "packagePath": "apps/project-runtime/target/project-runtime.jar",
+        "adapterArtifactPath": "var/run/project-runtime/P001/lib/project-adapter.jar",
+        "manifestPath": "var/run/project-runtime/P001/config/manifest.json",
+        "bootTarget": "var/run/project-runtime/P001/project-runtime.jar",
+        "bootCommand": "java -jar var/run/project-runtime/P001/project-runtime.jar --spring.profiles.active=prod --app.project-id=P001 --server.port=18000",
+        "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+        "lane": "PROJECT_RUNTIME",
+        "sharedRuntimeId": "project-runtime-common",
+        "routing": {
+          "selectorPath": "/projects/P001",
+          "routePrefix": "/r/P001",
+          "externalBaseUrl": "https://p001.example.com",
+          "domainHost": "p001.example.com",
+          "managementPath": "/api/operations/governance/runtime/projects/P001",
+          "infoPath": "/api/runtime/project-info"
+        },
+        "status": "STOPPED",
+        "lastHealthCheck": null
+      },
+      "governance": {
+        "compatibilityClass": "IMPLEMENTATION_SAFE",
+        "updatedAt": "2026-04-16T11:00:00Z"
+      }
+    },
+    "P002": {
+      "metadata": {
+        "projectId": "P002",
+        "projectName": "Carbonet Expansion Pilot",
+        "owner": "carbonet-expansion-team",
+        "description": "Pilot project for thin-package rollout"
+      },
+      "installations": {
+        "commonCore": "1.0.0",
+        "stableGate": "v1",
+        "adapter": "1.0.0",
+        "adapterContract": "v1"
+      },
+      "bindings": {
+        "database": {
+          "bindingMode": "COMMON_DB + PROJECT_DB",
+          "commonDb": {
+            "url": "jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8",
+            "schema": "public"
+          },
+          "projectDb": {
+            "url": "jdbc:cubrid:localhost:33000:carbonet_p002:::?charset=utf-8",
+            "schema": "public"
+          }
+        },
+        "theme": {
+          "id": "carbonet-light-clean",
+          "version": "1.0.0"
+        },
+        "menu": {
+          "profile": "expansion-pilot-v1",
+          "apiPrefix": "/api/v1/p002"
+        }
+      },
+      "runtime": {
+        "packagePath": "apps/project-runtime/target/project-runtime.jar",
+        "adapterArtifactPath": "var/run/project-runtime/P002/lib/project-adapter.jar",
+        "manifestPath": "var/run/project-runtime/P002/config/manifest.json",
+        "bootTarget": "var/run/project-runtime/P002/project-runtime.jar",
+        "bootCommand": "java -jar var/run/project-runtime/P002/project-runtime.jar --spring.profiles.active=prod --app.project-id=P002 --server.port=18002",
+        "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+        "lane": "PROJECT_RUNTIME",
+        "sharedRuntimeId": "project-runtime-common",
+        "routing": {
+          "selectorPath": "/projects/P002",
+          "routePrefix": "/r/P002",
+          "externalBaseUrl": "https://p002.example.com",
+          "domainHost": "p002.example.com",
+          "managementPath": "/api/operations/governance/runtime/projects/P002",
+          "infoPath": "/api/runtime/project-info"
+        },
+        "status": "STOPPED",
+        "lastHealthCheck": null
+      },
+      "governance": {
+        "compatibilityClass": "CONTRACT_AWARE",
+        "updatedAt": "2026-04-16T11:00:00Z"
+      }
+    },
+    "P003": {
+      "metadata": {
+        "projectId": "P003",
+        "projectName": "Carbonet New Project Example",
+        "owner": "new-project-template",
+        "description": "Starter project generated from thin runtime and adapter templates"
+      },
+      "installations": {
+        "commonCore": "1.1.0",
+        "stableGate": "v1",
+        "adapter": "1.0.0",
+        "adapterContract": "v1"
+      },
+      "bindings": {
+        "database": {
+          "bindingMode": "COMMON_DB + PROJECT_DB",
+          "commonDb": {
+            "url": "jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8",
+            "schema": "public"
+          },
+          "projectDb": {
+            "url": "jdbc:cubrid:localhost:33000:carbonet_p003:::?charset=utf-8",
+            "schema": "public"
+          }
+        },
+        "theme": {
+          "id": "carbonet-default-light",
+          "version": "1.0.0"
+        },
+        "menu": {
+          "profile": "p003-admin-v1",
+          "apiPrefix": "/api/v1/p003"
+        }
+      },
+      "runtime": {
+        "packagePath": "apps/project-runtime/target/project-runtime.jar",
+        "adapterArtifactPath": "var/run/project-runtime/P003/lib/project-adapter.jar",
+        "manifestPath": "var/run/project-runtime/P003/config/manifest.json",
+        "bootTarget": "var/run/project-runtime/P003/project-runtime.jar",
+        "bootCommand": "java -jar var/run/project-runtime/P003/project-runtime.jar --spring.profiles.active=prod --app.project-id=P003 --server.port=18003",
+        "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+        "lane": "PROJECT_RUNTIME",
+        "sharedRuntimeId": "project-runtime-common",
+        "routing": {
+          "selectorPath": "/projects/P003",
+          "routePrefix": "/r/P003",
+          "externalBaseUrl": "https://p003.example.com",
+          "domainHost": "p003.example.com",
+          "managementPath": "/api/operations/governance/runtime/projects/P003",
+          "infoPath": "/api/runtime/project-info"
+        },
+        "status": "READY_FOR_BOOTSTRAP",
+        "lastHealthCheck": null
+      },
+      "governance": {
+        "compatibilityClass": "IMPLEMENTATION_SAFE",
+        "updatedAt": "2026-04-16T11:30:00Z"
+      }
+    }
+  }
+}

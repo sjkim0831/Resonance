@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="BlocklistPersistenceMapper">
+
+    <select id="selectBlockRows" resultType="hashmap">
+        SELECT
+            BLOCK_ID AS "blockId",
+            TARGET AS "target",
+            BLOCK_TYPE AS "blockType",
+            REASON AS "reason",
+            REASON_EN AS "reasonEn",
+            STATUS AS "status",
+            CASE WHEN EXPIRES_AT IS NULL THEN NULL ELSE TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI') END AS "expiresAt",
+            OWNER AS "owner",
+            OWNER_EN AS "ownerEn",
+            SOURCE AS "source",
+            SOURCE_TITLE AS "sourceTitle",
+            SOURCE_FINGERPRINT AS "sourceFingerprint",
+            SOURCE_SEVERITY AS "sourceSeverity",
+            CASE WHEN REGISTERED_AT IS NULL THEN NULL ELSE TO_CHAR(REGISTERED_AT, 'YYYY-MM-DD HH24:MI:SS') END AS "registeredAt",
+            CASE WHEN ACTIVATED_AT IS NULL THEN NULL ELSE TO_CHAR(ACTIVATED_AT, 'YYYY-MM-DD HH24:MI:SS') END AS "activatedAt",
+            ACTIVATED_BY AS "activatedBy",
+            CASE WHEN REVIEWED_AT IS NULL THEN NULL ELSE TO_CHAR(REVIEWED_AT, 'YYYY-MM-DD HH24:MI:SS') END AS "reviewedAt",
+            REVIEWED_BY AS "reviewedBy",
+            CASE WHEN LAST_ACTION_AT IS NULL THEN NULL ELSE TO_CHAR(LAST_ACTION_AT, 'YYYY-MM-DD HH24:MI:SS') END AS "updatedAt",
+            LAST_ACTION_BY AS "updatedBy"
+        FROM COMTNBLOCKLISTENTRY
+        WHERE COALESCE(USE_AT, 'Y') = 'Y'
+        ORDER BY LAST_ACTION_AT DESC, BLOCK_ID DESC
+    </select>
+
+    <select id="selectActionHistoryRows" resultType="hashmap">
+        SELECT
+            ACTION_ID AS "actionId",
+            BLOCK_ID AS "blockId",
+            TARGET AS "target",
+            ACTION_TYPE AS "actionType",
+            STATUS AS "status",
+            DETAIL AS "detail",
+            DETAIL_EN AS "detailEn",
+            ACTOR_ID AS "actorId",
+            ACTOR_NAME AS "actorName",
+            SOURCE AS "source",
+            CASE WHEN ACTION_AT IS NULL THEN NULL ELSE TO_CHAR(ACTION_AT, 'YYYY-MM-DD HH24:MI:SS') END AS "actionAt",
+            CASE WHEN EXPIRES_AT IS NULL THEN NULL ELSE TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI') END AS "expiresAt"
+        FROM COMTNBLOCKLISTACTIONHIST
+        WHERE COALESCE(USE_AT, 'Y') = 'Y'
+        ORDER BY ACTION_AT DESC, ACTION_ID DESC
+    </select>
+
+    <select id="countBlockById" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNBLOCKLISTENTRY
+        WHERE BLOCK_ID = #{_parameter}
+    </select>
+
+    <select id="countActionById" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNBLOCKLISTACTIONHIST
+        WHERE ACTION_ID = #{_parameter}
+    </select>
+
+    <insert id="insertBlockRow" parameterType="hashmap">
+        INSERT INTO COMTNBLOCKLISTENTRY (
+            BLOCK_ID,
+            TARGET,
+            BLOCK_TYPE,
+            REASON,
+            REASON_EN,
+            STATUS,
+            EXPIRES_AT,
+            OWNER,
+            OWNER_EN,
+            SOURCE,
+            SOURCE_TITLE,
+            SOURCE_FINGERPRINT,
+            SOURCE_SEVERITY,
+            REGISTERED_AT,
+            ACTIVATED_AT,
+            ACTIVATED_BY,
+            REVIEWED_AT,
+            REVIEWED_BY,
+            LAST_ACTION_AT,
+            LAST_ACTION_BY,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        ) VALUES (
+            #{blockId},
+            #{target},
+            #{blockType},
+            #{reason},
+            #{reasonEn},
+            #{status},
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            #{owner},
+            #{ownerEn},
+            #{source},
+            #{sourceTitle},
+            #{sourceFingerprint},
+            #{sourceSeverity},
+            CASE WHEN #{registeredAt} IS NULL OR #{registeredAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{registeredAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{activatedAt} IS NULL OR #{activatedAt} = '' THEN NULL ELSE TO_DATETIME(#{activatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            #{activatedBy},
+            CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            #{reviewedBy},
+            CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            #{updatedBy},
+            'Y',
+            COALESCE(#{owner}, 'system'),
+            CURRENT_DATETIME,
+            COALESCE(#{updatedBy}, #{owner}, 'system'),
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateBlockRow" parameterType="hashmap">
+        UPDATE COMTNBLOCKLISTENTRY
+        SET TARGET = #{target},
+            BLOCK_TYPE = #{blockType},
+            REASON = #{reason},
+            REASON_EN = #{reasonEn},
+            STATUS = #{status},
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            OWNER = #{owner},
+            OWNER_EN = #{ownerEn},
+            SOURCE = #{source},
+            SOURCE_TITLE = #{sourceTitle},
+            SOURCE_FINGERPRINT = #{sourceFingerprint},
+            SOURCE_SEVERITY = #{sourceSeverity},
+            REGISTERED_AT = CASE WHEN #{registeredAt} IS NULL OR #{registeredAt} = '' THEN REGISTERED_AT ELSE TO_DATETIME(#{registeredAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            ACTIVATED_AT = CASE WHEN #{activatedAt} IS NULL OR #{activatedAt} = '' THEN NULL ELSE TO_DATETIME(#{activatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            ACTIVATED_BY = #{activatedBy},
+            REVIEWED_AT = CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            REVIEWED_BY = #{reviewedBy},
+            LAST_ACTION_AT = CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            LAST_ACTION_BY = #{updatedBy},
+            LAST_UPDUSR_ID = COALESCE(#{updatedBy}, LAST_UPDUSR_ID),
+            LAST_UPDT_PNTTM = CURRENT_DATETIME
+        WHERE BLOCK_ID = #{blockId}
+    </update>
+
+    <insert id="insertActionHistoryRow" parameterType="hashmap">
+        INSERT INTO COMTNBLOCKLISTACTIONHIST (
+            ACTION_ID,
+            BLOCK_ID,
+            TARGET,
+            ACTION_TYPE,
+            STATUS,
+            DETAIL,
+            DETAIL_EN,
+            ACTOR_ID,
+            ACTOR_NAME,
+            SOURCE,
+            ACTION_AT,
+            EXPIRES_AT,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        ) VALUES (
+            #{actionId},
+            #{blockId},
+            #{target},
+            #{actionType},
+            #{status},
+            #{detail},
+            #{detailEn},
+            #{actorId},
+            #{actorName},
+            #{source},
+            CASE WHEN #{actionAt} IS NULL OR #{actionAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{actionAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            'Y',
+            COALESCE(#{actorId}, 'system'),
+            CURRENT_DATETIME,
+            COALESCE(#{actorId}, 'system'),
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateActionHistoryRow" parameterType="hashmap">
+        UPDATE COMTNBLOCKLISTACTIONHIST
+        SET BLOCK_ID = #{blockId},
+            TARGET = #{target},
+            ACTION_TYPE = #{actionType},
+            STATUS = #{status},
+            DETAIL = #{detail},
+            DETAIL_EN = #{detailEn},
+            ACTOR_ID = #{actorId},
+            ACTOR_NAME = #{actorName},
+            SOURCE = #{source},
+            ACTION_AT = CASE WHEN #{actionAt} IS NULL OR #{actionAt} = '' THEN ACTION_AT ELSE TO_DATETIME(#{actionAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            LAST_UPDUSR_ID = COALESCE(#{actorId}, LAST_UPDUSR_ID),
+            LAST_UPDT_PNTTM = CURRENT_DATETIME
+        WHERE ACTION_ID = #{actionId}
+    </update>
+
+</mapper>

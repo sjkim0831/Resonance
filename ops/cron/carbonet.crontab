@@ -1,0 +1,23 @@
+# Carbonet cron jobs managed from the repository.
+# Change PROJECT_ROOT here first if the repository folder name changes.
+# For shell scripts, shared path defaults live in `${PROJECT_ROOT}/ops/project-paths.sh`.
+# Install with: ${PROJECT_ROOT}/ops/cron/install_cron.sh
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PROJECT_ROOT=/opt/Resonance-react-migration
+
+# Every minute: heartbeat for cron verification
+* * * * * /bin/bash ${PROJECT_ROOT}/ops/cron/jobs/heartbeat.sh >> ${PROJECT_ROOT}/var/logs/cron/heartbeat.log 2>&1
+
+# Every 10 minutes: external token refresh check
+*/10 * * * * /bin/bash ${PROJECT_ROOT}/ops/cron/jobs/external_token_refresh.sh >> ${PROJECT_ROOT}/var/logs/cron/external_token_refresh.log 2>&1
+
+# Every 30 minutes: certificate expiry sync check
+*/30 * * * * /bin/bash ${PROJECT_ROOT}/ops/cron/jobs/certificate_expiry_sync.sh >> ${PROJECT_ROOT}/var/logs/cron/certificate_expiry_sync.log 2>&1
+
+# Daily 02:00: nightly emissions aggregation check
+0 2 * * * /bin/bash ${PROJECT_ROOT}/ops/cron/jobs/nightly_emission_aggregation.sh >> ${PROJECT_ROOT}/var/logs/cron/nightly_emission_aggregation.log 2>&1
+
+# Every 15 minutes: self-healing pattern analysis
+*/15 * * * * /bin/bash ${PROJECT_ROOT}/ops/cron/jobs/self_healing_analysis.sh >> ${PROJECT_ROOT}/var/logs/cron/self_healing_analysis.log 2>&1

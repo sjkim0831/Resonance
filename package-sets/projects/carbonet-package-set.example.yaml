@@ -1,0 +1,24 @@
+project: carbonet
+framework: resonance
+package_set_id: carbonet-runtime-v0.1
+
+runtime_packages:
+  - apps/project-runtime
+  - projects/carbonet-runtime
+
+adapter_packages:
+  - projects/carbonet-adapter
+
+common_jar_set:
+  ref: common-core-v0.1
+
+theme_bundle:
+  ref: project-carbonet-v2026.04
+
+migration_bundle:
+  ref: carbonet-db-v2026.04
+
+delivery:
+  include_source_snapshot: true
+  include_install_scripts: true
+  include_k8s_release_manifest: true

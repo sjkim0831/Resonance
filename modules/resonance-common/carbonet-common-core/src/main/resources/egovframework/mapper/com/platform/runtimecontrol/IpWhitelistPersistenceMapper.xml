@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.com.platform.runtimecontrol.mapper.IpWhitelistPersistenceMapper">
+
+    <select id="selectRuleRows" resultType="hashmap">
+        SELECT
+            RULE_ID AS "ruleId",
+            REQUEST_ID AS "requestId",
+            IP_ADDRESS AS "ipAddress",
+            ACCESS_SCOPE AS "accessScope",
+            DESCRIPTION AS "description",
+            DESCRIPTION_EN AS "descriptionEn",
+            OWNER AS "owner",
+            OWNER_EN AS "ownerEn",
+            STATUS AS "status",
+            TO_CHAR(UPDATED_AT, 'YYYY-MM-DD HH24:MI') AS "updatedAt",
+            MEMO AS "memo",
+            MEMO_EN AS "memoEn",
+            TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI') AS "expiresAt"
+        FROM COMTNIPWHITELISTRULE
+        WHERE COALESCE(USE_AT, 'Y') = 'Y'
+        ORDER BY UPDATED_AT DESC, RULE_ID DESC
+    </select>
+
+    <select id="selectRequestRows" resultType="hashmap">
+        SELECT
+            REQUEST_ID AS "requestId",
+            RULE_ID AS "ruleId",
+            IP_ADDRESS AS "ipAddress",
+            ACCESS_SCOPE AS "accessScope",
+            REASON AS "reason",
+            REASON_EN AS "reasonEn",
+            APPROVAL_STATUS AS "approvalStatus",
+            APPROVAL_STATUS_EN AS "approvalStatusEn",
+            TO_CHAR(REQUESTED_AT, 'YYYY-MM-DD HH24:MI') AS "requestedAt",
+            REQUESTER AS "requester",
+            REQUESTER_EN AS "requesterEn",
+            REVIEW_NOTE AS "reviewNote",
+            TO_CHAR(REVIEWED_AT, 'YYYY-MM-DD HH24:MI') AS "reviewedAt",
+            REVIEWED_BY AS "reviewedBy",
+            REVIEWED_BY_EN AS "reviewedByEn",
+            TO_CHAR(EXPIRES_AT, 'YYYY-MM-DD HH24:MI') AS "expiresAt",
+            MEMO AS "memo",
+            MEMO_EN AS "memoEn"
+        FROM COMTNIPWHITELISTREQUEST
+        WHERE COALESCE(USE_AT, 'Y') = 'Y'
+        ORDER BY REQUESTED_AT DESC, REQUEST_ID DESC
+    </select>
+
+    <select id="countRuleById" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNIPWHITELISTRULE
+        WHERE RULE_ID = #{_parameter}
+    </select>
+
+    <select id="countRequestById" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNIPWHITELISTREQUEST
+        WHERE REQUEST_ID = #{_parameter}
+    </select>
+
+    <insert id="insertRuleRow" parameterType="hashmap">
+        INSERT INTO COMTNIPWHITELISTRULE (
+            RULE_ID,
+            REQUEST_ID,
+            IP_ADDRESS,
+            ACCESS_SCOPE,
+            DESCRIPTION,
+            DESCRIPTION_EN,
+            OWNER,
+            OWNER_EN,
+            STATUS,
+            UPDATED_AT,
+            MEMO,
+            MEMO_EN,
+            EXPIRES_AT,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        ) VALUES (
+            #{ruleId},
+            CASE WHEN #{requestId} IS NULL OR #{requestId} = '' THEN NULL ELSE #{requestId} END,
+            #{ipAddress},
+            #{accessScope},
+            #{description},
+            #{descriptionEn},
+            #{owner},
+            #{ownerEn},
+            #{status},
+            CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI') END,
+            #{memo},
+            #{memoEn},
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            'Y',
+            COALESCE(#{owner}, 'system'),
+            CURRENT_DATETIME,
+            COALESCE(#{owner}, 'system'),
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateRuleRow" parameterType="hashmap">
+        UPDATE COMTNIPWHITELISTRULE
+        SET REQUEST_ID = CASE WHEN #{requestId} IS NULL OR #{requestId} = '' THEN NULL ELSE #{requestId} END,
+            IP_ADDRESS = #{ipAddress},
+            ACCESS_SCOPE = #{accessScope},
+            DESCRIPTION = #{description},
+            DESCRIPTION_EN = #{descriptionEn},
+            OWNER = #{owner},
+            OWNER_EN = #{ownerEn},
+            STATUS = #{status},
+            UPDATED_AT = CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI') END,
+            MEMO = #{memo},
+            MEMO_EN = #{memoEn},
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            LAST_UPDUSR_ID = COALESCE(#{owner}, LAST_UPDUSR_ID),
+            LAST_UPDT_PNTTM = CURRENT_DATETIME
+        WHERE RULE_ID = #{ruleId}
+    </update>
+
+    <insert id="insertRequestRow" parameterType="hashmap">
+        INSERT INTO COMTNIPWHITELISTREQUEST (
+            REQUEST_ID,
+            RULE_ID,
+            IP_ADDRESS,
+            ACCESS_SCOPE,
+            REASON,
+            REASON_EN,
+            APPROVAL_STATUS,
+            APPROVAL_STATUS_EN,
+            REQUESTED_AT,
+            REQUESTER,
+            REQUESTER_EN,
+            REVIEW_NOTE,
+            REVIEWED_AT,
+            REVIEWED_BY,
+            REVIEWED_BY_EN,
+            EXPIRES_AT,
+            MEMO,
+            MEMO_EN,
+            USE_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM
+        ) VALUES (
+            #{requestId},
+            CASE WHEN #{ruleId} IS NULL OR #{ruleId} = '' THEN NULL ELSE #{ruleId} END,
+            #{ipAddress},
+            #{accessScope},
+            #{reason},
+            #{reasonEn},
+            #{approvalStatus},
+            #{approvalStatusEn},
+            CASE WHEN #{requestedAt} IS NULL OR #{requestedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{requestedAt}, 'YYYY-MM-DD HH24:MI') END,
+            #{requester},
+            #{requesterEn},
+            #{reviewNote},
+            CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI') END,
+            #{reviewedBy},
+            #{reviewedByEn},
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            #{memo},
+            #{memoEn},
+            'Y',
+            COALESCE(#{requester}, 'system'),
+            CURRENT_DATETIME,
+            COALESCE(#{reviewedBy}, #{requester}, 'system'),
+            CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateRequestRow" parameterType="hashmap">
+        UPDATE COMTNIPWHITELISTREQUEST
+        SET RULE_ID = CASE WHEN #{ruleId} IS NULL OR #{ruleId} = '' THEN NULL ELSE #{ruleId} END,
+            IP_ADDRESS = #{ipAddress},
+            ACCESS_SCOPE = #{accessScope},
+            REASON = #{reason},
+            REASON_EN = #{reasonEn},
+            APPROVAL_STATUS = #{approvalStatus},
+            APPROVAL_STATUS_EN = #{approvalStatusEn},
+            REQUESTED_AT = CASE WHEN #{requestedAt} IS NULL OR #{requestedAt} = '' THEN REQUESTED_AT ELSE TO_DATETIME(#{requestedAt}, 'YYYY-MM-DD HH24:MI') END,
+            REQUESTER = #{requester},
+            REQUESTER_EN = #{requesterEn},
+            REVIEW_NOTE = #{reviewNote},
+            REVIEWED_AT = CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI') END,
+            REVIEWED_BY = #{reviewedBy},
+            REVIEWED_BY_EN = #{reviewedByEn},
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            MEMO = #{memo},
+            MEMO_EN = #{memoEn},
+            LAST_UPDUSR_ID = COALESCE(#{reviewedBy}, #{requester}, LAST_UPDUSR_ID),
+            LAST_UPDT_PNTTM = CURRENT_DATETIME
+        WHERE REQUEST_ID = #{requestId}
+    </update>
+
+</mapper>

@@ -1,0 +1,11 @@
+menu_code,menu_name_ko,menu_name_en,feature_code,feature_name_ko,feature_name_en,actor,route,notes
+HMENU0000,예시메뉴,Example Menu,FUNC0000,예시기능,Example Function,USER,/example,Replace example row
+A0050303,외부 연계 로그,External Logs,ADMIN_A0050303_VIEW,외부 연계 로그,View External Logs,ADMIN,/admin/external/logs,External integration event queue screen
+A0020102,산정 결과 상세,Emission Result Detail,ADMIN_A0020102_VIEW,산정 결과 상세 조회,View Emission Result Detail,ADMIN,/admin/emission/result_detail,Emission result detail screen and page-data access
+A0020104,검증 관리,Verification Management,A0020104_VIEW,검증 관리 조회,View Verification Management,ADMIN,/admin/emission/validate,Verification queue screen and page-data access
+A0020104,검증 관리,Verification Management,A0020104_ASSIGN,검증 담당자 배정,Assign Verifier,ADMIN,/admin/emission/validate,Assign verification owners and queue items
+A0020104,검증 관리,Verification Management,A0020104_REVIEW,검증 검토,Review Verification,ADMIN,/admin/emission/validate,Review verification evidence and result deltas
+A0020104,검증 관리,Verification Management,A0020104_REJECT,검증 반려,Reject Verification,ADMIN,/admin/emission/validate,Reject verification with supplement feedback
+A0020104,검증 관리,Verification Management,A0020104_APPROVE,검증 승인,Approve Verification,ADMIN,/admin/emission/validate,Approve verified emission results
+A0020104,검증 관리,Verification Management,A0020104_TRACE,검증 이력 추적,Trace Verification History,ADMIN,/admin/emission/validate,Trace verification actions and operator evidence
+A1900106,새 페이지,New Page,A1900106_VIEW,새 페이지 조회,View New Page,ADMIN,/admin/system/new-page,Starter admin scaffold page registered under AI workbench

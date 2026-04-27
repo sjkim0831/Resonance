@@ -1,0 +1,230 @@
+{
+  "EMISSION_DEF_BEC99F38491B" : {
+    "draftId" : "EMISSION_DEF_BEC99F38491B",
+    "categoryCode" : "LIME",
+    "categoryName" : "Codex verification definition",
+    "tierLabel" : "Tier 1",
+    "formula" : "SUM(EF석회,i * Ml,i)",
+    "formulaTree" : [ {
+      "kind" : "sum",
+      "iterator" : "i",
+      "items" : [ {
+        "kind" : "token",
+        "token" : "EF석회,i"
+      }, {
+        "kind" : "token",
+        "joiner" : "×",
+        "token" : "Ml,i"
+      } ]
+    } ],
+    "inputMode" : "NUMBER",
+    "policies" : [ "input_required_yn", "default_capable_yn" ],
+    "directRequiredCodes" : [ "MLI" ],
+    "fallbackCodes" : [ "EF_LIME" ],
+    "autoCalculatedCodes" : [ ],
+    "supplementalCodes" : [ ],
+    "sections" : [ ],
+    "variableDefinitions" : [ ],
+    "runtimeMode" : "PRIMARY",
+    "note" : "Codex runtime-mode verification snapshot",
+    "lastSavedAt" : "2026-04-04 02:09",
+    "lastSavedBy" : "system",
+    "status" : "PUBLISHED",
+    "publishedVersionId" : "published-emission_def_bec99f38491b-a9103b1f",
+    "publishedSavedAt" : "2026-04-04 02:09",
+    "lastPublishedBy" : "system"
+  },
+  "EMISSION_DEF_529006E43F9D" : {
+    "draftId" : "EMISSION_DEF_529006E43F9D",
+    "categoryCode" : "LIME",
+    "categoryName" : "Codex verification definition",
+    "tierLabel" : "Tier 1",
+    "formula" : "SUM(EF석회,i * Ml,i)",
+    "formulaTree" : [ {
+      "kind" : "sum",
+      "iterator" : "i",
+      "items" : [ {
+        "kind" : "token",
+        "token" : "EF석회,i"
+      }, {
+        "kind" : "token",
+        "joiner" : "×",
+        "token" : "Ml,i"
+      } ]
+    } ],
+    "inputMode" : "NUMBER",
+    "policies" : [ "input_required_yn", "default_capable_yn" ],
+    "directRequiredCodes" : [ "MLI" ],
+    "fallbackCodes" : [ "EF_LIME" ],
+    "autoCalculatedCodes" : [ ],
+    "supplementalCodes" : [ ],
+    "sections" : [ ],
+    "variableDefinitions" : [ ],
+    "runtimeMode" : "PRIMARY",
+    "note" : "Codex runtime-mode verification snapshot",
+    "lastSavedAt" : "2026-04-04 02:10",
+    "lastSavedBy" : "system",
+    "status" : "PUBLISHED",
+    "publishedVersionId" : "published-emission_def_529006e43f9d-080c13d9",
+    "publishedSavedAt" : "2026-04-04 02:10",
+    "lastPublishedBy" : "system"
+  },
+  "EMISSION_DEF_52A8D68BC4EB" : {
+    "draftId" : "EMISSION_DEF_52A8D68BC4EB",
+    "categoryCode" : "LIME",
+    "categoryName" : "Lime definition-backed verification",
+    "tierLabel" : "Tier 4",
+    "formula" : "SUM(Ml,i)",
+    "formulaTree" : [ {
+      "kind" : "sum",
+      "iterator" : "i",
+      "items" : [ {
+        "kind" : "token",
+        "token" : "Ml,i"
+      } ]
+    } ],
+    "inputMode" : "NUMBER",
+    "policies" : [ "input_required_yn" ],
+    "directRequiredCodes" : [ "MLI" ],
+    "fallbackCodes" : [ ],
+    "autoCalculatedCodes" : [ ],
+    "supplementalCodes" : [ ],
+    "sections" : [ {
+      "sectionId" : "LIME-TIER4-PRODUCTION",
+      "sectionTitle" : "활동자료 입력",
+      "sectionDescription" : "정의 기반 검증용 Tier 4 활동자료를 입력합니다.",
+      "sectionFormula" : "SUM(Ml,i)",
+      "sectionOrder" : 1
+    } ],
+    "variableDefinitions" : [ {
+      "varCode" : "MLI",
+      "varName" : "Lime production quantity",
+      "varDesc" : "Definition-backed verification quantity input",
+      "displayName" : "석회 생산량",
+      "displayCode" : "Ml,i",
+      "unit" : "t",
+      "inputType" : "NUMBER",
+      "sourceType" : "USER",
+      "uiHint" : "Definition-backed Tier 4 검증 입력값입니다.",
+      "derivedYn" : "N",
+      "supplementalYn" : "N",
+      "isRepeatable" : "Y",
+      "isRequired" : "Y",
+      "repeatGroupKey" : "lime-tier4-line",
+      "sectionId" : "lime-tier4-production",
+      "sectionTitle" : "활동자료 입력",
+      "sectionDescription" : "정의 기반 검증용 Tier 4 활동자료를 입력합니다.",
+      "sectionFormula" : "SUM(Ml,i)",
+      "sortOrder" : 10,
+      "sectionOrder" : 1
+    } ],
+    "runtimeMode" : "PRIMARY",
+    "note" : "Codex definition-backed runtime verification fixture",
+    "lastSavedAt" : "2026-04-06 09:49",
+    "lastSavedBy" : "system",
+    "status" : "PUBLISHED",
+    "publishedVersionId" : "published-emission_def_52a8d68bc4eb-a3c28b3f",
+    "publishedSavedAt" : "2026-04-06 09:49",
+    "lastPublishedBy" : "system"
+  },
+  "EMISSION_DEF_206AFFC3B084" : {
+    "draftId" : "EMISSION_DEF_206AFFC3B084",
+    "categoryCode" : "LIME",
+    "categoryName" : "Lime definition-backed verification",
+    "tierLabel" : "Tier 4",
+    "formula" : "SUM(Ml,i)",
+    "formulaTree" : [ {
+      "kind" : "sum",
+      "iterator" : "i",
+      "items" : [ {
+        "kind" : "token",
+        "token" : "Ml,i"
+      } ]
+    } ],
+    "inputMode" : "NUMBER",
+    "policies" : [ "input_required_yn" ],
+    "directRequiredCodes" : [ "MLI" ],
+    "fallbackCodes" : [ ],
+    "autoCalculatedCodes" : [ ],
+    "supplementalCodes" : [ ],
+    "sections" : [ {
+      "sectionId" : "LIME-TIER4-PRODUCTION",
+      "sectionTitle" : "활동자료 입력",
+      "sectionDescription" : "정의 기반 검증용 Tier 4 활동자료를 입력합니다.",
+      "sectionFormula" : "SUM(Ml,i)",
+      "sectionOrder" : 1
+    } ],
+    "variableDefinitions" : [ {
+      "varCode" : "MLI",
+      "varName" : "Lime production quantity",
+      "varDesc" : "Definition-backed verification quantity input",
+      "displayName" : "석회 생산량",
+      "displayCode" : "Ml,i",
+      "unit" : "t",
+      "inputType" : "NUMBER",
+      "sourceType" : "USER",
+      "uiHint" : "Definition-backed Tier 4 검증 입력값입니다.",
+      "derivedYn" : "N",
+      "supplementalYn" : "N",
+      "isRepeatable" : "Y",
+      "isRequired" : "Y",
+      "repeatGroupKey" : "lime-tier4-line",
+      "sectionId" : "lime-tier4-production",
+      "sectionTitle" : "활동자료 입력",
+      "sectionDescription" : "정의 기반 검증용 Tier 4 활동자료를 입력합니다.",
+      "sectionFormula" : "SUM(Ml,i)",
+      "sortOrder" : 10,
+      "sectionOrder" : 1
+    } ],
+    "runtimeMode" : "PRIMARY",
+    "note" : "Codex definition-backed runtime verification fixture",
+    "lastSavedAt" : "2026-04-06 09:51",
+    "lastSavedBy" : "system",
+    "status" : "PUBLISHED",
+    "publishedVersionId" : "published-emission_def_206affc3b084-43a98b29",
+    "publishedSavedAt" : "2026-04-06 09:51",
+    "lastPublishedBy" : "system"
+  },
+  "EMISSION_DEF_2C4E9935FFAC" : {
+    "draftId" : "EMISSION_DEF_2C4E9935FFAC",
+    "categoryCode" : "CEMENT",
+    "categoryName" : "시멘트 생산 확장",
+    "tierLabel" : "Tier 4",
+    "formula" : "SUM(activity,i × factor,i, i) - correction",
+    "formulaTree" : [ {
+      "kind" : "sum",
+      "iterator" : "i",
+      "items" : [ {
+        "kind" : "token",
+        "token" : "activity,i",
+        "iterator" : "i"
+      }, {
+        "kind" : "token",
+        "joiner" : "×",
+        "token" : "factor,i",
+        "iterator" : "i"
+      } ]
+    }, {
+      "kind" : "token",
+      "joiner" : "-",
+      "token" : "correction",
+      "iterator" : "i"
+    } ],
+    "inputMode" : "NUMBER",
+    "policies" : [ "input_required_yn", "default_capable_yn", "stored_factor_capable_yn" ],
+    "directRequiredCodes" : [ "MCI", "CCLI", "MCL", "MLI" ],
+    "fallbackCodes" : [ "EFCLC", "EFC", "EFCL" ],
+    "autoCalculatedCodes" : [ "CFCKD" ],
+    "supplementalCodes" : [ ],
+    "sections" : [ ],
+    "variableDefinitions" : [ ],
+    "runtimeMode" : "AUTO",
+    "note" : "저장 API 개방 전 validation 정책과 resolution 정책을 분리합니다.",
+    "lastSavedAt" : "2026-04-14 18:28",
+    "lastSavedBy" : "system",
+    "status" : "DRAFT",
+    "publishedVersionId" : "",
+    "publishedSavedAt" : "",
+    "lastPublishedBy" : ""
+  }
+}

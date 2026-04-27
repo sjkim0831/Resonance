@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Carbonet Codex Launcher</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="eyebrow">Carbonet</p>
+          <h1>Codex Launcher</h1>
+          <p class="muted">workspace, quick action, free prompt를 한 곳에서 실행</p>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Workspace</h2>
+          </div>
+          <div id="workspace-list" class="workspace-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Accounts</h2>
+            <button id="refresh-accounts" class="ghost-button" type="button">Refresh</button>
+          </div>
+          <div class="field-row compact">
+            <label for="account-label">Save Current Login</label>
+            <input id="account-label" type="text" placeholder="예: 개인 ChatGPT, 회사 API Key">
+          </div>
+          <div class="button-row">
+            <button id="save-current-account" class="secondary-button" type="button">Save Current</button>
+          </div>
+          <div id="current-account" class="muted"></div>
+          <div id="account-list" class="workspace-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Jobs</h2>
+            <button id="refresh-jobs" class="ghost-button" type="button">Refresh</button>
+          </div>
+          <div id="job-list" class="job-list"></div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Local Console</p>
+            <h2>Codex exec와 프로젝트 명령을 같은 런처에서 관리</h2>
+          </div>
+          <div class="status-bar">
+            <div class="status-pill">
+              <span>Codex</span>
+              <strong id="codex-version">checking...</strong>
+            </div>
+            <div class="status-pill">
+              <span>Login</span>
+              <strong id="login-status">checking...</strong>
+            </div>
+            <button id="refresh-login" class="ghost-button" type="button">Login Check</button>
+          </div>
+        </section>
+
+        <section class="quick-grid">
+          <div class="panel action-panel">
+            <div class="panel-head">
+              <h2>Quick Actions</h2>
+              <span id="selected-action-caption" class="muted">버튼을 선택하세요</span>
+            </div>
+            <div id="action-grid" class="action-grid"></div>
+          </div>
+
+          <div class="panel composer-panel">
+            <div class="panel-head">
+              <h2>Composer</h2>
+              <span id="workspace-caption" class="muted"></span>
+            </div>
+
+            <div class="field-row">
+              <label for="custom-codex-prompt">Codex Prompt</label>
+              <textarea id="custom-codex-prompt" placeholder="실행할 Codex 프롬프트를 입력하세요"></textarea>
+            </div>
+
+            <div class="field-row">
+              <label for="custom-shell-command">Shell Command</label>
+              <input id="custom-shell-command" type="text" placeholder="예: git status --short">
+            </div>
+
+            <div class="field-row">
+              <label for="extra-input">Extra Input</label>
+              <textarea id="extra-input" placeholder="선택한 quick action에 덧붙일 추가 입력"></textarea>
+            </div>
+
+            <div class="button-row">
+              <button id="run-selected-action" class="primary-button" type="button">Run Selected Action</button>
+              <button id="run-custom-codex" class="secondary-button" type="button">Run Custom Codex</button>
+              <button id="run-custom-shell" class="secondary-button" type="button">Run Custom Shell</button>
+              <button id="cancel-job" class="ghost-button" type="button">Cancel Current Job</button>
+            </div>
+
+            <p class="muted inline-note">계정 전환은 왼쪽 Accounts에서 저장 후 클릭 한 번으로 활성화됩니다.</p>
+          </div>
+        </section>
+
+        <section class="console-grid">
+          <div class="panel output-panel">
+            <div class="panel-head">
+              <h2>Command</h2>
+              <span id="job-meta" class="muted">실행 전</span>
+            </div>
+            <pre id="command-preview" class="command-preview">아직 실행된 작업이 없습니다.</pre>
+          </div>
+
+          <div class="panel output-panel">
+            <div class="panel-head">
+              <h2>Codex Final</h2>
+            </div>
+            <pre id="final-output" class="console-output">Codex 최종 응답이 여기에 표시됩니다.</pre>
+          </div>
+
+          <div class="panel output-panel wide">
+            <div class="panel-head">
+              <h2>Raw Output</h2>
+            </div>
+            <pre id="raw-output" class="console-output">실행 로그가 여기에 표시됩니다.</pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

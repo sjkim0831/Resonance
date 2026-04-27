@@ -1,0 +1,2 @@
+component_id,component_type,screen_id,selector_or_name,source_file,reusable,event_bindings,css_classes,design_source,notes
+COMP-EXAMPLE,button,COMMON-EXAMPLE,#exampleButton,frontend/src/example.tsx,Y,click,"btn btn-primary",main_home_menu.html,Replace example row

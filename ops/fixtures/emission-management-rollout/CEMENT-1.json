@@ -1,0 +1,8 @@
+{"categoryId":1,"tier":1,"createdBy":"codex-rollout-fill","values":[
+  {"varCode":"MCI","lineNo":1,"valueNum":100.0},
+  {"varCode":"CCLI","lineNo":1,"valueNum":0.8},
+  {"varCode":"MCI","lineNo":2,"valueNum":50.0},
+  {"varCode":"CCLI","lineNo":2,"valueNum":0.6},
+  {"varCode":"IM","lineNo":1,"valueNum":10.0},
+  {"varCode":"EX","lineNo":1,"valueNum":5.0}
+]}

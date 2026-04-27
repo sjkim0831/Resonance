@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.com.common.mapper.SystemAssetInventoryMapper">
+
+    <resultMap id="AssetInventoryMap" type="egovframework.com.common.trace.SystemAssetInventoryVO">
+        <id property="assetId" column="ASSET_ID" />
+        <result property="assetType" column="ASSET_TYPE" />
+        <result property="assetName" column="ASSET_NAME" />
+        <result property="assetVersion" column="ASSET_VERSION" />
+        <result property="sourcePath" column="SOURCE_PATH" />
+        <result property="sourceSymbol" column="SOURCE_SYMBOL" />
+        <result property="contentHash" column="CONTENT_HASH" />
+        <result property="assetFamily" column="ASSET_FAMILY" />
+        <result property="ownerDomain" column="OWNER_DOMAIN" />
+        <result property="ownerScope" column="OWNER_SCOPE" />
+        <result property="operatorOwner" column="OPERATOR_OWNER" />
+        <result property="serviceOwner" column="SERVICE_OWNER" />
+        <result property="criticality" column="CRITICALITY" />
+        <result property="healthStatus" column="HEALTH_STATUS" />
+        <result property="lastScanAt" column="LAST_SCAN_AT" />
+        <result property="activeYn" column="ACTIVE_YN" />
+        <result property="createdAt" column="CREATED_AT" />
+        <result property="updatedAt" column="UPDATED_AT" />
+    </resultMap>
+
+    <select id="countSystemAsset" parameterType="string" resultType="int">
+        SELECT COUNT(*) FROM SYSTEM_ASSET_INVENTORY WHERE ASSET_ID = #{value}
+    </select>
+
+    <select id="selectSystemAsset" parameterType="string" resultMap="AssetInventoryMap">
+        SELECT * FROM SYSTEM_ASSET_INVENTORY WHERE ASSET_ID = #{value}
+    </select>
+
+    <select id="selectSystemAssetList" parameterType="map" resultMap="AssetInventoryMap">
+        SELECT * FROM SYSTEM_ASSET_INVENTORY
+        <where>
+            <if test="assetType != null and assetType != ''">
+                AND ASSET_TYPE = #{assetType}
+            </if>
+            <if test="ownerDomain != null and ownerDomain != ''">
+                AND OWNER_DOMAIN = #{ownerDomain}
+            </if>
+            <if test="healthStatus != null and healthStatus != ''">
+                AND HEALTH_STATUS = #{healthStatus}
+            </if>
+            <if test="activeYn != null and activeYn != ''">
+                AND ACTIVE_YN = #{activeYn}
+            </if>
+        </where>
+        ORDER BY ASSET_TYPE ASC, ASSET_NAME ASC
+    </select>
+
+    <insert id="insertSystemAsset" parameterType="egovframework.com.common.trace.SystemAssetInventoryVO">
+        INSERT INTO SYSTEM_ASSET_INVENTORY (
+            ASSET_ID, ASSET_TYPE, ASSET_NAME, ASSET_VERSION, SOURCE_PATH, SOURCE_SYMBOL,
+            CONTENT_HASH, ASSET_FAMILY, OWNER_DOMAIN, OWNER_SCOPE, OPERATOR_OWNER, SERVICE_OWNER,
+            CRITICALITY, HEALTH_STATUS, LAST_SCAN_AT,
+            ACTIVE_YN, CREATED_AT, UPDATED_AT
+        ) VALUES (
+            #{assetId}, #{assetType}, #{assetName}, #{assetVersion}, #{sourcePath}, #{sourceSymbol},
+            #{contentHash}, #{assetFamily}, #{ownerDomain}, #{ownerScope}, #{operatorOwner}, #{serviceOwner},
+            #{criticality}, #{healthStatus}, #{lastScanAt},
+            #{activeYn}, CURRENT_DATETIME, CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateSystemAsset" parameterType="egovframework.com.common.trace.SystemAssetInventoryVO">
+        UPDATE SYSTEM_ASSET_INVENTORY
+        SET
+            ASSET_TYPE = #{assetType},
+            ASSET_NAME = #{assetName},
+            ASSET_VERSION = #{assetVersion},
+            SOURCE_PATH = #{sourcePath},
+            SOURCE_SYMBOL = #{sourceSymbol},
+            CONTENT_HASH = #{contentHash},
+            ASSET_FAMILY = #{assetFamily},
+            OWNER_DOMAIN = #{ownerDomain},
+            OWNER_SCOPE = #{ownerScope},
+            OPERATOR_OWNER = #{operatorOwner},
+            SERVICE_OWNER = #{serviceOwner},
+            CRITICALITY = #{criticality},
+            HEALTH_STATUS = #{healthStatus},
+            LAST_SCAN_AT = #{lastScanAt},
+            ACTIVE_YN = #{activeYn},
+            UPDATED_AT = CURRENT_DATETIME
+        WHERE ASSET_ID = #{assetId}
+    </update>
+
+    <delete id="deleteSystemAsset" parameterType="string">
+        DELETE FROM SYSTEM_ASSET_INVENTORY WHERE ASSET_ID = #{value}
+    </delete>
+
+    <insert id="insertSystemAssetComposition" parameterType="egovframework.com.common.trace.SystemAssetCompositionVO">
+        INSERT INTO SYSTEM_ASSET_COMPOSITION (
+            COMPOSITION_ID, PARENT_ASSET_ID, CHILD_ASSET_ID, RELATION_TYPE, MAPPING_NOTES, CREATED_AT
+        ) VALUES (
+            #{compositionId}, #{parentAssetId}, #{childAssetId}, #{relationType}, #{mappingNotes}, CURRENT_DATETIME
+        )
+    </insert>
+
+    <delete id="deleteSystemAssetCompositions" parameterType="string">
+        DELETE FROM SYSTEM_ASSET_COMPOSITION WHERE PARENT_ASSET_ID = #{value}
+    </delete>
+
+    <select id="selectSystemAssetCompositions" parameterType="string" resultType="egovframework.com.common.trace.SystemAssetCompositionVO">
+        SELECT
+            COMPOSITION_ID AS compositionId,
+            PARENT_ASSET_ID AS parentAssetId,
+            CHILD_ASSET_ID AS childAssetId,
+            RELATION_TYPE AS relationType,
+            MAPPING_NOTES AS mappingNotes,
+            CREATED_AT AS createdAt
+        FROM SYSTEM_ASSET_COMPOSITION
+        WHERE PARENT_ASSET_ID = #{value}
+    </select>
+
+    <select id="selectSystemAssetUpstreamCompositions" parameterType="string" resultType="egovframework.com.common.trace.SystemAssetCompositionVO">
+        SELECT
+            COMPOSITION_ID AS compositionId,
+            PARENT_ASSET_ID AS parentAssetId,
+            CHILD_ASSET_ID AS childAssetId,
+            RELATION_TYPE AS relationType,
+            MAPPING_NOTES AS mappingNotes,
+            CREATED_AT AS createdAt
+        FROM SYSTEM_ASSET_COMPOSITION
+        WHERE CHILD_ASSET_ID = #{value}
+    </select>
+
+    <insert id="insertSystemAssetScanLog" parameterType="egovframework.com.common.trace.SystemAssetScanLogVO">
+        INSERT INTO SYSTEM_ASSET_SCAN_LOG (
+            SCAN_ID, ASSET_ID, PREVIOUS_HASH, CURRENT_HASH, SCAN_RESULT, SCAN_DETAILS, CREATED_AT
+        ) VALUES (
+            #{scanId}, #{assetId}, #{previousHash}, #{currentHash}, #{scanResult}, #{scanDetails, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler}, CURRENT_DATETIME
+        )
+    </insert>
+
+    <select id="selectSystemAssetScanLogList" parameterType="string" resultType="egovframework.com.common.trace.SystemAssetScanLogVO">
+        SELECT
+            SCAN_ID AS scanId,
+            ASSET_ID AS assetId,
+            PREVIOUS_HASH AS previousHash,
+            CURRENT_HASH AS currentHash,
+            SCAN_RESULT AS scanResult,
+            SCAN_DETAILS AS scanDetails,
+            CREATED_AT AS createdAt
+        FROM SYSTEM_ASSET_SCAN_LOG
+        WHERE ASSET_ID = #{value}
+        ORDER BY CREATED_AT DESC
+    </select>
+
+    <select id="selectSystemAssetGapSummary" resultType="map">
+        SELECT
+            (SELECT COUNT(*) FROM SYSTEM_ASSET_INVENTORY WHERE OWNER_DOMAIN IS NULL OR OWNER_DOMAIN = '') AS missingOwnerCount,
+            (SELECT COUNT(*) FROM SYSTEM_ASSET_INVENTORY WHERE CRITICALITY IS NULL OR CRITICALITY = '') AS missingCriticalityCount,
+            (SELECT COUNT(*) FROM SYSTEM_ASSET_INVENTORY WHERE HEALTH_STATUS = 'DRIFTED') AS driftedCount,
+            (SELECT COUNT(*) FROM SYSTEM_ASSET_INVENTORY a WHERE NOT EXISTS (SELECT 1 FROM SYSTEM_ASSET_COMPOSITION c WHERE c.PARENT_ASSET_ID = a.ASSET_ID OR c.CHILD_ASSET_ID = a.ASSET_ID)) AS orphanCount
+    </select>
+
+    <select id="selectSystemAssetListByGapType" parameterType="string" resultMap="AssetInventoryMap">
+        SELECT * FROM SYSTEM_ASSET_INVENTORY a
+        <where>
+            <choose>
+                <when test="value == 'owner'">
+                    AND (OWNER_DOMAIN IS NULL OR OWNER_DOMAIN = '')
+                </when>
+                <when test="value == 'criticality'">
+                    AND (CRITICALITY IS NULL OR CRITICALITY = '')
+                </when>
+                <when test="value == 'drift'">
+                    AND HEALTH_STATUS = 'DRIFTED'
+                </when>
+                <when test="value == 'orphan'">
+                    AND NOT EXISTS (SELECT 1 FROM SYSTEM_ASSET_COMPOSITION c WHERE c.PARENT_ASSET_ID = a.ASSET_ID OR c.CHILD_ASSET_ID = a.ASSET_ID)
+                </when>
+            </choose>
+        </where>
+        ORDER BY ASSET_TYPE ASC, ASSET_NAME ASC
+    </select>
+
+    <!-- Lifecycle Plan Queries -->
+    <insert id="insertSystemAssetLifecyclePlan" parameterType="egovframework.com.common.trace.SystemAssetLifecyclePlanVO">
+        INSERT INTO SYSTEM_ASSET_LIFECYCLE_PLAN (
+            PLAN_ID, ASSET_ID, TARGET_STAGE, PLAN_STATUS, REQUESTER_ID, TARGET_DATE, REASON, CREATED_AT, UPDATED_AT
+        ) VALUES (
+            #{planId}, #{assetId}, #{targetStage}, #{planStatus}, #{requesterId}, #{targetDate}, #{reason}, CURRENT_DATETIME, CURRENT_DATETIME
+        )
+    </insert>
+
+    <update id="updateSystemAssetLifecyclePlanStatus" parameterType="map">
+        UPDATE SYSTEM_ASSET_LIFECYCLE_PLAN
+        SET 
+            PLAN_STATUS = #{status},
+            APPROVER_ID = #{approverId},
+            UPDATED_AT = CURRENT_DATETIME
+        WHERE PLAN_ID = #{planId}
+    </update>
+
+    <select id="selectSystemAssetLifecyclePlanList" parameterType="map" resultType="egovframework.com.common.trace.SystemAssetLifecyclePlanVO">
+        SELECT 
+            PLAN_ID AS planId,
+            ASSET_ID AS assetId,
+            TARGET_STAGE AS targetStage,
+            PLAN_STATUS AS planStatus,
+            REQUESTER_ID AS requesterId,
+            APPROVER_ID AS approverId,
+            TARGET_DATE AS targetDate,
+            REASON AS reason,
+            CREATED_AT AS createdAt,
+            UPDATED_AT AS updatedAt
+        FROM SYSTEM_ASSET_LIFECYCLE_PLAN
+        <where>
+            <if test="assetId != null">AND ASSET_ID = #{assetId}</if>
+            <if test="status != null">AND PLAN_STATUS = #{status}</if>
+            <if test="stage != null">AND TARGET_STAGE = #{stage}</if>
+        </where>
+        ORDER BY CREATED_AT DESC
+    </select>
+
+    <insert id="insertSystemAssetLifecycleEvidence" parameterType="egovframework.com.common.trace.SystemAssetLifecycleEvidenceVO">
+        INSERT INTO SYSTEM_ASSET_LIFECYCLE_EVIDENCE (
+            EVIDENCE_ID, PLAN_ID, CHECKPOINT_KEY, EVIDENCE_TYPE, EVIDENCE_VALUE, VERIFIED_BY, CREATED_AT
+        ) VALUES (
+            #{evidenceId}, #{planId}, #{checkpointKey}, #{evidenceType}, #{evidenceValue}, #{verifiedBy}, CURRENT_DATETIME
+        )
+    </insert>
+
+    <select id="selectSystemAssetLifecycleEvidenceList" parameterType="string" resultType="egovframework.com.common.trace.SystemAssetLifecycleEvidenceVO">
+        SELECT 
+            EVIDENCE_ID AS evidenceId,
+            PLAN_ID AS planId,
+            CHECKPOINT_KEY AS checkpointKey,
+            EVIDENCE_TYPE AS evidenceType,
+            EVIDENCE_VALUE AS evidenceValue,
+            VERIFIED_BY AS verifiedBy,
+            CREATED_AT AS createdAt
+        FROM SYSTEM_ASSET_LIFECYCLE_EVIDENCE
+        WHERE PLAN_ID = #{value}
+        ORDER BY CREATED_AT ASC
+    </select>
+    </mapper>
+

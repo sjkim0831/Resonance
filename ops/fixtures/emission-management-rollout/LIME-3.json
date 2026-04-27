@@ -1,0 +1,9 @@
+{"categoryId":2,"tier":3,"createdBy":"codex-rollout-fill","values":[
+  {"varCode":"CARBONATE_TYPE","lineNo":1,"valueText":"CaCO3"},
+  {"varCode":"MI","lineNo":1,"valueNum":10.0},
+  {"varCode":"FI","lineNo":1,"valueNum":1.0},
+  {"varCode":"LKD_CARBONATE_TYPE","lineNo":1,"valueText":"CaCO3"},
+  {"varCode":"MD","lineNo":1,"valueNum":0.0},
+  {"varCode":"CD","lineNo":1,"valueNum":0.0},
+  {"varCode":"FD","lineNo":1,"valueNum":0.0}
+]}

@@ -1,0 +1,59 @@
+{
+  "project": "carbonet",
+  "runtime": "resonance-ai-runtime",
+  "pagePatternSet": [
+    {
+      "patternId": "admin-system-page",
+      "description": "Admin system route-family and migration page pattern",
+      "routeFamilyFile": "frontend/src/app/routes/families/adminSystemFamily.ts",
+      "similarPages": [
+        "frontend/src/features/platform-install/PlatformInstallMigrationPage.tsx",
+        "frontend/src/features/platform-studio/PlatformStudioMigrationPage.tsx",
+        "frontend/src/features/backup-config/BackupConfigMigrationPage.tsx"
+      ],
+      "sharedHelpers": [
+        "frontend/src/features/admin-system/adminSystemShared.tsx",
+        "frontend/src/features/admin-entry/AdminPageShell.tsx"
+      ],
+      "apiFiles": [
+        "frontend/src/lib/api/platform.ts",
+        "frontend/src/lib/api/platformTypes.ts"
+      ]
+    }
+  ],
+  "routePatternSet": [
+    {
+      "patternId": "admin-system-route-entry",
+      "files": [
+        "frontend/src/app/routes/families/adminSystemFamily.ts",
+        "frontend/src/app/routes/routeCatalog.ts",
+        "frontend/src/app/routes/runtime.ts"
+      ]
+    }
+  ],
+  "apiTypePatternSet": [
+    {
+      "patternId": "platform-page-data",
+      "files": [
+        "frontend/src/lib/api/platform.ts",
+        "frontend/src/lib/api/platformTypes.ts",
+        "modules/carbonet-common-core/src/main/java/egovframework/com/platform/ollama/web/PlatformInstallPageDataController.java"
+      ]
+    }
+  ],
+  "dbPatternSet": [
+    {
+      "patternId": "db-change-governance",
+      "files": [
+        "frontend/src/lib/api/platform.ts",
+        "frontend/src/lib/api/platformTypes.ts",
+        "modules/carbonet-common-core/src/main/java/egovframework/com/platform/dbchange/web/DbChangeCaptureAdminApiController.java"
+      ]
+    }
+  ],
+  "budgets": {
+    "maxFiles": 20,
+    "maxTotalLines": 2500,
+    "maxSearchSeconds": 20
+  }
+}

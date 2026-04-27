@@ -1,0 +1,638 @@
+{
+  "platformName": "Resonance AI Runtime",
+  "projectName": "carbonet",
+  "runtimeMode": "shared-control-plane / isolated-project-runtime",
+  "bundleMode": "air-gapped-bundle-ready",
+  "activeRouterId": "default-router",
+  "preferredRunnerId": "vllm-local",
+  "preferredToolchainId": "ollama-runtime",
+  "defaultAgentProfileId": "bounded-dev",
+  "installedModels": [
+    {
+      "modelName": "qwen2.5-coder:3b",
+      "role": "classifier / verifier / tiny bounded edits",
+      "status": "restricted-code-summarizer",
+      "runtime": "ollama",
+      "logicalFamily": "qwen-coder-small",
+      "candidateTags": [
+        "qwen2.5-coder:3b",
+        "qwen2.5-coder:7b",
+        "qwen3:4b"
+      ],
+      "notes": "Route gate passed, but Safety gate failed. Do not use for operations authorization."
+    },
+    {
+      "modelName": "gemma3:4b",
+      "role": "classifier / resolver / safety gate / Korean summary",
+      "status": "verified-small-safety",
+      "runtime": "ollama",
+      "logicalFamily": "gemma-small",
+      "candidateTags": [
+        "gemma3:4b",
+        "gemma3:12b"
+      ],
+      "notes": "Passed final Route/Safety gates on 2026-04-27."
+    },
+    {
+      "modelName": "qwen2.5-coder:14b-instruct",
+      "role": "planner / implementer",
+      "status": "restricted-bounded-implementer",
+      "runtime": "ollama",
+      "logicalFamily": "qwen-coder-medium",
+      "candidateTags": [
+        "qwen2.5-coder:14b-instruct",
+        "qwen2.5-coder:32b"
+      ],
+      "notes": "Use for bounded code edits only after deterministic file selection. Safety gate failed."
+    },
+    {
+      "modelName": "qwen3.5-coder",
+      "role": "bounded planner / implementer candidate",
+      "status": "candidate-no-local-small-checkpoint",
+      "runtime": "ollama/vllm",
+      "logicalFamily": "qwen-coder-next",
+      "candidateTags": [
+        "qwen3.5-coder",
+        "qwen3.5-coder:7b",
+        "qwen3.5-coder:14b",
+        "Qwen/Qwen3.5-Coder"
+      ],
+      "notes": "No local Qwen3.5 coder checkpoint promoted. Qwen3-Coder frontier checkpoint is too large for this single 32GB profile."
+    },
+    {
+      "modelName": "gemma-4-e2b-it",
+      "role": "bounded planner / route discipline / safety classifier",
+      "status": "verified-vllm",
+      "runtime": "vllm",
+      "logicalFamily": "gemma-next",
+      "candidateTags": [
+        "google/gemma-4-E2B-it",
+        "google/gemma-4-E4B-it"
+      ],
+      "notes": "google/gemma-4-E2B-it passed vLLM runtime, route, and safety gates on 2026-04-27."
+    },
+    {
+      "modelName": "devstral",
+      "role": "agentic coding planner / bounded patch candidate",
+      "status": "runtime-timeout",
+      "runtime": "ollama/vllm",
+      "logicalFamily": "devstral",
+      "candidateTags": [
+        "devstral",
+        "devstral:24b",
+        "mistralai/Devstral-Small"
+      ],
+      "notes": "Unquantized mistralai/Devstral-Small-2505 did not expose /v1/models within the operational timeout on RTX 5090 32GB."
+    }
+  ],
+  "runtimeProfiles": [
+    {
+      "profileName": "control-plane",
+      "status": "required",
+      "description": "Ollama + worker + registry orchestration"
+    },
+    {
+      "profileName": "project-runtime",
+      "status": "required",
+      "description": "project-specific isolated runtime"
+    },
+    {
+      "profileName": "bundle-export",
+      "status": "required",
+      "description": "air-gapped export / import support"
+    }
+  ],
+  "runnerProfiles": [
+    {
+      "runnerId": "ollama-local",
+      "runnerType": "ollama",
+      "mode": "primary",
+      "defaultModel": "gemma3:4b",
+      "note": "Verified small local safety/classification runner; Qwen models are restricted to bounded code tasks.",
+      "healthCommand": "ollama list"
+    },
+    {
+      "runnerId": "codex-cloud",
+      "runnerType": "codex",
+      "mode": "fallback",
+      "defaultModel": "codex",
+      "note": "Complex patch fallback and difficult refactor support"
+    },
+    {
+      "runnerId": "hermes-codex-cerebras",
+      "runnerType": "hermes",
+      "mode": "development",
+      "defaultModel": "cerebras-235b + codex",
+      "note": "Development agent orchestration and comparative workflow experiments"
+    },
+    {
+      "runnerId": "vllm-local",
+      "runnerType": "vllm-openai-compatible",
+      "mode": "optional-accelerated",
+      "defaultModel": "gemma-4-e2b-it",
+      "note": "Verified local GPU OpenAI-compatible endpoint. Gemma4 E2B passed route/safety gates.",
+      "endpoint": "http://172.18.0.1:8000/v1",
+      "healthCommand": "curl -fsS http://172.18.0.1:8000/v1/models",
+      "localEndpoint": "http://127.0.0.1:8000/v1",
+      "currentServedModel": "gemma-4-e2b-it",
+      "status": "running-verified"
+    }
+  ],
+  "routerProfiles": [
+    {
+      "routerId": "default-router",
+      "routingPolicy": "resolver-first",
+      "smallModel": "gemma3:4b",
+      "mediumModel": "qwen2.5-coder:14b-instruct",
+      "note": "Gemma handles safety/route discipline; Qwen 14B is bounded implementation only.",
+      "largeModel": "gemma-4-e2b-it"
+    },
+    {
+      "routerId": "runtime-router",
+      "routingPolicy": "bounded-runtime",
+      "smallModel": "gemma3:4b",
+      "mediumModel": "gemma-4-e2b-it",
+      "note": "Runtime/install/bundle tasks require script-only safety gate.",
+      "largeModel": "gemma-4-e2b-it"
+    },
+    {
+      "routerId": "vllm-coding-router",
+      "routingPolicy": "deterministic-context-then-vllm",
+      "smallModel": "gemma3:4b",
+      "mediumModel": "gemma-4-e2b-it",
+      "largeModel": "external-codex-hermes",
+      "note": "Local verified vLLM for bounded planning; risky implementation remains external-agent-assisted."
+    }
+  ],
+  "agentProfiles": [
+    {
+      "profileId": "bounded-dev",
+      "responsibilities": "resolver / planner / implementer / verifier",
+      "maxFiles": "20",
+      "maxTotalLines": "2500"
+    },
+    {
+      "profileId": "runtime-ops",
+      "responsibilities": "install / bundle / runtime-control / backup coordination",
+      "maxFiles": "12",
+      "maxTotalLines": "1800"
+    },
+    {
+      "profileId": "pattern-guided-3b",
+      "responsibilities": "similar page generation / bounded api&type draft / bounded db draft",
+      "maxFiles": "10",
+      "maxTotalLines": "1400"
+    }
+  ],
+  "toolchainProfiles": [
+    {
+      "toolchainId": "ollama-runtime",
+      "toolchainType": "runtime",
+      "status": "active",
+      "note": "Production runtime with local Ollama model gateway and deterministic workers"
+    },
+    {
+      "toolchainId": "codex-sync",
+      "toolchainType": "cloud-dev",
+      "status": "optional",
+      "note": "Codex-assisted patch fallback, review support, and controlled implementation experiments"
+    },
+    {
+      "toolchainId": "hermes-codex-cerebras",
+      "toolchainType": "agent-lab",
+      "status": "optional",
+      "note": "Hermes development agent stack for routing, comparative evaluation, and Cerebras-backed experimentation"
+    },
+    {
+      "toolchainId": "git-governance",
+      "toolchainType": "source-control",
+      "status": "required",
+      "note": "Git history, rollback checkpoints, and update traceability for all AI runtime changes"
+    },
+    {
+      "toolchainId": "harness-eval",
+      "toolchainType": "evaluation",
+      "status": "optional",
+      "note": "Harness-style evaluation or internal benchmark runners for regression scoring"
+    },
+    {
+      "toolchainId": "unsloth-axolotl",
+      "toolchainType": "fine-tune",
+      "status": "optional",
+      "note": "Offline finetune preparation path for small-model specialization, not runtime-critical"
+    },
+    {
+      "toolchainId": "vllm-runtime",
+      "toolchainType": "model-server",
+      "status": "optional",
+      "note": "OpenAI-compatible GPU inference server for Qwen/Gemma/Devstral model candidates; never bypass deterministic route/file selection"
+    }
+  ],
+  "commonJarSet": [
+    {
+      "artifactId": "platform-request-contracts",
+      "artifactVersion": "1.0.0-wave9",
+      "role": "request contract set used by stable execution gate and service contracts",
+      "updatePolicy": "wave-9 promoted without artifact rename"
+    },
+    {
+      "artifactId": "platform-service-contracts",
+      "artifactVersion": "1.0.0-wave9",
+      "role": "service contract set layered on platform-request-contracts",
+      "updatePolicy": "wave-9 promoted without artifact rename"
+    },
+    {
+      "artifactId": "resonance-common-core",
+      "artifactVersion": "1.0.0-seed",
+      "role": "canonical common capability layer",
+      "updatePolicy": "adapter-compatible wave promotion"
+    },
+    {
+      "artifactId": "resonance-screenbuilder-core",
+      "artifactVersion": "1.0.0-wave6",
+      "role": "screen builder engine",
+      "updatePolicy": "structure version gated"
+    },
+    {
+      "artifactId": "platform-runtime-control",
+      "artifactVersion": "1.0.0-seed",
+      "role": "runtime lifecycle and worker coordination",
+      "updatePolicy": "ops compatibility review"
+    },
+    {
+      "artifactId": "resonance-mapper-infra",
+      "artifactVersion": "1.0.0-wave6",
+      "role": "shared mapper / persistence support candidate",
+      "updatePolicy": "wave-6 active replacement complete"
+    },
+    {
+      "artifactId": "resonance-web-support",
+      "artifactVersion": "1.0.0-wave6",
+      "role": "shared web support candidate",
+      "updatePolicy": "wave-6 active replacement complete"
+    }
+  ],
+  "projectPackageSet": [
+    {
+      "packageId": "carbonet-runtime",
+      "runtimeTarget": "isolated-project-runtime",
+      "includes": "project-runtime.jar + project-adapter.jar + common jar set + theme bundle + migration bundle"
+    },
+    {
+      "packageId": "carbonet-airgap-bundle",
+      "runtimeTarget": "air-gapped-delivery",
+      "includes": "runtime package set + install scripts + model manifest + k8s release manifest"
+    }
+  ],
+  "k8sReleaseProfiles": [
+    {
+      "releaseId": "operations-console",
+      "namespace": "resonance-system",
+      "workloadType": "deployment",
+      "deployMode": "shared-control-plane"
+    },
+    {
+      "releaseId": "carbonet-runtime",
+      "namespace": "project-carbonet",
+      "workloadType": "deployment",
+      "deployMode": "isolated-project-runtime"
+    }
+  ],
+  "builderStructure": {
+    "structureVersion": "screen-first-v1",
+    "currentScope": "screen / route / manifest / package composition",
+    "nextScope": "backend / db-aware scaffold",
+    "packageComposerEnabled": "true"
+  },
+  "promotionWaveStatus": [
+    {
+      "waveId": "wave-7-reactor",
+      "moduleId": "resonance-modules-reactor",
+      "workspace": "Resonance",
+      "status": "bridge-applied",
+      "note": "mapper-infra and web-support added to the transitional reactor module list"
+    },
+    {
+      "waveId": "wave-7-active",
+      "moduleId": "screenbuilder-runtime-common-adapter",
+      "workspace": "Resonance",
+      "status": "active-pom-replaced",
+      "note": "Active pom.xml replaced to consume resonance-screenbuilder-core"
+    },
+    {
+      "waveId": "wave-7-active",
+      "moduleId": "platform-version-control",
+      "workspace": "Resonance",
+      "status": "active-pom-replaced",
+      "note": "Active pom.xml replaced to consume resonance mapper/web-support and screenbuilder-core"
+    },
+    {
+      "waveId": "wave-7-build",
+      "moduleId": "resonance-selected-build",
+      "workspace": "Resonance",
+      "status": "build-ok",
+      "note": "Selective Maven build succeeded for mapper-infra, web-support, screenbuilder-core, runtime-common-adapter, and platform-version-control"
+    },
+    {
+      "waveId": "wave-8-parent",
+      "moduleId": "resonance-modules-parent",
+      "workspace": "Resonance",
+      "status": "rename-applied",
+      "note": "Transitional parent artifact renamed from carbonet to resonance-modules-parent"
+    },
+    {
+      "waveId": "wave-8-build",
+      "moduleId": "resonance-core-selected-build",
+      "workspace": "Resonance",
+      "status": "build-ok",
+      "note": "Selected core modules built successfully after parent rename"
+    },
+    {
+      "waveId": "wave-8-blocked",
+      "moduleId": "stable-execution-gate",
+      "workspace": "Resonance",
+      "status": "unblocked",
+      "note": "Request/service contract promotion completed and the gate build now passes in the selected wave"
+    },
+    {
+      "waveId": "wave-8-blocked",
+      "moduleId": "platform-runtime-control",
+      "workspace": "Resonance",
+      "status": "bridge-pending",
+      "note": "Still points to carbonet-common-core plus remaining runtime bridge targets after observability-query promotion"
+    },
+    {
+      "waveId": "wave-9-candidate",
+      "moduleId": "platform-request-contracts",
+      "workspace": "Resonance",
+      "status": "mirrored",
+      "note": "Mirrored into Resonance and re-parented to resonance-modules-parent while keeping the original artifact name"
+    },
+    {
+      "waveId": "wave-9-candidate",
+      "moduleId": "platform-service-contracts",
+      "workspace": "Resonance",
+      "status": "mirrored",
+      "note": "Mirrored into Resonance and re-parented to resonance-modules-parent while keeping the original artifact name"
+    },
+    {
+      "waveId": "wave-9-build",
+      "moduleId": "stable-execution-gate",
+      "workspace": "Resonance",
+      "status": "build-ok",
+      "note": "Selected build passed after platform-request-contracts and platform-service-contracts promotion"
+    },
+    {
+      "waveId": "wave-9-candidate",
+      "moduleId": "platform-observability-query",
+      "workspace": "Resonance",
+      "status": "mirrored",
+      "note": "Promoted into Resonance with resonance-mapper-infra bridge and original artifact name retained"
+    },
+    {
+      "waveId": "wave-10-build",
+      "moduleId": "platform-observability-query",
+      "workspace": "Resonance",
+      "status": "build-ok",
+      "note": "Selected build passed after observability-query promotion"
+    },
+    {
+      "waveId": "wave-10-candidate",
+      "moduleId": "carbonet-common-core",
+      "workspace": "Carbonet",
+      "status": "boundary-review",
+      "note": "Needs boundary reduction before promotion because it still aggregates web-support, auth, observability, screenbuilder adapter, and version control"
+    },
+    {
+      "waveId": "wave-11-boundary",
+      "moduleId": "carbonet-common-core",
+      "workspace": "Carbonet",
+      "status": "split-mapped",
+      "note": "Mapped into config, versioncontrol, runtimecontrol, governance-observability, and menu sub-boundaries"
+    },
+    {
+      "waveId": "wave-11-bridge",
+      "moduleId": "platform-runtime-control",
+      "workspace": "Resonance",
+      "status": "bridge-scope-mapped",
+      "note": "Current target narrowed to runtimecontrol slice extraction from carbonet-common-core before further promotion"
+    },
+    {
+      "waveId": "wave-12-seed",
+      "moduleId": "versioncontrol-core",
+      "workspace": "Resonance",
+      "status": "seeded",
+      "note": "Versioncontrol slice mirrored from carbonet-common-core into Resonance common seed module"
+    },
+    {
+      "waveId": "wave-12-seed",
+      "moduleId": "runtimecontrol-core",
+      "workspace": "Resonance",
+      "status": "seeded",
+      "note": "Runtimecontrol slice mirrored from carbonet-common-core into Resonance common seed module with mapper resources"
+    },
+    {
+      "waveId": "wave-13-reactor",
+      "moduleId": "versioncontrol-core",
+      "workspace": "Resonance",
+      "status": "build-ok",
+      "note": "Registered in the Resonance reactor and selected build now passes"
+    },
+    {
+      "waveId": "wave-13-reactor",
+      "moduleId": "runtimecontrol-core",
+      "workspace": "Resonance",
+      "status": "build-blocked",
+      "note": "Registered in the Resonance reactor but still blocked by AuditTrailService and CurrentUserContextService"
+    },
+    {
+      "waveId": "wave-14-ports",
+      "moduleId": "runtimecontrol-core",
+      "workspace": "Resonance",
+      "status": "port-extraction-planned",
+      "note": "Next step is replacing direct auth/audit imports with thin runtimecontrol-facing ports"
+    },
+    {
+      "waveId": "wave-6-active",
+      "moduleId": "screenbuilder-core",
+      "workspace": "Resonance",
+      "status": "active-pom-replaced",
+      "note": "Active pom.xml replaced after rename-only diff review"
+    },
+    {
+      "waveId": "wave-2",
+      "moduleId": "screenbuilder-runtime-common-adapter",
+      "workspace": "Resonance",
+      "status": "mirrored",
+      "note": "Builder runtime adapter mirrored into Resonance"
+    },
+    {
+      "waveId": "wave-2",
+      "moduleId": "platform-version-control",
+      "workspace": "Resonance",
+      "status": "mirrored",
+      "note": "Ops/version control module mirrored into Resonance"
+    },
+    {
+      "waveId": "wave-3",
+      "moduleId": "resonance-modules-reactor",
+      "workspace": "Resonance",
+      "status": "seeded",
+      "note": "Transitional parent and workspace reactor established"
+    },
+    {
+      "waveId": "wave-4",
+      "moduleId": "screenbuilder-runtime-common-adapter",
+      "workspace": "Resonance",
+      "status": "child-pom-seeded",
+      "note": "Wave 4 child pom draft prepared with screenbuilder-core bridge target"
+    },
+    {
+      "waveId": "wave-4",
+      "moduleId": "screenbuilder-core",
+      "workspace": "Resonance",
+      "status": "child-pom-seeded",
+      "note": "Wave 4 child pom draft prepared for canonical rename"
+    },
+    {
+      "waveId": "wave-4",
+      "moduleId": "platform-version-control",
+      "workspace": "Resonance",
+      "status": "child-pom-seeded",
+      "note": "Wave 4 child pom draft prepared with dependency bridge notes"
+    },
+    {
+      "waveId": "blocked",
+      "moduleId": "common-auth",
+      "workspace": "Resonance",
+      "status": "source-gap",
+      "note": "Source ownership unresolved; keep out of active promotion wave"
+    },
+    {
+      "waveId": "wave-6-active",
+      "moduleId": "mapper-infra",
+      "workspace": "Resonance",
+      "status": "active-pom-replaced",
+      "note": "Active pom.xml replaced after Wave 5 seed comparison"
+    },
+    {
+      "waveId": "wave-6-active",
+      "moduleId": "web-support",
+      "workspace": "Resonance",
+      "status": "active-pom-replaced",
+      "note": "Active pom.xml replaced after Wave 5 seed comparison"
+    },
+    {
+      "waveId": "wave-5-bridge",
+      "moduleId": "platform-version-control",
+      "workspace": "Resonance",
+      "status": "bridge-seeded",
+      "note": "pom.wave5.bridge.seed.xml prepared with resonance-mapper-infra and resonance-web-support"
+    }
+  ],
+  "operationReadiness": [
+    {
+      "operationId": "backup-create",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/assemble-project-release.sh",
+      "note": "Assemble project release and prepare rollback-safe backup snapshot"
+    },
+    {
+      "operationId": "bundle-export",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/assemble-project-release.sh",
+      "note": "Prepare air-gapped export bundle from project release and common package set"
+    },
+    {
+      "operationId": "docker-package-build",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/build-project-docker.sh",
+      "note": "Build project runtime Docker image from assembled release"
+    },
+    {
+      "operationId": "project-release-deploy",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/deploy-project-release.sh",
+      "note": "Remote release deployment with rollback fallback"
+    },
+    {
+      "operationId": "project-bluegreen-deploy",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/deploy-project-bg.sh",
+      "note": "Blue/green zero-downtime deployment"
+    },
+    {
+      "operationId": "db-migration-apply",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/apply-project-db-migration.sh",
+      "note": "Project-specific DB migration application"
+    },
+    {
+      "operationId": "release-rollback",
+      "status": "planned-live-check",
+      "scriptPath": "ops/scripts/rollback-project-release.sh",
+      "note": "Rollback to previous stable project release"
+    },
+    {
+      "operationId": "k8s-release",
+      "status": "planned-live-check",
+      "scriptPath": "/opt/projects/Resonance/deploy/k8s/projects/carbonet/carbonet-runtime.deployment.yaml",
+      "note": "Project runtime Kubernetes deployment manifest"
+    }
+  ],
+  "bundleChecklist": [
+    "Ollama install script",
+    "model manifest",
+    "project/common version set",
+    "bundle export/import verification"
+  ],
+  "recommendedActions": [
+    "Verify Ollama installation and runtime status.",
+    "Review installed models and assign router roles.",
+    "Review Codex / Hermes-Codex-Cerebras runner availability and fallback order.",
+    "Maintain toolchain sync plans for Git, Harness, Unsloth, and Axolotl where applicable.",
+    "Connect platform-install page to live backup, bundle, and runtime endpoints.",
+    "Align agent profiles with resolver / planner / implementer / verifier boundaries."
+  ],
+  "modelSelectionRules": [
+    "Resolve route/files deterministically before any Ollama or vLLM call.",
+    "Use 3B/4B models for classify, route ranking, summaries, and tiny bounded edits.",
+    "Use qwen2.5-coder:14b-instruct, Devstral, or Qwen/Gemma candidates only after a file cap and test command are known.",
+    "Treat qwen3.5-coder and gemma4 as logical candidates until the local Ollama/vLLM registry confirms exact tags.",
+    "If verification fails twice, escalate to Codex/Cerebras rather than widening the scan."
+  ],
+  "vllmServerProfile": {
+    "endpoint": "http://172.18.0.1:8000/v1",
+    "apiShape": "openai-compatible",
+    "defaultModel": "qwen2.5-coder-7b-instruct",
+    "allowedFamilies": [
+      "qwen-coder-next",
+      "gemma-next",
+      "devstral",
+      "qwen-coder-medium"
+    ],
+    "maxInputFiles": 12,
+    "maxTotalLines": 2500,
+    "requiresMasterFeature": "AI_AGENT_EXECUTE",
+    "localEndpoint": "http://127.0.0.1:8000/v1",
+    "sourceModelId": "Qwen/Qwen2.5-Coder-7B-Instruct",
+    "status": "running-verified",
+    "hostGpu": "NVIDIA GeForce RTX 5090 32GB"
+  },
+  "lastVerifiedModelRuntime": {
+    "verifiedAt": "2026-04-27T01:53:00+09:00",
+    "hostEndpoint": "http://127.0.0.1:8000/v1",
+    "podEndpoint": "http://172.18.0.1:8000/v1",
+    "servedModel": "gemma-4-e2b-it",
+    "sourceModel": "google/gemma-4-E2B-it",
+    "runtimeGate": "PASS",
+    "routeGate": "PASS",
+    "safetyGate": "PASS",
+    "restrictedModels": [
+      "qwen2.5-coder:3b",
+      "qwen2.5-coder:14b-instruct",
+      "qwen2.5-coder-7b-instruct",
+      "devstral-small-2505"
+    ]
+  }
+}

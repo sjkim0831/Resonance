@@ -1,0 +1,18 @@
+jar_set_id: common-core-v0.1
+framework: resonance
+common_version: 0.1.0
+adapter_contract_version: 0.1.0
+builder_structure_version: 0.1.0
+
+included_modules:
+  - modules/common-auth
+  - modules/common-admin-runtime
+  - modules/platform-runtime-control
+  - modules/platform-version-control
+  - modules/stable-execution-gate
+  - modules/screenbuilder-core
+  - modules/screenbuilder-runtime-common-adapter
+
+verification:
+  compatibility_report: adapter-compatibility-report-v0.1
+  status: active-compat

@@ -1,0 +1,138 @@
+# Skill Index
+
+Current project-relevant skills:
+
+See also:
+
+- `docs/ai/00-governance/ai-skill-doc-routing-matrix.md` for the default low-token routing gate.
+- `docs/ai/00-governance/ai-reference-reduction-policy.md` for default, conditional, and non-default reference classes.
+- `docs/ai/00-governance/ai-orchestration-doc-retention-inventory.md` for current keep/archive/delete-candidate classification of orchestration docs.
+- `docs/architecture/high-parallel-account-orchestration-playbook.md` for high-account-count Codex/Gemini collaboration and active-vs-standby lane policy.
+- `docs/ai/80-skills/skill-boundaries.md` for overlap rules, grouping, and selection order.
+- `docs/ai/80-skills/skill-gaps.md` for recurring work that still lacks a dedicated skill, including infrastructure topology and shared-runtime operations guidance.
+- `docs/ai/80-skills/workspace-system-skill-doc-backlog.md` for concrete workspace-system skill/doc additions grounded in current `codex-request`, `sr-workbench`, `screen-builder`, and observability code paths.
+
+- `carbonet-ai-session-orchestrator`
+  - Purpose: classify work by shared file ownership and decide whether the task stays in one session or splits.
+  - Group: coordination
+  - Use for: any implementation that touches shared controllers, templates, contracts, or docs.
+  - Boundary: use to plan ownership first, then hand off actual design or implementation work to a primary domain skill.
+  - Key references: `STRUCTURE.md`, `docs/ai/00-governance/ai-fast-path.md`, `docs/ai/00-governance/ai-session-partitioning.md`
+- `resonance-ai-orchestrator`
+  - Purpose: interpret Carbonet Resonance work as control-plane orchestration with runtime evidence, then extend toward fuller multi-agent behavior without overclaiming current capability.
+  - Group: coordination / architecture
+  - Use for: Resonance AI framework design, Codex execution governance, runtime compare or repair flows, verification evidence, memory/feedback architecture, and requests asking what Resonance means in the current Carbonet repository.
+  - Boundary: use to classify current-versus-target Resonance capability first; for concrete Codex console work hand off to `carbonet-codex-execution-console`, and for freshness proof pair with `carbonet-fast-bootstrap-ops`.
+  - Key references: `.codex/skills/resonance-ai-orchestrator/SKILL.md`, `docs/ai/10-architecture/resonance-ai-framework.md`, `docs/architecture/resonance-design-patterns.md`, `docs/architecture/carbonet-resonance-separation-status.md`
+- `carbonet-common-project-boundary-switcher`
+  - Purpose: keep common-platform ownership and project-specific ownership easy to switch later through ports, adapters, wrappers, and definition-plus-binding splits.
+  - Group: coordination
+  - Use for: common vs project splitting, common DB vs project DB ownership, menu scope separation, shared jar extraction, theme/common/project separation, builder runtime versus editor split, reusable read-layer extraction, installable business-process packaging, page-by-page systemization, authority-scope-aware page rebinding, project adapter lines, 3-minute bootstrap preparation, installable module packaging, stable adapter versus changeable common-core governance, system asset-management menu regrouping, and requests that explicitly say future conversion should stay fast.
+  - Boundary: use to lock reversible boundary rules first, then hand off concrete repository implementation to `carbonet-feature-builder` or `carbonet-screen-builder`.
+  - Builder continuation note: treat `builder-resource-ownership-current-closeout.md` plus `builder-resource-ownership-queue-map.md` as the `single live entry pair` when structure-governance is already closed.
+  - Active continuation target: row `3` (`builder observability metadata/resource family`) in blocker-resolution state across rows `3` and `5`.
+  - Compressed blocker control docs: `docs/architecture/builder-resource-blocker-source-sentence-matrix.md`, `docs/architecture/builder-resource-blocker-source-trigger-matrix.md`
+  - Canonical partial phrase: `PARTIAL_DONE: builder resource ownership closure still counts rows 3 and 5 as blockers, rows 1 and 2 now carry bounded DELETE_NOW notes, row 4 now carries a stronger non-blocker note, and unresolved fallback blocker count is <n>.`
+  - Maintenance note: if blocker count, active row, next review target, or partial-closeout wording changes, update both docs in the same turn.
+  - Key references: `.codex/skills/carbonet-common-project-boundary-switcher/SKILL.md`, `docs/architecture/common-project-reversible-transition-rules.md`, `docs/architecture/page-systemization-minimum-contract.md`, `docs/architecture/system-folder-structure-alignment.md`, `docs/architecture/builder-structure-wave-20260409-closure.md`, `docs/architecture/builder-source-of-truth-matrix.md`, `docs/architecture/builder-structure-owner-checklist.md`, `docs/ai/60-operations/session-orchestration/active/resonance-platformization-20260409/builder-resource-ownership-current-closeout.md`, `docs/architecture/builder-resource-ownership-queue-map.md`, `docs/architecture/common-db-and-project-db-splitting.md`, `docs/architecture/screenbuilder-core-jar-adapter-plan.md`, `docs/architecture/installable-builder-upgrade-roadmap.md`, `docs/architecture/framework-common-theme-project-separation-map.md`, `docs/architecture/builder-editor-runtime-module-split.md`, `docs/architecture/installable-business-process-package-model.md`, `docs/architecture/reusable-read-module-separation-plan.md`, `docs/architecture/installable-screen-process-inventory.md`, `docs/architecture/reusable-read-and-executor-candidate-map.md`, `docs/architecture/stable-adapter-and-common-core-versioning.md`, `docs/architecture/artifact-registry-and-project-version-governance.md`
+- `carbonet-screen-builder`
+  - Purpose: design and implement the installable Carbonet screen-builder platform and its governed admin consoles.
+  - Group: feature implementation
+  - Use for: screen builder authoring/runtime/governance, installable builder productization, page-by-page systemization, authority-scope-complete builder pages, installable screen packaging, reusable read-heavy console flows, stable project-adapter-safe builder evolution, deciding whether asset-management work belongs in builder-governed pages versus reused operations pages, and keeping the current console map aligned: `Menu Registry Console`, `Registry Detail Console`, `Builder Install / Bind Console`, validator-result family, rollback-history family, and `Builder Package Studio`.
+  - Boundary: use for builder-platform design and implementation, not for generic CRUD unless the builder platform itself is in scope.
+  - Builder continuation note: treat `builder-resource-ownership-current-closeout.md` plus `builder-resource-ownership-queue-map.md` as the `single live entry pair` when the task is active builder resource-ownership continuation.
+  - Maintenance note: if blocker count, active row, next review target, or partial-closeout wording changes, update both docs in the same turn.
+  - Key references: `.codex/skills/carbonet-screen-builder/SKILL.md`, `docs/architecture/admin-screen-builder-architecture.md`, `docs/architecture/page-systemization-minimum-contract.md`, `docs/architecture/system-folder-structure-alignment.md`, `docs/architecture/builder-folder-refactor-priority-map.md`, `docs/architecture/builder-structure-wave-20260409-closure.md`, `docs/ai/60-operations/session-orchestration/active/resonance-platformization-20260409/builder-resource-ownership-current-closeout.md`, `docs/architecture/builder-resource-ownership-queue-map.md`, `docs/architecture/installable-builder-upgrade-roadmap.md`, `docs/architecture/installable-builder-admin-console-refactor-plan.md`, `docs/architecture/installable-business-process-package-model.md`, `docs/architecture/reusable-read-module-separation-plan.md`, `docs/architecture/installable-screen-process-inventory.md`, `docs/architecture/reusable-read-and-executor-candidate-map.md`, `docs/architecture/stable-adapter-and-common-core-versioning.md`
+- `carbonet-screen-design-workspace`
+  - Purpose: resolve canonical design sources under `/home/imaneya/workspace/화면설계`.
+  - Group: source interpretation
+  - Use for: design-driven page work, menu IA interpretation, duplicated HTML source conflicts.
+  - Boundary: stop after the canonical design source, route/workflow meaning, and conflict resolution are clear; implementation belongs to `carbonet-feature-builder`.
+  - Key references: workspace root `1.`, `2.`, `3.`, `4.` HTML files and design mapping text files.
+
+Builder resource-ownership continuation note:
+
+- single live entry pair:
+  - `docs/ai/60-operations/session-orchestration/active/resonance-platformization-20260409/builder-resource-ownership-current-closeout.md`
+  - `docs/architecture/builder-resource-ownership-queue-map.md`
+- maintenance contract:
+  - supporting guidance only: `docs/architecture/builder-resource-entry-pair-maintenance-contract.md`
+- `html-screen-porter`
+  - Purpose: convert HTML design inputs into Carbonet React migration pages using page-type classification, screen family assignment, and shared-frame reconstruction.
+  - Group: source interpretation plus implementation bridge
+  - Use for: large-volume HTML-to-React porting, page-type classification, hidden detail/edit context mapping, and design-source-driven screen reconstruction without shipping raw HTML.
+  - Boundary: use after canonical source selection is clear; pair with `carbonet-feature-builder` when repository implementation and menu metadata wiring are required.
+  - Key references: `.codex/skills/html-screen-porter/SKILL.md`, `docs/architecture/html-to-react-page-contract.md`, `docs/architecture/screen-family-model.md`
+- `carbonet-audit-trace-architecture`
+  - Purpose: design and extend audit, trace, UI manifest, and operational metadata.
+  - Group: cross-cutting architecture
+  - Use for: observability, parameter tracing, component registry, rollout governance, system asset inventory/detail/impact/lifecycle modeling, and performance-sensitive algorithm/data-structure decisions on those paths.
+  - Boundary: use for system-wide logging, trace, registry, and governance design; page-specific implementation follow-through usually belongs to `carbonet-feature-builder`.
+  - Key references: `docs/architecture/system-observability-audit-trace-design.md`, `docs/architecture/system-asset-management-screen-and-menu-plan.md`, `docs/architecture/performance-algorithm-upgrade-notes.md`, `docs/ai/60-operations/performance-handoff-prompt-20260318.md`, `docs/ai/60-operations/audit-log-fields.md`
+- `carbonet-react-refresh-consistency`
+  - Purpose: keep React migration changes visible after refresh while preserving sane cache behavior.
+  - Group: delivery consistency
+  - Use for: React shell/static asset/resource caching changes.
+  - Boundary: use only when the issue is cache, shell, manifest, build-output, or deployment freshness rather than page business behavior.
+  - Key references: `docs/ai/60-operations/react-refresh-and-cache-control.md`
+- `carbonet-fast-bootstrap-ops`
+  - Purpose: keep compile, package, restart, bootstrap freshness, and local runtime verification fast and deterministic.
+  - Group: delivery consistency
+  - Use for: `npm run build`, `mvn package`, `build-restart-18000.sh`, runtime jar freshness, stale bootstrap prevention, and safe local restart verification.
+  - Boundary: use when the main issue is whether the newest output is actually built, packaged, restarted, and running; pair with `carbonet-react-refresh-consistency` when cache policy also changes.
+  - Key references: `.codex/skills/carbonet-fast-bootstrap-ops/SKILL.md`, `docs/operations/fast-bootstrap-runtime-freshness.md`, `ops/scripts/build-restart-18000.sh`, `ops/scripts/start-18000.sh`
+- `carbonet-feature-builder`
+  - Purpose: implement or extend Carbonet screens, menus, services, mappers, React shell routes, and admin metadata.
+  - Group: feature implementation
+  - Use for: page management, feature management, menu metadata, bilingual admin route handling, admin shell bootstrap pages, author-role profile management, `PAGE_CODE_VIEW` authority-chain work, asset-management screens such as inventory/detail/impact/lifecycle/gap consoles, the five-screen admin permission restoration set (`auth_group`, `auth_change`, `dept_role_mapping`, `member_edit`, `admin_account`), and `/admin/system/security-policy` style admin operations consoles where backend rules, React actions, SQL preview/rollback, and runtime remediation must move together.
+  - Boundary: this is the default implementation skill for normal app features, but not for Codex runner internals, refresh/cache policy, or system-wide audit architecture.
+  - Key references: `.codex/skills/carbonet-feature-builder/references/*`, `docs/ai/40-backend/auth-policy.csv`, `docs/ai/50-data/table-screen-api-map.csv`, `docs/operations/security-policy-ops.md`
+- `carbonet-emission-management-extension`
+  - Purpose: estimate, review, and implement `/admin/emission/management` category or tier extensions with explicit metadata-vs-code classification.
+  - Group: feature implementation
+  - Use for: new emission `subCode` categories, new tier numbers, formula/executor additions, variable/factor metadata extensions, first-session sizing for emission management work, and deciding whether local `:18000` save/calculate proof is required.
+  - Boundary: use this before or alongside `carbonet-feature-builder` when the main question is whether emission-management changes are metadata-only or require new calculation/runtime support.
+  - Key references: `.codex/skills/carbonet-emission-management-extension/SKILL.md`, `docs/operations/emission-management-category-tier-extension-guide.md`, `src/main/java/egovframework/com/feature/admin/service/impl/EmissionCalculationDefinitionRegistry.java`
+- `admin-screen-unifier`
+  - Purpose: normalize existing admin screens to one governed design system across list, detail, edit, create, approve, and authority pages.
+  - Group: feature implementation
+  - Use for: button size drift, field height drift, inconsistent search cards, divergent status messages, menu active or hidden-screen consistency issues, converting placeholder admin pages into clearer registry/detail/install/validator operations surfaces, and auditing whether admin system screens are `COMPLETE`, `PARTIAL`, or `SCAFFOLD`.
+  - Boundary: use when the screen already exists and the main problem is design drift rather than feature creation from scratch.
+  - Key references: `.codex/skills/admin-screen-unifier/SKILL.md`, `docs/architecture/admin-system-screen-completion-audit.md`, `docs/architecture/screen-context-and-flow.md`, `docs/architecture/screen-family-model.md`, `docs/architecture/installable-builder-admin-console-refactor-plan.md`
+- `carbonet-codex-execution-console`
+  - Purpose: continue or extend the Carbonet Codex execution console and SR Workbench execution lifecycle.
+  - Group: specialized admin execution
+  - Use for: `/admin/system/codex-request`, `prepare -> plan -> build`, Spring Codex runner wiring, runner shell scripts, central queue behavior, and cross-account handoff docs.
+  - Boundary: if the task is mainly about Codex execution lifecycle or console ownership, this skill takes precedence over `carbonet-feature-builder`.
+  - Key references: `docs/architecture/codex-execution-console-handoff.md`, `ops/scripts/codex-plan.sh`, `ops/scripts/codex-build.sh`, `frontend/src/features/codex-provision/CodexProvisionMigrationPage.tsx`, `frontend/src/features/sr-workbench/SrWorkbenchMigrationPage.tsx`
+- `carbonet-join-react-migration`
+  - Purpose: handle join/signup React migration flows with parity and session-backed state.
+  - Group: feature implementation
+  - Use for: join step flows, company status/reapply, Korean-English parity in React migration.
+  - Boundary: use as a focused variant of feature implementation for join flows instead of the broader `carbonet-feature-builder` guidance.
+  - Key references: `/home/imaneya/.codex/skills/carbonet-join-react-migration/SKILL.md`
+- `carbonet-codex-token-optimizer`
+  - Purpose: select the most token-efficient execution mode in the launcher based on task classification.
+  - Group: specialized admin execution
+  - Use for: minimizing token costs, choosing between `explain`, `plan`, `prompt`, and `apply` modes.
+  - Boundary: use whenever preparing a prompt for `codex` or `freeagent`.
+  - Key references: `docs/operations/codex-token-optimization-guide.md`, `.codex/skills/carbonet-codex-token-optimizer/SKILL.md`
+- `carbonet-runtime-topology-ops`
+  - Purpose: design or document Carbonet runtime topology and centralized operations-system build ownership for small-memory multi-node operations.
+  - Group: infrastructure operations
+  - Use for: Jenkins plus Nomad coordination, main/sub web nodes, shared idle-node pools, per-system DB isolation, Nginx entrypoints, latest-vs-archive file placement, centralized scaffolding/build/deploy flow, main-server runtime-truth rules, version binding and upgrade rollout flow, active-release tracking, installable module or plug-in attachment rules, and tmux rollout layout.
+  - Boundary: use for runtime/server-role allocation and deployment-topology guidance, not for application feature implementation or Codex runner internals.
+  - Key references: `.codex/skills/carbonet-runtime-topology-ops/SKILL.md`, `docs/ai/80-skills/skill-boundaries.md`, `docs/ai/80-skills/skill-gaps.md`
+- `carbonet-resilience-engineering`
+  - Purpose: implement resilience patterns and Chaos Engineering, moving from basic instance termination to comprehensive reliability engineering.
+  - Group: infrastructure operations / cross-cutting architecture
+  - Use for: fault injection (latency, errors, resource exhaustion), Circuit Breakers, Bulkheads, self-healing automation, and observability-driven reliability verification.
+  - Boundary: use for reliability and fault-tolerance design; use `carbonet-builder-observability` for the underlying inventory and monitoring infrastructure.
+  - Key references: `.codex/skills/carbonet-resilience-engineering/SKILL.md`, `docs/architecture/resilience-and-chaos-engineering.md`
+
+Add new skills here with:
+
+- skill name
+- purpose
+- when to use
+- key references

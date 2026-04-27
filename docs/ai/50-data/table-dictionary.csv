@@ -1,0 +1,2 @@
+table_name,domain,purpose,primary_key,status_columns,pii_level,writer_apis,reader_screens,retention_rule,notes
+EXAMPLE_TABLE,EXAMPLE,Example purpose,EXAMPLE_ID,STATUS,NONE,/api/example,COMMON-EXAMPLE,manual,Replace example row

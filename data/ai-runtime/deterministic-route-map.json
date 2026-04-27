@@ -1,0 +1,198 @@
+{
+  "schemaVersion": "1.0",
+  "canonicalRoot": "/opt/Resonance",
+  "purpose": "Keep small/local models from scanning the whole workspace. Always resolve intent to bounded file sets first.",
+  "readBudgets": {
+    "defaultMaxFiles": 12,
+    "defaultMaxBytesPerFile": 60000,
+    "wideSearchMaxFiles": 40,
+    "implementationMaxFiles": 6,
+    "verificationMaxFiles": 12
+  },
+  "zones": [
+    {
+      "name": "operations-platform",
+      "metaphor": "space-station",
+      "roots": [
+        "apps/operations-console",
+        "modules/resonance-ops",
+        "ops",
+        "deploy",
+        "data/version-control",
+        "data/ai-runtime"
+      ],
+      "owns": [
+        "runtime lifecycle",
+        "install page",
+        "backup",
+        "rollback",
+        "k8s",
+        "ollama control plane",
+        "version control"
+      ]
+    },
+    {
+      "name": "common-framework",
+      "metaphor": "jetpack",
+      "roots": [
+        "modules/resonance-common",
+        "modules/resonance-builder",
+        "adapters/resonance-common-adapter",
+        "package-sets/common"
+      ],
+      "owns": [
+        "shared jars",
+        "authority/scope foundation",
+        "screen builder core",
+        "theme builder core",
+        "standard-framework module updates"
+      ]
+    },
+    {
+      "name": "project-carbonet",
+      "metaphor": "rocket",
+      "roots": [
+        "projects/carbonet-adapter",
+        "projects/carbonet-runtime",
+        "projects/carbonet-config",
+        "projects/carbonet-frontend",
+        "apps/carbonet-app",
+        "package-sets/projects/carbonet-package-set.example.yaml"
+      ],
+      "owns": [
+        "thin project code",
+        "project-specific pages",
+        "project adapter bindings",
+        "project package"
+      ]
+    },
+    {
+      "name": "builder-system",
+      "metaphor": "launch-factory",
+      "roots": [
+        "modules/resonance-builder",
+        "templates",
+        "data/screen-builder",
+        "projects/project-template",
+        "projects/project-template-adapter"
+      ],
+      "owns": [
+        "screen builder",
+        "component builder",
+        "theme management",
+        "scaffolding",
+        "project package generation"
+      ]
+    }
+  ],
+  "intentRoutes": [
+    {
+      "match": [
+        "permission",
+        "authority",
+        "scope",
+        "role",
+        "account",
+        "login",
+        "security"
+      ],
+      "readFirst": [
+        "docs/authority-api-review.md",
+        "modules/resonance-common/common-auth",
+        "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/config/security",
+        "projects/carbonet-frontend/source/src/features/admin-permissions"
+      ],
+      "doNotStartWith": [
+        "all modules",
+        "frontend/node_modules",
+        "target"
+      ]
+    },
+    {
+      "match": [
+        "screen builder",
+        "component builder",
+        "theme",
+        "scaffold",
+        "template"
+      ],
+      "readFirst": [
+        "docs/resonance-builder-evolution-plan.md",
+        "templates",
+        "modules/resonance-builder",
+        "data/screen-builder",
+        "projects/project-template"
+      ],
+      "doNotStartWith": [
+        "apps/carbonet-app/target",
+        "projects/carbonet-frontend/source/node_modules"
+      ]
+    },
+    {
+      "match": [
+        "k8s",
+        "docker",
+        "deploy",
+        "restart",
+        "rollback",
+        "backup",
+        "migration",
+        "transfer"
+      ],
+      "readFirst": [
+        "docs/resonance-k8s-3b-agent-operations.md",
+        "ops/project-paths.sh",
+        "ops/scripts",
+        "deploy/k8s",
+        "data/version-control"
+      ],
+      "doNotStartWith": [
+        "var/logs",
+        "data/*/*.log"
+      ]
+    },
+    {
+      "match": [
+        "ollama",
+        "3b",
+        "local model",
+        "agent",
+        "ai runtime"
+      ],
+      "readFirst": [
+        "data/ai-runtime/ollama-control-plane.json",
+        "docs/agent/deterministic-3b-agent-playbook.md",
+        "modules/resonance-ops/ollama-control-plane",
+        "skills/resonance-workflow/SKILL.md"
+      ],
+      "doNotStartWith": [
+        "whole repository scan"
+      ]
+    },
+    {
+      "match": [
+        "project split",
+        "common jar",
+        "adapter",
+        "carbonet",
+        "resonance"
+      ],
+      "readFirst": [
+        "docs/resonance-carbonet-boundary-matrix.md",
+        "docs/resonance-common-jar-governance.md",
+        "projects/pom.xml",
+        "modules/pom.xml",
+        "package-sets"
+      ],
+      "doNotStartWith": [
+        "legacy candidates until classification is requested"
+      ]
+    }
+  ],
+  "gates": [
+    "Never edit more than 6 files in one implementation pass without a refreshed plan.",
+    "Before implementation, output selected files and reason for each.",
+    "After implementation, run the smallest build/smoke gate that covers touched files.",
+    "If target files cannot be resolved deterministically, stop with NEEDS_ROUTE_MAP instead of broad scanning."
+  ]
+}

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminEmissionGwpValueMapper">
+
+    <select id="selectAll" resultType="hashmap">
+        SELECT
+            ROW_ID AS "rowId",
+            SECTION_CODE AS "sectionCode",
+            SECTION_ORDR AS "sectionOrder",
+            COMMON_NAME AS "commonName",
+            FORMULA AS "formula",
+            AR4_VALUE AS "ar4Value",
+            AR5_VALUE AS "ar5Value",
+            AR6_VALUE AS "ar6Value",
+            SOURCE_TXT AS "source",
+            MANUAL_INPUT_VALUE AS "manualInputValue",
+            NOTE_TXT AS "note",
+            SOURCE_DOCUMENT_NM AS "sourceDocumentName",
+            SOURCE_PAGE_NO AS "sourcePageNo",
+            SORT_ORDR AS "sortOrder",
+            TO_CHAR(LAST_UPDT_PNTTM, 'YYYY-MM-DD HH24:MI') AS "lastChangedAt",
+            COALESCE(LAST_UPDUSR_ID, FRST_REGISTER_ID) AS "lastChangedBy"
+        FROM ADMIN_EMISSION_GWP_VALUE
+        ORDER BY SECTION_ORDR, SORT_ORDR, COMMON_NAME
+    </select>
+
+    <select id="selectByRowId" parameterType="string" resultType="hashmap">
+        SELECT
+            ROW_ID AS "rowId",
+            SECTION_CODE AS "sectionCode",
+            SECTION_ORDR AS "sectionOrder",
+            COMMON_NAME AS "commonName",
+            FORMULA AS "formula",
+            AR4_VALUE AS "ar4Value",
+            AR5_VALUE AS "ar5Value",
+            AR6_VALUE AS "ar6Value",
+            SOURCE_TXT AS "source",
+            MANUAL_INPUT_VALUE AS "manualInputValue",
+            NOTE_TXT AS "note",
+            SOURCE_DOCUMENT_NM AS "sourceDocumentName",
+            SOURCE_PAGE_NO AS "sourcePageNo",
+            SORT_ORDR AS "sortOrder",
+            TO_CHAR(LAST_UPDT_PNTTM, 'YYYY-MM-DD HH24:MI') AS "lastChangedAt",
+            COALESCE(LAST_UPDUSR_ID, FRST_REGISTER_ID) AS "lastChangedBy"
+        FROM ADMIN_EMISSION_GWP_VALUE
+        WHERE ROW_ID = #{_parameter}
+    </select>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*)
+        FROM ADMIN_EMISSION_GWP_VALUE
+    </select>
+
+    <select id="countByRowId" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM ADMIN_EMISSION_GWP_VALUE
+        WHERE ROW_ID = #{_parameter}
+    </select>
+
+    <select id="selectNextSortOrderBySection" parameterType="string" resultType="int">
+        SELECT COALESCE(MAX(SORT_ORDR), 0) + 1
+        FROM ADMIN_EMISSION_GWP_VALUE
+        WHERE SECTION_CODE = #{_parameter}
+    </select>
+
+    <select id="selectMaxRowNumber" resultType="int">
+        SELECT COALESCE(MAX(CAST(SUBSTRING(ROW_ID, 5) AS INTEGER)), 0)
+        FROM ADMIN_EMISSION_GWP_VALUE
+        WHERE ROW_ID LIKE 'GWP_%'
+    </select>
+
+    <insert id="insertRow" parameterType="hashmap">
+        INSERT INTO ADMIN_EMISSION_GWP_VALUE (
+            ROW_ID, SECTION_CODE, SECTION_ORDR, COMMON_NAME, FORMULA,
+            AR4_VALUE, AR5_VALUE, AR6_VALUE, SOURCE_TXT, MANUAL_INPUT_VALUE, NOTE_TXT,
+            SOURCE_DOCUMENT_NM, SOURCE_PAGE_NO, SORT_ORDR,
+            FRST_REGIST_PNTTM, FRST_REGISTER_ID, LAST_UPDT_PNTTM, LAST_UPDUSR_ID
+        ) VALUES (
+            #{rowId}, #{sectionCode}, #{sectionOrder}, #{commonName}, #{formula},
+            #{ar4Value}, #{ar5Value}, #{ar6Value}, #{source}, #{manualInputValue}, #{note},
+            #{sourceDocumentName}, #{sourcePageNo}, #{sortOrder},
+            CURRENT_DATETIME, #{actorId}, CURRENT_DATETIME, #{actorId}
+        )
+    </insert>
+
+    <update id="updateRow" parameterType="hashmap">
+        UPDATE ADMIN_EMISSION_GWP_VALUE
+        SET SECTION_CODE = #{sectionCode},
+            SECTION_ORDR = #{sectionOrder},
+            COMMON_NAME = #{commonName},
+            FORMULA = #{formula},
+            AR4_VALUE = #{ar4Value},
+            AR5_VALUE = #{ar5Value},
+            AR6_VALUE = #{ar6Value},
+            SOURCE_TXT = #{source},
+            MANUAL_INPUT_VALUE = #{manualInputValue},
+            NOTE_TXT = #{note},
+            SOURCE_DOCUMENT_NM = #{sourceDocumentName},
+            SOURCE_PAGE_NO = #{sourcePageNo},
+            SORT_ORDR = #{sortOrder},
+            LAST_UPDT_PNTTM = CURRENT_DATETIME,
+            LAST_UPDUSR_ID = #{actorId}
+        WHERE ROW_ID = #{rowId}
+    </update>
+
+    <delete id="deleteRow" parameterType="string">
+        DELETE FROM ADMIN_EMISSION_GWP_VALUE
+        WHERE ROW_ID = #{_parameter}
+    </delete>
+
+</mapper>

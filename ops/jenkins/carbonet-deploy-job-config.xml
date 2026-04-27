@@ -1,0 +1,121 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job">
+  <actions/>
+  <description>Build Carbonet on 233, deploy to 221, and optionally scale out to idle Nomad nodes.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>BRANCH</name>
+          <description>Git branch to build</description>
+          <defaultValue>main</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>GITHUB_TOKEN</name>
+          <description>Optional GitHub token for authenticated fetch. Leave blank for public clone.</description>
+          <defaultValue></defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>MAIN_REMOTE_PASSWORD</name>
+          <description>SSH password for carbonet2026@136.117.100.221</description>
+          <defaultValue></defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>IDLE_SSH_PASSWORD</name>
+          <description>SSH password for idle runtime nodes</description>
+          <defaultValue></defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>ENABLE_IDLE_SCALE</name>
+          <description>Scale out an idle runtime when main runtime pressure is warning or critical</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>ENABLE_IDLE_DRAIN</name>
+          <description>Drain and restore one idle runtime using saved Nomad state</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DRAIN_IDLE_TARGET_IP</name>
+          <description>Idle target IP to drain when ENABLE_IDLE_DRAIN is true</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string></string>
+              <string>34.82.132.175</string>
+              <string>35.247.80.209</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">
+    <script>pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  environment {
+    REPO_URL = 'https://github.com/sjkim0831/2026_carbonet.git'
+    MAIN_TARGET = 'carbonet2026@136.117.100.221'
+    MAIN_REMOTE_ROOT = '/opt/Resonance'
+  }
+
+  stages {
+    stage('Prepare') {
+      steps {
+        deleteDir()
+        sh '''
+          set -euo pipefail
+          git clone --branch "$BRANCH" --single-branch "$REPO_URL" repo
+        '''
+      }
+    }
+
+    stage('Deploy') {
+      steps {
+        dir('repo') {
+          sh '''
+            set -euo pipefail
+
+            if [ -n "${GITHUB_TOKEN:-}" ]; then
+              export GIT_CREDENTIALS_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+            fi
+
+            BRANCH="$BRANCH" \
+            REPO_URL="$REPO_URL" \
+            MAIN_TARGET="$MAIN_TARGET" \
+            MAIN_REMOTE_ROOT="$MAIN_REMOTE_ROOT" \
+            MAIN_REMOTE_PASSWORD="$MAIN_REMOTE_PASSWORD" \
+            MAIN_SSH_PASSWORD="$MAIN_REMOTE_PASSWORD" \
+            IDLE_SSH_PASSWORD="$IDLE_SSH_PASSWORD" \
+            IDLE_SCALE_ENABLED="$ENABLE_IDLE_SCALE" \
+            IDLE_RESTORE_ENABLED="$ENABLE_IDLE_DRAIN" \
+            DRAIN_IDLE_TARGET_IP="$DRAIN_IDLE_TARGET_IP" \
+            bash ops/scripts/jenkins-deploy-carbonet.sh
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      deleteDir()
+    }
+  }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H/2 * * * *</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <disabled>false</disabled>
+</flow-definition>

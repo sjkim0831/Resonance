@@ -1,0 +1,55 @@
+project: carbonet
+framework: resonance
+project_version: 1.0.0
+runtime_mode: isolated
+
+package_set:
+  runtime:
+    - apps/project-runtime
+    - projects/carbonet-runtime
+  adapter:
+    - projects/carbonet-adapter
+  common:
+    - modules/common-auth
+    - modules/common-admin-runtime
+    - modules/platform-runtime-control
+    - modules/platform-version-control
+    - modules/stable-execution-gate
+  builder:
+    - modules/screenbuilder-core
+    - modules/screenbuilder-runtime-common-adapter
+  theme:
+    - themes/brand-resonance
+    - themes/project-carbonet
+  migration:
+    - migrations/carbonet
+
+bindings:
+  db: carbonet-main
+  port: 18081
+  log_namespace: carbonet
+  cache_namespace: carbonet
+  scope_binding: carbonet-default
+
+capabilities:
+  common:
+    - common.auth.check.v2
+    - common.authority.context.get.v1
+    - common.authority.feature.catalog.v1
+    - common.authority.scope.verify.v1
+    - common.authority.action.check.v1
+    - common.authority.resource.check.v1
+    - common.menu.resolve.v3
+    - common.board.post.list.v3
+  project:
+    - project.carbonet.route.resolve.v1
+    - project.carbonet.menu.binding.v1
+    - project.carbonet.theme.binding.v1
+    - project.carbonet.screen.compose.v1
+
+delivery:
+  include_source_snapshot: true
+  include_common_jars: true
+  include_theme_bundle: true
+  include_migration_bundle: true
+  include_install_scripts: true

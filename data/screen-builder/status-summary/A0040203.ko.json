@@ -1,0 +1,23 @@
+{
+  "menuCode" : "A0040203",
+  "pageId" : "builder-a0040203",
+  "menuTitle" : "팝업 목록",
+  "menuUrl" : "/admin/content/popup_list",
+  "publishedVersionId" : "",
+  "publishedSavedAt" : "",
+  "releaseUnitId" : "draft-20260328005915",
+  "artifactTargetSystem" : "carbonet-general",
+  "runtimePackageId" : "screen-builder-runtime-a0040203-builder-a0040203",
+  "deployTraceId" : "deploy-draft-20260328005915",
+  "publishFreshnessState" : "UNPUBLISHED",
+  "publishFreshnessLabel" : "아직 발행 없음",
+  "publishFreshnessDetail" : "이 메뉴는 아직 draft 전용 빌더 상태입니다.",
+  "parityState" : "UNAVAILABLE",
+  "parityLabel" : "정합성 미확인",
+  "parityDetail" : "아직 발행이 없습니다.",
+  "parityTraceId" : "",
+  "versionCount" : 0,
+  "unregisteredCount" : 4,
+  "missingCount" : 0,
+  "deprecatedCount" : 0
+}

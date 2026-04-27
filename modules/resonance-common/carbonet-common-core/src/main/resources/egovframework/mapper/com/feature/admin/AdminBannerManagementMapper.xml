@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminBannerManagementMapper">
+
+    <select id="selectBannerRows" resultType="hashmap">
+        SELECT
+            BANNER_ID AS "bannerId",
+            BANNER_NM AS "bannerName",
+            LINK_URL AS "linkUrl",
+            BANNER_IMAGE AS "bannerImage",
+            BANNER_DC AS "bannerDescription",
+            REFLCT_AT AS "reflectAt",
+            FRST_REGISTER_ID AS "createdBy",
+            CASE WHEN FRST_REGIST_PNTTM IS NULL THEN NULL ELSE TO_CHAR(FRST_REGIST_PNTTM, 'YYYY-MM-DD HH24:MI') END AS "createdAt",
+            LAST_UPDUSR_ID AS "updatedBy",
+            CASE WHEN LAST_UPDT_PNTTM IS NULL THEN NULL ELSE TO_CHAR(LAST_UPDT_PNTTM, 'YYYY-MM-DD HH24:MI') END AS "updatedAt",
+            BANNER_IMAGE_FILE AS "bannerImageFile",
+            COALESCE(SORT_ORDR, 9999) AS "sortOrder"
+        FROM COMTNBANNER
+        ORDER BY COALESCE(SORT_ORDR, 9999) ASC, LAST_UPDT_PNTTM DESC, BANNER_ID ASC
+    </select>
+
+    <select id="selectBannerById" parameterType="string" resultType="hashmap">
+        SELECT
+            BANNER_ID AS "bannerId",
+            BANNER_NM AS "bannerName",
+            LINK_URL AS "linkUrl",
+            BANNER_IMAGE AS "bannerImage",
+            BANNER_DC AS "bannerDescription",
+            REFLCT_AT AS "reflectAt",
+            FRST_REGISTER_ID AS "createdBy",
+            CASE WHEN FRST_REGIST_PNTTM IS NULL THEN NULL ELSE TO_CHAR(FRST_REGIST_PNTTM, 'YYYY-MM-DD HH24:MI') END AS "createdAt",
+            LAST_UPDUSR_ID AS "updatedBy",
+            CASE WHEN LAST_UPDT_PNTTM IS NULL THEN NULL ELSE TO_CHAR(LAST_UPDT_PNTTM, 'YYYY-MM-DD HH24:MI') END AS "updatedAt",
+            BANNER_IMAGE_FILE AS "bannerImageFile",
+            COALESCE(SORT_ORDR, 9999) AS "sortOrder"
+        FROM COMTNBANNER
+        WHERE BANNER_ID = #{_parameter}
+    </select>
+
+    <select id="countBannerById" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNBANNER
+        WHERE BANNER_ID = #{_parameter}
+    </select>
+
+    <insert id="insertBannerRow" parameterType="hashmap">
+        INSERT INTO COMTNBANNER (
+            BANNER_ID,
+            BANNER_NM,
+            LINK_URL,
+            BANNER_IMAGE,
+            BANNER_DC,
+            REFLCT_AT,
+            FRST_REGISTER_ID,
+            FRST_REGIST_PNTTM,
+            LAST_UPDUSR_ID,
+            LAST_UPDT_PNTTM,
+            BANNER_IMAGE_FILE,
+            SORT_ORDR
+        ) VALUES (
+            #{bannerId},
+            #{bannerName},
+            #{linkUrl},
+            #{bannerImage},
+            #{bannerDescription},
+            #{reflectAt},
+            #{createdBy},
+            CURRENT_DATETIME,
+            #{updatedBy},
+            CURRENT_DATETIME,
+            #{bannerImageFile},
+            #{sortOrder}
+        )
+    </insert>
+
+    <update id="updateBannerRow" parameterType="hashmap">
+        UPDATE COMTNBANNER
+        SET BANNER_NM = #{bannerName},
+            LINK_URL = #{linkUrl},
+            BANNER_IMAGE = #{bannerImage},
+            BANNER_DC = #{bannerDescription},
+            REFLCT_AT = #{reflectAt},
+            LAST_UPDUSR_ID = #{updatedBy},
+            LAST_UPDT_PNTTM = CURRENT_DATETIME,
+            BANNER_IMAGE_FILE = #{bannerImageFile},
+            SORT_ORDR = #{sortOrder}
+        WHERE BANNER_ID = #{bannerId}
+    </update>
+
+</mapper>

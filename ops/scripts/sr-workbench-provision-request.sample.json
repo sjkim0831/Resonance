@@ -1,0 +1,106 @@
+{
+  "requestId": "REQ-SR-WORKBENCH-20260314-001",
+  "actorId": "CODEX",
+  "menuType": "ADMIN",
+  "reloadSecurityMetadata": true,
+  "targetApiPath": "/admin/system/sr-workbench",
+  "page": {
+    "domainCode": "A101",
+    "domainName": "시스템관리",
+    "domainNameEn": "System Management",
+    "groupCode": "A10103",
+    "groupName": "AI 운영",
+    "groupNameEn": "AI Operations",
+    "code": "A1010302",
+    "codeNm": "SR 워크벤치",
+    "codeDc": "SR Workbench",
+    "menuUrl": "/admin/system/sr-workbench",
+    "menuIcon": "assignment",
+    "useAt": "Y"
+  },
+  "features": [
+    {
+      "menuCode": "A1010302",
+      "featureCode": "A1010302_VIEW",
+      "featureNm": "SR 워크벤치 조회",
+      "featureNmEn": "View SR Workbench",
+      "featureDc": "SR workbench page view",
+      "useAt": "Y"
+    },
+    {
+      "menuCode": "A1010302",
+      "featureCode": "A1010302_CREATE",
+      "featureNm": "SR 티켓 발행",
+      "featureNmEn": "Create SR Ticket",
+      "featureDc": "Create SR workbench ticket",
+      "useAt": "Y"
+    },
+    {
+      "menuCode": "A1010302",
+      "featureCode": "A1010302_APPROVE",
+      "featureNm": "SR 승인",
+      "featureNmEn": "Approve SR Ticket",
+      "featureDc": "Approve or reject SR ticket",
+      "useAt": "Y"
+    },
+    {
+      "menuCode": "A1010302",
+      "featureCode": "A1010302_EXECUTE",
+      "featureNm": "SR 실행 준비",
+      "featureNmEn": "Prepare SR Execution",
+      "featureDc": "Prepare approved SR ticket for Codex execution",
+      "useAt": "Y"
+    }
+  ],
+  "authors": [
+    {
+      "authorCode": "ROLE_CODEX_ADMIN",
+      "authorNm": "Codex 관리자",
+      "authorDc": "Codex automation administrator",
+      "featureCodes": [
+        "A1010302_VIEW",
+        "A1010302_CREATE",
+        "A1010302_APPROVE",
+        "A1010302_EXECUTE"
+      ]
+    }
+  ],
+  "commonCodeGroups": [
+    {
+      "classCode": "SRTK",
+      "classCodeNm": "SR Ticket",
+      "classCodeDc": "SR Ticket",
+      "classUseAt": "Y",
+      "codeId": "SR_TICKET_STATUS",
+      "codeIdNm": "SR 티켓 상태",
+      "codeIdDc": "SR Ticket Status",
+      "useAt": "Y",
+      "details": [
+        {
+          "code": "OPEN",
+          "codeNm": "오픈",
+          "codeDc": "Open",
+          "useAt": "Y"
+        },
+        {
+          "code": "APPROVED",
+          "codeNm": "승인",
+          "codeDc": "Approved",
+          "useAt": "Y"
+        },
+        {
+          "code": "REJECTED",
+          "codeNm": "반려",
+          "codeDc": "Rejected",
+          "useAt": "Y"
+        },
+        {
+          "code": "READY_FOR_CODEX",
+          "codeNm": "실행준비",
+          "codeDc": "Ready for Codex",
+          "useAt": "Y"
+        }
+      ]
+    }
+  ]
+}

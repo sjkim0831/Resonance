@@ -1,0 +1,43 @@
+{
+  "commonCore": [
+    {
+      "version": "1.0.0",
+      "artifactId": "carbonet-common-core",
+      "buildId": "cc-20260401-01",
+      "storageKey": "releases/common/carbonet-common-core-1.0.0.jar"
+    },
+    {
+      "version": "1.1.0",
+      "artifactId": "carbonet-common-core",
+      "buildId": "cc-20260415-01",
+      "storageKey": "releases/common/carbonet-common-core-1.1.0.jar"
+    }
+  ],
+  "stableGate": [
+    {
+      "version": "v1",
+      "artifactId": "stable-execution-gate",
+      "buildId": "gate-20260401-01",
+      "storageKey": "releases/common/stable-execution-gate-v1.jar"
+    }
+  ],
+  "skeletons": [
+    {
+      "id": "standard-runtime-skeleton",
+      "version": "1.0.0",
+      "description": "Base package for new project-runtime instances",
+      "artifactId": "carbonet-project-runtime-skeleton",
+      "storageKey": "templates/skeletons/project-runtime-1.0.0/",
+      "requiredCore": ">=1.0.0"
+    }
+  ],
+  "adapters": [
+    {
+      "id": "carbonet-default-adapter",
+      "version": "1.0.0",
+      "contractVersion": "v1",
+      "artifactId": "screenbuilder-carbonet-adapter",
+      "buildId": "adapter-20260401-01"
+    }
+  ]
+}

@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React App Shell</title>
+    <meta name="description" content="Carbonet React app shell">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #eef5f7 0%, #f8fbfc 100%);
+            color: #10233f;
+            font-family: "Pretendard GOV", "Noto Sans KR", sans-serif;
+        }
+        .shell-loading {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+        .shell-loading[hidden] {
+            display: none;
+        }
+        .shell-loading-card {
+            width: min(520px, 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.14);
+            padding: 28px 28px 24px;
+        }
+        .shell-loading-head {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .shell-loading-spinner {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 auto;
+        }
+        .shell-loading-spinner::before,
+        .shell-loading-spinner::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 999px;
+        }
+        .shell-loading-spinner::before {
+            border: 3px solid rgba(148, 163, 184, 0.24);
+        }
+        .shell-loading-spinner::after {
+            border: 3px solid transparent;
+            border-top-color: #0f4c81;
+            border-right-color: #0f4c81;
+            animation: shell-spin 0.9s linear infinite;
+        }
+        .shell-loading-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #10233f;
+        }
+        .shell-loading-desc {
+            margin: 6px 0 0;
+            font-size: 14px;
+            color: #475569;
+            line-height: 1.6;
+        }
+        .shell-loading-bar {
+            margin-top: 20px;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(226, 232, 240, 0.9);
+            overflow: hidden;
+        }
+        .shell-loading-bar::after {
+            content: "";
+            display: block;
+            width: 34%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #0f4c81 0%, #3b82f6 100%);
+            animation: shell-progress 1.4s ease-in-out infinite;
+        }
+        .shell-loading-meta {
+            margin-top: 14px;
+            font-size: 12px;
+            color: #64748b;
+        }
+        @keyframes shell-spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes shell-progress {
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(320%); }
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<div class="shell-loading" id="shell-loading">
+    <div class="shell-loading-card">
+        <div class="shell-loading-head">
+            <div class="shell-loading-spinner" aria-hidden="true"></div>
+            <div>
+                <p class="shell-loading-title">관리자 화면을 준비하고 있습니다.</p>
+                <p class="shell-loading-desc">권한, 메뉴, 화면 bootstrap을 불러오는 동안 잠시만 기다려 주세요.</p>
+            </div>
+        </div>
+        <div class="shell-loading-bar" aria-hidden="true"></div>
+        <p class="shell-loading-meta" id="shell-loading-meta">Loading admin shell...</p>
+    </div>
+</div>
+<script type="module">
+    function isAdminPath(pathname) {
+        return pathname === "/admin"
+            || pathname === "/en/admin"
+            || pathname.startsWith("/admin/")
+            || pathname.startsWith("/en/admin/");
+    }
+
+    function isEnglishPublicPath(pathname) {
+        return pathname.startsWith("/en/")
+            || pathname === "/join/en"
+            || pathname.startsWith("/join/en/");
+    }
+
+    function resolveForcedRoute(pathname) {
+        if (pathname === "/signin/findId/overseas" || pathname === "/en/signin/findId/overseas") {
+            return "signin_find_id";
+        }
+        if (pathname === "/signin/findPassword/overseas" || pathname === "/en/signin/findPassword/overseas") {
+            return "signin_find_password";
+        }
+        return "";
+    }
+
+    function resolveBootstrapApiPath(pathname) {
+        if (pathname.startsWith("/en/admin/login/")) {
+            return "/en/admin/login/api/app/bootstrap";
+        }
+        if (pathname.startsWith("/admin/login/")) {
+            return "/admin/login/api/app/bootstrap";
+        }
+        if (pathname.startsWith("/en/admin/") || pathname === "/en/admin") {
+            return "/en/api/admin/app/bootstrap";
+        }
+        if (isAdminPath(pathname)) {
+            return "/api/admin/app/bootstrap";
+        }
+        if (pathname.startsWith("/en/signin/")) {
+            return "/en/signin/api/app/bootstrap";
+        }
+        if (pathname.startsWith("/signin/")) {
+            return "/signin/api/app/bootstrap";
+        }
+        if (isEnglishPublicPath(pathname)) {
+            return "/en/api/app/bootstrap";
+        }
+        return "/api/app/bootstrap";
+    }
+
+    async function loadBootstrap() {
+        const params = new URLSearchParams(window.location.search);
+        params.set("path", window.location.pathname);
+        const forcedRoute = resolveForcedRoute(window.location.pathname);
+        if (forcedRoute) {
+            params.set("route", forcedRoute);
+        }
+        const bootstrapPath = resolveBootstrapApiPath(window.location.pathname);
+        const response = await fetch(`${bootstrapPath}?${params.toString()}`, {
+            credentials: "same-origin"
+        });
+        if (!response.ok) {
+            throw new Error(`Bootstrap request failed: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    const search = new URLSearchParams(window.location.search);
+    const useDevServer = search.get("dev") === "1";
+    function resolveBootstrapPath() {
+        return resolveBootstrapApiPath(window.location.pathname);
+    }
+
+    function updateLoadingMeta(message) {
+        const loadingMeta = document.getElementById("shell-loading-meta");
+        if (loadingMeta) {
+            loadingMeta.textContent = message;
+        }
+    }
+
+    function hideLoading() {
+        const loadingElement = document.getElementById("shell-loading");
+        if (loadingElement) {
+            loadingElement.hidden = true;
+        }
+    }
+
+    function waitForReactMount(currentScriptSrc) {
+        let attempts = 0;
+        const maxAttempts = 120;
+        const poll = () => {
+            if (window.__CARBONET_REACT_APP_MOUNTED__) {
+                hideLoading();
+                return;
+            }
+            attempts += 1;
+            if (attempts >= maxAttempts) {
+                updateLoadingMeta(`React app did not mount. Check bundle: ${currentScriptSrc}`);
+                console.error("React app mount timed out.", currentScriptSrc);
+                return;
+            }
+            window.setTimeout(poll, 50);
+        };
+        poll();
+    }
+
+    function installRuntimeErrorProbe() {
+        window.addEventListener("error", function (event) {
+            const message = event && event.message ? String(event.message) : "Unknown window error";
+            const source = event && event.filename ? String(event.filename) : "";
+            updateLoadingMeta(`Runtime error: ${message}${source ? ` @ ${source}` : ""}`);
+            console.error("React runtime error before mount.", {
+                message: message,
+                source: source,
+                lineno: event && event.lineno,
+                colno: event && event.colno,
+                error: event && event.error
+            });
+        });
+
+        window.addEventListener("unhandledrejection", function (event) {
+            const reason = event ? event.reason : null;
+            const message = reason instanceof Error
+                ? reason.message
+                : (typeof reason === "string" ? reason : JSON.stringify(reason || "Unknown promise rejection"));
+            updateLoadingMeta(`Unhandled rejection: ${message}`);
+            console.error("React unhandled rejection before mount.", reason);
+        });
+    }
+
+    installRuntimeErrorProbe();
+    loadBootstrap().then((config) => {
+        window.__CARBONET_REACT_APP_MOUNTED__ = false;
+        window.__CARBONET_REACT_APP__ = {
+            route: config.reactRoute,
+            locale: config.reactLocale,
+            admin: config.reactAdmin,
+            devUrl: config.reactAppDevUrl,
+            prodJs: config.reactAppProdJs,
+            prodCss: config.reactAppProdCss
+        };
+        window.__CARBONET_REACT_MIGRATION__ = {
+            route: config.reactRoute,
+            locale: config.reactLocale,
+            admin: config.reactAdmin,
+            devUrl: config.reactAppDevUrl,
+            prodJs: config.reactAppProdJs,
+            prodCss: config.reactAppProdCss
+        };
+        window.__CARBONET_REACT_BOOTSTRAP__ = config.reactBootstrapPayload || {};
+
+        document.documentElement.lang = config.reactLocale || "ko";
+        document.title = config.reactShellTitle || "React App Shell";
+
+        const description = document.querySelector('meta[name="description"]');
+        if (description && config.reactShellDescription) {
+            description.setAttribute("content", config.reactShellDescription);
+        }
+
+        if (config.csrfToken && config.csrfHeaderName) {
+            const csrfMeta = document.createElement("meta");
+            csrfMeta.name = "_csrf";
+            csrfMeta.content = config.csrfToken;
+            document.head.appendChild(csrfMeta);
+
+            const csrfHeaderMeta = document.createElement("meta");
+            csrfHeaderMeta.name = "_csrf_header";
+            csrfHeaderMeta.content = config.csrfHeaderName;
+            document.head.appendChild(csrfHeaderMeta);
+        }
+
+        const currentCss = config.reactAppProdCss || "";
+        if (currentCss) {
+            document.querySelectorAll("link[data-carbonet-react-css]").forEach((style) => {
+                if (style.dataset.carbonetReactCss !== currentCss) {
+                    style.remove();
+                }
+            });
+            if (!document.querySelector(`link[data-carbonet-react-css="${currentCss}"]`)) {
+                const style = document.createElement("link");
+                style.rel = "stylesheet";
+                style.href = currentCss;
+                style.dataset.carbonetReactCss = currentCss;
+                document.head.appendChild(style);
+            }
+        }
+
+        const currentScriptSrc = useDevServer ? `${config.reactAppDevUrl}/src/main.tsx` : (config.reactAppProdJs || "");
+        const existingScript = document.querySelector('script[data-carbonet-react-app="1"]');
+        if (existingScript && existingScript.dataset.carbonetReactSrc !== currentScriptSrc) {
+            existingScript.remove();
+        }
+
+        if (!document.querySelector('script[data-carbonet-react-app="1"]') && currentScriptSrc) {
+            const script = document.createElement("script");
+            script.type = "module";
+            script.src = currentScriptSrc;
+            script.dataset.carbonetReactApp = "1";
+            script.dataset.carbonetReactSrc = currentScriptSrc;
+            script.onerror = () => {
+                updateLoadingMeta(`React bundle could not be loaded: ${currentScriptSrc}`);
+                console.error("React bundle could not be loaded.", currentScriptSrc);
+            };
+            document.body.appendChild(script);
+        }
+        updateLoadingMeta("Bootstrap loaded. Waiting for React app mount...");
+        waitForReactMount(currentScriptSrc);
+    }).catch((error) => {
+        updateLoadingMeta("Bootstrap load failed. Please refresh the page.");
+        console.error("React bootstrap could not be loaded.", error);
+    });
+</script>
+</body>
+</html>

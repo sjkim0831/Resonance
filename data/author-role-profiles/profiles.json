@@ -1,0 +1,502 @@
+[
+  {
+    "authorCode": "ROLE_SYSTEM_MASTER",
+    "displayTitle": "플랫폼 총괄 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "Y",
+    "assignmentScope": "GLOBAL",
+    "priorityWorks": [
+      "시스템 운영",
+      "메뉴/권한 설계",
+      "감사 추적 점검"
+    ],
+    "description": "플랫폼 전반의 설정, 권한, 운영 이력을 총괄하는 최상위 관리자입니다.",
+    "memberEditVisibleYn": "N",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_SYSTEM_ADMIN",
+    "displayTitle": "시스템 운영 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_SYSTEM_MASTER",
+    "assignmentScope": "GLOBAL",
+    "priorityWorks": [
+      "화면/기능 관리",
+      "메타데이터 정비",
+      "운영 이슈 대응"
+    ],
+    "description": "관리자 화면, 기능 카탈로그, 메타데이터를 운영하는 시스템 관리자 역할입니다.",
+    "memberEditVisibleYn": "N",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_ADMIN",
+    "displayTitle": "서비스 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "Y",
+    "assignmentScope": "GLOBAL",
+    "priorityWorks": [
+      "회원 운영",
+      "권한 검토",
+      "운영 승인 처리"
+    ],
+    "description": "운영 승인과 회원 관리 업무를 중심으로 수행하는 기준 관리자 역할입니다.",
+    "memberEditVisibleYn": "N",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_OPERATION_ADMIN",
+    "displayTitle": "회원사 운영 담당",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_ADMIN",
+    "assignmentScope": "COMPANY",
+    "priorityWorks": [
+      "회사별 권한 운영",
+      "부서 권한 맵핑",
+      "회원 예외 권한 조정"
+    ],
+    "description": "자기 회사 범위에서 부서와 회원 권한을 운영하는 관리자 역할입니다.",
+    "memberEditVisibleYn": "N",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN",
+    "displayTitle": "회원사 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "Y",
+    "assignmentScope": "COMPANY",
+    "priorityWorks": [
+      "회원 정보 관리",
+      "부서 권한 검토",
+      "운영 요청 대응"
+    ],
+    "description": "회원사 단위의 기본 운영과 사용자 관리를 담당하는 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN_EMITTER",
+    "displayTitle": "CO2 배출사업자 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_COMPANY_ADMIN",
+    "assignmentScope": "COMPANY",
+    "defaultMemberTypes": [
+      "E"
+    ],
+    "priorityWorks": [
+      "회원 정보 관리",
+      "배출사업자 업무 권한 운영",
+      "운영 요청 대응"
+    ],
+    "description": "CO2 배출사업자 유형에 맞춘 관리자 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 23:30:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN_PERFORMER",
+    "displayTitle": "CCUS 프로젝트 사업자 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_COMPANY_ADMIN",
+    "assignmentScope": "COMPANY",
+    "defaultMemberTypes": [
+      "P"
+    ],
+    "priorityWorks": [
+      "회원 정보 관리",
+      "프로젝트 업무 권한 운영",
+      "운영 요청 대응"
+    ],
+    "description": "CCUS 프로젝트 사업자 유형에 맞춘 관리자 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 23:30:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN_ENTERPRISE",
+    "displayTitle": "기업 회원 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_COMPANY_ADMIN",
+    "assignmentScope": "COMPANY",
+    "priorityWorks": [
+      "회원 정보 관리",
+      "기업 업무 권한 운영",
+      "운영 요청 대응"
+    ],
+    "description": "기업 회원 유형에 맞춘 관리자 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 22:40:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN_CENTER",
+    "displayTitle": "진흥·지원 기관 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_COMPANY_ADMIN",
+    "assignmentScope": "COMPANY",
+    "defaultMemberTypes": [
+      "C"
+    ],
+    "priorityWorks": [
+      "기관 사용자 관리",
+      "지원기관 업무 권한 운영",
+      "운영 요청 대응"
+    ],
+    "description": "진흥·지원 기관 유형에 맞춘 관리자 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 22:40:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN_GOV",
+    "displayTitle": "관계 기관·주무관청 관리자",
+    "roleType": "GENERAL",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_COMPANY_ADMIN",
+    "assignmentScope": "COMPANY",
+    "defaultMemberTypes": [
+      "G"
+    ],
+    "priorityWorks": [
+      "기관 사용자 관리",
+      "행정기관 업무 권한 운영",
+      "운영 요청 대응"
+    ],
+    "description": "관계 기관·주무관청 유형에 맞춘 관리자 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 23:30:00"
+  },
+  {
+    "authorCode": "ROLE_COMPANY_ADMIN_AUTHORITY",
+    "displayTitle": "기관 회원 관리자",
+    "priorityWorks": [
+      "기관 사용자 관리",
+      "기관 업무 권한 운영",
+      "운영 요청 대응"
+    ],
+    "description": "기관 회원 유형에 맞춘 관리자 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 22:40:00"
+  },
+  {
+    "authorCode": "ROLE_CS_ADMIN",
+    "displayTitle": "고객 지원 담당",
+    "priorityWorks": [
+      "문의 응대",
+      "회원 상태 확인",
+      "승인 보완 안내"
+    ],
+    "description": "고객 문의와 회원 지원 요청을 우선 처리하는 운영 역할입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_USER",
+    "displayTitle": "일반 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "Y",
+    "assignmentScope": "USER",
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "정보 조회",
+      "신청 내역 확인"
+    ],
+    "description": "공통 사용자 기능을 중심으로 사용하는 기본 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_USER_EMITTER",
+    "displayTitle": "CO2 배출사업자 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "defaultMemberTypes": [
+      "E"
+    ],
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "배출사업자 업무 처리",
+      "신청 내역 확인"
+    ],
+    "description": "CO2 배출사업자 유형에 맞춘 기본 사용자 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 23:30:00"
+  },
+  {
+    "authorCode": "ROLE_USER_PERFORMER",
+    "displayTitle": "CCUS 프로젝트 사업자 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "defaultMemberTypes": [
+      "P"
+    ],
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "프로젝트 업무 처리",
+      "신청 내역 확인"
+    ],
+    "description": "CCUS 프로젝트 사업자 유형에 맞춘 기본 사용자 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 23:30:00"
+  },
+  {
+    "authorCode": "ROLE_USER_ENTERPRISE",
+    "displayTitle": "기업 회원 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "기업 업무 처리",
+      "신청 내역 확인"
+    ],
+    "description": "기업 회원 유형에 맞춘 기본 사용자 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 22:40:00"
+  },
+  {
+    "authorCode": "ROLE_USER_CENTER",
+    "displayTitle": "진흥·지원 기관 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "defaultMemberTypes": [
+      "C"
+    ],
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "지원기관 업무 처리",
+      "신청 내역 확인"
+    ],
+    "description": "진흥·지원 기관 유형에 맞춘 기본 사용자 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 22:40:00"
+  },
+  {
+    "authorCode": "ROLE_USER_GOV",
+    "displayTitle": "관계 기관·주무관청 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "defaultMemberTypes": [
+      "G"
+    ],
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "행정기관 업무 처리",
+      "신청 내역 확인"
+    ],
+    "description": "관계 기관·주무관청 유형에 맞춘 기본 사용자 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 23:30:00"
+  },
+  {
+    "authorCode": "ROLE_USER_AUTHORITY",
+    "displayTitle": "기관 회원 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "priorityWorks": [
+      "기본 서비스 이용",
+      "기관 업무 처리",
+      "신청 내역 확인"
+    ],
+    "description": "기관 회원 유형에 맞춘 기본 사용자 권한 그룹입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-25 22:40:00"
+  },
+  {
+    "authorCode": "ROLE_USER_STANDARD",
+    "displayTitle": "표준 실무 사용자",
+    "roleType": "USER",
+    "baseRoleYn": "N",
+    "parentAuthorCode": "ROLE_USER",
+    "assignmentScope": "USER",
+    "priorityWorks": [
+      "기본 업무 처리",
+      "자료 조회",
+      "부서 협업"
+    ],
+    "description": "회원 수정과 부서 권한 맵핑에서 기본값으로 쓰기 쉬운 표준 사용자 역할입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_OPERATION",
+    "displayTitle": "운영 실무 담당",
+    "priorityWorks": [
+      "운영 현황 점검",
+      "권한 요청 처리",
+      "업무 이력 확인"
+    ],
+    "description": "운영 부서의 기본 권한과 실무 노출 정보를 담는 기준 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_CS",
+    "displayTitle": "고객지원 담당",
+    "priorityWorks": [
+      "문의 접수",
+      "회원 안내",
+      "처리 상태 추적"
+    ],
+    "description": "고객지원 부서에서 기본적으로 사용할 업무 역할과 우선 제공 업무입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_SUSTAINABILITY",
+    "displayTitle": "지속가능경영 담당",
+    "priorityWorks": [
+      "배출량 관리",
+      "ESG 데이터 검토",
+      "공급망 요청 대응"
+    ],
+    "description": "탄소, ESG, 지속가능경영 부서에 맞춘 기본 업무 역할 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_PRODUCTION",
+    "displayTitle": "생산 운영 담당",
+    "priorityWorks": [
+      "생산 데이터 확인",
+      "공정 현황 입력",
+      "실적 점검"
+    ],
+    "description": "생산 및 공정 부서에서 우선 노출할 업무를 정의한 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_PROCUREMENT",
+    "displayTitle": "구매/SCM 담당",
+    "priorityWorks": [
+      "협력사 관리",
+      "구매 요청 검토",
+      "공급망 자료 수집"
+    ],
+    "description": "구매와 SCM 부서 기준으로 자주 수행하는 업무를 정리한 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_QUALITY",
+    "displayTitle": "품질/인증 담당",
+    "priorityWorks": [
+      "품질 점검",
+      "인증 자료 관리",
+      "감사 대응"
+    ],
+    "description": "품질 및 인증 부서에서 사용할 기본 업무 역할과 우선 제공 업무입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_SALES",
+    "displayTitle": "영업/고객사 담당",
+    "priorityWorks": [
+      "고객사 요청 대응",
+      "실적 확인",
+      "자료 공유"
+    ],
+    "description": "영업과 고객사 대응 부서에 적합한 기본 업무 노출 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 21:55:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_CS",
+    "displayTitle": "큐빅테크 고객지원 담당",
+    "priorityWorks": [
+      "문의 응대",
+      "회원 지원",
+      "처리 상태 확인"
+    ],
+    "description": "큐빅테크 고객지원 부서에 맞춘 회사 전용 업무 역할 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_ESG",
+    "displayTitle": "큐빅테크 탄소/ESG 담당",
+    "priorityWorks": [
+      "배출량 관리",
+      "ESG 데이터 검토",
+      "공급망 요청 대응"
+    ],
+    "description": "큐빅테크 탄소/ESG 부서 전용 기본 업무 역할 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_MGMT",
+    "displayTitle": "큐빅테크 경영지원 담당",
+    "priorityWorks": [
+      "운영 현황 점검",
+      "내부 요청 처리",
+      "업무 이력 확인"
+    ],
+    "description": "큐빅테크 경영지원 부서에서 우선 노출할 업무 묶음입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_PROC",
+    "displayTitle": "큐빅테크 구매 담당",
+    "priorityWorks": [
+      "협력사 관리",
+      "구매 요청 검토",
+      "공급망 자료 수집"
+    ],
+    "description": "큐빅테크 구매 부서에 연결할 회사 전용 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_PROD",
+    "displayTitle": "큐빅테크 생산 담당",
+    "priorityWorks": [
+      "생산 데이터 확인",
+      "공정 현황 입력",
+      "실적 점검"
+    ],
+    "description": "큐빅테크 생산 부서가 회원 수정 화면에서 바로 사용할 수 있는 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_QUAL",
+    "displayTitle": "큐빅테크 품질/인증 담당",
+    "priorityWorks": [
+      "품질 점검",
+      "인증 자료 관리",
+      "감사 대응"
+    ],
+    "description": "큐빅테크 품질/인증 부서 전용 기본 업무 역할 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  },
+  {
+    "authorCode": "ROLE_DEPT_I98669_SALE",
+    "displayTitle": "큐빅테크 영업 담당",
+    "priorityWorks": [
+      "고객사 요청 대응",
+      "실적 확인",
+      "자료 공유"
+    ],
+    "description": "큐빅테크 영업 부서에 맞춘 회사 전용 업무 역할 프로필입니다.",
+    "memberEditVisibleYn": "Y",
+    "updatedAt": "2026-03-18 22:02:00"
+  }
+]

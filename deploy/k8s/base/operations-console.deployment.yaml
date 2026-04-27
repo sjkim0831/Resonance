@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operations-console
+  namespace: resonance-ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operations-console
+  template:
+    metadata:
+      labels:
+        app: operations-console
+        framework: resonance
+        tier: control-plane
+    spec:
+      containers:
+        - name: operations-console
+          image: registry.local/operations-console:2026.04.26
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 18000
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 18000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 18000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: operations-console
+  namespace: resonance-ops
+spec:
+  selector:
+    app: operations-console
+  ports:
+    - name: http
+      port: 80
+      targetPort: 18000
+  type: ClusterIP

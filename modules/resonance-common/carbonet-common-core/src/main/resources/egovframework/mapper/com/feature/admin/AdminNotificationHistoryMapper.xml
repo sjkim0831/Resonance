@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="AdminNotificationHistoryMapper">
+
+    <sql id="deliveryWhere">
+        WHERE COALESCE(USE_AT, 'Y') = 'Y'
+        <if test="deliveryChannel != null and deliveryChannel != ''">
+            AND DELIVERY_MODE = #{deliveryChannel}
+        </if>
+        <if test="deliveryStatus != null and deliveryStatus != ''">
+            AND DELIVERY_STATUS = #{deliveryStatus}
+        </if>
+        <if test="deliveryKeyword != null and deliveryKeyword != ''">
+            AND (
+                UPPER(COALESCE(TOP_FINDING, '')) LIKE '%' || UPPER(#{deliveryKeyword}) || '%'
+                OR UPPER(COALESCE(DELIVERY_DETAIL, '')) LIKE '%' || UPPER(#{deliveryKeyword}) || '%'
+                OR UPPER(COALESCE(ACTOR_USER_ID, '')) LIKE '%' || UPPER(#{deliveryKeyword}) || '%'
+                OR UPPER(COALESCE(DELIVERY_MODE, '')) LIKE '%' || UPPER(#{deliveryKeyword}) || '%'
+            )
+        </if>
+    </sql>
+
+    <sql id="activityWhere">
+        WHERE COALESCE(USE_AT, 'Y') = 'Y'
+        <if test="activityAction != null and activityAction != ''">
+            AND ACTION_CODE = #{activityAction}
+        </if>
+        <if test="activityKeyword != null and activityKeyword != ''">
+            AND (
+                UPPER(COALESCE(TARGET_TEXT, '')) LIKE '%' || UPPER(#{activityKeyword}) || '%'
+                OR UPPER(COALESCE(DETAIL_TEXT, '')) LIKE '%' || UPPER(#{activityKeyword}) || '%'
+                OR UPPER(COALESCE(ACTOR_USER_ID, '')) LIKE '%' || UPPER(#{activityKeyword}) || '%'
+                OR UPPER(COALESCE(ACTION_CODE, '')) LIKE '%' || UPPER(#{activityKeyword}) || '%'
+            )
+        </if>
+    </sql>
+
+    <select id="countDeliveryHistory" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNADMINNOTIFICATIONDELIVERYHIST
+        <include refid="deliveryWhere" />
+    </select>
+
+    <select id="selectDeliveryHistory" parameterType="map" resultType="map">
+        SELECT
+            DELIVERY_ID AS deliveryId,
+            TO_CHAR(SENT_AT, 'YYYY-MM-DD HH24:MI:SS') AS occurredAt,
+            DELIVERY_MODE AS deliveryType,
+            DELIVERY_STATUS AS deliveryStatus,
+            TOP_FINDING AS title,
+            DELIVERY_DETAIL AS message,
+            ACTOR_USER_ID AS target,
+            SLACK_STATUS AS slackStatus,
+            MAIL_STATUS AS mailStatus,
+            WEBHOOK_STATUS AS webhookStatus
+        FROM COMTNADMINNOTIFICATIONDELIVERYHIST
+        <include refid="deliveryWhere" />
+        ORDER BY SENT_AT DESC, DELIVERY_ID DESC
+        LIMIT #{pageSize}
+        OFFSET #{offset}
+    </select>
+
+    <select id="countActivityHistory" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNADMINNOTIFICATIONACTIVITYHIST
+        <include refid="activityWhere" />
+    </select>
+
+    <select id="selectActivityHistory" parameterType="map" resultType="map">
+        SELECT
+            ACTIVITY_ID AS activityId,
+            TO_CHAR(HAPPENED_AT, 'YYYY-MM-DD HH24:MI:SS') AS recordedAt,
+            ACTION_CODE AS actionCode,
+            DETAIL_TEXT AS summary,
+            ACTOR_USER_ID AS actorId,
+            TARGET_TEXT AS target
+        FROM COMTNADMINNOTIFICATIONACTIVITYHIST
+        <include refid="activityWhere" />
+        ORDER BY HAPPENED_AT DESC, ACTIVITY_ID DESC
+        LIMIT #{pageSize}
+        OFFSET #{offset}
+    </select>
+
+    <insert id="insertDeliveryHistory" parameterType="map">
+        INSERT INTO COMTNADMINNOTIFICATIONDELIVERYHIST (
+            DELIVERY_ID,
+            SENT_AT,
+            ACTOR_USER_ID,
+            DELIVERY_MODE,
+            FINDING_COUNT,
+            SLACK_ENABLED,
+            MAIL_ENABLED,
+            WEBHOOK_ENABLED,
+            SLACK_CHANNEL,
+            MAIL_RECIPIENTS,
+            WEBHOOK_URL,
+            DELIVERY_STATUS,
+            TOP_FINDING,
+            DELIVERY_DETAIL,
+            SLACK_STATUS,
+            MAIL_STATUS,
+            WEBHOOK_STATUS,
+            USE_AT
+        ) VALUES (
+            #{deliveryId},
+            CURRENT_DATETIME,
+            #{actorUserId},
+            #{deliveryMode},
+            #{findingCount},
+            #{slackEnabled},
+            #{mailEnabled},
+            #{webhookEnabled},
+            #{slackChannel},
+            #{mailRecipients},
+            #{webhookUrl},
+            #{deliveryStatus},
+            #{topFinding},
+            #{deliveryDetail},
+            #{slackStatus},
+            #{mailStatus},
+            #{webhookStatus},
+            'Y'
+        )
+    </insert>
+
+    <insert id="insertActivityHistory" parameterType="map">
+        INSERT INTO COMTNADMINNOTIFICATIONACTIVITYHIST (
+            ACTIVITY_ID,
+            HAPPENED_AT,
+            ACTION_CODE,
+            ACTOR_USER_ID,
+            TARGET_TEXT,
+            DETAIL_TEXT,
+            SOURCE_TYPE,
+            USE_AT
+        ) VALUES (
+            #{activityId},
+            CURRENT_DATETIME,
+            #{actionCode},
+            #{actorUserId},
+            #{targetText},
+            #{detailText},
+            #{sourceType},
+            'Y'
+        )
+    </insert>
+
+</mapper>

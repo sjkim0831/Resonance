@@ -1,0 +1,2 @@
+domain,status_code,status_name_ko,status_name_en,meaning,allowed_next_statuses,source,notes
+JOIN,DRAFT,임시저장,Draft,Example only,"SUBMITTED",manual,Replace example row

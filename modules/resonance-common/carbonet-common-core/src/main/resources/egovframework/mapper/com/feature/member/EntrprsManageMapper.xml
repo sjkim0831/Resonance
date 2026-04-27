@@ -1,0 +1,863 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="entrprsManageMapper">
+
+    <resultMap id="stplatMap" type="egovframework.com.feature.member.model.vo.StplatVO">
+        <result property="useStplatId" column="USE_STPLAT_ID"/>
+        <result property="useStplatCn" column="USE_STPLAT_CN"/>
+        <result property="infoProvdAgeCn" column="INFO_PROVD_AGRE_CN"/>
+    </resultMap>
+
+    <insert id="insertEntrprs_S">
+        
+            INSERT INTO COMTNENTRPRSMBER 
+                (   ESNTL_ID                      ,
+                    PROJECT_ID                    ,
+                    ENTRPRS_MBER_ID               ,
+                    ENTRPRS_SE_CODE              ,
+                    BIZRNO                       ,
+                    INSTT_ID                     ,
+                    JURIRNO                      ,
+                    CMPNY_NM                     ,
+                    DEPT_NM                      ,
+                    CXFC                         ,
+                    ZIP                          ,
+                    ADRES                        ,
+                    ENTRPRS_MIDDLE_TELNO         ,
+                    FXNUM                        ,
+                    INDUTY_CODE                  ,
+                    APPLCNT_NM                   ,
+                    SBSCRB_DE                    ,
+                    ENTRPRS_MBER_STTUS           ,
+                    ENTRPRS_MBER_PASSWORD        ,
+                    ENTRPRS_MBER_PASSWORD_HINT   ,
+                    ENTRPRS_MBER_PASSWORD_CNSR   ,
+                    GROUP_ID                     ,
+                    DETAIL_ADRES                 ,
+                    ENTRPRS_END_TELNO            ,
+                    AREA_NO                      ,
+                    APPLCNT_EMAIL_ADRES          ,
+                    APPLCNT_IHIDNUM              ,
+                    CHG_PWD_LAST_PNTTM           ,
+                    MARKETING_YN                 ,
+                    AUTH_TY                      ,
+                    AUTH_DN                      ,
+                    AUTH_CI                      ,
+                    AUTH_DI                      ,
+                    AUTH_EMAIL                  ,
+                    BIZ_REG_FILE_PATH           )
+            VALUES (
+                    #{uniqId},
+                    #{projectId},
+                    #{entrprsmberId},
+                    #{entrprsSeCode},
+                    #{bizrno},
+                    #{insttId},
+                    #{jurirno},
+	                #{cmpnyNm},
+	                #{deptNm},
+	                #{cxfc},
+	                #{zip},
+	                #{adres},
+	                #{entrprsMiddleTelno},
+	                #{fxnum},
+	                #{indutyCode},
+	                #{applcntNm},
+	                SYSDATETIME,
+	                #{entrprsMberSttus},
+	                #{entrprsMberPassword},
+	                #{entrprsMberPasswordHint},
+	                #{entrprsMberPasswordCnsr},
+	                #{groupId},
+	                #{detailAdres},
+	                #{entrprsEndTelno},
+	                #{areaNo},
+                    #{applcntEmailAdres},
+                    #{applcntIhidnum},
+                    SYSDATETIME,
+                    #{marketingYn},
+                    #{authTy},
+                    #{authDn},
+                    #{authCi},
+                    #{authDi},
+                    #{authEmail}                ,
+                    #{bizRegFilePath}           )
+        
+    </insert>
+
+    <insert id="insertEntrprsMberFile" parameterType="egovframework.com.feature.member.model.vo.EntrprsMberFileVO">
+        INSERT INTO COMTNENTRPRSMBERFILE
+            (
+                FILE_ID,
+                ENTRPRS_MBER_ID,
+                FILE_SN,
+                STRE_FILE_NM,
+                ORIGNL_FILE_NM,
+                FILE_STRE_PATH,
+                FILE_MG,
+                FILE_EXTSN,
+                FILE_CN,
+                REGIST_PNTTM
+            )
+        VALUES
+            (
+                #{fileId},
+                #{entrprsmberId},
+                #{fileSn},
+                #{streFileNm},
+                #{orignlFileNm},
+                #{fileStrePath},
+                #{fileMg},
+                #{fileExtsn},
+                #{fileCn},
+                SYSDATETIME
+            )
+    </insert>
+
+    <delete id="deleteEntrprs_S">
+        
+            DELETE FROM COMTNENTRPRSMBER 
+            WHERE ESNTL_ID=#{delId}
+        
+    </delete>
+
+    <select id="selectEntrprs_S" parameterType="map" resultType="egovframework.com.feature.member.model.vo.EntrprsManageVO">
+        
+            SELECT
+                ESNTL_ID                      uniqId,
+                'USR02'                      userTy,
+                ENTRPRS_MBER_ID               entrprsmberId,
+                ENTRPRS_SE_CODE              entrprsSeCode,
+                BIZRNO                       bizrno,
+                INSTT_ID                     insttId,
+                JURIRNO                      jurirno,
+                CMPNY_NM                     cmpnyNm,
+                DEPT_NM                      deptNm,
+                CXFC                         cxfc,
+                ZIP                          zip,
+                ADRES                        adres,
+                ENTRPRS_MIDDLE_TELNO         entrprsMiddleTelno,
+                FXNUM                        fxnum,
+                INDUTY_CODE                  indutyCode,
+                APPLCNT_NM                   applcntNm,
+                SBSCRB_DE                    sbscrbDe,
+                ENTRPRS_MBER_STTUS           entrprsMberSttus,
+                ENTRPRS_MBER_PASSWORD        entrprsMberPassword,
+                ENTRPRS_MBER_PASSWORD_HINT   entrprsMberPasswordHint,
+                ENTRPRS_MBER_PASSWORD_CNSR   entrprsMberPasswordCnsr,
+                GROUP_ID                     groupId,
+                DETAIL_ADRES                 detailAdres,
+                ENTRPRS_END_TELNO            entrprsEndTelno,
+                AREA_NO                      areaNo,
+                APPLCNT_IHIDNUM              applcntIhidnum,
+                APPLCNT_EMAIL_ADRES          applcntEmailAdres,
+                MARKETING_YN                 marketingYn,
+                AUTH_TY                      authTy,
+                AUTH_DN                      authDn,
+                AUTH_CI                      authCi,
+                AUTH_DI                      authDi,
+                AUTH_EMAIL                   authEmail,
+                BIZ_REG_FILE_PATH            bizRegFilePath,
+                RJCT_RSN                     rjctRsn,
+                TO_CHAR(RJCT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') rjctPnttm,
+                LOCK_AT                      lockAt
+            FROM COMTNENTRPRSMBER
+            WHERE ESNTL_ID=#{uniqId}
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+        
+    </select>
+
+    <select id="selectEntrprsByMberId_S" parameterType="map" resultType="egovframework.com.feature.member.model.vo.EntrprsManageVO">
+        
+            SELECT
+                ESNTL_ID                      uniqId,
+                'USR02'                      userTy,
+                ENTRPRS_MBER_ID               entrprsmberId,
+                ENTRPRS_SE_CODE              entrprsSeCode,
+                BIZRNO                       bizrno,
+                INSTT_ID                     insttId,
+                JURIRNO                      jurirno,
+                CMPNY_NM                     cmpnyNm,
+                DEPT_NM                      deptNm,
+                CXFC                         cxfc,
+                ZIP                          zip,
+                ADRES                        adres,
+                ENTRPRS_MIDDLE_TELNO         entrprsMiddleTelno,
+                FXNUM                        fxnum,
+                INDUTY_CODE                  indutyCode,
+                APPLCNT_NM                   applcntNm,
+                SBSCRB_DE                    sbscrbDe,
+                ENTRPRS_MBER_STTUS           entrprsMberSttus,
+                ENTRPRS_MBER_PASSWORD        entrprsMberPassword,
+                ENTRPRS_MBER_PASSWORD_HINT   entrprsMberPasswordHint,
+                ENTRPRS_MBER_PASSWORD_CNSR   entrprsMberPasswordCnsr,
+                GROUP_ID                     groupId,
+                DETAIL_ADRES                 detailAdres,
+                ENTRPRS_END_TELNO            entrprsEndTelno,
+                AREA_NO                      areaNo,
+                APPLCNT_IHIDNUM              applcntIhidnum,
+                APPLCNT_EMAIL_ADRES          applcntEmailAdres,
+                MARKETING_YN                 marketingYn,
+                AUTH_TY                      authTy,
+                AUTH_DN                      authDn,
+                AUTH_CI                      authCi,
+                AUTH_DI                      authDi,
+                AUTH_EMAIL                   authEmail,
+                BIZ_REG_FILE_PATH            bizRegFilePath,
+                RJCT_RSN                     rjctRsn,
+                TO_CHAR(RJCT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') rjctPnttm,
+                LOCK_AT                      lockAt
+            FROM COMTNENTRPRSMBER
+            WHERE ENTRPRS_MBER_ID=#{entrprsmberId}
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+        
+    </select>
+
+    <select id="selectEntrprsMberFiles" parameterType="map" resultType="egovframework.com.feature.member.model.vo.EntrprsMberFileVO">
+        SELECT
+            F.FILE_ID         AS fileId,
+            F.ENTRPRS_MBER_ID AS entrprsmberId,
+            F.FILE_SN         AS fileSn,
+            F.STRE_FILE_NM    AS streFileNm,
+            F.ORIGNL_FILE_NM  AS orignlFileNm,
+            F.FILE_STRE_PATH  AS fileStrePath,
+            F.FILE_MG         AS fileMg,
+            F.FILE_EXTSN      AS fileExtsn,
+            F.FILE_CN         AS fileCn,
+            TO_CHAR(F.REGIST_PNTTM, 'YYYY.MM.DD HH24:MI:SS') AS regDate
+        FROM COMTNENTRPRSMBERFILE F
+        INNER JOIN COMTNENTRPRSMBER M
+            ON M.ENTRPRS_MBER_ID = F.ENTRPRS_MBER_ID
+        WHERE F.ENTRPRS_MBER_ID = #{entrprsmberId}
+        <if test="projectId != null and projectId != ''">
+            AND M.PROJECT_ID = #{projectId}
+        </if>
+        ORDER BY F.FILE_SN ASC, F.REGIST_PNTTM ASC
+    </select>
+
+    <select id="selectEntrprsMberFileByFileId" parameterType="map" resultType="egovframework.com.feature.member.model.vo.EntrprsMberFileVO">
+        SELECT
+            F.FILE_ID         AS fileId,
+            F.ENTRPRS_MBER_ID AS entrprsmberId,
+            F.FILE_SN         AS fileSn,
+            F.STRE_FILE_NM    AS streFileNm,
+            F.ORIGNL_FILE_NM  AS orignlFileNm,
+            F.FILE_STRE_PATH  AS fileStrePath,
+            F.FILE_MG         AS fileMg,
+            F.FILE_EXTSN      AS fileExtsn,
+            F.FILE_CN         AS fileCn,
+            TO_CHAR(F.REGIST_PNTTM, 'YYYY.MM.DD HH24:MI:SS') AS regDate
+        FROM COMTNENTRPRSMBERFILE F
+        INNER JOIN COMTNENTRPRSMBER M
+            ON M.ENTRPRS_MBER_ID = F.ENTRPRS_MBER_ID
+        WHERE F.FILE_ID = #{fileId}
+        <if test="projectId != null and projectId != ''">
+            AND M.PROJECT_ID = #{projectId}
+        </if>
+        LIMIT 1
+    </select>
+
+    <update id="updateEntrprs_S">
+        
+            UPDATE COMTNENTRPRSMBER 
+            SET 
+                ENTRPRS_MBER_ID               = #{entrprsmberId},
+                ENTRPRS_SE_CODE              = #{entrprsSeCode},
+                BIZRNO                       = #{bizrno},
+                INSTT_ID                     = #{insttId},
+                JURIRNO                      = #{jurirno},
+                CMPNY_NM                     = #{cmpnyNm},
+                DEPT_NM                      = #{deptNm},
+                CXFC                         = #{cxfc},
+                ZIP                          = #{zip},
+                ADRES                        = #{adres},
+                ENTRPRS_MIDDLE_TELNO         = #{entrprsMiddleTelno},
+                FXNUM                        = #{fxnum},
+                INDUTY_CODE                  = #{indutyCode},
+                APPLCNT_NM                   = #{applcntNm},
+                ENTRPRS_MBER_STTUS           = #{entrprsMberSttus},
+                ENTRPRS_MBER_PASSWORD_HINT   = #{entrprsMberPasswordHint},
+                ENTRPRS_MBER_PASSWORD_CNSR   = #{entrprsMberPasswordCnsr},
+                GROUP_ID                     = #{groupId},
+                DETAIL_ADRES                 = #{detailAdres},
+                ENTRPRS_END_TELNO            = #{entrprsEndTelno},
+                AREA_NO                      = #{areaNo},
+                APPLCNT_EMAIL_ADRES          = #{applcntEmailAdres},
+                MARKETING_YN                 = #{marketingYn},
+                AUTH_TY                      = #{authTy},
+                AUTH_DN                      = #{authDn},
+                AUTH_CI                      = #{authCi},
+                AUTH_DI                      = #{authDi},
+                AUTH_EMAIL                   = #{authEmail},
+                BIZ_REG_FILE_PATH            = #{bizRegFilePath},
+                RJCT_RSN                     = #{rjctRsn},
+                RJCT_PNTTM                   =
+                <choose>
+                    <when test="rjctPnttm != null and rjctPnttm != ''">
+                        TO_DATETIME(#{rjctPnttm}, 'YYYY-MM-DD HH24:MI:SS')
+                    </when>
+                    <otherwise>
+                        NULL
+                    </otherwise>
+                </choose>
+            WHERE ESNTL_ID=#{uniqId}
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+        
+    </update>
+
+    <select id="selectStplat_S" resultMap="stplatMap">
+        
+            SELECT
+                USE_STPLAT_ID           ,
+                USE_STPLAT_CN           ,
+                INFO_PROVD_AGRE_CN      
+            FROM COMTNSTPLATINFO
+            WHERE USE_STPLAT_ID=#{stplatId}
+        
+    </select>
+
+    <update id="updatePassword_S">
+        
+            UPDATE COMTNENTRPRSMBER 
+            SET 
+                   ENTRPRS_MBER_PASSWORD   =  #{entrprsMberPassword}
+                 , CHG_PWD_LAST_PNTTM = SYSDATETIME
+            WHERE  ESNTL_ID  = #{uniqId}
+        
+    </update>
+
+    <select id="selectPassword_S" resultType="egovframework.com.feature.member.model.vo.EntrprsManageVO">
+        
+            SELECT
+                    ENTRPRS_MBER_PASSWORD          entrprsMberPassword 
+            FROM    COMTNENTRPRSMBER
+            WHERE ESNTL_ID=#{uniqId}
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+        
+    </select>
+
+    <insert id="insertInsttInfo">
+        INSERT INTO COMTNINSTTINFO
+        (
+            INSTT_ID,
+            PROJECT_ID,
+            INSTT_NM,
+            ENTRPRS_SE_CODE,
+            REPRSNT_NM,
+            BIZRNO,
+            ZIP,
+            ADRES,
+            DETAIL_ADRES,
+            BIZ_REG_FILE_PATH,
+            INSTT_STTUS,
+            FRST_REGIST_PNTTM,
+            LAST_UPDT_PNTTM,
+            CHARGER_NM,
+            CHARGER_EMAIL,
+            CHARGER_TEL
+        )
+        VALUES
+        (
+            #{insttId},
+            #{projectId},
+            #{insttNm},
+            #{entrprsSeCode},
+            #{reprsntNm},
+            #{bizrno},
+            #{zip},
+            #{adres},
+            #{detailAdres},
+            #{bizRegFilePath},
+            #{insttSttus},
+            SYSDATETIME,
+            SYSDATETIME,
+            #{chargerNm},
+            #{chargerEmail},
+            #{chargerTel}
+        )
+    </insert>
+
+    <insert id="insertInsttFile" parameterType="egovframework.com.feature.member.model.vo.InsttFileVO">
+        INSERT INTO COMTNINSTTFILE
+        (
+            FILE_ID,
+            INSTT_ID,
+            FILE_SN,
+            STRE_FILE_NM,
+            ORIGNL_FILE_NM,
+            FILE_STRE_PATH,
+            FILE_MG,
+            FILE_EXTSN,
+            FILE_CN,
+            REGIST_PNTTM
+        )
+        VALUES
+        (
+            #{fileId},
+            #{insttId},
+            #{fileSn},
+            #{streFileNm},
+            #{orignlFileNm},
+            #{fileStrePath},
+            #{fileMg},
+            #{fileExtsn},
+            #{fileCn},
+            SYSDATETIME
+        )
+    </insert>
+
+    <!-- 기관/기업 검색 (페이징) -->
+    <select id="searchCompanyListPaged" resultType="egovMap" parameterType="map">
+        SELECT * FROM (
+            SELECT ROWNUM AS RN, T.* FROM (
+                SELECT
+                    TRIM(INSTT_ID) AS INSTT_ID,
+                    INSTT_NM   AS CMPNY_NM,
+                    ENTRPRS_SE_CODE AS ENTRPRS_SE_CODE,
+                    BIZRNO     AS BIZRNO,
+                    REPRSNT_NM AS CXFC,
+                    INSTT_STTUS AS JOIN_STAT
+                FROM COMTNINSTTINFO I
+                WHERE (#{keyword} = '' OR INSTT_NM LIKE '%' || #{keyword} || '%' OR BIZRNO LIKE '%' || #{keyword} || '%')
+        <if test="projectId != null and projectId != ''">
+                      AND PROJECT_ID = #{projectId}
+        </if>
+        <if test="insttId != null and insttId != ''">
+                      AND TRIM(INSTT_ID) = TRIM(#{insttId})
+        </if>
+        <if test="membershipType != null and membershipType != ''">
+            <choose>
+                <when test="membershipType == 'enterprise'">
+                      AND ENTRPRS_SE_CODE IN ('E', 'P')
+                </when>
+                <when test="membershipType == 'center'">
+                      AND ENTRPRS_SE_CODE = 'C'
+                </when>
+                <when test="membershipType == 'authority'">
+                      AND ENTRPRS_SE_CODE = 'G'
+                </when>
+                <when test="membershipType == 'emitter'">
+                      AND ENTRPRS_SE_CODE = 'E'
+                </when>
+                <when test="membershipType == 'performer'">
+                      AND ENTRPRS_SE_CODE = 'P'
+                </when>
+                <when test="membershipType == 'gov'">
+                      AND ENTRPRS_SE_CODE = 'G'
+                </when>
+                <when test="membershipType == 'e' or membershipType == 'p' or membershipType == 'c' or membershipType == 'g'">
+                      AND ENTRPRS_SE_CODE = UPPER(#{membershipType})
+                </when>
+            </choose>
+        </if>
+        <if test="entrprsSeCode != null and entrprsSeCode != ''">
+                      AND ENTRPRS_SE_CODE = #{entrprsSeCode}
+        </if>
+        <if test="status != null and status != ''">
+                      AND INSTT_STTUS = #{status}
+        </if>
+                ORDER BY INSTT_NM ASC
+            ) T
+        ) Z
+        WHERE Z.RN BETWEEN #{offset} + 1 AND #{offset} + #{pageSize}
+    </select>
+
+    <select id="selectInsttFiles" parameterType="map" resultType="egovframework.com.feature.member.model.vo.InsttFileVO">
+        SELECT
+            F.FILE_ID        AS fileId,
+            TRIM(F.INSTT_ID) AS insttId,
+            F.FILE_SN        AS fileSn,
+            F.STRE_FILE_NM   AS streFileNm,
+            F.ORIGNL_FILE_NM AS orignlFileNm,
+            F.FILE_STRE_PATH AS fileStrePath,
+            F.FILE_MG        AS fileMg,
+            F.FILE_EXTSN     AS fileExtsn,
+            F.FILE_CN        AS fileCn,
+            TO_CHAR(F.REGIST_PNTTM, 'YYYY.MM.DD HH24:MI:SS') AS regDate
+        FROM COMTNINSTTFILE F
+        INNER JOIN COMTNINSTTINFO I
+            ON TRIM(I.INSTT_ID) = TRIM(F.INSTT_ID)
+        WHERE TRIM(F.INSTT_ID) = TRIM(#{insttId})
+        <if test="projectId != null and projectId != ''">
+            AND I.PROJECT_ID = #{projectId}
+        </if>
+        ORDER BY F.FILE_SN ASC, F.REGIST_PNTTM ASC
+    </select>
+
+    <select id="selectInsttFileByFileId" parameterType="map" resultType="egovframework.com.feature.member.model.vo.InsttFileVO">
+        SELECT
+            F.FILE_ID        AS fileId,
+            F.INSTT_ID       AS insttId,
+            F.FILE_SN        AS fileSn,
+            F.STRE_FILE_NM   AS streFileNm,
+            F.ORIGNL_FILE_NM AS orignlFileNm,
+            F.FILE_STRE_PATH AS fileStrePath,
+            F.FILE_MG        AS fileMg,
+            F.FILE_EXTSN     AS fileExtsn,
+            F.FILE_CN        AS fileCn,
+            TO_CHAR(F.REGIST_PNTTM, 'YYYY.MM.DD HH24:MI:SS') AS regDate
+        FROM COMTNINSTTFILE F
+        INNER JOIN COMTNINSTTINFO I
+            ON TRIM(I.INSTT_ID) = TRIM(F.INSTT_ID)
+        WHERE F.FILE_ID = #{fileId}
+        <if test="projectId != null and projectId != ''">
+            AND I.PROJECT_ID = #{projectId}
+        </if>
+        LIMIT 1
+    </select>
+
+    <!-- 기관/기업 검색 총 건수 -->
+    <select id="searchCompanyListTotCnt" resultType="int" parameterType="map">
+        SELECT COUNT(1) FROM COMTNINSTTINFO
+        WHERE (#{keyword} = '' OR INSTT_NM LIKE '%' || #{keyword} || '%' OR BIZRNO LIKE '%' || #{keyword} || '%')
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+        <if test="insttId != null and insttId != ''">
+            AND INSTT_ID = #{insttId}
+        </if>
+        <if test="membershipType != null and membershipType != ''">
+            <choose>
+                <when test="membershipType == 'enterprise'">
+                    AND ENTRPRS_SE_CODE IN ('E', 'P')
+                </when>
+                <when test="membershipType == 'center'">
+                    AND ENTRPRS_SE_CODE = 'C'
+                </when>
+                <when test="membershipType == 'authority'">
+                    AND ENTRPRS_SE_CODE = 'G'
+                </when>
+                <when test="membershipType == 'emitter'">
+                    AND ENTRPRS_SE_CODE = 'E'
+                </when>
+                <when test="membershipType == 'performer'">
+                    AND ENTRPRS_SE_CODE = 'P'
+                </when>
+                <when test="membershipType == 'gov'">
+                    AND ENTRPRS_SE_CODE = 'G'
+                </when>
+                <when test="membershipType == 'e' or membershipType == 'p' or membershipType == 'c' or membershipType == 'g'">
+                    AND ENTRPRS_SE_CODE = UPPER(#{membershipType})
+                </when>
+            </choose>
+        </if>
+        <if test="entrprsSeCode != null and entrprsSeCode != ''">
+            AND ENTRPRS_SE_CODE = #{entrprsSeCode}
+        </if>
+        <if test="status != null and status != ''">
+            AND INSTT_STTUS = #{status}
+        </if>
+    </select>
+
+    <select id="searchCompanyList" resultType="egovMap">
+        SELECT 
+            INSTT_ID          as INSTT_ID,
+            INSTT_NM          as CMPNY_NM,
+            ENTRPRS_SE_CODE   as ENTRPRS_SE_CODE,
+            BIZRNO            as BIZRNO,
+            REPRSNT_NM        as CXFC
+        FROM    COMTNINSTTINFO
+        WHERE (INSTT_NM LIKE '%' || #{searchKeyword} || '%' OR BIZRNO LIKE '%' || #{searchKeyword} || '%')
+          AND INSTT_STTUS IN ('P', 'A')
+        <if test="projectId != null and projectId != ''">
+          AND PROJECT_ID = #{projectId}
+        </if>
+        UNION ALL
+        SELECT 
+            ''                as INSTT_ID,
+            CMPNY_NM          as CMPNY_NM,
+            'ENT'             as ENTRPRS_SE_CODE,
+            BIZRNO            as BIZRNO,
+            APPLCNT_NM        as CXFC
+        FROM    COMTNENTRPRSMBER
+        WHERE (CMPNY_NM LIKE '%' || #{searchKeyword} || '%' OR BIZRNO LIKE '%' || #{searchKeyword} || '%')
+          AND ENTRPRS_MBER_STTUS IN ('P', 'A')
+          AND BIZRNO NOT IN (SELECT BIZRNO FROM COMTNINSTTINFO
+                             WHERE 1=1
+                             <if test="projectId != null and projectId != ''">
+                               AND PROJECT_ID = #{projectId}
+                             </if>
+                            )
+        <if test="projectId != null and projectId != ''">
+          AND PROJECT_ID = #{projectId}
+        </if>
+        ORDER BY CMPNY_NM ASC
+    </select>
+
+    <select id="selectEntrprsMberList" resultType="egovframework.com.feature.member.model.vo.EntrprsManageVO">
+        SELECT * FROM ( SELECT rownum rn, TB.* FROM (
+            SELECT 
+                ESNTL_ID              as UNIQ_ID,
+                'USR02'               as USER_TY,
+                ENTRPRS_MBER_ID       as ENTRPRSMBER_ID,
+                CMPNY_NM              as CMPNY_NM,
+                APPLCNT_NM            as APPLCNT_NM,
+                APPLCNT_EMAIL_ADRES   as APPLCNT_EMAIL_ADRES,
+                AREA_NO               as AREA_NO,
+                ENTRPRS_MIDDLE_TELNO  as ENTRPRS_MIDDLE_TELNO,
+                ENTRPRS_END_TELNO     as ENTRPRS_END_TELNO,
+                ENTRPRS_SE_CODE       as ENTRPRS_SE_CODE,
+                INSTT_ID              as INSTT_ID,
+                GROUP_ID              as GROUP_ID,
+                ENTRPRS_MBER_STTUS    as ENTRPRS_MBER_STTUS,
+                RJCT_RSN              as rjctRsn,
+                TO_CHAR(RJCT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') as rjctPnttm,
+                TO_CHAR(SBSCRB_DE, 'YYYY-MM-DD HH24:MI:SS') as SBSCRB_DE,
+                BIZ_REG_FILE_PATH     as BIZ_REG_FILE_PATH
+            FROM    COMTNENTRPRSMBER
+            WHERE 1=1
+        <if test='projectId != null and projectId != ""'>
+            AND PROJECT_ID = #{projectId}
+        </if>
+        <if test='insttId != null and insttId != ""'>
+            AND TRIM(COALESCE(INSTT_ID, '')) = TRIM(#{insttId})
+        </if>
+        <if test='entrprsSeCode != null and entrprsSeCode != ""'>
+            AND ENTRPRS_SE_CODE = #{entrprsSeCode}
+        </if>
+        <if test='sbscrbSttus != null and sbscrbSttus neq "0" and sbscrbSttus neq ""'>
+            AND ENTRPRS_MBER_STTUS LIKE  #{sbscrbSttus}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            <if test='searchCondition == "0"'>
+            AND ENTRPRS_MBER_ID LIKE '%' || #{searchKeyword} || '%'
+            </if>
+            <if test='searchCondition == "1"'>
+            AND APPLCNT_NM LIKE '%' ||#{searchKeyword}|| '%'
+            </if>
+            <if test='searchCondition == "2"'>
+            AND CMPNY_NM LIKE '%' ||#{searchKeyword}|| '%'
+            </if>
+            <if test='searchCondition == null or searchCondition == "" or searchCondition == "all"'>
+            AND (
+                ENTRPRS_MBER_ID LIKE '%' || #{searchKeyword} || '%'
+                OR APPLCNT_NM LIKE '%' || #{searchKeyword} || '%'
+                OR CMPNY_NM LIKE '%' || #{searchKeyword} || '%'
+            )
+            </if>
+        </if>
+        <![CDATA[
+        ORDER BY SBSCRB_DE DESC
+        ) TB ) Z WHERE rn BETWEEN #{firstIndex} + 1 AND #{firstIndex} + #{recordCountPerPage}
+        ]]>
+    </select>
+
+
+    <select id="selectEntrprsMberListTotCnt" resultType="int">
+            SELECT COUNT(1) totcnt
+            FROM    COMTNENTRPRSMBER
+	        WHERE 1=1
+        <if test='projectId != null and projectId != ""'>
+            AND PROJECT_ID = #{projectId}
+        </if>
+        <if test='insttId != null and insttId != ""'>
+            AND TRIM(COALESCE(INSTT_ID, '')) = TRIM(#{insttId})
+        </if>
+        <if test='entrprsSeCode != null and entrprsSeCode != ""'>
+            AND ENTRPRS_SE_CODE = #{entrprsSeCode}
+        </if>
+        <if test='sbscrbSttus != null and sbscrbSttus neq "0" and sbscrbSttus neq ""'>
+            AND ENTRPRS_MBER_STTUS LIKE  #{sbscrbSttus}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            <if test='searchCondition == "0"'>
+            AND ENTRPRS_MBER_ID LIKE '%' || #{searchKeyword} || '%'
+            </if>
+            <if test='searchCondition == "1"'>
+            AND APPLCNT_NM LIKE '%' || #{searchKeyword} || '%'
+            </if>
+            <if test='searchCondition == "2"'>
+            AND CMPNY_NM LIKE '%' || #{searchKeyword} || '%'
+            </if>
+            <if test='searchCondition == null or searchCondition == "" or searchCondition == "all"'>
+            AND (
+                ENTRPRS_MBER_ID LIKE '%' || #{searchKeyword} || '%'
+                OR APPLCNT_NM LIKE '%' || #{searchKeyword} || '%'
+                OR CMPNY_NM LIKE '%' || #{searchKeyword} || '%'
+            )
+            </if>
+        </if>
+    </select>
+
+    <update id="updateLockIncorrect">
+            UPDATE COMTNENTRPRSMBER 
+ 			   SET  LOCK_AT = NULL 
+			     ,  LOCK_CNT  = NULL 
+			     ,  LOCK_LAST_PNTTM = NULL 
+            WHERE  ESNTL_ID  = #{uniqId}
+    </update>
+
+    <select id="checkIdDplct_S" resultType="int">
+            SELECT
+                (SELECT COUNT(1)
+                 FROM COMVNUSERMASTER
+                 WHERE USER_ID = #{value})
+              + (SELECT COUNT(1)
+                 FROM COMTNENTRPRSMBER
+                 WHERE ENTRPRS_MBER_ID = #{value}
+                 <if test="projectId != null and projectId != ''">
+                   AND PROJECT_ID = #{projectId}
+                 </if>
+                 ) AS totcnt
+    </select>
+
+    <select id="checkEmailDplct_S" resultType="int">
+            SELECT
+                (SELECT COUNT(1)
+                 FROM COMVNUSERMASTER
+                 WHERE USER_EMAIL = #{value})
+              + (SELECT COUNT(1)
+                 FROM COMTNENTRPRSMBER
+                 WHERE APPLCNT_EMAIL_ADRES = #{value}
+                 <if test="projectId != null and projectId != ''">
+                   AND PROJECT_ID = #{projectId}
+                 </if>
+                 ) AS totcnt
+    </select>
+
+    <select id="checkCompanyNameDplct" resultType="int">
+        SELECT (
+            SELECT COUNT(1) FROM COMTNINSTTINFO WHERE INSTT_NM = #{checkNm}
+            <if test="projectId != null and projectId != ''">
+              AND PROJECT_ID = #{projectId}
+            </if>
+        ) + (
+            SELECT COUNT(1) FROM COMTNENTRPRSMBER WHERE CMPNY_NM = #{checkNm}
+            <if test="projectId != null and projectId != ''">
+              AND PROJECT_ID = #{projectId}
+            </if>
+        ) as totcnt
+    </select>
+
+    <select id="selectInsttInfoForStatus" resultType="egovframework.com.feature.member.model.vo.InstitutionStatusVO">
+        SELECT
+            INSTT_ID AS rawInsttId,
+            TRIM(INSTT_ID) AS insttId,
+            INSTT_NM AS insttNm,
+            ENTRPRS_SE_CODE AS entrprsSeCode,
+            REPRSNT_NM AS reprsntNm,
+            BIZRNO AS bizrno,
+            ZIP AS zip,
+            ADRES AS adres,
+            DETAIL_ADRES AS detailAdres,
+            BIZ_REG_FILE_PATH AS bizRegFilePath,
+            INSTT_STTUS AS insttSttus,
+            RJCT_RSN AS rjctRsn,
+            TO_CHAR(RJCT_PNTTM, 'YYYY.MM.DD') as rjctPnttm,
+            TO_CHAR(FRST_REGIST_PNTTM, 'YYYY.MM.DD HH24:MI:SS') as frstRegistPnttm,
+            TO_CHAR(LAST_UPDT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') as lastUpdtPnttm,
+            CHARGER_NM AS chargerNm,
+            CHARGER_EMAIL AS chargerEmail,
+            CHARGER_TEL AS chargerTel
+        FROM COMTNINSTTINFO
+        <choose>
+            <when test="insttId != null and insttId != ''">
+                WHERE TRIM(INSTT_ID) = TRIM(#{insttId})
+                <if test="projectId != null and projectId != ''">
+                    AND PROJECT_ID = #{projectId}
+                </if>
+            </when>
+            <otherwise>
+                WHERE REPRSNT_NM = #{reprsntNm}
+                <if test="projectId != null and projectId != ''">
+                    AND PROJECT_ID = #{projectId}
+                </if>
+                <if test="bizrno != null and bizrno != ''">
+                    AND BIZRNO = #{bizrno}
+                </if>
+            </otherwise>
+        </choose>
+        ORDER BY LAST_UPDT_PNTTM DESC, FRST_REGIST_PNTTM DESC, INSTT_ID DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectEntrprsMberIdByNameAndEmail_S" resultType="string">
+        SELECT MIN(ENTRPRS_MBER_ID) AS ENTRPRS_MBER_ID
+        FROM COMTNENTRPRSMBER
+        WHERE APPLCNT_NM = #{applcntNm}
+          AND APPLCNT_EMAIL_ADRES = #{applcntEmailAdres}
+        <if test="projectId != null and projectId != ''">
+          AND PROJECT_ID = #{projectId}
+        </if>
+    </select>
+
+    <select id="selectLatestInsttStatusByBizrno" parameterType="map" resultType="string">
+        SELECT INSTT_STTUS
+        FROM COMTNINSTTINFO
+        WHERE BIZRNO = #{bizrno}
+        <if test="projectId != null and projectId != ''">
+          AND PROJECT_ID = #{projectId}
+        </if>
+        ORDER BY LAST_UPDT_PNTTM DESC
+        LIMIT 1
+    </select>
+
+    <insert id="insertEnterpriseSecurityMappingComtn" parameterType="string">
+        INSERT INTO COMTNEMPLYRSCRTYESTBS (SCRTY_DTRMN_TRGET_ID, MBER_TY_CODE, AUTHOR_CODE)
+        SELECT #{value}, 'USR02', 'ROLE_USER'
+        FROM db_root
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM COMTNEMPLYRSCRTYESTBS
+            WHERE SCRTY_DTRMN_TRGET_ID = #{value}
+        )
+    </insert>
+
+    <insert id="insertEnterpriseSecurityMappingMsatn" parameterType="string">
+        INSERT INTO MSATNEMPLYRSCRTYESTBS (SCRTY_DTRMN_TRGET_ID, MBER_TY_CODE, AUTHOR_CODE)
+        SELECT #{value}, 'USR02', 'ROLE_USER'
+        FROM db_root
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM MSATNEMPLYRSCRTYESTBS
+            WHERE SCRTY_DTRMN_TRGET_ID = #{value}
+        )
+    </insert>
+
+    <update id="updateInsttInfo">
+        UPDATE COMTNINSTTINFO
+        <set>
+            INSTT_NM = #{insttNm},
+            REPRSNT_NM = #{reprsntNm},
+            ZIP = #{zip},
+            ADRES = #{adres},
+            DETAIL_ADRES = #{detailAdres},
+            BIZRNO = #{bizrno},
+            INSTT_STTUS = #{insttSttus},
+            RJCT_RSN = #{rjctRsn},
+            RJCT_PNTTM =
+            <choose>
+                <when test="rjctPnttm != null and rjctPnttm != ''">
+                    TO_DATETIME(#{rjctPnttm}, 'YYYY-MM-DD HH24:MI:SS')
+                </when>
+                <otherwise>
+                    NULL
+                </otherwise>
+            </choose>,
+            LAST_UPDT_PNTTM = SYSDATETIME,
+            CHARGER_NM = #{chargerNm},
+            CHARGER_EMAIL = #{chargerEmail},
+            CHARGER_TEL = #{chargerTel}
+            <if test="entrprsSeCode != null and entrprsSeCode != ''">
+                , ENTRPRS_SE_CODE = #{entrprsSeCode}
+            </if>
+            <if test="bizRegFilePath != null and bizRegFilePath != ''">
+                , BIZ_REG_FILE_PATH = #{bizRegFilePath}
+            </if>
+        </set>
+        WHERE TRIM(INSTT_ID) = TRIM(#{insttId})
+        <if test="projectId != null and projectId != ''">
+            AND PROJECT_ID = #{projectId}
+        </if>
+    </update>
+
+</mapper>
