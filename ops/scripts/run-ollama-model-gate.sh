@@ -18,12 +18,28 @@ run_prompt() {
   local name="$1"
   local prompt="$2"
   local out_file="/tmp/resonance-ollama-${SAFE_NAME}-${name// /-}.txt"
+  local raw_file="/tmp/resonance-ollama-${SAFE_NAME}-${name// /-}.raw.txt"
   write ""
   write "### $name"
   write ""
   write '```text'
-  timeout 120 ollama run "$MODEL" "$prompt" 2>&1 | tee "$out_file" | tee -a "$REPORT"
-  local code="${PIPESTATUS[0]}"
+  set +e
+  timeout 120 ollama run "$MODEL" "$prompt" >"$raw_file" 2>&1
+  local code="$?"
+  set -e
+  python3 - "$raw_file" "$out_file" <<'PY'
+import re
+import sys
+raw_path, out_path = sys.argv[1], sys.argv[2]
+text = open(raw_path, encoding="utf-8", errors="ignore").read()
+text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)
+text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+text = re.sub(r"[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]\s*", "", text)
+text = re.sub(r"```(?:json|text)?\s*", "", text, flags=re.IGNORECASE)
+text = text.replace("```", "")
+open(out_path, "w", encoding="utf-8").write(text.strip() + "\n")
+PY
+  tee -a "$REPORT" < "$out_file"
   write '```'
   return "$code"
 }
