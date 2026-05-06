@@ -54,6 +54,7 @@ Ollama, vLLM, and 3B agent work:
 - Treat `qwen3.5-coder` and `gemma4` as logical candidate names until the local Ollama/vLLM registry confirms exact tags.
 - Devstral may plan or draft bounded patches, but only after deterministic route/file selection.
 - Deterministic scripts must perform deploy, backup, rollback, k8s apply, and DB migration.
+- DB schema/data deployment SQL must always go through `bash ops/scripts/apply-project-db-migration.sh <PROJECT_ID> [RELEASE_DIR]` or a wrapper that records `DB_MIGRATION_HISTORY`; never apply DDL/DML migration SQL with raw `csql` alone.
 - For local Carbonet Kubernetes reflection, always use `bash ops/scripts/restart-local-carbonet-k8s.sh` from `/opt/Resonance` instead of manual Maven, Docker, `kubectl set image`, or ad hoc port-forward steps.
 - If only the already-built local Kubernetes runtime needs to be reattached or verified, use `SKIP_FRONTEND=true SKIP_IMAGE_BUILD=true bash ops/scripts/restart-local-carbonet-k8s.sh`.
 - If a route cannot be resolved from maps, return NEEDS_ROUTE_MAP instead of scanning the repository.

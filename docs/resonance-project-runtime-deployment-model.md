@@ -21,6 +21,12 @@
 - `project-manifest`
 - `k8s-release-manifest`
 
+## DB Migration History Rule
+
+프로젝트 DB 변경은 반드시 `ops/scripts/apply-project-db-migration.sh`를 통해 적용한다. 이 스크립트는 대상 DB에 `DB_MIGRATION_HISTORY` 테이블을 보장하고, 각 SQL 파일의 checksum, project, target env, DB, 적용자, 시작/종료 시각, 성공/실패 상태, rollback/check 파일 경로를 기록한다.
+
+직접 `csql`로 DDL/DML 마이그레이션을 실행하지 않는다. 긴급 수동 SQL을 실행해야 하는 경우에도 먼저 migration bundle 형태로 파일을 만들고, `.check.sql`/`.rollback.sql`를 함께 둘 수 있으면 함께 둔 뒤 동일 스크립트로 적용한다.
+
 ## Carbonet Runtime Deployment Lines
 
 Carbonet은 기본 배포판을 Kubernetes로 둔다. 로컬 PC나 저사양 원격 서버처럼 Kubernetes를 올리기 부담스러운 판에서는 같은 JAR를 `:18000` 런타임으로 기동한다.

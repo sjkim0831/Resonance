@@ -101,6 +101,8 @@
 - project manifest
 - install/deploy scripts
 
+DB migration bundle 안의 SQL은 `ops/scripts/apply-project-db-migration.sh`로만 적용한다. 이 스크립트가 `DB_MIGRATION_HISTORY`에 checksum 기반 적용 이력을 남기므로, 같은 SQL 재적용을 막고 프로젝트/환경별 스키마 변경 기보를 유지한다.
+
 ## Why source delivery can still work
 
 운영은 패키지로 하고, 이관은 source+manifest 방식으로도 가능하다.
