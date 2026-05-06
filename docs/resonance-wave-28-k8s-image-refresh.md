@@ -36,6 +36,16 @@ This keeps project runtime deployment aligned with the "space station / jetpack 
 
 ## Local Kind Refresh
 
+For Carbonet local Kubernetes runtime work, prefer the current standard script:
+
+```bash
+bash ops/scripts/restart-local-carbonet-k8s.sh
+```
+
+That script supersedes the older manual image refresh sequence for `carbonet-prod/carbonet-runtime`, including frontend build, Maven package, image load, rollout, `:18080` port-forward, and bundle verification.
+
+Use the older low-level commands below only when debugging the image builder itself or maintaining legacy `carbonet-local/carbonet-p003` workloads.
+
 Use:
 
 ```bash
@@ -45,4 +55,3 @@ kubectl -n carbonet-local rollout status deployment/carbonet-p003
 ```
 
 This replaces only the local kind image. It does not delete the old `/opt/Resonance` folder and does not change production deployment state.
-

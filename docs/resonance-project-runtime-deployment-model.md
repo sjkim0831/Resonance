@@ -29,6 +29,22 @@ Carbonet은 기본 배포판을 Kubernetes로 둔다. 로컬 PC나 저사양 원
 - `local`: `CARBONET_RUNTIME_ENV=local`로 `/opt/Resonance` 로컬 PC 경로, localhost HTTPS 인증서, React filesystem override를 사용한다.
 - `remote-221`: `CARBONET_RUNTIME_ENV=remote-221`로 221 웹서버 JAR + nginx + 외부 DB 서버 라인을 사용한다.
 
+### Local Kubernetes standard move
+
+로컬 PC에서 Carbonet Kubernetes 런타임에 변경사항을 반영할 때는 항상 아래 스크립트를 표준 진입점으로 사용한다.
+
+```bash
+bash ops/scripts/restart-local-carbonet-k8s.sh
+```
+
+이 스크립트가 frontend build, Maven package, local runtime image build/load, `carbonet-prod/carbonet-runtime` rollout, `127.0.0.1:18080` port-forward, ecoinvent bundle marker verification을 한 번에 처리한다. 즉 로컬 `:18080`이 운영 콘솔 같은 다른 서비스판을 보지 않도록 포트포워딩까지 같은 수순에서 정리한다.
+
+이미 빌드된 이미지와 배포 상태를 빠르게 재연결/검증할 때만 아래 축약 수순을 사용한다.
+
+```bash
+SKIP_FRONTEND=true SKIP_IMAGE_BUILD=true bash ops/scripts/restart-local-carbonet-k8s.sh
+```
+
 JAR 런타임 env 파일은 다음 순서로 병합된다. 뒤 파일이 앞 파일을 덮어쓴다.
 
 1. `ops/config/carbonet-${PORT}.defaults.env`
