@@ -10,10 +10,10 @@ metadata:
 data:
   PROJECT_ID: "carbonet"
   SERVER_PORT: "18081"
-  CUBRID_HOST: "host.docker.internal"
+  CUBRID_HOST: "cubrid-carbonet.carbonet-prod.svc.cluster.local"
   LOG_DIR: "/tmp"
   SPRING_DATASOURCE_DRIVER_CLASS_NAME: "cubrid.jdbc.driver.CUBRIDDriver"
-  SPRING_DATASOURCE_URL: "jdbc:cubrid:host.docker.internal:33000:carbonet:::?charset=UTF-8"
+  SPRING_DATASOURCE_URL: "jdbc:cubrid:cubrid-carbonet.carbonet-prod.svc.cluster.local:33000:carbonet:::?charset=UTF-8"
   SPRING_PROFILES_ACTIVE: "prod"
   APP_PROJECT_ID: "carbonet"
   RESONANCE_RUNTIME_MODE: "isolated"

@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cubrid-carbonet
+  namespace: carbonet-prod
+  labels:
+    app: cubrid-carbonet
+    framework: resonance
+    project: carbonet
+spec:
+  selector:
+    app: cubrid-carbonet
+  ports:
+    - name: broker
+      port: 33000
+      targetPort: 33000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cubrid-carbonet
+  namespace: carbonet-prod
+  labels:
+    app: cubrid-carbonet
+    framework: resonance
+    project: carbonet
+spec:
+  serviceName: cubrid-carbonet
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cubrid-carbonet
+  template:
+    metadata:
+      labels:
+        app: cubrid-carbonet
+        framework: resonance
+        project: carbonet
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: cubrid
+          image: cubrid/cubrid:11.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: broker
+              containerPort: 33000
+          env:
+            - name: CUBRID_DB
+              value: "carbonet"
+            - name: CUBRID_COMPONENTS
+              value: "ALL"
+            - name: CUBRID_VOLUME_SIZE
+              value: "512M"
+            - name: CUBRID_LOCALE
+              value: "ko_KR.utf8"
+            - name: CUBRID_DB_HOST
+              value: "cubrid-carbonet-0"
+          volumeMounts:
+            - name: cubrid-data
+              mountPath: /var/lib/cubrid
+          readinessProbe:
+            tcpSocket:
+              port: 33000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket:
+              port: 33000
+            initialDelaySeconds: 1800
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+          startupProbe:
+            tcpSocket:
+              port: 33000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 180
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+  volumeClaimTemplates:
+    - metadata:
+        name: cubrid-data
+        labels:
+          app: cubrid-carbonet
+          framework: resonance
+          project: carbonet
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: hostpath
