@@ -12,7 +12,7 @@ cd "$ROOT_DIR"
 mvn -pl apps/project-runtime -am -Dmaven.test.skip=true package
 
 rm -rf "$RELEASE_DIR"
-mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config"
+mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
 cp apps/project-runtime/target/project-runtime.jar "$RELEASE_DIR/project-runtime.jar"
 
 if compgen -G "projects/carbonet-adapter/target/*.jar" >/dev/null; then
@@ -23,12 +23,15 @@ if [ -d templates/skeletons/project-runtime-1.0.0/config ]; then
   cp -R templates/skeletons/project-runtime-1.0.0/config/. "$RELEASE_DIR/config/"
 fi
 
+cp -R "$RELEASE_DIR/config/." "$RELEASE_DIR/ops/config/" 2>/dev/null || true
+
 docker build   --build-arg PROJECT_ID="$PROJECT_ID"   -f ops/docker/Dockerfile.project-runtime   -t "$IMAGE_NAME"   "$RELEASE_DIR"
 
 if command -v kind >/dev/null 2>&1; then
   kind load docker-image "$IMAGE_NAME" --name "$KIND_CLUSTER"
 else
-  for node in "${KIND_CLUSTER}-control-plane" "${KIND_CLUSTER}-worker" "${KIND_CLUSTER}-worker2"; do
+  mapfile -t docker_nodes < <(docker ps --format '{{.Names}}' | grep -E "^(${KIND_CLUSTER}|desktop)-(control-plane|worker[0-9]*)$" || true)
+  for node in "${docker_nodes[@]}"; do
     if docker ps --format '{{.Names}}' | grep -Fxq "$node"; then
       docker save "$IMAGE_NAME" | docker exec -i "$node" ctr -n k8s.io images import -
     fi
