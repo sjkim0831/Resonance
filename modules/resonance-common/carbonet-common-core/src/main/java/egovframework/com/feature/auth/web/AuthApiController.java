@@ -39,6 +39,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Controller("authApiController")
@@ -121,10 +122,7 @@ public class AuthApiController {
             log.debug("AuthApiController actionLogin isAuthenticated >>> {}",
                     EgovUserDetailsHelper.isAuthenticated());
 
-            List<Map.Entry<String, String>> rolePatternList = EgovUserDetailsHelper.getRoleAndPatternList();
-            List<String> authorList = EgovUserDetailsHelper.getAuthorities();
-            // 沅뚰븳???대떦?섎뒗 Role ?뺣낫瑜?臾몄옄???뺥깭濡??ㅼ젙
-            String accessiblePatterns = EgovUserDetailsHelper.getAccessiblePatterns(rolePatternList, authorList);
+            String accessiblePatterns = resolveAccessiblePatternsSafely(loginResult);
             log.debug("AuthApiController actionLogin accessiblePatterns >>> {}", accessiblePatterns);
             // SecurityContextHolder ??젣
             new SecurityContextLogoutHandler().logout(request, response, authentication);
@@ -135,8 +133,22 @@ public class AuthApiController {
             dtoToVo.setUniqId(loginResult.getUniqId());
             dtoToVo.setAuthorList(accessiblePatterns);
 
-            String accessToken = jwtProvider.createAccessToken(dtoToVo);
-            String refreshToken = jwtProvider.createRefreshToken(dtoToVo);
+            String accessToken;
+            try {
+                accessToken = jwtProvider.createAccessToken(dtoToVo);
+            } catch (Exception e) {
+                log.error("Failed to create access token during login. userId={}, userSe={}",
+                        safeString(loginResult.getUserId()), safeString(loginResult.getUserSe()), e);
+                throw e;
+            }
+            String refreshToken;
+            try {
+                refreshToken = jwtProvider.createRefreshToken(dtoToVo);
+            } catch (Exception e) {
+                log.error("Failed to create refresh token during login. userId={}, userSe={}",
+                        safeString(loginResult.getUserId()), safeString(loginResult.getUserSe()), e);
+                throw e;
+            }
 
             long accessCookieMaxAge = Duration.ofMillis(Long.parseLong(jwtProvider.getAccessExpiration())).getSeconds();
             long refreshCookieMaxAge;
@@ -160,6 +172,7 @@ public class AuthApiController {
             message.put("userInfo", loginResult.getName() + "(" + loginResult.getUserId() + ")");
             message.put("userId", loginResult.getUserId());
             message.put("userSe", loginResult.getUserSe());
+            message.put("canEnterAdminConsole", canEnterAdminConsole(loginResult));
             // ?몄쬆 ?뺣낫 議댁옱 ?щ? ?뺤씤 (Check if authentication info exists)
             boolean isCertified = !ObjectUtils.isEmpty(loginResult.getAuthTy())
                     || !ObjectUtils.isEmpty(loginResult.getAuthDn());
@@ -256,6 +269,37 @@ public class AuthApiController {
 
     private String safeString(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String resolveAccessiblePatternsSafely(LoginResponseDTO loginResult) {
+        try {
+            List<Map.Entry<String, String>> rolePatternList = EgovUserDetailsHelper.getRoleAndPatternList();
+            List<String> authorList = EgovUserDetailsHelper.getAuthorities();
+            return safeString(EgovUserDetailsHelper.getAccessiblePatterns(rolePatternList, authorList));
+        } catch (Exception e) {
+            log.warn("Falling back to empty accessible patterns after login. userId={}, authorCode={}",
+                    loginResult == null ? "" : safeString(loginResult.getUserId()),
+                    loginResult == null ? "" : safeString(loginResult.getAuthorCode()),
+                    e);
+            return "";
+        }
+    }
+
+    private boolean canEnterAdminConsole(LoginResponseDTO loginResult) {
+        String userId = safeString(loginResult == null ? null : loginResult.getUserId());
+        String authorCode = safeString(loginResult == null ? null : loginResult.getAuthorCode()).toUpperCase(Locale.ROOT);
+        if ("webmaster".equalsIgnoreCase(userId)) {
+            return true;
+        }
+        if (authorCode.isEmpty()) {
+            return false;
+        }
+        return "ROLE_SYSTEM_MASTER".equals(authorCode)
+                || "ROLE_SYSTEM_ADMIN".equals(authorCode)
+                || "ROLE_ADMIN".equals(authorCode)
+                || "ROLE_OPERATION_ADMIN".equals(authorCode)
+                || "ROLE_COMPANY_ADMIN".equals(authorCode)
+                || "ROLE_CS_ADMIN".equals(authorCode);
     }
 
     @GetMapping("/validateRefreshToken")

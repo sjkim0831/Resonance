@@ -984,10 +984,14 @@ export function EmissionSurveyAdminDataMigrationPage() {
   );
   const page = pageState.value || null;
   const previewExistingSections = ((previewPayload?.existingDatasetSectionRows || []) as Array<Record<string, unknown>>);
+  const currentSavedSections = ((page?.selectedDatasetSectionRows || []) as Array<Record<string, unknown>>);
+  const currentDatasetRows = ((page?.datasetRows || []) as Array<Record<string, unknown>>);
+  const selectedDatasetId = stringOf((page || {}) as Record<string, unknown>, "datasetId");
   const existingSections = previewPayload ? previewExistingSections : [];
   const previewMessage = stringOf((previewPayload || {}) as Record<string, unknown>, "previewMessage");
   const previewProductNames = resolvePreviewProductNames(previewPayload, editablePreviewSections);
   const previewProductTitle = previewProductNames.join(" / ");
+  const selectedDatasetRow = currentDatasetRows.find((row) => stringOf(row, "datasetId") === selectedDatasetId) || currentDatasetRows[0] || null;
 
   async function autoMapSectionsWithEcoinvent(sections: EditablePreviewSection[]) {
     const searchKeywords = Array.from(
@@ -1375,6 +1379,32 @@ export function EmissionSurveyAdminDataMigrationPage() {
         </CollectionResultPanel>
 
         <section className="mt-4 grid grid-cols-1 gap-4">
+          <CollectionResultPanel
+            data-help-id="emission-survey-admin-data-current-db"
+            description={currentSavedSections.length > 0
+              ? `현재 선택된 DB 데이터셋 ${stringOf(selectedDatasetRow, "datasetName") || selectedDatasetId || "-"} 기준 저장 내용을 표시합니다.`
+              : "아직 저장된 DB 데이터셋이 없습니다. DB 양식을 업로드하고 DB반영을 누르면 이 영역에 저장값이 유지 표시됩니다."}
+            title={en ? "Current Saved DB Dataset" : "현재 DB 저장 데이터"}
+          >
+            {currentSavedSections.length === 0 ? (
+              <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+                저장된 DB 데이터가 없습니다. 업로드 후 DB반영을 완료하면 새로고침해도 저장된 섹션이 이곳에 표시됩니다.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-[var(--kr-gov-radius)] border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                  <span className="font-bold">선택 데이터셋</span>
+                  <span className="ml-2">{stringOf(selectedDatasetRow, "datasetName") || selectedDatasetId}</span>
+                  <span className="ml-4 font-bold">저장 행</span>
+                  <span className="ml-2">{stringOf(selectedDatasetRow, "rowCount") || "-"}</span>
+                  <span className="ml-4 font-bold">저장 시각</span>
+                  <span className="ml-2">{stringOf(selectedDatasetRow, "savedAt") || "-"}</span>
+                </div>
+                {currentSavedSections.map((section, index) => renderSectionTable(section, `current-db-${stringOf(section, "sectionCode") || index}`))}
+              </div>
+            )}
+          </CollectionResultPanel>
+
           {previewProductTitle ? (
             <div className="rounded-[var(--kr-gov-radius)] border border-emerald-300 bg-gradient-to-r from-emerald-50 via-white to-emerald-100 px-5 py-4 shadow-sm">
               <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">

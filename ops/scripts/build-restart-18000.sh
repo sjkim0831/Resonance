@@ -22,7 +22,7 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 echo "[build-restart-18000] frontend build started"
-(cd "$ROOT_DIR/frontend" && npm run build)
+(cd "$ROOT_DIR/projects/carbonet-frontend/source" && npm run build)
 
 echo "[build-restart-18000] backend package started"
 rm -rf "$ROOT_DIR/apps/carbonet-app/target/classes/static/react-app"

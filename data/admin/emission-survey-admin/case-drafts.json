@@ -3240,8 +3240,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "원료 물질 및 보조 물질",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "원료 물질 및 보조 물질",
     "guidance" : [ "◎ 투입물의 데이터 범주는 원료, 에너지, 보조물질", "◎ 제품을 출하할 때 쓰이는 포장재로 사용되는 투입원료는 시스템 경계에서 제외 (KS I 7004 표준 명시사항)", "※", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3258,7 +3258,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "INPUT_RAW_MATERIALS_13",
       "values" : {
@@ -3291,22 +3291,6 @@
         "annualUnit" : "t",
         "remark" : "-"
       }
-    }, {
-      "rowId" : "NEW_ROW_1776749981165_1",
-      "values" : {
-        "group" : "보조 물질",
-        "materialName" : "물",
-        "annualUnit" : "t",
-        "remark" : ""
-      }
-    }, {
-      "rowId" : "NEW_ROW_1776749988125_2",
-      "values" : {
-        "group" : "보조 물질",
-        "materialName" : "물",
-        "annualUnit" : "t",
-        "remark" : ""
-      }
     } ]
   },
   "COMMON_DATASET:탄산칼슘/탄산마그네슘::::INPUT_ENERGY:CASE_3_1" : {
@@ -3325,8 +3309,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "에너지",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "에너지",
     "guidance" : [ "◎ 투입물의 데이터 범주는 원료, 에너지, 보조물질", "◎ 제품을 출하할 때 쓰이는 포장재로 사용되는 투입원료는 시스템 경계에서 제외 (KS I 7004 표준 명시사항)", "※", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3343,7 +3327,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "INPUT_ENERGY_23",
       "values" : {
@@ -3378,8 +3362,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "에너지 스팀",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "에너지 스팀",
     "guidance" : [ "◎ 투입물의 데이터 범주는 원료, 에너지, 보조물질", "◎ 제품을 출하할 때 쓰이는 포장재로 사용되는 투입원료는 시스템 경계에서 제외 (KS I 7004 표준 명시사항)", "※", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3396,7 +3380,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "INPUT_STEAM_27",
       "values" : {
@@ -3423,8 +3407,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "기타",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "기타",
     "guidance" : [ "◎ 투입물의 데이터 범주는 원료, 에너지, 보조물질", "◎ 제품을 출하할 때 쓰이는 포장재로 사용되는 투입원료는 시스템 경계에서 제외 (KS I 7004 표준 명시사항)", "※", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3441,12 +3425,12 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "INPUT_MISC_32",
       "values" : {
         "group" : "기타",
-        "materialName" : "물",
+        "materialName" : "",
         "annualUnit" : "t",
         "remark" : "일부 or 전체 내부 폐수 정화 공정 유출수 사용"
       }
@@ -3468,8 +3452,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "제품 및 부산물",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "제품 및 부산물",
     "guidance" : [ "◎ 산출물의 데이터 범주는 제품 및 부산물, 폐기물(매립, 소각, 재활용), 환경배출물(대기배출물,수계배출물,토양배출물)을 포함", "◎ 원부자재 생산 공정의 경우 생산품 출하 이후의 과정(제품 수송, 사용, 폐기)은 시스템 경계에서 제외", "(단, 출하 이후 손실이 발생하는 경우에는 손실률 고려, 예: 전력)", "◎ 데이터 수집의 참고자료는 '5. 참고자료'에 기재", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3486,7 +3470,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "OUTPUT_PRODUCTS_12",
       "values" : {
@@ -3521,8 +3505,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "대기 배출물",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "대기 배출물",
     "guidance" : [ "◎ 산출물의 데이터 범주는 제품 및 부산물, 폐기물(매립, 소각, 재활용), 환경배출물(대기배출물,수계배출물,토양배출물)을 포함", "◎ 원부자재 생산 공정의 경우 생산품 출하 이후의 과정(제품 수송, 사용, 폐기)은 시스템 경계에서 제외", "(단, 출하 이후 손실이 발생하는 경우에는 손실률 고려, 예: 전력)", "◎ 데이터 수집의 참고자료는 '5. 참고자료'에 기재", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3539,7 +3523,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "OUTPUT_AIR_18",
       "values" : {
@@ -3567,8 +3551,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "수계 배출물",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "수계 배출물",
     "guidance" : [ "◎ 산출물의 데이터 범주는 제품 및 부산물, 폐기물(매립, 소각, 재활용), 환경배출물(대기배출물,수계배출물,토양배출물)을 포함", "◎ 원부자재 생산 공정의 경우 생산품 출하 이후의 과정(제품 수송, 사용, 폐기)은 시스템 경계에서 제외", "(단, 출하 이후 손실이 발생하는 경우에는 손실률 고려, 예: 전력)", "◎ 데이터 수집의 참고자료는 '5. 참고자료'에 기재", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3585,7 +3569,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ {
       "rowId" : "OUTPUT_WATER_26",
       "values" : {
@@ -3612,8 +3596,8 @@
     "lciSmallLabel" : "",
     "sectionLabel" : "폐기물",
     "sourceFileName" : "dh_LCI DB 예시_광물탄산화 1 (1).xlsx",
-    "sourcePath" : "/opt/projects/carbonet/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
-    "targetPath" : "/opt/reference/수식 설계 요/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "sourcePath" : "/opt/Resonance/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
+    "targetPath" : "/opt/reference/수식 설계/데이터 수집 설문지 excel 양식_steel, electric, low-alloy.xlsx",
     "titleRowLabel" : "폐기물",
     "guidance" : [ "◎ 산출물의 데이터 범주는 제품 및 부산물, 폐기물(매립, 소각, 재활용), 환경배출물(대기배출물,수계배출물,토양배출물)을 포함", "◎ 원부자재 생산 공정의 경우 생산품 출하 이후의 과정(제품 수송, 사용, 폐기)은 시스템 경계에서 제외", "(단, 출하 이후 손실이 발생하는 경우에는 손실률 고려, 예: 전력)", "◎ 데이터 수집의 참고자료는 '5. 참고자료'에 기재", "◎ 물질명은 IUPAC(International Union of Pure and Applied Chemistry)명 또는 관용명으로 기재" ],
     "columns" : [ {
@@ -3630,7 +3614,7 @@
       "label" : "비고"
     } ],
     "actorId" : "COMMON_DATASET",
-    "savedAt" : "2026-04-21 15:41:10",
+    "savedAt" : "2026-04-28 01:53:20",
     "rows" : [ ]
   }
 }

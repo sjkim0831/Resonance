@@ -63,7 +63,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     private static final String TEMPLATE_MARKER_PROPERTY = "carbonetEmissionSurveyTemplate";
     private static final String TEMPLATE_MARKER_VALUE = "v2";
     private static final Path WORKSPACE_SAMPLE = Path.of("/opt/Resonance", DEFAULT_WORKBOOK_NAME);
-    private static final Path REFERENCE_SAMPLE = Path.of("/opt/reference/수식 설계 요", DEFAULT_WORKBOOK_NAME);
+    private static final Path REFERENCE_SAMPLE = Path.of("/opt/reference/수식 설계", DEFAULT_WORKBOOK_NAME);
     private static final Path WORKSPACE_ADMIN_SAMPLE = Path.of("/opt/Resonance", ADMIN_UPLOAD_WORKBOOK_NAME);
     private static final Path WINDOWS_ADMIN_SAMPLE = Path.of("/mnt/c/Users/jwchoo/Downloads", ADMIN_UPLOAD_WORKBOOK_NAME);
     private static final Path DRAFT_REGISTRY_PATH = Path.of("data", "admin", "emission-survey-admin", "case-drafts.json");
@@ -347,7 +347,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                 if (cachedTemplatePayload != null && templateLastModified == lastModified) {
                     Map<String, Object> cloned = new LinkedHashMap<>(cachedTemplatePayload);
                     cloned.put("isEn", isEn);
-                    return cloned;
+                    return enrichPagePayloadWithProductSelection(cloned, normalizeProductName(productName), isEn);
                 }
 
                 try (InputStream is = Files.newInputStream(samplePath);
@@ -368,9 +368,9 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                             isEn,
                             mergedRegionsMap
                     );
-                    this.cachedTemplatePayload = payload;
+                    this.cachedTemplatePayload = new LinkedHashMap<>(payload);
                     this.templateLastModified = lastModified;
-                    return enrichPagePayloadWithProductSelection(payload, normalizeProductName(productName), isEn);
+                    return enrichPagePayloadWithProductSelection(new LinkedHashMap<>(payload), normalizeProductName(productName), isEn);
                 }
             } catch (Exception e) {
                 // Fallback to empty if file fails
@@ -707,6 +707,9 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         }
         List<Map<String, Object>> uploadLogRows = paginateRows(allUploadLogRows, resolvedPageIndex, resolvedPageSize);
         String selectedDatasetId = resolvedDatasetId;
+        if (selectedDatasetId.isEmpty() && !datasetRows.isEmpty()) {
+            selectedDatasetId = safeObject(datasetRows.get(0).get("datasetId"));
+        }
         String selectedLogId = resolvedLogId;
         if (selectedLogId.isEmpty() && !allUploadLogRows.isEmpty()) {
             selectedLogId = safeObject(allUploadLogRows.get(0).get("logId"));
@@ -2985,9 +2988,20 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         return filtered;
     }
 
-    private List<Map<String, String>> buildProductOptions(String selectedProductName) {
-        List<Map<String, String>> options = new ArrayList<>();
+    @SuppressWarnings("unchecked")
+    private List<Map<String, String>> buildProductOptions(String selectedProductName, Object sections) {
+        LinkedHashSet<String> productNames = new LinkedHashSet<>();
         for (String productName : readSharedProductNames()) {
+            String normalizedProductName = normalizeProductName(productName);
+            if (!normalizedProductName.isEmpty()) {
+                productNames.add(normalizedProductName);
+            }
+        }
+        if (sections instanceof List<?>) {
+            productNames.addAll(extractProductNames((List<Map<String, Object>>) (List<?>) sections));
+        }
+        List<Map<String, String>> options = new ArrayList<>();
+        for (String productName : productNames) {
             Map<String, String> option = new LinkedHashMap<>();
             option.put("value", productName);
             option.put("label", productName);
@@ -3016,7 +3030,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
 
     private Map<String, Object> enrichPagePayloadWithProductSelection(Map<String, Object> payload, String productName, boolean isEn) {
         String resolvedProductName = normalizeProductName(productName);
-        List<Map<String, String>> productOptions = buildProductOptions(resolvedProductName);
+        List<Map<String, String>> productOptions = buildProductOptions(resolvedProductName, payload.get("sections"));
         if (resolvedProductName.isEmpty() && !productOptions.isEmpty()) {
             resolvedProductName = safe(productOptions.get(0).get("value"));
         }

@@ -10,6 +10,8 @@ import org.springframework.util.ObjectUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +43,7 @@ public class FrontendSessionService {
             response.setCompanyScope(context.getCompanyScope());
             response.setFeatureCodes(context.getFeatureCodes());
             response.setCapabilityCodes(context.getCapabilityCodes());
+            response.setCanEnterAdminConsole(canEnterAdminConsole(context));
         } catch (Exception e) {
             log.error("Failed to build frontend session payload. userId={}", context.getUserId(), e);
             response.setAuthorCode("");
@@ -48,8 +51,33 @@ public class FrontendSessionService {
             response.setCompanyScope("unknown");
             response.setFeatureCodes(new ArrayList<>());
             response.setCapabilityCodes(new ArrayList<>());
+            response.setCanEnterAdminConsole(false);
         }
         return response;
+    }
+
+    private boolean canEnterAdminConsole(CurrentUserContextService.CurrentUserContext context) {
+        if (context == null || !context.isAuthenticated()) {
+            return false;
+        }
+        if (context.isWebmaster()) {
+            return true;
+        }
+        String authorCode = safeString(context.getAuthorCode()).toUpperCase(Locale.ROOT);
+        if ("ROLE_SYSTEM_MASTER".equals(authorCode)
+                || "ROLE_SYSTEM_ADMIN".equals(authorCode)
+                || "ROLE_ADMIN".equals(authorCode)
+                || "ROLE_OPERATION_ADMIN".equals(authorCode)
+                || "ROLE_COMPANY_ADMIN".equals(authorCode)
+                || "ROLE_CS_ADMIN".equals(authorCode)) {
+            return true;
+        }
+        List<String> featureCodes = context.getFeatureCodes();
+        return featureCodes != null && !featureCodes.isEmpty();
+    }
+
+    private String safeString(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private void clearInvalidAuthCookies(HttpServletRequest request, HttpServletResponse response) {

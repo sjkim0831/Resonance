@@ -30,7 +30,48 @@ export const UNIT_OPTIONS = [
   { value: "ug", label: "ug | 마이크로그램" }
 ] as const;
 
+export const UNIT_CATEGORY_OPTIONS = [
+  { value: "MASS", label: "질량" },
+  { value: "ENERGY", label: "에너지" },
+  { value: "VOLUME", label: "부피" },
+  { value: "POWER", label: "전력" },
+  { value: "OTHER", label: "기타" }
+] as const;
+
 export const UNIT_OPTION_VALUES = new Set<string>(UNIT_OPTIONS.map((option) => option.value));
+
+const MASS_UNIT_VALUES = new Set([
+  "carat",
+  "cg",
+  "ct",
+  "cwt",
+  "dag",
+  "dg",
+  "dr (Av)",
+  "dwt",
+  "g",
+  "gr",
+  "hg",
+  "kg",
+  "kg SWU",
+  "kt",
+  "lb av",
+  "long tn",
+  "mg",
+  "Mg",
+  "Mt",
+  "ng",
+  "oz av",
+  "oz t",
+  "pg",
+  "sh tn",
+  "t",
+  "ug"
+]);
+
+const ENERGY_UNIT_VALUES = new Set(["MJ"]);
+const VOLUME_UNIT_VALUES = new Set(["m3"]);
+const POWER_UNIT_VALUES = new Set(["kW"]);
 
 export const UNIT_VALUE_ALIASES: Record<string, string> = {
   ton: "t",
@@ -66,6 +107,34 @@ export function normalizeUnitValue(value: string) {
     return normalizedAlias;
   }
   return raw;
+}
+
+export function resolveUnitCategory(value: string) {
+  const normalized = normalizeUnitValue(value);
+  if (!normalized) {
+    return "";
+  }
+  if (MASS_UNIT_VALUES.has(normalized)) {
+    return "MASS";
+  }
+  if (ENERGY_UNIT_VALUES.has(normalized)) {
+    return "ENERGY";
+  }
+  if (VOLUME_UNIT_VALUES.has(normalized)) {
+    return "VOLUME";
+  }
+  if (POWER_UNIT_VALUES.has(normalized)) {
+    return "POWER";
+  }
+  return "OTHER";
+}
+
+export function getUnitOptionsByCategory(category: string) {
+  const normalizedCategory = String(category || "").trim();
+  if (!normalizedCategory) {
+    return UNIT_OPTIONS;
+  }
+  return UNIT_OPTIONS.filter((option) => resolveUnitCategory(option.value) === normalizedCategory);
 }
 
 export function isMappedUnitValue(value: string) {

@@ -42,7 +42,7 @@ public class AdminEmissionSurveyApiController {
     private static final String SAMPLE_WORKBOOK_NAME = "데이터 수집 설문지 sample 양식_steel, electric, low-alloy.xlsx";
     private static final String ADMIN_BLANK_WORKBOOK_NAME = "관리자 업로드 양식_빈양식.xlsx";
     private static final Path WORKSPACE_SAMPLE = Path.of("/opt/Resonance", DEFAULT_WORKBOOK_NAME);
-    private static final Path REFERENCE_SAMPLE = Path.of("/opt/reference/수식 설계 요", DEFAULT_WORKBOOK_NAME);
+    private static final Path REFERENCE_SAMPLE = Path.of("/opt/reference/수식 설계", DEFAULT_WORKBOOK_NAME);
 
     private final AdminReactRouteSupport adminReactRouteSupport;
     private final AdminEmissionSurveyWorkbookService adminEmissionSurveyWorkbookService;

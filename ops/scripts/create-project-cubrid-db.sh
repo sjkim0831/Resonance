@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Create a new CUBRID database for an independent project
-# Usage: bash ops/scripts/create-project-cubrid-db.sh [PROJECT_ID]
+# Usage: bash ops/scripts/create-project-docker exec -it cubrid-11.2 cubrid-db.sh [PROJECT_ID]
 
 PROJECT_ID="${1:-}"
 if [ -z "$PROJECT_ID" ]; then
@@ -15,25 +15,25 @@ fi
 DB_NAME="carbonet_$(echo "$PROJECT_ID" | tr '[:upper:]' '[:lower:]')"
 DB_LOCALE="ko_KR.utf8"
 
-echo "[cubrid-setup] Preparing to create new database: $DB_NAME"
+echo "[docker exec -it cubrid-11.2 cubrid-setup] Preparing to create new database: $DB_NAME"
 
-# Check if cubrid command is available
-if ! command -v cubrid &> /dev/null; then
-    echo "[cubrid-setup] Error: 'cubrid' command not found. Ensure CUBRID is installed and running."
+# Check if docker exec -it cubrid-11.2 cubrid command is available
+if ! command -v docker exec -it cubrid-11.2 cubrid &> /dev/null; then
+    echo "[docker exec -it cubrid-11.2 cubrid-setup] Error: 'docker exec -it cubrid-11.2 cubrid' command not found. Ensure CUBRID is installed and running."
     exit 1
 fi
 
 # Check if DB already exists
-if cubrid server status "$DB_NAME" &> /dev/null; then
-    echo "[cubrid-setup] Database '$DB_NAME' already exists."
+if docker exec -it cubrid-11.2 cubrid server status "$DB_NAME" &> /dev/null; then
+    echo "[docker exec -it cubrid-11.2 cubrid-setup] Database '$DB_NAME' already exists."
     exit 0
 fi
 
-echo "[cubrid-setup] Creating database '$DB_NAME' with locale '$DB_LOCALE'..."
-cubrid createdb "$DB_NAME" "$DB_LOCALE"
+echo "[docker exec -it cubrid-11.2 cubrid-setup] Creating database '$DB_NAME' with locale '$DB_LOCALE'..."
+docker exec -it cubrid-11.2 cubrid createdb "$DB_NAME" "$DB_LOCALE"
 
-echo "[cubrid-setup] Starting database '$DB_NAME'..."
-cubrid server start "$DB_NAME"
+echo "[docker exec -it cubrid-11.2 cubrid-setup] Starting database '$DB_NAME'..."
+docker exec -it cubrid-11.2 cubrid server start "$DB_NAME"
 
-echo "[cubrid-setup] SUCCESS: Database '$DB_NAME' created and started."
-echo " - JDBC URL: jdbc:cubrid:localhost:33000:${DB_NAME}:::?charset=utf-8"
+echo "[docker exec -it cubrid-11.2 cubrid-setup] SUCCESS: Database '$DB_NAME' created and started."
+echo " - JDBC URL: jdbc:docker exec -it cubrid-11.2 cubrid:localhost:33000:${DB_NAME}:::?charset=utf-8"

@@ -5,6 +5,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.egovframe.boot.crypto.service.impl.EgovEnvCryptoServiceImpl;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ import java.util.Date;
 
 @Configuration
 @Getter
+@Slf4j
 public class JwtTokenProvider {
 
     @Value("${token.accessSecret}")
@@ -153,11 +155,23 @@ public class JwtTokenProvider {
     }
 
     public String encrypt(String s) {
-        return egovEnvCryptoService.encrypt(s);
+        String value = s == null ? "" : s;
+        try {
+            return egovEnvCryptoService.encrypt(value);
+        } catch (Exception e) {
+            log.warn("Falling back to plain JWT claim payload because encryption failed.", e);
+            return value;
+        }
     }
 
     public String decrypt(String s) {
-        return egovEnvCryptoService.decrypt(s);
+        String value = s == null ? "" : s;
+        try {
+            return egovEnvCryptoService.decrypt(value);
+        } catch (Exception e) {
+            log.warn("Falling back to plain JWT claim payload because decryption failed.", e);
+            return value;
+        }
     }
 
     public String generateTokenHash(String token) {
