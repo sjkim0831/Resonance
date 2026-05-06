@@ -5,6 +5,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<'EOF'
 Usage:
   bash ops/scripts/start-18000.sh
+  CARBONET_RUNTIME_ENV=remote-221 bash ops/scripts/start-18000.sh
 
 Purpose:
   Start a local runtime from the canonical app jar and copy it into
@@ -26,6 +27,7 @@ PORT="${PORT:-18000}"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/var/logs}"
 RUN_DIR="${RUN_DIR:-$ROOT_DIR/var/run}"
 CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
+CARBONET_RUNTIME_ENV="${CARBONET_RUNTIME_ENV:-${DEPLOY_TARGET:-local}}"
 APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
 SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$APP_TARGET_JAR_PATH}"
 JAR_PATH="${JAR_PATH:-$RUN_DIR/carbonet-${PORT}.jar}"
@@ -57,7 +59,9 @@ load_optional_env() {
 }
 
 load_optional_env "$CONFIG_DIR/carbonet-${PORT}.defaults.env"
+load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.defaults.env"
 load_optional_env "$CONFIG_DIR/carbonet-${PORT}.env"
+load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.env"
 load_optional_env "$CONFIG_DIR/codex-runner.env"
 carbonet_set_curl_args
 
@@ -152,6 +156,8 @@ fi
 for attempt in $(seq 1 "$START_RETRY_COUNT"); do
   printf '\n[start-18000] %s attempt=%s/%s db=%s log=%s\n' \
     "$(date '+%Y-%m-%d %H:%M:%S')" "$attempt" "$START_RETRY_COUNT" "$DB_URL" "$LOG_FILE" >>"$LOG_FILE"
+  printf '[start-18000] runtime-env=%s config-dir=%s port=%s\n' \
+    "$CARBONET_RUNTIME_ENV" "$CONFIG_DIR" "$PORT" >>"$LOG_FILE"
   printf '[start-18000] codex enabled=%s runner=%s repo=%s workspace=%s plan=%s build=%s\n' \
     "${SECURITY_CODEX_ENABLED:-false}" \
     "${SECURITY_CODEX_RUNNER_ENABLED:-false}" \

@@ -19,6 +19,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PORT="${PORT:-18000}"
 RUN_DIR="${RUN_DIR:-$ROOT_DIR/var/run}"
 CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
+CARBONET_RUNTIME_ENV="${CARBONET_RUNTIME_ENV:-${DEPLOY_TARGET:-local}}"
 PID_FILE="$RUN_DIR/carbonet-${PORT}.pid"
 TMUX_SESSION_NAME="${TMUX_SESSION_NAME:-carbonet${PORT}}"
 JAR_PATH="$RUN_DIR/carbonet-${PORT}.jar"
@@ -97,7 +98,10 @@ find_running_pid_without_pid_file() {
   '
 }
 
+load_optional_env "$CONFIG_DIR/carbonet-${PORT}.defaults.env"
+load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.defaults.env"
 load_optional_env "$CONFIG_DIR/carbonet-${PORT}.env"
+load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.env"
 load_optional_env "$CONFIG_DIR/codex-runner.env"
 
 if command -v tmux >/dev/null 2>&1 && tmux has-session -t "$TMUX_SESSION_NAME" 2>/dev/null; then

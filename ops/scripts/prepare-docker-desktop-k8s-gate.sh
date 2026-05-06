@@ -69,6 +69,15 @@ if [ "$APPLY_SECRET" = "true" ]; then
     --from-literal=TOKEN_REFRESH_SECRET="$CARBONET_TOKEN_REFRESH_SECRET" \
     --dry-run=client -o yaml | kubectl apply -f -
   echo "SECRET_APPLIED carbonet-runtime-secret"
+  if [ "${CARBONET_ECOINVENT_CLIENT_ID+x}" = "x" ] && [ "${CARBONET_ECOINVENT_CLIENT_SECRET+x}" = "x" ]; then
+    kubectl -n "$CARBONET_NS" create secret generic carbonet-runtime-ecoinvent-secret \
+      --from-literal=CARBONET_ECOINVENT_CLIENT_ID="$CARBONET_ECOINVENT_CLIENT_ID" \
+      --from-literal=CARBONET_ECOINVENT_CLIENT_SECRET="$CARBONET_ECOINVENT_CLIENT_SECRET" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    echo "SECRET_APPLIED carbonet-runtime-ecoinvent-secret"
+  else
+    echo "ECOINVENT_SECRET_NOT_APPLIED set CARBONET_ECOINVENT_CLIENT_ID/CARBONET_ECOINVENT_CLIENT_SECRET to enable ecoinvent API"
+  fi
 else
   echo "SECRET_NOT_APPLIED set APPLY_SECRET=true with CARBONET_DB_USERNAME/CARBONET_DB_PASSWORD/CARBONET_DB_URL/CARBONET_TOKEN_ACCESS_SECRET/CARBONET_TOKEN_REFRESH_SECRET"
 fi

@@ -33,6 +33,8 @@ MAIN_TARGET="${MAIN_TARGET:-carbonet2026@136.117.100.221}"
 MAIN_REMOTE_ROOT="${MAIN_REMOTE_ROOT:-/opt/Resonance}"
 MAIN_REMOTE_PASSWORD="${MAIN_REMOTE_PASSWORD:-}"
 MAIN_SSH_PASSWORD="${MAIN_SSH_PASSWORD:-$MAIN_REMOTE_PASSWORD}"
+CARBONET_RUNTIME_ENV="${CARBONET_RUNTIME_ENV:-remote-221}"
+DEPLOY_SERVICE_PORT="${DEPLOY_SERVICE_PORT:-18000}"
 IDLE_SCALE_ENABLED="${IDLE_SCALE_ENABLED:-true}"
 IDLE_RESTORE_ENABLED="${IDLE_RESTORE_ENABLED:-true}"
 IDLE_SSH_PASSWORD="${IDLE_SSH_PASSWORD:-}"
@@ -47,6 +49,24 @@ NGINX_SITE_REMOTE_TARGET="${NGINX_SITE_REMOTE_TARGET:-/etc/nginx/sites-enabled/c
 
 log() {
   printf '[jenkins-deploy-carbonet] %s\n' "$*"
+}
+
+load_optional_env() {
+  local env_file="$1"
+  if [[ -f "$env_file" ]]; then
+    # shellcheck disable=SC1090
+    set -a
+    source "$env_file"
+    set +a
+  fi
+}
+
+export_frontend_runtime_env() {
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_CODE="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_CODE:-${CARBONET_MENU_EMISSION_ECOINVENT_CODE:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO:-${CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN:-${CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_URL="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_URL:-${CARBONET_MENU_EMISSION_ECOINVENT_URL:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_ICON="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_ICON:-${CARBONET_MENU_EMISSION_ECOINVENT_ICON:-}}"
 }
 
 require_command() {
@@ -97,6 +117,12 @@ should_skip_deploy() {
 }
 
 build_artifact() {
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.defaults.env"
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.${CARBONET_RUNTIME_ENV}.defaults.env"
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.env"
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.${CARBONET_RUNTIME_ENV}.env"
+  export_frontend_runtime_env
+
   log "frontend build"
   (cd "$BUILD_DIR/frontend" && npm run build)
 
@@ -161,14 +187,14 @@ deploy_main() {
     sshpass -p "$MAIN_REMOTE_PASSWORD" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
       "$ARTIFACT_DIR/$ARTIFACT_NAME" "${MAIN_TARGET}:${remote_tmp}"
     sshpass -p "$MAIN_REMOTE_PASSWORD" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$MAIN_TARGET" \
-      "mkdir -p '$remote_target_dir' && mv '$remote_tmp' '$remote_target_dir/$ARTIFACT_NAME' && bash '$MAIN_REMOTE_ROOT/ops/scripts/deploy-blue-green-221.sh' && bash '$remote_verify'"
+      "mkdir -p '$remote_target_dir' && mv '$remote_tmp' '$remote_target_dir/$ARTIFACT_NAME' && CARBONET_RUNTIME_ENV='$CARBONET_RUNTIME_ENV' bash '$MAIN_REMOTE_ROOT/ops/scripts/deploy-blue-green-221.sh' && CARBONET_RUNTIME_ENV='$CARBONET_RUNTIME_ENV' bash '$remote_verify'"
     return 0
   fi
 
   scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     "$ARTIFACT_DIR/$ARTIFACT_NAME" "${MAIN_TARGET}:${remote_tmp}"
   ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$MAIN_TARGET" \
-    "mkdir -p '$remote_target_dir' && mv '$remote_tmp' '$remote_target_dir/$ARTIFACT_NAME' && bash '$MAIN_REMOTE_ROOT/ops/scripts/deploy-blue-green-221.sh' && bash '$remote_verify'"
+    "mkdir -p '$remote_target_dir' && mv '$remote_tmp' '$remote_target_dir/$ARTIFACT_NAME' && CARBONET_RUNTIME_ENV='$CARBONET_RUNTIME_ENV' bash '$MAIN_REMOTE_ROOT/ops/scripts/deploy-blue-green-221.sh' && CARBONET_RUNTIME_ENV='$CARBONET_RUNTIME_ENV' bash '$remote_verify'"
 }
 
 scale_idle_if_needed() {

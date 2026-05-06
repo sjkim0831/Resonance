@@ -22,6 +22,16 @@ let frontendSessionPromise: Promise<FrontendSession> | null = null;
 let adminMenuTreeCache: AdminMenuTreePayload | null = null;
 let adminMenuTreePromise: Promise<AdminMenuTreePayload> | null = null;
 
+const viteEnv = import.meta.env;
+
+const ECOINVENT_ADMIN_MENU_LINK = {
+  code: viteEnv.VITE_CARBONET_MENU_EMISSION_ECOINVENT_CODE || "A0020113",
+  text: viteEnv.VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO || "ecoinvent 배출계수 관리",
+  tEn: viteEnv.VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN || "ecoinvent Factors",
+  u: viteEnv.VITE_CARBONET_MENU_EMISSION_ECOINVENT_URL || "/admin/emission/ecoinvent",
+  icon: viteEnv.VITE_CARBONET_MENU_EMISSION_ECOINVENT_ICON || "science"
+};
+
 function buildAdminShellHeaders() {
   return {
     "X-Requested-With": "XMLHttpRequest"
@@ -45,6 +55,45 @@ function readBootstrap<T>(key: string): T | null {
   return payload ?? null;
 }
 
+function linkMatchesPath(linkUrl: string | undefined, targetPath: string) {
+  const normalizedUrl = String(linkUrl || "").split("?")[0].replace(/\/+$/, "");
+  return normalizedUrl === targetPath;
+}
+
+function ensureEcoinventAdminMenuLink(payload: AdminMenuTreePayload): AdminMenuTreePayload {
+  let alreadyExists = false;
+  let inserted = false;
+  const nextTree: AdminMenuTreePayload = {};
+
+  Object.entries(payload || {}).forEach(([domainKey, domain]) => {
+    nextTree[domainKey] = {
+      ...domain,
+      groups: (domain.groups || []).map((group) => {
+        const links = group.links || [];
+        if (links.some((link) => linkMatchesPath(link.u, ECOINVENT_ADMIN_MENU_LINK.u))) {
+          alreadyExists = true;
+          return group;
+        }
+        const insertionIndex = links.findIndex((link) => linkMatchesPath(link.u, "/admin/emission/gwp-values"));
+        const surveyIndex = links.findIndex((link) => linkMatchesPath(link.u, "/admin/emission/survey-admin"));
+        if (!inserted && (insertionIndex >= 0 || surveyIndex >= 0)) {
+          const targetIndex = insertionIndex >= 0 ? insertionIndex + 1 : surveyIndex;
+          const nextLinks = [...links];
+          nextLinks.splice(targetIndex, 0, ECOINVENT_ADMIN_MENU_LINK);
+          inserted = true;
+          return { ...group, links: nextLinks };
+        }
+        return group;
+      })
+    };
+  });
+
+  if (alreadyExists || inserted) {
+    return nextTree;
+  }
+  return payload;
+}
+
 export function getAdminMenuTreeRefreshEventName() {
   return ADMIN_MENU_TREE_REFRESH_EVENT;
 }
@@ -61,14 +110,16 @@ export function invalidateFrontendSessionCache() {
 export function readAdminMenuTreeSnapshot(): AdminMenuTreePayload | null {
   const bootstrappedMenuTree = readBootstrap<AdminMenuTreePayload>("adminMenuTree");
   if (bootstrappedMenuTree) {
-    adminMenuTreeCache = bootstrappedMenuTree;
-    writeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY, bootstrappedMenuTree, SESSION_CACHE_TTL_MS);
-    return bootstrappedMenuTree;
+    const menuTree = ensureEcoinventAdminMenuLink(bootstrappedMenuTree);
+    adminMenuTreeCache = menuTree;
+    writeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY, menuTree, SESSION_CACHE_TTL_MS);
+    return menuTree;
   }
   const storedMenuTree = readSessionStorageCache<AdminMenuTreePayload>(ADMIN_MENU_TREE_STORAGE_KEY);
   if (storedMenuTree) {
-    adminMenuTreeCache = storedMenuTree;
-    return storedMenuTree;
+    const menuTree = ensureEcoinventAdminMenuLink(storedMenuTree);
+    adminMenuTreeCache = menuTree;
+    return menuTree;
   }
   return adminMenuTreeCache;
 }
@@ -165,9 +216,10 @@ export async function fetchAdminMenuTree(): Promise<AdminMenuTreePayload> {
       cache: "no-store",
       headers: buildAdminShellHeaders()
     }).then((payload) => {
-        adminMenuTreeCache = payload;
-        writeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY, payload, SESSION_CACHE_TTL_MS);
-        return payload;
+        const menuTree = ensureEcoinventAdminMenuLink(payload);
+        adminMenuTreeCache = menuTree;
+        writeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY, menuTree, SESSION_CACHE_TTL_MS);
+        return menuTree;
       })
       .catch((error) => {
         if (cachedMenuTree) {

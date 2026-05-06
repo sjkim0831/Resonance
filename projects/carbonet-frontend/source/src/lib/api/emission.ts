@@ -20,6 +20,9 @@ import type {
   EmissionDefinitionDraftSavePayload,
   EmissionDefinitionDraftSaveResponse,
   EmissionDefinitionStudioPagePayload,
+  EcoinventApiResponse,
+  EcoinventDatasetRow,
+  EcoinventMappingSavePayload,
   EmissionFactorDefinition,
   EmissionGwpValueSavePayload,
   EmissionGwpValueSaveResponse,
@@ -63,6 +66,53 @@ export async function fetchEmissionGwpValuesPage(params?: {
     "/en/admin/emission/gwp-values/page-data",
     { query: buildQueryParams(params) }
   );
+}
+
+function unwrapEcoinventResponse<T>(response: EcoinventApiResponse<T>, fallback: T): T {
+  if (response.success === false) {
+    throw new Error(response.message || "ecoinvent 요청에 실패했습니다.");
+  }
+  return response.data === undefined || response.data === null ? fallback : response.data;
+}
+
+export async function fetchEcoinventDatasets(params?: { keyword?: string; remote?: boolean }) {
+  const response = await fetchJson<EcoinventApiResponse<EcoinventDatasetRow[]>>(
+    `${buildLocalizedPath("/admin/emission/ecoinvent/api/datasets", "/en/admin/emission/ecoinvent/api/datasets")}${buildEmissionQuery(params)}`,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+  return unwrapEcoinventResponse(response, []);
+}
+
+export async function importSelectedEcoinventDatasets(datasetIds: number[]) {
+  return postJson<EcoinventApiResponse<null>>(
+    buildLocalizedPath("/admin/emission/ecoinvent/api/import", "/en/admin/emission/ecoinvent/api/import"),
+    { datasetIds },
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function importAllEcoinventDatasets(keyword?: string) {
+  return postJson<EcoinventApiResponse<null>>(
+    buildLocalizedPath("/admin/emission/ecoinvent/api/import-all", "/en/admin/emission/ecoinvent/api/import-all"),
+    { keyword: keyword || "" },
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function saveEcoinventMapping(payload: EcoinventMappingSavePayload) {
+  return postJson<EcoinventApiResponse<null>>(
+    buildLocalizedPath("/admin/emission/ecoinvent/api/mappings", "/en/admin/emission/ecoinvent/api/mappings"),
+    payload,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function fetchEcoinventMappedFactors(materialName: string) {
+  const response = await fetchJson<EcoinventApiResponse<EcoinventDatasetRow[]>>(
+    `${buildLocalizedPath("/admin/emission/survey-admin/api/ecoinvent-factors", "/en/admin/emission/survey-admin/api/ecoinvent-factors")}${buildEmissionQuery({ materialName })}`,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+  return unwrapEcoinventResponse(response, []);
 }
 
 export async function saveEmissionGwpValue(payload: EmissionGwpValueSavePayload): Promise<EmissionGwpValueSaveResponse> {

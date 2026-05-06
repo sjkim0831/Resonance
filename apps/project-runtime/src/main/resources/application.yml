@@ -160,6 +160,16 @@ observability:
     manifest-enabled: ${OBSERVABILITY_UI_MANIFEST_ENABLED:true}
 
 carbonet:
+  menu:
+    emission:
+      ecoinvent:
+        code: ${CARBONET_MENU_EMISSION_ECOINVENT_CODE:A0020113}
+        name-ko: ${CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO:ecoinvent 배출계수 관리}
+        name-en: ${CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN:ecoinvent Emission Factors}
+        url: ${CARBONET_MENU_EMISSION_ECOINVENT_URL:/admin/emission/ecoinvent}
+        icon: ${CARBONET_MENU_EMISSION_ECOINVENT_ICON:settings_input_composite}
+  ecoinvent:
+    search-url-template: ${CARBONET_ECOINVENT_SEARCH_URL_TEMPLATE:https://api.ecoinvent.org/v0/datasets?query=__QUERY__&from=0&limit=100&version=latest&system_model=cutoff}
   react-bootstrap-adapter:
     bindings:
       - bootstrap-endpoint: /en/admin/login/api/app/bootstrap

@@ -2026,6 +2026,19 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EmissionGwpDetail", instanceKey: "emission-gwp-detail", layoutZone: "content", propsSummary: ["selectedRow", "governanceNotes", "methaneGuidance"] }
     ]
   },
+  "emission-ecoinvent-admin": {
+    pageId: "emission-ecoinvent-admin",
+    routePath: "/admin/emission/ecoinvent",
+    menuCode: "A0020113",
+    domainCode: "admin",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "EmissionEcoinventImportToolbar", instanceKey: "emission-ecoinvent-import-toolbar", layoutZone: "actions", propsSummary: ["keyword", "selectedCount", "datasetCount"] },
+      { componentId: "EmissionEcoinventDatasetTable", instanceKey: "emission-ecoinvent-dataset-table", layoutZone: "content", propsSummary: ["datasetRows", "selectedDatasetId", "mappedCount"] },
+      { componentId: "EmissionEcoinventKoreanMapping", instanceKey: "emission-ecoinvent-korean-mapping", layoutZone: "content", propsSummary: ["koreanName", "sortOrder", "memo"] }
+    ]
+  },
   "system-code": {
     pageId: "system-code",
     routePath: "/admin/system/code",

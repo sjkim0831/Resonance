@@ -22,6 +22,7 @@ Environment overrides:
   PID_FILE
   LOG_FILE
   HEALTH_URL
+  CARBONET_RUNTIME_ENV
   STARTUP_MARKER
   FRONTEND_RESOURCE_DIR
   FRONTEND_APP_RESOURCE_DIR
@@ -41,8 +42,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "$ROOT_DIR/ops/scripts/runtime-url-common.sh"
 PORT="${PORT:-18000}"
 CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
+CARBONET_RUNTIME_ENV="${CARBONET_RUNTIME_ENV:-${DEPLOY_TARGET:-local}}"
 ENV_FILE="${ENV_FILE:-$CONFIG_DIR/carbonet-${PORT}.env}"
 DEFAULT_ENV_FILE="${DEFAULT_ENV_FILE:-$CONFIG_DIR/carbonet-${PORT}.defaults.env}"
+ENV_TARGET_FILE="${ENV_TARGET_FILE:-$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.env}"
+DEFAULT_ENV_TARGET_FILE="${DEFAULT_ENV_TARGET_FILE:-$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.defaults.env}"
 RUN_DIR="${RUN_DIR:-$ROOT_DIR/var/run}"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/var/logs}"
 APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
@@ -73,10 +77,24 @@ if [[ -f "$DEFAULT_ENV_FILE" ]]; then
   set +a
 fi
 
+if [[ -f "$DEFAULT_ENV_TARGET_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$DEFAULT_ENV_TARGET_FILE"
+  set +a
+fi
+
 if [[ -f "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
   source "$ENV_FILE"
+  set +a
+fi
+
+if [[ -f "$ENV_TARGET_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_TARGET_FILE"
   set +a
 fi
 

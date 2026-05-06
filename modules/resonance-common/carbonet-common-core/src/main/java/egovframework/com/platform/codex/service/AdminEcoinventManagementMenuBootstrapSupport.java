@@ -5,6 +5,7 @@ import egovframework.com.platform.codex.model.CodexProvisionResponse;
 import egovframework.com.platform.request.codex.CodexProvisionRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -22,26 +23,36 @@ public class AdminEcoinventManagementMenuBootstrapSupport {
     private static final String GROUP_CODE = "A00201";
     private static final String GROUP_NAME = "배출";
     private static final String GROUP_NAME_EN = "Emissions";
-    private static final String MENU_CODE = "A0060501";
-    private static final String MENU_NAME_KO = "Ecoinvent 데이터 관리";
-    private static final String MENU_NAME_EN = "Ecoinvent Data Management";
-    private static final String MENU_URL = "/admin/emission/ecoinvent-master";
-    private static final String MENU_ICON = "settings_input_composite";
     private static final String ACTOR_ID = "SYSTEM_BOOTSTRAP";
 
     private final CodexProvisioningService codexProvisioningService;
     private final AdminCodeManageService adminCodeManageService;
+
+    @Value("${carbonet.menu.emission.ecoinvent.code:${CARBONET_MENU_EMISSION_ECOINVENT_CODE:A0020113}}")
+    private String menuCode;
+
+    @Value("${carbonet.menu.emission.ecoinvent.name-ko:${CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO:ecoinvent 배출계수 관리}}")
+    private String menuNameKo;
+
+    @Value("${carbonet.menu.emission.ecoinvent.name-en:${CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN:ecoinvent Emission Factors}}")
+    private String menuNameEn;
+
+    @Value("${carbonet.menu.emission.ecoinvent.url:${CARBONET_MENU_EMISSION_ECOINVENT_URL:/admin/emission/ecoinvent}}")
+    private String menuUrl;
+
+    @Value("${carbonet.menu.emission.ecoinvent.icon:${CARBONET_MENU_EMISSION_ECOINVENT_ICON:settings_input_composite}}")
+    private String menuIcon;
 
     @EventListener(ApplicationReadyEvent.class)
     public void ensureMenu() {
         try {
             CodexProvisionResponse response = codexProvisioningService.provision(buildRequest());
             adminCodeManageService.updatePageManagement(
-                    MENU_CODE,
-                    MENU_NAME_KO,
-                    MENU_NAME_EN,
-                    MENU_URL,
-                    MENU_ICON,
+                    menuCode,
+                    menuNameKo,
+                    menuNameEn,
+                    menuUrl,
+                    menuIcon,
                     "Y",
                     ACTOR_ID
             );
@@ -56,21 +67,21 @@ public class AdminEcoinventManagementMenuBootstrapSupport {
         CodexProvisionRequest request = new CodexProvisionRequest();
         request.setRequestId("BOOTSTRAP-ECOINVENT-MANAGEMENT");
         request.setActorId(ACTOR_ID);
-        request.setTargetApiPath(MENU_URL);
+        request.setTargetApiPath(menuUrl);
         request.setMenuType("ADMIN");
         request.setReloadSecurityMetadata(true);
         request.setPage(pageRequest());
         request.setFeatures(Arrays.asList(
-                featureRequest(MENU_CODE + "_VIEW", "데이터 조회", "View Data", "View Ecoinvent data catalog"),
-                featureRequest(MENU_CODE + "_SYNC", "데이터 동기화", "Sync Data", "Sync data from Ecoinvent API")
+                featureRequest(menuCode + "_VIEW", "데이터 조회", "View Data", "View Ecoinvent data catalog"),
+                featureRequest(menuCode + "_SYNC", "데이터 동기화", "Sync Data", "Sync data from Ecoinvent API")
         ));
         request.setAuthors(Arrays.asList(
                 authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master",
-                        MENU_CODE + "_VIEW", MENU_CODE + "_SYNC"),
+                        menuCode + "_VIEW", menuCode + "_SYNC"),
                 authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator",
-                        MENU_CODE + "_VIEW", MENU_CODE + "_SYNC"),
+                        menuCode + "_VIEW", menuCode + "_SYNC"),
                 authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator",
-                        MENU_CODE + "_VIEW")
+                        menuCode + "_VIEW")
         ));
         return request;
     }
@@ -83,18 +94,18 @@ public class AdminEcoinventManagementMenuBootstrapSupport {
         page.setGroupCode(GROUP_CODE);
         page.setGroupName(GROUP_NAME);
         page.setGroupNameEn(GROUP_NAME_EN);
-        page.setCode(MENU_CODE);
-        page.setCodeNm(MENU_NAME_KO);
-        page.setCodeDc(MENU_NAME_EN);
-        page.setMenuUrl(MENU_URL);
-        page.setMenuIcon(MENU_ICON);
+        page.setCode(menuCode);
+        page.setCodeNm(menuNameKo);
+        page.setCodeDc(menuNameEn);
+        page.setMenuUrl(menuUrl);
+        page.setMenuIcon(menuIcon);
         page.setUseAt("Y");
         return page;
     }
 
     private CodexProvisionRequest.FeatureRequest featureRequest(String featureCode, String nameKo, String nameEn, String description) {
         CodexProvisionRequest.FeatureRequest feature = new CodexProvisionRequest.FeatureRequest();
-        feature.setMenuCode(MENU_CODE);
+        feature.setMenuCode(menuCode);
         feature.setFeatureCode(featureCode);
         feature.setFeatureNm(nameKo);
         feature.setFeatureNmEn(nameEn);

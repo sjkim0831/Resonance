@@ -10,7 +10,7 @@ const buildTarget = process.env.VITE_BUILD_TARGET === "classes"
 const mirrorTarget = process.env.VITE_BUILD_TARGET === "classes"
   ? "../src/main/resources/static/react-app"
   : "../target/classes/static/react-app";
-const appResourceTarget = "../apps/carbonet-app/src/main/resources/static/react-app";
+const appResourceTarget = "../../../apps/carbonet-app/src/main/resources/static/react-app";
 
 async function replaceDirectory(sourceDir: string, targetDir: string) {
   await rm(targetDir, {

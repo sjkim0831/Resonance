@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-06T00:18:57.876Z",
+  "generatedAt": "2026-05-06T10:31:53.443Z",
   "sources": {
     "pageManifest": "frontend/src/platform/screen-registry/pageManifests.ts",
     "apiMap": "docs/ai/40-backend/controller-service-map.csv",
@@ -10,12 +10,12 @@
     "governancePlan": "docs/architecture/verification-center-and-baseline-governance-plan.md"
   },
   "summary": {
-    "pageCount": 220,
-    "menuBoundPageCount": 220,
-    "staticMenuBoundPageCount": 219,
+    "pageCount": 221,
+    "menuBoundPageCount": 221,
+    "staticMenuBoundPageCount": 220,
     "dynamicMenuBoundPageCount": 1,
     "unmanagedPageCount": 0,
-    "routeBoundPageCount": 220,
+    "routeBoundPageCount": 221,
     "apiCount": 13,
     "uniqueRouteCount": 13,
     "functionCount": 59,
@@ -501,6 +501,13 @@
       "pageId": "emission-definition-studio",
       "routePath": "/admin/emission/definition-studio",
       "menuCode": "A0020108",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "emission-ecoinvent-admin",
+      "pageId": "emission-ecoinvent-admin",
+      "routePath": "/admin/emission/ecoinvent",
+      "menuCode": "A0020113",
       "menuBindingType": "static"
     },
     {

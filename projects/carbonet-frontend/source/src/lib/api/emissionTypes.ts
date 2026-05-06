@@ -25,6 +25,32 @@ export type EmissionGwpValuesPagePayload = Record<string, unknown> & {
   methaneGuidance?: Array<Record<string, string>>;
 };
 
+export type EcoinventDatasetRow = Record<string, unknown> & {
+  datasetId?: number;
+  activityName?: string;
+  productName?: string;
+  geography?: string;
+  referenceProductUnit?: string;
+  indicatorId?: number;
+  indicatorName?: string;
+  score?: number;
+  koreanName?: string;
+};
+
+export type EcoinventApiResponse<T> = {
+  success?: boolean;
+  message?: string;
+  data?: T;
+  count?: number;
+};
+
+export type EcoinventMappingSavePayload = {
+  koreanName: string;
+  datasetId: number;
+  sortOrder?: number;
+  memo?: string;
+};
+
 export type EmissionLciClassificationPagePayload = Record<string, unknown> & {
   isEn?: boolean;
   menuCode?: string;

@@ -17,6 +17,11 @@ build/
 .codex-state/
 var/
 
+# Local deployment secrets
+ops/config/*.env
+!ops/config/*.defaults.env
+!ops/config/*.env.example
+
 # Java
 *.class
 *.jar

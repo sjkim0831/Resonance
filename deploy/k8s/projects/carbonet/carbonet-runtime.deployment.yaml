@@ -4,7 +4,7 @@ metadata:
   name: carbonet-runtime
   namespace: carbonet-prod
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: carbonet-runtime
@@ -17,32 +17,44 @@ spec:
     spec:
       containers:
         - name: carbonet-runtime
-          image: registry.local/carbonet-runtime:2026.04.26
+          image: registry.local/carbonet-runtime:2026.05.06-ecoinvent-env-config
           imagePullPolicy: IfNotPresent
           ports:
+            - containerPort: 8080
             - containerPort: 18081
           envFrom:
             - configMapRef:
                 name: carbonet-runtime-config
             - secretRef:
                 name: carbonet-runtime-secret
+          env:
+            - name: CARBONET_ECOINVENT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: carbonet-runtime-ecoinvent-secret
+                  key: CARBONET_ECOINVENT_CLIENT_ID
+            - name: CARBONET_ECOINVENT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: carbonet-runtime-ecoinvent-secret
+                  key: CARBONET_ECOINVENT_CLIENT_SECRET
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 18081
+              port: 8080
             failureThreshold: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 18081
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 3
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 18081
+              port: 8080
             initialDelaySeconds: 90
             periodSeconds: 20
             timeoutSeconds: 3
@@ -58,5 +70,5 @@ spec:
   ports:
     - name: http
       port: 80
-      targetPort: 18081
+      targetPort: 8080
   type: ClusterIP

@@ -36,6 +36,7 @@ DEPLOY_REMOTE_HOST="${DEPLOY_REMOTE_HOST:-136.117.100.221}"
 DEPLOY_REMOTE_ROOT="${DEPLOY_REMOTE_ROOT:-/opt/Resonance}"
 DEPLOY_REMOTE_PORT="${DEPLOY_REMOTE_PORT:-22}"
 DEPLOY_REMOTE_PASSWORD="${DEPLOY_REMOTE_PASSWORD:-}"
+CARBONET_RUNTIME_ENV="${CARBONET_RUNTIME_ENV:-remote-221}"
 
 DEPLOY_SERVICE_PORT="${DEPLOY_SERVICE_PORT:-18000}"
 DEPLOY_HEALTH_PATH="${DEPLOY_HEALTH_PATH:-/actuator/health}"
@@ -58,6 +59,24 @@ SSH_OPTS=(
 
 log() {
   printf '[deploy-193-to-221] %s\n' "$*"
+}
+
+load_optional_env() {
+  local env_file="$1"
+  if [[ -f "$env_file" ]]; then
+    # shellcheck disable=SC1090
+    set -a
+    source "$env_file"
+    set +a
+  fi
+}
+
+export_frontend_runtime_env() {
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_CODE="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_CODE:-${CARBONET_MENU_EMISSION_ECOINVENT_CODE:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO:-${CARBONET_MENU_EMISSION_ECOINVENT_NAME_KO:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN:-${CARBONET_MENU_EMISSION_ECOINVENT_NAME_EN:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_URL="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_URL:-${CARBONET_MENU_EMISSION_ECOINVENT_URL:-}}"
+  export VITE_CARBONET_MENU_EMISSION_ECOINVENT_ICON="${VITE_CARBONET_MENU_EMISSION_ECOINVENT_ICON:-${CARBONET_MENU_EMISSION_ECOINVENT_ICON:-}}"
 }
 
 require_command() {
@@ -137,6 +156,12 @@ build_artifact() {
   local frontend_dir="$BUILD_DIR/frontend"
   local jar_path="$BUILD_DIR/apps/carbonet-app/target/carbonet.jar"
 
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.defaults.env"
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.${CARBONET_RUNTIME_ENV}.defaults.env"
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.env"
+  load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.${CARBONET_RUNTIME_ENV}.env"
+  export_frontend_runtime_env
+
   log "frontend build started"
   (cd "$frontend_dir" && npm run build)
 
@@ -195,8 +220,8 @@ deploy_remote() {
       cp '$remote_target' '$remote_backup_dir/carbonet-$(date +%Y%m%d-%H%M%S).jar'
     fi
     mv '$remote_tmp' '$remote_target'
-    bash '$remote_restart'
-    bash '$remote_verify'
+    CARBONET_RUNTIME_ENV='$CARBONET_RUNTIME_ENV' bash '$remote_restart'
+    CARBONET_RUNTIME_ENV='$CARBONET_RUNTIME_ENV' bash '$remote_verify'
   "
 }
 

@@ -781,6 +781,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         request.setDatasetName(sharedDatasetName(isEn, resolvedProductName));
         List<Map<String, Object>> normalizedRows = normalizeRowsForStorage(sectionCode, request.getRows());
         request.setRows(normalizedRows);
+        request.setColumns(normalizeSurveySectionColumns(sectionCode, request.getColumns()));
         Map<String, Map<String, Object>> registry = readDraftRegistryFromFile();
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("ownerActorId", resolvedOwnerActorId);
@@ -2248,7 +2249,9 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                     draftRow.put("values", parseJsonMap(safeObject(item.get("rowValuesJson"))));
                     rows.add(draftRow);
                 }
-                row.put("columns", parseJsonListOfMaps(safeObject(header.get("rowSchemaJson"))));
+                row.put("columns", normalizeSurveySectionColumns(
+                        safeObject(header.get("sectionCode")),
+                        parseJsonListOfMaps(safeObject(header.get("rowSchemaJson")))));
                 row.put("guidance", parseJsonStringList(safeObject(header.get("guidanceJson"))));
                 row.put("rows", rows);
                 result.put(buildRegistryKey(row), row);
@@ -2445,6 +2448,64 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         } catch (Exception e) {
             return new ArrayList<>();
         }
+    }
+
+    private List<Map<String, String>> normalizeSurveySectionColumns(String sectionCode, List<Map<String, String>> columns) {
+        String resolvedSectionCode = safe(sectionCode);
+        List<Map<String, String>> fixedColumns = defaultSurveySectionColumns(resolvedSectionCode);
+        List<Map<String, String>> sourceColumns = columns == null ? List.of() : columns;
+        List<Map<String, String>> normalizedColumns = fixedColumns.isEmpty() || sourceColumns.size() >= fixedColumns.size()
+                ? copyColumns(sourceColumns)
+                : copyColumns(fixedColumns);
+        if ("OUTPUT_PRODUCTS".equals(resolvedSectionCode)) {
+            normalizedColumns = normalizedColumns.stream()
+                    .filter(column -> !isEmissionFactorColumn(column))
+                    .collect(Collectors.toList());
+        }
+        return normalizedColumns;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> normalizeSurveySectionRows(List<Map<String, Object>> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> normalizedRows = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> normalizedRow = row == null ? new LinkedHashMap<>() : new LinkedHashMap<>(row);
+            List<Map<String, String>> columns = normalizedRow.get("columns") instanceof List<?>
+                    ? (List<Map<String, String>>) (List<?>) normalizedRow.get("columns")
+                    : List.of();
+            normalizedRow.put("columns", normalizeSurveySectionColumns(safeObject(normalizedRow.get("sectionCode")), columns));
+            normalizedRows.add(normalizedRow);
+        }
+        return normalizedRows;
+    }
+
+    private List<Map<String, String>> defaultSurveySectionColumns(String sectionCode) {
+        List<FixedColumnConfig> fixedColumns = FIXED_SECTION_COLUMNS.get(safe(sectionCode));
+        return fixedColumns == null || fixedColumns.isEmpty() ? List.of() : parseFixedColumns(fixedColumns);
+    }
+
+    private List<Map<String, String>> copyColumns(List<Map<String, String>> columns) {
+        if (columns == null || columns.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Map<String, String>> copiedColumns = new ArrayList<>();
+        for (Map<String, String> column : columns) {
+            copiedColumns.add(column == null ? new LinkedHashMap<>() : new LinkedHashMap<>(column));
+        }
+        return copiedColumns;
+    }
+
+    private boolean isEmissionFactorColumn(Map<String, String> column) {
+        if (column == null) {
+            return false;
+        }
+        String key = safe(column.get("key"));
+        String label = safe(column.get("label"));
+        String headerPath = safe(column.get("headerPath"));
+        return "emissionFactor".equals(key) || "배출계수".equals(label) || headerPath.contains("배출계수");
     }
 
     private List<String> parseJsonStringList(String json) {
@@ -2658,7 +2719,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                 // Fall through to file registry lookup.
             }
         }
-        return fileRows;
+        return normalizeSurveySectionRows(fileRows);
     }
 
     private List<Map<String, Object>> buildDatasetSummariesFromRegistry(String actorId,
@@ -2772,7 +2833,9 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                         draftRow.put("values", parseJsonMap(safeObject(item.get("rowValuesJson"))));
                         caseRows.add(draftRow);
                     }
-                    row.put("columns", parseJsonListOfMaps(safeObject(header.get("rowSchemaJson"))));
+                    row.put("columns", normalizeSurveySectionColumns(
+                            safeObject(header.get("sectionCode")),
+                            parseJsonListOfMaps(safeObject(header.get("rowSchemaJson")))));
                     row.put("guidance", parseJsonStringList(safeObject(header.get("guidanceJson"))));
                     row.put("rows", caseRows);
                     rows.add(row);
@@ -2802,7 +2865,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                 merged.put(key, row);
             }
         }
-        return sortSectionRows(new ArrayList<>(merged.values()));
+        return normalizeSurveySectionRows(sortSectionRows(new ArrayList<>(merged.values())));
     }
 
     private boolean shouldPreferDatasetRow(Map<String, Object> candidate, Map<String, Object> current) {
@@ -3019,7 +3082,24 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
 
     private List<String> readSharedProductNames() {
         LinkedHashSet<String> products = new LinkedHashSet<>();
-        for (Map<String, Object> row : readDraftRegistry(storageActorId()).values()) {
+        String resolvedActorId = storageActorId();
+        if (isDraftTableReady()) {
+            try {
+                for (Map<String, Object> header : adminEmissionSurveyDraftMapper.selectCaseHeaders()) {
+                    if (!matchesOwner(header, resolvedActorId)) {
+                        continue;
+                    }
+                    Map<String, Object> row = withDerivedProductName(new LinkedHashMap<>(header));
+                    String productName = normalizeProductName(safeObject(row.get("productName")));
+                    if (!productName.isEmpty()) {
+                        products.add(productName);
+                    }
+                }
+            } catch (Exception ignored) {
+                // Fall through to file/registry lookup when the DB is unavailable.
+            }
+        }
+        for (Map<String, Object> row : filterDraftRegistryByActor(readDraftRegistryFromFile(), resolvedActorId).values()) {
             String productName = normalizeProductName(safeObject(row.get("productName")));
             if (!productName.isEmpty()) {
                 products.add(productName);
@@ -3034,11 +3114,19 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         if (resolvedProductName.isEmpty() && !productOptions.isEmpty()) {
             resolvedProductName = safe(productOptions.get(0).get("value"));
         }
+        List<Map<String, Object>> selectedDatasetSectionRows = readDatasetSections(storageActorId(), buildDatasetId(resolvedProductName));
+        if (isEmptySectionList(payload.get("sections")) && !selectedDatasetSectionRows.isEmpty()) {
+            payload.put("sections", selectedDatasetSectionRows);
+        }
         payload.put("productOptions", productOptions);
         payload.put("selectedProductName", resolvedProductName);
-        payload.put("selectedDatasetSectionRows", readDatasetSections(storageActorId(), buildDatasetId(resolvedProductName)));
+        payload.put("selectedDatasetSectionRows", selectedDatasetSectionRows);
         payload.put("currentActorId", sharedDatasetName(isEn, resolvedProductName));
         return payload;
+    }
+
+    private boolean isEmptySectionList(Object sections) {
+        return !(sections instanceof List<?>) || ((List<?>) sections).isEmpty();
     }
 
     private void clearSharedDataset() {
@@ -3142,7 +3230,9 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                         draftRow.put("values", parseJsonMap(safeObject(item.get("rowValuesJson"))));
                         rows.add(draftRow);
                     }
-                    row.put("columns", parseJsonListOfMaps(safeObject(header.get("rowSchemaJson"))));
+                    row.put("columns", normalizeSurveySectionColumns(
+                            safeObject(header.get("sectionCode")),
+                            parseJsonListOfMaps(safeObject(header.get("rowSchemaJson")))));
                     row.put("guidance", parseJsonStringList(safeObject(header.get("guidanceJson"))));
                     row.put("rows", rows);
                     matched.put(safeObject(header.get("sectionCode")) + ":" + safeObject(header.get("caseCode")), row);
