@@ -76,6 +76,7 @@ public class RequestExecutionLoggingFilter extends OncePerRequestFilter {
             throw e;
         } finally {
             try {
+                logSecurityDiagnostic(request, response, startedAt, failure);
                 RequestExecutionLogVO item = buildLog(request, response, startedAt, failure);
                 TraceContext traceContext = TraceContextHolder.get();
                 requestExecutionLogService.append(item);
@@ -98,6 +99,69 @@ public class RequestExecutionLoggingFilter extends OncePerRequestFilter {
                 || path.startsWith("/error")
                 || path.startsWith("/actuator")
                 || path.matches(".*\\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot|ico|html)$");
+    }
+
+    private void logSecurityDiagnostic(HttpServletRequest request, HttpServletResponse response,
+                                       long startedAt, Exception failure) {
+        String uri = safeString(request == null ? "" : request.getRequestURI());
+        if (!(uri.startsWith("/admin") || uri.startsWith("/en/admin") || uri.startsWith("/api") || uri.contains("/api/"))) {
+            return;
+        }
+        int status = response == null ? 0 : response.getStatus();
+        boolean suspicious = status == HttpServletResponse.SC_UNAUTHORIZED
+                || status == HttpServletResponse.SC_FORBIDDEN
+                || (status >= 300 && status < 400)
+                || failure != null;
+        if (!suspicious && log.isDebugEnabled()) {
+            log.debug("security.request uri={} method={} status={} durationMs={} session={} user={} requestedWith={} accept={} referer={} csrfHeaderPresent={} failure={}",
+                    uri,
+                    safeString(request == null ? "" : request.getMethod()),
+                    status,
+                    Math.max(System.currentTimeMillis() - startedAt, 0),
+                    safeString(request == null || request.getSession(false) == null ? "" : request.getSession(false).getId()),
+                    resolveDiagnosticUserId(request),
+                    safeString(request == null ? "" : request.getHeader("X-Requested-With")),
+                    safeString(request == null ? "" : request.getHeader("Accept")),
+                    safeString(request == null ? "" : request.getHeader("Referer")),
+                    hasCsrfHeader(request),
+                    failure == null ? "" : failure.getClass().getSimpleName());
+            return;
+        }
+        if (suspicious) {
+            log.warn("security.request uri={} method={} status={} durationMs={} session={} user={} requestedWith={} accept={} contentType={} location={} setCookie={} referer={} origin={} csrfHeaderPresent={} failure={}: {}",
+                    uri,
+                    safeString(request == null ? "" : request.getMethod()),
+                    status,
+                    Math.max(System.currentTimeMillis() - startedAt, 0),
+                    safeString(request == null || request.getSession(false) == null ? "" : request.getSession(false).getId()),
+                    resolveDiagnosticUserId(request),
+                    safeString(request == null ? "" : request.getHeader("X-Requested-With")),
+                    safeString(request == null ? "" : request.getHeader("Accept")),
+                    safeString(request == null ? "" : request.getContentType()),
+                    safeString(response == null ? "" : response.getHeader("Location")),
+                    response != null && response.getHeaders("Set-Cookie") != null && !response.getHeaders("Set-Cookie").isEmpty(),
+                    safeString(request == null ? "" : request.getHeader("Referer")),
+                    safeString(request == null ? "" : request.getHeader("Origin")),
+                    hasCsrfHeader(request),
+                    failure == null ? "" : failure.getClass().getSimpleName(),
+                    safeString(failure == null ? "" : failure.getMessage()));
+        }
+    }
+
+    private String resolveDiagnosticUserId(HttpServletRequest request) {
+        if (request == null) {
+            return "";
+        }
+        return extractCurrentUserId(jwtTokenProvider.getCookie(request, "accessToken"));
+    }
+
+    private boolean hasCsrfHeader(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        return !safeString(request.getHeader("X-CSRF-TOKEN")).isEmpty()
+                || !safeString(request.getHeader("X-XSRF-TOKEN")).isEmpty()
+                || !safeString(request.getHeader("X-CSRFToken")).isEmpty();
     }
 
     private RequestExecutionLogVO buildLog(HttpServletRequest request, HttpServletResponse response,

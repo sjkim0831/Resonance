@@ -3,10 +3,15 @@ import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
   fetchEmissionCategories,
+  fetchEcoinventDatasetPage,
+  fetchEcoinventFilterOptions,
   fetchEcoinventMappedFactors,
   fetchEmissionSurveyAdminPage,
+  fetchSurveyEcoinventAiRecommendationPage,
+  fetchSurveyEcoinventRecommendationPage,
   fetchEmissionTiers,
   fetchEmissionVariableDefinitions,
+  saveEcoinventMapping,
   uploadEmissionSurveyWorkbook
 } from "../../lib/api/emission";
 import type {
@@ -68,6 +73,139 @@ type SurveyCalculationScopeState = {
   message: string;
   blockingMessage: string;
 };
+
+type EcoinventMappingTarget = {
+  sectionCode: string;
+  rowId: string;
+  materialName: string;
+};
+
+const GEOGRAPHY_PRIORITY = ["KR", "ROW", "RER", "GLO", "EU", "JP", "CH", "IN"];
+
+function geographyPriority(row: EcoinventDatasetRow) {
+  const geography = normalizeSearchKeyword(stringValue(row.geography));
+  const matchedIndex = GEOGRAPHY_PRIORITY.findIndex((code) => geography === code.toLowerCase() || geography.includes(`(${code.toLowerCase()})`));
+  return matchedIndex >= 0 ? matchedIndex : GEOGRAPHY_PRIORITY.length;
+}
+
+function ecoinventPriority(row: EcoinventDatasetRow, keyword: string) {
+  if (stringValue(row.koreanName)) {
+    return -1;
+  }
+  const normalizedKeyword = normalizeSearchKeyword(keyword);
+  const productName = normalizeSearchKeyword(stringValue(row.productName));
+  const materialName = normalizeSearchKeyword(stringValue(row.materialName));
+  const activityName = normalizeSearchKeyword(stringValue(row.activityName));
+  const activityType = normalizeSearchKeyword(stringValue(row.activityType));
+  if (normalizedKeyword && productName === normalizedKeyword) {
+    return 0;
+  }
+  if (normalizedKeyword && productName.startsWith(normalizedKeyword)) {
+    return activityType === "market_activity" ? 1 : 2;
+  }
+  if (activityType === "market_activity" || (normalizedKeyword && activityName.startsWith(`market for ${normalizedKeyword}`))) {
+    return 3;
+  }
+  if (normalizedKeyword && productName.includes(normalizedKeyword)) {
+    return 4;
+  }
+  if (normalizedKeyword && materialName.includes(normalizedKeyword)) {
+    return 5;
+  }
+  if (normalizedKeyword && activityName.includes(normalizedKeyword)) {
+    return 6;
+  }
+  return 7;
+}
+
+function ecoinventPriorityLabel(priority: number) {
+  if (priority < 0) {
+    return "이전 매핑";
+  }
+  if (priority <= 1) {
+    return "1순위 Market";
+  }
+  if (priority <= 3) {
+    return "추천";
+  }
+  if (priority <= 5) {
+    return "관련 Product";
+  }
+  return "후보";
+}
+
+function containsKorean(value: string) {
+  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(value);
+}
+
+function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: EcoinventDatasetRow[]) {
+  const nextRows: EcoinventDatasetRow[] = [];
+  const seenDatasetIds = new Set<string>();
+  [...previousRows, ...searchRows].forEach((row) => {
+    const datasetId = stringValue(row.datasetId);
+    if (!datasetId || seenDatasetIds.has(datasetId)) {
+      return;
+    }
+    seenDatasetIds.add(datasetId);
+    nextRows.push(row);
+  });
+  return nextRows.sort((left, right) => {
+    const leftPrevious = stringValue(left.koreanName) ? 0 : 1;
+    const rightPrevious = stringValue(right.koreanName) ? 0 : 1;
+    if (leftPrevious !== rightPrevious) {
+      return leftPrevious - rightPrevious;
+    }
+    return geographyPriority(left) - geographyPriority(right);
+  });
+}
+
+function buildMappedProductOptionFromValues(values: Record<string, string>): EcoinventDatasetRow | null {
+  const datasetId = stringValue(values.ecoinventDatasetId);
+  const productName = stringValue(values.ecoinventEnglishName);
+  if (!datasetId || !productName) {
+    return null;
+  }
+  return {
+    datasetId: Number(datasetId),
+    productName,
+    activityName: stringValue(values.ecoinventActivity),
+    geography: stringValue(values.ecoinventGeography),
+    referenceProductUnit: stringValue(values.ecoinventUnit),
+    score: decimalValue(values.emissionFactor)
+  } as EcoinventDatasetRow;
+}
+
+function mergeCurrentMappedProductOption(rows: EcoinventDatasetRow[], values: Record<string, string>) {
+  const currentOption = buildMappedProductOptionFromValues(values);
+  if (!currentOption) {
+    return rows;
+  }
+  const currentDatasetId = stringValue(currentOption.datasetId);
+  if (rows.some((row) => stringValue(row.datasetId) === currentDatasetId)) {
+    return rows;
+  }
+  return [currentOption, ...rows];
+}
+
+function isAutoRecommended(values: Record<string, string>) {
+  return values.ecoinventMappingStatus === "AUTO_RECOMMENDED";
+}
+
+function hasUnconfirmedEcoinventRecommendations(
+  sections: EmissionSurveyAdminSection[],
+  activeCases: SectionCaseState,
+  getCase: (sectionCode: string, caseCode: "CASE_3_1" | "CASE_3_2", fallbackRows: DraftRow[]) => DraftCase
+) {
+  return sections.some((section) => {
+    const sectionCode = section.sectionCode || "";
+    if (!supportsEmissionFactorColumn(sectionCode)) {
+      return false;
+    }
+    const activeCase = activeCases[sectionCode] || "CASE_3_1";
+    const rows = getCase(sectionCode, activeCase, buildDefaultCaseRows(section, activeCase)).rows;
+    return rows.some((row) => isAutoRecommended(row.values));
+  });
+}
 
 function stringOf(row: Record<string, unknown> | null | undefined, key: string) {
   if (!row) {
@@ -213,6 +351,14 @@ function emissionFactorColumnTemplate() {
   };
 }
 
+function ecoinventMappingColumnTemplate() {
+  return {
+    key: "ecoinventMappingAction",
+    label: "매핑",
+    headerPath: JSON.stringify(["매핑"])
+  };
+}
+
 function unitCategoryKeyForUnitKey(key: string) {
   return key === "costUnit" ? "costUnitCategory" : "annualUnitCategory";
 }
@@ -262,12 +408,18 @@ function buildEditableColumns(section: EmissionSurveyAdminSection | undefined) {
     return withUnitCategoryColumns(columns);
   }
   if (columns.some((column) => stringOf(column, "key") === "emissionFactor")) {
-    return withUnitCategoryColumns(columns);
+    const nextColumns = [...columns];
+    if (!nextColumns.some((column) => stringOf(column, "key") === "ecoinventMappingAction")) {
+      const emissionFactorIndex = nextColumns.findIndex((column) => stringOf(column, "key") === "emissionFactor");
+      nextColumns.splice(emissionFactorIndex >= 0 ? emissionFactorIndex + 1 : nextColumns.length, 0, ecoinventMappingColumnTemplate());
+    }
+    return withUnitCategoryColumns(nextColumns);
   }
   const nextColumns = [...columns];
   const amountIndex = nextColumns.findIndex((column) => stringOf(column, "key") === "amount");
   const insertIndex = amountIndex >= 0 ? amountIndex + 1 : nextColumns.length;
   nextColumns.splice(insertIndex, 0, emissionFactorColumnTemplate());
+  nextColumns.splice(insertIndex + 1, 0, ecoinventMappingColumnTemplate());
   return withUnitCategoryColumns(nextColumns);
 }
 
@@ -275,9 +427,9 @@ function createEmptyRow(section: EmissionSurveyAdminSection | undefined, index: 
   const values: Record<string, string> = {};
   buildEditableColumns(section).forEach((column) => {
     const key = stringOf(column, "key");
-    if (key) {
-      values[key] = "";
-    }
+      if (key) {
+        values[key] = "";
+      }
   });
   return {
     rowId: `${section?.sectionCode || "section"}-new-${Date.now()}-${index}`,
@@ -427,6 +579,9 @@ function buildGridTemplate(columns: Array<{ key: string; fullLabel: string }>, s
       if (key === "amount" || label.endsWith("양")) {
         return "minmax(110px, 0.9fr)";
       }
+      if (key === "ecoinventMappingAction") {
+        return "96px";
+      }
       if (key === "annualUnit" || label.includes("연간")) {
         return "minmax(110px, 0.9fr)";
       }
@@ -437,7 +592,8 @@ function buildGridTemplate(columns: Array<{ key: string; fullLabel: string }>, s
     });
     return `64px ${widths.join(" ")} 88px`;
   }
-  return `64px repeat(${Math.max(columns.length, 1)}, minmax(110px, 1fr)) 88px`;
+  const widths = columns.map((column) => column.key === "ecoinventMappingAction" ? "96px" : "minmax(110px, 1fr)");
+  return `64px ${widths.join(" ")} 88px`;
 }
 
 function buildNormalizationContext(
@@ -502,94 +658,254 @@ function findMatchingProductOption(options: Array<{ value: string; label: string
   }) || null;
 }
 
-function EcoinventMaterialInput({
-  value,
-  onChange,
-  onSelect
+function EcoinventFactorMappingDialog({
+  target,
+  keyword,
+  onKeywordChange,
+  filters,
+  filterOptions,
+  onFilterChange,
+  rows,
+  aiRows,
+  selectedDatasetId,
+  onSelectDataset,
+  loading,
+  aiLoading,
+  totalCount,
+  onSearch,
+  onClose,
+  onApply
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  onSelect: (row: EcoinventDatasetRow) => void;
+  target: EcoinventMappingTarget;
+  keyword: string;
+  onKeywordChange: (value: string) => void;
+  filters: Record<string, string>;
+  filterOptions: Record<string, string[]>;
+  onFilterChange: (key: string, value: string) => void;
+  rows: EcoinventDatasetRow[];
+  aiRows: EcoinventDatasetRow[];
+  selectedDatasetId: string;
+  onSelectDataset: (datasetId: string) => void;
+  loading: boolean;
+  aiLoading: boolean;
+  totalCount: number;
+  onSearch: () => void;
+  onClose: () => void;
+  onApply: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<EcoinventDatasetRow[]>([]);
-
-  useEffect(() => {
-    const keyword = value.trim();
-    if (!open || keyword.length === 0) {
-      setRows([]);
-      return;
-    }
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      setLoading(true);
-      fetchEcoinventMappedFactors(keyword)
-        .then((data) => {
-          if (!cancelled) {
-            setRows(data);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setRows([]);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setLoading(false);
-          }
-        });
-    }, 180);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [open, value]);
+  const selectedRow = rows.find((row) => String(row.datasetId || "") === selectedDatasetId) || null;
+  const previousMappingRows = rows.filter((row) => stringValue(row.koreanName)).slice(0, 3);
+  const visibleAiRows = aiRows.slice(0, 3);
+  const filterFields = [
+    ["productName", "Product"],
+    ["activityName", "Activity"],
+    ["geography", "Geography"],
+    ["activityType", "Activity Type"],
+    ["timePeriod", "Time Period"],
+    ["referenceProductUnit", "Reference Unit"],
+    ["indicatorName", "Indicator"]
+  ] as const;
 
   return (
-    <div className="relative z-40">
-      <AdminInput
-        aria-autocomplete="list"
-        aria-expanded={open}
-        onBlur={() => window.setTimeout(() => setOpen(false), 140)}
-        onChange={(event) => {
-          onChange(event.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        placeholder="한글 물질명 입력"
-        value={value}
-      />
-      {open && value.trim() ? (
-        <div className="absolute left-0 right-0 z-[9999] mt-2 max-h-72 overflow-auto rounded-[var(--kr-gov-radius)] border border-slate-200 bg-white shadow-xl">
-          <div className="sticky top-0 border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-black text-slate-500">
-            {loading ? "ecoinvent 후보 검색 중" : `ecoinvent 후보 ${rows.length}건`}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6">
+      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[var(--kr-gov-radius)] bg-white shadow-2xl">
+        <div className="shrink-0 flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 className="text-lg font-black text-[var(--kr-gov-text-primary)]">배출계수 매핑</h3>
+            <p className="mt-1 text-sm text-slate-500">대상 물질: {target.materialName || "-"}</p>
           </div>
-          {rows.length > 0 ? rows.map((row) => (
-            <button
-              className="block w-full px-3 py-3 text-left text-xs hover:bg-sky-50 focus:bg-sky-50"
-              key={`${row.datasetId || ""}-${row.productName || ""}-${row.activityName || ""}`}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onSelect(row);
-                setOpen(false);
-              }}
-              type="button"
-            >
-              <span className="block text-sm font-black text-[var(--kr-gov-text-primary)]">{stringValue(row.productName) || "-"}</span>
-              <span className="mt-1 block text-[var(--kr-gov-text-secondary)]">{stringValue(row.koreanName) || value} / {stringValue(row.activityName) || "-"}</span>
-              <span className="mt-1 block text-[var(--kr-gov-blue)]">
-                {stringValue(row.geography) || "-"} · {stringValue(row.referenceProductUnit) || "-"} · 배출계수 {stringValue(row.score) || "-"}
-              </span>
-            </button>
-          )) : (
-            <div className="px-3 py-4 text-xs text-slate-500">
-              {loading ? "검색 중입니다." : "매핑된 ecoinvent 후보가 없습니다. ecoinvent 관리 화면에서 한글명을 먼저 매핑하세요."}
-            </div>
-          )}
+          <MemberButton onClick={onClose} size="sm" type="button" variant="secondary">닫기</MemberButton>
         </div>
-      ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-5">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)]">
+          <section className="min-w-0 space-y-4">
+            <div className="grid gap-3 md:grid-cols-[1fr,120px]">
+              <label className="block">
+                <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">ecoinvent 데이터셋 검색</span>
+                <AdminInput
+                  onChange={(event) => onKeywordChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      onSearch();
+                    }
+                  }}
+                  placeholder="한글 물질명 또는 Product, Activity, Geography 검색"
+                  value={keyword}
+                />
+              </label>
+              <div className="flex items-end">
+                <MemberButton onClick={onSearch} type="button" variant="primary">{loading ? "검색 중..." : "검색"}</MemberButton>
+              </div>
+            </div>
+            <div className="rounded-[var(--kr-gov-radius)] border border-blue-200 bg-blue-50/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-blue-950">이전 사용자 매핑 추천</p>
+                  <p className="mt-1 text-xs text-blue-800">같은 물질명으로 확정했던 매핑을 먼저 보여줍니다.</p>
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-blue-800">{previousMappingRows.length}건</span>
+              </div>
+              {previousMappingRows.length === 0 ? (
+                <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs font-bold text-slate-500">이전 사용자 매핑이 없습니다. 아래 검색 결과에서 선택해 매핑하면 다음부터 추천됩니다.</p>
+              ) : (
+                <div className="mt-3 grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+                  {previousMappingRows.map((row) => {
+                    const datasetId = stringValue(row.datasetId);
+                    const selected = datasetId === selectedDatasetId;
+                    return (
+                      <button
+                        className={`rounded-xl border p-3 text-left transition ${selected ? "border-blue-600 bg-white shadow-sm" : "border-blue-100 bg-white/80 hover:border-blue-400"}`}
+                        key={`previous-${datasetId}`}
+                        onClick={() => onSelectDataset(datasetId)}
+                        type="button"
+                      >
+                        <p className="text-xs font-black text-blue-700">{stringValue(row.koreanName) || target.materialName || "이전 매핑"}</p>
+                        <p className="mt-1 line-clamp-2 text-sm font-black text-slate-900">{stringValue(row.productName) || "-"}</p>
+                        <p className="mt-2 text-[11px] font-bold text-slate-500">{stringValue(row.activityName) || "-"}</p>
+                        <div className="mt-3 flex items-center justify-between gap-2 text-[11px] font-black text-slate-600">
+                          <span>{stringValue(row.geography) || "-"}</span>
+                          <span className="font-mono text-blue-900">{stringValue(row.score) || "-"}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="rounded-[var(--kr-gov-radius)] border border-emerald-200 bg-emerald-50/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-emerald-950">AI 추천 매핑</p>
+                  <p className="mt-1 text-xs text-emerald-800">한글 물질명을 영문 검색어로 번역한 뒤, 저장된 ecoinvent DB 안에서만 후보를 고릅니다.</p>
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-emerald-800">{aiLoading ? "분석 중" : `${visibleAiRows.length}건`}</span>
+              </div>
+              {visibleAiRows.length === 0 ? (
+                <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs font-bold text-slate-500">
+                  {aiLoading ? "AI가 후보 수를 계산하고 있습니다." : "AI 추천 후보가 없습니다. 기존 검색 결과에서 직접 선택할 수 있습니다."}
+                </p>
+              ) : (
+                <div className="mt-3 grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+                  {visibleAiRows.map((row) => {
+                    const datasetId = stringValue(row.datasetId);
+                    const selected = datasetId === selectedDatasetId;
+                    return (
+                      <button
+                        className={`rounded-xl border p-3 text-left transition ${selected ? "border-emerald-600 bg-white shadow-sm" : "border-emerald-100 bg-white/80 hover:border-emerald-400"}`}
+                        key={`ai-${datasetId}`}
+                        onClick={() => onSelectDataset(datasetId)}
+                        type="button"
+                      >
+                        <p className="text-xs font-black text-emerald-700">AI #{stringValue(row.aiRank) || "추천"} · {stringValue(row.aiSearchTerm) || "translated search"}</p>
+                        <p className="mt-1 line-clamp-2 text-sm font-black text-slate-900">{stringValue(row.productName) || "-"}</p>
+                        <p className="mt-2 text-[11px] font-bold text-slate-500">{stringValue(row.activityName) || "-"}</p>
+                        <div className="mt-3 flex items-center justify-between gap-2 text-[11px] font-black text-slate-600">
+                          <span>{stringValue(row.geography) || "-"}</span>
+                          <span className="font-mono text-emerald-900">{stringValue(row.score) || "-"}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="mt-3 text-[11px] font-bold text-emerald-800">AI 추천은 초안입니다. `매핑 적용`을 눌러야만 확정 이력으로 저장됩니다.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+              {filterFields.map(([key, label]) => (
+                <label className="block" key={key}>
+                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
+                  <input
+                    className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
+                    list={`survey-ecoinvent-filter-${key}`}
+                    onChange={(event) => onFilterChange(key, event.target.value)}
+                    placeholder={`${label} 선택/검색`}
+                    value={filters[key] || ""}
+                  />
+                  <datalist id={`survey-ecoinvent-filter-${key}`}>
+                    {(filterOptions[key] || []).map((option) => (
+                      <option key={option} value={option} />
+                    ))}
+                  </datalist>
+                </label>
+              ))}
+            </div>
+            <div className="min-w-0 overflow-hidden rounded-[var(--kr-gov-radius)] border border-slate-200">
+              <div className="grid grid-cols-[88px,76px,minmax(170px,1.2fr),minmax(150px,1fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+                <div className="px-3 py-2">우선순위</div>
+                <div className="px-3 py-2">Dataset</div>
+                <div className="px-3 py-2">Product</div>
+                <div className="px-3 py-2">Activity</div>
+                <div className="px-3 py-2">Geography</div>
+                <div className="px-3 py-2">Unit</div>
+                <div className="px-3 py-2">Score</div>
+                <div className="px-3 py-2 text-center">선택</div>
+              </div>
+              <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden">
+                {rows.length === 0 ? (
+                  <div className="px-4 py-8 text-sm text-slate-500">{loading ? "검색 중입니다." : "검색 결과가 없습니다."}</div>
+                ) : rows.map((row) => {
+                  const datasetId = String(row.datasetId || "");
+                  const selected = datasetId === selectedDatasetId;
+                  const priority = ecoinventPriority(row, keyword);
+                  return (
+                    <div className={`grid grid-cols-[88px,76px,minmax(170px,1.2fr),minmax(150px,1fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={`${datasetId}-${row.productName || ""}-${row.geography || ""}`}>
+                      <div className="px-3 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-black ${priority <= 1 ? "bg-blue-100 text-blue-800" : priority <= 3 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                          {ecoinventPriorityLabel(priority)}
+                        </span>
+                        {stringValue(row.koreanName) ? (
+                          <p className="mt-1 text-[11px] font-bold text-blue-700">{stringValue(row.koreanName)}</p>
+                        ) : null}
+                      </div>
+                      <div className="px-3 py-3 font-mono text-xs text-slate-500">{datasetId || "-"}</div>
+                      <div className="px-3 py-3">
+                        <p className="font-bold text-slate-900">{stringValue(row.productName) || "-"}</p>
+                        <p className="mt-1 text-xs text-slate-500">{stringValue(row.indicatorName) || "-"}</p>
+                      </div>
+                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.activityName) || "-"}</div>
+                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.geography) || "-"}</div>
+                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.referenceProductUnit) || stringValue(row.unit) || "-"}</div>
+                      <div className="px-3 py-3 font-mono text-xs text-slate-700">{stringValue(row.score) || "-"}</div>
+                      <div className="flex items-center justify-center px-3 py-3">
+                        <MemberButton onClick={() => onSelectDataset(datasetId)} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-500">
+                총 {totalCount.toLocaleString()}건 중 {rows.length.toLocaleString()}건 표시
+              </div>
+            </div>
+          </section>
+
+          <section className="min-w-0 space-y-4">
+            <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-bold text-slate-800">선택 데이터셋</p>
+              <p className="mt-2 text-base font-black text-[var(--kr-gov-text-primary)]">{selectedRow ? stringValue(selectedRow.productName) || "-" : "먼저 데이터셋을 선택하세요."}</p>
+              {selectedRow ? (
+                <div className="mt-3 space-y-2 text-xs text-slate-600">
+                  <p>Activity: {stringValue(selectedRow.activityName) || "-"}</p>
+                  <p>Geography: {stringValue(selectedRow.geography) || "-"}</p>
+                  <p>Unit: {stringValue(selectedRow.referenceProductUnit) || stringValue(selectedRow.unit) || "-"}</p>
+                  <p>Indicator: {stringValue(selectedRow.indicatorName) || "-"}</p>
+                </div>
+              ) : null}
+            </div>
+            <div className="rounded-[var(--kr-gov-radius)] border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-bold text-blue-900">입력될 배출계수</p>
+              <p className="mt-2 font-mono text-2xl font-black text-blue-950">{selectedRow ? stringValue(selectedRow.score) || "-" : "-"}</p>
+              <p className="mt-2 text-xs text-blue-800">매핑을 적용하면 현재 행의 배출계수와 ecoinvent 메타 정보가 같이 저장됩니다.</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <MemberButton onClick={onClose} type="button" variant="secondary">취소</MemberButton>
+              <MemberButton disabled={!selectedRow} onClick={onApply} type="button" variant="primary">매핑 적용</MemberButton>
+            </div>
+          </section>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -667,7 +983,8 @@ function SectionEditor({
   onAddRow,
   onRemoveRow,
   onChangeCell,
-  onApplyEcoinventFactor
+  onApplyEcoinventMappedFactor,
+  onOpenEcoinventMapping
 }: {
   section: EmissionSurveyAdminSection;
   activeRows: DraftRow[];
@@ -676,13 +993,33 @@ function SectionEditor({
   onAddRow: () => void;
   onRemoveRow: (rowId: string) => void;
   onChangeCell: (rowId: string, key: string, value: string) => void;
-  onApplyEcoinventFactor: (rowId: string, row: EcoinventDatasetRow, currentMaterialName: string) => void;
+  onApplyEcoinventMappedFactor: (rowId: string, row: EcoinventDatasetRow) => void;
+  onOpenEcoinventMapping: (rowId: string, materialName: string) => void;
 }) {
   const columns = buildEditableColumns(section);
   const displayColumns = buildDisplayColumnLabels(columns);
   const gridTemplateColumns = buildGridTemplate(displayColumns, section.sectionCode);
   const headerModel = buildHeaderModel(displayColumns);
   const sectionTitle = stripSectionNumber(section.sectionLabel || "");
+  const [mappedProductRows, setMappedProductRows] = useState<Record<string, EcoinventDatasetRow[]>>({});
+  const [mappedProductLoading, setMappedProductLoading] = useState<Record<string, boolean>>({});
+  const canUseEcoinventMapping = supportsEmissionFactorColumn(section.sectionCode);
+
+  async function loadMappedProductRows(rowId: string, materialName: string) {
+    const keyword = materialName.trim();
+    if (!canUseEcoinventMapping || !keyword || mappedProductRows[rowId] || mappedProductLoading[rowId]) {
+      return;
+    }
+    setMappedProductLoading((current) => ({ ...current, [rowId]: true }));
+    try {
+      const rows = await fetchEcoinventMappedFactors(keyword);
+      setMappedProductRows((current) => ({ ...current, [rowId]: rows }));
+    } catch {
+      setMappedProductRows((current) => ({ ...current, [rowId]: [] }));
+    } finally {
+      setMappedProductLoading((current) => ({ ...current, [rowId]: false }));
+    }
+  }
 
   return (
     <article className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white shadow-sm">
@@ -763,12 +1100,65 @@ function SectionEditor({
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </AdminSelect>
-                        ) : column.key === "materialName" ? (
-                          <EcoinventMaterialInput
-                            onChange={(nextValue) => onChangeCell(row.rowId, column.key, nextValue)}
-                            onSelect={(ecoinventRow) => onApplyEcoinventFactor(row.rowId, ecoinventRow, value)}
-                            value={value}
-                          />
+                        ) : column.key === "ecoinventMappingAction" ? (
+                          <div className="space-y-1">
+                            <MemberButton
+                              className="w-full"
+                              onClick={() => onOpenEcoinventMapping(row.rowId, row.values.materialName || "")}
+                              size="sm"
+                              type="button"
+                              variant={isAutoRecommended(row.values) ? "primary" : "secondary"}
+                            >
+                              {isAutoRecommended(row.values) ? "확인" : row.values.ecoinventMappingStatus === "CONFIRMED" ? "수정" : "매핑"}
+                            </MemberButton>
+                            {isAutoRecommended(row.values) ? (
+                              <p className="text-center text-[10px] font-black text-amber-700">추천 확인 필요</p>
+                            ) : row.values.ecoinventMappingStatus === "CONFIRMED" ? (
+                              <p className="text-center text-[10px] font-black text-emerald-700">확정</p>
+                            ) : null}
+                          </div>
+                        ) : column.key === "materialName" && canUseEcoinventMapping ? (
+                          <div className="space-y-1.5">
+                            <AdminInput
+                              onBlur={() => {
+                                void loadMappedProductRows(row.rowId, row.values.materialName || "");
+                              }}
+                              onChange={(event) => {
+                                onChangeCell(row.rowId, column.key, event.target.value);
+                              }}
+                              onFocus={() => {
+                                void loadMappedProductRows(row.rowId, row.values.materialName || "");
+                              }}
+                              value={value}
+                            />
+                            {mappedProductLoading[row.rowId] ? (
+                              <p className="text-[10px] font-bold text-slate-500">ecoinvent 매핑 확인 중...</p>
+                            ) : null}
+                            {mergeCurrentMappedProductOption(mappedProductRows[row.rowId] || [], row.values).length > 0 ? (
+                              <select
+                                className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-900 outline-none focus:border-emerald-500"
+                                onChange={(event) => {
+                                  const productRows = mergeCurrentMappedProductOption(mappedProductRows[row.rowId] || [], row.values);
+                                  const selectedRow = productRows.find((candidate) => stringValue(candidate.datasetId) === event.target.value);
+                                  if (selectedRow) {
+                                    onApplyEcoinventMappedFactor(row.rowId, selectedRow);
+                                  }
+                                }}
+                                value={row.values.ecoinventDatasetId || ""}
+                              >
+                                <option value="">매핑된 ecoinvent Product 선택</option>
+                                {mergeCurrentMappedProductOption(mappedProductRows[row.rowId] || [], row.values).map((candidate) => (
+                                  <option key={`${row.rowId}-${candidate.datasetId}`} value={stringValue(candidate.datasetId)}>
+                                    {stringValue(candidate.productName) || "-"}{stringValue(candidate.geography) ? ` / ${stringValue(candidate.geography)}` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : row.values.ecoinventEnglishName ? (
+                              <p className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800">
+                                {row.values.ecoinventEnglishName}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : (
                           <AdminInput onChange={(event) => onChangeCell(row.rowId, column.key, event.target.value)} value={value} />
                         )}
@@ -802,6 +1192,16 @@ export function EmissionSurveyAdminMigrationPage() {
   const [selectedProductName, setSelectedProductName] = useState("");
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productDropdownOpen, setProductDropdownOpen] = useState(false);
+  const [ecoinventMappingTarget, setEcoinventMappingTarget] = useState<EcoinventMappingTarget | null>(null);
+  const [ecoinventMappingKeyword, setEcoinventMappingKeyword] = useState("");
+  const [ecoinventMappingFilters, setEcoinventMappingFilters] = useState<Record<string, string>>({});
+  const [ecoinventMappingFilterOptions, setEcoinventMappingFilterOptions] = useState<Record<string, string[]>>({});
+  const [ecoinventMappingRows, setEcoinventMappingRows] = useState<EcoinventDatasetRow[]>([]);
+  const [ecoinventAiMappingRows, setEcoinventAiMappingRows] = useState<EcoinventDatasetRow[]>([]);
+  const [ecoinventSelectedDatasetId, setEcoinventSelectedDatasetId] = useState("");
+  const [ecoinventMappingLoading, setEcoinventMappingLoading] = useState(false);
+  const [ecoinventAiMappingLoading, setEcoinventAiMappingLoading] = useState(false);
+  const [ecoinventMappingTotalCount, setEcoinventMappingTotalCount] = useState(0);
   const [calculationScope, setCalculationScope] = useState<SurveyCalculationScopeState>({
     loading: false,
     ready: false,
@@ -1161,28 +1561,221 @@ export function EmissionSurveyAdminMigrationPage() {
     setCaseRows(sectionCode, currentCaseCode, currentRows);
   }
 
-  function handleApplyEcoinventFactor(section: EmissionSurveyAdminSection, rowId: string, ecoinventRow: EcoinventDatasetRow, currentMaterialName: string) {
+  function handleApplyEcoinventMappedFactor(section: EmissionSurveyAdminSection, rowId: string, ecoinventRow: EcoinventDatasetRow) {
     const sectionCode = section.sectionCode || "";
     const currentCaseCode = activeCases[sectionCode] || "CASE_3_1";
     const currentRows = getCase(sectionCode, currentCaseCode, buildRowsFromSection(section)).rows.map((row) => {
       if (row.rowId !== rowId) {
         return row;
       }
-      const koreanName = stringValue(ecoinventRow.koreanName) || currentMaterialName;
+      return {
+        ...row,
+        values: {
+          ...row.values,
+          emissionFactor: stringValue(ecoinventRow.score),
+          ecoinventDatasetId: stringValue(ecoinventRow.datasetId),
+          ecoinventEnglishName: stringValue(ecoinventRow.productName),
+          ecoinventActivity: stringValue(ecoinventRow.activityName),
+          ecoinventGeography: stringValue(ecoinventRow.geography),
+          ecoinventUnit: stringValue(ecoinventRow.referenceProductUnit),
+          ecoinventMappingStatus: "CONFIRMED"
+        }
+      };
+    });
+    setCaseRows(sectionCode, currentCaseCode, currentRows);
+    setMessage(`${stringValue(ecoinventRow.productName) || "ecoinvent Product"} 매핑 배출계수를 적용했습니다.`);
+  }
+
+  function handleOpenEcoinventMapping(section: EmissionSurveyAdminSection, rowId: string, materialName: string) {
+    const keyword = stringValue(materialName).trim();
+    const nextTarget = {
+      sectionCode: section.sectionCode || "",
+      rowId,
+      materialName: keyword
+    };
+    setEcoinventMappingTarget(nextTarget);
+    setEcoinventMappingKeyword(keyword);
+    setEcoinventMappingFilters({});
+    setEcoinventMappingRows([]);
+    setEcoinventAiMappingRows([]);
+    setEcoinventSelectedDatasetId("");
+    setEcoinventMappingTotalCount(0);
+    fetchEcoinventFilterOptions(keyword).then(setEcoinventMappingFilterOptions).catch(() => setEcoinventMappingFilterOptions({}));
+    void handleSearchEcoinventMapping(keyword, {}, nextTarget);
+  }
+
+  async function handleSearchEcoinventMapping(
+    keywordOverride?: string,
+    filtersOverride?: Record<string, string>,
+    targetOverride?: EcoinventMappingTarget | null
+  ) {
+    const currentTarget = targetOverride || ecoinventMappingTarget;
+    if (!currentTarget) {
+      return;
+    }
+    const keyword = String(keywordOverride ?? ecoinventMappingKeyword ?? "");
+    const filters = filtersOverride || ecoinventMappingFilters;
+    setEcoinventMappingLoading(true);
+    setEcoinventAiMappingLoading(true);
+    setErrorMessage("");
+    try {
+      const useKoreanRecommendation = containsKorean(keyword)
+        || (!!currentTarget.materialName && normalizeSearchKeyword(keyword) === normalizeSearchKeyword(currentTarget.materialName));
+      const requestParams = {
+        keyword,
+        ...filters,
+        pageIndex: 1,
+        pageSize: 100
+      };
+      const aiPromise = fetchSurveyEcoinventAiRecommendationPage({
+        ...requestParams,
+        materialName: currentTarget.materialName || keyword,
+        pageSize: 12
+      }).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0 }));
+      const [previousMappings, aiResponse, response] = await Promise.all([
+        fetchEcoinventMappedFactors(keyword || currentTarget.materialName),
+        aiPromise,
+        useKoreanRecommendation ? fetchSurveyEcoinventRecommendationPage({
+          ...requestParams,
+          materialName: currentTarget.materialName || keyword
+        }) : fetchEcoinventDatasetPage({
+          ...requestParams
+        })
+      ]);
+      const aiRows = aiResponse.data || [];
+      const rows = mergeEcoinventRows(mergeEcoinventRows(previousMappings, aiRows), response.data || []);
+      setEcoinventAiMappingRows(aiRows);
+      setEcoinventMappingRows(rows);
+      setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
+      setEcoinventSelectedDatasetId(rows.length > 0 ? stringValue(rows[0].datasetId) : "");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "ecoinvent 데이터셋 검색에 실패했습니다.");
+    } finally {
+      setEcoinventMappingLoading(false);
+      setEcoinventAiMappingLoading(false);
+    }
+  }
+
+  function handleEcoinventFilterChange(key: string, value: string) {
+    setEcoinventMappingFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleEcoinventKeywordChange(value: string) {
+    setEcoinventMappingKeyword(value);
+    fetchEcoinventFilterOptions(value).then(setEcoinventMappingFilterOptions).catch(() => setEcoinventMappingFilterOptions({}));
+  }
+
+  async function handleApplyEcoinventMapping() {
+    if (!ecoinventMappingTarget) {
+      return;
+    }
+    const ecoinventRow = ecoinventMappingRows.find((row) => stringValue(row.datasetId) === ecoinventSelectedDatasetId) || null;
+    if (!ecoinventRow) {
+      setErrorMessage("먼저 매핑할 ecoinvent 데이터셋을 선택하세요.");
+      return;
+    }
+    const sectionCode = ecoinventMappingTarget.sectionCode;
+    const section = sections.find((candidate) => (candidate.sectionCode || "") === sectionCode);
+    if (!section) {
+      setErrorMessage("매핑 대상 섹션을 찾지 못했습니다.");
+      return;
+    }
+    const currentCaseCode = activeCases[sectionCode] || "CASE_3_1";
+    const currentRows = getCase(sectionCode, currentCaseCode, buildRowsFromSection(section)).rows.map((row) => {
+      if (row.rowId !== ecoinventMappingTarget.rowId) {
+        return row;
+      }
+      const appliedMaterialName = stringValue(ecoinventMappingKeyword).trim()
+        || ecoinventMappingTarget.materialName
+        || stringValue(ecoinventRow.koreanName)
+        || stringValue(ecoinventRow.productName);
       const nextValues = {
         ...row.values,
-        materialName: koreanName,
+        materialName: appliedMaterialName,
         emissionFactor: stringValue(ecoinventRow.score),
         ecoinventDatasetId: stringValue(ecoinventRow.datasetId),
         ecoinventEnglishName: stringValue(ecoinventRow.productName),
         ecoinventActivity: stringValue(ecoinventRow.activityName),
         ecoinventGeography: stringValue(ecoinventRow.geography),
-        ecoinventUnit: stringValue(ecoinventRow.referenceProductUnit)
+        ecoinventUnit: stringValue(ecoinventRow.referenceProductUnit),
+        ecoinventMappingStatus: "CONFIRMED"
       };
       return { ...row, values: nextValues };
     });
+    try {
+      await saveEcoinventMapping({
+        koreanName: stringValue(ecoinventMappingKeyword).trim()
+          || ecoinventMappingTarget.materialName
+          || stringValue(ecoinventRow.koreanName)
+          || stringValue(ecoinventRow.productName),
+        datasetId: Number(ecoinventRow.datasetId),
+        memo: "survey-admin confirmed mapping"
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "ecoinvent 매핑 기록 저장에 실패했습니다.");
+      return;
+    }
     setCaseRows(sectionCode, currentCaseCode, currentRows);
-    setMessage(`${stringValue(ecoinventRow.productName) || "ecoinvent 데이터셋"} 배출계수를 입력했습니다.`);
+    setEcoinventMappingTarget(null);
+    setMessage(`${stringValue(ecoinventRow.productName) || "ecoinvent 데이터셋"} 배출계수를 입력하고 다음 추천 우선순위에 저장했습니다.`);
+  }
+
+  async function buildAutoRecommendedRows(section: EmissionSurveyAdminSection, rows: DraftRow[]) {
+    if (!supportsEmissionFactorColumn(section.sectionCode)) {
+      return { rows, recommendedCount: 0 };
+    }
+    let recommendedCount = 0;
+    const cache = new Map<string, EcoinventDatasetRow | null>();
+    const nextRows: DraftRow[] = [];
+    for (const row of rows) {
+      const materialName = stringValue(row.values.materialName).trim();
+      if (!materialName || row.values.ecoinventMappingStatus === "CONFIRMED") {
+        nextRows.push(row);
+        continue;
+      }
+      if (!cache.has(materialName)) {
+        try {
+          const rows = await fetchEcoinventMappedFactors(materialName);
+          cache.set(materialName, rows[0] || null);
+        } catch {
+          cache.set(materialName, null);
+        }
+      }
+      const recommendation = cache.get(materialName);
+      if (!recommendation) {
+        nextRows.push(row);
+        continue;
+      }
+      recommendedCount += 1;
+      nextRows.push({
+        ...row,
+        values: {
+          ...row.values,
+          emissionFactor: stringValue(recommendation.score),
+          ecoinventDatasetId: stringValue(recommendation.datasetId),
+          ecoinventEnglishName: stringValue(recommendation.productName),
+          ecoinventActivity: stringValue(recommendation.activityName),
+          ecoinventGeography: stringValue(recommendation.geography),
+          ecoinventUnit: stringValue(recommendation.referenceProductUnit),
+          ecoinventMappingStatus: "CONFIRMED"
+        }
+      });
+    }
+    return { rows: nextRows, recommendedCount };
+  }
+
+  async function applyInitialEcoinventRecommendations(sourceSections: EmissionSurveyAdminSection[], caseCode: "CASE_3_1" | "CASE_3_2", sourcePage?: EmissionSurveyAdminPagePayload | null) {
+    let totalRecommendedCount = 0;
+    for (const section of sourceSections) {
+      const sectionCode = section.sectionCode || "";
+      const draftRows = caseCode === "CASE_3_1"
+        ? resolveSharedSectionRows(sourcePage || pagePayload, section).rows
+        : getCase(sectionCode, caseCode, buildDefaultCaseRows(section, caseCode)).rows;
+      const result = await buildAutoRecommendedRows(section, draftRows);
+      totalRecommendedCount += result.recommendedCount;
+      setCaseRows(sectionCode, caseCode, result.rows, caseCode === "CASE_3_1" ? resolveSharedSectionRows(sourcePage || pagePayload, section).savedAt : "");
+    }
+    return totalRecommendedCount;
   }
 
   function handleToggleSection(sectionCode: string) {
@@ -1236,8 +1829,11 @@ export function EmissionSurveyAdminMigrationPage() {
       for (const section of sourceSections) {
         await handleLoadCase(section, caseCode, { suppressMessage: true, sourcePage: latestPage || pagePayload });
       }
+      const recommendedCount = caseCode === "CASE_3_1"
+        ? await applyInitialEcoinventRecommendations(sourceSections, caseCode, latestPage || pagePayload)
+        : 0;
       setMessage(caseCode === "CASE_3_1"
-        ? "공통 DB사용 데이터로 8개 섹션 전체를 불러왔습니다."
+        ? `공통 DB사용 데이터로 8개 섹션 전체를 불러왔습니다. 이전 사용자 매핑 ${recommendedCount}건은 자동 입력했고, 나머지는 매핑 버튼으로 배출계수를 입력하세요.`
         : "8개 섹션 전체를 직접입력 상태로 전환했습니다.");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "섹션 전체 불러오기에 실패했습니다.");
@@ -1284,7 +1880,17 @@ export function EmissionSurveyAdminMigrationPage() {
       setSelectedProductName(productName);
       setDrafts({});
       setActiveCases({});
-      setMessage(`${productName || "기본"} 제품 기준 DB사용 데이터를 불러올 준비가 되었습니다.`);
+      const sourceSections = ((latestPage.sections || []) as EmissionSurveyAdminSection[]);
+      const nextActiveCases: SectionCaseState = {};
+      const nextExpandedSections: SectionExpandState = {};
+      sourceSections.forEach((section) => {
+        nextActiveCases[section.sectionCode || ""] = "CASE_3_1";
+        nextExpandedSections[section.sectionCode || ""] = true;
+      });
+      setActiveCases(nextActiveCases);
+      setExpandedSections(nextExpandedSections);
+      const recommendedCount = await applyInitialEcoinventRecommendations(sourceSections, "CASE_3_1", latestPage);
+      setMessage(`${productName || "기본"} 제품 기준 DB사용 데이터를 불러왔습니다. 이전 사용자 매핑 ${recommendedCount}건은 자동 입력했고, 나머지는 매핑 버튼으로 배출계수를 입력하세요.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "제품 기준 DB 데이터를 불러오지 못했습니다.");
     }
@@ -1331,6 +1937,10 @@ export function EmissionSurveyAdminMigrationPage() {
     const requiresCategoryScope = Boolean(classification.middleCode);
     if (requiresCategoryScope && (!calculationScope.ready || calculationScope.categoryId <= 0 || calculationScope.tier <= 0)) {
       setErrorMessage(calculationScope.blockingMessage || "배출계수 범위를 확인하지 못해 계산을 진행할 수 없습니다. 관리자에 문의하세요.");
+      return;
+    }
+    if (hasUnconfirmedEcoinventRecommendations(sections, activeCases, getCase)) {
+      setErrorMessage("ecoinvent 자동 추천 배출계수가 남아 있습니다. 각 행의 `확인` 버튼을 눌러 매핑을 확정한 뒤 계산하세요.");
       return;
     }
     const normalization = buildNormalizationContext(sections, activeCases, getCase);
@@ -1505,6 +2115,9 @@ export function EmissionSurveyAdminMigrationPage() {
         ) : null}
         {message ? <PageStatusNotice tone="success">{message}</PageStatusNotice> : null}
         {errorMessage || pageState.error ? <PageStatusNotice tone="error">{errorMessage || pageState.error}</PageStatusNotice> : null}
+        {hasUnconfirmedEcoinventRecommendations(sections, activeCases, getCase) ? (
+          <PageStatusNotice tone="warning">ecoinvent 자동 추천 배출계수가 있습니다. 체스 엔진 추천수처럼 참고값일 뿐이므로, 각 행의 `확인` 버튼에서 Product / Activity / Geography를 확인하고 매핑을 확정하세요.</PageStatusNotice>
+        ) : null}
 
         <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm" data-help-id="emission-survey-admin-classification">
           <MemberSectionToolbar
@@ -1603,8 +2216,9 @@ export function EmissionSurveyAdminMigrationPage() {
                         expanded={Boolean(expandedSections[section.sectionCode || ""])}
                         key={section.sectionCode}
                         onAddRow={() => handleAddRow(section)}
-                        onApplyEcoinventFactor={(rowId, ecoinventRow, currentMaterialName) => handleApplyEcoinventFactor(section, rowId, ecoinventRow, currentMaterialName)}
+                        onApplyEcoinventMappedFactor={(rowId, ecoinventRow) => handleApplyEcoinventMappedFactor(section, rowId, ecoinventRow)}
                         onChangeCell={(rowId, key, value) => handleCellChange(section, rowId, key, value)}
+                        onOpenEcoinventMapping={(rowId, materialName) => handleOpenEcoinventMapping(section, rowId, materialName)}
                         onRemoveRow={(rowId) => handleRemoveRow(section, rowId)}
                         onToggleExpanded={() => handleToggleSection(section.sectionCode || "")}
                         section={section}
@@ -1637,8 +2251,9 @@ export function EmissionSurveyAdminMigrationPage() {
                         expanded={Boolean(expandedSections[section.sectionCode || ""])}
                         key={section.sectionCode}
                         onAddRow={() => handleAddRow(section)}
-                        onApplyEcoinventFactor={(rowId, ecoinventRow, currentMaterialName) => handleApplyEcoinventFactor(section, rowId, ecoinventRow, currentMaterialName)}
+                        onApplyEcoinventMappedFactor={(rowId, ecoinventRow) => handleApplyEcoinventMappedFactor(section, rowId, ecoinventRow)}
                         onChangeCell={(rowId, key, value) => handleCellChange(section, rowId, key, value)}
+                        onOpenEcoinventMapping={(rowId, materialName) => handleOpenEcoinventMapping(section, rowId, materialName)}
                         onRemoveRow={(rowId) => handleRemoveRow(section, rowId)}
                         onToggleExpanded={() => handleToggleSection(section.sectionCode || "")}
                         section={section}
@@ -1679,6 +2294,26 @@ export function EmissionSurveyAdminMigrationPage() {
             </div>
           </aside>
         </div>
+        {ecoinventMappingTarget ? (
+          <EcoinventFactorMappingDialog
+            aiLoading={ecoinventAiMappingLoading}
+            aiRows={ecoinventAiMappingRows}
+            filterOptions={ecoinventMappingFilterOptions}
+            filters={ecoinventMappingFilters}
+            keyword={ecoinventMappingKeyword}
+            loading={ecoinventMappingLoading}
+            onApply={handleApplyEcoinventMapping}
+            onClose={() => setEcoinventMappingTarget(null)}
+            onFilterChange={handleEcoinventFilterChange}
+            onKeywordChange={handleEcoinventKeywordChange}
+            onSearch={() => void handleSearchEcoinventMapping()}
+            onSelectDataset={setEcoinventSelectedDatasetId}
+            rows={ecoinventMappingRows}
+            selectedDatasetId={ecoinventSelectedDatasetId}
+            target={ecoinventMappingTarget}
+            totalCount={ecoinventMappingTotalCount}
+          />
+        ) : null}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );

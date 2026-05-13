@@ -19,6 +19,17 @@ type MissingInsttWarningDetail = {
   reason: string;
 };
 
+type SecurityFetchDiagnostic = {
+  url: string;
+  method: string;
+  status: number;
+  redirected: boolean;
+  responseUrl: string;
+  contentType: string;
+  csrfHeaderPresent: boolean;
+  requestedWith: string;
+};
+
 const FRONTEND_SESSION_URL = "/api/frontend/session";
 const INSTT_WARNING_EVENT = "carbonet:missing-instt-id-warning";
 let scopeSnapshotCache: FrontendScopeSnapshot | null = null;
@@ -121,6 +132,27 @@ function dispatchMissingInsttWarning(detail: MissingInsttWarningDetail) {
   window.dispatchEvent(new CustomEvent<MissingInsttWarningDetail>(INSTT_WARNING_EVENT, { detail }));
 }
 
+function hasCsrfHeader(headers: Headers): boolean {
+  return headers.has("X-CSRF-TOKEN") || headers.has("X-XSRF-TOKEN") || headers.has("X-CSRFToken");
+}
+
+function emitSecurityFetchDiagnostic(detail: SecurityFetchDiagnostic) {
+  const eventName = "carbonet:security-fetch-diagnostic";
+  window.dispatchEvent(new CustomEvent<SecurityFetchDiagnostic>(eventName, { detail }));
+  if (typeof console !== "undefined") {
+    console.warn(`[${eventName}]`, detail);
+  }
+}
+
+function isSecurityRelevantResponse(response: Response): boolean {
+  const contentType = response.headers.get("content-type") || "";
+  return response.status === 401
+    || response.status === 403
+    || response.redirected
+    || response.url.includes("/login/")
+    || (contentType.includes("text/html") && !response.ok);
+}
+
 async function warnIfMissingInsttId(input: RequestInfo | URL, init?: TracedFetchOptions) {
   const url = normalizeUrl(input);
   if (!isSameOriginApiRequest(url) || hasInsttIdInRequest(input, init)) {
@@ -171,6 +203,27 @@ export async function tracedFetch(input: RequestInfo | URL, init?: TracedFetchOp
   try {
     await warnIfMissingInsttId(input, init);
     const response = await globalThis.fetch(input, { ...init, headers });
+    if (isSecurityRelevantResponse(response)) {
+      const diagnostic = {
+        url,
+        method: (init?.method || "GET").toUpperCase(),
+        status: response.status,
+        redirected: response.redirected,
+        responseUrl: response.url,
+        contentType: response.headers.get("content-type") || "",
+        csrfHeaderPresent: hasCsrfHeader(headers),
+        requestedWith: headers.get("X-Requested-With") || ""
+      };
+      emitSecurityFetchDiagnostic(diagnostic);
+      publishTelemetryEvent({
+        type: "api_response",
+        apiId: init?.apiId,
+        actionId: init?.actionId,
+        result: "SECURITY_DIAGNOSTIC",
+        durationMs: Date.now() - startedAt,
+        payloadSummary: diagnostic
+      });
+    }
     publishTelemetryEvent({
       type: "api_response",
       apiId: init?.apiId,

@@ -1,5 +1,6 @@
 package egovframework.com.config.security;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egovframe.boot.security.EgovSecurityProperties;
 import org.egovframe.boot.security.bean.EgovAccessDeniedHandler;
 import org.springframework.http.MediaType;
@@ -16,6 +17,7 @@ import java.io.IOException;
 /**
  * Avoid double-forward failures for CSRF-denied JSON requests such as admin login.
  */
+@Slf4j
 public class CarbonetAccessDeniedHandler extends EgovAccessDeniedHandler {
 
     private final String accessDeniedUrl;
@@ -32,15 +34,36 @@ public class CarbonetAccessDeniedHandler extends EgovAccessDeniedHandler {
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
         if (response.isCommitted()) {
+            log.warn("security.access-denied.committed uri={} method={} exception={}",
+                    safeString(request == null ? "" : request.getRequestURI()),
+                    safeString(request == null ? "" : request.getMethod()),
+                    accessDeniedException == null ? "" : accessDeniedException.getClass().getSimpleName());
             return;
         }
 
-        if (isApiRequest(request)) {
-            writeApiResponse(response, isCsrfException(accessDeniedException));
+        boolean csrfDenied = isCsrfException(accessDeniedException);
+        boolean apiRequest = isApiRequest(request);
+        log.warn("security.access-denied uri={} method={} csrf={} api={} session={} requestedWith={} accept={} contentType={} referer={} origin={} csrfHeaderPresent={} exception={}: {}",
+                safeString(request == null ? "" : request.getRequestURI()),
+                safeString(request == null ? "" : request.getMethod()),
+                csrfDenied,
+                apiRequest,
+                safeString(request == null || request.getSession(false) == null ? "" : request.getSession(false).getId()),
+                safeString(request == null ? "" : request.getHeader("X-Requested-With")),
+                safeString(request == null ? "" : request.getHeader("Accept")),
+                safeString(request == null ? "" : request.getContentType()),
+                safeString(request == null ? "" : request.getHeader("Referer")),
+                safeString(request == null ? "" : request.getHeader("Origin")),
+                hasCsrfHeader(request),
+                accessDeniedException == null ? "" : accessDeniedException.getClass().getSimpleName(),
+                safeString(accessDeniedException == null ? "" : accessDeniedException.getMessage()));
+
+        if (apiRequest) {
+            writeApiResponse(response, csrfDenied);
             return;
         }
 
-        String target = isCsrfException(accessDeniedException) ? csrfAccessDeniedUrl : accessDeniedUrl;
+        String target = csrfDenied ? csrfAccessDeniedUrl : accessDeniedUrl;
         if (target.isEmpty()) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);
             return;
@@ -79,6 +102,15 @@ public class CarbonetAccessDeniedHandler extends EgovAccessDeniedHandler {
     private boolean isCsrfException(AccessDeniedException exception) {
         return exception instanceof InvalidCsrfTokenException
                 || exception instanceof MissingCsrfTokenException;
+    }
+
+    private boolean hasCsrfHeader(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        return !safeString(request.getHeader("X-CSRF-TOKEN")).isEmpty()
+                || !safeString(request.getHeader("X-XSRF-TOKEN")).isEmpty()
+                || !safeString(request.getHeader("X-CSRFToken")).isEmpty();
     }
 
     private void writeApiResponse(HttpServletResponse response, boolean csrfDenied) throws IOException {
