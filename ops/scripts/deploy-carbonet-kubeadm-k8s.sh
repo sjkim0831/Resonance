@@ -104,8 +104,8 @@ apply_runtime_config() {
     "routing": {
       "selectorPath": "/projects/${PROJECT_ID}",
       "routePrefix": "/r/${PROJECT_ID}",
-      "externalBaseUrl": "http://192.168.100.73:${SERVICE_NODE_PORT}",
-      "domainHost": "192.168.100.73",
+      "externalBaseUrl": "http://172.16.1.232:${SERVICE_NODE_PORT}",
+      "domainHost": "172.16.1.232",
       "managementPath": "/api/operations/governance/runtime/projects/${PROJECT_ID}",
       "infoPath": "/api/runtime/project-info"
     }
