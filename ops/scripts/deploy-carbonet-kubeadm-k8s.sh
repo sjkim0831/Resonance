@@ -55,7 +55,8 @@ apply_runtime_config() {
     --from-literal=RESONANCE_RUNTIME_MODE=isolated \
     --from-literal=RESONANCE_FRAMEWORK=resonance \
     --from-literal=RESONANCE_PROJECT=carbonet \
-    --from-literal=CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=false \
+    --from-literal=CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=true \
+    --from-literal=CARBONET_REACT_APP_FS_OVERRIDE_PATH=/app/react-app-overlay \
     --from-literal=CARBONET_AI_RECOMMENDATION_ENABLED=false \
     --dry-run=client -o yaml | kubectl apply -f -
 
@@ -243,6 +244,9 @@ spec:
               mountPath: /app/config/manifest.json
               subPath: manifest.json
               readOnly: true
+            - name: react-app-overlay
+              mountPath: /app/react-app-overlay
+              readOnly: true
             - name: tmp
               mountPath: /tmp
           startupProbe:
@@ -279,6 +283,10 @@ spec:
         - name: runtime-manifest
           configMap:
             name: carbonet-runtime-manifest
+        - name: react-app-overlay
+          hostPath:
+            path: /opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app
+            type: DirectoryOrCreate
         - name: tmp
           emptyDir:
             sizeLimit: 2Gi
