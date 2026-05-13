@@ -7,6 +7,21 @@ const resonanceRoot = path.resolve(frontendRoot, "../../..");
 const outputPath = path.join(frontendRoot, "src", "generated", "verificationCenterInventory.json");
 const dynamicMenuCodePageIds = new Set(["repair-workbench"]);
 
+function readExistingGeneratedAt() {
+  if (process.env.CARBONET_VERIFICATION_INVENTORY_GENERATED_AT) {
+    return process.env.CARBONET_VERIFICATION_INVENTORY_GENERATED_AT;
+  }
+  if (!fs.existsSync(outputPath)) {
+    return "1970-01-01T00:00:00.000Z";
+  }
+  try {
+    const current = JSON.parse(fs.readFileSync(outputPath, "utf8"));
+    return current.generatedAt || "1970-01-01T00:00:00.000Z";
+  } catch {
+    return "1970-01-01T00:00:00.000Z";
+  }
+}
+
 function firstExistingPath(paths) {
   return paths.find((candidate) => fs.existsSync(candidate)) || paths[0];
 }
@@ -521,7 +536,7 @@ const highRiskApis = apiInventory
   });
 
 const payload = {
-  generatedAt: new Date().toISOString(),
+  generatedAt: readExistingGeneratedAt(),
   sources: {
     pageManifest: "frontend/src/platform/screen-registry/pageManifests.ts",
     apiMap: "docs/ai/40-backend/controller-service-map.csv",

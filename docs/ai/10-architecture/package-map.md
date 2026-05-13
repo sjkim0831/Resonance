@@ -40,73 +40,85 @@ canonical partial phrase is:
 - `apps/carbonet-app`
   - Domain: executable runtime assembly
   - Responsibility: Spring Boot app packaging, assembly wiring, runtime exclusions, executable delivery
-- `modules/screenbuilder-core`
+- `apps/operations-console`
+  - Domain: operator console
+  - Responsibility: platform operations UI/API runtime assembly
+- `apps/project-runtime`
+  - Domain: thin project runtime
+  - Responsibility: project-specific runtime packaging for local, remote, and Kubernetes deployment
+- `modules/resonance-builder/screenbuilder-core`
   - Domain: builder common core
   - Responsibility: builder contracts, ports, draft lifecycle, runtime-neutral builder services
-- `modules/screenbuilder-runtime-common-adapter`
+- `modules/resonance-builder/screenbuilder-runtime-common-adapter`
   - Domain: builder runtime-common defaults
   - Responsibility: reusable property-backed builder policy adapters
-- `modules/screenbuilder-carbonet-adapter`
+- `modules/resonance-builder/screenbuilder-carbonet-adapter`
   - Domain: Carbonet-specific builder adapter
   - Responsibility: Carbonet menu, authority, route, and runtime bridge wiring for builder flows
 - builder lane close note:
   - these three `modules/screenbuilder-*` lanes are the canonical builder structure source of truth for the current wave
   - remaining legacy root builder paths are transitional only and do not change the canonical ownership answer
-- `modules/platform-*`
+- `modules/resonance-common/platform-*`
   - Domain: reusable platform control-plane families
   - Responsibility: request contracts, service contracts, help, observability, runtime control, version control, and related platform jars
 
-- `src/main/java/egovframework/com/common`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common`
   - Domain: shared backend infrastructure
   - Responsibility: security, filters, interceptors, audit, common services, menu helpers, mapper support
   - Important entry points: common web helpers, menu services, trace and audit utilities
-- `src/main/java/egovframework/com/config`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/config`
   - Domain: runtime configuration
   - Responsibility: Spring MVC, data source, security, filters, web wiring
-- `src/main/java/egovframework/com/feature/admin`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin`
   - Domain: admin business features
   - Responsibility: admin pages, menu management, emission, screen builder, admin workflows
   - Important entry points: `web/`, `service/`, `mapper/`
-- `src/main/java/egovframework/com/feature/auth`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/auth`
   - Domain: authentication and identity
   - Responsibility: login, token, external auth integration, session and identity lookup
-- `src/main/java/egovframework/com/feature/home`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home`
   - Domain: home and mypage
   - Responsibility: public or member-facing home flows and mypage screens
-- `src/main/java/egovframework/com/feature/member`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/member`
   - Domain: membership
   - Responsibility: join, member, company, department, approval-related membership workflows
-- `src/main/java/egovframework/com/framework`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/framework`
   - Domain: full-stack common contract layer
   - Responsibility: builder contract, authority contract, framework metadata, compatibility support, framework-owned support ports, shared framework API response support
   - Rule: project feature code should consume this layer rather than duplicating contract shapes
-- `src/main/java/egovframework/com/platform`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform`
   - Domain: platform-wide operator capabilities
   - Responsibility: Codex console, observability, runtime control, workbench, platform screen builder
   - Rule: treat this root path as transitional where equivalent live ownership is already moving into `modules/platform-*`
+- `projects/carbonet-adapter`
+  - Domain: Carbonet project adapter
+  - Responsibility: project-specific wiring against common/framework ports
+- `projects/carbonet-runtime`
+  - Domain: Carbonet project runtime support
+  - Responsibility: runtime resources and project-specific packaging inputs
 
 ## Frontend Packages
 
-- `frontend/src/app`
+- `projects/carbonet-frontend/source/src/app`
   - Domain: app shell
   - Responsibility: route definitions, page registry, policies, telemetry, bootstrapping
-- `frontend/src/components`
+- `projects/carbonet-frontend/source/src/components`
   - Domain: shared UI
   - Responsibility: reusable cross-feature UI components
-- `frontend/src/features`
+- `projects/carbonet-frontend/source/src/features`
   - Domain: screen-oriented product modules
   - Responsibility: route-level page implementations grouped by business feature
-- `frontend/src/framework`
+- `projects/carbonet-frontend/source/src/framework`
   - Domain: frontend common contract layer
   - Responsibility: normalized builder and authority contracts, contract metadata, registry exports, backend API bridge, framework-owned shared hooks
   - Rule: treat this as the canonical frontend boundary for full-stack contract reuse
-- `frontend/src/lib`
+- `projects/carbonet-frontend/source/src/lib`
   - Domain: frontend infrastructure
   - Responsibility: API clients, auth helpers, shared runtime utilities
-- `frontend/src/platform`
+- `projects/carbonet-frontend/source/src/platform`
   - Domain: governed platform registries
   - Responsibility: page manifests, observability metadata, screen registry types
-- `frontend/src/generated`
+- `projects/carbonet-frontend/source/src/generated`
   - Domain: generated frontend artifacts
   - Responsibility: generated metadata and catalogs
   - Rule: do not hand-edit when an authoritative source exists elsewhere
@@ -114,13 +126,13 @@ canonical partial phrase is:
 ## Contract Boundary
 
 - Canonical backend metadata source:
-  - `src/main/resources/framework/contracts/framework-contract-metadata.json`
+- `modules/resonance-common/carbonet-common-core/src/main/resources/framework/contracts/framework-contract-metadata.json`
 - Canonical frontend contract entry:
-  - `frontend/src/framework/index.ts`
+  - `projects/carbonet-frontend/source/src/framework/index.ts`
 - Canonical frontend contract type barrel:
-  - `frontend/src/framework/contracts/index.ts`
+  - `projects/carbonet-frontend/source/src/framework/contracts/index.ts`
 - Canonical frontend API barrel:
-  - `frontend/src/framework/api/index.ts`
+  - `projects/carbonet-frontend/source/src/framework/api/index.ts`
 
 ## Update Rule
 

@@ -11,18 +11,36 @@ node_modules/
 dist/
 build/
 .vite/
+playwright-report/
+test-results/
+coverage/
+.nyc_output/
 
 # Local Codex runtime
 .codex/
 .codex-state/
+**/.codex-state/
 var/
 backups/
 __pycache__/
+**/__pycache__/
+
+# Local-only backups and scratch files
+*.bak
+*.bak-*
+*.orig
+*.tmp
+*.swp
+*~
+**/src/test.bak/
 
 # Local deployment secrets
 ops/config/*.env
 !ops/config/*.defaults.env
 !ops/config/*.env.example
+ops/config/certs/
+deploy/k8s/**/*.secret.yaml
+!deploy/k8s/**/*.secret.example.yaml
 
 # Java
 *.class

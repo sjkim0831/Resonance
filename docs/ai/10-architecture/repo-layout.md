@@ -37,28 +37,30 @@ Remaining docs-only valid work is only:
 
 Canonical partial phrase is:
 `PARTIAL_DONE: builder resource ownership closure still counts rows 3 and 5 as blockers, rows 1 and 2 now carry bounded DELETE_NOW notes, row 4 now carries a stronger non-blocker note, and unresolved fallback blocker count is <n>.`
-- `apps/carbonet-app`
-  - executable runtime assembly target
+- `apps/`
+  - executable runtime targets: `carbonet-app`, `operations-console`, `project-runtime`
 - `modules`
-  - reusable backend module ownership
-- `src/main/java/egovframework/com/feature`
+  - reusable backend module ownership, grouped by `resonance-common`, `resonance-builder`, `resonance-ops`, and `resonance-observability`
+- `projects/`
+  - project-specific adapters, runtimes, and frontend sources
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature`
   - business controllers, services, domain logic
-- `src/main/java/egovframework/com/common`
+- `modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common`
   - shared infrastructure and reusable backend helpers
-- `src/main/resources/templates/egovframework/com`
+- `modules/resonance-common/carbonet-common-core/src/main/resources/templates/egovframework/com`
   - server-rendered screens and migration shells
-- `src/main/resources/egovframework/mapper`
+- `modules/resonance-common/carbonet-common-core/src/main/resources/egovframework/mapper`
   - MyBatis XML source of truth
-- `frontend/src/features`
+- `projects/carbonet-frontend/source/src/features`
   - React migration screens
-- `frontend/src/platform`
+- `projects/carbonet-frontend/source/src/platform`
   - platform telemetry, screen registry, manifest, and observability metadata
-- `frontend/src/framework`
+- `projects/carbonet-frontend/source/src/framework`
   - shared frontend contract boundary for builder and authority flows
-- `frontend/src/components`
+- `projects/carbonet-frontend/source/src/components`
   - reusable React UI components
   - shared concerns should be split into subfolders such as `access/` and `help/` to reduce multi-session conflicts
-- `frontend/src/lib`
+- `projects/carbonet-frontend/source/src/lib`
   - frontend shared code
   - keep role-based helpers separated by concern such as `api/`, `auth/`, and `navigation/`
 - `docs/ai`
@@ -78,8 +80,8 @@ Canonical partial phrase is:
   - utility scripts and provisioning helpers
 - `docs/sql`
   - SQL artifacts worth checking when a task is DB-related
-- `var/file`
-  - storage area; inspect only if the task is file-handling-related
+- `data`
+  - committed metadata, pattern cards, governance contracts, and small seed data
 
 ## Low-Value Paths For Initial Analysis
 
@@ -87,10 +89,14 @@ Canonical partial phrase is:
   - generated build output
 - `var/logs`
   - runtime artifacts
-- `frontend/node_modules`
+- `projects/carbonet-frontend/source/node_modules`
   - third-party dependencies
-- `src/main/resources/static/react-migration`
-  - built frontend assets, not authoring sources
+- `projects/carbonet-frontend/src/main/resources/static/react-app`
+  - mirrored built frontend assets, not authoring sources
+- `apps/carbonet-app/src/main/resources/static/react-app`
+  - application-packaged built frontend assets, not authoring sources
+- `backups`
+  - local backup artifacts; never use as an architecture source
 
 ## Top-Level Cleanup Rule
 
