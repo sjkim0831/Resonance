@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0",
+  "planId": "minimal-local-llm-pattern-model-plan",
+  "purpose": "Define the smallest practical local LLM setup for Resonance pattern-driven build, redeploy, rollback, verification, and development assistance.",
+  "principle": "Models choose or draft bounded moves; deterministic scripts execute dangerous moves.",
+  "recommendedShape": {
+    "phase1": {
+      "name": "single-router-plus-pattern-registry",
+      "minimumModelClass": "0.5B-0.6B instruct or coder model",
+      "candidateBaseModels": [
+        "Qwen2.5-Coder-0.5B-Instruct for code-pattern routing/drafting experiments",
+        "Qwen3-0.6B for route/classification experiments"
+      ],
+      "allowedStages": [
+        "classify",
+        "pattern-select",
+        "context-pack-summary",
+        "safe-json-draft"
+      ],
+      "forbiddenStages": [
+        "direct-deploy",
+        "direct-rollback",
+        "direct-db-migration",
+        "direct-k8s-apply",
+        "unbounded-code-edit"
+      ]
+    },
+    "phase2": {
+      "name": "specialized-small-drafters",
+      "minimumModelClass": "0.5B for narrow drafts, 3B-4B for route/safety summary",
+      "specialists": [
+        "frontend-krds-page-drafter",
+        "backend-egov-crud-drafter",
+        "db-migration-drafter",
+        "build-redeploy-router",
+        "boundary-security-validator"
+      ],
+      "promotionGate": [
+        "pattern-card coverage exists",
+        "training examples pass deterministic validation",
+        "model output is JSON or diff bounded to selected files",
+        "script verification catches known failure cases"
+      ]
+    }
+  },
+  "alwaysUseThrough": [
+    "data/ai-runtime/pattern-card-registry.sqlite",
+    "data/ai-runtime/deterministic-route-map.json",
+    "data/ai-runtime/deterministic-agent-policy.json",
+    "ops/scripts/init-pattern-card-db.py"
+  ],
+  "buildRedeployOperationPolicy": {
+    "modelMayDo": [
+      "choose patternId",
+      "choose allowed script from pattern card",
+      "summarize required inputs",
+      "draft release or migration metadata",
+      "summarize verification output"
+    ],
+    "modelMustNotDo": [
+      "execute deploy",
+      "execute rollback",
+      "execute DB migration",
+      "execute k8s apply",
+      "bypass backup gate",
+      "edit runtime manifests without verification"
+    ],
+    "scriptOnlyOperations": [
+      "deploy",
+      "backup",
+      "rollback",
+      "restart",
+      "k8s apply",
+      "db migration"
+    ]
+  },
+  "loopBudget": {
+    "fastLocalTargetSeconds": 1,
+    "maxAttemptsPerPattern": 3,
+    "maxDangerousOperationAttempts": 1,
+    "stopOn": [
+      "security gate fail",
+      "boundary gate fail",
+      "missing rollback path",
+      "unresolved route map",
+      "verification command unavailable"
+    ]
+  },
+  "trainingDataShape": {
+    "input": [
+      "user_intent",
+      "changed_files",
+      "route_map_excerpt",
+      "pattern_card_excerpt"
+    ],
+    "output": [
+      "patternId",
+      "zone",
+      "risk",
+      "selectedFiles",
+      "allowedScript",
+      "verificationGate",
+      "rollbackNote",
+      "refusalReasonWhenUnsafe"
+    ]
+  }
+}

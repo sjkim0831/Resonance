@@ -71,9 +71,6 @@
                             ),
                             (SELECT G.GROUP_ID FROM COMTNGNRLMBER G WHERE G.MBER_ID = USER_ID)
                         )
-                        <if test="projectId != null and projectId != ''">
-                          AND I.PROJECT_ID = #{projectId}
-                        </if>
                     ), '')) LIKE '%' || LOWER(#{searchKeyword}) || '%'
                 )
             </if>
@@ -136,9 +133,6 @@
                         ),
                         (SELECT G.GROUP_ID FROM COMTNGNRLMBER G WHERE G.MBER_ID = USER_ID)
                     )
-                    <if test="projectId != null and projectId != ''">
-                        AND I.PROJECT_ID = #{projectId}
-                    </if>
                 ),
                 ''
             ) AS companyName

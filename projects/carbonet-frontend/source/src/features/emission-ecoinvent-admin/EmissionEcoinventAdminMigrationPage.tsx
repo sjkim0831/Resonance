@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  fetchEcoinventDatasets,
+  fetchEcoinventDatasetPage,
+  fetchEcoinventFilterOptions,
   importAllEcoinventDatasets,
   importSelectedEcoinventDatasets,
+  premapEcoinventKoreanAliases,
   saveEcoinventMapping
 } from "../../lib/api/emission";
 import type { EcoinventDatasetRow } from "../../lib/api/emissionTypes";
@@ -26,9 +28,44 @@ function formatScore(value: unknown) {
   return Number.isFinite(parsed) ? parsed.toLocaleString(undefined, { maximumFractionDigits: 8 }) : "-";
 }
 
+function detailValue(row: EcoinventDatasetRow | null, key: keyof EcoinventDatasetRow) {
+  return row ? textOf(row[key]) || "-" : "-";
+}
+
+const FILTER_FIELDS = [
+  ["productName", "Product"],
+  ["activityName", "Activity"],
+  ["geography", "Geography"],
+  ["activityType", "Activity Type"],
+  ["timePeriod", "Time Period"],
+  ["referenceProductUnit", "Reference Unit"],
+  ["indicatorName", "Indicator"]
+] as const;
+
+const KEYWORD_SUGGESTION_FIELDS = [
+  ["productName", "Product"],
+  ["activityName", "Activity"],
+  ["geography", "Geography"],
+  ["activityType", "Type"],
+  ["timePeriod", "Period"],
+  ["referenceProductUnit", "Unit"],
+  ["indicatorName", "Indicator"],
+  ["unit", "Score Unit"],
+  ["scoreUnit", "Score Unit"],
+  ["version", "Version"]
+] as const;
+
 export function EmissionEcoinventAdminMigrationPage() {
   const en = isEnglish();
   const [keyword, setKeyword] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({});
+  const [minScore, setMinScore] = useState("");
+  const [maxScore, setMaxScore] = useState("");
+  const [pageIndex, setPageIndex] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [rows, setRows] = useState<EcoinventDatasetRow[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selectedRow, setSelectedRow] = useState<EcoinventDatasetRow | null>(null);
@@ -39,13 +76,40 @@ export function EmissionEcoinventAdminMigrationPage() {
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  const keywordSuggestions = useMemo(() => {
+    const seen = new Set<string>();
+    const suggestions: Array<{ label: string; value: string }> = [];
+    for (const [key, label] of KEYWORD_SUGGESTION_FIELDS) {
+      for (const value of filterOptions[key] ?? []) {
+        const normalized = value.trim();
+        const dedupeKey = normalized.toLocaleLowerCase();
+        if (!normalized || seen.has(dedupeKey)) {
+          continue;
+        }
+        seen.add(dedupeKey);
+        suggestions.push({ label, value: normalized });
+      }
+    }
+    return suggestions.slice(0, 500);
+  }, [filterOptions]);
+
   async function loadLocal(nextKeyword = keyword) {
     setLoading(true);
     setErrorMessage("");
     try {
-      const data = await fetchEcoinventDatasets({ keyword: nextKeyword });
+      const response = await fetchEcoinventDatasetPage({
+        keyword: nextKeyword,
+        ...filters,
+        minScore,
+        maxScore,
+        pageIndex,
+        pageSize
+      });
+      const data = response.data ?? [];
       setRows(data);
-      setMessage(`저장 목록 ${data.length}건을 불러왔습니다.`);
+      setTotalCount(response.totalCount ?? data.length);
+      setTotalPages(response.totalPages ?? 1);
+      setMessage(`저장 목록 ${response.totalCount ?? data.length}건 중 ${data.length}건을 불러왔습니다.`);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "저장 목록을 불러오지 못했습니다.");
     } finally {
@@ -57,19 +121,13 @@ export function EmissionEcoinventAdminMigrationPage() {
     void loadLocal("");
   }, []);
 
-  async function searchRemote() {
-    setLoading(true);
-    setErrorMessage("");
-    try {
-      const data = await fetchEcoinventDatasets({ keyword, remote: true });
-      setRows(data);
-      setMessage(`ecoinvent API 검색 결과 ${data.length}건을 불러왔습니다.`);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "ecoinvent API 검색에 실패했습니다.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    void loadLocal(keyword);
+  }, [pageIndex, pageSize]);
+
+  useEffect(() => {
+    void fetchEcoinventFilterOptions(keyword).then(setFilterOptions).catch(() => setFilterOptions({}));
+  }, [keyword]);
 
   async function importSelected() {
     if (selectedIds.length === 0) {
@@ -99,6 +157,21 @@ export function EmissionEcoinventAdminMigrationPage() {
       await loadLocal(keyword);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "ecoinvent 전체 가져오기에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function premapKoreanAliases() {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const response = await premapEcoinventKoreanAliases();
+      const data = response.data || {};
+      setMessage(response.message || `한글 alias ${data.aliasCount ?? 0}건 중 신규 매핑 ${data.insertedCount ?? 0}건을 저장했습니다.`);
+      await loadLocal(keyword);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "한글 매핑 사전 생성에 실패했습니다.");
     } finally {
       setLoading(false);
     }
@@ -144,6 +217,19 @@ export function EmissionEcoinventAdminMigrationPage() {
     }
   }
 
+  function setFilterValue(key: string, value: string) {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPageIndex(1);
+  }
+
+  function clearFilters() {
+    setKeyword("");
+    setFilters({});
+    setMinScore("");
+    setMaxScore("");
+    setPageIndex(1);
+  }
+
   return (
     <AdminPageShell
       breadcrumbs={[
@@ -165,18 +251,69 @@ export function EmissionEcoinventAdminMigrationPage() {
             title={<span>데이터셋 검색 및 저장</span>}
             actions={(
               <div className="flex flex-wrap justify-end gap-2">
-                <MemberButton disabled={loading} onClick={searchRemote} type="button" variant="secondary">ecoinvent 검색</MemberButton>
                 <MemberButton disabled={loading} onClick={importSelected} type="button" variant="secondary">선택 저장</MemberButton>
-                <MemberButton disabled={loading} onClick={importAll} type="button" variant="primary">ecoinvent 전체 가져오기</MemberButton>
+                <MemberButton disabled={loading} onClick={importAll} type="button" variant="primary">ecoinvent API 배치 가져오기</MemberButton>
+                <MemberButton disabled={loading} onClick={premapKoreanAliases} type="button" variant="secondary">전체 한글 매핑 사전 생성</MemberButton>
                 <MemberButton disabled={loading} onClick={() => void loadLocal(keyword)} type="button" variant="secondary">저장 목록 출력</MemberButton>
               </div>
             )}
           />
           <div className="mt-4">
-            <AdminInput onChange={(event) => setKeyword(event.target.value)} placeholder="영문 물질명, activity, product 검색" value={keyword} />
+            <AdminInput
+              list="ecoinvent-keyword-suggestions"
+              onChange={(event) => { setKeyword(event.target.value); setPageIndex(1); }}
+              placeholder="Product, Activity, Geography, Type, Period, Unit, Indicator 검색"
+              value={keyword}
+            />
+            <datalist id="ecoinvent-keyword-suggestions">
+              {keywordSuggestions.map((option) => (
+                <option key={`${option.label}:${option.value}`} label={option.label} value={option.value} />
+              ))}
+            </datalist>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            {FILTER_FIELDS.map(([key, label]) => (
+              <label className="text-sm font-bold text-slate-700" key={key}>
+                <span className="mb-1 block">{label}</span>
+                <input
+                  className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
+                  list={`ecoinvent-filter-${key}`}
+                  onChange={(event) => setFilterValue(key, event.target.value)}
+                  placeholder={`${label} 선택/검색`}
+                  value={filters[key] ?? ""}
+                />
+                <datalist id={`ecoinvent-filter-${key}`}>
+                  {(filterOptions[key] ?? []).map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
+              </label>
+            ))}
+            <AdminInput onChange={(event) => { setMinScore(event.target.value); setPageIndex(1); }} placeholder="최소 배출계수" value={minScore} />
+            <AdminInput onChange={(event) => { setMaxScore(event.target.value); setPageIndex(1); }} placeholder="최대 배출계수" value={maxScore} />
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <span>총 {totalCount.toLocaleString()}건</span>
+              <span>페이지 {pageIndex.toLocaleString()} / {Math.max(totalPages, 1).toLocaleString()}</span>
+              <select
+                className="h-9 rounded-lg border border-slate-300 px-2"
+                onChange={(event) => { setPageSize(Number(event.target.value)); setPageIndex(1); }}
+                value={pageSize}
+              >
+                <option value={50}>50개</option>
+                <option value={100}>100개</option>
+              </select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <MemberButton disabled={loading || pageIndex <= 1} onClick={() => setPageIndex((current) => Math.max(current - 1, 1))} type="button" variant="secondary">이전</MemberButton>
+              <MemberButton disabled={loading || pageIndex >= Math.max(totalPages, 1)} onClick={() => setPageIndex((current) => current + 1)} type="button" variant="secondary">다음</MemberButton>
+              <MemberButton disabled={loading} onClick={() => void loadLocal(keyword)} type="button" variant="secondary">현재 조건 검색</MemberButton>
+              <MemberButton disabled={loading} onClick={clearFilters} type="button" variant="secondary">조건 초기화</MemberButton>
+            </div>
           </div>
           <p className="mt-3 text-sm text-[var(--kr-gov-text-secondary)]">
-            저장된 전체 데이터셋을 출력하고, 행을 선택해 한글 물질명을 매핑합니다. 설문 관리 화면은 이 매핑을 기준으로 물질명 드롭다운을 보여줍니다.
+            검색은 항상 DB에 저장된 데이터셋만 대상으로 수행합니다. ecoinvent API는 배치 가져오기/상세 보강 작업에만 사용합니다.
           </p>
           <div className="mt-5 overflow-auto rounded-[var(--kr-gov-radius)] border border-slate-200">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -187,13 +324,16 @@ export function EmissionEcoinventAdminMigrationPage() {
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3">Activity</th>
                   <th className="px-4 py-3">Geography</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Period</th>
                   <th className="px-4 py-3">Unit</th>
+                  <th className="px-4 py-3">Indicator</th>
                   <th className="px-4 py-3">Score</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.length === 0 ? (
-                  <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={7}>데이터셋이 없습니다.</td></tr>
+                  <tr><td className="px-4 py-8 text-center text-slate-500" colSpan={10}>데이터셋이 없습니다.</td></tr>
                 ) : rows.map((row) => {
                   const datasetId = numberOf(row.datasetId);
                   return (
@@ -209,7 +349,10 @@ export function EmissionEcoinventAdminMigrationPage() {
                       <td className="px-4 py-3 font-bold">{textOf(row.productName) || "-"}</td>
                       <td className="px-4 py-3">{textOf(row.activityName) || "-"}</td>
                       <td className="px-4 py-3">{textOf(row.geography) || "-"}</td>
+                      <td className="px-4 py-3">{textOf(row.activityType) || "-"}</td>
+                      <td className="px-4 py-3">{textOf(row.timePeriod) || "-"}</td>
                       <td className="px-4 py-3">{textOf(row.referenceProductUnit) || "-"}</td>
+                      <td className="px-4 py-3">{textOf(row.indicatorName) || "-"}</td>
                       <td className="px-4 py-3">{formatScore(row.score)}</td>
                     </tr>
                   );
@@ -230,6 +373,29 @@ export function EmissionEcoinventAdminMigrationPage() {
           <p className="mt-3 text-sm text-[var(--kr-gov-text-secondary)]">
             선택 데이터셋: {selectedRow ? `${textOf(selectedRow.productName)} / ${textOf(selectedRow.activityName)}` : "선택 안 됨"}
           </p>
+          {selectedRow ? (
+            <div className="mt-5 rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-black text-slate-700">선택 데이터셋 기본 필드</h3>
+              <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
+                {[
+                  ["Dataset ID", detailValue(selectedRow, "datasetId")],
+                  ["Product", detailValue(selectedRow, "productName")],
+                  ["Activity", detailValue(selectedRow, "activityName")],
+                  ["Geography", detailValue(selectedRow, "geography")],
+                  ["Activity Type", detailValue(selectedRow, "activityType")],
+                  ["Time Period", detailValue(selectedRow, "timePeriod")],
+                  ["Reference Unit", detailValue(selectedRow, "referenceProductUnit")],
+                  ["Indicator", detailValue(selectedRow, "indicatorName")],
+                  ["Score", formatScore(selectedRow.score)]
+                ].map(([label, value]) => (
+                  <div className="rounded-lg bg-white p-3" key={label}>
+                    <div className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</div>
+                    <div className="mt-1 break-words text-slate-800">{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       </AdminWorkspacePageFrame>
     </AdminPageShell>

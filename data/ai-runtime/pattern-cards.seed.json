@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "1.0",
+  "cards": [
+    {
+      "schemaVersion": "1.0",
+      "patternId": "frontend.krds.admin-page",
+      "title": "KRDS Admin Page Pattern",
+      "layer": "project-carbonet",
+      "languages": [
+        "tsx",
+        "typescript"
+      ],
+      "purpose": "Create or extend a KRDS-styled Carbonet admin page using existing route families, shared page shells, API clients, and theme tokens.",
+      "inputs": [
+        "menuId",
+        "routePath",
+        "pageTitle",
+        "apiEndpoint",
+        "themeFamily"
+      ],
+      "readFirst": [
+        "projects/carbonet-frontend/source/src/app/routes/families/adminSystemFamily.ts",
+        "projects/carbonet-frontend/source/src/app/routes/routeCatalog.ts",
+        "projects/carbonet-frontend/source/src/features/admin-entry/AdminPageShell.tsx",
+        "projects/carbonet-frontend/source/src/lib/api/platform.ts",
+        "projects/carbonet-frontend/source/src/lib/api/platformTypes.ts"
+      ],
+      "allowedOutputs": [
+        "new feature page component",
+        "route catalog entry",
+        "route family entry",
+        "API type extension"
+      ],
+      "forbidden": [
+        "new global design system",
+        "direct auth bypass",
+        "common component rewrite",
+        "hard-coded permission override"
+      ],
+      "verification": [
+        "frontend typecheck or build",
+        "route smoke",
+        "visual screenshot when UI changed"
+      ],
+      "risk": "medium",
+      "modelRole": "draft",
+      "notes": "Use after the theme and menu contract are known."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "backend.egov.crud-chain",
+      "title": "eGovFrame Backend CRUD Chain Pattern",
+      "layer": "common-framework",
+      "languages": [
+        "java",
+        "xml",
+        "sql"
+      ],
+      "purpose": "Add a standard controller, service, service implementation, mapper interface, mapper XML, DTO or VO chain without crossing common/project boundaries.",
+      "inputs": [
+        "capabilityId",
+        "resourceName",
+        "requestDto",
+        "responseDto",
+        "mapperNamespace",
+        "scopeRule"
+      ],
+      "readFirst": [
+        "docs/authority-api-review.md",
+        "modules/resonance-common",
+        "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/config/security"
+      ],
+      "allowedOutputs": [
+        "controller method",
+        "service method",
+        "service implementation method",
+        "mapper interface method",
+        "mapper XML statement",
+        "DTO or VO class"
+      ],
+      "forbidden": [
+        "project-specific import in common",
+        "second permission engine",
+        "raw SQL outside mapper or migration path",
+        "unscoped admin endpoint"
+      ],
+      "verification": [
+        "targeted Maven compile",
+        "mapper XML parse or smoke",
+        "authority/scope gate review"
+      ],
+      "risk": "high",
+      "modelRole": "draft",
+      "notes": "Backend drafts must be reviewed by boundary and security validators."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "db.migration.rollback",
+      "title": "DB Migration And Rollback Pattern",
+      "layer": "operations-platform",
+      "languages": [
+        "sql",
+        "shell",
+        "json"
+      ],
+      "purpose": "Prepare database migration SQL, rollback SQL, manifest metadata, and execution through the governed project migration wrapper.",
+      "inputs": [
+        "projectId",
+        "changeId",
+        "ddlSql",
+        "dmlSql",
+        "rollbackSql",
+        "verificationQuery"
+      ],
+      "readFirst": [
+        "ops/scripts/apply-project-db-migration.sh",
+        "manifests/project-package-manifest.example.yaml",
+        "data/version-control/project-runtime-manifest.json"
+      ],
+      "allowedOutputs": [
+        "migration SQL",
+        "rollback SQL",
+        "release manifest entry",
+        "verification query"
+      ],
+      "forbidden": [
+        "raw csql migration execution",
+        "migration without rollback SQL",
+        "DDL without backup gate",
+        "unrecorded DB_MIGRATION_HISTORY change"
+      ],
+      "verification": [
+        "migration dry-run where available",
+        "rollback SQL review",
+        "DB_MIGRATION_HISTORY recording check"
+      ],
+      "risk": "master-only",
+      "modelRole": "draft",
+      "notes": "Models may draft migration artifacts only; scripts execute them."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "adapter.project-common-bridge",
+      "title": "Project/Common Adapter Bridge Pattern",
+      "layer": "project-carbonet",
+      "languages": [
+        "java",
+        "yaml",
+        "json"
+      ],
+      "purpose": "Bind project-specific behavior to common contracts through adapters so framework upgrades do not force direct common/project coupling.",
+      "inputs": [
+        "contractId",
+        "projectId",
+        "adapterClass",
+        "capabilityId",
+        "fallbackPolicy"
+      ],
+      "readFirst": [
+        "docs/resonance-carbonet-boundary-matrix.md",
+        "projects/carbonet-adapter",
+        "adapters/resonance-common-adapter",
+        "package-sets/projects/carbonet-package-set.example.yaml"
+      ],
+      "allowedOutputs": [
+        "adapter class",
+        "adapter configuration",
+        "package-set binding",
+        "contract version note"
+      ],
+      "forbidden": [
+        "project direct import into common",
+        "common direct dependency on project runtime",
+        "silent fallback without contract note",
+        "adapter ownership ambiguity"
+      ],
+      "verification": [
+        "boundary audit",
+        "targeted Maven compile",
+        "package-set verification"
+      ],
+      "risk": "high",
+      "modelRole": "draft",
+      "notes": "This is the main upgrade-safety pattern for Resonance."
+    }
+  ]
+}

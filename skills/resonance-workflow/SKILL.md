@@ -11,8 +11,9 @@ Startup context:
 1. Read data/ai-runtime/deterministic-route-map.json.
 2. Read data/ai-runtime/agent-stage-model-matrix.json.
 3. Read docs/agent/deterministic-3b-agent-playbook.md.
-4. Classify the work into operations, common, project, or builder.
-5. Select exact files before reading broadly.
+4. Query data/ai-runtime/pattern-card-registry.sqlite through ops/scripts/query-pattern-card-db.py when a development, build, deploy, recovery, RAG, skill, or harness pattern is involved.
+5. Classify the work into operations, common, project, or builder.
+6. Select exact files before reading broadly.
 
 Layer boundaries:
 
@@ -20,6 +21,18 @@ Layer boundaries:
 - Common framework is the jetpack. It owns reusable jars, authority and scope foundation, contracts, web support, mapper infra, builder core, and standard framework update absorption.
 - Carbonet project is the rocket. It owns thin project-specific pages, project adapter bindings, project config, and project runtime package selection.
 - Builder is the launch factory. It owns screen builder, component builder, theme management, scaffolding, and project package generation.
+
+Pattern-card workflow:
+
+- Treat pattern cards as the opening book for local LLM work.
+- Use `python3 ops/scripts/query-pattern-card-db.py --keyword <intent>` or exact `--pattern-id <id>` before routing model work.
+- If no pattern card fits, create or refine a card first, then update the DB with `python3 ops/scripts/init-pattern-card-db.py`.
+- Micro-pattern cards are the lowest reusable move: controller method, DTO, mapper XML statement, React form, route entry, DB index, script wrapper, probe recovery, RAG route, or skill rule.
+- Local models may select a pattern, draft bounded output, and summarize verification. They must not execute deploy, rollback, k8s apply, backup, restart, or DB migration.
+- Hermes smoke requires the pattern-card registry to remain populated; run `bash ops/scripts/run-hermes-rag-smoke.sh` after pattern, RAG, route-map, harness, or skill changes.
+- Local model runners must use the `route_model -> harness -> shell` sequence. Harness policy changes, live Kubernetes deploys, and new dangerous task types require Codex/approval escalation.
+- Kubernetes redeploy harnesses must default to dry-run and keep the fixed stage order: preflight -> build -> push -> set_image -> rollout_status -> verify. Live deploy requires both `--live` and `--approved`.
+- Skills/docs QA should prefer local RAG/search before broad context loading or fine-tuning. Answers must include source paths and confidence, and any generated implementation plan must stay minimal, verified, and approval-gated for mutations.
 
 Read budgets:
 
@@ -56,6 +69,8 @@ Ollama, vLLM, and 3B agent work:
 - Deterministic scripts must perform deploy, backup, rollback, k8s apply, and DB migration.
 - DB schema/data deployment SQL must always go through `bash ops/scripts/apply-project-db-migration.sh <PROJECT_ID> [RELEASE_DIR]` or a wrapper that records `DB_MIGRATION_HISTORY`; never apply DDL/DML migration SQL with raw `csql` alone.
 - For local Carbonet Kubernetes reflection, always use `bash ops/scripts/restart-local-carbonet-k8s.sh` from `/opt/Resonance` instead of manual Maven, Docker, `kubectl set image`, or ad hoc port-forward steps.
+- For local Carbonet Kubernetes frontend-only changes, always prefer `CARBONET_NODE_HEAP_MB=4096 bash ops/scripts/restart-local-carbonet-frontend-fast.sh` first. It rebuilds React and copies the bundle into the running pod filesystem override without Maven, Docker, image load, or rollout. Use the full k8s restart only when backend/JAR/config/image changes are involved, or when the fast script says the filesystem override is not active.
+- If React assets are already built and only need to be recopied into the running local k8s pod, use `SKIP_FRONTEND_BUILD=true bash ops/scripts/restart-local-carbonet-frontend-fast.sh`.
 - If only the already-built local Kubernetes runtime needs to be reattached or verified, use `SKIP_FRONTEND=true SKIP_IMAGE_BUILD=true bash ops/scripts/restart-local-carbonet-k8s.sh`.
 - If a route cannot be resolved from maps, return NEEDS_ROUTE_MAP instead of scanning the repository.
 - Never use vLLM or a larger model to expand the read budget; use it only to improve reasoning over an already capped context pack.

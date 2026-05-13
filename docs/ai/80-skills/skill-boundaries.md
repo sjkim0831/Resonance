@@ -190,3 +190,11 @@ Default session rule:
   - `carbonet-ai-session-orchestrator` -> `carbonet-react-refresh-consistency`
 - Infrastructure topology or runtime resource planning:
   - `carbonet-ai-session-orchestrator` -> `carbonet-runtime-topology-ops`
+# Pattern Card Boundary
+
+- Pattern cards are routing and governance artifacts, not permission to mutate runtime systems.
+- `builder-system` cards may draft schemas, component slots, themes, and scaffolds, but project business logic stays outside builder core.
+- `operations-platform` cards may select governed scripts and summarize verification; deploy, backup, rollback, restart, k8s apply, and DB migration remain script-only.
+- `common-framework` cards may draft reusable Java, mapper, DTO, security, and adapter-port changes without project imports.
+- `project-carbonet` cards may draft thin project pages, route entries, package bindings, and project adapter bindings without common/project direct coupling.
+- If a request crosses more than one board, route through the pattern registry first and split waves when selected files exceed the implementation cap.

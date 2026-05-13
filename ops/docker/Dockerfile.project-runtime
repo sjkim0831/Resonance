@@ -14,6 +14,7 @@ WORKDIR /app
 # Copy the assembled release files into the container
 # This assumes the build context is var/releases/[PROJECT_ID]
 COPY project-runtime.jar /app/
+COPY lib/ /app/lib/
 
 COPY ops/config/ /app/config/
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-04-27T14:15:00+09:00",
+  "generatedAt": "2026-05-13T00:46:28.2684375+09:00",
   "canonicalRoot": "/opt/Resonance",
   "purpose": "Bounded RAG context pack for Hermes and deterministic 3B agents. Use this before model calls; do not scan the whole repository.",
   "clusterState": {
@@ -12,14 +12,14 @@
       "resonance-ops",
       "carbonet-prod"
     ],
-    "workloadStatus": "operations-console is Running 1/1 in resonance-ops; carbonet-runtime is Running 2/2 in carbonet-prod.",
+    "workloadStatus": "operations-console is Running 1/1 in resonance-ops; carbonet-runtime is Running 1/1 in carbonet-prod.",
     "services": [
       {
         "name": "operations-console",
         "namespace": "resonance-ops",
         "type": "ClusterIP",
         "port": 80,
-        "image": "registry.local/operations-console:2026.04.27-opsfix8",
+        "image": "registry.local/operations-console:2026.05.11-java-fix-v5",
         "status": "Running 1/1"
       },
       {
@@ -27,8 +27,8 @@
         "namespace": "carbonet-prod",
         "type": "ClusterIP",
         "port": 80,
-        "image": "registry.local/carbonet-runtime:2026.04.26",
-        "status": "Running 2/2",
+        "image": "registry.local/carbonet-runtime:2026.05.12-235223-local",
+        "status": "Running 1/1",
         "health": "UP"
       }
     ]
@@ -140,6 +140,46 @@
         "docs/agent/deterministic-3b-agent-playbook.md",
         "skills/resonance-workflow/SKILL.md"
       ]
+    },
+    {
+      "id": "pattern-card-registry",
+      "zone": "operations-platform",
+      "status": "micro-taxonomy-ready",
+      "summary": "Resonance development is now routed through pattern cards covering builder, operations, common, project, adapter, Java, React, DB, Kubernetes recovery, WSL-to-Ubuntu reflection, RAG, skills, and harness gates.",
+      "readFirst": [
+        "data/ai-runtime/pattern-card.schema.json",
+        "data/ai-runtime/pattern-card-registry.sqlite",
+        "data/ai-runtime/pattern-cards.seed.json",
+        "data/ai-runtime/pattern-cards.resonance-core.json",
+        "data/ai-runtime/pattern-cards.micro-taxonomy.json",
+        "data/ai-runtime/pattern-cards.build-redeploy.json",
+        "data/ai-runtime/pattern-cards.k8s-self-healing.json",
+        "data/ai-runtime/pattern-cards.k8s-runtime-transfer.json",
+        "data/ai-runtime/pattern-cards.local-model-harness.json",
+        "data/ai-runtime/pattern-cards.docs-ai-rag.json",
+        "ops/scripts/init-pattern-card-db.py",
+        "ops/scripts/query-pattern-card-db.py",
+        "ops/scripts/run-hermes-rag-smoke.sh",
+        "skills/resonance-workflow/SKILL.md"
+      ]
+    },
+    {
+      "id": "krds-theme-frontend",
+      "zone": "builder-system",
+      "status": "rag-index-ready",
+      "summary": "Use KRDS as the primary design reference for public home screens and as a KRDS-compatible token/component reference for admin screens.",
+      "readFirst": [
+        "data/design-references/krds/krds-rag-manifest.md",
+        "data/design-references/krds/krds-frontend-policy.md",
+        "data/design-references/krds/krds-reference-map.md",
+        "/opt/reference/krds-uiux-main/README.md",
+        "/opt/reference/krds-uiux-main/tokens/transformed_tokens.json",
+        "/opt/reference/krds-uiux-main/resources/scss/common/_root.scss",
+        "/opt/reference/krds-uiux-main/html/code/header.html",
+        "/opt/reference/krds-uiux-main/html/code/table.html",
+        "docs_ai.py",
+        "data/ai-runtime/docs_ai.sqlite3"
+      ]
     }
   ],
   "dangerousOperationPolicy": {
@@ -184,7 +224,10 @@
     "Promote passing verification-only closeouts to non-mutating memory candidates with ops/scripts/promote-hermes-closeout-memory.sh before any RAG context update.",
     "Render and validate memory patch review packets with ops/scripts/render-hermes-memory-patch-review.sh and ops/scripts/validate-hermes-memory-patch-review.sh before proposing context-pack or route-map edits.",
     "Run Hermes/RAG checks against the service layer before giving agents deploy, rollback, restart, backup, or DB migration authority.",
+    "Query data/ai-runtime/pattern-card-registry.sqlite through ops/scripts/query-pattern-card-db.py before model routing or implementation.",
+    "Keep pattern-card registry coverage above the Hermes smoke threshold before accepting new local model or RAG changes.",
     "Use RUN_MODEL_GATE=true MODEL=gemma3:4b bash ops/scripts/run-hermes-rag-smoke.sh when local Ollama safety and route behavior must be revalidated.",
-    "Use this RAG context pack as Hermes' opening book."
+    "Use this RAG context pack as Hermes' opening book.",
+    "For KRDS, start with data/design-references/krds/krds-reference-map.md before reading component examples."
   ]
 }

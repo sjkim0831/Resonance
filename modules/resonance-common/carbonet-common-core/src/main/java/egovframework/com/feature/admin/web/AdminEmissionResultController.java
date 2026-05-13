@@ -81,9 +81,7 @@ public class AdminEmissionResultController {
         boolean isEn = adminReactRouteSupport.isEnglishRequest(request, locale);
         primeCsrfToken(request);
         Map<String, Object> response = adminShellBootstrapPageService.buildEmissionResultDetailPageData(resultId, isEn);
-        return Boolean.TRUE.equals(response.get("found"))
-                ? ResponseEntity.ok(response)
-                : ResponseEntity.status(jakarta.servlet.http.HttpServletResponse.SC_NOT_FOUND).body(response);
+        return ResponseEntity.ok(response);
     }
 
     private void primeCsrfToken(HttpServletRequest request) {

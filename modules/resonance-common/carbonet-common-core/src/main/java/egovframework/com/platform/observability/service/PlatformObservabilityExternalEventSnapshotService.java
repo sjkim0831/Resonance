@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -21,28 +22,49 @@ public class PlatformObservabilityExternalEventSnapshotService {
     private final ObservabilityQueryService observabilityQueryService;
 
     public ExternalEventSnapshot loadSnapshot() {
-        AccessEventSearchVO accessSearch = new AccessEventSearchVO();
-        accessSearch.setFirstIndex(0);
-        accessSearch.setRecordCountPerPage(150);
-        List<AccessEventRecordVO> accessEvents = observabilityQueryService.selectAccessEventList(accessSearch).stream()
-                .filter(this::isIntegrationAccessEvent)
-                .collect(Collectors.toList());
+        return new ExternalEventSnapshot(
+                loadAccessEvents(),
+                loadErrorEvents(),
+                loadTraceEvents());
+    }
 
-        ErrorEventSearchVO errorSearch = new ErrorEventSearchVO();
-        errorSearch.setFirstIndex(0);
-        errorSearch.setRecordCountPerPage(80);
-        List<ErrorEventRecordVO> errorEvents = observabilityQueryService.selectErrorEventList(errorSearch).stream()
-                .filter(this::isIntegrationErrorEvent)
-                .collect(Collectors.toList());
+    private List<AccessEventRecordVO> loadAccessEvents() {
+        try {
+            AccessEventSearchVO accessSearch = new AccessEventSearchVO();
+            accessSearch.setFirstIndex(0);
+            accessSearch.setRecordCountPerPage(150);
+            return observabilityQueryService.selectAccessEventList(accessSearch).stream()
+                    .filter(this::isIntegrationAccessEvent)
+                    .collect(Collectors.toList());
+        } catch (RuntimeException ex) {
+            return Collections.emptyList();
+        }
+    }
 
-        TraceEventSearchVO traceSearch = new TraceEventSearchVO();
-        traceSearch.setFirstIndex(0);
-        traceSearch.setRecordCountPerPage(120);
-        List<TraceEventRecordVO> traceEvents = observabilityQueryService.selectTraceEventList(traceSearch).stream()
-                .filter(this::isIntegrationTraceEvent)
-                .collect(Collectors.toList());
+    private List<ErrorEventRecordVO> loadErrorEvents() {
+        try {
+            ErrorEventSearchVO errorSearch = new ErrorEventSearchVO();
+            errorSearch.setFirstIndex(0);
+            errorSearch.setRecordCountPerPage(80);
+            return observabilityQueryService.selectErrorEventList(errorSearch).stream()
+                    .filter(this::isIntegrationErrorEvent)
+                    .collect(Collectors.toList());
+        } catch (RuntimeException ex) {
+            return Collections.emptyList();
+        }
+    }
 
-        return new ExternalEventSnapshot(accessEvents, errorEvents, traceEvents);
+    private List<TraceEventRecordVO> loadTraceEvents() {
+        try {
+            TraceEventSearchVO traceSearch = new TraceEventSearchVO();
+            traceSearch.setFirstIndex(0);
+            traceSearch.setRecordCountPerPage(120);
+            return observabilityQueryService.selectTraceEventList(traceSearch).stream()
+                    .filter(this::isIntegrationTraceEvent)
+                    .collect(Collectors.toList());
+        } catch (RuntimeException ex) {
+            return Collections.emptyList();
+        }
     }
 
     private boolean isIntegrationAccessEvent(AccessEventRecordVO item) {

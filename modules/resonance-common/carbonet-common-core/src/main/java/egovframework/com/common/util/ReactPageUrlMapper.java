@@ -94,6 +94,7 @@ public final class ReactPageUrlMapper {
         registerAdmin(adminPathToRoute, adminRouteToPath, "sensor-add", "/admin/monitoring/sensor_add", "/admin/monitoring/sensor_add");
         registerAdmin(adminPathToRoute, adminRouteToPath, "sensor-edit", "/admin/monitoring/sensor_edit", "/admin/monitoring/sensor_edit");
         registerAdmin(adminPathToRoute, adminRouteToPath, "sensor-list", "/admin/monitoring/sensor_list", "/admin/monitoring/sensor_list");
+        registerAdmin(adminPathToRoute, adminRouteToPath, "monitoring-center", "/admin/monitoring/center", "/admin/monitoring/center");
         registerAdmin(adminPathToRoute, adminRouteToPath, "external-connection-list", "/admin/external/connection_list", "/admin/external/connection_list");
         registerAdmin(adminPathToRoute, adminRouteToPath, "external-schema", "/admin/external/schema", "/admin/external/schema");
         registerAdmin(adminPathToRoute, adminRouteToPath, "external-keys", "/admin/external/keys", "/admin/external/keys");

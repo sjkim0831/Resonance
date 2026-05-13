@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resonance-ops
+  labels:
+    framework: resonance
+    tier: control-plane
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: carbonet-prod
+  labels:
+    framework: resonance
+    project: carbonet

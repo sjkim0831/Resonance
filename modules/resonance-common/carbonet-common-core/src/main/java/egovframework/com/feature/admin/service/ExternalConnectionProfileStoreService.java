@@ -46,7 +46,7 @@ public class ExternalConnectionProfileStoreService {
             }
             return normalized;
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to read external connection profiles.", e);
+            return Collections.emptyList();
         }
     }
 

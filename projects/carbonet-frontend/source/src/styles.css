@@ -64,6 +64,14 @@ body {
   box-shadow: 0 12px 32px rgba(0, 55, 139, 0.14);
 }
 
+@media print {
+  .help-fab,
+  .help-overlay-backdrop,
+  .help-overlay-panel-wrap {
+    display: none !important;
+  }
+}
+
 .help-overlay-backdrop {
   position: fixed;
   inset: 0;

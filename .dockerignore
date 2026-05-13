@@ -1,0 +1,50 @@
+# Exclude large directories
+var/
+backups/
+third_party/
+notes/
+plans/
+skills/
+catalog/
+
+# Exclude docs, data, templates, manifests (needed by Dockerfile)
+.env
+
+# Maven build artifacts (already built locally)
+target/
+*.jar
+!project-runtime.jar
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Logs
+*.log
+*.out
+*.pid
+nohup.out
+
+# Node
+node_modules/
+**/node_modules/
+dist/
+build/
+.vite/
+
+# Local Codex
+.codex/
+.codex-state/

@@ -75,6 +75,7 @@ public class PageIsolationExceptionAdvice {
             return false;
         }
         return uri.startsWith("/api/")
+                || uri.startsWith("/admin/api/")
                 || uri.endsWith(".json")
                 || uri.endsWith("/actionLogin")
                 || uri.endsWith("/validateRefreshToken")

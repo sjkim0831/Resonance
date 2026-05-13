@@ -65,6 +65,11 @@ load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.env"
 load_optional_env "$CONFIG_DIR/codex-runner.env"
 carbonet_set_curl_args
 
+if [[ "${START_LOCAL_AI:-true}" == "true" ]]; then
+  CARBONET_AI_OLLAMA_MODEL="${CARBONET_AI_OLLAMA_MODEL:-qwen3:0.6b}" \
+    bash "$ROOT_DIR/ops/scripts/start-local-ai-runner.sh" || true
+fi
+
 require_env() {
   local env_name="$1"
   if [[ -z "${!env_name:-}" ]]; then

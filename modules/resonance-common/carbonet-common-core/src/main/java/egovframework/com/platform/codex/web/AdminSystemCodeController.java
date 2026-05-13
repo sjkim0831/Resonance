@@ -235,7 +235,7 @@ public class AdminSystemCodeController {
         return redirectReactMigration(request, locale, "menu-management");
     }
 
-    @GetMapping({"/menu-management/page-data", "/menu/page-data"})
+    @GetMapping({"/menu-management/page-data", "/menu/page-data", "/content-menu/page-data"})
     @ResponseBody
     public ResponseEntity<Map<String, Object>> menuManagementPageApi(
             @RequestParam(value = "menuType", defaultValue = "ADMIN") String menuType,

@@ -129,7 +129,20 @@ public class SrTicketWorkbenchServiceImpl implements SrTicketWorkbenchService {
                 "executionLanes", buildExecutionLaneRows(),
                 "stackCount", stackRows.size(),
                 "stackItems", stackRows,
-                "screenOptions", screenCommandCenterService.getScreenCommandPage(selectedPageId).get("pages"));
+                "screenOptions", safeScreenOptions(selectedPageId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> safeScreenOptions(String selectedPageId) {
+        try {
+            Object pages = screenCommandCenterService.getScreenCommandPage(selectedPageId).get("pages");
+            if (pages instanceof List) {
+                return (List<Map<String, Object>>) pages;
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to load screen command options for SR workbench. Falling back to empty options.", ex);
+        }
+        return Collections.emptyList();
     }
 
     @Override

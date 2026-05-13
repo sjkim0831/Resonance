@@ -22,6 +22,7 @@ import type {
   EmissionDefinitionStudioPagePayload,
   EcoinventApiResponse,
   EcoinventDatasetRow,
+  EcoinventFilterOptions,
   EcoinventMappingSavePayload,
   EmissionFactorDefinition,
   EmissionGwpValueSavePayload,
@@ -75,17 +76,130 @@ function unwrapEcoinventResponse<T>(response: EcoinventApiResponse<T>, fallback:
   return response.data === undefined || response.data === null ? fallback : response.data;
 }
 
-export async function fetchEcoinventDatasets(params?: { keyword?: string; remote?: boolean }) {
+export async function fetchEcoinventDatasets(params?: {
+  keyword?: string;
+  materialName?: string;
+  activityName?: string;
+  activityType?: string;
+  productName?: string;
+  geography?: string;
+  referenceProductUnit?: string;
+  unit?: string;
+  scoreUnit?: string;
+  timePeriod?: string;
+  indicatorName?: string;
+  minScore?: string;
+  maxScore?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  remote?: boolean;
+}) {
+  const response = await fetchEcoinventDatasetPage(params);
+  return unwrapEcoinventResponse(response, []);
+}
+
+export async function fetchEcoinventDatasetPage(params?: {
+  keyword?: string;
+  materialName?: string;
+  activityName?: string;
+  activityType?: string;
+  productName?: string;
+  geography?: string;
+  referenceProductUnit?: string;
+  unit?: string;
+  scoreUnit?: string;
+  timePeriod?: string;
+  indicatorName?: string;
+  minScore?: string;
+  maxScore?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  remote?: boolean;
+}) {
   const response = await fetchJson<EcoinventApiResponse<EcoinventDatasetRow[]>>(
-    `${buildLocalizedPath("/admin/emission/ecoinvent/api/datasets", "/en/admin/emission/ecoinvent/api/datasets")}${buildEmissionQuery(params)}`,
+    `${buildLocalizedPath("/admin/api/admin/emission/ecoinvent/datasets", "/en/admin/api/admin/emission/ecoinvent/datasets")}${buildEmissionQuery(params)}`,
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
-  return unwrapEcoinventResponse(response, []);
+  if (response.success === false) {
+    throw new Error(response.message || "ecoinvent 요청에 실패했습니다.");
+  }
+  return response;
+}
+
+export async function fetchSurveyEcoinventRecommendationPage(params?: {
+  materialName?: string;
+  keyword?: string;
+  activityName?: string;
+  activityType?: string;
+  productName?: string;
+  geography?: string;
+  referenceProductUnit?: string;
+  unit?: string;
+  scoreUnit?: string;
+  timePeriod?: string;
+  indicatorName?: string;
+  minScore?: string;
+  maxScore?: string;
+  pageIndex?: number;
+  pageSize?: number;
+}) {
+  const response = await fetchJson<EcoinventApiResponse<EcoinventDatasetRow[]>>(
+    `${buildLocalizedPath("/admin/emission/survey-admin/api/ecoinvent-recommendations", "/en/admin/emission/survey-admin/api/ecoinvent-recommendations")}${buildEmissionQuery(params)}`,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+  if (response.success === false) {
+    throw new Error(response.message || "ecoinvent 추천 요청에 실패했습니다.");
+  }
+  return response;
+}
+
+export async function fetchSurveyEcoinventAiRecommendationPage(params?: {
+  materialName?: string;
+  keyword?: string;
+  activityName?: string;
+  activityType?: string;
+  productName?: string;
+  geography?: string;
+  referenceProductUnit?: string;
+  unit?: string;
+  scoreUnit?: string;
+  timePeriod?: string;
+  indicatorName?: string;
+  minScore?: string;
+  maxScore?: string;
+  pageIndex?: number;
+  pageSize?: number;
+}) {
+  const response = await fetchJson<EcoinventApiResponse<EcoinventDatasetRow[]>>(
+    `${buildLocalizedPath("/admin/emission/survey-admin/api/ecoinvent-ai-recommendations", "/en/admin/emission/survey-admin/api/ecoinvent-ai-recommendations")}${buildEmissionQuery(params)}`,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+  if (response.success === false) {
+    throw new Error(response.message || "AI ecoinvent 추천 요청에 실패했습니다.");
+  }
+  return response;
+}
+
+export async function fetchSurveyMaterialEnglishNames(materialNames: string[]) {
+  const response = await postJson<EcoinventApiResponse<Record<string, string>>>(
+    buildLocalizedPath("/admin/emission/survey-admin/api/material-english-names", "/en/admin/emission/survey-admin/api/material-english-names"),
+    { materialNames },
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+  return unwrapEcoinventResponse(response, {});
+}
+
+export async function fetchEcoinventFilterOptions(keyword?: string) {
+  const response = await fetchJson<EcoinventApiResponse<EcoinventFilterOptions>>(
+    `${buildLocalizedPath("/admin/api/admin/emission/ecoinvent/filter-options", "/en/admin/api/admin/emission/ecoinvent/filter-options")}${buildEmissionQuery({ keyword })}`,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+  return unwrapEcoinventResponse(response, {});
 }
 
 export async function importSelectedEcoinventDatasets(datasetIds: number[]) {
   return postJson<EcoinventApiResponse<null>>(
-    buildLocalizedPath("/admin/emission/ecoinvent/api/import", "/en/admin/emission/ecoinvent/api/import"),
+    buildLocalizedPath("/admin/api/admin/emission/ecoinvent/import", "/en/admin/api/admin/emission/ecoinvent/import"),
     { datasetIds },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
@@ -93,15 +207,29 @@ export async function importSelectedEcoinventDatasets(datasetIds: number[]) {
 
 export async function importAllEcoinventDatasets(keyword?: string) {
   return postJson<EcoinventApiResponse<null>>(
-    buildLocalizedPath("/admin/emission/ecoinvent/api/import-all", "/en/admin/emission/ecoinvent/api/import-all"),
+    buildLocalizedPath("/admin/api/admin/emission/ecoinvent/import-all", "/en/admin/api/admin/emission/ecoinvent/import-all"),
     { keyword: keyword || "" },
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function premapEcoinventKoreanAliases() {
+  return postJson<EcoinventApiResponse<{
+    datasetCount?: number;
+    aliasCount?: number;
+    insertedCount?: number;
+    expectedInputCount?: number;
+    aiAssistedCount?: number;
+  }>>(
+    buildLocalizedPath("/admin/api/admin/emission/ecoinvent/premap-korean", "/en/admin/api/admin/emission/ecoinvent/premap-korean"),
+    {},
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }
 
 export async function saveEcoinventMapping(payload: EcoinventMappingSavePayload) {
   return postJson<EcoinventApiResponse<null>>(
-    buildLocalizedPath("/admin/emission/ecoinvent/api/mappings", "/en/admin/emission/ecoinvent/api/mappings"),
+    buildLocalizedPath("/admin/api/admin/emission/ecoinvent/mappings", "/en/admin/api/admin/emission/ecoinvent/mappings"),
     payload,
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );

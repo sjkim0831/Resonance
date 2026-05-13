@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0",
+  "cards": [
+    {
+      "schemaVersion": "1.0",
+      "patternId": "k8s.recovery.ready-but-health-down",
+      "title": "Ready But Health Down Recovery Pattern",
+      "layer": "operations-platform",
+      "languages": ["shell", "yaml", "json"],
+      "purpose": "Recover when Kubernetes shows a Pod or Endpoint as usable but the actual /actuator/health response is DOWN or empty, causing frontend infinite loading.",
+      "inputs": ["namespace", "service", "deployment", "pod", "endpointIp", "localPort", "healthPayload"],
+      "readFirst": [
+        "ops/scripts/verify-k8s-runtime-routing.sh",
+        "ops/scripts/restart-local-carbonet-k8s.sh",
+        "deploy/k8s/projects/carbonet/carbonet-runtime.deployment.yaml",
+        "data/version-control/project-runtime-manifest.json"
+      ],
+      "allowedOutputs": [
+        "Ready/health mismatch classification",
+        "bad pod isolation recommendation",
+        "service endpoint verification",
+        "port-forward refresh recommendation",
+        "rollback recommendation when new revision is unhealthy"
+      ],
+      "forbidden": [
+        "trusting Ready alone",
+        "blind restart loop",
+        "routing Service to health-DOWN Pod",
+        "deleting last known good Pod before rollback target is known"
+      ],
+      "verification": [
+        "verify-k8s-runtime-routing.sh",
+        "cluster service health returns UP",
+        "local port-forward health returns UP",
+        "frontend no longer waits on health/bootstrap"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "This captures the carbonet-runtime-glossary incident class."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "k8s.recovery.port-forward-endpoint-drift",
+      "title": "Port Forward Endpoint Drift Recovery Pattern",
+      "layer": "operations-platform",
+      "languages": ["shell"],
+      "purpose": "Recover when the local port-forward points to stale, wrong, or unhealthy Kubernetes service routing after Pod replacement or endpoint changes.",
+      "inputs": ["namespace", "service", "localPort", "expectedEndpointIp", "actualEndpointIp", "healthPayload"],
+      "readFirst": [
+        "ops/scripts/verify-k8s-runtime-routing.sh",
+        "ops/scripts/restart-local-carbonet-k8s.sh",
+        "ops/scripts/restart-local-carbonet-frontend-fast.sh"
+      ],
+      "allowedOutputs": [
+        "port-forward process check",
+        "endpoint drift classification",
+        "governed port-forward restart recommendation",
+        "local health verification"
+      ],
+      "forbidden": [
+        "manual stale port-forward keepalive",
+        "routing local port to wrong service",
+        "claiming recovery without local health check"
+      ],
+      "verification": [
+        "local /actuator/health returns UP",
+        "service endpoints match Ready healthy pods",
+        "port-forward pid/log refreshed"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Useful for WSL/Desktop/Ubuntu host access drift."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "k8s.transfer.wsl-to-ubuntu-reflection",
+      "title": "WSL To Ubuntu Kubernetes Reflection Pattern",
+      "layer": "operations-platform",
+      "languages": ["shell", "yaml", "json"],
+      "purpose": "Reflect the current Resonance system into Kubernetes after moving execution from desktop WSL to an Ubuntu host or Ubuntu runtime environment.",
+      "inputs": [
+        "sourceRoot",
+        "targetRoot",
+        "kubeContext",
+        "namespace",
+        "imageTag",
+        "localPort",
+        "secretSource",
+        "releaseManifest"
+      ],
+      "readFirst": [
+        "ops/scripts/prepare-docker-desktop-k8s-gate.sh",
+        "ops/scripts/restart-local-carbonet-k8s.sh",
+        "ops/scripts/verify-k8s-runtime-routing.sh",
+        "deploy/k8s/base/namespaces.yaml",
+        "deploy/k8s/projects/carbonet/carbonet-runtime.deployment.yaml",
+        "deploy/k8s/projects/carbonet/carbonet-runtime.config.yaml",
+        "deploy/k8s/projects/carbonet/cubrid-carbonet.statefulset.yaml"
+      ],
+      "allowedOutputs": [
+        "kube context validation",
+        "server dry-run result",
+        "config/secret readiness summary",
+        "image build/load or registry push plan",
+        "rollout plan",
+        "routing health verification"
+      ],
+      "forbidden": [
+        "copying real secret values into git",
+        "applying runtime before context/namespace dry-run passes",
+        "manual kubectl apply outside governed script path",
+        "declaring success without Service and local health verification"
+      ],
+      "verification": [
+        "prepare-docker-desktop-k8s-gate.sh or Ubuntu equivalent context gate",
+        "restart-local-carbonet-k8s.sh when image/runtime changes",
+        "verify-k8s-runtime-routing.sh",
+        "runtime freshness verification"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "On pure Ubuntu clusters, EXPECTED_CONTEXT should match the Ubuntu kube context instead of docker-desktop."
+    }
+  ]
+}

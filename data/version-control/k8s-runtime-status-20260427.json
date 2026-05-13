@@ -21,7 +21,7 @@
       "namespace": "resonance-ops",
       "deployment": "operations-console",
       "service": "operations-console",
-      "expectedImage": "registry.local/operations-console:2026.04.27-opsfix8",
+      "expectedImage": "registry.local/operations-console:2026.05.11-java-fix-v5",
       "expectedReadyReplicas": 1,
       "status": "RUNNING"
     },
@@ -30,8 +30,8 @@
       "namespace": "carbonet-prod",
       "deployment": "carbonet-runtime",
       "service": "carbonet-runtime",
-      "expectedImage": "registry.local/carbonet-runtime:2026.04.26",
-      "expectedReadyReplicas": 2,
+      "expectedImage": "registry.local/carbonet-runtime:2026.05.12-235223-local",
+      "expectedReadyReplicas": 1,
       "healthEndpoint": "http://carbonet-runtime/actuator/health",
       "status": "RUNNING"
     }

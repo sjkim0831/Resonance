@@ -16,6 +16,8 @@ build/
 .codex/
 .codex-state/
 var/
+backups/
+__pycache__/
 
 # Local deployment secrets
 ops/config/*.env

@@ -71,7 +71,7 @@ export interface UnifiedLogSearchPayload {
 
 export async function fetchUnifiedLog(params?: UnifiedLogSearchParams): Promise<UnifiedLogSearchPayload> {
   return fetchJson<UnifiedLogSearchPayload>(
-    `${buildAdminApiPath("/api/platform/observability/unified-log")}${buildQueryString(params)}`,
+    `${buildAdminApiPath("/api/admin/observability/unified-log")}${buildQueryString(params)}`,
     {
       apiId: "admin.observability.unified-log.search"
     }

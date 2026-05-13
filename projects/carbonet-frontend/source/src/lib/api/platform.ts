@@ -77,8 +77,8 @@ import type {
 function buildVersionControlApiPath(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return buildLocalizedPath(
-    `/api/platform/version-control${normalized}`,
-    `/en/api/platform/version-control${normalized}`
+    `/admin/api/platform/version-control${normalized}`,
+    `/en/admin/api/platform/version-control${normalized}`
   );
 }
 
@@ -437,8 +437,8 @@ export async function fetchContentMenuManagementPage(saved?: string) {
   const fallbackMessage = "Failed to load content menu management page";
   const query = buildQueryString({ saved });
   return fetchLocalizedPageJson<MenuManagementPagePayload>(
-    "/admin/content/menu/page-data",
-    "/en/admin/content/menu/page-data",
+    "/admin/system/content-menu/page-data",
+    "/en/admin/system/content-menu/page-data",
     {
       query,
       fallbackMessage,
@@ -1367,7 +1367,7 @@ export async function autoCollectFullStackGovernanceRegistry(payload: FullStackG
 
 export async function fetchSrWorkbenchPage(pageId: string): Promise<SrWorkbenchPagePayload> {
   const query = buildQueryString({ pageId });
-  return fetchPageJson<SrWorkbenchPagePayload>(`${buildAdminApiPath("/api/platform/workbench/page")}${query}`, {
+  return fetchPageJson<SrWorkbenchPagePayload>(`${buildAdminApiPath("/api/admin/sr-workbench/page")}${query}`, {
     init: {
       apiId: "admin.sr-workbench.page"
     },
@@ -1395,7 +1395,7 @@ export async function createSrTicket(payload: {
   stackItemIds?: string[];
 }) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    "/api/platform/workbench/tickets",
+    "/api/admin/sr-workbench/tickets",
     payload,
     "Failed to create SR ticket",
     {
@@ -1424,7 +1424,7 @@ export async function quickExecuteSrTicket(payload: {
   stackItemIds?: string[];
 }) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow; ticketId: string }>(
-    "/api/platform/workbench/quick-execute",
+    "/api/admin/sr-workbench/quick-execute",
     payload,
     "Failed to quick-execute SR ticket",
     {
@@ -1454,7 +1454,7 @@ export async function addSrWorkbenchStackItem(payload: {
   requestId: string;
 }) {
   return postAdminValidatedJson<{ success: boolean; message: string; stackItem: SrWorkbenchStackItem }>(
-    "/api/platform/workbench/stack-items",
+    "/api/admin/sr-workbench/stack-items",
     payload,
     "Failed to add SR workbench stack item",
     {
@@ -1465,7 +1465,7 @@ export async function addSrWorkbenchStackItem(payload: {
 
 export async function removeSrWorkbenchStackItem(stackItemId: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; removedCount: number }>(
-    `/api/platform/workbench/stack-items/${encodeURIComponent(stackItemId)}/delete`,
+    `/api/admin/sr-workbench/stack-items/${encodeURIComponent(stackItemId)}/delete`,
     {},
     "Failed to remove SR workbench stack item",
     {
@@ -1476,7 +1476,7 @@ export async function removeSrWorkbenchStackItem(stackItemId: string) {
 
 export async function clearSrWorkbenchStack() {
   return postAdminValidatedJson<{ success: boolean; message: string }>(
-    "/api/platform/workbench/stack-items/clear",
+    "/api/admin/sr-workbench/stack-items/clear",
     {},
     "Failed to clear SR workbench stack",
     {
@@ -1487,7 +1487,7 @@ export async function clearSrWorkbenchStack() {
 
 export async function approveSrTicket(ticketId: string, decision: "APPROVE" | "REJECT", comment: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    `/api/platform/workbench/tickets/${encodeURIComponent(ticketId)}/approve`,
+    `/api/admin/sr-workbench/tickets/${encodeURIComponent(ticketId)}/approve`,
     { decision, comment },
     "Failed to approve SR ticket",
     {
@@ -1498,7 +1498,7 @@ export async function approveSrTicket(ticketId: string, decision: "APPROVE" | "R
 
 export async function prepareSrExecution(ticketId: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    `/api/platform/workbench/tickets/${encodeURIComponent(ticketId)}/prepare-execution`,
+    `/api/admin/sr-workbench/tickets/${encodeURIComponent(ticketId)}/prepare-execution`,
     {},
     "Failed to prepare SR execution",
     {
@@ -1509,7 +1509,7 @@ export async function prepareSrExecution(ticketId: string) {
 
 export async function planSrTicket(ticketId: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    `/api/platform/workbench/tickets/${encodeURIComponent(ticketId)}/plan`,
+    `/api/admin/sr-workbench/tickets/${encodeURIComponent(ticketId)}/plan`,
     {},
     "Failed to plan SR ticket",
     {
@@ -1520,7 +1520,7 @@ export async function planSrTicket(ticketId: string) {
 
 export async function executeSrTicket(ticketId: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    `/api/platform/workbench/tickets/${encodeURIComponent(ticketId)}/execute`,
+    `/api/admin/sr-workbench/tickets/${encodeURIComponent(ticketId)}/execute`,
     {},
     "Failed to execute SR ticket",
     {
@@ -1531,7 +1531,7 @@ export async function executeSrTicket(ticketId: string) {
 
 export async function directExecuteSrTicket(ticketId: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    `/api/platform/workbench/tickets/${encodeURIComponent(ticketId)}/direct-execute`,
+    `/api/admin/sr-workbench/tickets/${encodeURIComponent(ticketId)}/direct-execute`,
     {},
     "Failed to direct-execute SR ticket",
     {
@@ -1542,7 +1542,7 @@ export async function directExecuteSrTicket(ticketId: string) {
 
 export async function skipPlanExecuteSrTicket(ticketId: string) {
   return postAdminValidatedJson<{ success: boolean; message: string; ticket: SrTicketRow }>(
-    `/api/platform/workbench/tickets/${encodeURIComponent(ticketId)}/skip-plan-execute`,
+    `/api/admin/sr-workbench/tickets/${encodeURIComponent(ticketId)}/skip-plan-execute`,
     {},
     "Failed to skip-plan execute SR ticket",
     {
@@ -1558,7 +1558,7 @@ export async function fetchSystemAssetList(params?: {
 }) {
   const query = buildQueryString(params);
   return fetchValidatedJson<SystemAssetInventoryVO[]>(
-    buildLocalizedPath(`/api/admin/system/asset/list${query}`, `/en/api/admin/system/asset/list${query}`),
+    buildAdminApiPath(`/api/admin/system/asset/list${query}`),
     {
       fallbackMessage: "Failed to load system asset list",
       validate: (body) => Array.isArray(body)
@@ -1569,7 +1569,7 @@ export async function fetchSystemAssetList(params?: {
 export async function fetchSystemAssetDetail(assetId: string) {
   const query = buildQueryString({ id: assetId });
   return fetchJson<SystemAssetDetailPayload>(
-    buildLocalizedPath(`/api/admin/system/asset/detail${query}`, `/en/api/admin/system/asset/detail${query}`),
+    buildAdminApiPath(`/api/admin/system/asset/detail${query}`),
     {
       fallbackMessage: "Failed to load system asset detail"
     }
@@ -1577,9 +1577,8 @@ export async function fetchSystemAssetDetail(assetId: string) {
 }
 
 export async function triggerSystemAssetScan() {
-  return postLocalizedValidatedJson<AssetScanSummary>(
+  return postAdminValidatedJson<AssetScanSummary>(
     "/api/admin/system/asset/scan",
-    "/en/api/admin/system/asset/scan",
     {},
     "Failed to trigger system asset scan"
   );
@@ -1588,7 +1587,7 @@ export async function triggerSystemAssetScan() {
 export async function fetchSystemAssetImpact(assetId: string) {
   const query = buildQueryString({ id: assetId });
   return fetchJson<SystemAssetImpactPayload>(
-    buildLocalizedPath(`/api/admin/system/asset/impact${query}`, `/en/api/admin/system/asset/impact${query}`),
+    buildAdminApiPath(`/api/admin/system/asset/impact${query}`),
     {
       fallbackMessage: "Failed to load system asset impact"
     }
@@ -1598,7 +1597,7 @@ export async function fetchSystemAssetImpact(assetId: string) {
 export async function fetchSystemAssetGap(type?: string) {
   const query = buildQueryString({ type });
   return fetchJson<SystemAssetGapPayload>(
-    buildLocalizedPath(`/api/admin/system/asset/gap${query}`, `/en/api/admin/system/asset/gap${query}`),
+    buildAdminApiPath(`/api/admin/system/asset/gap${query}`),
     {
       fallbackMessage: "Failed to load system asset gap queue"
     }
@@ -1608,7 +1607,7 @@ export async function fetchSystemAssetGap(type?: string) {
 export async function fetchSystemAssetLifecycle(assetId?: string) {
   const query = buildQueryString({ id: assetId });
   return fetchJson<SystemAssetLifecyclePayload>(
-    buildLocalizedPath(`/api/admin/system/asset/lifecycle${query}`, `/en/api/admin/system/asset/lifecycle${query}`),
+    buildAdminApiPath(`/api/admin/system/asset/lifecycle${query}`),
     {
       fallbackMessage: "Failed to load system asset lifecycle"
     }
@@ -1626,18 +1625,16 @@ export async function updateSystemAsset(params: {
   activeYn?: string;
   propagate?: boolean;
 }) {
-  return postLocalizedValidatedJson<{ success: boolean; affectedCount: number }>(
+  return postAdminValidatedJson<{ success: boolean; affectedCount: number }>(
     "/api/admin/system/asset/update",
-    "/en/api/admin/system/asset/update",
     params,
     "Failed to update system asset"
   );
 }
 
 export async function createSystemAssetLifecyclePlan(plan: Partial<SystemAssetLifecyclePlanVO>) {
-  return postLocalizedValidatedJson<{ success: boolean; planId: string }>(
+  return postAdminValidatedJson<{ success: boolean; planId: string }>(
     "/api/admin/system/asset/lifecycle/plan/create",
-    "/en/api/admin/system/asset/lifecycle/plan/create",
     plan,
     "Failed to create lifecycle plan"
   );
@@ -1650,7 +1647,7 @@ export async function fetchSystemAssetLifecyclePlanList(params?: {
 }) {
   const query = buildQueryString(params);
   return fetchJson<SystemAssetLifecyclePlanVO[]>(
-    buildLocalizedPath(`/api/admin/system/asset/lifecycle/plan/list${query}`, `/en/api/admin/system/asset/lifecycle/plan/list${query}`),
+    buildAdminApiPath(`/api/admin/system/asset/lifecycle/plan/list${query}`),
     {
       fallbackMessage: "Failed to load lifecycle plans"
     }
@@ -1662,9 +1659,8 @@ export async function approveSystemAssetLifecyclePlan(params: {
   approverId: string;
   status: string;
 }) {
-  return postLocalizedValidatedJson<{ success: boolean }>(
+  return postAdminValidatedJson<{ success: boolean }>(
     "/api/admin/system/asset/lifecycle/plan/approve",
-    "/en/api/admin/system/asset/lifecycle/plan/approve",
     params,
     "Failed to approve lifecycle plan"
   );

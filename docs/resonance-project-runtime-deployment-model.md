@@ -51,6 +51,31 @@ bash ops/scripts/restart-local-carbonet-k8s.sh
 SKIP_FRONTEND=true SKIP_IMAGE_BUILD=true bash ops/scripts/restart-local-carbonet-k8s.sh
 ```
 
+### Local Kubernetes frontend-only fast move
+
+React 화면만 수정한 경우에는 전체 재배포 대신 frontend filesystem override 경로를 사용하는 빠른 수를 먼저 둔다.
+
+```bash
+CARBONET_NODE_HEAP_MB=4096 bash ops/scripts/restart-local-carbonet-frontend-fast.sh
+```
+
+이 스크립트는 `projects/carbonet-frontend/source`에서 React bundle만 빌드하고, 결과물 `projects/carbonet-frontend/src/main/resources/static/react-app`을 실행 중인 `carbonet-prod/carbonet-runtime` 파드의 `/app/react-app-overlay`로 복사한다. Maven package, Docker image build/load, rollout을 하지 않으므로 로컬 화면 반영 시간을 크게 줄인다.
+
+이미 빌드된 React 결과물을 파드로 다시 복사만 할 때는 아래처럼 사용한다.
+
+```bash
+SKIP_FRONTEND_BUILD=true bash ops/scripts/restart-local-carbonet-frontend-fast.sh
+```
+
+전제 조건은 `carbonet-runtime-config`에 아래 값이 반영되어 있고, 실행 중인 파드가 해당 ConfigMap을 읽은 상태여야 한다.
+
+```yaml
+CARBONET_REACT_APP_FS_OVERRIDE_ENABLED: "true"
+CARBONET_REACT_APP_FS_OVERRIDE_PATH: "/app/react-app-overlay"
+```
+
+빠른 스크립트가 filesystem override 미활성 오류를 출력하면 한 번만 ConfigMap 반영/파드 재시작을 수행한다. backend/JAR/config/image 변경이 있으면 빠른 스크립트가 아니라 전체 k8s restart를 사용한다.
+
 JAR 런타임 env 파일은 다음 순서로 병합된다. 뒤 파일이 앞 파일을 덮어쓴다.
 
 1. `ops/config/carbonet-${PORT}.defaults.env`

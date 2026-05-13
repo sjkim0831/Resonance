@@ -136,3 +136,10 @@ Add new skills here with:
 - purpose
 - when to use
 - key references
+# Pattern Card Registry
+
+- Use `data/ai-runtime/pattern-card-registry.sqlite` for Resonance development, build, deploy, recovery, RAG, skill, and harness pattern lookup.
+- Source cards live in `data/ai-runtime/pattern-cards*.json` and are rebuilt with `python3 ops/scripts/init-pattern-card-db.py`.
+- Query cards with `python3 ops/scripts/query-pattern-card-db.py --keyword "<intent>"` or `--pattern-id "<patternId>" --json`.
+- The registry is organized around the four framework boards: `builder-system`, `operations-platform`, `common-framework`, and `project-carbonet`.
+- Hermes and local LLMs must treat pattern cards as the opening book before selecting files or producing bounded drafts.

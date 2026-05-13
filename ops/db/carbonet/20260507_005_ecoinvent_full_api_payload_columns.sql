@@ -1,0 +1,22 @@
+ALTER TABLE ecoinvent_master ADD COLUMN activity_spold_uuid VARCHAR(120);
+ALTER TABLE ecoinvent_master ADD COLUMN activity_type VARCHAR(255);
+ALTER TABLE ecoinvent_master ADD COLUMN product_spold_uuid VARCHAR(120);
+ALTER TABLE ecoinvent_master ADD COLUMN description VARCHAR(4000);
+ALTER TABLE ecoinvent_master ADD COLUMN geography_spold_uuid VARCHAR(120);
+ALTER TABLE ecoinvent_master ADD COLUMN included_activity_starts VARCHAR(120);
+ALTER TABLE ecoinvent_master ADD COLUMN included_activity_ends VARCHAR(120);
+ALTER TABLE ecoinvent_master ADD COLUMN isic_class VARCHAR(1000);
+ALTER TABLE ecoinvent_master ADD COLUMN isic_section VARCHAR(1000);
+ALTER TABLE ecoinvent_master ADD COLUMN sectors VARCHAR(2000);
+ALTER TABLE ecoinvent_master ADD COLUMN technology_comment VARCHAR(4000);
+ALTER TABLE ecoinvent_master ADD COLUMN time_period VARCHAR(255);
+ALTER TABLE ecoinvent_master ADD COLUMN time_period_comment VARCHAR(1000);
+ALTER TABLE ecoinvent_master ADD COLUMN dataset_url VARCHAR(1000);
+ALTER TABLE ecoinvent_master ADD COLUMN url_history VARCHAR(4000);
+ALTER TABLE ecoinvent_master ADD COLUMN score_method VARCHAR(1000);
+ALTER TABLE ecoinvent_master ADD COLUMN score_category VARCHAR(1000);
+ALTER TABLE ecoinvent_master ADD COLUMN impact_scores_json VARCHAR(65535);
+ALTER TABLE ecoinvent_master ADD COLUMN raw_search_json VARCHAR(65535);
+ALTER TABLE ecoinvent_master ADD COLUMN raw_batch_json VARCHAR(65535);
+
+COMMIT;

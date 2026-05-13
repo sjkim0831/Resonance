@@ -27,13 +27,18 @@ export type EmissionGwpValuesPagePayload = Record<string, unknown> & {
 
 export type EcoinventDatasetRow = Record<string, unknown> & {
   datasetId?: number;
+  materialName?: string;
   activityName?: string;
+  activityType?: string;
   productName?: string;
   geography?: string;
   referenceProductUnit?: string;
+  timePeriod?: string;
   indicatorId?: number;
   indicatorName?: string;
   score?: number;
+  unit?: string;
+  scoreUnit?: string;
   koreanName?: string;
 };
 
@@ -42,7 +47,13 @@ export type EcoinventApiResponse<T> = {
   message?: string;
   data?: T;
   count?: number;
+  totalCount?: number;
+  totalPages?: number;
+  pageIndex?: number;
+  pageSize?: number;
 };
+
+export type EcoinventFilterOptions = Record<string, string[]>;
 
 export type EcoinventMappingSavePayload = {
   koreanName: string;

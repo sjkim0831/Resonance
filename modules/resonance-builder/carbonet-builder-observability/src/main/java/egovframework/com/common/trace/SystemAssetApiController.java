@@ -13,7 +13,12 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/api/admin/system/asset", "/en/api/admin/system/asset"})
+@RequestMapping({
+        "/api/admin/system/asset",
+        "/en/api/admin/system/asset",
+        "/admin/api/admin/system/asset",
+        "/en/admin/api/admin/system/asset"
+})
 @RequiredArgsConstructor
 public class SystemAssetApiController {
 

@@ -69,7 +69,9 @@ public class KisaExternalAuthProvider implements ExternalAuthProvider {
         descriptor.setProviderCode(PROVIDER_CODE);
         descriptor.setMethodCode(normalized);
         descriptor.setIcon(resolveIcon(normalized));
-        descriptor.setAvailable(properties.isMockSuccessEnabled() || kisaSdkV1Adapter.isReadyForLiveFlow());
+        boolean sdkAvailable = resolveAdapter().isAvailable();
+        boolean liveReady = kisaSdkV1Adapter.isReadyForLiveFlow();
+        descriptor.setAvailable(properties.isMockSuccessEnabled() || liveReady || sdkAvailable);
 
         if ("SIMPLE".equals(normalized)) {
             descriptor.setDisplayName("간편인증");
@@ -91,12 +93,12 @@ public class KisaExternalAuthProvider implements ExternalAuthProvider {
         if (properties.isMockSuccessEnabled()) {
             descriptor.setStatus("mock");
             descriptor.setStatusMessage("Mock adapter active");
-        } else if (kisaSdkV1Adapter.isReadyForLiveFlow()) {
+        } else if (liveReady) {
             descriptor.setStatus("ready");
             descriptor.setStatusMessage("SDK adapter and live endpoints ready");
-        } else if (resolveAdapter().isAvailable()) {
-            descriptor.setStatus("pending");
-            descriptor.setStatusMessage("SDK loaded, but live endpoint configuration is missing");
+        } else if (sdkAvailable) {
+            descriptor.setStatus("sdk-ready");
+            descriptor.setStatusMessage("SDK loaded. Live endpoint configuration is required for production authentication.");
         } else {
             descriptor.setStatus("pending");
             descriptor.setStatusMessage("SDK jar or live endpoint configuration required");

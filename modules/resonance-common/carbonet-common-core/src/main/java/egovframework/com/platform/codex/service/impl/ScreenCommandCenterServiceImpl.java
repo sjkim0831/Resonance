@@ -58,7 +58,7 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
         page.put("menuLookupUrl", menuLookupUrl);
         page.put("menuCode", menuCode);
         page.put("menuPermission", buildMenuPermission(menuCode, menuLookupUrl, routePath));
-        page.put("manifestRegistry", uiManifestRegistryPort.syncPageRegistry(page));
+        page.put("manifestRegistry", safeSyncPageRegistry(page));
         page.put("summaryMetrics", buildSummaryMetrics(page));
         response.put("page", page);
         return response;
@@ -3802,7 +3802,7 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
         );
         List<String> featureCodes = resolvedMenuCode.isEmpty()
                 ? Collections.emptyList()
-                : safeList(authGroupManageService.selectFeatureCodesByMenuCode(resolvedMenuCode));
+                : safeFeatureCodes(resolvedMenuCode);
 
         Set<String> featureCodeSet = new LinkedHashSet<>(featureCodes);
         if (!requiredViewFeatureCode.isEmpty()) {
@@ -4594,8 +4594,28 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
     }
 
     private List<FeatureCatalogItemVO> safeFeatureCatalog() throws Exception {
-        List<FeatureCatalogItemVO> items = authGroupManageService.selectFeatureCatalog();
-        return items == null ? Collections.emptyList() : items;
+        try {
+            List<FeatureCatalogItemVO> items = authGroupManageService.selectFeatureCatalog();
+            return items == null ? Collections.emptyList() : items;
+        } catch (Exception ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    private List<String> safeFeatureCodes(String menuCode) {
+        try {
+            return safeList(authGroupManageService.selectFeatureCodesByMenuCode(menuCode));
+        } catch (Exception ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    private Map<String, Object> safeSyncPageRegistry(Map<String, Object> page) {
+        try {
+            return uiManifestRegistryPort.syncPageRegistry(page);
+        } catch (Exception ignored) {
+            return new LinkedHashMap<>();
+        }
     }
 
     private List<String> safeList(List<String> values) {

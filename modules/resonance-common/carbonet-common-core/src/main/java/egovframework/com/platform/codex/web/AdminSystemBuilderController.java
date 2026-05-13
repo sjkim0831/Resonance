@@ -6,6 +6,7 @@ import egovframework.com.platform.executiongate.GateActorScope;
 import egovframework.com.platform.executiongate.support.OperationsConsoleGateSupport;
 import egovframework.com.platform.read.AdminSummaryReadPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -319,7 +320,15 @@ public class AdminSystemBuilderController {
     }
 
     @RequestMapping(value = "/**", method = { RequestMethod.GET })
-    public String adminFallback(HttpServletRequest request, Locale locale, Model model) {
+    public Object adminFallback(HttpServletRequest request, Locale locale, Model model) {
+        String path = request.getRequestURI();
+        if (path != null && (path.startsWith("/api/") || path.contains("/api/") || path.contains("/page-data"))) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", false);
+            response.put("message", "No JSON API handler registered for " + path);
+            response.put("path", path);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
         return adminMenuShellService.renderAdminFallback(request, locale, model);
     }
 

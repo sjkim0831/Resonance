@@ -61,6 +61,41 @@ Every Hermes request should include:
 
 If any field cannot be filled deterministically, Hermes must stop with `NEEDS_ROUTE_MAP`.
 
+## Pattern Card Gate
+
+Hermes must consult the Resonance pattern-card registry before model routing, implementation planning, build/redeploy work, Kubernetes recovery, RAG memory changes, skill updates, or harness changes.
+
+Use:
+
+```bash
+python3 ops/scripts/query-pattern-card-db.py --keyword "<intent>"
+python3 ops/scripts/query-pattern-card-db.py --pattern-id "<patternId>" --json
+```
+
+The registry is rebuilt from `data/ai-runtime/pattern-cards*.json`:
+
+```bash
+python3 ops/scripts/init-pattern-card-db.py
+```
+
+Pattern cards define the legal chess move: `readFirst`, `allowedOutputs`, `forbidden`, `verification`, `risk`, and `modelRole`. A local model may choose or draft within that card, but deterministic scripts remain the authority for deploy, rollback, backup, restart, k8s apply, and DB migration.
+
+Local model and Kubernetes harness work has dedicated cards:
+
+- `harness.local-model-runner`: local model commands pass through `route_model -> harness -> shell`.
+- `harness.policy-change-escalation`: harness policy changes are refused locally and escalated.
+- `harness.k8s-redeploy-dry-run`: Kubernetes redeploy planning defaults to dry-run.
+- `harness.k8s-live-deploy-approved`: live Kubernetes deploy requires `--live --approved`.
+- `harness.fixed-stage-pipeline`: task policies define required fields, fixed stages, approval gates, and tests.
+
+Skills/docs QA work also has dedicated cards:
+
+- `docs-ai.skills-harness-rag-qa`: index skills, plugins, harness docs, examples, and conventions into a local searchable docs library.
+- `docs-ai.answer-confidence-sources`: every answer carries confidence, sources, ranks, and snippets.
+- `docs-ai.minimal-implementation-plan`: grounded answers can become the smallest safe implementation plan.
+- `docs-ai.pattern-record-promote-skill`: repeated workflows can be recorded and promoted into a skill draft.
+- `docs-ai.external-ai-fallback`: external or local LLM use is optional and only receives retrieved evidence.
+
 ## Safe opening sequence
 
 1. Read `data/ai-runtime/hermes-rag-context-pack.json`.

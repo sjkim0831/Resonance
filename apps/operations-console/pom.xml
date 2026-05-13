@@ -63,6 +63,11 @@
             <artifactId>resonance-ollama-control-plane</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>resonance-workbench-core</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

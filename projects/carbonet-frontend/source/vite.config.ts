@@ -121,6 +121,14 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:18000",
         changeOrigin: true
+      },
+      "/admin/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
+      },
+      "/en/admin/api": {
+        target: "http://localhost:18000",
+        changeOrigin: true
       }
     }
   }

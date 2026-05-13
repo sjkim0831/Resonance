@@ -2564,6 +2564,48 @@
       }
     ]
   },
+  "observability": {
+    "title": "관측성 도움말",
+    "summary": "시스템 모니터링, 메트릭, 로깅, 트레이싱 등 관측성 도구를 안내합니다.",
+    "items": [
+      {
+        "id": "overview",
+        "title": "관측성 개요",
+        "body": "시스템의 실시간 상태, 메트릭, 로그, 트레이스를 통합하여 모니터링합니다.",
+        "anchorSelector": "[data-help-id=\\\"observability-overview\\\"]",
+        "placement": "top",
+        "iconName": "monitoring",
+        "highlightStyle": "focus"
+      },
+      {
+        "id": "metrics",
+        "title": "메트릭",
+        "body": "CPU, 메모리, 네트워크, DB 등 시스템 리소스의 메트릭을 확인합니다.",
+        "anchorSelector": "[data-help-id=\\\"observability-metrics\\\"]",
+        "placement": "right",
+        "iconName": "analytics",
+        "highlightStyle": "success"
+      },
+      {
+        "id": "logs",
+        "title": "로그",
+        "body": "시스템 로그를 검색하고 필터링하여 문제를 진단합니다.",
+        "anchorSelector": "[data-help-id=\\\"observability-logs\\\"]",
+        "placement": "bottom",
+        "iconName": "description",
+        "highlightStyle": "neutral"
+      },
+      {
+        "id": "traces",
+        "title": "트레이스",
+        "body": "분산 트레이스를 통해 서비스 간 호출 경로를 시각적으로 확인합니다.",
+        "anchorSelector": "[data-help-id=\\\"observability-traces\\\"]",
+        "placement": "left",
+        "iconName": "call_merge",
+        "highlightStyle": "warning"
+      }
+    ]
+  },
   "home-menu-placeholder": {
     "title": "사용자 메뉴 플레이스홀더 도움말",
     "summary": "아직 상세 이관이 끝나지 않은 사용자 메뉴의 연결 정보를 보여줍니다.",

@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resonance.local/schemas/pattern-card.schema.json",
+  "title": "Resonance Pattern Card",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "patternId",
+    "title",
+    "layer",
+    "languages",
+    "purpose",
+    "inputs",
+    "readFirst",
+    "allowedOutputs",
+    "forbidden",
+    "verification",
+    "risk"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "patternId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string"
+    },
+    "layer": {
+      "type": "string",
+      "enum": [
+        "builder-system",
+        "operations-platform",
+        "common-framework",
+        "project-carbonet"
+      ]
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "readFirst": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "allowedOutputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "forbidden": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "verification": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "master-only"
+      ]
+    },
+    "modelRole": {
+      "type": "string",
+      "enum": [
+        "router",
+        "draft",
+        "review",
+        "validator"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

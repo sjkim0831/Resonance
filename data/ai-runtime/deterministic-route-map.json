@@ -232,6 +232,62 @@
     },
     {
       "match": [
+        "pattern card",
+        "pattern registry",
+        "micro pattern",
+        "development pattern",
+        "local_model_runner",
+        "k8s_redeploy",
+        "harness-policy",
+        "harness policy",
+        "fixed stage",
+        "approved deploy",
+        "docs_ai",
+        "docs ai",
+        "skills docs",
+        "docs qa",
+        "promote-skill",
+        "confidence",
+        "source snippets",
+        "minimal implementation plan",
+        "0.5B",
+        "0.5b",
+        "boot commit",
+        "commit push",
+        "bot branch",
+        "PR gate",
+        "framework boot",
+        "multi specialist",
+        "?⑦꽩 移대뱶",
+        "誘몄꽭 ?⑦꽩",
+        "媛쒕컻 ?⑦꽩",
+        "harness"
+      ],
+      "readFirst": [
+        "data/ai-runtime/pattern-card.schema.json",
+        "data/ai-runtime/pattern-card-registry.sqlite",
+        "data/ai-runtime/pattern-cards.seed.json",
+        "data/ai-runtime/pattern-cards.resonance-core.json",
+        "data/ai-runtime/pattern-cards.micro-taxonomy.json",
+        "data/ai-runtime/pattern-cards.build-redeploy.json",
+        "data/ai-runtime/pattern-cards.k8s-self-healing.json",
+        "data/ai-runtime/pattern-cards.k8s-runtime-transfer.json",
+        "data/ai-runtime/pattern-cards.local-model-harness.json",
+        "data/ai-runtime/pattern-cards.docs-ai-rag.json",
+        "ops/scripts/init-pattern-card-db.py",
+        "ops/scripts/query-pattern-card-db.py",
+        "ops/scripts/run-hermes-rag-smoke.sh",
+        "skills/resonance-workflow/SKILL.md"
+      ],
+      "doNotStartWith": [
+        "whole repository scan",
+        "node_modules",
+        "target",
+        "var"
+      ]
+    },
+    {
+      "match": [
         "project split",
         "project boundary",
         "boundary contract",
@@ -251,6 +307,40 @@
       ],
       "doNotStartWith": [
         "legacy candidates until classification is requested"
+      ]
+    },
+    {
+      "match": [
+        "krds",
+        "KRDS",
+        "krds-uiux-main",
+        "Korea Design System",
+        "대한민국 디지털 정부 디자인 시스템",
+        "홈 화면",
+        "home screen",
+        "admin screen",
+        "관리자 화면",
+        "theme frontend",
+        "테마 프론트",
+        "design token",
+        "디자인 토큰"
+      ],
+      "readFirst": [
+        "data/design-references/krds/krds-rag-manifest.md",
+        "data/design-references/krds/krds-frontend-policy.md",
+        "data/design-references/krds/krds-reference-map.md",
+        "/opt/reference/krds-uiux-main/README.md",
+        "/opt/reference/krds-uiux-main/tokens/transformed_tokens.json",
+        "/opt/reference/krds-uiux-main/resources/scss/common/_root.scss",
+        "/opt/reference/krds-uiux-main/html/code",
+        "docs_ai.py",
+        "data/ai-runtime/docs_ai.sqlite3"
+      ],
+      "doNotStartWith": [
+        "whole repository scan",
+        "projects/*/node_modules",
+        "apps/*/target",
+        "*:Zone.Identifier"
       ]
     }
   ],

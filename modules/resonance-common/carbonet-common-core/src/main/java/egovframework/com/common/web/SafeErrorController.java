@@ -85,7 +85,7 @@ public class SafeErrorController implements ErrorController {
 
     private boolean isApiRequest(HttpServletRequest request, String uri) {
         if (request == null) {
-            return uri != null && uri.startsWith("/api/");
+            return uri != null && (uri.startsWith("/api/") || uri.startsWith("/admin/api/"));
         }
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {

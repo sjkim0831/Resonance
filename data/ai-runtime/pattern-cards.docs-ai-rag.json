@@ -1,0 +1,192 @@
+{
+  "schemaVersion": "1.0",
+  "cards": [
+    {
+      "schemaVersion": "1.0",
+      "patternId": "docs-ai.skills-harness-rag-qa",
+      "title": "Skills Harness Docs RAG QA Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "sqlite", "markdown"],
+      "purpose": "Build a local docs QA system over skills, plugins, harness docs, examples, and conventions so agents can answer from retrieved sources instead of loading all docs into context.",
+      "inputs": ["docsRoots", "question", "chunkSize", "searchLimit", "aiMode"],
+      "readFirst": [
+        "docs_ai.py",
+        "README.md",
+        "SKILL.md",
+        "docs_ai.sqlite3",
+        "skills",
+        "docs/ai/80-skills",
+        "docs/agent",
+        "data/ai-runtime",
+        "ops/scripts"
+      ],
+      "allowedOutputs": [
+        "SQLite FTS index",
+        "source-grounded answer",
+        "source snippets",
+        "ranked search results",
+        "fallback local-search answer",
+        "AI answer constrained to retrieved sources"
+      ],
+      "forbidden": [
+        "answer without source paths",
+        "full-doc context stuffing",
+        "claiming certainty when retrieval is weak",
+        "secret indexing",
+        "unbounded plugin directory scan"
+      ],
+      "verification": [
+        "python docs_ai.py index",
+        "python docs_ai.py search \"harness skill docs\" --limit 3",
+        "python docs_ai.py ask \"sample question\"",
+        "python -m py_compile docs_ai.py"
+      ],
+      "risk": "medium",
+      "modelRole": "draft",
+      "notes": "Prefer RAG/search before fine-tuning for frequently changing skill and harness docs."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "docs-ai.answer-confidence-sources",
+      "title": "Docs AI Answer Confidence Sources Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "sqlite", "markdown"],
+      "purpose": "Attach confidence, source file paths, ranks, and snippets to docs QA answers so downstream development plans know what is grounded versus uncertain.",
+      "inputs": ["question", "retrievedChunks", "rankScores", "sourcePaths", "answerMode"],
+      "readFirst": [
+        "docs_ai.py",
+        "README.md",
+        "docs_ai.sqlite3"
+      ],
+      "allowedOutputs": [
+        "confidence high/medium/low",
+        "source path list",
+        "ranked snippets",
+        "grounded answer",
+        "unknown or low-confidence refusal"
+      ],
+      "forbidden": [
+        "unsupported answer",
+        "fabricated source",
+        "missing confidence label",
+        "using AI answer without retrieved evidence"
+      ],
+      "verification": [
+        "python docs_ai.py ask \"sample question\"",
+        "answer includes confidence and sources",
+        "low evidence produces low confidence or unknown"
+      ],
+      "risk": "medium",
+      "modelRole": "validator",
+      "notes": "This is the trust gate for docs-driven implementation."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "docs-ai.minimal-implementation-plan",
+      "title": "Docs AI Minimal Implementation Plan Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "markdown"],
+      "purpose": "Turn a grounded docs QA answer into the smallest safe implementation plan with files, checks, approval boundaries, and verification commands.",
+      "inputs": ["question", "answer", "sources", "confidence", "targetRepo"],
+      "readFirst": [
+        "docs_ai.py",
+        "README.md",
+        "SKILL.md",
+        "skills/resonance-workflow/SKILL.md",
+        "data/ai-runtime/pattern-card-registry.sqlite"
+      ],
+      "allowedOutputs": [
+        "minimal plan",
+        "selected files",
+        "approval-needed note",
+        "verification command",
+        "risk classification"
+      ],
+      "forbidden": [
+        "implementation plan without sources",
+        "broad refactor as minimal plan",
+        "dangerous operation without approval gate",
+        "test omission"
+      ],
+      "verification": [
+        "python docs_ai.py plan \"sample task\"",
+        "plan includes sources, minimal files, approval boundary, and verification"
+      ],
+      "risk": "medium",
+      "modelRole": "draft",
+      "notes": "The plan may guide Codex or a human; it is not permission to mutate files by itself."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "docs-ai.pattern-record-promote-skill",
+      "title": "Docs AI Pattern Record Promote Skill Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "markdown", "json"],
+      "purpose": "Record repeated docs QA and plan workflows, list them, and promote mature repeated patterns into a SKILL.md draft.",
+      "inputs": ["question", "answer", "plan", "patternId", "skillName"],
+      "readFirst": [
+        "docs_ai.py",
+        "README.md",
+        "SKILL.md",
+        "docs_ai.sqlite3",
+        "docs/ai/80-skills/skill-index.md"
+      ],
+      "allowedOutputs": [
+        "recorded pattern",
+        "patterns list",
+        "promoted SKILL.md draft",
+        "usage examples",
+        "verification note"
+      ],
+      "forbidden": [
+        "skill promotion without repeated evidence",
+        "skill draft without trigger conditions",
+        "unsafe automation authority in skill",
+        "missing verification workflow"
+      ],
+      "verification": [
+        "python docs_ai.py plan \"sample task\" --record",
+        "python docs_ai.py patterns",
+        "python docs_ai.py promote-skill \"docs qa workflow\" --pattern-id 1",
+        "python -m py_compile docs_ai.py"
+      ],
+      "risk": "medium",
+      "modelRole": "draft",
+      "notes": "This is the promotion route from repeated RAG answers to reusable skills."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "docs-ai.external-ai-fallback",
+      "title": "Docs AI External AI Fallback Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "markdown"],
+      "purpose": "Use an optional external or local LLM only after retrieval, passing only the retrieved evidence and falling back to local search when no model key is configured.",
+      "inputs": ["question", "retrievedChunks", "modelName", "apiKeyPresent", "fallbackMode"],
+      "readFirst": [
+        "docs_ai.py",
+        "README.md",
+        "data/ai-runtime/deterministic-agent-policy.json"
+      ],
+      "allowedOutputs": [
+        "retrieval-only answer",
+        "AI answer grounded in snippets",
+        "fallback notice",
+        "model name note"
+      ],
+      "forbidden": [
+        "sending all docs to model",
+        "AI answer without retrieved context",
+        "requiring API key for basic search",
+        "exposing secrets in prompt"
+      ],
+      "verification": [
+        "python docs_ai.py ask \"sample question\"",
+        "DOCS_AI_MODEL set with --ai only uses retrieved context",
+        "no API key falls back to local search"
+      ],
+      "risk": "medium",
+      "modelRole": "validator",
+      "notes": "Keeps token cost low and protects source-grounded behavior."
+    }
+  ]
+}

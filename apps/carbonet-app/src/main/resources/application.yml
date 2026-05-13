@@ -110,7 +110,7 @@ security:
     kisa:
       enabled: ${SECURITY_EXTERNAL_AUTH_KISA_ENABLED:true}
       adapter-version: ${SECURITY_EXTERNAL_AUTH_KISA_ADAPTER_VERSION:v1}
-      sdk-jar-path: ${SECURITY_EXTERNAL_AUTH_KISA_SDK_JAR_PATH:/mnt/c/Users/jwchoo/Downloads/kr.or.kisa.dapc.core-1.0.0.jar}
+      sdk-jar-path: ${SECURITY_EXTERNAL_AUTH_KISA_SDK_JAR_PATH:/app/lib/kr.or.kisa.dapc.core-1.0.0.jar}
       decrypt-tool-path: ${SECURITY_EXTERNAL_AUTH_KISA_DECRYPT_TOOL_PATH:/mnt/c/Users/jwchoo/Downloads/decrypttool.zip}
       client-id: ${SECURITY_EXTERNAL_AUTH_KISA_CLIENT_ID:}
       service-code: ${SECURITY_EXTERNAL_AUTH_KISA_SERVICE_CODE:}
@@ -169,6 +169,12 @@ carbonet:
         icon: ${CARBONET_MENU_EMISSION_ECOINVENT_ICON:settings_input_composite}
   ecoinvent:
     search-url-template: ${CARBONET_ECOINVENT_SEARCH_URL_TEMPLATE:https://api.ecoinvent.org/v0/datasets?query=__QUERY__&from=0&limit=100&version=latest&system_model=cutoff}
+  ai:
+    recommendation:
+      enabled: ${CARBONET_AI_RECOMMENDATION_ENABLED:true}
+    ollama:
+      base-url: ${CARBONET_AI_OLLAMA_BASE_URL:http://127.0.0.1:11434}
+      model: ${CARBONET_AI_OLLAMA_MODEL:qwen3:0.6b}
   react-bootstrap-adapter:
     bindings:
       - bootstrap-endpoint: /en/admin/login/api/app/bootstrap

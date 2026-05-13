@@ -267,19 +267,26 @@ export function PublicLoginPage() {
       if (!started.txId) {
         throw new Error(started.message || (en ? "Failed to start authentication." : "인증 시작에 실패했습니다."));
       }
-      if (started.nextAction === "COMPLETE") {
-        const completed = await completeExternalAuth(methodCode, started.txId);
-        if (completed.status !== "loginSuccess") {
-          throw new Error(completed.errors || (en ? "External authentication failed." : "외부 인증에 실패했습니다."));
-        }
+	      if (started.nextAction === "COMPLETE") {
+	        const completed = await completeExternalAuth(methodCode, started.txId);
+	        if (completed.status !== "loginSuccess") {
+	          throw new Error(completed.errors || (en ? "External authentication failed." : "외부 인증에 실패했습니다."));
+	        }
         invalidateFrontendSessionCache();
         window.sessionStorage.setItem("loginUserId", completed.userId || "");
         window.sessionStorage.setItem("loginUserSe", completed.userSe || "ENT");
         navigate(completed.certified === false
           ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
           : buildLocalizedPath("/home", "/en/home"));
-        return;
-      }
+	        return;
+	      }
+
+	      if (started.nextAction === "CONFIGURE") {
+	        window.alert(started.message || (en
+	          ? "The SDK is loaded. Live authentication endpoint settings are required."
+	          : "SDK는 로드되었습니다. 실제 간편인증을 위해 라이브 인증 엔드포인트 설정이 필요합니다."));
+	        return;
+	      }
 
       if (started.urlScheme) {
         window.alert(started.message || (en
@@ -495,9 +502,9 @@ export function PublicLoginPage() {
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3" data-help-id="signin-login-simple-auth">
-                {externalAuthMethods.length > 0 ? (
-                  <>
+	              <div className="grid grid-cols-1 gap-3" data-help-id="signin-login-simple-auth">
+	                {externalAuthMethods.length > 0 ? (
+	                  <>
                     {externalAuthMethods[0] ? (
                       <AppButton
                         className="w-full h-12 text-sm"
@@ -511,8 +518,8 @@ export function PublicLoginPage() {
                           : externalAuthMethods[0].displayName}
                       </AppButton>
                     ) : null}
-                    <div className="grid grid-cols-2 gap-3">
-                      {externalAuthMethods.slice(1, 3).map((method) => (
+	                    <div className="grid grid-cols-2 gap-3">
+	                      {externalAuthMethods.slice(1, 3).map((method) => (
                         <AppButton
                           className="h-12 text-sm"
                           disabled={!method.available || !!externalAuthSubmitting}
@@ -525,10 +532,19 @@ export function PublicLoginPage() {
                             ? (en ? "Processing..." : "처리 중...")
                             : method.displayName}
                         </AppButton>
-                      ))}
-                    </div>
-                  </>
-                ) : (
+	                      ))}
+	                    </div>
+	                    {externalAuthMethods[0]?.statusMessage ? (
+	                      <p className="rounded-[var(--kr-gov-radius)] bg-slate-50 px-3 py-2 text-xs leading-relaxed text-[var(--kr-gov-text-secondary)]">
+	                        {externalAuthMethods[0].status === "ready" || externalAuthMethods[0].status === "mock"
+	                          ? externalAuthMethods[0].statusMessage
+	                          : (en
+	                            ? "Simple authentication SDK is loaded. Production login requires live KISA endpoint credentials."
+	                            : "간편인증 SDK가 로드되었습니다. 운영 로그인에는 KISA 라이브 엔드포인트와 이용기관 설정이 필요합니다.")}
+	                      </p>
+	                    ) : null}
+	                  </>
+	                ) : (
                   <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-5 text-sm text-[var(--kr-gov-text-secondary)]">
                     {externalAuthState.loading
                       ? (en ? "Loading authentication methods..." : "인증 수단을 불러오는 중입니다...")

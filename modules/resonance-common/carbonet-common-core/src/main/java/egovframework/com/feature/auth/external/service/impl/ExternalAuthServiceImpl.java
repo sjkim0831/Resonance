@@ -75,7 +75,10 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
         response.setUrlScheme(session.getUrlScheme());
         response.setMessage(session.getMessage());
         response.setMock(session.getUrlScheme() != null && session.getUrlScheme().startsWith("mock://"));
-        response.setNextAction(response.isMock() ? "COMPLETE" : "REDIRECT");
+        boolean hasExternalRoute = !ObjectUtils.isEmpty(session.getAppScheme())
+                || !ObjectUtils.isEmpty(session.getQrScheme())
+                || !ObjectUtils.isEmpty(session.getUrlScheme());
+        response.setNextAction(response.isMock() ? "COMPLETE" : (hasExternalRoute ? "REDIRECT" : "CONFIGURE"));
         return response;
     }
 

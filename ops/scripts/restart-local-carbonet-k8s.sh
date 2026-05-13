@@ -18,6 +18,8 @@ Useful env:
   IMAGE_NAME=...           Override the rollout image tag.
   LOCAL_PORT=18080         Override the local port-forward port.
   CARBONET_NODE_HEAP_MB=8192
+  SKIP_MAVEN_CLEAN=true  Reuse Maven target directories instead of clean package.
+  START_LOCAL_AI=true     Start local Ollama for AI mapping recommendations.
 EOF
   exit 0
 fi
@@ -46,6 +48,12 @@ mkdir -p "$ROOT_DIR/var/logs" "$ROOT_DIR/var/run"
 echo "[local-k8s] board=context $(kubectl config current-context)"
 echo "[local-k8s] image=$IMAGE_NAME namespace=$NAMESPACE service=$SERVICE local-port=$LOCAL_PORT"
 
+if [[ "${START_LOCAL_AI:-false}" == "true" ]]; then
+  echo "[local-k8s] move=start-local-ai"
+  CARBONET_AI_OLLAMA_MODEL="${CARBONET_AI_OLLAMA_MODEL:-qwen3:0.6b}" \
+    bash "$ROOT_DIR/ops/scripts/start-local-ai-runner.sh" || true
+fi
+
 if [[ "${SKIP_FRONTEND:-false}" != "true" ]]; then
   echo "[local-k8s] move=frontend-build"
   (cd "$ROOT_DIR/projects/carbonet-frontend/source" && CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}" npm run build)
@@ -55,12 +63,19 @@ fi
 
 if [[ "${SKIP_IMAGE_BUILD:-false}" != "true" ]]; then
   echo "[local-k8s] move=maven-package"
-  mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true package
+  if [[ "${SKIP_MAVEN_CLEAN:-false}" == "true" ]]; then
+    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true package
+  else
+    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package
+  fi
 
   echo "[local-k8s] move=image-context"
   rm -rf "$RELEASE_DIR"
   mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
   cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RELEASE_DIR/project-runtime.jar"
+  if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
+    cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
+  fi
   if compgen -G "$ROOT_DIR/projects/carbonet-adapter/target/*.jar" >/dev/null; then
     cp "$ROOT_DIR"/projects/carbonet-adapter/target/*.jar "$RELEASE_DIR/lib/" || true
   fi

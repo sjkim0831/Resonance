@@ -17,6 +17,9 @@ LIB_DIR="$RELEASE_BASE/lib"
 
 echo "[assemble] starting assembly for $PROJECT_ID"
 mkdir -p "$LIB_DIR"
+if [ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]; then
+    cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$LIB_DIR/"
+fi
 
 # 1. Build and extract common runtime
 echo "[assemble] building common project-runtime..."

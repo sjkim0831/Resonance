@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: carbonet-runtime
-          image: registry.local/carbonet-runtime:2026.05.06-ecoinvent-env-config
+          image: registry.local/carbonet-runtime:2026.05.11-164122-local
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

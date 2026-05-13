@@ -90,7 +90,7 @@ public class AdminEmissionResultBootstrapReadService {
         response.put("resultId", normalizedResultId);
         response.put("listUrl", buildAdminPath(isEn, "/emission/result_list"));
         response.put("found", summary != null);
-        if (summary == null) {
+        if (summary == null && !normalizedResultId.isEmpty()) {
             response.put("pageError", isEn ? "The requested emission result could not be found." : "요청한 산정 결과를 찾을 수 없습니다.");
             return response;
         }

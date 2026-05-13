@@ -24,11 +24,17 @@ export function buildPublicApiPath(path: string): string {
 }
 
 export function buildAdminApiPath(path: string): string {
+  if (!path) {
+    return path;
+  }
   const normalized = path.startsWith("/") ? path : `/${path}`;
   if (normalized.startsWith("/api/admin/")) {
     return buildLocalizedPath(`/admin${normalized}`, `/en/admin${normalized}`);
   }
   if (normalized.startsWith("/api/")) {
+    return buildLocalizedPath(normalized, `/en${normalized}`);
+  }
+  if (normalized.startsWith("/admin/")) {
     return buildLocalizedPath(normalized, `/en${normalized}`);
   }
   return buildLocalizedPath(`/admin${normalized}`, `/en/admin${normalized}`);

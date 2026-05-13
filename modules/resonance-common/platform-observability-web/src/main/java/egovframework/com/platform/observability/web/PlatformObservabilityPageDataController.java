@@ -6,19 +6,20 @@ import egovframework.com.platform.service.observability.PlatformObservabilityAdm
 import egovframework.com.platform.service.observability.PlatformObservabilityPagePayloadPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.web.csrf.CsrfToken;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Locale;
 import java.util.Map;
 
-@Controller
-@RequestMapping({"/admin", "/en/admin"})
+@RestController
+@RequestMapping(value = {"/admin", "/en/admin"}, produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
 public class PlatformObservabilityPageDataController {
 

@@ -1,0 +1,396 @@
+{
+  "schemaVersion": "1.0",
+  "cards": [
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.local-model-runner",
+      "title": "Local Model Runner Harness Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "json", "shell"],
+      "purpose": "Run local model requested commands only through the governed route_model -> harness -> shell sequence instead of direct shell execution.",
+      "inputs": ["taskType", "command", "routeModel", "policyFile", "workingDirectory"],
+      "readFirst": [
+        "scripts/local_model_runner.py",
+        "harness-policy.json",
+        "scripts/validate_harness_policy.py",
+        "docs/local-model-runner.md",
+        "data/ai-runtime/deterministic-agent-policy.json",
+        "data/ai-runtime/pattern-card-registry.sqlite"
+      ],
+      "allowedOutputs": [
+        "routed task classification",
+        "policy decision",
+        "allowlisted command execution",
+        "refusal or escalation reason",
+        "verification summary"
+      ],
+      "forbidden": [
+        "direct shell execution from model output",
+        "policy mutation by local model",
+        "dangerous operation without harness approval",
+        "unbounded repository scan",
+        "secret echo in model-visible logs"
+      ],
+      "verification": [
+        "python scripts/validate_harness_policy.py",
+        "python -m unittest discover -s evals",
+        "local runner dry-run or safe command smoke"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Use for local_model_runner.py style systems. Harness policy changes escalate to Codex or a stronger approved authority."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.policy-change-escalation",
+      "title": "Harness Policy Change Escalation Pattern",
+      "layer": "operations-platform",
+      "languages": ["json", "python", "markdown"],
+      "purpose": "Refuse local-model execution for harness policy changes and escalate them through Codex, approval, tests, and documentation updates.",
+      "inputs": ["policyChangeType", "taskType", "requiredFields", "fixedStages", "approvalState"],
+      "readFirst": [
+        "harness-policy.json",
+        "scripts/validate_harness_policy.py",
+        "docs/local-model-runner.md",
+        "docs/kubernetes-deploy.md",
+        "data/ai-runtime/deterministic-agent-policy.json"
+      ],
+      "allowedOutputs": [
+        "policy diff draft",
+        "escalation reason",
+        "required test list",
+        "documentation update note"
+      ],
+      "forbidden": [
+        "local model self-authorizing new policy",
+        "loosening dangerous-operation gates without approval",
+        "missing tests for policy changes",
+        "undocumented policy behavior"
+      ],
+      "verification": [
+        "python scripts/validate_harness_policy.py",
+        "python -m unittest discover -s evals",
+        "policy documentation review"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "Covers harness_policy_change and similar royal-law changes."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.k8s-redeploy-dry-run",
+      "title": "Kubernetes Redeploy Dry Run Harness Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "yaml", "shell"],
+      "purpose": "Plan Kubernetes redeployment through a fixed preflight -> build -> push -> set_image -> rollout_status -> verify sequence with dry-run as the default.",
+      "inputs": ["context", "namespace", "deployment", "container", "image", "dockerfile", "buildContext"],
+      "readFirst": [
+        "scripts/k8s_redeploy.py",
+        "harness-policy.json",
+        "docs/kubernetes-deploy.md",
+        "deploy/k8s",
+        "ops/scripts/prepare-docker-desktop-k8s-gate.sh",
+        "ops/scripts/verify-k8s-runtime-routing.sh"
+      ],
+      "allowedOutputs": [
+        "preflight summary",
+        "build plan",
+        "push plan",
+        "set_image plan",
+        "rollout_status plan",
+        "verify plan"
+      ],
+      "forbidden": [
+        "live deployment by default",
+        "kubectl set image outside fixed stage order",
+        "rollout without preflight",
+        "success without verify stage",
+        "missing context/namespace/deployment/container/image"
+      ],
+      "verification": [
+        "dry-run command exits 0",
+        "python scripts/validate_harness_policy.py",
+        "python -m unittest discover -s evals"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Maps kubernetes_deploy_plan to local-first dry-run behavior."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.k8s-live-deploy-approved",
+      "title": "Kubernetes Live Deploy Approved Harness Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "yaml", "shell"],
+      "purpose": "Allow live Kubernetes redeployment only when both --live and --approved are present and the fixed redeploy stages pass.",
+      "inputs": ["context", "namespace", "deployment", "container", "image", "dockerfile", "buildContext", "live", "approved"],
+      "readFirst": [
+        "scripts/k8s_redeploy.py",
+        "harness-policy.json",
+        "docs/kubernetes-deploy.md",
+        "data/ai-runtime/pattern-cards.build-redeploy.json",
+        "data/ai-runtime/pattern-cards.k8s-self-healing.json",
+        "ops/scripts/verify-k8s-runtime-routing.sh"
+      ],
+      "allowedOutputs": [
+        "approved preflight",
+        "build execution",
+        "image push/load execution",
+        "set image execution",
+        "rollout status result",
+        "post-deploy verification result",
+        "rollback note"
+      ],
+      "forbidden": [
+        "live deploy without --approved",
+        "approval without fixed stage order",
+        "deploy without rollback note",
+        "deploy without post-health verification",
+        "local model direct kubectl mutation"
+      ],
+      "verification": [
+        "preflight passes",
+        "rollout_status passes",
+        "verify-k8s-runtime-routing.sh passes",
+        "runtime freshness verification"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "Maps kubernetes_live_deploy to Codex/approval-required execution."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.fixed-stage-pipeline",
+      "title": "Fixed Stage Pipeline Harness Pattern",
+      "layer": "operations-platform",
+      "languages": ["json", "python", "shell"],
+      "purpose": "Define task policies with required fields, fixed stages, dry-run defaults, approval gates, and test coverage.",
+      "inputs": ["taskType", "requiredFields", "stages", "dryRunDefault", "approvalRequired", "testCommand"],
+      "readFirst": [
+        "harness-policy.json",
+        "scripts/validate_harness_policy.py",
+        "evals",
+        "docs/local-model-runner.md",
+        "docs/kubernetes-deploy.md"
+      ],
+      "allowedOutputs": [
+        "task policy entry",
+        "required field list",
+        "fixed stage list",
+        "approval rule",
+        "test fixture"
+      ],
+      "forbidden": [
+        "policy without validation",
+        "stage order chosen by model at runtime",
+        "dangerous task without approval gate",
+        "test gap for new task type"
+      ],
+      "verification": [
+        "python scripts/validate_harness_policy.py",
+        "python -m unittest discover -s evals"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Generalizes local runner and k8s redeploy harness patterns."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.framework-boot-commit-push",
+      "title": "Framework Boot Commit Push Harness Pattern",
+      "layer": "operations-platform",
+      "languages": ["python", "shell", "git"],
+      "purpose": "Use a small local model only as a clerk for framework boot logs, known failure routing, commit message drafting, bot-branch push, and PR handoff.",
+      "inputs": ["bootCommand", "testCommand", "branchPrefix", "remote", "commitPolicy", "pushPolicy"],
+      "readFirst": [
+        "scripts/local_model_runner.py",
+        "harness-policy.json",
+        "scripts/validate_harness_policy.py",
+        "docs/local-model-runner.md",
+        "data/ai-runtime/minimal-local-llm-pattern-model-plan.json",
+        "data/ai-runtime/deterministic-agent-policy.json"
+      ],
+      "allowedOutputs": [
+        "boot log summary",
+        "known failure classification",
+        "allowed fix recommendation",
+        "commit message draft",
+        "bot branch push plan",
+        "PR description draft",
+        "human escalation report"
+      ],
+      "forbidden": [
+        "main branch direct push",
+        "push without tests",
+        "commit with failing build",
+        "automatic conflict resolution by 0.5B model",
+        "UNKNOWN_ERROR auto-fix",
+        "secret or environment variable judgment by model"
+      ],
+      "verification": [
+        "framework boot command exits 0",
+        "lint/test/build/typecheck gates pass",
+        "git branch matches bot/bootstrap-* or approved prefix",
+        "python scripts/validate_harness_policy.py"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "0.5B may summarize and classify; state machine, tests, branch protection, and CI decide whether commit/push is legal."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.boot-exception-state-machine",
+      "title": "Boot Exception State Machine Pattern",
+      "layer": "operations-platform",
+      "languages": ["json", "python", "shell"],
+      "purpose": "Route framework boot failures through explicit states instead of free-form model exception handling.",
+      "inputs": ["bootLog", "exitCode", "state", "allowedFixes", "escalationTarget"],
+      "readFirst": [
+        "harness-policy.json",
+        "scripts/local_model_runner.py",
+        "docs/local-model-runner.md",
+        "data/ai-runtime/pattern-card-registry.sqlite"
+      ],
+      "allowedOutputs": [
+        "BOOT_OK",
+        "INSTALL_FAILED",
+        "BUILD_FAILED",
+        "TEST_FAILED",
+        "GIT_CONFLICT",
+        "PUSH_DENIED",
+        "UNKNOWN_ERROR",
+        "next allowed action"
+      ],
+      "forbidden": [
+        "free-form exception recovery",
+        "UNKNOWN_ERROR continuation",
+        "retry loop without max attempts",
+        "test bypass",
+        "unapproved destructive cleanup"
+      ],
+      "verification": [
+        "state transition is allowlisted",
+        "max attempts not exceeded",
+        "UNKNOWN_ERROR stops and reports",
+        "tests rerun after allowed fix"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "The model labels the state; deterministic state machine chooses legal moves."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.multi-0.5b-specialist-orchestration",
+      "title": "Multi 0.5B Specialist Orchestration Pattern",
+      "layer": "operations-platform",
+      "languages": ["json", "python"],
+      "purpose": "Call multiple tiny specialist local models for one narrow function each while routing, execution, and verification remain deterministic.",
+      "inputs": ["intent", "specialistRole", "shortContext", "jsonOutputSchema", "verificationGate"],
+      "readFirst": [
+        "data/ai-runtime/minimal-local-llm-pattern-model-plan.json",
+        "data/ai-runtime/deterministic-agent-policy.json",
+        "data/ai-runtime/agent-stage-model-matrix.json",
+        "harness-policy.json",
+        "scripts/local_model_runner.py"
+      ],
+      "allowedOutputs": [
+        "error classification JSON",
+        "log summary JSON",
+        "commit message draft",
+        "test failure label",
+        "risk label",
+        "human escalation reason"
+      ],
+      "forbidden": [
+        "specialist model direct shell",
+        "specialist model direct git push",
+        "specialist model security authority",
+        "large refactor delegation",
+        "unstructured prose as executable decision"
+      ],
+      "verification": [
+        "JSON schema validation",
+        "allowlisted command check",
+        "deterministic harness decision",
+        "CI/test gate for any produced change"
+      ],
+      "risk": "high",
+      "modelRole": "router",
+      "notes": "Designed for 5090-class local runtime where 0.5B models can be swapped quickly."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.commit-message-drafter",
+      "title": "Commit Message Drafter Specialist Pattern",
+      "layer": "operations-platform",
+      "languages": ["git", "json"],
+      "purpose": "Let a tiny local model draft commit and PR text from verified diffs and test results without deciding whether commit or push is allowed.",
+      "inputs": ["changedFiles", "diffSummary", "testResults", "risk", "branchName"],
+      "readFirst": [
+        "scripts/local_model_runner.py",
+        "harness-policy.json",
+        "docs/local-model-runner.md"
+      ],
+      "allowedOutputs": [
+        "commit subject",
+        "commit body",
+        "PR summary",
+        "verification summary",
+        "risk note"
+      ],
+      "forbidden": [
+        "commit permission decision",
+        "push permission decision",
+        "hiding failed tests",
+        "mentioning secrets",
+        "fabricating verification"
+      ],
+      "verification": [
+        "changed files match actual git diff",
+        "test result exists",
+        "branch policy check remains external"
+      ],
+      "risk": "medium",
+      "modelRole": "draft",
+      "notes": "The model writes royal wording; git policy remains harness-owned."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "harness.bot-branch-pr-gate",
+      "title": "Bot Branch PR Gate Pattern",
+      "layer": "operations-platform",
+      "languages": ["git", "shell", "json"],
+      "purpose": "Restrict automated commit/push flows to protected bot branches and PR creation, leaving merge to CI and review.",
+      "inputs": ["branchName", "remote", "baseBranch", "ciStatus", "approvalState"],
+      "readFirst": [
+        "harness-policy.json",
+        "scripts/local_model_runner.py",
+        "docs/local-model-runner.md",
+        "data/ai-runtime/deterministic-agent-policy.json"
+      ],
+      "allowedOutputs": [
+        "bot branch creation",
+        "safe push plan",
+        "PR creation plan",
+        "CI status summary",
+        "review required note"
+      ],
+      "forbidden": [
+        "main direct push",
+        "force push without explicit approval",
+        "merge by local model",
+        "push after failed tests",
+        "push from UNKNOWN_ERROR state"
+      ],
+      "verification": [
+        "branch matches bot/bootstrap-* or approved prefix",
+        "tests pass",
+        "remote push target is allowlisted",
+        "PR/CI gate is required"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "Keeps the king safe by making automated push a PR-only move."
+    }
+  ]
+}

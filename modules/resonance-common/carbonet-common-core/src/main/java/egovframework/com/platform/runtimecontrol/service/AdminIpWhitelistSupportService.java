@@ -164,7 +164,12 @@ public class AdminIpWhitelistSupportService {
         if (persistenceService == null) {
             return Collections.emptyList();
         }
-        return persistenceService.selectRuleRows();
+        try {
+            return persistenceService.selectRuleRows();
+        } catch (RuntimeException ex) {
+            log.warn("Failed to load persisted IP whitelist rules. Falling back to default rows.", ex);
+            return Collections.emptyList();
+        }
     }
 
     private List<Map<String, String>> selectIpWhitelistRequestRows() {
@@ -172,7 +177,12 @@ public class AdminIpWhitelistSupportService {
         if (persistenceService == null) {
             return Collections.emptyList();
         }
-        return persistenceService.selectRequestRows();
+        try {
+            return persistenceService.selectRequestRows();
+        } catch (RuntimeException ex) {
+            log.warn("Failed to load persisted IP whitelist requests. Falling back to default rows.", ex);
+            return Collections.emptyList();
+        }
     }
 
     private void upsertIpWhitelistRow(List<Map<String, String>> target, Map<String, String> source, String keyName) {

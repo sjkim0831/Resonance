@@ -11,10 +11,9 @@ import lombok.Setter;
 public class EmissionMappingLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "raw_material_name", nullable = false)
     private String rawMaterialName;
 
     @ManyToOne(fetch = FetchType.LAZY)

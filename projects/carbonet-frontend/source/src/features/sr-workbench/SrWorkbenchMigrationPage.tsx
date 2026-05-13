@@ -177,32 +177,26 @@ export function SrWorkbenchMigrationPage() {
     [page, surfaceId]
   );
   const availableEvents = useMemo(() => {
-    if (!page) {
-      return [];
-    }
+    const events = page?.events || [];
     if (!selectedSurface?.eventIds?.length) {
-      return page.events || [];
+      return events;
     }
     const ids = new Set(selectedSurface.eventIds);
-    return page.events.filter((item) => ids.has(item.eventId));
+    return events.filter((item) => ids.has(item.eventId));
   }, [page, selectedSurface]);
   const selectedEvent = useMemo(
     () => availableEvents.find((item) => item.eventId === eventId) || availableEvents[0],
     [availableEvents, eventId]
   );
   const selectedApi = useMemo(() => {
-    if (!page) {
-      return undefined;
-    }
+    const apis = page?.apis || [];
     const ids = new Set(selectedEvent?.apiIds || []);
-    return page.apis.find((item) => ids.has(item.apiId)) || page.apis?.[0];
+    return apis.find((item) => ids.has(item.apiId)) || apis[0];
   }, [page, selectedEvent]);
   const selectedSchema = useMemo(() => {
-    if (!page) {
-      return undefined;
-    }
+    const schemas = page?.schemas || [];
     const schemaId = selectedApi?.schemaIds?.[0];
-    return page.schemas.find((item) => item.schemaId === schemaId) || page.schemas?.[0];
+    return schemas.find((item) => item.schemaId === schemaId) || schemas[0];
   }, [page, selectedApi]);
   const selectedTarget = useMemo(
     () => page?.changeTargets?.find((item) => item.targetId === targetId) || page?.changeTargets?.[0],

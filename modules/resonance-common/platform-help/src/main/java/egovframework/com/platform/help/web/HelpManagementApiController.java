@@ -50,8 +50,16 @@ public class HelpManagementApiController {
 
     @GetMapping("/screen-command/page")
     public ResponseEntity<Map<String, Object>> getScreenCommandPage(
-            @RequestParam(value = "pageId", required = false) String pageId) throws Exception {
-        return ResponseEntity.ok(invokeScreenCommandPage(pageId));
+            @RequestParam(value = "pageId", required = false) String pageId) {
+        try {
+            return ResponseEntity.ok(invokeScreenCommandPage(pageId));
+        } catch (Exception ignored) {
+            return ResponseEntity.ok(orderedMap(
+                    "selectedPageId", safe(pageId),
+                    "pages", java.util.Collections.emptyList(),
+                    "page", new LinkedHashMap<>(),
+                    "fallback", true));
+        }
     }
 
     @PostMapping("/save")

@@ -44,6 +44,10 @@ PROJECT_BOUNDARY_CONTRACT="$ROOT_DIR/data/project-boundary/resonance-carbonet-bo
 PROJECT_BOUNDARY_VALIDATOR="$ROOT_DIR/ops/scripts/verify-project-boundary.sh"
 DETERMINISTIC_AGENT_POLICY="$ROOT_DIR/data/ai-runtime/deterministic-agent-policy.json"
 DETERMINISTIC_AGENT_POLICY_VALIDATOR="$ROOT_DIR/ops/scripts/verify-deterministic-agent-policy.sh"
+PATTERN_CARD_SCHEMA="$ROOT_DIR/data/ai-runtime/pattern-card.schema.json"
+PATTERN_CARD_DB="$ROOT_DIR/data/ai-runtime/pattern-card-registry.sqlite"
+PATTERN_CARD_INIT="$ROOT_DIR/ops/scripts/init-pattern-card-db.py"
+PATTERN_CARD_QUERY="$ROOT_DIR/ops/scripts/query-pattern-card-db.py"
 
 write() {
   printf '%s\n' "$*" | tee -a "$REPORT"
@@ -104,8 +108,18 @@ require_file "$PROJECT_BOUNDARY_CONTRACT"
 require_file "$PROJECT_BOUNDARY_VALIDATOR"
 require_file "$DETERMINISTIC_AGENT_POLICY"
 require_file "$DETERMINISTIC_AGENT_POLICY_VALIDATOR"
+require_file "$PATTERN_CARD_SCHEMA"
+require_file "$PATTERN_CARD_DB"
+require_file "$PATTERN_CARD_INIT"
+require_file "$PATTERN_CARD_QUERY"
 jq empty "$CONTEXT_PACK" "$ROUTE_MAP" "$MODEL_MATRIX" "$IMPLEMENTATION_PATCH_CONTENT_SCHEMA" "$REVIEWED_APPLY_PACKET_SCHEMA" "$MEMORY_PATCH_REVIEW_SCHEMA" "$THEME_REGISTRY" "$PROJECT_BOUNDARY_CONTRACT" "$DETERMINISTIC_AGENT_POLICY" || fail "json validation failed"
 write "- JSON validation: pass"
+
+pattern_count="$(python3 "$PATTERN_CARD_QUERY" --limit 1000 | awk -F= '/^cards=/ { print $2; exit }')"
+if [[ -z "$pattern_count" || "$pattern_count" -lt 80 ]]; then
+  fail "pattern-card registry too small: ${pattern_count:-missing}"
+fi
+write "- pattern-card registry: pass ($pattern_count cards)"
 
 canonical_root="$(json_value '.canonicalRoot')"
 [ "$canonical_root" = "$ROOT_DIR" ] || fail "canonical root mismatch expected=$ROOT_DIR actual=$canonical_root"
@@ -318,17 +332,26 @@ write "- current context: $current_context"
 
 ops_ready="$(kubectl -n "$OPS_NS" get deploy operations-console -o jsonpath='{.status.readyReplicas}/{.status.replicas}')"
 runtime_ready="$(kubectl -n "$RUNTIME_NS" get deploy carbonet-runtime -o jsonpath='{.status.readyReplicas}/{.status.replicas}')"
-[ "$ops_ready" = "1/1" ] || fail "operations-console not ready: $ops_ready"
-[ "$runtime_ready" = "2/2" ] || fail "carbonet-runtime not ready: $runtime_ready"
+expected_ops_ready="$(jq -r '.deployments[] | select(.component == "operations-console") | .expectedReadyReplicas' "$ROOT_DIR/data/version-control/k8s-runtime-status-20260427.json")"
+expected_runtime_ready="$(jq -r '.deployments[] | select(.component == "carbonet-runtime") | .expectedReadyReplicas' "$ROOT_DIR/data/version-control/k8s-runtime-status-20260427.json")"
+[ "$ops_ready" = "$expected_ops_ready/$expected_ops_ready" ] || fail "operations-console not ready: $ops_ready"
+[ "$runtime_ready" = "$expected_runtime_ready/$expected_runtime_ready" ] || fail "carbonet-runtime not ready: $runtime_ready"
 write "- operations-console: $ops_ready"
 write "- carbonet-runtime: $runtime_ready"
 
 health_pod="hermes-rag-health-check-$(date +%H%M%S)"
+runtime_health_endpoint="$(jq -r '.deployments[] | select(.component == "carbonet-runtime") | .healthEndpoint // "http://carbonet-runtime/actuator/health"' "$ROOT_DIR/data/version-control/k8s-runtime-status-20260427.json")"
+runtime_service_ip="$(kubectl -n "$RUNTIME_NS" get svc carbonet-runtime -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)"
+if [[ -n "$runtime_service_ip" && "$runtime_service_ip" != "None" ]]; then
+  runtime_health_endpoint="http://$runtime_service_ip/actuator/health"
+elif [[ "$runtime_health_endpoint" == "http://carbonet-runtime/"* || "$runtime_health_endpoint" == "http://carbonet-runtime/actuator/"* ]]; then
+  runtime_health_endpoint="${runtime_health_endpoint/http:\/\/carbonet-runtime/http:\/\/carbonet-runtime.$RUNTIME_NS.svc.cluster.local}"
+fi
 health="$(kubectl -n "$RUNTIME_NS" run "$health_pod" \
   --image=curlimages/curl:8.10.1 \
   --restart=Never \
   --rm -i --quiet \
-  --command -- curl -fsS http://carbonet-runtime/actuator/health)"
+  --command -- curl -fsS --max-time 10 "$runtime_health_endpoint")"
 printf '%s' "$health" | jq -e '.status == "UP"' >/dev/null || fail "carbonet-runtime health is not UP: $health"
 write "- carbonet-runtime health: $health"
 

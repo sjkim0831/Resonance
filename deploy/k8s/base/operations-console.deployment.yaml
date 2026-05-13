@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: operations-console
-          image: registry.local/operations-console:2026.04.27-opsfix8
+          image: registry.local/operations-console:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 18000

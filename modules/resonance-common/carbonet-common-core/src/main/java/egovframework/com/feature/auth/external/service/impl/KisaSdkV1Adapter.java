@@ -56,7 +56,14 @@ public class KisaSdkV1Adapter implements ExternalAuthAdapter {
             return session;
         }
 
-        validateLiveReadiness();
+        if (!isReadyForLiveFlow()) {
+            if (!isAvailable()) {
+                throw new IllegalStateException("KISA SDK jar is not available or could not be loaded.");
+            }
+            session.setMessage("KISA SDK is loaded. Configure clientId, serviceCode, CA code, prepareEndpoint, and resultEndpoint for live authentication.");
+            return session;
+        }
+
         session.setMessage("KISA SDK adapter is ready. Configure remote prepare/result orchestration for live authentication.");
         session.setUrlScheme(properties.getKisa().getPrepareEndpoint());
         return session;

@@ -45,7 +45,47 @@
         </dependency>
         <dependency>
             <groupId>egovframework</groupId>
+            <artifactId>carbonet-builder-observability</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
             <artifactId>resonance-web-support</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>carbonet-contract-metadata</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>platform-request-contracts</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>platform-service-contracts</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>platform-help-content</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>platform-observability-web</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>resonance-platform-version-control</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>platform-runtime-control</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
@@ -58,7 +98,12 @@
             <artifactId>platform-observability-payload</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
-            <dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>platform-help</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
