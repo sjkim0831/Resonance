@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -1504,8 +1504,6 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const routeEn = isEnglish();
   const en = routeEn;
   const report = loadEmissionSurveyReportSession();
-  const sheetRef = useRef<HTMLElement | null>(null);
-  const [pdfBusy, setPdfBusy] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [productFamily, setProductFamily] = useState("");
   const [functionalUnit, setFunctionalUnit] = useState("");
@@ -1553,52 +1551,13 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const massUnit = outputMassUnitLabel(outputRows, en) || "t";
   const totalEmission = report.summary.totalEmission || 0;
   const totalEmissionPerMass = normalizedOutputMass > 0 ? totalEmission / normalizedOutputMass : totalEmission;
-  const handleDownloadPdf = async () => {
-    const target = sheetRef.current;
-    if (!target || pdfBusy) {
-      return;
-    }
-    setPdfBusy(true);
-    document.body.classList.add("lca-pdf-export");
-    try {
-      await new Promise((resolve) => window.setTimeout(resolve, 80));
-      const importRemoteModule = (url: string) => import(/* @vite-ignore */ url);
-      const [html2canvasModule, jspdfModule] = await Promise.all([
-        importRemoteModule("https://esm.sh/html2canvas@1.4.1"),
-        importRemoteModule("https://esm.sh/jspdf@2.5.2")
-      ]);
-      const html2canvas = html2canvasModule.default;
-      const { jsPDF } = jspdfModule;
-      const canvas = await html2canvas(target, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-        windowWidth: Math.max(target.scrollWidth, 900)
-      });
-      const imageData = canvas.toDataURL("image/jpeg", 0.96);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imageHeight = (canvas.height * pageWidth) / canvas.width;
-      let offsetY = 0;
-
-      while (offsetY < imageHeight) {
-        if (offsetY > 0) {
-          pdf.addPage();
-        }
-        pdf.addImage(imageData, "JPEG", 0, -offsetY, pageWidth, imageHeight);
-        offsetY += pageHeight;
-      }
-
-      const safeProductName = (report.productName || "lca-summary").replace(/[\\/:*?"<>|]+/g, "-").slice(0, 80);
-      pdf.save(`${safeProductName}-lca-summary.pdf`);
-    } catch (error) {
-      console.error("[lca-summary] PDF download failed", error);
-      window.alert(en ? "PDF download failed. Please try again." : "PDF 다운로드에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      document.body.classList.remove("lca-pdf-export");
-      setPdfBusy(false);
-    }
+  const handlePrintDocument = () => {
+    const originalTitle = document.title;
+    document.title = " ";
+    window.print();
+    window.setTimeout(() => {
+      document.title = originalTitle;
+    }, 500);
   };
   const textFieldClass = "rounded-sm border border-emerald-300 bg-emerald-100/80 px-1.5 py-0.5 font-bold text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 print:border-0 print:bg-transparent print:px-0 print:py-0 print:shadow-none";
   const tableHeaderClass = "border border-[#cccccc] bg-[#d9d9d9] px-3 py-2 text-center text-[13px] font-black text-slate-950";
@@ -1625,7 +1584,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   return (
     <main className="min-h-screen bg-[#e8edf3] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:0;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:0!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;padding:20mm 10mm!important}.lca-section{break-inside:avoid;page-break-inside:avoid}.lca-table{break-inside:auto;page-break-inside:auto}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td.bg-\\[\\#f2f2f2\\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}}.lca-pdf-export{background:#fff!important}.lca-pdf-export .print-hidden{display:none!important}.lca-pdf-export .lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;padding:20mm 10mm!important}.lca-pdf-export .print-input-control{display:none!important}.lca-pdf-export .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-pdf-export .lca-screen-note{display:none!important}"}
+        {"@page{size:A4;margin:0;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:0!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;padding:20mm 10mm!important}.lca-section{break-inside:avoid;page-break-inside:avoid}.lca-table{break-inside:auto;page-break-inside:auto}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td.bg-\\[\\#f2f2f2\\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}}"}
       </style>
 
       <div className="print-hidden mx-auto mb-4 flex max-w-[900px] justify-between gap-3">
@@ -1636,12 +1595,12 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         >
           {en ? "Back To Report" : "리포트로 돌아가기"}
         </button>
-        <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60" disabled={pdfBusy} onClick={handleDownloadPdf} type="button">
-          {pdfBusy ? (en ? "Creating PDF..." : "PDF 생성 중...") : en ? "Download PDF" : "PDF 다운로드"}
+        <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={handlePrintDocument} type="button">
+          {en ? "Print" : "인쇄하기"}
         </button>
       </div>
 
-      <article ref={sheetRef} className="lca-sheet mx-auto max-w-[900px] rounded-[26px] border border-white bg-white p-8 shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
+      <article className="lca-sheet mx-auto max-w-[900px] rounded-[26px] border border-white bg-white p-8 shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
         <header className="text-center">
           <div className="inline-flex flex-wrap items-center justify-center gap-2 text-3xl font-black tracking-[-0.04em] text-slate-950">
             <EditableText className={`${textFieldClass} lca-fill !w-auto min-w-[170px] text-center text-3xl`} onCommit={setCompanyName} value={companyName} />

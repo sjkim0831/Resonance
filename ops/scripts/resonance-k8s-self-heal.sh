@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
-WEB_URL="${WEB_URL:-http://127.0.0.1:18080}"
+WEB_URL="${WEB_URL:-http://127.0.0.1}"
 LOG_FILE="${LOG_FILE:-/var/log/resonance-k8s-self-heal.log}"
 LOCK_FILE="${LOCK_FILE:-/var/lock/resonance-k8s-self-heal.lock}"
 REBUILD_ON_FAILURE="${REBUILD_ON_FAILURE:-true}"
@@ -101,9 +101,9 @@ ensure_runtime() {
     log 'runtime recovered after restart'
     return 0
   fi
-  if [[ "$REBUILD_ON_FAILURE" == "true" && -x "$ROOT_DIR/ops/scripts/deploy-carbonet-kubeadm-k8s.sh" ]]; then
+  if [[ "$REBUILD_ON_FAILURE" == "true" && -x "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" ]]; then
     log 'runtime still unhealthy, rebuilding and redeploying'
-    (cd "$ROOT_DIR" && SKIP_FRONTEND="${SELF_HEAL_SKIP_FRONTEND:-false}" SKIP_MAVEN_CLEAN=true RESONANCE_AUTO_GIT_COMMIT="${RESONANCE_AUTO_GIT_COMMIT:-false}" RESONANCE_AUTO_GIT_PUSH="${RESONANCE_AUTO_GIT_PUSH:-false}" bash ops/scripts/deploy-carbonet-kubeadm-k8s.sh) || true
+    (cd "$ROOT_DIR" && SKIP_FRONTEND="${SELF_HEAL_SKIP_FRONTEND:-false}" SKIP_MAVEN_CLEAN=true RESONANCE_AUTO_GIT_COMMIT="${RESONANCE_AUTO_GIT_COMMIT:-false}" RESONANCE_AUTO_GIT_PUSH="${RESONANCE_AUTO_GIT_PUSH:-false}" bash ops/scripts/resonance-k8s-build-deploy-80.sh) || true
   fi
 }
 

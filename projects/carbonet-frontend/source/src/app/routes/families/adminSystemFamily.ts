@@ -22,6 +22,11 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "security-policy", label: "보안 정책", group: "admin", koPath: "/admin/system/security-policy", enPath: "/en/admin/system/security-policy" },
   { id: "notification", label: "알림센터", group: "admin", koPath: "/admin/system/notification", enPath: "/en/admin/system/notification" },
   { id: "performance", label: "성능", group: "admin", koPath: "/admin/system/performance", enPath: "/en/admin/system/performance" },
+  { id: "installed-programs", label: "설치 프로그램 관리", group: "admin", koPath: "/admin/system/programs", enPath: "/en/admin/system/programs" },
+  { id: "system-resources", label: "시스템 리소스 관리", group: "admin", koPath: "/admin/system/resources", enPath: "/en/admin/system/resources" },
+  { id: "operations-log-management", label: "운영 로그 관리", group: "admin", koPath: "/admin/system/logs", enPath: "/en/admin/system/logs" },
+  { id: "ai-hangar", label: "AI 격납고", group: "admin", koPath: "/admin/system/ai-hangar", enPath: "/en/admin/system/ai-hangar" },
+  { id: "theme-management", label: "테마 관리", group: "admin", koPath: "/admin/system/theme-management", enPath: "/en/admin/system/theme-management" },
   { id: "external-connection-list", label: "외부 연계 목록", group: "admin", koPath: "/admin/external/connection_list", enPath: "/en/admin/external/connection_list" },
   { id: "external-schema", label: "외부 스키마", group: "admin", koPath: "/admin/external/schema", enPath: "/en/admin/external/schema" },
   { id: "external-keys", label: "외부 인증키 관리", group: "admin", koPath: "/admin/external/keys", enPath: "/en/admin/external/keys" },
@@ -48,8 +53,7 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "backup-config", label: "백업 설정", group: "admin", koPath: "/admin/system/backup_config", enPath: "/en/admin/system/backup_config" },
   { id: "backup-execution", label: "백업 실행", group: "admin", koPath: "/admin/system/backup", enPath: "/en/admin/system/backup" },
   { id: "restore-execution", label: "복구 실행", group: "admin", koPath: "/admin/system/restore", enPath: "/en/admin/system/restore" },
-  { id: "package-governance", label: "패키지 거버넌스", group: "admin", koPath: "/admin/system/package-governance", enPath: "/en/admin/system/package-governance" },
-  { id: "platform-install", label: "AI 플랫폼 설치", group: "admin", koPath: "/admin/system/platform-install", enPath: "/en/admin/system/platform-install" }
+  { id: "package-governance", label: "패키지 거버넌스", group: "admin", koPath: "/admin/system/package-governance", enPath: "/en/admin/system/package-governance" }
 ] as const satisfies RouteDefinitionsOf;
 
 const ADMIN_SYSTEM_PAGE_UNITS = [
@@ -73,6 +77,11 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "security-policy", exportName: "SecurityPolicyMigrationPage", loader: () => import("../../../features/security-policy/SecurityPolicyMigrationPage") },
   { id: "notification", exportName: "NotificationCenterMigrationPage", loader: () => import("../../../features/notification-center/NotificationCenterMigrationPage") },
   { id: "performance", exportName: "PerformanceMigrationPage", loader: () => import("../../../features/performance/PerformanceMigrationPage") },
+  { id: "installed-programs", exportName: "InstalledProgramsMigrationPage", loader: () => import("../../../features/operations-inventory/OperationsInventoryPages") },
+  { id: "system-resources", exportName: "SystemResourcesMigrationPage", loader: () => import("../../../features/operations-inventory/OperationsInventoryPages") },
+  { id: "operations-log-management", exportName: "OperationsLogManagementMigrationPage", loader: () => import("../../../features/operations-inventory/OperationsInventoryPages") },
+  { id: "ai-hangar", exportName: "AiHangarMigrationPage", loader: () => import("../../../features/operations-inventory/OperationsInventoryPages") },
+  { id: "theme-management", exportName: "ThemeManagementMigrationPage", loader: () => import("../../../features/operations-inventory/OperationsInventoryPages") },
   { id: "external-connection-list", exportName: "ExternalConnectionListMigrationPage", loader: () => import("../../../features/external-connection-list/ExternalConnectionListMigrationPage") },
   { id: "external-schema", exportName: "ExternalSchemaMigrationPage", loader: () => import("../../../features/external-schema/ExternalSchemaMigrationPage") },
   { id: "external-keys", exportName: "ExternalKeysMigrationPage", loader: () => import("../../../features/external-keys/ExternalKeysMigrationPage") },
@@ -99,8 +108,7 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "backup-config", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
   { id: "backup-execution", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
   { id: "restore-execution", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
-  { id: "package-governance", exportName: "PackageGovernanceScreen", loader: () => import("../../../platform/operations/governance/PackageGovernanceScreen") },
-  { id: "platform-install", exportName: "PlatformInstallMigrationPage", loader: () => import("../../../features/platform-install/PlatformInstallMigrationPage") }
+  { id: "package-governance", exportName: "PackageGovernanceScreen", loader: () => import("../../../platform/operations/governance/PackageGovernanceScreen") }
 ] as const satisfies PageUnitsOf<typeof ADMIN_SYSTEM_ROUTE_DEFINITIONS>;
 
 export const ADMIN_SYSTEM_FAMILY = createRouteFamily(ADMIN_SYSTEM_ROUTE_DEFINITIONS, ADMIN_SYSTEM_PAGE_UNITS, {
