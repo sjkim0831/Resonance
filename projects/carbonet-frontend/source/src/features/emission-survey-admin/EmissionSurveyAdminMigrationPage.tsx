@@ -636,24 +636,60 @@ function normalizeSearchKeyword(value: string) {
   return String(value || "").trim().toLocaleLowerCase();
 }
 
+function detectSearchLanguage(query: string): "korean" | "english" | "number" {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return "korean";
+  }
+  if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(trimmed)) {
+    return "korean";
+  }
+  if (/^[0-9]/.test(trimmed)) {
+    return "number";
+  }
+  return "english";
+}
+
 function findMatchingProductOption(options: Array<{ value: string; label: string }>, query: string) {
   const normalizedQuery = normalizeSearchKeyword(query);
   if (!normalizedQuery) {
     return null;
   }
+  const searchLang = detectSearchLanguage(query);
   const exactMatch = options.find((option) => {
+    const optionText = option.value + " " + option.label;
+    if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+      return false;
+    }
+    if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+      return false;
+    }
     return normalizeSearchKeyword(option.value) === normalizedQuery || normalizeSearchKeyword(option.label) === normalizedQuery;
   });
   if (exactMatch) {
     return exactMatch;
   }
   const prefixMatch = options.find((option) => {
+    const optionText = option.value + " " + option.label;
+    if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+      return false;
+    }
+    if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+      return false;
+    }
     return normalizeSearchKeyword(option.value).startsWith(normalizedQuery) || normalizeSearchKeyword(option.label).startsWith(normalizedQuery);
   });
   if (prefixMatch) {
     return prefixMatch;
   }
   return options.find((option) => {
+    const optionText = option.value + " " + option.label;
+    if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+      return false;
+    }
+    if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+      return false;
+    }
     return normalizeSearchKeyword(option.value).includes(normalizedQuery) || normalizeSearchKeyword(option.label).includes(normalizedQuery);
   }) || null;
 }
@@ -1232,9 +1268,17 @@ export function EmissionSurveyAdminMigrationPage() {
     if (!normalizedQuery) {
       return productRows;
     }
+    const searchLang = detectSearchLanguage(productSearchQuery);
     return productRows.filter((option) => {
       const normalizedValue = normalizeSearchKeyword(option.value);
       const normalizedLabel = normalizeSearchKeyword(option.label);
+      const optionText = option.value + " " + option.label;
+      if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+        return false;
+      }
+      if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
+        return false;
+      }
       return normalizedValue.includes(normalizedQuery) || normalizedLabel.includes(normalizedQuery);
     });
   }, [productRows, productSearchQuery]);
