@@ -6,6 +6,7 @@ import type { FunctionManagementPagePayload } from "../../lib/api/platformTypes"
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { stringOf, submitFormRequest } from "../admin-system/adminSystemShared";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { ADMIN_BUTTON_LABELS } from "../admin-ui/labels";
 import { AdminInput, AdminSelect, AdminTable, CollectionResultPanel, GridToolbar, MemberButton, PageStatusNotice, SummaryMetricCard, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -86,8 +87,8 @@ export function FunctionManagementMigrationPage() {
         { label: en ? "Function Management" : "기능 관리" }
       ]}
       title={en ? "Function Management" : "기능 관리"}
-      subtitle={en ? "Connect feature codes to pages and authority mapping targets." : "COMTNMENUINFO 기준 페이지에 기능 코드를 연결합니다. 이후 회원 수정 화면에서 기능 코드 기준 권한 매핑을 추가할 수 있도록 구성합니다."}
     >
+      <GovernanceCompressionNav activeId="function" en={en} />
       {pageState.error || actionError || page?.featureMgmtError ? (
         <PageStatusNotice tone="error">
           {actionError || page?.featureMgmtError || pageState.error}
@@ -103,16 +104,15 @@ export function FunctionManagementMigrationPage() {
 
       <AdminWorkspacePageFrame>
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryMetricCard title={en ? "Feature Count" : "등록 기능 수"} value={Number(page?.featureTotalCount || 0)} description={en ? "All registered features" : "전체 등록 건수"} />
-        <SummaryMetricCard title={en ? "Authority Review" : "권한 검토 필요"} value={Number(page?.featureUnassignedCount || 0)} description={en ? "Not linked to any role" : "권한 그룹 미연결"} />
-        <SummaryMetricCard title={en ? "Visible Pages" : "대상 페이지 수"} value={featurePageOptions.length} description={en ? "Selectable page targets" : "선택 가능한 페이지"} />
-        <SummaryMetricCard title={en ? "Search Results" : "조회 결과"} value={featureRows.length} description={en ? "Current filter rows" : "현재 필터 기준"} />
+        <SummaryMetricCard title={en ? "Feature Count" : "등록 기능 수"} value={Number(page?.featureTotalCount || 0)} />
+        <SummaryMetricCard title={en ? "Authority Review" : "권한 검토 필요"} value={Number(page?.featureUnassignedCount || 0)} />
+        <SummaryMetricCard title={en ? "Visible Pages" : "대상 페이지 수"} value={featurePageOptions.length} />
+        <SummaryMetricCard title={en ? "Search Results" : "조회 결과"} value={featureRows.length} />
       </section>
       <section className="gov-card" data-help-id="function-management-register">
         <GridToolbar
           actions={<span className="material-symbols-outlined text-[var(--kr-gov-blue)]">extension</span>}
           className="mb-4"
-          meta={en ? "Register a global feature code and bind it to a managed page." : "전역 기능 코드를 등록하고 관리 대상 페이지에 연결합니다."}
           title={en ? "Register Feature" : "기능 등록"}
         />
 
@@ -164,7 +164,7 @@ export function FunctionManagementMigrationPage() {
             </AdminSelect>
           </div>
           <div className="xl:col-span-6">
-            <CollectionResultPanel description={en ? "Feature codes are reused as the shared key in member and authority editors." : "기능 코드는 회원/권한 편집 화면에서 공통 키로 재사용됩니다."} title={en ? "Shared governance rule" : "공통 거버넌스 규칙"}>
+            <CollectionResultPanel title={en ? "Shared Governance" : "공통 거버넌스"}>
               {en ? "Store feature codes as globally unique values and review role linkage after creation." : "기능 코드는 전역 고유값으로 저장하고, 등록 후 권한 그룹 연계를 별도로 검토해야 합니다."}
             </CollectionResultPanel>
           </div>

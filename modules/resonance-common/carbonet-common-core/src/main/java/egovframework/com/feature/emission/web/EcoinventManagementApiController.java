@@ -34,7 +34,9 @@ public class EcoinventManagementApiController {
             "/en/admin/api/admin/emission/ecoinvent/datasets"
     })
     public ResponseEntity<Map<String, Object>> datasets(@RequestParam Map<String, String> params) {
-        EcoinventIntegrationService.DatasetPage page = ecoinventIntegrationService.listLocalDatasetPage(params);
+        EcoinventIntegrationService.DatasetPage page = booleanValue(params.get("remote"))
+                ? ecoinventIntegrationService.searchRemoteDatasetPage(params)
+                : ecoinventIntegrationService.listLocalDatasetPage(params);
         return ResponseEntity.ok(success(page.rows(), page.totalCount() + "건 중 "
                 + page.rows().size() + "건을 불러왔습니다.", page));
     }
@@ -94,12 +96,27 @@ public class EcoinventManagementApiController {
         data.put("insertedCount", result.insertedCount());
         data.put("expectedInputCount", result.expectedInputCount());
         data.put("aiAssistedCount", result.aiAssistedCount());
+        data.put("rowTranslationCount", result.rowTranslationCount());
         return ResponseEntity.ok(success(data,
                 "ecoinvent 저장 데이터 " + result.datasetCount()
                         + "건에서 한글 alias/예상 입력 " + result.aliasCount()
-                        + "건을 확인했고 0.6B AI 보조 " + result.aiAssistedCount()
-                        + "건을 포함해 신규 매핑 " + result.insertedCount() + "건을 저장했습니다.",
-                result.insertedCount()));
+                        + "건을 확인했고 사전 보조 " + result.aiAssistedCount()
+                        + "건을 포함해 신규 선매핑 " + result.insertedCount()
+                        + "건, 행 단위 정확명 " + result.rowTranslationCount() + "건을 저장했습니다.",
+                result.rowTranslationCount()));
+    }
+
+    @PostMapping({
+            "/admin/emission/ecoinvent/api/backfill-translations",
+            "/en/admin/emission/ecoinvent/api/backfill-translations",
+            "/admin/api/admin/emission/ecoinvent/backfill-translations",
+            "/en/admin/api/admin/emission/ecoinvent/backfill-translations"
+    })
+    public ResponseEntity<Map<String, Object>> backfillTranslations() {
+        int count = ecoinventIntegrationService.backfillEcoinventMaterialTranslations();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("rowTranslationCount", count);
+        return ResponseEntity.ok(success(data, "ecoinvent 행 단위 한글/영문 정확명 " + count + "건을 저장했습니다.", count));
     }
 
     @PostMapping({
@@ -123,6 +140,17 @@ public class EcoinventManagementApiController {
     public ResponseEntity<Map<String, Object>> mappedFactors(@RequestParam(required = false) String materialName) {
         List<Map<String, Object>> rows = ecoinventIntegrationService.findMappedFactors(materialName);
         return ResponseEntity.ok(success(rows, rows.size() + "건을 불러왔습니다."));
+    }
+
+    @GetMapping({
+            "/admin/emission/survey-admin/api/chemical-materials",
+            "/en/admin/emission/survey-admin/api/chemical-materials"
+    })
+    public ResponseEntity<Map<String, Object>> chemicalMaterials(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "ko") String language) {
+        List<Map<String, Object>> rows = ecoinventIntegrationService.searchChemicalMaterials(keyword, language);
+        return ResponseEntity.ok(success(rows, "화학물질정보시스템 우선 후보 " + rows.size() + "건을 불러왔습니다."));
     }
 
     @GetMapping({

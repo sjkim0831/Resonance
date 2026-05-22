@@ -1,0 +1,313 @@
+{
+  "schemaVersion": "2026-05-19.organism-framework.v1",
+  "sourceImage": "artificial-body-ai-system-9-layer",
+  "nameKo": "Resonance 인공 신체 AI 운영 프레임워크",
+  "purposeKo": "Agent, Memory, Tool, Feedback, Evolution을 9계층 생체형 제어 구조로 운영한다.",
+  "operatingPrinciples": [
+    "자율성",
+    "적응성",
+    "지속성",
+    "윤리성"
+  ],
+  "principles": [
+    "자율성",
+    "적응성",
+    "지속성",
+    "윤리성"
+  ],
+  "communication": "event bus + shared memory + signal transfer + priority scheduling",
+  "communicationContract": {
+    "eventBus": "작업, 장애, 배포, 모델, 검증 이벤트를 계층 간 전달한다.",
+    "sharedMemory": "incident memory, rollout timeline, job history, pattern cards를 공통 기억으로 사용한다.",
+    "signalTransfer": "health, k8s, db, tunnel, capacity 신호를 계층 상태로 변환한다.",
+    "priorityScheduling": "장애, 보안, 배포, 용량 압박을 우선순위 큐로 승격한다."
+  },
+  "centralControl": {
+    "nameKo": "통합 제어",
+    "runtimeSurfaces": [
+      "resonance-ops-web",
+      "ops cockpit",
+      "self-heal gate",
+      "deploy timeline",
+      "ai-agent-team manifest"
+    ],
+    "ruleKo": "자동 실행보다 증거 수집, 승인, 재검증을 우선한다."
+  },
+  "layers": [
+    {
+      "id": "soul",
+      "order": 1,
+      "nameKo": "영혼 계층",
+      "domainKo": "인지 / 자아 / 가치",
+      "mission": "운영 목적, 정책, 윤리, 프로젝트 경계를 판단 기준으로 고정한다.",
+      "ops": "mission, policy, ethics, project boundaries",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "services"
+      ],
+      "defaultTeams": [
+        "planning",
+        "qa-audit"
+      ],
+      "allowedActions": [
+        "learn-incident"
+      ],
+      "governedSystems": [
+        "AGENTS.md",
+        "skills",
+        "policy docs",
+        "audit trail"
+      ],
+      "guardrails": [
+        "운영 트래픽 영향 작업은 명시 승인 후 실행한다.",
+        "정책과 사용자 요청이 충돌하면 증거와 경계부터 기록한다."
+      ]
+    },
+    {
+      "id": "brain",
+      "order": 2,
+      "nameKo": "대뇌 계층",
+      "domainKo": "사고 / 추론 / 계획",
+      "mission": "요청을 계획, 역할, 모델, 실행 단계로 분해하고 결과를 검토한다.",
+      "ops": "planner, coder, specialist model routing, strategy memory",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "gpu",
+        "services"
+      ],
+      "defaultTeams": [
+        "planning",
+        "backend-dev",
+        "frontend-dev",
+        "java-maven-egov"
+      ],
+      "allowedActions": [
+        "learn-incident"
+      ],
+      "governedSystems": [
+        "ai-agent-teams.json",
+        "deterministic-agent-policy.json",
+        "model matrix"
+      ],
+      "guardrails": [
+        "모델 라우팅은 비용, 지연, 위험도를 함께 본다.",
+        "전문팀 단독 판단은 검증 계층의 증거로 닫는다."
+      ]
+    },
+    {
+      "id": "senses",
+      "order": 3,
+      "nameKo": "감각 계층",
+      "domainKo": "인식 / 감지",
+      "mission": "헬스, 로그, 이벤트, 터널, DB 신호를 수집해 현재 상태를 계층 신호로 바꾼다.",
+      "ops": "health, metrics, logs, k8s events, tunnel probes",
+      "maturity": "strong",
+      "runtimeSignals": [
+        "app-health",
+        "k8s-runtime",
+        "db-cubrid",
+        "tunnel"
+      ],
+      "defaultTeams": [
+        "ops-control",
+        "log-schedule"
+      ],
+      "allowedActions": [
+        "collect-k8s-evidence",
+        "collect-db-evidence"
+      ],
+      "governedSystems": [
+        "actuator health",
+        "kubectl events",
+        "service status",
+        "ops logs"
+      ],
+      "guardrails": [
+        "조치보다 증거 수집을 먼저 수행한다.",
+        "unknown은 정상으로 간주하지 않고 warn으로 승격한다."
+      ]
+    },
+    {
+      "id": "autonomic",
+      "order": 4,
+      "nameKo": "자율 신경 계층",
+      "domainKo": "반사 / 자동 제어",
+      "mission": "반복 장애를 guarded self-heal 후보로 만들고 복구 전후 증거를 남긴다.",
+      "ops": "guarded self-healing, restart, rollback, pressure response",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "app-health",
+        "k8s-runtime",
+        "memory",
+        "disk"
+      ],
+      "defaultTeams": [
+        "ops-control",
+        "web-pod-ops",
+        "build-release"
+      ],
+      "allowedActions": [
+        "recover-runtime",
+        "clean-capacity"
+      ],
+      "governedSystems": [
+        "self-heal gate",
+        "runtime repair scripts",
+        "capacity housekeeper"
+      ],
+      "guardrails": [
+        "고위험 복구는 approval phrase 없이는 실행하지 않는다.",
+        "복구 후 freshness와 route proof를 다시 확인한다."
+      ]
+    },
+    {
+      "id": "motor",
+      "order": 5,
+      "nameKo": "행동 계층",
+      "domainKo": "운동 / 조작",
+      "mission": "빌드, 배포, 롤아웃, 트래픽 전환 등 실제 조작을 수행한다.",
+      "ops": "build, deploy, rollout, traffic switch, command execution",
+      "maturity": "strong",
+      "runtimeSignals": [
+        "k8s-runtime"
+      ],
+      "defaultTeams": [
+        "build-release",
+        "web-pod-ops"
+      ],
+      "allowedActions": [
+        "redeploy-80"
+      ],
+      "governedSystems": [
+        "resonance-k8s-build-deploy-80.sh",
+        "deployment timeline",
+        "image rollout"
+      ],
+      "guardrails": [
+        "실행 버튼은 단일 관제면에만 둔다.",
+        "배포 페이지는 진행 증거와 로그 확인 용도로 제한한다."
+      ]
+    },
+    {
+      "id": "memory",
+      "order": 6,
+      "nameKo": "기억 계층",
+      "domainKo": "저장 / 학습",
+      "mission": "장애, 배포, 작업, 교훈을 재사용 가능한 기억으로 저장한다.",
+      "ops": "incident memory, rollout timeline, job history, lessons",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "services"
+      ],
+      "defaultTeams": [
+        "log-schedule",
+        "qa-audit"
+      ],
+      "allowedActions": [
+        "learn-incident"
+      ],
+      "governedSystems": [
+        "incident-memory.jsonl",
+        "k8s-rollout-timeline.jsonl",
+        "pattern cards",
+        "job logs"
+      ],
+      "guardrails": [
+        "성공과 실패를 모두 재사용 가능한 기록으로 남긴다.",
+        "semantic/social memory는 목표 상태로 표시하고 과장하지 않는다."
+      ]
+    },
+    {
+      "id": "immune",
+      "order": 7,
+      "nameKo": "면역 계층",
+      "domainKo": "보안 / 보호",
+      "mission": "승인, 감사, 토큰, 파괴적 명령 차단으로 운영체계를 보호한다.",
+      "ops": "approval gates, audit trail, destructive-action guard, token hardening",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "services",
+        "tunnel"
+      ],
+      "defaultTeams": [
+        "qa-audit",
+        "payment"
+      ],
+      "allowedActions": [
+        "collect-k8s-evidence"
+      ],
+      "governedSystems": [
+        "approval phrases",
+        "operator token",
+        "audit logs",
+        "risk catalog"
+      ],
+      "guardrails": [
+        "외부 노출면은 최소 권한과 감사 기록을 유지한다.",
+        "고위험 작업은 화면 위치와 승인 문구를 분리해 오작동을 줄인다."
+      ]
+    },
+    {
+      "id": "vascular",
+      "order": 8,
+      "nameKo": "혈관 계층",
+      "domainKo": "전력 / 데이터 흐름",
+      "mission": "네트워크, DB, 파일, 아티팩트 흐름을 끊김 없이 전달한다.",
+      "ops": "network, service mesh, DB connection, file/artifact flow",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "tunnel",
+        "db-cubrid",
+        "k8s-runtime"
+      ],
+      "defaultTeams": [
+        "db-cubrid",
+        "web-pod-ops"
+      ],
+      "allowedActions": [
+        "collect-db-evidence"
+      ],
+      "governedSystems": [
+        "nginx entrypoint",
+        "cloudflare tunnel",
+        "CUBRID broker",
+        "registry artifacts"
+      ],
+      "guardrails": [
+        "데이터 흐름 장애는 앱 장애와 DB 장애를 분리해 판정한다.",
+        "아티팩트 최신성은 소스 diff가 아니라 배포 증거로 닫는다."
+      ]
+    },
+    {
+      "id": "life-support",
+      "order": 9,
+      "nameKo": "생명 유지 계층",
+      "domainKo": "환경 적응",
+      "mission": "CPU, RAM, GPU, disk, standby runtime을 관리해 지속 운영을 유지한다.",
+      "ops": "capacity, GPU/CPU/RAM/disk, housekeeper, standby runtime",
+      "maturity": "partial",
+      "runtimeSignals": [
+        "memory",
+        "disk",
+        "gpu"
+      ],
+      "defaultTeams": [
+        "ops-control",
+        "build-release"
+      ],
+      "allowedActions": [
+        "clean-capacity"
+      ],
+      "governedSystems": [
+        "capacity checks",
+        "housekeeper",
+        "model services",
+        "node resources"
+      ],
+      "guardrails": [
+        "용량 정리는 로그와 아티팩트 보존 정책을 따른다.",
+        "자원 압박은 배포나 모델 실행 전 선행 위험으로 표시한다."
+      ]
+    }
+  ]
+}

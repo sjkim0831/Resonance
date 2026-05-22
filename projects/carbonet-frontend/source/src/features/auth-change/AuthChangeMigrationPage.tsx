@@ -10,6 +10,7 @@ import type { AuthChangeHistoryRow, AuthChangePagePayload } from "../../lib/api/
 import { buildLocalizedPath } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminAuthorityPageFrame } from "../admin-ui/pageFrames";
+import { MemberAuthorityNav } from "../member-authority/MemberAuthorityNav";
 import { PageStatusNotice } from "../member/common";
 import { MemberStateCard } from "../member/sections";
 import { AuthChangeHistorySection, AuthChangeOverview, AuthChangeSelectedCard, AuthChangeTableSection } from "./authChangeSections";
@@ -227,11 +228,11 @@ export function AuthChangeMigrationPage() {
         { label: t(page, "회원/권한", "Members/Authority") },
         { label: t(page, "권한 변경", "Authority Change") }
       ]}
-      subtitle={t(page, "관리자 계정별 현재 권한 그룹을 확인하고 변경합니다.", "Review and update the assigned authority group for each administrator.")}
       title={t(page, "권한 변경", "Authority Change")}
       loading={!page && !error}
       loadingLabel={t(page, "관리자 권한 데이터를 불러오는 중입니다.", "Loading administrator authority data.")}
     >
+      <MemberAuthorityNav activeId="auth-change" en={!!page?.isEn} />
       {(page?.authChangeError || error) ? <PageStatusNotice tone="error">{page?.authChangeError || error}</PageStatusNotice> : null}
       {(message || page?.authChangeMessage) ? <PageStatusNotice tone="success">{message || page?.authChangeMessage}</PageStatusNotice> : null}
       {!page && !error && !session ? null : !canView ? (

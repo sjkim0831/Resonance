@@ -52,6 +52,8 @@ const APP_SPECIAL_CASE_PAGES = [
   ["/admin/member/activate", "member-list"],
   ["/admin/system/menu", "menu-management"],
   ["/admin/system/menu-management", "menu-management"],
+  ["/admin/system/code/list", "system-code-list"],
+  ["/admin/system/code/register", "system-code-register"],
   ["/admin/content/menu", "faq-menu-management"],
   ["/signin/findId/overseas", "signin-find-id"],
   ["/signin/findPassword/overseas", "signin-find-password"],

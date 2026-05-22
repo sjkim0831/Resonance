@@ -456,7 +456,7 @@ export function MemberRegisterMigrationPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: en ? "Member & Permission" : "회원·권한 관리" },
+        { label: en ? "Member Management" : "회원 관리" },
         { label: en ? "Register New Member" : "신규 회원 등록" }
       ]}
       title={en ? "Register New Member" : "신규 회원 등록"}

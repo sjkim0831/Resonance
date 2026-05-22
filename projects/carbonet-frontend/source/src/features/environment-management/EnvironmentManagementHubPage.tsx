@@ -245,6 +245,53 @@ export function EnvironmentManagementHubPage() {
     }
   ]), [en]);
 
+  const configurationConsolidationCards = useMemo(() => ([
+    {
+      key: "common-code",
+      title: en ? "Common Code Management" : "공통코드 관리",
+      status: en ? "Keep as master data" : "기준정보 독립 유지",
+      statusTone: "healthy" as const,
+      description: en
+        ? "Manage class, group, and detail codes together, while keeping common-code storage separate from menu and permission mutations."
+        : "분류/그룹/상세 코드는 한 흐름에서 관리하되, 메뉴/권한 변경과 저장 경계는 분리합니다.",
+      href: buildLocalizedPath("/admin/system/code", "/en/admin/system/code"),
+      actionLabel: en ? "Open codes" : "공통코드 열기"
+    },
+    {
+      key: "menu-page-feature",
+      title: en ? "Menu / Page / Feature Workbench" : "메뉴 / 페이지 / 기능 워크벤치",
+      status: en ? "Primary consolidation" : "우선 통합 대상",
+      statusTone: "warning" as const,
+      description: en
+        ? "Use this page as the single working context for menu inventory, page registration, default VIEW seeding, and feature binding."
+        : "메뉴 인벤토리, 페이지 등록, 기본 VIEW 권한 시딩, 기능 바인딩을 이 화면의 같은 선택 컨텍스트에서 처리합니다.",
+      href: "#environment-search-menu",
+      actionLabel: en ? "Use workbench" : "워크벤치에서 관리"
+    },
+    {
+      key: "screen-flow-assignment",
+      title: en ? "Screen Flow / Menu Assignment" : "화면 흐름 / 메뉴 귀속",
+      status: en ? "Governance pair" : "거버넌스 쌍",
+      statusTone: "warning" as const,
+      description: en
+        ? "Keep flow CRUD, transition checks, menu assignment, conflict detection, permission impact, rollback, and audit evidence visible as one governed lane."
+        : "flow CRUD, transition 점검, 메뉴 귀속, 충돌 검증, 권한 영향, rollback, 감사 증거를 하나의 거버넌스 흐름으로 봅니다.",
+      href: buildLocalizedPath("/admin/system/screen-flow-management", "/en/admin/system/screen-flow-management"),
+      actionLabel: en ? "Open flow" : "화면 흐름 열기"
+    },
+    {
+      key: "authority",
+      title: en ? "Permission Groups" : "권한 그룹",
+      status: en ? "Authority closure" : "권한 폐쇄 확인",
+      statusTone: "healthy" as const,
+      description: en
+        ? "Review feature assignments, scoped role groups, user overrides, and change history after page or feature changes."
+        : "페이지나 기능을 바꾼 뒤 기능 할당, 스코프 권한 그룹, 사용자 예외, 변경 이력을 여기서 확인합니다.",
+      href: buildLocalizedPath("/admin/auth/group", "/en/admin/auth/group"),
+      actionLabel: en ? "Open permissions" : "권한 그룹 열기"
+    }
+  ]), [en]);
+
   const menuPageState = useAsyncValue<MenuManagementPagePayload>(() => fetchMenuManagementPage(menuType), [menuType]);
   const menuPage = menuPageState.value;
 
@@ -1374,14 +1421,14 @@ export function EnvironmentManagementHubPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: en ? "System" : "시스템" },
-        { label: en ? "Installable Builder" : "설치형 빌더" },
-        { label: en ? "Install / Bind Console" : "설치 / 바인딩 콘솔" }
+        { label: en ? "System Management" : "시스템 관리" },
+        { label: en ? "Environment Settings" : "환경설정" },
+        { label: en ? "Unified Configuration" : "환경설정 통합 관리" }
       ]}
-      title={en ? "Builder Install / Bind Console" : "빌더 설치 / 바인딩 콘솔"}
+      title={en ? "Unified Configuration Management" : "환경설정 통합 관리"}
       subtitle={en
-        ? "Bind page inventory, governance metadata, builder readiness, and next install actions from one governed workspace."
-        : "페이지 인벤토리, 거버넌스 메타데이터, 빌더 준비도, 다음 설치 액션을 하나의 거버넌스 작업공간에서 연결합니다."}
+        ? "Consolidate common codes, menu/page/function bindings, screen flow, menu assignment, permission impact, and audit evidence without removing operator functions."
+        : "공통코드, 메뉴/페이지/기능 바인딩, 화면 흐름, 메뉴 귀속, 권한 영향, 감사 증거를 기능 누락 없이 한 작업공간에서 압축합니다."}
       contextStrip={
         <ContextKeyStrip items={authorDesignContextKeys} />
       }
@@ -1443,11 +1490,51 @@ export function EnvironmentManagementHubPage() {
             actions={<MemberLinkButton href={buildVerificationCenterPath()} size="sm" variant="secondary">{en ? "Open verification" : "검증 센터 열기"}</MemberLinkButton>}
           />
         </section>
+        <section className="gov-card mb-6" data-help-id="environment-management-consolidation">
+          <GridToolbar
+            actions={(
+              <div className="flex flex-wrap gap-2">
+                <MemberLinkButton href={buildLocalizedPath("/admin/system/code", "/en/admin/system/code")} size="sm" variant="secondary">
+                  {en ? "Common Codes" : "공통코드"}
+                </MemberLinkButton>
+                <MemberButton onClick={() => scrollToSection("environment-search-menu")} size="sm" type="button" variant="secondary">
+                  {en ? "Menu / Page / Feature" : "메뉴 / 페이지 / 기능"}
+                </MemberButton>
+                <MemberLinkButton href={buildLocalizedPath("/admin/system/screen-menu-assignment-management", "/en/admin/system/screen-menu-assignment-management")} size="sm" variant="secondary">
+                  {en ? "Menu Assignment" : "화면 메뉴 귀속"}
+                </MemberLinkButton>
+                <MemberLinkButton href={buildLocalizedPath("/admin/auth/group", "/en/admin/auth/group")} size="sm" variant="secondary">
+                  {en ? "Permission Groups" : "권한 그룹"}
+                </MemberLinkButton>
+              </div>
+            )}
+            title={en ? "Configuration Consolidation Map" : "환경설정 통합 지도"}
+          />
+          <p className="mb-4 text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
+            {en
+              ? "The menus stay available, but daily work should start here: select the page menu once, then check page registration, feature codes, authority impact, screen assignment, and audit evidence without losing any function."
+              : "각 메뉴는 그대로 사용할 수 있지만 일상 작업은 여기서 시작합니다. 페이지 메뉴를 한 번 선택한 뒤 페이지 등록, 기능 코드, 권한 영향, 화면 귀속, 감사 증거를 기능 손실 없이 이어서 확인합니다."}
+          </p>
+          <div className="grid gap-4 xl:grid-cols-4">
+            {configurationConsolidationCards.map((item) => (
+              <DiagnosticCard
+                key={item.key}
+                title={item.title}
+                status={item.status}
+                statusTone={item.statusTone}
+                description={item.description}
+                actions={item.href.startsWith("#")
+                  ? <MemberButton onClick={() => scrollToSection(item.href.slice(1))} size="sm" type="button" variant="secondary">{item.actionLabel}</MemberButton>
+                  : <MemberLinkButton href={item.href} size="sm" variant="secondary">{item.actionLabel}</MemberLinkButton>}
+              />
+            ))}
+          </div>
+        </section>
       {pagePermissionDenied ? (
         <MemberStateCard
           description={en
-            ? `You need ${environmentAuthority.requiredViewFeatureCode || `${ENVIRONMENT_MANAGEMENT_MENU_CODE}_VIEW`} permission to open the builder install/bind console.`
-            : `빌더 설치/바인딩 콘솔을 열려면 ${environmentAuthority.requiredViewFeatureCode || `${ENVIRONMENT_MANAGEMENT_MENU_CODE}_VIEW`} 권한이 필요합니다.`}
+            ? `You need ${environmentAuthority.requiredViewFeatureCode || `${ENVIRONMENT_MANAGEMENT_MENU_CODE}_VIEW`} permission to open unified configuration management.`
+            : `환경설정 통합 관리를 열려면 ${environmentAuthority.requiredViewFeatureCode || `${ENVIRONMENT_MANAGEMENT_MENU_CODE}_VIEW`} 권한이 필요합니다.`}
           icon="lock"
           title={en ? "Permission denied." : "권한이 없습니다."}
           tone="danger"

@@ -106,7 +106,7 @@ recover_web() {
 ensure_port_80() {
   log "ensure service $WEB_SERVICE port 80"
   kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type merge -p '{"spec":{"type":"NodePort"}}' >/dev/null || true
-  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type json -p='[{"op":"replace","path":"/spec/ports","value":[{"name":"http","port":80,"targetPort":"http","nodePort":80,"protocol":"TCP"}]}]' >/dev/null || true
+  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type json -p='[{"op":"replace","path":"/spec/ports","value":[{"name":"http","port":80,"targetPort":"http","nodePort":80,"protocol":"TCP"},{"name":"http-alt-32947","port":32947,"targetPort":"http","nodePort":32947,"protocol":"TCP"}]}]' >/dev/null || true
 
  log "ensure java opts on $WEB_DEPLOYMENT (no resource limits)"
   kubectl -n "$NAMESPACE" patch "deployment/$WEB_DEPLOYMENT" --type json -p='[

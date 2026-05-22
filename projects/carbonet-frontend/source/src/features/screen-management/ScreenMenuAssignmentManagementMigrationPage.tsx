@@ -5,6 +5,7 @@ import { fetchMenuManagementPage, fetchScreenCommandPage, saveScreenCommandMenuM
 import type { MenuManagementPagePayload, ScreenCommandPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { GridToolbar, KeyValueGridPanel, PageStatusNotice, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { stringOf } from "../admin-system/adminSystemShared";
@@ -248,8 +249,8 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
         { label: en ? "Screen-Menu Assignment Management" : "화면-메뉴 귀속 관리" }
       ]}
       title={en ? "Screen-Menu Assignment Management" : "화면-메뉴 귀속 관리"}
-      subtitle={en ? "Check which page menu is bound to which screen command page, and spot unassigned or orphaned entries." : "페이지 메뉴가 어떤 screen command 페이지에 귀속됐는지 확인하고, 미귀속/고아 상태를 점검합니다."}
     >
+      <GovernanceCompressionNav activeId="assignment" en={en} />
       <AdminWorkspacePageFrame>
         {error ? <PageStatusNotice tone="error">{error}</PageStatusNotice> : null}
         {mappingError ? <PageStatusNotice tone="error">{mappingError}</PageStatusNotice> : null}
@@ -324,15 +325,11 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
                 </button>
               ))}
             </div>
-            <p className="mt-4 text-xs font-bold text-[var(--kr-gov-text-secondary)]">
-              {en ? "These actions require conflict rules, authority impact calculation, rollback state, and audit persistence." : "이 조치들은 충돌 규칙, 권한 영향 계산, rollback 상태, 감사 저장이 연결되어야 합니다."}
-            </p>
           </article>
         </section>
 
         <section className="gov-card p-6">
           <GridToolbar
-            meta={en ? "Collect menu inventory from menu management and switch between admin and home sources." : "메뉴 관리 기준으로 메뉴 인벤토리를 수집하고 관리자/홈 소스를 전환합니다."}
             title={en ? "Menu Collection Source" : "메뉴 수집 소스"}
           />
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -387,7 +384,6 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
                   </>
                 ) : null}
                 description={selectedAssignment?.menuUrl || "-"}
-                metaDescription={en ? "The selected menu's runtime path and linked page identity." : "선택 메뉴의 runtime 경로와 연결 화면 식별자입니다."}
                 metaItems={[
                   { label: en ? "Menu Code" : "메뉴 코드", value: selectedAssignment?.menuCode || "-" },
                   { label: en ? "Page ID" : "페이지 ID", value: selectedAssignment?.pageId || "-" },
@@ -411,7 +407,6 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
 
             <section className="gov-card overflow-hidden p-0" data-help-id="screen-menu-assignment-detail">
               <GridToolbar
-                meta={en ? "Inspect registry binding, required VIEW feature, and relation-table traces." : "레지스트리 귀속, 필수 VIEW 기능, 권한 연계 테이블을 함께 점검합니다."}
                 title={en ? "Assignment Detail" : "귀속 상세"}
               />
               <div className="p-6">
@@ -459,7 +454,6 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                       <KeyValueGridPanel
-                        description={en ? "Registry identity and layout version resolved from the selected page." : "선택 화면에서 해석된 registry 식별자와 레이아웃 버전입니다."}
                         items={[
                           { label: en ? "Page Name" : "페이지명", value: detailPage.manifestRegistry?.pageName || detailPage.label || "-" },
                           { label: en ? "Layout Version" : "레이아웃 버전", value: detailPage.manifestRegistry?.layoutVersion || "-" },
@@ -469,7 +463,6 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
                         title={en ? "Manifest Registry" : "Manifest Registry"}
                       />
                       <KeyValueGridPanel
-                        description={en ? "Permission binding remains the canonical source for menu VIEW access." : "메뉴 VIEW 접근은 여기 표시된 권한 귀속을 기준으로 봅니다."}
                         items={[
                           { label: en ? "Required View Feature" : "필수 VIEW 기능", value: detailPage.menuPermission?.requiredViewFeatureCode || "-" },
                           { label: en ? "Feature Rows" : "기능 행 수", value: detailMetrics.featureCount },
@@ -486,7 +479,6 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
 
             <section className="gov-card overflow-hidden p-0" data-help-id="screen-menu-assignment-orphans">
               <GridToolbar
-                meta={en ? "These pages exist in the screen registry but have no matching page menu binding." : "screen registry에는 있지만 대응하는 페이지 메뉴 귀속이 없는 화면입니다."}
                 title={en ? "Orphaned Screen Pages" : "고아 화면 목록"}
               />
               <div className="overflow-x-auto">

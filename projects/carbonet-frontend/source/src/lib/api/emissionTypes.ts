@@ -40,6 +40,20 @@ export type EcoinventDatasetRow = Record<string, unknown> & {
   unit?: string;
   scoreUnit?: string;
   koreanName?: string;
+  englishName?: string;
+  translationSource?: string;
+  translationStatus?: string;
+};
+
+export type ChemicalMaterialRow = Record<string, unknown> & {
+  id?: number;
+  casNo?: string;
+  koreanName?: string;
+  englishName?: string;
+  synonyms?: string;
+  sourceType?: string;
+  sourceUrl?: string;
+  matchedName?: string;
 };
 
 export type EcoinventApiResponse<T> = {

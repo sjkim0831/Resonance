@@ -1,0 +1,488 @@
+{
+  "schemaVersion": "2026-05-20.ai-model-runtime.v1",
+  "selectionPolicy": {
+    "activeWorkKind": "page-development",
+    "activeRoles": {
+      "main": "main-qwen36-40b-gpu",
+      "sub": "sub-qwen7-coder-cpu",
+      "translation": "translation-gemma4-e4b-gpu",
+      "router": "micro-router-qwen05-cpu",
+      "utility": "utility-qwen15-cpu"
+    },
+    "autoHermesDiscovery": true,
+    "preferLiveOnly": true,
+    "warmPoolPolicy": {
+      "alwaysKeep": [
+        "main-qwen36-40b-gpu",
+        "sub-qwen7-coder-cpu",
+        "translation-gemma4-e4b-gpu",
+        "micro-router-qwen05-cpu",
+        "utility-qwen15-cpu"
+      ],
+      "speedFirst": true,
+      "gpu7bPolicy": "candidate-only: start a GPU 7B only after measuring that Qwen40 throughput and latency do not regress",
+      "idleStopMinutes": {
+        "sub-qwen14-coder-gpu": 0,
+        "utility-qwen3b-cpu": 30,
+        "main-qwen36-40b-gpu": 0
+      },
+      "oomFallbackOrder": [
+        "stop optional GPU 7B or 14B first",
+        "move Gemma4 translation back to CPU if Qwen40 131K cannot keep stable throughput",
+        "keep Qwen40 as main and do not reduce below Hermes minimum without operator approval",
+        "operator approval"
+      ]
+    },
+    "hermesSupervisorPolicy": {
+      "supervisorRole": "sub",
+      "supervisorProfile": "sub-qwen7-coder-cpu",
+      "checkpointCadence": "task-stage, command-result, or 100-300 generated-token checkpoint; never per-token DB writes",
+      "detect": [
+        "empty task extraction",
+        "same command repeated",
+        "same error repeated",
+        "terminal preparing loop",
+        "no output timeout",
+        "model download loop",
+        "context compression stall",
+        "success without evidence"
+      ],
+      "feedbackSink": "/opt/Resonance/var/ai-runtime/hermes-watchdog/hermes-watchdog-events.jsonl",
+      "dbPolicy": "store task/checkpoint/problem/fix summaries after checkpoints; do not store secrets or raw credentials"
+    }
+  },
+  "profiles": [
+    {
+      "id": "main-qwen36-40b-gpu",
+      "displayName": "메인 모델 · Qwen3.6 40B Deck Opus",
+      "role": "main",
+      "roleLabel": "메인 judge / 고정밀 판단",
+      "hardware": "gpu",
+      "serviceName": "codex-qwen36.service",
+      "port": 24036,
+      "baseUrl": "http://127.0.0.1:24036/v1",
+      "modelAlias": "qwen3.6-40b-deck-opus-q4",
+      "contextLength": 131072,
+      "desired": "on",
+      "parallelSlots": 1,
+      "conflictGroup": "main-24036",
+      "envFile": "/etc/default/codex-qwen36",
+      "env": {
+        "QWEN36_MODEL_PATH": "/opt/util/ai/vLLM/models/qwen3.6-40b-deck-opus-neo-code-q4_k_m/Qwen3.6-40B-Deck-Opus-NEO-CODE-HERE-2T-OT-Q4_K_M.gguf",
+        "QWEN36_MODEL_ALIAS": "qwen3.6-40b-deck-opus-q4",
+        "QWEN36_CONTEXT": "131072",
+        "QWEN36_API_KEY": "qwer1234",
+        "QWEN36_CACHE_K": "q4_0",
+        "QWEN36_CACHE_V": "q4_0",
+        "QWEN36_NGL": "99",
+        "QWEN36_PARALLEL": "1",
+        "QWEN36_PORT": "24036"
+      },
+      "lanes": [
+        "judge"
+      ],
+      "taskKinds": [
+        "architecture",
+        "security",
+        "permission",
+        "db-migration",
+        "shared-contract",
+        "failure-interpretation",
+        "final-judge"
+      ],
+      "notes": "기본 메인 모델입니다. 속도 우선 정책으로 GPU 7B/14B 병행은 검증 전 기본 활성화하지 않습니다."
+    },
+    {
+      "id": "sub-qwen14-coder-gpu",
+      "displayName": "서브 모델 · Qwen2.5 Coder 14B",
+      "role": "sub",
+      "roleLabel": "개발 분류 / context pack / fast draft",
+      "hardware": "gpu",
+      "serviceName": "resonance-shadow-qwen14.service",
+      "port": 24751,
+      "baseUrl": "http://127.0.0.1:24751/v1",
+      "modelAlias": "qwen2.5-coder-14b-instruct-shadow",
+      "contextLength": 32768,
+      "desired": "off",
+      "parallelSlots": 1,
+      "conflictGroup": "sub-coder-24751",
+      "lanes": [
+        "dev-classify",
+        "fast-draft",
+        "mid-draft"
+      ],
+      "taskKinds": [
+        "page-development",
+        "frontend",
+        "backend",
+        "mapper-plan",
+        "code-review-draft"
+      ],
+      "notes": "40B 131K 컨텍스트와 속도 우선 정책에서 14B는 기본 비활성화합니다. 수동 벤치마크 때만 켭니다."
+    },
+    {
+      "id": "sub-qwen7-coder-cpu",
+      "displayName": "서브 모델 · Qwen2.5 Coder 7B",
+      "role": "sub",
+      "roleLabel": "CPU 상시 Hermes 감시 / fast draft / loop guard",
+      "hardware": "cpu",
+      "serviceName": "resonance-shadow-qwen7.service",
+      "port": 24751,
+      "baseUrl": "http://127.0.0.1:24751/v1",
+      "modelAlias": "qwen2.5-coder-7b-instruct-shadow",
+      "contextLength": 32768,
+      "desired": "on",
+      "parallelSlots": 2,
+      "conflictGroup": "sub-coder-24751",
+      "lanes": [
+        "dev-classify",
+        "fast-draft"
+      ],
+      "taskKinds": [
+        "page-development-fallback",
+        "log-summary",
+        "small-draft"
+      ],
+      "notes": "CPU 상시 보조 모델입니다. Hermes 작업 추출, 진행 감시, 지연/무한루프/반복 실패 감지, 작은 초안을 맡습니다."
+    },
+    {
+      "id": "translation-gemma4-e4b-gpu",
+      "displayName": "언어변환 · Gemma4 E4B GPU",
+      "role": "translation",
+      "roleLabel": "번역 / 용어 / 문구 변환",
+      "hardware": "gpu",
+      "serviceName": "resonance-shadow-gemma4-e4b.service",
+      "port": 24451,
+      "baseUrl": "http://127.0.0.1:24451/v1",
+      "modelAlias": "gemma4-e4b-gpu-shadow",
+      "contextLength": 8192,
+      "desired": "on",
+      "parallelSlots": 1,
+      "conflictGroup": "translation-24451",
+      "lanes": [
+        "translation",
+        "design-specialist"
+      ],
+      "taskKinds": [
+        "translation",
+        "glossary",
+        "copy-tone",
+        "label-normalization"
+      ],
+      "notes": "간단한 번역/용어 변환 전용 GPU 모델입니다. 디자인 전용 모델로 승격하지 않고, 복잡한 디자인 판단은 Qwen40이 담당합니다."
+    },
+    {
+      "id": "micro-router-qwen05-cpu",
+      "displayName": "초소형 라우터 · Qwen2.5 0.5B",
+      "role": "router",
+      "roleLabel": "요청 분류 / 팀 선택 / 위험도 1차 판정",
+      "hardware": "cpu",
+      "serviceName": "resonance-shadow-qwen05.service",
+      "port": 24051,
+      "baseUrl": "http://127.0.0.1:24051/v1",
+      "modelAlias": "qwen2.5-0.5b-shadow",
+      "contextLength": 2048,
+      "desired": "on",
+      "parallelSlots": 1,
+      "conflictGroup": "micro-router-24051",
+      "lanes": [
+        "router",
+        "risk-classify",
+        "team-select"
+      ],
+      "taskKinds": [
+        "intent-routing",
+        "risk-gate",
+        "team-select",
+        "tool-select"
+      ],
+      "fineTuneTrack": "cubrid-dba-risk-router / authority-scope-risk-router candidate",
+      "notes": "1B 이하 상시 라우터. DB/권한/배포는 실행하지 않고 분류와 승인 필요 여부만 판단합니다."
+    },
+    {
+      "id": "utility-qwen15-cpu",
+      "displayName": "경량 유틸 · Qwen2.5 1.5B",
+      "role": "utility",
+      "roleLabel": "로그 요약 / 태그 / QA 보조",
+      "hardware": "cpu",
+      "serviceName": "resonance-shadow-qwen15.service",
+      "port": 24151,
+      "baseUrl": "http://127.0.0.1:24151/v1",
+      "modelAlias": "qwen2.5-1.5b-shadow",
+      "contextLength": 2048,
+      "desired": "on",
+      "parallelSlots": 1,
+      "conflictGroup": "utility-qwen15-24151",
+      "lanes": [
+        "utility",
+        "log-summary",
+        "qa-lite"
+      ],
+      "taskKinds": [
+        "log-summary",
+        "incident-tag",
+        "build-log-triage",
+        "qa-checklist"
+      ],
+      "notes": "1B 기준을 살짝 넘지만 CPU 상주 보조로 비용 대비 품질이 좋습니다. 엄격한 1B 이하 track은 qwen05에 둡니다."
+    },
+    {
+      "id": "utility-qwen3b-cpu",
+      "displayName": "유틸 · Qwen2.5 3B",
+      "role": "utility",
+      "roleLabel": "로그 / 짧은 분류 보조",
+      "hardware": "cpu",
+      "serviceName": "resonance-shadow-qwen3.service",
+      "port": 24351,
+      "baseUrl": "http://127.0.0.1:24351/v1",
+      "modelAlias": "qwen2.5-3b-shadow",
+      "contextLength": 8192,
+      "desired": "on",
+      "parallelSlots": 1,
+      "conflictGroup": "utility-qwen3-24351",
+      "lanes": [
+        "utility"
+      ],
+      "taskKinds": [
+        "log-summary",
+        "small-classify"
+      ],
+      "notes": "정상 개발 lane의 기본 선택지는 아니며 경량 보조용입니다."
+    }
+  ],
+  "workKinds": [
+    {
+      "id": "page-development",
+      "label": "관리자/서비스 화면 개발",
+      "teams": [
+        "planning",
+        "design-layout",
+        "framework-builder",
+        "development-rag-governor",
+        "qa-audit",
+        "build-release"
+      ],
+      "roles": [
+        "sub",
+        "translation",
+        "main"
+      ],
+      "lanes": [
+        "dev-classify",
+        "fast-draft",
+        "translation",
+        "judge",
+        "verify"
+      ],
+      "description": "화면/프론트/백엔드/DB 패턴 개발은 7B CPU 감시/초안, Gemma4 GPU 문구, 40B 메인 judge 순서로 사용합니다."
+    },
+    {
+      "id": "translation",
+      "label": "번역 / 용어 변환",
+      "teams": [
+        "krds-theme",
+        "uiux",
+        "qa-audit"
+      ],
+      "roles": [
+        "translation",
+        "sub"
+      ],
+      "lanes": [
+        "translation",
+        "design-specialist",
+        "verify"
+      ],
+      "description": "Gemma4 E4B를 우선 사용하고 용어 충돌 또는 문맥 불확실성만 sub/main으로 승격합니다."
+    },
+    {
+      "id": "risk-review",
+      "label": "권한 / DB / 배포 위험 검토",
+      "teams": [
+        "qa-audit",
+        "db-cubrid",
+        "build-release",
+        "framework-builder"
+      ],
+      "roles": [
+        "main",
+        "sub"
+      ],
+      "lanes": [
+        "judge",
+        "fast-draft",
+        "verify"
+      ],
+      "description": "위험 판단은 메인 judge 우선, 7B는 사전 요약과 후보 정리에만 사용합니다."
+    },
+    {
+      "id": "ops-triage",
+      "label": "운영 로그 / 장애 triage",
+      "teams": [
+        "ops-control",
+        "log-schedule",
+        "build-release"
+      ],
+      "roles": [
+        "utility",
+        "sub",
+        "main"
+      ],
+      "lanes": [
+        "utility",
+        "dev-classify",
+        "judge",
+        "verify"
+      ],
+      "description": "경량 모델로 로그를 요약하고, 불확실하거나 영향이 큰 장애만 메인 judge로 보냅니다."
+    },
+    {
+      "id": "db-management",
+      "label": "CUBRID DB 관리 / 튜닝 / 위험 게이트",
+      "teams": [
+        "db-cubrid",
+        "query-dev",
+        "qa-audit",
+        "log-schedule"
+      ],
+      "roles": [
+        "router",
+        "utility",
+        "sub",
+        "main"
+      ],
+      "lanes": [
+        "risk-classify",
+        "log-summary",
+        "fast-draft",
+        "judge",
+        "verify"
+      ],
+      "description": "초소형 라우터가 위험도를 분류하고 7B가 SQL/튜닝 초안과 Hermes 진행 감시, 40B가 위험 리뷰를 맡습니다. 실행은 allowlist와 승인 게이트로 제한합니다."
+    },
+    {
+      "id": "ai-team-os",
+      "label": "AI 팀 운영 / 동적 기동",
+      "teams": [
+        "ops-control",
+        "codex55-execution-intelligence",
+        "model-benchmark",
+        "qa-audit"
+      ],
+      "roles": [
+        "router",
+        "utility",
+        "sub",
+        "main"
+      ],
+      "lanes": [
+        "team-select",
+        "dev-classify",
+        "judge",
+        "verify"
+      ],
+      "description": "팀 manifest와 모델 runtime registry를 기준으로 필요한 팀만 올리고, 실패 시 fallback과 증거 기반 복구를 수행합니다."
+    },
+    {
+      "id": "web-pod-management",
+      "label": "웹/앱 파드 관리",
+      "teams": [
+        "web-pod-ops",
+        "ops-control",
+        "build-release",
+        "log-schedule"
+      ],
+      "roles": [
+        "router",
+        "utility",
+        "sub",
+        "main"
+      ],
+      "lanes": [
+        "router",
+        "log-summary",
+        "fast-draft",
+        "judge",
+        "verify"
+      ],
+      "description": "앱 파드에는 경량 sidecar만 허용하고 40B는 중앙 main pool을 호출합니다. rollout/restart는 승인 후 스크립트가 실행합니다."
+    },
+    {
+      "id": "design-build",
+      "label": "디자인 / KRDS / 프론트 개발",
+      "teams": [
+        "design-layout",
+        "uiux",
+        "krds-theme",
+        "frontend-dev",
+        "qa-audit"
+      ],
+      "roles": [
+        "translation",
+        "sub",
+        "router"
+      ],
+      "lanes": [
+        "translation",
+        "design-specialist",
+        "fast-draft",
+        "verify"
+      ],
+      "description": "Gemma4가 문구/용어, 7B가 작은 초안, 40B가 레이아웃/React 판단, QA가 접근성과 회귀를 점검합니다."
+    }
+  ],
+  "fineTuneTracks": [
+    {
+      "id": "cubrid-dba-risk-router",
+      "tasks": [
+        "intent classification",
+        "read-only/write/destructive risk",
+        "tool allowlist selection",
+        "approval requirement"
+      ],
+      "neverTrainOn": [
+        "DB passwords",
+        "personal data",
+        "customer raw data",
+        "production secrets"
+      ],
+      "goldLabels": [
+        "read_only_ok",
+        "explain_only",
+        "sql_draft_only",
+        "approval_required",
+        "forbidden"
+      ]
+    },
+    {
+      "id": "authority-scope-risk-router",
+      "tasks": [
+        "menu/function/role scope classification",
+        "tenant scope missing risk",
+        "audit evidence requirement"
+      ],
+      "goldLabels": [
+        "view_only",
+        "grant_review",
+        "tenant_scope_required",
+        "audit_required",
+        "forbidden"
+      ]
+    },
+    {
+      "id": "build-log-triage-router",
+      "tasks": [
+        "Maven/npm/runtime log classification",
+        "known runbook selection",
+        "escalation to 40B judge"
+      ],
+      "goldLabels": [
+        "frontend_build",
+        "backend_compile",
+        "db_connect",
+        "runtime_freshness",
+        "unknown_escalate"
+      ]
+    }
+  ]
+}

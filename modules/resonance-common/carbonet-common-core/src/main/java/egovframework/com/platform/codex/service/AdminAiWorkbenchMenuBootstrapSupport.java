@@ -35,6 +35,7 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
     private static final String CODEX_MENU_CODE = "A1900103";
     private static final String WBS_MENU_CODE = "A1900104";
     private static final String NEW_PAGE_MENU_CODE = "A1900106";
+    private static final String HERMES_WORKFLOW_MENU_CODE = "A1900107";
     private static final String SYSTEM_AUDIT_LOG_MENU_CODE = "A0060303";
     private static final String ACTOR_ID = "SYSTEM_BOOTSTRAP";
     private static final List<String> STANDARD_ADMIN_ROLES = Arrays.asList(
@@ -56,6 +57,7 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
         provision("codex-request", buildCodexRequest());
         provision("wbs-management", buildWbsManagementRequest());
         provision("new-page", buildNewPageRequest());
+        provision("hermes-workflow", buildHermesWorkflowRequest());
         cleanupLegacyMenus();
     }
 
@@ -112,9 +114,9 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                         authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master",
                                 SR_MENU_CODE + "_VIEW", SR_MENU_CODE + "_CREATE", SR_MENU_CODE + "_APPROVE", SR_MENU_CODE + "_PREPARE", SR_MENU_CODE + "_EXECUTE"),
                         authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator",
-                                SR_MENU_CODE + "_VIEW", SR_MENU_CODE + "_CREATE", SR_MENU_CODE + "_PREPARE"),
+                                SR_MENU_CODE + "_VIEW", SR_MENU_CODE + "_CREATE", SR_MENU_CODE + "_APPROVE", SR_MENU_CODE + "_PREPARE", SR_MENU_CODE + "_EXECUTE"),
                         authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator",
-                                SR_MENU_CODE + "_VIEW")
+                                SR_MENU_CODE + "_VIEW", SR_MENU_CODE + "_CREATE")
                 }
         );
     }
@@ -131,8 +133,8 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 },
                 new CodexProvisionRequest.AuthorRequest[]{
                         authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master", CODEX_MENU_CODE + "_VIEW", CODEX_MENU_CODE + "_EXECUTE"),
-                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", CODEX_MENU_CODE + "_VIEW"),
-                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", CODEX_MENU_CODE + "_VIEW")
+                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", CODEX_MENU_CODE + "_VIEW", CODEX_MENU_CODE + "_EXECUTE"),
+                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", CODEX_MENU_CODE + "_VIEW", CODEX_MENU_CODE + "_EXECUTE")
                 }
         );
     }
@@ -149,8 +151,8 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 },
                 new CodexProvisionRequest.AuthorRequest[]{
                         authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master", WBS_MENU_CODE + "_VIEW", WBS_MENU_CODE + "_EDIT"),
-                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", WBS_MENU_CODE + "_VIEW"),
-                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", WBS_MENU_CODE + "_VIEW")
+                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", WBS_MENU_CODE + "_VIEW", WBS_MENU_CODE + "_EDIT"),
+                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", WBS_MENU_CODE + "_VIEW", WBS_MENU_CODE + "_EDIT")
                 }
         );
     }
@@ -166,7 +168,25 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 },
                 new CodexProvisionRequest.AuthorRequest[]{
                         authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master", NEW_PAGE_MENU_CODE + "_VIEW"),
-                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", NEW_PAGE_MENU_CODE + "_VIEW")
+                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", NEW_PAGE_MENU_CODE + "_VIEW"),
+                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", NEW_PAGE_MENU_CODE + "_VIEW")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildHermesWorkflowRequest() {
+        return PlatformMenuProvisionSupport.adminMenuRequest(
+                "BOOTSTRAP-HERMES-WORKFLOW",
+                ACTOR_ID,
+                "/admin/system/hermes-workflow",
+                pageRequest(HERMES_WORKFLOW_MENU_CODE, "Hermes 작업 기억", "Hermes Workflow Memory", "/admin/system/hermes-workflow", "psychology"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(HERMES_WORKFLOW_MENU_CODE, HERMES_WORKFLOW_MENU_CODE + "_VIEW", "Hermes 작업 기억 조회", "View Hermes Workflow Memory", "Hermes workflow memory page access")
+                },
+                new CodexProvisionRequest.AuthorRequest[]{
+                        authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master", HERMES_WORKFLOW_MENU_CODE + "_VIEW"),
+                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", HERMES_WORKFLOW_MENU_CODE + "_VIEW"),
+                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", HERMES_WORKFLOW_MENU_CODE + "_VIEW")
                 }
         );
     }
@@ -217,6 +237,7 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 WBS_MENU_CODE + "_VIEW",
                 WBS_MENU_CODE + "_EDIT",
                 NEW_PAGE_MENU_CODE + "_VIEW",
+                HERMES_WORKFLOW_MENU_CODE + "_VIEW",
                 SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW"
         ));
         desired.put("ROLE_SYSTEM_ADMIN", linkedSet(
@@ -224,18 +245,28 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 HELP_MENU_CODE + "_EDIT",
                 SR_MENU_CODE + "_VIEW",
                 SR_MENU_CODE + "_CREATE",
+                SR_MENU_CODE + "_APPROVE",
                 SR_MENU_CODE + "_PREPARE",
+                SR_MENU_CODE + "_EXECUTE",
                 CODEX_MENU_CODE + "_VIEW",
+                CODEX_MENU_CODE + "_EXECUTE",
                 WBS_MENU_CODE + "_VIEW",
+                WBS_MENU_CODE + "_EDIT",
                 NEW_PAGE_MENU_CODE + "_VIEW",
+                HERMES_WORKFLOW_MENU_CODE + "_VIEW",
                 SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW"
         ));
         desired.put("ROLE_ADMIN", linkedSet(
                 HELP_MENU_CODE + "_VIEW",
                 HELP_MENU_CODE + "_EDIT",
                 SR_MENU_CODE + "_VIEW",
+                SR_MENU_CODE + "_CREATE",
                 CODEX_MENU_CODE + "_VIEW",
+                CODEX_MENU_CODE + "_EXECUTE",
                 WBS_MENU_CODE + "_VIEW",
+                WBS_MENU_CODE + "_EDIT",
+                NEW_PAGE_MENU_CODE + "_VIEW",
+                HERMES_WORKFLOW_MENU_CODE + "_VIEW",
                 SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW"
         ));
         desired.put("ROLE_OPERATION_ADMIN", Collections.emptySet());

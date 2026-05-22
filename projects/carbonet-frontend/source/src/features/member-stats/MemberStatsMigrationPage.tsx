@@ -40,7 +40,7 @@ export function MemberStatsMigrationPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: en ? "Member & Permission" : "회원·권한 관리" },
+        { label: en ? "Member Management" : "회원 관리" },
         { label: en ? "Member Statistics Dashboard" : "회원 통계 현황" }
       ]}
       title={en ? "Member Statistics Dashboard" : "회원 통계 현황"}

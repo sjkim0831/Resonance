@@ -13,6 +13,8 @@ QUICK_TUNNEL="${QUICK_TUNNEL:-true}"
 CF_TUNNEL_TOKEN="${CF_TUNNEL_TOKEN:-}"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/var/cloudflare-tunnel}"
 LOG_FILE="$LOG_DIR/${CONTAINER_NAME}.log"
+URL_FILE="$LOG_DIR/current-url.txt"
+SUMMARY_FILE="$LOG_DIR/current-summary.txt"
 
 require_command() {
   local command_name="$1"
@@ -70,31 +72,59 @@ run_token_tunnel() {
     --token "$CF_TUNNEL_TOKEN" >/dev/null
 }
 
+extract_public_url() {
+  local url
+  url="$(grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG_FILE" | tail -n 1 || true)"
+  if [[ -n "$url" ]]; then
+    printf '%s\n' "$url" >"$URL_FILE"
+  elif [[ -n "${FIXED_PUBLIC_URL:-}" ]]; then
+    printf '%s\n' "$FIXED_PUBLIC_URL" >"$URL_FILE"
+  else
+    : >"$URL_FILE"
+  fi
+}
+
 wait_for_logs() {
   mkdir -p "$LOG_DIR"
   : > "$LOG_FILE"
+  if id sjkim >/dev/null 2>&1; then
+    chown -R sjkim:sjkim "$LOG_DIR" 2>/dev/null || true
+  fi
 
-  local tries=30
+  local tries=60
   while (( tries > 0 )); do
     docker logs "$CONTAINER_NAME" >"$LOG_FILE" 2>&1 || true
-    if [[ -s "$LOG_FILE" ]]; then
+    if [[ "$QUICK_TUNNEL" == "true" || -z "$CF_TUNNEL_TOKEN" ]]; then
+      if grep -Eq 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG_FILE"; then
+        break
+      fi
+    elif [[ -s "$LOG_FILE" ]]; then
       break
     fi
     sleep 1
     tries=$((tries - 1))
   done
+  extract_public_url
+  if id sjkim >/dev/null 2>&1; then
+    chown -R sjkim:sjkim "$LOG_DIR" 2>/dev/null || true
+  fi
 }
 
 print_summary() {
   local origin_host="$1"
-  cat <<EOF
+  local public_url
+  public_url="$(cat "$URL_FILE" 2>/dev/null || true)"
+  cat >"$SUMMARY_FILE" <<EOF
 container=$CONTAINER_NAME
 mode=$([[ -n "$CF_TUNNEL_TOKEN" && "$QUICK_TUNNEL" != "true" ]] && printf 'token' || printf 'quick')
 origin=${ORIGIN_SCHEME}://${origin_host}:${ORIGIN_PORT}
+public_url=$public_url
 public_host_header=$PUBLIC_HOST_HEADER
 origin_server_name=$ORIGIN_SERVER_NAME
 log_file=$LOG_FILE
+url_file=$URL_FILE
 EOF
+  cat "$SUMMARY_FILE"
 }
 
 main() {

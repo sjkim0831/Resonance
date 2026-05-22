@@ -315,7 +315,7 @@ export function AdminAccountCreateMigrationPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: "회원·권한 관리" },
+        { label: "회원 관리" },
         { label: "관리자 사용자 추가" }
       ]}
       subtitle="관리자 계정 정보와 권한, 소속 정보를 입력합니다."

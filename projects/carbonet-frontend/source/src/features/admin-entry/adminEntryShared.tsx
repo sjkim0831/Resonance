@@ -84,7 +84,8 @@ export function AdminHomeShell({ children }: { children: ReactNode }) {
             <h2>Operation Tools</h2>
           </div>
           <a className="active" href={buildLocalizedPath("/admin/", "/en/admin/")}>운영 대시보드</a>
-          <a href={buildLocalizedPath("/admin/auth/group", "/en/admin/auth/group")}>권한 그룹</a>
+          <a href={buildLocalizedPath("/admin/member/list", "/en/admin/member/list")}>회원 관리</a>
+          <a href={buildLocalizedPath("/admin/auth/group", "/en/admin/auth/group")}>권한 관리</a>
           <a href={buildLocalizedPath("/admin/member/list", "/en/admin/member/list")}>회원 목록</a>
           <a href={buildLocalizedPath("/admin/member/company_list", "/en/admin/member/company_list")}>회원사 목록</a>
           <div className="gov-admin-side-status">

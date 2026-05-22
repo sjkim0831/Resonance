@@ -28,7 +28,8 @@ function formatScore(value: unknown) {
   return Number.isFinite(parsed) ? parsed.toLocaleString(undefined, { maximumFractionDigits: 8 }) : "-";
 }
 
-function detailValue(row: EcoinventDatasetRow | null, key: keyof EcoinventDatasetRow) {
+// @ts-ignore - unused when mapping section is commented out
+function _detailValue(row: EcoinventDatasetRow | null, key: keyof EcoinventDatasetRow) {
   return row ? textOf(row[key]) || "-" : "-";
 }
 
@@ -70,8 +71,10 @@ export function EmissionEcoinventAdminMigrationPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selectedRow, setSelectedRow] = useState<EcoinventDatasetRow | null>(null);
   const [koreanName, setKoreanName] = useState("");
-  const [sortOrder, setSortOrder] = useState("0");
-  const [memo, setMemo] = useState("");
+  // @ts-ignore - unused when mapping section is commented out
+const [sortOrder, setSortOrder] = useState("0");
+  // @ts-ignore - unused when mapping section is commented out
+const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -129,7 +132,8 @@ export function EmissionEcoinventAdminMigrationPage() {
     void fetchEcoinventFilterOptions(keyword).then(setFilterOptions).catch(() => setFilterOptions({}));
   }, [keyword]);
 
-  async function importSelected() {
+  // @ts-ignore - unused when mapping section is commented out
+async function _importSelected() {
     if (selectedIds.length === 0) {
       setErrorMessage("저장할 데이터셋을 선택하세요.");
       return;
@@ -148,7 +152,8 @@ export function EmissionEcoinventAdminMigrationPage() {
     }
   }
 
-  async function importAll() {
+  // @ts-ignore - unused when mapping section is commented out
+async function _importAll() {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -162,7 +167,8 @@ export function EmissionEcoinventAdminMigrationPage() {
     }
   }
 
-  async function premapKoreanAliases() {
+  // @ts-ignore - unused when mapping section is commented out
+async function _premapKoreanAliases() {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -177,7 +183,8 @@ export function EmissionEcoinventAdminMigrationPage() {
     }
   }
 
-  async function saveMapping() {
+  // @ts-ignore - unused when mapping section is commented out
+async function _saveMapping() {
     if (!selectedRow?.datasetId) {
       setErrorMessage("한글명과 연결할 데이터셋을 선택하세요.");
       return;
@@ -249,20 +256,13 @@ export function EmissionEcoinventAdminMigrationPage() {
         <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm">
           <MemberSectionToolbar
             title={<span>데이터셋 검색 및 저장</span>}
-            actions={(
-              <div className="flex flex-wrap justify-end gap-2">
-                <MemberButton disabled={loading} onClick={importSelected} type="button" variant="secondary">선택 저장</MemberButton>
-                <MemberButton disabled={loading} onClick={importAll} type="button" variant="primary">ecoinvent API 배치 가져오기</MemberButton>
-                <MemberButton disabled={loading} onClick={premapKoreanAliases} type="button" variant="secondary">전체 한글 매핑 사전 생성</MemberButton>
-                <MemberButton disabled={loading} onClick={() => void loadLocal(keyword)} type="button" variant="secondary">저장 목록 출력</MemberButton>
-              </div>
-            )}
+            actions={<></>}
           />
           <div className="mt-4">
             <AdminInput
               list="ecoinvent-keyword-suggestions"
               onChange={(event) => { setKeyword(event.target.value); setPageIndex(1); }}
-              placeholder="Product, Activity, Geography, Type, Period, Unit, Indicator 검색"
+              placeholder="Search material name"
               value={keyword}
             />
             <datalist id="ecoinvent-keyword-suggestions">
@@ -362,6 +362,7 @@ export function EmissionEcoinventAdminMigrationPage() {
           </div>
         </section>
 
+        {/*
         <section className="mt-6 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm">
           <MemberSectionToolbar title={<span>한글명 매핑</span>} />
           <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)_auto]">
@@ -397,6 +398,8 @@ export function EmissionEcoinventAdminMigrationPage() {
             </div>
           ) : null}
         </section>
+
+ */}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );

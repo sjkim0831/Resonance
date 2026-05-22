@@ -8,6 +8,7 @@ import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { numberOf, stringOf } from "../admin-system/adminSystemShared";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { CollectionResultPanel, GridToolbar, PageStatusNotice, SummaryMetricCard, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import {
@@ -431,22 +432,21 @@ export function MenuManagementMigrationPage() {
         { label: en ? "Menu Registry Console" : "메뉴 레지스트리 콘솔" }
       ]}
       title={en ? "Menu Registry Console" : "메뉴 레지스트리 콘솔"}
-      subtitle={en ? "Register package-ready menus, keep the menu registry hierarchy governed, and hand off clean bindings to install and package flows." : "패키지 가능한 메뉴를 등록하고, 메뉴 레지스트리 계층을 거버넌스 기준으로 유지하며, 설치와 패키지 흐름으로 넘길 바인딩 기준을 정리합니다."}
     >
+      <GovernanceCompressionNav activeId="menu" en={en} />
       <AdminWorkspacePageFrame>
         {page?.menuMgmtMessage || actionMessage ? <PageStatusNotice tone="success">{actionMessage || String(page?.menuMgmtMessage)}</PageStatusNotice> : null}
         {pageState.error || actionError || page?.menuMgmtError ? <PageStatusNotice tone="error">{actionError || page?.menuMgmtError || pageState.error}</PageStatusNotice> : null}
 
         <section className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-          <SummaryMetricCard title={en ? "Registry Nodes" : "레지스트리 노드"} value={`${visibleNodes.length} / ${allNodes.length}`} description={en ? "Visible search result / total" : "표시 검색 결과 / 전체"} />
-          <SummaryMetricCard title={en ? "Binding Order Changes" : "바인딩 순서 변경"} value={String(dirtyOrderRows.length)} description={en ? "Pending registry reorder" : "저장 전 레지스트리 정렬 변경"} />
-          <SummaryMetricCard title={en ? "Registry Parents" : "레지스트리 부모"} value={String(groupMenuOptions.length)} description={en ? "Available intake parents" : "등록 가능한 intake 부모"} />
-          <SummaryMetricCard title={en ? "Current Lane" : "현재 레인"} value={menuType} description={en ? "Synced to URL query" : "URL 쿼리와 동기화"} />
+          <SummaryMetricCard title={en ? "Registry Nodes" : "레지스트리 노드"} value={`${visibleNodes.length} / ${allNodes.length}`} />
+          <SummaryMetricCard title={en ? "Binding Order Changes" : "바인딩 순서 변경"} value={String(dirtyOrderRows.length)} />
+          <SummaryMetricCard title={en ? "Registry Parents" : "레지스트리 부모"} value={String(groupMenuOptions.length)} />
+          <SummaryMetricCard title={en ? "Current Lane" : "현재 레인"} value={menuType} />
         </section>
 
         <CollectionResultPanel
           data-help-id="menu-management-install-contract"
-          description={en ? "Registry intake should already match the installable builder contract before the page moves into install-bind." : "페이지가 install-bind 로 넘어가기 전에 레지스트리 인테이크 단계부터 설치형 빌더 계약을 맞춰야 합니다."}
           icon="inventory_2"
           title={en ? "Install Package Contract" : "설치 패키지 계약"}
         >
@@ -512,7 +512,6 @@ export function MenuManagementMigrationPage() {
 
         <CollectionResultPanel
           data-help-id="menu-management-scope"
-          description={en ? "Registry reordering is limited to siblings under the same parent. Search disables movement so intake review and saved binding order do not diverge." : "레지스트리 재정렬은 같은 부모 메뉴 아래에서만 가능합니다. 검색 중에는 intake 검토와 저장 순서가 어긋나지 않도록 이동을 막습니다."}
           icon="tune"
           title={en ? "Registry Scope and Search" : "레지스트리 범위와 검색"}
         >
@@ -529,21 +528,14 @@ export function MenuManagementMigrationPage() {
             <label className="gov-label" htmlFor="menuSearchKeyword">{en ? "Search registry tree" : "레지스트리 트리 검색"}</label>
             <input className="gov-input" id="menuSearchKeyword" onChange={(event) => setSearchKeyword(event.target.value)} placeholder={en ? "Menu code, name, URL" : "메뉴 코드, 메뉴명, URL"} value={searchKeyword} />
           </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[var(--kr-gov-text-secondary)]">
-            {en ? "Only sibling menus under the same parent can move up or down. Reordering is disabled while search is active so registry review and saved binding order stay aligned." : "같은 부모 메뉴 아래에서만 위/아래 이동이 가능합니다. 검색 중에는 레지스트리 검토와 저장 순서가 어긋나지 않도록 순서 이동을 잠시 막습니다."}
-          </div>
         </div>
         </CollectionResultPanel>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="menu-management-register">
           <GridToolbar
-            meta={String(page?.menuMgmtGuide || "")}
             title={en ? "Registry Intake" : "레지스트리 인테이크"}
           />
           <div className="p-6">
-            <WarningPanel className="mb-4" title={en ? "Registry linkage" : "레지스트리 연동"}>
-              {String(page?.siteMapMgmtGuide || "")}
-            </WarningPanel>
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -590,7 +582,7 @@ export function MenuManagementMigrationPage() {
           </div>
 
           <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[#f8fbff] px-5 py-4">
-            <h4 className="font-bold text-[var(--kr-gov-blue)]">{en ? "What the intake creates" : "인테이크가 만드는 항목"}</h4>
+            <h4 className="font-bold text-[var(--kr-gov-blue)]">{en ? "Registry Output" : "레지스트리 생성 항목"}</h4>
             <ul className="mt-3 space-y-2 text-sm text-[var(--kr-gov-text-secondary)] list-disc pl-5">
               <li>{en ? "Registry code and binding URL metadata" : "레지스트리 코드와 바인딩 URL 메타데이터"}</li>
               <li>{en ? "Default PAGE_CODE_VIEW feature seed" : "기본 PAGE_CODE_VIEW 기능 시드"}</li>
@@ -610,7 +602,6 @@ export function MenuManagementMigrationPage() {
         <section className="gov-card overflow-hidden p-0" data-help-id="menu-management-tree">
           <GridToolbar
             actions={<div className="flex flex-wrap items-center gap-2"><button className="gov-btn gov-btn-primary" onClick={() => { void saveOrder().catch((error: Error) => setActionError(error.message)); }} type="button">{en ? "Save Registry Order" : "레지스트리 순서 저장"}</button></div>}
-            meta={en ? "Review node depth and pending sibling registry order changes before saving." : "노드 깊이와 같은 부모 기준의 레지스트리 정렬 변경을 확인한 뒤 저장합니다."}
             title={en ? "Registry Tree" : "레지스트리 트리"}
           />
           <div className="p-6">
@@ -631,7 +622,7 @@ export function MenuManagementMigrationPage() {
         </div>
 
         {dirtyOrderRows.length > 0 ? (
-          <CollectionResultPanel className="mb-4" description={en ? "Rows below still have unsaved sibling registry order changes." : "아래 행에는 아직 저장되지 않은 같은 부모 기준 레지스트리 정렬 변경이 남아 있습니다."} icon="pending_actions" title={en ? "Pending registry changes" : "저장 대기 레지스트리 변경"}>
+          <CollectionResultPanel className="mb-4" icon="pending_actions" title={en ? "Pending registry changes" : "저장 대기 레지스트리 변경"}>
             <div className="mt-2 flex flex-wrap gap-2">
                 {dirtyOrderRows.slice(0, 8).map((node) => <span className="gov-chip bg-indigo-100 text-indigo-700" key={`order-${node.code}`}>{`${node.code} ${en ? "registry order" : "레지스트리 순서"}`}</span>)}
                 {dirtyOrderRows.length > 8 ? <span className="gov-chip bg-slate-100 text-slate-700">+{dirtyOrderRows.length - 8}</span> : null}

@@ -22,6 +22,33 @@ So the practical reading for this repository is:
 - **Current Resonance** = `Codex execution + runtime control + parity compare + repair + verification evidence`
 - **Target Resonance** = full multi-agent, memory-augmented, self-improving control plane
 
+## 2026-05-19 Organism Framework Upgrade
+
+The image-based artificial body AI model is now mapped into a 9-layer Resonance organism framework.
+
+Canonical assets:
+
+- `/opt/Resonance/docs/ai/10-architecture/resonance-organism-framework.md`
+- `/opt/Resonance/data/ai-runtime/organism-framework-layers.json`
+
+Runtime surface:
+
+- `resonance-ops-web` reads the JSON asset for `/api/framework`
+- the main operations page renders the same layer contract
+- `/deploy-status` remains a status and evidence page; build/redeploy execution is kept on the main operations page only
+
+Layer mapping:
+
+- 영혼 계층: mission, policy, ethics, project boundaries
+- 대뇌 계층: planner, coder, specialist model routing, strategy memory
+- 감각 계층: health, metrics, logs, Kubernetes events, tunnel probes
+- 자율 신경 계층: guarded self-healing, restart, rollback, pressure response
+- 행동 계층: build, deploy, rollout, traffic switch, command execution
+- 기억 계층: incident memory, rollout timeline, job history, lessons
+- 면역 계층: approval gates, audit trail, destructive-action guard, token hardening
+- 혈관 계층: network, service mesh, DB connection, file/artifact flow
+- 생명 유지 계층: capacity, GPU/CPU/RAM/disk, housekeeper, standby runtime
+
 ## Current Carbonet Implementation Shape
 
 Today the implemented backbone is closer to a **control-plane-first Resonance MVP** than a generalized AI agent operating system.
@@ -87,6 +114,14 @@ Carbonet current state:
 - episodic execution logs exist through `jsonl` stores and runner histories
 - procedural memory exists as skills and architecture docs
 - semantic and social memory are not yet first-class runtime systems
+
+Required next behavior:
+
+- every non-trivial task must retrieve similar prior work after pattern resolution
+- retrieved work must include prior decisions, failed checks, repairs, and route/file references
+- the current task plan must explicitly record which lessons were applied
+- implementation must reopen the original referenced files instead of relying only on compressed chat context
+- each completed task must publish new lessons for future similarity search
 
 ### 3. Tool & Environment Layer
 
@@ -212,7 +247,9 @@ For this repository, a realistic MVP should be defined as:
 3. runtime parity compare and repair loop
 4. verification proof against `:18000`
 5. episodic execution memory
-6. operator approval and audit evidence
+6. similar work retrieval and lesson application
+7. compact work packets that survive context compression
+8. operator approval and audit evidence
 
 That is the minimum practical Carbonet form of Resonance today.
 
@@ -221,11 +258,12 @@ That is the minimum practical Carbonet form of Resonance today.
 To move from the current control-plane MVP to a fuller Resonance framework, the next required upgrades are:
 
 1. structured Planner / Researcher / Executor / Critic role separation
-2. semantic memory over docs, code, runtime evidence, and operator actions
-3. structured critic output that can trigger retries automatically
-4. reusable tool registry abstraction instead of page- or service-local execution paths
-5. model abstraction and fallback policy
-6. feedback ingestion that updates future execution behavior
+2. DB-backed similar work retrieval over tasks, pages, failures, fixes, docs, code, runtime evidence, and operator actions
+3. work packet generation for each implementation unit
+4. structured critic output that can trigger retries automatically
+5. reusable tool registry abstraction instead of page- or service-local execution paths
+6. model abstraction and fallback policy
+7. feedback ingestion that updates future execution behavior
 
 ## Integration with Resonance Builder
 

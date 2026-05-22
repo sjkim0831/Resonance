@@ -25,6 +25,7 @@ import { ContextKeyStrip } from "../admin-ui/ContextKeyStrip";
 import { KeyValueGridPanel, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { authorDesignContextKeys } from "../admin-ui/contextKeyPresets";
 import { numberOf, stringOf } from "../admin-system/adminSystemShared";
+import { BuilderGovernanceNav } from "../builder-governance/BuilderGovernanceNav";
 
 type FocusTab =
   | "overview"
@@ -155,6 +156,26 @@ const TAB_OPTIONS: Array<{ id: FocusTab; labelKo: string; labelEn: string }> = [
   { id: "db", labelKo: "DB 테이블", labelEn: "DB Tables" },
   { id: "columns", labelKo: "컬럼", labelEn: "Columns" },
   { id: "automation", labelKo: "작업 지시", labelEn: "Automation" }
+];
+
+const PLATFORM_STUDIO_ROUTE_CONTEXTS: Array<{
+  id: string;
+  suffix: string;
+  focus: FocusTab;
+  titleKo: string;
+  titleEn: string;
+  koPath: string;
+  enPath: string;
+}> = [
+  { id: "platform-studio", suffix: "/platform-studio", focus: "overview", titleKo: "플랫폼 스튜디오", titleEn: "Platform Studio", koPath: "/admin/system/platform-studio", enPath: "/en/admin/system/platform-studio" },
+  { id: "screen-elements-management", suffix: "/screen-elements-management", focus: "surfaces", titleKo: "화면 요소 관리", titleEn: "Screen Elements Management", koPath: "/admin/system/screen-elements-management", enPath: "/en/admin/system/screen-elements-management" },
+  { id: "event-management-console", suffix: "/event-management-console", focus: "events", titleKo: "이벤트 관리", titleEn: "Event Management", koPath: "/admin/system/event-management-console", enPath: "/en/admin/system/event-management-console" },
+  { id: "function-management-console", suffix: "/function-management-console", focus: "functions", titleKo: "함수 콘솔", titleEn: "Function Console", koPath: "/admin/system/function-management-console", enPath: "/en/admin/system/function-management-console" },
+  { id: "api-management-console", suffix: "/api-management-console", focus: "apis", titleKo: "API 관리", titleEn: "API Management", koPath: "/admin/system/api-management-console", enPath: "/en/admin/system/api-management-console" },
+  { id: "controller-management-console", suffix: "/controller-management-console", focus: "controllers", titleKo: "컨트롤러 관리", titleEn: "Controller Management", koPath: "/admin/system/controller-management-console", enPath: "/en/admin/system/controller-management-console" },
+  { id: "db-table-management", suffix: "/db-table-management", focus: "db", titleKo: "DB 테이블 관리", titleEn: "DB Table Management", koPath: "/admin/system/db-table-management", enPath: "/en/admin/system/db-table-management" },
+  { id: "column-management-console", suffix: "/column-management-console", focus: "columns", titleKo: "컬럼 관리", titleEn: "Column Management", koPath: "/admin/system/column-management-console", enPath: "/en/admin/system/column-management-console" },
+  { id: "automation-studio", suffix: "/automation-studio", focus: "automation", titleKo: "자동화 스튜디오", titleEn: "Automation Studio", koPath: "/admin/system/automation-studio", enPath: "/en/admin/system/automation-studio" }
 ];
 
 function splitLines(value: string) {
@@ -380,7 +401,11 @@ function buildSurfaceEventTableRows(chains: GovernanceSurfaceChain[]): Governanc
 function parseFocus(): FocusTab {
   const params = new URLSearchParams(window.location.search);
   const requested = (params.get("focus") || "").trim() as FocusTab;
-  return TAB_OPTIONS.some((item) => item.id === requested) ? requested : "overview";
+  if (TAB_OPTIONS.some((item) => item.id === requested)) {
+    return requested;
+  }
+  const pathname = typeof window === "undefined" ? "" : window.location.pathname;
+  return PLATFORM_STUDIO_ROUTE_CONTEXTS.find((item) => pathname.endsWith(item.suffix))?.focus || "overview";
 }
 
 function validateRegistryEditor(editor: RegistryEditor, en: boolean) {
@@ -871,6 +896,9 @@ export function PlatformStudioMigrationPage() {
     }
   }
 
+  const routeContext = PLATFORM_STUDIO_ROUTE_CONTEXTS.find((item) => (
+    typeof window !== "undefined" && window.location.pathname.endsWith(item.suffix)
+  )) || PLATFORM_STUDIO_ROUTE_CONTEXTS[0];
   const tabTitle = TAB_OPTIONS.find((item) => item.id === focus);
 
   function importSelectionToRegistry() {
@@ -892,31 +920,42 @@ export function PlatformStudioMigrationPage() {
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
         { label: en ? "System" : "시스템" },
-        { label: en ? "Platform Studio" : "플랫폼 스튜디오" }
+        { label: en ? routeContext.titleEn : routeContext.titleKo }
       ]}
-      title={en ? "Platform Studio" : "플랫폼 스튜디오"}
-      subtitle={en ? "Create menu pages, toggle visibility, edit connected resources, and create AI work instructions from one console." : "메뉴 생성, 숨김/보이기, 연결 자원 편집, AI 작업지시 생성까지 하나의 콘솔에서 처리합니다."}
+      title={en ? routeContext.titleEn : routeContext.titleKo}
       contextStrip={
         <ContextKeyStrip items={authorDesignContextKeys} />
       }
     >
+      <BuilderGovernanceNav activeId={routeContext.id} en={en} />
       {actionMessage ? <PageStatusNotice tone="success">{actionMessage}</PageStatusNotice> : null}
       {actionError ? <PageStatusNotice tone="error">{actionError}</PageStatusNotice> : null}
 
       <section className="gov-card mb-6" data-help-id="platform-studio-tabs">
         <div className="flex flex-wrap gap-2">
-          {TAB_OPTIONS.map((tab) => (
-            <button
+          {TAB_OPTIONS.map((tab) => {
+            const tabRoute = PLATFORM_STUDIO_ROUTE_CONTEXTS.find((item) => item.focus === tab.id);
+            return tabRoute ? (
+              <a
+                className={`gov-btn ${focus === tab.id ? "gov-btn-primary" : "gov-btn-outline"}`}
+                href={buildLocalizedPath(tabRoute.koPath, tabRoute.enPath)}
+                key={tab.id}
+              >
+                {en ? tab.labelEn : tab.labelKo}
+              </a>
+            ) : (
+              <button
               key={tab.id}
               type="button"
               className={`gov-btn ${focus === tab.id ? "gov-btn-primary" : "gov-btn-outline"}`}
               onClick={() => setFocus(tab.id)}
             >
               {en ? tab.labelEn : tab.labelKo}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
-        <p className="mt-3 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Current focus" : "현재 포커스"}: {en ? tabTitle?.labelEn : tabTitle?.labelKo}</p>
+        <p className="mt-3 text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? tabTitle?.labelEn : tabTitle?.labelKo}</p>
       </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-[20rem_1fr] gap-6">

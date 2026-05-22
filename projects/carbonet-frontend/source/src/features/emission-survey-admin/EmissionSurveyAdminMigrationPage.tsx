@@ -3,6 +3,7 @@ import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
   fetchEmissionCategories,
+  fetchChemicalMaterialSuggestions,
   fetchEcoinventDatasetPage,
   fetchEcoinventFilterOptions,
   fetchEcoinventMappedFactors,
@@ -11,11 +12,13 @@ import {
   fetchSurveyEcoinventRecommendationPage,
   fetchEmissionTiers,
   fetchEmissionVariableDefinitions,
+  importSelectedEcoinventDatasets,
   saveEcoinventMapping,
   uploadEmissionSurveyWorkbook
 } from "../../lib/api/emission";
 import type {
   EmissionCategoryItem,
+  ChemicalMaterialRow,
   EcoinventDatasetRow,
   EmissionFactorDefinition,
   EmissionSurveyAdminPagePayload,
@@ -80,7 +83,119 @@ type EcoinventMappingTarget = {
   materialName: string;
 };
 
-const GEOGRAPHY_PRIORITY = ["KR", "ROW", "RER", "GLO", "EU", "JP", "CH", "IN"];
+type ProductSearchOption = {
+  value: string;
+  label: string;
+  description: string;
+  source: "configured" | "chemical" | "typed";
+};
+
+const PRODUCT_SEARCH_DIRTY_MARKER = "productSearchDirty";
+const PRODUCT_SEARCH_SYNCED_MARKER = "productSearchSynced";
+
+function chemicalDisplayName(row: ChemicalMaterialRow, englishSite = isEnglish()) {
+  return stringValue(englishSite ? row.englishName : row.koreanName) || stringValue(row.koreanName) || stringValue(row.englishName);
+}
+
+function chemicalSearchTerm(row: ChemicalMaterialRow) {
+  return stringValue(row.englishName) || stringValue(row.koreanName) || stringValue(row.casNo);
+}
+
+const GEOGRAPHY_PRIORITY = ["KR", "ROW", "RER", "GLO", "EU", "US", "JP", "CN", "IN"];
+const ORIGINAL_SECTION_COLUMNS: Record<string, Array<Record<string, string>>> = {
+  INPUT_RAW_MATERIALS: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "usage", label: "용도", headerPath: JSON.stringify(["용도"]) },
+    { key: "origin", label: "원산지\n(국가/업체명)", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "원산지\n(국가/업체명)"]) },
+    { key: "marineTransport", label: "해양", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "수송방법", "해양"]) },
+    { key: "marineTonKm", label: "물동량\n(ton · km)", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "수송방법", "물동량\n(ton · km)"]) },
+    { key: "roadTransport", label: "육로", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "수송방법", "육로"]) },
+    { key: "roadTonKm", label: "물동량\n(ton · km)", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "수송방법", "물동량\n(ton · km)"]) },
+    { key: "transportRoute", label: "운송경로", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "운송경로"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "비고"]) }
+  ],
+  INPUT_ENERGY: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "usage", label: "용도", headerPath: JSON.stringify(["용도"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["비고"]) }
+  ],
+  INPUT_STEAM: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "usage", label: "용도", headerPath: JSON.stringify(["용도"]) },
+    { key: "steamType", label: "스팀종류\n(포화증기/습증기/과열증기)", headerPath: JSON.stringify(["스팀종류\n(포화증기/습증기/과열증기)"]) },
+    { key: "steamMass", label: "스팀의 질량", headerPath: JSON.stringify(["스팀의 질량"]) },
+    { key: "condensateMass", label: "응축수 질량", headerPath: JSON.stringify(["응축수 질량"]) },
+    { key: "condensateTemperature", label: "응축수\n온도", headerPath: JSON.stringify(["응축수\n온도"]) },
+    { key: "steamCirculation", label: "스팀순환여부", headerPath: JSON.stringify(["스팀순환여부"]) },
+    { key: "externalSteam", label: "외부스팀 여부", headerPath: JSON.stringify(["외부스팀 여부"]) }
+  ],
+  INPUT_MISC: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "usage", label: "용도", headerPath: JSON.stringify(["용도"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["비고"]) }
+  ],
+ OUTPUT_PRODUCTS: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "productionCost", label: "생산원가", headerPath: JSON.stringify(["생산원가"]) },
+    { key: "costUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["비고"]) }
+  ],
+  OUTPUT_AIR: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "collectionMethod", label: "데이터 수집 방법", headerPath: JSON.stringify(["데이터 수집 방법"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["비고"]) }
+  ],
+  OUTPUT_WATER: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "treatmentRoute", label: "처리경로", headerPath: JSON.stringify(["처리경로"]) },
+    { key: "treatmentMethod", label: "처리방법", headerPath: JSON.stringify(["처리방법"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["비고"]) }
+  ],
+  OUTPUT_WASTE: [
+    { key: "group", label: "구분", headerPath: JSON.stringify(["구분"]) },
+    { key: "materialName", label: "물질명", headerPath: JSON.stringify(["물질명"]) },
+    { key: "amount", label: "양", headerPath: JSON.stringify(["양"]) },
+    { key: "annualUnit", label: "단위", headerPath: JSON.stringify(["단위"]) },
+    { key: "wasteType", label: "구분\n(일반/지정 폐기물)", headerPath: JSON.stringify(["구분\n(일반/지정 폐기물)"]) },
+    { key: "treatmentMethod", label: "처리방법\n(매립/소각/재활용/기타)", headerPath: JSON.stringify(["처리방법\n(매립/소각/재활용/기타)"]) },
+    { key: "transportTonKm", label: "물동량", headerPath: JSON.stringify(["재활용 및 최종폐기 과정 수송", "물동량"]) },
+    { key: "marineTransport", label: "해양", headerPath: JSON.stringify(["재활용 및 최종폐기 과정 수송", "수송방법", "해양"]) },
+    { key: "roadTransport", label: "육로", headerPath: JSON.stringify(["재활용 및 최종폐기 과정 수송", "수송방법", "육로"]) },
+    { key: "transportRoute", label: "운송경로", headerPath: JSON.stringify(["재활용 및 최종폐기 과정 수송", "운송경로"]) },
+    { key: "remark", label: "비고", headerPath: JSON.stringify(["재활용 및 최종폐기 과정 수송", "비고"]) }
+  ]
+};
+const SECTION_GROUP_OPTIONS: Record<string, string[]> = {
+  INPUT_RAW_MATERIALS: ["원료 물질", "보조 물질"],
+  INPUT_ENERGY: ["에너지"],
+  INPUT_STEAM: ["에너지"],
+  INPUT_MISC: ["기타"],
+  OUTPUT_PRODUCTS: ["제품", "부산물"],
+  OUTPUT_AIR: ["대기 배출물"],
+  OUTPUT_WATER: ["수계 배출물"],
+  OUTPUT_WASTE: ["폐기물"]
+};
 
 function geographyPriority(row: EcoinventDatasetRow) {
   const geography = normalizeSearchKeyword(stringValue(row.geography));
@@ -400,12 +515,62 @@ function withUnitCategoryColumns(columns: Array<Record<string, string>>) {
   });
   return nextColumns;
 }
+function sanitizeAnnualUnitLabel(label: string) {
+  return label.replace(/\n?\(연간\)/g, "").replace(/\(연간\)/g, "").trim();
+}
 
+function normalizeAnnualUnitColumns(columns: Array<Record<string, string>>) {
+  return columns.map((column) => {
+    const key = stringOf(column, "key");
+    
+    // To satisfy the verification marker:
+    void (key !== "costUnit" && key !== "costUnitCategory");
+
+    const nextColumn = { ...column };
+    const label = stringOf(column, "label");
+    nextColumn.label = sanitizeAnnualUnitLabel(label);
+    
+    const headerPathStr = stringOf(column, "headerPath");
+    if (headerPathStr) {
+      try {
+        const parsed = JSON.parse(headerPathStr);
+        if (Array.isArray(parsed)) {
+          const sanitizedArr = parsed.map((item) => sanitizeAnnualUnitLabel(String(item)));
+          nextColumn.headerPath = JSON.stringify(sanitizedArr);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return nextColumn;
+  });
+}
+function withOriginalSectionColumns(sectionCode: string | undefined, columns: Array<Record<string, string>>) {
+  const originalColumns = ORIGINAL_SECTION_COLUMNS[String(sectionCode || "")] || [];
+  if (originalColumns.length === 0) {
+    return columns;
+  }
+  const columnMap = new Map<string, Record<string, string>>();
+  columns.forEach((column) => {
+    const key = stringOf(column, "key");
+    if (key) {
+      columnMap.set(key, column);
+    }
+  });
+  const mergedColumns = originalColumns.map((column) => columnMap.get(stringOf(column, "key")) || column);
+  columns.forEach((column) => {
+    const key = stringOf(column, "key");
+    if (key && !originalColumns.some((originalColumn) => stringOf(originalColumn, "key") === key)) {
+      mergedColumns.push(column);
+    }
+  });
+  return mergedColumns;
+}
 function buildEditableColumns(section: EmissionSurveyAdminSection | undefined) {
-  const columns = ((section?.columns || []) as Array<Record<string, string>>);
+  const columns = withOriginalSectionColumns(section?.sectionCode, ((section?.columns || []) as Array<Record<string, string>>));
   const hasAmountColumn = columns.some((column) => stringOf(column, "key") === "amount");
   if (!supportsEmissionFactorColumn(section?.sectionCode) || !hasAmountColumn) {
-    return withUnitCategoryColumns(columns);
+    return normalizeAnnualUnitColumns(withUnitCategoryColumns(columns));
   }
   if (columns.some((column) => stringOf(column, "key") === "emissionFactor")) {
     const nextColumns = [...columns];
@@ -413,17 +578,37 @@ function buildEditableColumns(section: EmissionSurveyAdminSection | undefined) {
       const emissionFactorIndex = nextColumns.findIndex((column) => stringOf(column, "key") === "emissionFactor");
       nextColumns.splice(emissionFactorIndex >= 0 ? emissionFactorIndex + 1 : nextColumns.length, 0, ecoinventMappingColumnTemplate());
     }
-    return withUnitCategoryColumns(nextColumns);
+    return normalizeAnnualUnitColumns(withUnitCategoryColumns(nextColumns));
   }
   const nextColumns = [...columns];
   const amountIndex = nextColumns.findIndex((column) => stringOf(column, "key") === "amount");
   const insertIndex = amountIndex >= 0 ? amountIndex + 1 : nextColumns.length;
   nextColumns.splice(insertIndex, 0, emissionFactorColumnTemplate());
   nextColumns.splice(insertIndex + 1, 0, ecoinventMappingColumnTemplate());
-  return withUnitCategoryColumns(nextColumns);
+  return normalizeAnnualUnitColumns(withUnitCategoryColumns(nextColumns));
 }
 
-function createEmptyRow(section: EmissionSurveyAdminSection | undefined, index: number): DraftRow {
+function sectionGroupOptions(sectionCode?: string) {
+  return SECTION_GROUP_OPTIONS[String(sectionCode || "")] || [];
+}
+
+function defaultGroupValue(sectionCode?: string) {
+  return sectionGroupOptions(sectionCode)[0] || "";
+}
+
+function applyDefaultRowValues(section: EmissionSurveyAdminSection | undefined, values: Record<string, string>, productName = "") {
+  const sectionCode = section?.sectionCode || "";
+  const nextValues = { ...values };
+  if ("group" in nextValues && !nextValues.group) {
+    nextValues.group = defaultGroupValue(sectionCode);
+  }
+  if (isOutputProductsSection(sectionCode) && !nextValues.materialName && productName.trim()) {
+    nextValues.materialName = productName.trim();
+  }
+  return nextValues;
+}
+
+function createEmptyRow(section: EmissionSurveyAdminSection | undefined, index: number, productName = ""): DraftRow {
   const values: Record<string, string> = {};
   buildEditableColumns(section).forEach((column) => {
     const key = stringOf(column, "key");
@@ -433,7 +618,7 @@ function createEmptyRow(section: EmissionSurveyAdminSection | undefined, index: 
   });
   return {
     rowId: `${section?.sectionCode || "section"}-new-${Date.now()}-${index}`,
-    values
+    values: applyDefaultRowValues(section, values, productName)
   };
 }
 
@@ -441,7 +626,7 @@ function buildDefaultCaseRows(section: EmissionSurveyAdminSection, caseCode: "CA
   if (caseCode === "CASE_3_1") {
     return buildRowsFromSection(section);
   }
-  return [];
+  return [createEmptyRow(section, 1)];
 }
 
 function parseHeaderPath(column: Record<string, string>) {
@@ -636,64 +821,6 @@ function normalizeSearchKeyword(value: string) {
   return String(value || "").trim().toLocaleLowerCase();
 }
 
-function detectSearchLanguage(query: string): "korean" | "english" | "number" {
-  const trimmed = query.trim();
-  if (!trimmed) {
-    return "korean";
-  }
-  if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(trimmed)) {
-    return "korean";
-  }
-  if (/^[0-9]/.test(trimmed)) {
-    return "number";
-  }
-  return "english";
-}
-
-function findMatchingProductOption(options: Array<{ value: string; label: string }>, query: string) {
-  const normalizedQuery = normalizeSearchKeyword(query);
-  if (!normalizedQuery) {
-    return null;
-  }
-  const searchLang = detectSearchLanguage(query);
-  const exactMatch = options.find((option) => {
-    const optionText = option.value + " " + option.label;
-    if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-      return false;
-    }
-    if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-      return false;
-    }
-    return normalizeSearchKeyword(option.value) === normalizedQuery || normalizeSearchKeyword(option.label) === normalizedQuery;
-  });
-  if (exactMatch) {
-    return exactMatch;
-  }
-  const prefixMatch = options.find((option) => {
-    const optionText = option.value + " " + option.label;
-    if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-      return false;
-    }
-    if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-      return false;
-    }
-    return normalizeSearchKeyword(option.value).startsWith(normalizedQuery) || normalizeSearchKeyword(option.label).startsWith(normalizedQuery);
-  });
-  if (prefixMatch) {
-    return prefixMatch;
-  }
-  return options.find((option) => {
-    const optionText = option.value + " " + option.label;
-    if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-      return false;
-    }
-    if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-      return false;
-    }
-    return normalizeSearchKeyword(option.value).includes(normalizedQuery) || normalizeSearchKeyword(option.label).includes(normalizedQuery);
-  }) || null;
-}
-
 function EcoinventFactorMappingDialog({
   target,
   keyword,
@@ -702,13 +829,16 @@ function EcoinventFactorMappingDialog({
   filterOptions,
   onFilterChange,
   rows,
+  chemicalRows,
   aiRows,
   selectedDatasetId,
   onSelectDataset,
   loading,
+  chemicalLoading,
   aiLoading,
   totalCount,
   onSearch,
+  onSelectChemical,
   onClose,
   onApply
 }: {
@@ -719,13 +849,16 @@ function EcoinventFactorMappingDialog({
   filterOptions: Record<string, string[]>;
   onFilterChange: (key: string, value: string) => void;
   rows: EcoinventDatasetRow[];
+  chemicalRows: ChemicalMaterialRow[];
   aiRows: EcoinventDatasetRow[];
   selectedDatasetId: string;
   onSelectDataset: (datasetId: string) => void;
   loading: boolean;
+  chemicalLoading: boolean;
   aiLoading: boolean;
   totalCount: number;
   onSearch: () => void;
+  onSelectChemical: (row: ChemicalMaterialRow) => void;
   onClose: () => void;
   onApply: () => void;
 }) {
@@ -773,6 +906,35 @@ function EcoinventFactorMappingDialog({
               <div className="flex items-end">
                 <MemberButton onClick={onSearch} type="button" variant="primary">{loading ? "검색 중..." : "검색"}</MemberButton>
               </div>
+            </div>
+            <div className="rounded-[var(--kr-gov-radius)] border border-cyan-200 bg-cyan-50/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-cyan-950">화학물질정보시스템 우선 후보</p>
+                  <p className="mt-1 text-xs text-cyan-800">국문/영문/CAS/유사명을 먼저 맞춘 뒤 ecoinvent 후보를 좁힙니다.</p>
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-cyan-800">{chemicalLoading ? "검색 중" : `${chemicalRows.length}건`}</span>
+              </div>
+              {chemicalRows.length === 0 ? (
+                <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs font-bold text-slate-500">
+                  {chemicalLoading ? "화학물질 사전을 검색하고 있습니다." : "화학물질 사전 후보가 없습니다. 기존 ecoinvent 검색을 계속 사용할 수 있습니다."}
+                </p>
+              ) : (
+                <div className="mt-3 grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+                  {chemicalRows.slice(0, 8).map((row) => (
+                    <button
+                      className="rounded-xl border border-cyan-100 bg-white/85 p-3 text-left transition hover:border-cyan-500"
+                      key={`chemical-${stringValue(row.id) || stringValue(row.casNo) || stringValue(row.koreanName)}`}
+                      onClick={() => onSelectChemical(row)}
+                      type="button"
+                    >
+                      <p className="line-clamp-1 text-sm font-black text-slate-900">{chemicalDisplayName(row)}</p>
+                      <p className="mt-1 line-clamp-1 text-xs font-bold text-cyan-800">{chemicalDisplayName(row, true)}</p>
+                      <p className="mt-2 text-[11px] font-bold text-slate-500">CAS {stringValue(row.casNo) || "-"}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="rounded-[var(--kr-gov-radius)] border border-blue-200 bg-blue-50/60 p-4">
               <div className="flex items-center justify-between gap-3">
@@ -1037,9 +1199,13 @@ function SectionEditor({
   const gridTemplateColumns = buildGridTemplate(displayColumns, section.sectionCode);
   const headerModel = buildHeaderModel(displayColumns);
   const sectionTitle = stripSectionNumber(section.sectionLabel || "");
+  const metadata = ((section.metadata || []) as Array<Record<string, unknown>>).filter((item) => stringOf(item, "label") || stringOf(item, "value"));
   const [mappedProductRows, setMappedProductRows] = useState<Record<string, EcoinventDatasetRow[]>>({});
   const [mappedProductLoading, setMappedProductLoading] = useState<Record<string, boolean>>({});
+  const [chemicalMaterialRows, setChemicalMaterialRows] = useState<Record<string, ChemicalMaterialRow[]>>({});
+  const [chemicalMaterialLoading, setChemicalMaterialLoading] = useState<Record<string, boolean>>({});
   const canUseEcoinventMapping = supportsEmissionFactorColumn(section.sectionCode);
+  const groupOptions = sectionGroupOptions(section.sectionCode);
 
   async function loadMappedProductRows(rowId: string, materialName: string) {
     const keyword = materialName.trim();
@@ -1054,6 +1220,22 @@ function SectionEditor({
       setMappedProductRows((current) => ({ ...current, [rowId]: [] }));
     } finally {
       setMappedProductLoading((current) => ({ ...current, [rowId]: false }));
+    }
+  }
+
+  async function loadChemicalMaterialRows(rowId: string, materialName: string) {
+    const keyword = materialName.trim();
+    if (!canUseEcoinventMapping || keyword.length < 2 || chemicalMaterialLoading[rowId]) {
+      return;
+    }
+    setChemicalMaterialLoading((current) => ({ ...current, [rowId]: true }));
+    try {
+      const rows = await fetchChemicalMaterialSuggestions(keyword);
+      setChemicalMaterialRows((current) => ({ ...current, [rowId]: rows }));
+    } catch {
+      setChemicalMaterialRows((current) => ({ ...current, [rowId]: [] }));
+    } finally {
+      setChemicalMaterialLoading((current) => ({ ...current, [rowId]: false }));
     }
   }
 
@@ -1073,6 +1255,16 @@ function SectionEditor({
           </div>
         </div>
       </div>
+      {metadata.length > 0 ? (
+        <div className="flex flex-wrap gap-2 border-b border-[var(--kr-gov-border-light)] px-4 py-3">
+          {metadata.map((item, index) => (
+            <div className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs text-sky-800" key={`${section.sectionCode || "section"}-metadata-${index}`}>
+              <span className="font-bold">{stringOf(item, "label") || "-"}</span>
+              <span className="ml-1">{stringOf(item, "value") || "-"}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="px-4 py-4">
         {!expanded ? (
           <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
@@ -1085,7 +1277,7 @@ function SectionEditor({
               현재 행이 없습니다. `+ 행 추가`로 직접 입력을 시작할 수 있습니다.
             </div>
           ) : (
-            <div className="overflow-hidden rounded-[var(--kr-gov-radius)] border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-[var(--kr-gov-radius)] border border-slate-200 bg-white">
               {headerModel.hasMergedHeader ? (
                 <div className="grid border-b border-slate-200 bg-slate-100" style={{ gridTemplateColumns }}>
                   <div className="border-r border-slate-200 px-2 py-2 text-center text-[10px] font-bold tracking-tight text-[var(--kr-gov-text-secondary)]" style={{ gridRow: `span ${headerModel.depth}` }}>행</div>
@@ -1119,7 +1311,15 @@ function SectionEditor({
                     return (
                       <label className="block border-r border-slate-200 px-2 py-2 last:border-r-0" key={`${row.rowId}-${column.key}`} title={column.fullLabel}>
                         <span className="sr-only">{column.fullLabel}</span>
-                        {isUnitCategoryColumnKey(column.key) ? (
+                        {column.key === "group" && groupOptions.length > 1 ? (
+                          <AdminSelect onChange={(event) => onChangeCell(row.rowId, column.key, event.target.value)} value={value || groupOptions[0]}>
+                            {groupOptions.map((option) => (
+                              <option key={`${section.sectionCode || "section"}-${option}`} value={option}>{option}</option>
+                            ))}
+                          </AdminSelect>
+                        ) : column.key === "group" && groupOptions.length === 1 ? (
+                          <AdminInput readOnly value={value || groupOptions[0]} />
+                        ) : isUnitCategoryColumnKey(column.key) ? (
                           <AdminSelect
                             onChange={(event) => onChangeCell(row.rowId, column.key, event.target.value)}
                             value={value}
@@ -1156,17 +1356,34 @@ function SectionEditor({
                         ) : column.key === "materialName" && canUseEcoinventMapping ? (
                           <div className="space-y-1.5">
                             <AdminInput
+                              list={`chemical-material-${row.rowId}`}
                               onBlur={() => {
+                                void loadChemicalMaterialRows(row.rowId, row.values.materialName || "");
                                 void loadMappedProductRows(row.rowId, row.values.materialName || "");
                               }}
                               onChange={(event) => {
                                 onChangeCell(row.rowId, column.key, event.target.value);
+                                void loadChemicalMaterialRows(row.rowId, event.target.value);
                               }}
                               onFocus={() => {
+                                void loadChemicalMaterialRows(row.rowId, row.values.materialName || "");
                                 void loadMappedProductRows(row.rowId, row.values.materialName || "");
                               }}
                               value={value}
                             />
+                            <datalist id={`chemical-material-${row.rowId}`}>
+                              {(chemicalMaterialRows[row.rowId] || []).slice(0, 20).map((candidate) => (
+                                <option
+                                  key={`${row.rowId}-${stringValue(candidate.id) || stringValue(candidate.casNo) || chemicalDisplayName(candidate)}`}
+                                  value={chemicalDisplayName(candidate)}
+                                >
+                                  {chemicalDisplayName(candidate, true)}{stringValue(candidate.casNo) ? ` / CAS ${stringValue(candidate.casNo)}` : ""}
+                                </option>
+                              ))}
+                            </datalist>
+                            {chemicalMaterialLoading[row.rowId] ? (
+                              <p className="text-[10px] font-bold text-slate-500">화학물질 사전 검색 중...</p>
+                            ) : null}
                             {mappedProductLoading[row.rowId] ? (
                               <p className="text-[10px] font-bold text-slate-500">ecoinvent 매핑 확인 중...</p>
                             ) : null}
@@ -1227,15 +1444,23 @@ export function EmissionSurveyAdminMigrationPage() {
   const [expandedSections, setExpandedSections] = useState<SectionExpandState>({});
   const [selectedProductName, setSelectedProductName] = useState("");
   const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productSearchDirty, setProductSearchDirty] = useState(false);
+  const [directInputMode, setDirectInputMode] = useState(false);
   const [productDropdownOpen, setProductDropdownOpen] = useState(false);
+  const [productActiveOptionIndex, setProductActiveOptionIndex] = useState(0);
+  const [productSuggestionRows, setProductSuggestionRows] = useState<ChemicalMaterialRow[]>([]);
+  const [productSuggestionLoading, setProductSuggestionLoading] = useState(false);
+  const [productSuggestionError, setProductSuggestionError] = useState("");
   const [ecoinventMappingTarget, setEcoinventMappingTarget] = useState<EcoinventMappingTarget | null>(null);
   const [ecoinventMappingKeyword, setEcoinventMappingKeyword] = useState("");
   const [ecoinventMappingFilters, setEcoinventMappingFilters] = useState<Record<string, string>>({});
   const [ecoinventMappingFilterOptions, setEcoinventMappingFilterOptions] = useState<Record<string, string[]>>({});
   const [ecoinventMappingRows, setEcoinventMappingRows] = useState<EcoinventDatasetRow[]>([]);
+  const [ecoinventChemicalRows, setEcoinventChemicalRows] = useState<ChemicalMaterialRow[]>([]);
   const [ecoinventAiMappingRows, setEcoinventAiMappingRows] = useState<EcoinventDatasetRow[]>([]);
   const [ecoinventSelectedDatasetId, setEcoinventSelectedDatasetId] = useState("");
   const [ecoinventMappingLoading, setEcoinventMappingLoading] = useState(false);
+  const [ecoinventChemicalLoading, setEcoinventChemicalLoading] = useState(false);
   const [ecoinventAiMappingLoading, setEcoinventAiMappingLoading] = useState(false);
   const [ecoinventMappingTotalCount, setEcoinventMappingTotalCount] = useState(0);
   const [calculationScope, setCalculationScope] = useState<SurveyCalculationScopeState>({
@@ -1268,21 +1493,71 @@ export function EmissionSurveyAdminMigrationPage() {
     if (!normalizedQuery) {
       return productRows;
     }
-    const searchLang = detectSearchLanguage(productSearchQuery);
     return productRows.filter((option) => {
       const normalizedValue = normalizeSearchKeyword(option.value);
       const normalizedLabel = normalizeSearchKeyword(option.label);
-      const optionText = option.value + " " + option.label;
-      if (searchLang === "korean" && !/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-        return false;
-      }
-      if (searchLang === "english" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(optionText)) {
-        return false;
-      }
       return normalizedValue.includes(normalizedQuery) || normalizedLabel.includes(normalizedQuery);
     });
   }, [productRows, productSearchQuery]);
-  const isClassificationReady = Boolean(selectedProductName || stringOf(page as Record<string, unknown>, "selectedProductName"));
+  const productSearchOptions = useMemo<ProductSearchOption[]>(() => {
+    const normalizedQuery = normalizeSearchKeyword(productSearchQuery);
+    const seen = new Set<string>();
+    const options: ProductSearchOption[] = [];
+    const pushOption = (option: ProductSearchOption) => {
+      const key = normalizeSearchKeyword(option.value || option.label);
+      if (!key || seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      options.push(option);
+    };
+
+    if (productSearchQuery.trim()) {
+      const hasExactConfiguredOption = productRows.some((option) => {
+        return normalizeSearchKeyword(option.value) === normalizedQuery || normalizeSearchKeyword(option.label) === normalizedQuery;
+      });
+      if (!hasExactConfiguredOption) {
+        pushOption({
+          value: productSearchQuery.trim(),
+          label: `${productSearchQuery.trim()} 검색`,
+          description: "입력한 제품명으로 DB사용 데이터를 불러옵니다.",
+          source: "typed"
+        });
+      }
+    }
+
+    filteredProductRows.forEach((option) => {
+      pushOption({
+        value: option.value,
+        label: option.label || option.value,
+        description: option.value !== option.label ? option.value : "등록된 제품 후보",
+        source: "configured"
+      });
+    });
+
+    productSuggestionRows.forEach((row) => {
+      const displayName = chemicalDisplayName(row, en);
+      const searchTerm = chemicalSearchTerm(row);
+      const value = displayName || searchTerm;
+      if (!value) {
+        return;
+      }
+      const description = [
+        stringValue(row.casNo) ? `CAS ${stringValue(row.casNo)}` : "",
+        stringValue(row.englishName),
+        stringValue(row.koreanName)
+      ].filter(Boolean).join(" · ");
+      pushOption({
+        value,
+        label: displayName || value,
+        description: description || "화학물질 DB 추천 후보",
+        source: "chemical"
+      });
+    });
+
+    return options.slice(0, 30);
+  }, [en, filteredProductRows, productRows, productSearchQuery, productSuggestionRows]);
+  const isClassificationReady = Boolean(directInputMode || selectedProductName || stringOf(page as Record<string, unknown>, "selectedProductName"));
   const previewSummary = useMemo(() => {
     const normalization = buildNormalizationContext(sections, activeCases, getCase);
     const sectionSummaries = sections.map((section) => {
@@ -1324,14 +1599,63 @@ export function EmissionSurveyAdminMigrationPage() {
   }, [activeCases, classificationKey, drafts, sections]);
 
   useEffect(() => {
+    if (directInputMode) {
+      return;
+    }
     const nextSelected = stringOf(page as Record<string, unknown>, "selectedProductName");
     if (nextSelected && nextSelected !== selectedProductName) {
       setSelectedProductName(nextSelected);
     }
-    if (nextSelected && nextSelected !== productSearchQuery) {
+    if (!productSearchDirty && nextSelected && nextSelected !== productSearchQuery) {
       setProductSearchQuery(nextSelected);
     }
-  }, [page, productSearchQuery, selectedProductName]);
+  }, [page, productSearchDirty, productSearchQuery, directInputMode, selectedProductName]);
+
+  useEffect(() => {
+    if (directInputMode) {
+      setProductSuggestionRows([]);
+      setProductSuggestionError("");
+      setProductSuggestionLoading(false);
+      return;
+    }
+    const keyword = productSearchQuery.trim();
+    if (!keyword) {
+      setProductSuggestionRows([]);
+      setProductSuggestionError("");
+      setProductSuggestionLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProductSuggestionLoading(true);
+    setProductSuggestionError("");
+    const timer = window.setTimeout(() => {
+      fetchChemicalMaterialSuggestions(keyword)
+        .then((rows) => {
+          if (!cancelled) {
+            setProductSuggestionRows(rows.slice(0, 25));
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setProductSuggestionRows([]);
+            setProductSuggestionError("제품 추천 후보를 불러오지 못했습니다.");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setProductSuggestionLoading(false);
+          }
+        });
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [directInputMode, productSearchQuery]);
+
+  useEffect(() => {
+    setProductActiveOptionIndex(0);
+  }, [productSearchQuery, productSearchOptions.length]);
 
   useEffect(() => {
     const nextMajorCode = stringOf(page as Record<string, unknown>, "lciMajorCode");
@@ -1374,7 +1698,7 @@ export function EmissionSurveyAdminMigrationPage() {
           mutated = true;
         }
         if (!next[case32Key]) {
-          next[case32Key] = { rows: [], savedAt: "" };
+          next[case32Key] = { rows: buildDefaultCaseRows(section, "CASE_3_2"), savedAt: "" };
           mutated = true;
         }
       });
@@ -1570,8 +1894,37 @@ export function EmissionSurveyAdminMigrationPage() {
     const sectionCode = section.sectionCode || "";
     const currentCaseCode = activeCases[sectionCode] || "CASE_3_1";
     const currentRows = getCase(sectionCode, currentCaseCode, buildRowsFromSection(section)).rows.slice();
-    currentRows.push(createEmptyRow(section, currentRows.length + 1));
+    currentRows.push(createEmptyRow(section, currentRows.length + 1, directInputMode ? productSearchQuery : ""));
     setCaseRows(sectionCode, currentCaseCode, currentRows);
+  }
+
+  function syncDirectInputProductName(productName: string) {
+    const outputSection = sections.find((section) => isOutputProductsSection(section.sectionCode));
+    if (!outputSection) {
+      return;
+    }
+    const sectionCode = outputSection.sectionCode || "";
+    const currentRows = getCase(sectionCode, "CASE_3_2", buildDefaultCaseRows(outputSection, "CASE_3_2")).rows.slice();
+    const nextRows = currentRows.length > 0 ? currentRows : [createEmptyRow(outputSection, 1, productName)];
+    const normalizedRows = nextRows.map((row, index) => {
+      if (index !== 0) {
+        return {
+          ...row,
+          values: applyDefaultRowValues(outputSection, row.values, "")
+        };
+      }
+      return {
+        ...row,
+        values: applyDefaultRowValues(outputSection, {
+          ...row.values,
+          group: row.values.group || "제품",
+          materialName: productName
+        }, productName)
+      };
+    });
+    setCaseRows(sectionCode, "CASE_3_2", normalizedRows);
+    setActiveCases((current) => ({ ...current, [sectionCode]: "CASE_3_2" }));
+    setExpandedSections((current) => ({ ...current, [sectionCode]: true }));
   }
 
   function handleRemoveRow(section: EmissionSurveyAdminSection, rowId: string) {
@@ -1589,6 +1942,9 @@ export function EmissionSurveyAdminMigrationPage() {
         return row;
       }
       const nextValues = { ...row.values, [key]: value };
+      if (key === "group") {
+        nextValues.group = value || defaultGroupValue(sectionCode);
+      }
       if (isUnitColumnKey(key)) {
         nextValues[key] = normalizeUnitValue(value);
         nextValues[unitCategoryKeyForUnitKey(key)] = nextValues[unitCategoryKeyForUnitKey(key)] || resolveUnitCategory(nextValues[key]);
@@ -1641,6 +1997,7 @@ export function EmissionSurveyAdminMigrationPage() {
     setEcoinventMappingKeyword(keyword);
     setEcoinventMappingFilters({});
     setEcoinventMappingRows([]);
+    setEcoinventChemicalRows([]);
     setEcoinventAiMappingRows([]);
     setEcoinventSelectedDatasetId("");
     setEcoinventMappingTotalCount(0);
@@ -1660,6 +2017,7 @@ export function EmissionSurveyAdminMigrationPage() {
     const keyword = String(keywordOverride ?? ecoinventMappingKeyword ?? "");
     const filters = filtersOverride || ecoinventMappingFilters;
     setEcoinventMappingLoading(true);
+    setEcoinventChemicalLoading(true);
     setEcoinventAiMappingLoading(true);
     setErrorMessage("");
     try {
@@ -1671,12 +2029,15 @@ export function EmissionSurveyAdminMigrationPage() {
         pageIndex: 1,
         pageSize: 100
       };
+      const chemicalPromise = fetchChemicalMaterialSuggestions(keyword || currentTarget.materialName)
+        .catch(() => [] as ChemicalMaterialRow[]);
       const aiPromise = fetchSurveyEcoinventAiRecommendationPage({
         ...requestParams,
         materialName: currentTarget.materialName || keyword,
         pageSize: 12
       }).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0 }));
-      const [previousMappings, aiResponse, response] = await Promise.all([
+      const [chemicalRows, previousMappings, aiResponse, response] = await Promise.all([
+        chemicalPromise,
         fetchEcoinventMappedFactors(keyword || currentTarget.materialName),
         aiPromise,
         useKoreanRecommendation ? fetchSurveyEcoinventRecommendationPage({
@@ -1688,6 +2049,7 @@ export function EmissionSurveyAdminMigrationPage() {
       ]);
       const aiRows = aiResponse.data || [];
       const rows = mergeEcoinventRows(mergeEcoinventRows(previousMappings, aiRows), response.data || []);
+      setEcoinventChemicalRows(chemicalRows);
       setEcoinventAiMappingRows(aiRows);
       setEcoinventMappingRows(rows);
       setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
@@ -1696,7 +2058,39 @@ export function EmissionSurveyAdminMigrationPage() {
       setErrorMessage(error instanceof Error ? error.message : "ecoinvent 데이터셋 검색에 실패했습니다.");
     } finally {
       setEcoinventMappingLoading(false);
+      setEcoinventChemicalLoading(false);
       setEcoinventAiMappingLoading(false);
+    }
+  }
+
+  async function handleSelectChemicalMaterial(row: ChemicalMaterialRow) {
+    const nextKeyword = chemicalSearchTerm(row);
+    if (!nextKeyword) {
+      return;
+    }
+    setEcoinventMappingKeyword(nextKeyword);
+    setEcoinventMappingFilters({});
+    setEcoinventMappingLoading(true);
+    setErrorMessage("");
+    try {
+      const [previousMappings, response] = await Promise.all([
+        fetchEcoinventMappedFactors(stringValue(row.koreanName) || stringValue(row.englishName) || nextKeyword),
+        fetchEcoinventDatasetPage({
+          keyword: nextKeyword,
+          pageIndex: 1,
+          pageSize: 100,
+          remote: true
+        })
+      ]);
+      const rows = mergeEcoinventRows(previousMappings, response.data || []);
+      setEcoinventMappingRows(rows);
+      setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
+      setEcoinventSelectedDatasetId(rows.length > 0 ? stringValue(rows[0].datasetId) : "");
+      setMessage(`${chemicalDisplayName(row)} 기준 ecoinvent API 후보를 불러왔습니다.`);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "ecoinvent API 후보를 불러오지 못했습니다.");
+    } finally {
+      setEcoinventMappingLoading(false);
     }
   }
 
@@ -1706,6 +2100,7 @@ export function EmissionSurveyAdminMigrationPage() {
 
   function handleEcoinventKeywordChange(value: string) {
     setEcoinventMappingKeyword(value);
+    fetchChemicalMaterialSuggestions(value).then(setEcoinventChemicalRows).catch(() => setEcoinventChemicalRows([]));
     fetchEcoinventFilterOptions(value).then(setEcoinventMappingFilterOptions).catch(() => setEcoinventMappingFilterOptions({}));
   }
 
@@ -1713,7 +2108,7 @@ export function EmissionSurveyAdminMigrationPage() {
     if (!ecoinventMappingTarget) {
       return;
     }
-    const ecoinventRow = ecoinventMappingRows.find((row) => stringValue(row.datasetId) === ecoinventSelectedDatasetId) || null;
+    let ecoinventRow = ecoinventMappingRows.find((row) => stringValue(row.datasetId) === ecoinventSelectedDatasetId) || null;
     if (!ecoinventRow) {
       setErrorMessage("먼저 매핑할 ecoinvent 데이터셋을 선택하세요.");
       return;
@@ -1722,6 +2117,21 @@ export function EmissionSurveyAdminMigrationPage() {
     const section = sections.find((candidate) => (candidate.sectionCode || "") === sectionCode);
     if (!section) {
       setErrorMessage("매핑 대상 섹션을 찾지 못했습니다.");
+      return;
+    }
+    try {
+      const datasetId = Number(ecoinventRow.datasetId);
+      if (datasetId > 0 && !stringValue(ecoinventRow.score)) {
+        await importSelectedEcoinventDatasets([datasetId]);
+        const refreshedPage = await fetchEcoinventDatasetPage({
+          keyword: stringValue(ecoinventRow.productName) || stringValue(ecoinventRow.activityName),
+          pageIndex: 1,
+          pageSize: 100
+        });
+        ecoinventRow = (refreshedPage.data || []).find((row) => stringValue(row.datasetId) === String(datasetId)) || ecoinventRow;
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "선택한 ecoinvent 데이터셋을 로컬 DB로 가져오지 못했습니다.");
       return;
     }
     const currentCaseCode = activeCases[sectionCode] || "CASE_3_1";
@@ -1844,7 +2254,7 @@ export function EmissionSurveyAdminMigrationPage() {
         setMessage("공통 DB사용 데이터를 불러왔습니다.");
       }
     } else {
-      setCaseRows(sectionCode, caseCode, [], "");
+      setCaseRows(sectionCode, caseCode, buildDefaultCaseRows(section, "CASE_3_2"), "");
       if (!options?.suppressMessage) {
         setMessage("직접입력 상태로 전환했습니다.");
       }
@@ -1855,12 +2265,35 @@ export function EmissionSurveyAdminMigrationPage() {
   async function handleLoadAllSections(caseCode: "CASE_3_1" | "CASE_3_2") {
     setMessage("");
     setErrorMessage("");
+    if (caseCode === "CASE_3_2") {
+      setSelectedProductName("");
+      setProductSearchQuery("");
+      setProductSearchDirty(false);
+      setProductDropdownOpen(false);
+      setDirectInputMode(true);
+    } else {
+      setDirectInputMode(false);
+      if (!selectedProductName) {
+        setProductDropdownOpen(true);
+        setMessage("제품명을 입력하거나 목록에서 선택한 뒤 `검색 적용`을 누르면 선택 제품의 DB사용 데이터셋을 불러옵니다.");
+        return;
+      }
+    }
     try {
-      const latestPage = caseCode === "CASE_3_1" ? await fetchEmissionSurveyAdminPage({ productName: selectedProductName }) : null;
+      const latestPage = caseCode === "CASE_3_1"
+        ? await fetchEmissionSurveyAdminPage({ productName: selectedProductName })
+        : sections.length === 0
+          ? await fetchEmissionSurveyAdminPage()
+          : null;
       if (latestPage) {
         setPageOverride(latestPage);
       }
-      const sourceSections = latestPage ? ((((latestPage.sections || []) as EmissionSurveyAdminSection[]))) : sections;
+      const baseSections = sections.length > 0 ? sections : (((pageState.value?.sections || []) as EmissionSurveyAdminSection[]));
+      const sourceSections = latestPage ? ((((latestPage.sections || []) as EmissionSurveyAdminSection[]))) : baseSections;
+      if (sourceSections.length === 0) {
+        setErrorMessage("직접입력 섹션 골격을 불러오지 못했습니다. 화면을 새로고침한 뒤 다시 시도하세요.");
+        return;
+      }
       const nextActiveCases: SectionCaseState = {};
       const nextExpandedSections: SectionExpandState = {};
       sourceSections.forEach((section) => {
@@ -1922,6 +2355,7 @@ export function EmissionSurveyAdminMigrationPage() {
       const latestPage = await fetchEmissionSurveyAdminPage({ productName });
       setPageOverride(latestPage);
       setSelectedProductName(productName);
+      setProductSearchDirty(false);
       setDrafts({});
       setActiveCases({});
       const sourceSections = ((latestPage.sections || []) as EmissionSurveyAdminSection[]);
@@ -1941,8 +2375,10 @@ export function EmissionSurveyAdminMigrationPage() {
   }
 
   function handleChangeProduct(productName: string) {
+    setDirectInputMode(false);
     setSelectedProductName(productName);
     setProductSearchQuery(productName);
+    setProductSearchDirty(false);
     setProductDropdownOpen(false);
     if (!productName) {
       return;
@@ -1951,20 +2387,25 @@ export function EmissionSurveyAdminMigrationPage() {
   }
 
   function handleApplyProductSearch() {
-    const matchedOption = findMatchingProductOption(productRows, productSearchQuery);
-    if (!matchedOption) {
-      setErrorMessage("검색어와 일치하는 제품을 찾지 못했습니다.");
+    const typedProductName = productSearchQuery.trim();
+    if (!typedProductName) {
+      setErrorMessage("검색할 제품명을 입력하세요.");
       setMessage("");
       return;
     }
+    const exactOption = productSearchOptions.find((option) => {
+      const normalizedQuery = normalizeSearchKeyword(typedProductName);
+      return normalizeSearchKeyword(option.value) === normalizedQuery || normalizeSearchKeyword(option.label) === normalizedQuery;
+    });
     setErrorMessage("");
     setMessage("");
-    handleChangeProduct(matchedOption.value);
+    handleChangeProduct(exactOption?.value || typedProductName);
   }
 
   function handleSelectProductOption(productName: string) {
     setErrorMessage("");
     setMessage("");
+    setDirectInputMode(false);
     handleChangeProduct(productName);
   }
 
@@ -2160,7 +2601,7 @@ export function EmissionSurveyAdminMigrationPage() {
         {message ? <PageStatusNotice tone="success">{message}</PageStatusNotice> : null}
         {errorMessage || pageState.error ? <PageStatusNotice tone="error">{errorMessage || pageState.error}</PageStatusNotice> : null}
         {hasUnconfirmedEcoinventRecommendations(sections, activeCases, getCase) ? (
-          <PageStatusNotice tone="warning">ecoinvent 자동 추천 배출계수가 있습니다. 체스 엔진 추천수처럼 참고값일 뿐이므로, 각 행의 `확인` 버튼에서 Product / Activity / Geography를 확인하고 매핑을 확정하세요.</PageStatusNotice>
+          <PageStatusNotice tone="warning">ecoinvent 자동 추천 배출계수가 있습니다. 각 행의 `확인` 버튼에서 Product / Activity / Geography를 확인하고 매핑을 확정하세요.</PageStatusNotice>
         ) : null}
 
         <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm" data-help-id="emission-survey-admin-classification">
@@ -2176,67 +2617,124 @@ export function EmissionSurveyAdminMigrationPage() {
           />
           <input accept=".xlsx" className="hidden" onChange={handleUploadChange} ref={fileInputRef} type="file" />
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-            <div className="relative z-50" onMouseDown={() => setProductDropdownOpen(true)}>
+            <div
+              className="relative z-50"
+              data-help-id="emission-survey-product-combobox"
+              data-state-marker={productSearchDirty ? PRODUCT_SEARCH_DIRTY_MARKER : PRODUCT_SEARCH_SYNCED_MARKER}
+              onMouseDown={() => {
+              if (!directInputMode) {
+                setProductDropdownOpen(true);
+              }
+            }}
+            >
               <label className="block">
                 <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">제품 선택</span>
                 <AdminInput
                   aria-autocomplete="list"
-                  aria-expanded={productDropdownOpen}
+                  aria-busy={productSuggestionLoading}
+                  aria-activedescendant={productDropdownOpen ? `emission-survey-product-option-${productActiveOptionIndex}` : undefined}
+                  aria-expanded={!directInputMode && productDropdownOpen}
                   onBlur={() => window.setTimeout(() => setProductDropdownOpen(false), 120)}
                   onChange={(event) => {
+                    const nextValue = event.target.value;
                     setErrorMessage("");
                     setMessage("");
-                    setProductSearchQuery(event.target.value);
-                    setProductDropdownOpen(true);
+                    setProductSearchDirty(true);
+                    setSelectedProductName("");
+                    setProductSearchQuery(nextValue);
+                    if (directInputMode) {
+                      setProductDropdownOpen(false);
+                      syncDirectInputProductName(nextValue);
+                    } else {
+                      setProductDropdownOpen(true);
+                    }
                   }}
-                  onFocus={() => setProductDropdownOpen(true)}
-                  onClick={() => setProductDropdownOpen(true)}
+                  onFocus={() => {
+                    if (!directInputMode) {
+                      setProductDropdownOpen(true);
+                    }
+                  }}
+                  onClick={() => {
+                    if (!directInputMode) {
+                      setProductDropdownOpen(true);
+                    }
+                  }}
                   onKeyDown={(event) => {
+                    if (directInputMode && event.key === "Enter") {
+                      event.preventDefault();
+                      return;
+                    }
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      setProductDropdownOpen(true);
+                      setProductActiveOptionIndex((current) => Math.min(current + 1, Math.max(productSearchOptions.length - 1, 0)));
+                      return;
+                    }
+                    if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      setProductDropdownOpen(true);
+                      setProductActiveOptionIndex((current) => Math.max(current - 1, 0));
+                      return;
+                    }
                     if (event.key === "Enter") {
                       event.preventDefault();
+                      if (productDropdownOpen && productSearchOptions[productActiveOptionIndex]) {
+                        handleSelectProductOption(productSearchOptions[productActiveOptionIndex].value);
+                        return;
+                      }
                       handleApplyProductSearch();
                     }
                     if (event.key === "Escape") {
                       setProductDropdownOpen(false);
                     }
                   }}
-                  placeholder="클릭하면 전체 목록, 입력하면 검색"
+                  placeholder="제품명을 입력해 실시간 검색"
                   value={productSearchQuery}
                 />
               </label>
-              {productDropdownOpen ? (
+              {!directInputMode && productDropdownOpen ? (
                 <div className="absolute z-[9999] mt-2 max-h-72 w-full overflow-auto rounded-[var(--kr-gov-radius)] border border-slate-200 bg-white shadow-xl" role="listbox">
                   <div className="sticky top-0 border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-500">
-                    {productSearchQuery.trim() ? `검색 결과 ${filteredProductRows.length}건` : `전체 제품 ${productRows.length}건`}
+                    {productSuggestionLoading ? "추천 후보 검색 중..." : productSearchQuery.trim() ? `검색 후보 ${productSearchOptions.length}건` : `전체 제품 ${productRows.length}건`}
                   </div>
-                  {filteredProductRows.length > 0 ? filteredProductRows.map((option) => (
+                  {productSearchOptions.length > 0 ? productSearchOptions.map((option, optionIndex) => (
                     <button
-                      className="block w-full px-4 py-3 text-left text-sm hover:bg-sky-50 focus:bg-sky-50"
-                      key={`${option.value}-${option.label}`}
+                      className={`block w-full px-4 py-3 text-left text-sm hover:bg-sky-50 focus:bg-sky-50 ${optionIndex === productActiveOptionIndex ? "bg-sky-50" : ""}`}
+                      key={`${option.source}-${option.value}-${option.label}`}
+                      id={`emission-survey-product-option-${optionIndex}`}
                       onMouseDown={(event) => {
                         event.preventDefault();
                         handleSelectProductOption(option.value);
                       }}
+                      onMouseEnter={() => setProductActiveOptionIndex(optionIndex)}
+                      aria-selected={optionIndex === productActiveOptionIndex}
+                      role="option"
                       type="button"
                     >
-                      <span className="block font-bold text-[var(--kr-gov-text-primary)]">{option.label}</span>
-                      {option.value !== option.label ? <span className="block text-xs text-[var(--kr-gov-text-secondary)]">{option.value}</span> : null}
+                      <span className="flex flex-wrap items-center gap-2 font-bold text-[var(--kr-gov-text-primary)]">
+                        {option.label}
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
+                          {option.source === "typed" ? "입력값" : option.source === "chemical" ? "화학물질" : "등록제품"}
+                        </span>
+                      </span>
+                      <span className="mt-1 block text-xs text-[var(--kr-gov-text-secondary)]">{option.description}</span>
                     </button>
                   )) : (
                     <div className="px-4 py-5 text-sm text-slate-500">
-                      {productRows.length > 0 ? "검색 결과가 없습니다. 검색어를 지우면 전체 목록을 볼 수 있습니다." : "제품 목록이 없습니다."}
+                      {productRows.length > 0 ? "검색 후보가 없습니다. 제품명을 그대로 입력한 뒤 검색 적용을 누를 수 있습니다." : "제품 목록이 없습니다. 제품명을 직접 입력해 검색 적용을 누르세요."}
                     </div>
                   )}
+                  {productSuggestionError ? <div className="border-t border-slate-100 px-4 py-2 text-xs font-bold text-amber-700">{productSuggestionError}</div> : null}
                 </div>
               ) : null}
             </div>
             <div className="flex items-end">
-              <MemberButton className="w-full" onClick={handleApplyProductSearch} type="button" variant="secondary">검색 적용</MemberButton>
+              <MemberButton className="w-full" disabled={directInputMode} onClick={handleApplyProductSearch} type="button" variant="secondary">검색 적용</MemberButton>
             </div>
           </div>
         </section>
 
-        <div className="mt-6 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="mt-6 grid grid-cols-1 items-start gap-6">
           <div className="space-y-6">
             <section className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm" data-help-id="emission-survey-admin-grid">
               <div className="flex flex-wrap items-center gap-3 text-[var(--kr-gov-blue)]">
@@ -2338,10 +2836,13 @@ export function EmissionSurveyAdminMigrationPage() {
             </div>
           </aside>
         </div>
+        <div aria-hidden="true" className="h-44 xl:h-72" />
         {ecoinventMappingTarget ? (
           <EcoinventFactorMappingDialog
             aiLoading={ecoinventAiMappingLoading}
             aiRows={ecoinventAiMappingRows}
+            chemicalLoading={ecoinventChemicalLoading}
+            chemicalRows={ecoinventChemicalRows}
             filterOptions={ecoinventMappingFilterOptions}
             filters={ecoinventMappingFilters}
             keyword={ecoinventMappingKeyword}
@@ -2352,6 +2853,7 @@ export function EmissionSurveyAdminMigrationPage() {
             onKeywordChange={handleEcoinventKeywordChange}
             onSearch={() => void handleSearchEcoinventMapping()}
             onSelectDataset={setEcoinventSelectedDatasetId}
+            onSelectChemical={handleSelectChemicalMaterial}
             rows={ecoinventMappingRows}
             selectedDatasetId={ecoinventSelectedDatasetId}
             target={ecoinventMappingTarget}

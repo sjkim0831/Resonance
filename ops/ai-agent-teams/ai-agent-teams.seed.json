@@ -1,0 +1,1289 @@
+{
+  "schemaVersion": "2026-05-20.ai-team-os.qwen40-speed-v3",
+  "organizationName": "Carbonet AI Team OS",
+  "defaultModelPolicy": {
+    "parameterLimit": "Qwen3.6 40B 131K main, Gemma4 E4B GPU translation, Qwen2.5 Coder 7B CPU supervisor; 14B/26B/design-specialist models are disabled by default",
+    "runtimeDefault": "speed-first fixed trio: GPU Qwen40 main + GPU Gemma4 GPU translation + CPU Qwen7 supervisor, with <=3B CPU helpers allowed",
+    "soloDeveloperMode": "40B가 최종 판단과 복잡한 설계를 맡고, 7B CPU가 작업 추출/진행 감시/반복 오류 탐지/작은 초안을 맡는다. Gemma4는 번역과 용어 변환만 맡는다.",
+    "concurrentUserMode": "request queue + checkpoint feedback bus + watchdog events. 40B 독점 GPU 처리 중 보조 모델은 CPU 위주로 움직이며 GPU 7B는 성능 검증 전 켜지 않는다.",
+    "authorityRule": "DB, 결제, 권한, 배포, 보안, 공용 DTO/mapper 변경은 40B main judge와 deterministic evidence가 필요하다. 7B/4B는 감시, 분류, 초안, 검수 보조에 한정한다.",
+    "updateRule": "Hermes 문제는 task extraction -> watchdog checkpoint -> feedback summary -> DB/RAG memory -> next-step correction 순서로 기록한다. 비밀번호/토큰/개인정보는 저장 금지."
+  },
+  "modelRoutingPolicyRef": "/opt/projects/carbonet/ops/hermes/model-routing-policy.seed.json",
+  "developmentWorkPolicy": {
+    "sourceOfTruth": [
+      "hermes_model_lane_policy",
+      "system_page_development_quality_score",
+      "system_development_rag_chunk",
+      "system_design_pattern_registry",
+      "system_theme_token_registry",
+      "hermes_development_pattern",
+      "hermes_work_kind_model_route"
+    ],
+    "defaultFlow": [
+      "team_select",
+      "pattern_resolve",
+      "rag_retrieve",
+      "model_lane_plan",
+      "layout_and_contract_first",
+      "bounded_draft",
+      "codex_apply",
+      "deterministic_verify",
+      "reflect_to_db"
+    ],
+    "mainLoadReductionRule": "Use Qwen2.5 Coder 7B CPU as the always-on supervisor/fast-draft helper while Qwen3.6 40B remains the main judge. Do not use SuperGemma 26B or Qwen14 by default.",
+    "designRule": "Design work starts from DB-backed KRDS/theme/component/RAG records. Fine-tuning is a later promotion path after enough accepted page examples and verification evidence exist."
+  },
+  "teams": [
+    {
+      "id": "ops-control",
+      "name": "구동/모니터링 관제팀",
+      "serviceName": "carbonet-ai-team-ops-control.service",
+      "defaultStartMode": "always-on-light",
+      "podBinding": "platform-companion",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-0.5B-Instruct",
+      "scope": "서비스 기동, 헬스체크, 장애 triage, runbook 추천",
+      "agents": [
+        {
+          "id": "runtime-triage",
+          "name": "Runtime Triage",
+          "role": "서비스/파드/포트 상태를 요약하고 우선순위 산정",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "self-heal-gate",
+          "name": "Self Heal Gate",
+          "role": "재시작/rollback 후보를 추천하고 승인 게이트 연결",
+          "autonomy": "guarded"
+        },
+        {
+          "id": "resource-sentinel",
+          "name": "Resource Sentinel",
+          "role": "CPU, memory, GPU, disk 압력 탐지",
+          "autonomy": "classify"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "always-on-light",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "utility-qwen15-cpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "router/log/health triage only; restart recommendations require approval",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "callcenter",
+      "name": "콜센터/문의 대응팀",
+      "serviceName": "carbonet-ai-team-callcenter.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "platform-companion",
+      "primaryModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "문의 분류, 장애/사용법/권한/결제 라우팅, 상담 요약",
+      "agents": [
+        {
+          "id": "ticket-router",
+          "name": "Ticket Router",
+          "role": "문의 유형 분류와 담당팀 연결",
+          "autonomy": "classify"
+        },
+        {
+          "id": "answer-drafter",
+          "name": "Answer Drafter",
+          "role": "운영자 검토용 답변 초안 작성",
+          "autonomy": "draft"
+        },
+        {
+          "id": "sentiment-watch",
+          "name": "Sentiment Watch",
+          "role": "긴급/불만/장애 확산 징후 탐지",
+          "autonomy": "score"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "translation-gemma4-e4b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "classify and draft operator response; no direct customer action",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "web-pod-ops",
+      "name": "웹 파드 관리팀",
+      "serviceName": "carbonet-ai-team-web-pod-ops.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "web-app-sidecar-or-companion",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-0.5B-Instruct",
+      "scope": "web/app pod readiness, rollout, traffic switch, 동시접속 압력",
+      "agents": [
+        {
+          "id": "pod-readiness",
+          "name": "Pod Readiness",
+          "role": "readiness/liveness/event 기반 배포 중단 판단",
+          "autonomy": "gate"
+        },
+        {
+          "id": "traffic-switch",
+          "name": "Traffic Switch",
+          "role": "blue-green smoke gate와 Nginx 전환 조건 점검",
+          "autonomy": "guarded"
+        },
+        {
+          "id": "concurrency-pressure",
+          "name": "Concurrency Pressure",
+          "role": "사용자 동시접속 증가 시 DB/model/app 병목 분리",
+          "autonomy": "recommend"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "app-pod-sidecar-light",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "utility-qwen15-cpu",
+          "sub-qwen7-coder-cpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "sidecar may summarize pod health; rollout/restart requires build-release gate",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "db-cubrid",
+      "name": "DB/CUBRID 운영팀",
+      "serviceName": "carbonet-ai-team-db-cubrid.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "db-companion-preferred",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "CUBRID broker, CAS, lock, backup, slow query, migration guard",
+      "agents": [
+        {
+          "id": "cubrid-dba",
+          "name": "CUBRID DBA",
+          "role": "broker/CAS/lock/slow query 상태 분류",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "migration-guard",
+          "name": "Migration Guard",
+          "role": "DDL/DML 위험도와 rollback 필요성 점검",
+          "autonomy": "gate"
+        },
+        {
+          "id": "db-capacity",
+          "name": "DB Capacity",
+          "role": "동시접속 증가 시 pool/CAS 병목 경고",
+          "autonomy": "score"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "db-pod-sidecar-light",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "utility-qwen15-cpu",
+          "sub-qwen7-coder-cpu",
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "read-only diagnosis and risk classification; destructive SQL forbidden without approval",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "query-dev",
+      "name": "DB 쿼리 개발팀",
+      "serviceName": "carbonet-ai-team-query-dev.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "MyBatis SQL, CUBRID 문법, index 후보, query regression",
+      "agents": [
+        {
+          "id": "sql-drafter",
+          "name": "SQL Drafter",
+          "role": "조회/저장 SQL 초안과 mapper parameter 정리",
+          "autonomy": "draft"
+        },
+        {
+          "id": "plan-reviewer",
+          "name": "Plan Reviewer",
+          "role": "index/scan/정렬 비용 위험 탐지",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "sql-safety",
+          "name": "SQL Safety",
+          "role": "대량 update/delete와 tenant scope 누락 차단",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "SQL draft only; CUBRID syntax and tenant scope must be verified by scripts 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "build-release",
+      "name": "빌드/배포팀",
+      "serviceName": "carbonet-ai-team-build-release.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "build-runner",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "frontend build, Maven package, image rollout, runtime freshness",
+      "agents": [
+        {
+          "id": "build-diagnoser",
+          "name": "Build Diagnoser",
+          "role": "빌드 실패 로그 요약과 원인 후보 정렬",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "freshness-verifier",
+          "name": "Freshness Verifier",
+          "role": "jar/image/route proof 누락 방지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "rollback-planner",
+          "name": "Rollback Planner",
+          "role": "배포 전 rollback anchor 확인",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "utility-qwen15-cpu",
+        "fallbackRuntimeProfiles": [
+          "sub-qwen7-coder-cpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "diagnose build logs and propose script order; deploy requires explicit operator action",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "planning",
+      "name": "기획팀",
+      "serviceName": "carbonet-ai-team-planning.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "design-workbench",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-0.5B-Instruct",
+      "scope": "요구사항, actor, acceptance criteria, 화면 흐름 분해",
+      "agents": [
+        {
+          "id": "requirement-splitter",
+          "name": "Requirement Splitter",
+          "role": "요청을 기능/화면/API/데이터 요구로 분해",
+          "autonomy": "draft"
+        },
+        {
+          "id": "scenario-mapper",
+          "name": "Scenario Mapper",
+          "role": "사용자 시나리오와 예외 케이스 정리",
+          "autonomy": "draft"
+        },
+        {
+          "id": "scope-guard",
+          "name": "Scope Guard",
+          "role": "범위 증가와 충돌 영역 탐지",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "sub-qwen7-coder-cpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "requirements split and acceptance criteria",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "design-layout",
+      "name": "디자인/레이아웃팀",
+      "serviceName": "carbonet-ai-team-design-layout.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "design-workbench",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-0.5B-Instruct",
+      "scope": "관리 화면 레이아웃, list/detail/edit/create/approve 패턴",
+      "agents": [
+        {
+          "id": "layout-planner",
+          "name": "Layout Planner",
+          "role": "필드 밀도, action bar, table/form 배치 제안",
+          "autonomy": "draft"
+        },
+        {
+          "id": "responsive-checker",
+          "name": "Responsive Checker",
+          "role": "모바일/데스크톱 overflow 위험 점검",
+          "autonomy": "score"
+        },
+        {
+          "id": "visual-consistency",
+          "name": "Visual Consistency",
+          "role": "카드 중첩, 색상 편중, typography 불일치 탐지",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "translation-gemma4-e4b-gpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "layout/copy/KRDS draft; production source written by Codex only",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "uiux",
+      "name": "UI/UX 모델팀",
+      "serviceName": "carbonet-ai-team-uiux.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "design-workbench",
+      "primaryModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "사용성, 접근성, navigation, workflow friction scoring",
+      "agents": [
+        {
+          "id": "ux-flow",
+          "name": "UX Flow",
+          "role": "반복 작업 동선과 클릭 수 문제 탐지",
+          "autonomy": "score"
+        },
+        {
+          "id": "a11y-review",
+          "name": "A11y Review",
+          "role": "label/focus/contrast/keyboard 흐름 점검",
+          "autonomy": "gate"
+        },
+        {
+          "id": "copy-tone",
+          "name": "Copy Tone",
+          "role": "화면 문구와 오류 메시지 일관성 점검",
+          "autonomy": "recommend"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "translation-gemma4-e4b-gpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "workflow friction and accessibility scoring",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "validation",
+      "name": "유효성 모델팀",
+      "serviceName": "carbonet-ai-team-validation.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "scope": "form validation, API contract, state transition guard",
+      "agents": [
+        {
+          "id": "form-rule",
+          "name": "Form Rule",
+          "role": "필수/범위/상호배타 조건 누락 탐지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "api-shape",
+          "name": "API Shape",
+          "role": "request/response field drift 탐지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "state-machine",
+          "name": "State Machine",
+          "role": "버튼 상태와 workflow transition 오류 탐지",
+          "autonomy": "score"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "always-on-light",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "utility-qwen15-cpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "form/API/state validation gate",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "qa-audit",
+      "name": "QA/감사팀",
+      "serviceName": "carbonet-ai-team-qa-audit.service",
+      "defaultStartMode": "always-on-light",
+      "podBinding": "platform-companion",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-0.5B-Instruct",
+      "scope": "QA scenario, audit evidence, permission/security risk",
+      "agents": [
+        {
+          "id": "qa-reviewer",
+          "name": "QA Reviewer",
+          "role": "변경별 검수 시나리오와 누락 테스트 제안",
+          "autonomy": "gate"
+        },
+        {
+          "id": "audit-trace",
+          "name": "Audit Trace",
+          "role": "actor/trace/before-after/evidence 누락 탐지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "permission-risk",
+          "name": "Permission Risk",
+          "role": "권한/기관/결제/DB 변경 위험 분류",
+          "autonomy": "classify"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "always-on-light",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "sub-qwen7-coder-cpu",
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "evidence gate and audit trace; risky findings escalate",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "log-schedule",
+      "name": "로그/일정 관리팀",
+      "serviceName": "carbonet-ai-team-log-schedule.service",
+      "defaultStartMode": "always-on-light",
+      "podBinding": "platform-companion",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "scope": "로그 분류, incident memory, cron/schedule conflict",
+      "agents": [
+        {
+          "id": "log-classifier",
+          "name": "Log Classifier",
+          "role": "로그를 DB/build/app/security/payment로 분류",
+          "autonomy": "classify"
+        },
+        {
+          "id": "incident-memory",
+          "name": "Incident Memory",
+          "role": "장애 패턴, 선택 runbook, 결과를 학습 데이터로 적재",
+          "autonomy": "store"
+        },
+        {
+          "id": "schedule-agent",
+          "name": "Schedule Agent",
+          "role": "점검/배치/알림 일정 충돌 탐지",
+          "autonomy": "recommend"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "always-on-light",
+        "primaryRuntimeProfile": "utility-qwen15-cpu",
+        "fallbackRuntimeProfiles": [
+          "micro-router-qwen05-cpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "log tagging, incident memory, schedule conflict",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "frontend-dev",
+      "name": "프론트 개발팀",
+      "serviceName": "carbonet-ai-team-frontend-dev.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "React page, route, hook, API integration, build error",
+      "agents": [
+        {
+          "id": "react-page",
+          "name": "React Page",
+          "role": "컴포넌트/hook/API 타입 오류 보조",
+          "autonomy": "draft"
+        },
+        {
+          "id": "route-bootstrap",
+          "name": "Route Bootstrap",
+          "role": "React migration route/bootstrap mismatch 탐지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "frontend-regression",
+          "name": "Frontend Regression",
+          "role": "기존 화면 회귀와 asset freshness 점검",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "React draft and route hints; Codex applies 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "backend-dev",
+      "name": "백엔드 개발팀",
+      "serviceName": "carbonet-ai-team-backend-dev.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "controller, service, mapper, transaction, locale, error shape",
+      "agents": [
+        {
+          "id": "api-contract",
+          "name": "API Contract",
+          "role": "요청/응답/locale/error shape 일관성 점검",
+          "autonomy": "gate"
+        },
+        {
+          "id": "service-logic",
+          "name": "Service Logic",
+          "role": "transaction/null/auth 누락 탐지",
+          "autonomy": "draft"
+        },
+        {
+          "id": "mapper-binding",
+          "name": "Mapper Binding",
+          "role": "MyBatis mapper/service 연결 오류 탐지",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "controller/service/mapper draft; shared contracts escalate 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "java-maven-egov",
+      "name": "Java/Maven/전자정부프레임워크팀",
+      "serviceName": "carbonet-ai-team-java-maven-egov.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "build-runner",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "Java compile, Maven dependency, Spring/eGovFrame wiring",
+      "agents": [
+        {
+          "id": "maven-diagnoser",
+          "name": "Maven Diagnoser",
+          "role": "pom/dependency/module build failure 분석",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "egov-wiring",
+          "name": "eGov Wiring",
+          "role": "controller/service/mapper bean wiring 오류 탐지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "java-refactor",
+          "name": "Java Refactor",
+          "role": "패키지/클래스 경계와 중복 제거 후보 제안",
+          "autonomy": "draft"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "Java/Maven/eGov wiring and compile triage 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "directory-refactor",
+      "name": "디렉토리 구조/리팩토링팀",
+      "serviceName": "carbonet-ai-team-directory-refactor.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "codex-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "directory ownership, package boundary, duplicate detection, blast radius",
+      "agents": [
+        {
+          "id": "directory-owner",
+          "name": "Directory Owner",
+          "role": "source/resource/build output 경계 분류",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "duplicate-finder",
+          "name": "Duplicate Finder",
+          "role": "중복 파일/컴포넌트/서비스 후보 탐지",
+          "autonomy": "score"
+        },
+        {
+          "id": "blast-radius",
+          "name": "Blast Radius",
+          "role": "변경 영향 파일, 테스트, rollback 단위 계산",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "blast radius and refactor plan; broad moves need judge 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "krds-theme",
+      "name": "KRDS/테마 관리팀",
+      "serviceName": "carbonet-ai-team-krds-theme.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "design-workbench",
+      "primaryModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "fallbackModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "scope": "KRDS, 공공 UX, theme token, color/system consistency",
+      "agents": [
+        {
+          "id": "krds-review",
+          "name": "KRDS Review",
+          "role": "KRDS/공공서비스 UX 체크리스트 점검",
+          "autonomy": "score"
+        },
+        {
+          "id": "theme-token",
+          "name": "Theme Token",
+          "role": "색상/간격/타이포 토큰 영향 범위 계산",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "theme-regression",
+          "name": "Theme Regression",
+          "role": "테마 변경 후 화면 깨짐 위험 탐지",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "translation-gemma4-e4b-gpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "KRDS/theme token review",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "codex55-execution-intelligence",
+      "name": "Codex 5.5급 실행 지능팀",
+      "serviceName": "carbonet-ai-team-codex55-execution-intelligence.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-7B-Instruct CPU",
+      "fallbackModel": "qwen3.6-40b-deck-opus-q4",
+      "modelLanes": [
+        "dev-classify",
+        "fast-draft",
+        "judge",
+        "verify"
+      ],
+      "scope": "작업 분해, context pack 선택, 구현 순서, 검증 증거, 실패 해석 보조",
+      "agents": [
+        {
+          "id": "task-decomposer",
+          "name": "Task Decomposer",
+          "role": "요청을 scope/frontend/backend/database/scripts/verification/memory 단계로 분해",
+          "autonomy": "draft"
+        },
+        {
+          "id": "context-pack-curator",
+          "name": "Context Pack Curator",
+          "role": "DB 패턴, RAG, 파일 후보, 검증 명령을 작은 작업 봉투로 압축",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "evidence-critic",
+          "name": "Evidence Critic",
+          "role": "모델 답변보다 빌드/DB/route proof를 우선하여 완료 여부 판정",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "work packet, context pack, verification evidence 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "framework-builder",
+      "name": "Carbonet 프레임워크 빌더팀",
+      "serviceName": "carbonet-ai-team-framework-builder.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-7B-Instruct CPU",
+      "fallbackModel": "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "modelLanes": [
+        "dev-classify",
+        "fast-draft",
+        "mid-draft",
+        "verify"
+      ],
+      "scope": "관리자 화면, 메뉴/권한, React migration, Spring service, MyBatis mapper, DB patch 개발",
+      "agents": [
+        {
+          "id": "page-contract-planner",
+          "name": "Page Contract Planner",
+          "role": "route/menu/page manifest, section/field/action/API/DB 계약을 구현 전 확정",
+          "autonomy": "draft"
+        },
+        {
+          "id": "fullstack-pattern-worker",
+          "name": "Fullstack Pattern Worker",
+          "role": "완성된 sibling page 패턴을 기준으로 반복 화면 구현 초안 작성",
+          "autonomy": "draft"
+        },
+        {
+          "id": "serviceability-gate",
+          "name": "Serviceability Gate",
+          "role": "빈 화면, 샘플 데이터, 미연결 API, 권한/감사 누락 차단",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "full-stack page build draft; serviceability gate required 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "design-specialist",
+      "name": "KRDS/Carbonet 디자인 전문팀",
+      "serviceName": "carbonet-ai-team-design-specialist.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "design-workbench",
+      "primaryModel": "gemma4-e4b-gpu-shadow",
+      "fallbackModel": "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "modelLanes": [
+        "design-specialist",
+        "translation",
+        "fast-draft"
+      ],
+      "scope": "KRDS, Carbonet admin density, layout-first planning, theme token, UI copy, accessibility",
+      "agents": [
+        {
+          "id": "layout-first-planner",
+          "name": "Layout First Planner",
+          "role": "레이아웃, 섹션 밀도, action bar, table/form 구조를 구현 전 설계",
+          "autonomy": "draft"
+        },
+        {
+          "id": "theme-token-mapper",
+          "name": "Theme Token Mapper",
+          "role": "디자인 DB와 CSS token/selector registry를 화면 컴포넌트에 매핑",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "krds-visual-gate",
+          "name": "KRDS Visual Gate",
+          "role": "카드 중첩, 단색 편중, overflow, contrast, 문구 불일치 차단",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "translation-gemma4-e4b-gpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "design DB/KRDS/copy specialist",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "development-rag-governor",
+      "name": "개발 RAG/패턴 기억팀",
+      "serviceName": "carbonet-ai-team-development-rag-governor.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "app-build-companion",
+      "primaryModel": "Qwen/Qwen2.5-Coder-7B-Instruct CPU",
+      "fallbackModel": "qwen3.6-40b-deck-opus-q4",
+      "modelLanes": [
+        "dev-classify",
+        "fast-draft",
+        "verify"
+      ],
+      "scope": "development RAG, page quality score, pattern binding, similar work retrieval, branch decision",
+      "agents": [
+        {
+          "id": "rag-retriever",
+          "name": "RAG Retriever",
+          "role": "완성된 sibling page, 실패/수정 이력, design/theme/backend 패턴 조회",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "quality-score-coach",
+          "name": "Quality Score Coach",
+          "role": "모든 요소 점수를 읽고 최고점 목표와 다음 gap을 제안",
+          "autonomy": "score"
+        },
+        {
+          "id": "pattern-memory-writer",
+          "name": "Pattern Memory Writer",
+          "role": "검증된 결과를 개발 패턴/RAG/분기 결정에 되먹임",
+          "autonomy": "store"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-gpu",
+        "primaryRuntimeProfile": "sub-qwen7-coder-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "retrieve patterns, score quality, write memory after verification 7B output is advisory; 40B or script evidence is final.",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "model-benchmark",
+      "name": "모델 벤치마크/승격팀",
+      "serviceName": "carbonet-ai-team-model-benchmark.service",
+      "defaultStartMode": "manual",
+      "podBinding": "model-runner",
+      "primaryModel": "Qwen/Qwen2.5-Coder-7B-Instruct CPU",
+      "fallbackModel": "qwen3.6-40b-deck-opus-q4",
+      "modelLanes": [
+        "agent-candidate",
+        "judge"
+      ],
+      "scope": "Qwen3.5, GPU 7B candidate, Qwen3.6 40B 등 후보 모델의 Carbonet 개발 벤치마크와 승격/rollback gate",
+      "agents": [
+        {
+          "id": "candidate-profiler",
+          "name": "Candidate Profiler",
+          "role": "모델 파일, 라이선스, 포맷, VRAM/RAM, endpoint 조건 정리",
+          "autonomy": "recommend"
+        },
+        {
+          "id": "carbonet-benchmark-runner",
+          "name": "Carbonet Benchmark Runner",
+          "role": "권한/API/DB/디자인/route 개발 문제 세트를 실행하고 점수화",
+          "autonomy": "score"
+        },
+        {
+          "id": "promotion-gate",
+          "name": "Promotion Gate",
+          "role": "candidate -> shadow -> canary -> active 승격과 금지 작업 범위 판정",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "manual",
+        "primaryRuntimeProfile": "main-qwen36-40b-gpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "benchmark only; never active write path",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    },
+    {
+      "id": "payment",
+      "name": "결제/정산팀",
+      "serviceName": "carbonet-ai-team-payment.service",
+      "defaultStartMode": "on-demand",
+      "podBinding": "platform-companion",
+      "primaryModel": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "fallbackModel": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "scope": "결제, 환불, 정산, webhook, 감사 증적",
+      "agents": [
+        {
+          "id": "payment-risk",
+          "name": "Payment Risk",
+          "role": "결제/환불/정산 변경 위험도 분류",
+          "autonomy": "gate"
+        },
+        {
+          "id": "webhook-review",
+          "name": "Webhook Review",
+          "role": "재시도/idempotency/signature 누락 탐지",
+          "autonomy": "gate"
+        },
+        {
+          "id": "settlement-audit",
+          "name": "Settlement Audit",
+          "role": "정산 증적과 actor 기록 누락 탐지",
+          "autonomy": "gate"
+        }
+      ],
+      "runtimePolicy": {
+        "startupClass": "on-demand-cpu",
+        "primaryRuntimeProfile": "micro-router-qwen05-cpu",
+        "fallbackRuntimeProfiles": [
+          "main-qwen36-40b-gpu"
+        ],
+        "teamStartRule": "start on selected work kind, keep warm for 10 minutes after use unless always-on-light",
+        "teamStopRule": "stop on idle timeout or operator down action; preserve last state and evidence",
+        "guardrail": "payment risk classification; implementation/release requires judge and approval",
+        "failureCover": [
+          "fallback profile",
+          "deterministic script verification",
+          "main judge escalation",
+          "operator approval gate"
+        ]
+      }
+    }
+  ],
+  "runtimeTopologyPolicy": {
+    "hardwareBaseline": "RTX 5090 32GB, 9955WX class CPU, GGUF Q4",
+    "gpuDefault": [
+      "main-qwen36-40b-gpu",
+      "translation-gemma4-e4b-gpu"
+    ],
+    "cpuDefault": [
+      "sub-qwen7-coder-cpu",
+      "micro-router-qwen05-cpu",
+      "utility-qwen15-cpu"
+    ],
+    "gpuOptional": [
+      "GPU 7B only after no-regression benchmark; Qwen14 disabled by default"
+    ],
+    "contextPolicy": "Qwen40 stays at 131072 context for Hermes. If speed drops, do not add GPU 7B; leave VRAM headroom first.",
+    "sidecarPolicy": "App/DB pod sidecars may use <=7B CPU helpers only. 40B remains central main model."
+  },
+  "fineTunePolicy": {
+    "target": "1B 이하 모델은 DBA/권한/배포 실행자가 아니라 router, risk gate, tool selector, log tagger로 전문화한다.",
+    "candidateBaseModels": [
+      "Qwen/Qwen2.5-0.5B-Instruct",
+      "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "FunctionGemma 270M class tool router"
+    ],
+    "firstTracks": [
+      {
+        "id": "cubrid-dba-risk-router",
+        "tasks": [
+          "intent classification",
+          "read-only/write/destructive risk",
+          "tool allowlist selection",
+          "approval requirement"
+        ],
+        "neverTrainOn": [
+          "DB passwords",
+          "personal data",
+          "customer raw data",
+          "production secrets"
+        ],
+        "goldLabels": [
+          "read_only_ok",
+          "explain_only",
+          "sql_draft_only",
+          "approval_required",
+          "forbidden"
+        ]
+      },
+      {
+        "id": "authority-scope-risk-router",
+        "tasks": [
+          "menu/function/role scope classification",
+          "tenant scope missing risk",
+          "audit evidence requirement"
+        ],
+        "goldLabels": [
+          "view_only",
+          "grant_review",
+          "tenant_scope_required",
+          "audit_required",
+          "forbidden"
+        ]
+      },
+      {
+        "id": "build-log-triage-router",
+        "tasks": [
+          "Maven/npm/runtime log classification",
+          "known runbook selection",
+          "escalation to 40B judge"
+        ],
+        "goldLabels": [
+          "frontend_build",
+          "backend_compile",
+          "db_connect",
+          "runtime_freshness",
+          "unknown_escalate"
+        ]
+      }
+    ],
+    "promotionGates": [
+      "json validity >= 99%",
+      "forbidden action false-negative = 0 in eval set",
+      "known incident routing >= 95%",
+      "manual approval for active alias"
+    ]
+  },
+  "teamRuntimeMatrix": [
+    {
+      "class": "always-on-light",
+      "teams": [
+        "ops-control",
+        "validation",
+        "qa-audit",
+        "log-schedule"
+      ],
+      "purpose": "CPU micro routing, validation, QA/audit, log/schedule memory"
+    },
+    {
+      "class": "app-pod-sidecar-light",
+      "teams": [
+        "web-pod-ops"
+      ],
+      "purpose": "app pod local health/log/validation assistant"
+    },
+    {
+      "class": "db-pod-sidecar-light",
+      "teams": [
+        "db-cubrid"
+      ],
+      "purpose": "DB pod read-only diagnosis and risk gate"
+    },
+    {
+      "class": "on-demand-gpu",
+      "teams": [
+        "query-dev",
+        "design-layout",
+        "frontend-dev",
+        "backend-dev",
+        "java-maven-egov",
+        "directory-refactor",
+        "codex55-execution-intelligence",
+        "framework-builder",
+        "development-rag-governor"
+      ],
+      "purpose": "40B specialist work with 7B CPU supervision"
+    },
+    {
+      "class": "manual",
+      "teams": [
+        "model-benchmark"
+      ],
+      "purpose": "benchmark and risky experiments"
+    }
+  ],
+  "hermesRuntimeSupervisionPolicy": {
+    "purpose": "Hermes 자체의 에러, 지연, 무한 루프, 잘못된 작업 추출, 근거 없는 성공 선언을 줄인다.",
+    "supervisorProfile": "sub-qwen7-coder-cpu",
+    "intakeRules": [
+      "사용자 요청 원문에서 실제 작업 항목을 먼저 구조화한다.",
+      "작업 목록, 금지 작업, 완료 기준, 검증 명령 후보를 작업 시작 전에 기록한다.",
+      "다운로드/재부팅/삭제/DB 변경은 명시 요청 또는 승인/정책 근거가 없으면 별도 setup/risk item으로 분리한다."
+    ],
+    "watchdogSignals": [
+      "same command repeated",
+      "same failure repeated",
+      "terminal preparing loop",
+      "no output timeout",
+      "model endpoint mismatch",
+      "context compression stall",
+      "iteration budget reached",
+      "success without build/runtime evidence"
+    ],
+    "checkpointRules": [
+      "매 토큰 DB 저장 금지",
+      "작업 단계/명령 결과/오류 발생/재시도 전에 checkpoint 저장",
+      "7B supervisor가 checkpoint를 요약하고 다음 40B 입력에 feedback block으로 전달",
+      "피드백이 상충하면 40B main 또는 deterministic script evidence가 최종 판정"
+    ],
+    "storageTargets": [
+      "/opt/Resonance/var/ai-runtime/hermes-watchdog/hermes-watchdog-events.jsonl",
+      "hermes_context_pack / hermes_model_decision / hermes_task_work_checkpoint tables when DB is available"
+    ]
+  }
+}

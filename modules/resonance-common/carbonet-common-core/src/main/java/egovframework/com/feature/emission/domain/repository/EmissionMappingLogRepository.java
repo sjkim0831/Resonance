@@ -27,10 +27,11 @@ public interface EmissionMappingLogRepository extends JpaRepository<EmissionMapp
                     when lower(coalesce(e.geography, '')) = 'rer' or lower(coalesce(e.geography, '')) like '%(rer)' then 2
                     when lower(coalesce(e.geography, '')) = 'glo' or lower(coalesce(e.geography, '')) like '%(glo)' or lower(coalesce(e.geography, '')) = 'global (glo)' then 3
                     when lower(coalesce(e.geography, '')) = 'eu' or lower(coalesce(e.geography, '')) like '%(eu)' then 4
-                    when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 5
-                    when lower(coalesce(e.geography, '')) = 'ch' or lower(coalesce(e.geography, '')) like '%(ch)' then 6
-                    when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 7
-                    else 8
+                    when lower(coalesce(e.geography, '')) = 'us' or lower(coalesce(e.geography, '')) like '%(us)' then 5
+                    when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 6
+                    when lower(coalesce(e.geography, '')) = 'cn' or lower(coalesce(e.geography, '')) like '%(cn)' then 7
+                    when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 8
+                    else 9
                 end asc,
                 case
                     when lower(coalesce(e.activityType, '')) = 'market_activity' then 0
@@ -60,10 +61,11 @@ public interface EmissionMappingLogRepository extends JpaRepository<EmissionMapp
                     when lower(coalesce(e.geography, '')) = 'rer' or lower(coalesce(e.geography, '')) like '%(rer)' then 2
                     when lower(coalesce(e.geography, '')) = 'glo' or lower(coalesce(e.geography, '')) like '%(glo)' or lower(coalesce(e.geography, '')) = 'global (glo)' then 3
                     when lower(coalesce(e.geography, '')) = 'eu' or lower(coalesce(e.geography, '')) like '%(eu)' then 4
-                    when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 5
-                    when lower(coalesce(e.geography, '')) = 'ch' or lower(coalesce(e.geography, '')) like '%(ch)' then 6
-                    when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 7
-                    else 8
+                    when lower(coalesce(e.geography, '')) = 'us' or lower(coalesce(e.geography, '')) like '%(us)' then 5
+                    when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 6
+                    when lower(coalesce(e.geography, '')) = 'cn' or lower(coalesce(e.geography, '')) like '%(cn)' then 7
+                    when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 8
+                    else 9
                 end asc,
                 case
                     when lower(coalesce(e.activityType, '')) = 'market_activity' then 0
@@ -77,4 +79,6 @@ public interface EmissionMappingLogRepository extends JpaRepository<EmissionMapp
     List<EmissionMappingLog> findPrioritizedContainingRawMaterialNameIgnoreCase(@Param("rawMaterialName") String rawMaterialName, Pageable pageable);
 
     boolean existsByRawMaterialNameIgnoreCaseAndMappedMaterial_Id(String rawMaterialName, Long mappedMaterialId);
+
+    List<EmissionMappingLog> findTop5ByMappedMaterial_IdOrderByRawMaterialNameAsc(Long mappedMaterialId);
 }

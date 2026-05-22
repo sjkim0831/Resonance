@@ -11,6 +11,7 @@ import type {
 } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { GridToolbar, KeyValueGridPanel, PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import {
@@ -170,8 +171,8 @@ export function ScreenFlowManagementMigrationPage() {
         { label: en ? "Screen Flow Management" : "화면 흐름 관리" }
       ]}
       title={en ? "Screen Flow Management" : "화면 흐름 관리"}
-      subtitle={en ? "Inspect each registered screen by route, component surface, event, API, and schema chain." : "등록된 화면을 route, surface, event, API, schema 체인 기준으로 점검합니다."}
     >
+      <GovernanceCompressionNav activeId="flow" en={en} />
       <AdminWorkspacePageFrame>
         {error ? <PageStatusNotice tone="error">{error}</PageStatusNotice> : null}
 
@@ -278,7 +279,7 @@ export function ScreenFlowManagementMigrationPage() {
                     {page.manifestRegistry?.layoutVersion ? <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-[var(--kr-gov-blue)]">{page.manifestRegistry.layoutVersion}</span> : null}
                   </>
                 )}
-                description={page.summary || (en ? "No summary is registered for this screen." : "이 화면에 등록된 요약 정보가 없습니다.")}
+                description={page.summary || "-"}
                 metaDescription={en ? "Page routing, source ownership, and component inventory stay together as the canonical trace." : "화면 경로, 소스 위치, 컴포넌트 인벤토리를 한 카드에서 같이 봅니다."}
                 metaItems={[
                   { label: en ? "Page ID" : "페이지 ID", value: page.pageId || "-" },
@@ -303,7 +304,6 @@ export function ScreenFlowManagementMigrationPage() {
 
             <section className="gov-card overflow-hidden p-0" data-help-id="screen-flow-surface-chain">
               <GridToolbar
-                meta={en ? "From rendered surface to frontend event and downstream API connection." : "렌더링 surface에서 프론트 이벤트, API 연결까지 이어지는 체인입니다."}
                 title={en ? "Surface to Event Flow" : "화면 요소 흐름"}
               />
               <div className="overflow-x-auto">
@@ -345,7 +345,6 @@ export function ScreenFlowManagementMigrationPage() {
 
             <section className="gov-card overflow-hidden p-0" data-help-id="screen-flow-event-chain">
               <GridToolbar
-                meta={en ? "Frontend function inputs and outputs stay visible with the linked API contract." : "프론트 함수 입출력과 연결 API 계약을 한 표에서 확인합니다."}
                 title={en ? "Event / API Chain" : "이벤트 / API 체인"}
               />
               <div className="overflow-x-auto">
@@ -402,7 +401,6 @@ export function ScreenFlowManagementMigrationPage() {
             <section className="grid grid-cols-1 gap-6 xl:grid-cols-2" data-help-id="screen-flow-schema-permission">
               <section className="gov-card">
                 <GridToolbar
-                  meta={en ? "Schema metadata exposed from the screen command registry." : "screen command 레지스트리에 등록된 스키마 메타데이터입니다."}
                   title={en ? "Schemas" : "스키마"}
                 />
                 <div className="space-y-3 p-6">
@@ -423,12 +421,10 @@ export function ScreenFlowManagementMigrationPage() {
               </section>
               <section className="gov-card">
                 <GridToolbar
-                  meta={en ? "Permission binding and editable targets tracked for the selected page." : "선택 화면의 권한 연결과 수정 대상 메타데이터입니다."}
                   title={en ? "Permission / Change Targets" : "권한 / 변경 대상"}
                 />
                 <div className="space-y-4 p-6">
                   <KeyValueGridPanel
-                    description={en ? "The required VIEW feature and relation tables should stay aligned with menu binding." : "필수 VIEW 기능과 권한 연계 테이블이 메뉴 귀속과 맞아야 합니다."}
                     items={[
                       { label: en ? "Required View Feature" : "필수 VIEW 기능", value: page.menuPermission?.requiredViewFeatureCode || "-" },
                       { label: en ? "Feature Codes" : "기능 코드", value: (page.menuPermission?.featureCodes || []).join(", ") || "-" },

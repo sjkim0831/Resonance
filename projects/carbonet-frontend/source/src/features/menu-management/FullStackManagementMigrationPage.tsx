@@ -21,6 +21,7 @@ import type {
 } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { ContextKeyStrip } from "../admin-ui/ContextKeyStrip";
 import { authorDesignContextKeys } from "../admin-ui/contextKeyPresets";
 import { SummaryMetricCard, WarningPanel } from "../admin-ui/common";
@@ -660,7 +661,6 @@ export function FullStackManagementMigrationPage() {
         { label: en ? "Registry Detail Console" : "레지스트리 상세 콘솔" }
       ]}
       title={en ? "Registry Detail Console" : "레지스트리 상세 콘솔"}
-      subtitle={en ? "Inspect one page menu as a governed registry detail, review connected full-stack evidence, and edit the menu-level registry record before install or package handoff." : "하나의 페이지 메뉴를 거버넌스 레지스트리 상세 단위로 검토하고, 연결된 풀스택 증거를 확인한 뒤 설치 또는 패키지 핸드오프 전 메뉴 단위 레지스트리 레코드를 정리합니다."}
       actions={
         <div className="flex flex-wrap gap-2">
           <a className="gov-btn gov-btn-outline" href={buildLocalizedPath("/admin/system/infra", "/en/admin/system/infra")}>
@@ -675,6 +675,7 @@ export function FullStackManagementMigrationPage() {
         <ContextKeyStrip items={authorDesignContextKeys} />
       }
     >
+      <GovernanceCompressionNav activeId="full-stack" en={en} />
       {page?.menuMgmtMessage || actionMessage ? <div className="mb-4 rounded-[var(--kr-gov-radius)] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{actionMessage || String(page?.menuMgmtMessage)}</div> : null}
       {pageState.error || actionError || page?.menuMgmtError ? <div className="mb-4 rounded-[var(--kr-gov-radius)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError || page?.menuMgmtError || pageState.error}</div> : null}
 
@@ -688,9 +689,6 @@ export function FullStackManagementMigrationPage() {
               ))}
             </select>
           </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[var(--kr-gov-text-secondary)]">
-            {en ? "Use this lane to inspect one registry detail at a time. Sibling reorder still follows parent ownership, and saved order is reflected across governed menu surfaces." : "이 레인은 한 번에 하나의 레지스트리 상세를 검토하는 용도입니다. 같은 부모 기준 정렬 규칙은 유지되며, 저장한 순서는 거버넌스 메뉴 표면에 함께 반영됩니다."}
-          </div>
         </div>
       </section>
 
@@ -698,10 +696,6 @@ export function FullStackManagementMigrationPage() {
         <div className="flex items-center justify-between gap-4 border-b pb-4 mb-4 flex-wrap">
           <div>
             <h3 className="text-lg font-bold">{en ? "Registry Intake" : "레지스트리 인테이크"}</h3>
-            <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{String(page?.menuMgmtGuide || "")}</p>
-          </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-[var(--kr-gov-text-secondary)]">
-            {String(page?.siteMapMgmtGuide || "")}
           </div>
         </div>
 
@@ -1017,7 +1011,7 @@ export function FullStackManagementMigrationPage() {
                 </div>
               </div>
               <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
-                <h5 className="font-bold">{en ? "Assignment Authorities" : "권한 할당 가이드"}</h5>
+                <h5 className="font-bold">{en ? "Assignment Authorities" : "권한 할당"}</h5>
                 <div className="mt-3 space-y-3">
                   {authorityAssignmentAuthorities.map((item) => (
                     <div className="rounded border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-muted)] px-3 py-3" key={item.title}>
@@ -1028,7 +1022,7 @@ export function FullStackManagementMigrationPage() {
                 </div>
               </div>
               <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
-                <h5 className="font-bold">{en ? "Role Category Guides" : "권한 카테고리 가이드"}</h5>
+                <h5 className="font-bold">{en ? "Role Categories" : "권한 카테고리"}</h5>
                 <div className="mt-3 space-y-3">
                   {authorityRoleCategories.map((item) => (
                     <div className="rounded border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-muted)] px-3 py-3" key={item.title}>

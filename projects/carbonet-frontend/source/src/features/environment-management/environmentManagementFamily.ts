@@ -6,7 +6,7 @@ const environmentManagementLoader = () => import("./EnvironmentManagementHubPage
 const ENVIRONMENT_MANAGEMENT_ROUTE_DEFINITIONS = [
   {
     id: "environment-management",
-    label: "메뉴 통합 관리",
+    label: "환경설정 통합 관리",
     group: "platform",
     koPath: "/admin/system/environment-management",
     enPath: "/en/admin/system/environment-management"

@@ -10,6 +10,7 @@ import type { DeptRolePagePayload } from "../../lib/api/authTypes";
 import { buildLocalizedPath } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminAuthorityPageFrame } from "../admin-ui/pageFrames";
+import { MemberAuthorityNav } from "../member-authority/MemberAuthorityNav";
 import { PageStatusNotice } from "../member/common";
 import { MemberStateCard } from "../member/sections";
 import { DeptRoleCompanySection, DeptRoleDepartmentTable, DeptRoleMemberTable } from "./deptRoleSections";
@@ -158,11 +159,11 @@ export function DeptRoleMappingMigrationPage() {
         { label: t(page, "회원/권한", "Members/Authority") },
         { label: t(page, "부서 권한 맵핑", "Department Role Mapping") }
       ]}
-      subtitle={t(page, "최상단에서 회사를 선택하고, 해당 회사 회원 목록과 부서별 기본 Role 맵핑을 함께 확인하는 화면입니다.", "Select a company first, then review company members and default department role mappings together.")}
       title={t(page, "부서 권한 맵핑", "Department Role Mapping")}
       loading={!page && !error}
       loadingLabel={t(page, "부서 권한 정보를 불러오는 중입니다.", "Loading department role data.")}
     >
+      <MemberAuthorityNav activeId="dept-role" en={!!page?.isEn} />
       {(page?.deptRoleError || error) ? <PageStatusNotice tone="error">{page?.deptRoleError || error}</PageStatusNotice> : null}
       {page?.deptRoleUpdated || message ? <PageStatusNotice tone="success">{message || (page?.deptRoleTargetInsttId ? t(page, `${page.deptRoleTargetInsttId} 부서 권한 맵핑이 저장되었습니다.`, `Saved department role mappings for ${page.deptRoleTargetInsttId}.`) : t(page, "부서 권한 맵핑이 저장되었습니다.", "Department role mappings have been saved."))}</PageStatusNotice> : null}
       {page?.deptRoleMessage && !message ? <PageStatusNotice tone="warning">{page.deptRoleMessage}</PageStatusNotice> : null}

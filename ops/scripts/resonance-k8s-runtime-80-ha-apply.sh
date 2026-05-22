@@ -59,10 +59,11 @@ kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
 kubectl -n "$NAMESPACE" patch service "$SERVICE" --type merge -p '{"spec":{"type":"NodePort"}}'
 kubectl -n "$NAMESPACE" patch service "$SERVICE" --type json -p='[
   {"op":"replace","path":"/spec/ports","value":[
-    {"name":"http","port":80,"targetPort":"http","nodePort":80,"protocol":"TCP"}
+    {"name":"http","port":80,"targetPort":"http","nodePort":80,"protocol":"TCP"},
+    {"name":"http-alt-32947","port":32947,"targetPort":"http","nodePort":32947,"protocol":"TCP"}
   ]}
 ]'
 
 kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout="${ROLLOUT_TIMEOUT:-420s}"
 kubectl -n "$NAMESPACE" get deploy,svc,pod -o wide
-log_event OK "runtime is exposed on 80 with two ready replicas"
+log_event OK "runtime is exposed on 80 and 32947 with two ready replicas"

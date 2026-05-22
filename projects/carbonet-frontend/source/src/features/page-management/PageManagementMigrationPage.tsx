@@ -7,6 +7,7 @@ import { postFormUrlEncoded } from "../../lib/api/core";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { stringOf, submitFormRequest } from "../admin-system/adminSystemShared";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { CollectionResultPanel, GridToolbar, PageStatusNotice, SummaryMetricCard, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 
@@ -565,8 +566,8 @@ export function PageManagementMigrationPage() {
         { label: en ? "Screen Management" : "화면 관리" }
       ]}
       title={en ? "Screen Management" : "화면 관리"}
-      subtitle={en ? "Manage screen codes and URLs used in the admin menu based on common-code records." : "관리자 메뉴에 등록되는 화면 코드와 URL을 공통코드 기준으로 관리합니다."}
     >
+      <GovernanceCompressionNav activeId="page" en={en} />
       <AdminWorkspacePageFrame>
         {page?.pageMgmtError || actionError || pageState.error ? (
           <PageStatusNotice tone="error">
@@ -586,15 +587,14 @@ export function PageManagementMigrationPage() {
         {page?.pageMgmtMessage || actionMessage ? <PageStatusNotice tone="success">{actionMessage || String(page?.pageMgmtMessage)}</PageStatusNotice> : null}
 
         <section className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-          <SummaryMetricCard title={en ? "Registered Pages" : "등록 페이지"} value={`${filteredRows.length} / ${rows.length}`} description={en ? "Filtered / total" : "필터 결과 / 전체"} />
-          <SummaryMetricCard title={en ? "Unsaved Edits" : "미저장 수정"} value={String(dirtyCodes.length)} description={en ? "Changed rows in current view" : "현재 화면에서 변경된 행"} />
-          <SummaryMetricCard title={en ? "Blocked Links" : "차단 링크"} value={String(blockedLinks.length)} description={en ? "Follow-up links after failed actions" : "실패 후 후속 이동 링크"} />
-          <SummaryMetricCard title={en ? "Current Scope" : "현재 구분"} value={filters.menuType} description={en ? "Synced to URL query" : "URL 쿼리와 동기화"} />
+          <SummaryMetricCard title={en ? "Registered Pages" : "등록 페이지"} value={`${filteredRows.length} / ${rows.length}`} />
+          <SummaryMetricCard title={en ? "Unsaved Edits" : "미저장 수정"} value={String(dirtyCodes.length)} />
+          <SummaryMetricCard title={en ? "Blocked Links" : "차단 링크"} value={String(blockedLinks.length)} />
+          <SummaryMetricCard title={en ? "Current Scope" : "현재 구분"} value={filters.menuType} />
         </section>
 
         <section className="gov-card overflow-hidden p-0" data-help-id="page-management-register">
           <GridToolbar
-            meta={en ? "Register a new page code, route, and default VIEW feature from one form." : "페이지 코드, route, 기본 VIEW 기능을 한 폼에서 같이 등록합니다."}
             title={en ? "Register Page" : "페이지 등록"}
           />
           <div className="p-6">
@@ -638,12 +638,6 @@ export function PageManagementMigrationPage() {
               {useAtOptions.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
           </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[var(--kr-gov-text-secondary)] xl:col-span-4">
-            {en ? "When a domain is selected, the page-code input is prefilled with the common-code prefix for that domain. Page codes follow the 8-digit detail-code convention." : "도메인을 선택하면 페이지 코드 입력칸에 해당 도메인 공통코드 앞자리를 미리 채웁니다. 페이지 코드는 8자리 상세 코드 체계를 따릅니다."}
-          </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 xl:col-span-2">
-            {en ? <>Registering a page automatically creates the default <span className="font-bold">PAGE_CODE_VIEW</span> feature. Review role assignment manually in the authority group screen.</> : <>페이지 등록 시 <span className="font-bold">페이지코드_VIEW</span> 기본 기능을 자동 생성합니다. 권한 부여는 권한 그룹 화면에서 수동으로 검토하세요.</>}
-          </div>
           <div className="flex justify-end gap-2 xl:col-span-6">
             <button className="gov-btn gov-btn-primary" type="submit">{en ? "Add Page Code" : "페이지 코드 추가"}</button>
           </div>
@@ -653,7 +647,6 @@ export function PageManagementMigrationPage() {
 
         <section className="gov-card overflow-hidden p-0" data-help-id="page-management-list">
           <GridToolbar
-            meta={en ? "Search, inspect dirty edits, and update existing page rows." : "기존 페이지 행을 조회하고, 수정 상태를 확인한 뒤 바로 반영합니다."}
             title={en ? "Registered Pages" : "등록 페이지 목록"}
           />
           <div className="p-6">
@@ -732,7 +725,7 @@ export function PageManagementMigrationPage() {
         </form>
 
         {dirtyCodes.length > 0 ? (
-          <CollectionResultPanel className="mb-4" description={en ? "Rows below have local edits that are not saved yet." : "아래 행 중 아직 저장되지 않은 수정 대상이 있습니다."} icon="edit_note" title={en ? "Unsaved edited rows" : "미저장 수정 행"}>
+          <CollectionResultPanel className="mb-4" icon="edit_note" title={en ? "Unsaved edited rows" : "미저장 수정 행"}>
             <div className="mb-3 flex justify-end">
               <button className="gov-btn gov-btn-primary" onClick={() => { void saveDirtyRows().catch((error: Error) => setActionError(error.message)); }} type="button">
                 {en ? "Save Edited Rows" : "수정 행 저장"}

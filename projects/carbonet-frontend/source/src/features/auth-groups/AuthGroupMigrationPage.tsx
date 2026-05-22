@@ -13,6 +13,7 @@ import { buildLocalizedPath } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, AdminTable, GridToolbar, MemberButton, MemberPermissionButton } from "../admin-ui/common";
 import { AdminAuthorityPageFrame } from "../admin-ui/pageFrames";
+import { MemberAuthorityNav } from "../member-authority/MemberAuthorityNav";
 
 const PINNED_AUTH_GROUPS_STORAGE_KEY = "carbonet:pinned-auth-groups";
 
@@ -755,15 +756,11 @@ export function AuthGroupMigrationPage() {
         { label: text(page, "시스템", "System") },
         { label: text(page, "권한 그룹", "Permission Groups") }
       ]}
-      subtitle={text(
-        page,
-        "webmaster 계정이 전체 기능 카탈로그를 검토하는 마스터 권한 기준 화면입니다.",
-        "Webmaster can review the full feature catalog and use this page as the master authority baseline."
-      )}
       title={text(page, "권한 그룹", "Permission Groups")}
       loading={loading && !page && !error}
       loadingLabel={text(page, "권한 그룹 구성을 불러오는 중입니다.", "Loading authority group configuration.")}
     >
+      <MemberAuthorityNav activeId="auth-group" en={!!page?.isEn} />
       {page?.authGroupError ? (
         <section className="mb-4 rounded-[var(--kr-gov-radius)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {page.authGroupError}

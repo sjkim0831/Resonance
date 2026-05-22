@@ -31,8 +31,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위\n(연간)",
-        "headerPath" : "[\"단위\\n(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -283,8 +283,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -439,8 +439,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -675,8 +675,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -831,8 +831,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위\n(연간)",
-        "headerPath" : "[\"단위\\n(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "productionCost",
         "label" : "생산원가",
@@ -871,8 +871,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "collectionMethod",
         "label" : "데이터 수집 방법",
@@ -911,8 +911,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "treatmentRoute",
         "label" : "처리경로",
@@ -1018,8 +1018,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위\n(연간)",
-        "headerPath" : "[\"단위\\n(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -1126,8 +1126,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -1172,8 +1172,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -1228,8 +1228,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "usage",
         "label" : "용도",
@@ -1274,8 +1274,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위\n(연간)",
-        "headerPath" : "[\"단위\\n(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "productionCost",
         "label" : "생산원가",
@@ -1325,8 +1325,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "collectionMethod",
         "label" : "데이터 수집 방법",
@@ -1365,8 +1365,8 @@
         "headerPath" : "[\"양\"]"
       }, {
         "key" : "annualUnit",
-        "label" : "단위(연간)",
-        "headerPath" : "[\"단위(연간)\"]"
+        "label" : "단위",
+        "headerPath" : "[\"단위\"]"
       }, {
         "key" : "treatmentRoute",
         "label" : "처리경로",

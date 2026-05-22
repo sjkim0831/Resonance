@@ -19,6 +19,30 @@ For most tasks, do not read more than:
 
 Do not open large active, archive, example, handoff, or architecture chains unless the routing below explicitly points there.
 
+## Model Lane Gate
+
+Select the model lane after selecting the route. Model choice does not expand the document budget.
+
+| Lane | Model class | Use for | Required gate |
+| --- | --- | --- | --- |
+| `translation` | Gemma4 CPU local first, default `gemma4-e4b-cpu-shadow` on `:24451` | Korean/English translation, glossary normalization, product-name mapping | deterministic Hangul/JSON/glossary checks |
+| `dev-classify` | Qwen2.5 Coder 7B `qwen2.5-coder-7b-instruct-shadow` on `:24751` | primary request classification, log summary, candidate skill/doc/file list, and escalation decision | no direct source writes |
+| `fast-draft` | Qwen2.5 Coder 7B `qwen2.5-coder-7b-instruct-shadow` on `:24751` | primary first-pass coder for normal development drafts | Codex applies and verifies; 40B only for escalation gates |
+| `mid-draft` | Qwen2.5 Coder 14B only when a registered local endpoint exists | fallback when 7B quality is low or the pattern task needs stronger code reasoning | 40B review when contracts or runtime behavior change |
+| `math` | Qwen Math local first, default `qwen-math:7b` | formulas, unit conversion, numeric validation, calculation review | deterministic calculation evidence |
+| `agent-candidate` | Qwen3.5 9B Q4_K_M on `:24119` | benchmark general reasoning, agent planning, long-context behavior | no source writes until promoted |
+| `judge` | Qwen3.6 40B | architecture, risky implementation, final review, failure interpretation | deterministic verification remains mandatory |
+| `verify` | Codex/scripts | builds, tests, route probes, DB/runtime proof | command evidence wins over model output |
+
+Default development flow:
+
+1. Qwen2.5 Coder 7B creates `classify`, `context`, and `draft` packets first.
+2. Normal development work stays on `fast-draft` 7B unless 7B marks escalation, confidence drops below 0.75, verification fails, or the task touches security, permission, DB migration, shared API/DTO/mapper contracts, or architecture.
+3. Codex/scripts execute and verify.
+4. Escalate back to 40B only for risky decisions or failed evidence interpretation.
+
+Model downloads are not part of normal task execution. Use registered local endpoints first; treat HuggingFace or other model acquisition as a separate setup task. Do not select Qwen3 small models for Carbonet local lanes; keep Qwen3.6 40B only as the current judge lane unless explicitly replaced. Qwen3.5 small models are benchmark candidates and must not replace Qwen2.5 7B/14B Instruct/Coder lanes by name alone. Do not send all Skills/Docs to any model. If routing is unclear, ask the 40B to classify from this matrix and a short file list rather than reading more docs.
+
 ## Quick Gate
 
 Choose the first matching route.

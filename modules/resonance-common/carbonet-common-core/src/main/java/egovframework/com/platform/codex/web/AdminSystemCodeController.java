@@ -177,12 +177,18 @@ public class AdminSystemCodeController {
         return redirectReactMigration(request, locale, "access-history");
     }
 
-    @GetMapping("/access_history/page-data")
+   @GetMapping("/access_history/page-data")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> accessHistoryPageApi(
             @RequestParam(value = "pageIndex", required = false) String pageIndexParam,
             @RequestParam(value = "searchKeyword", required = false) String searchKeyword,
             @RequestParam(value = "insttId", required = false) String insttId,
+            @RequestParam(value = "startDate", required = false) String startDate,
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "httpMethod", required = false) String httpMethod,
+            @RequestParam(value = "responseStatus", required = false) String responseStatus,
+            @RequestParam(value = "sortKey", required = false) String sortKey,
+            @RequestParam(value = "sortDirection", required = false) String sortDirection,
             HttpServletRequest request,
             Locale locale) {
         return buildPageDataResponse(request,
@@ -191,6 +197,12 @@ public class AdminSystemCodeController {
                                 pageIndexParam,
                                 searchKeyword,
                                 insttId,
+                                startDate,
+                                endDate,
+                                httpMethod,
+                                responseStatus,
+                                sortKey,
+                                sortDirection,
                                 request,
                                 locale)));
     }

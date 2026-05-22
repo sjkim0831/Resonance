@@ -205,7 +205,7 @@ export function PasswordResetMigrationPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: en ? "/en/admin/" : "/admin/" },
-        { label: en ? "Member / Permissions" : "회원·권한 관리" },
+        { label: en ? "Member Management" : "회원 관리" },
         { label: en ? "Password Reset History" : "비밀번호 초기화 이력" }
       ]}
       subtitle={en ? "Review administrator-triggered password reset history." : "관리자 비밀번호 초기화 실행 이력을 조회합니다."}

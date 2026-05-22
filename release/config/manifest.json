@@ -1,0 +1,59 @@
+{
+  "projectId": "P_TEMPLATE",
+  "projectName": "Template Project Runtime",
+  "structureVersion": "common-project-split-v1",
+  "versions": {
+    "commonCore": "1.1.0",
+    "stableGate": "v1",
+    "adapterArtifact": "1.0.0",
+    "adapterContract": "v1",
+    "apiContract": "v1",
+    "manifestContract": "v1"
+  },
+  "bindings": {
+    "database": {
+      "bindingMode": "COMMON_DB + PROJECT_DB",
+      "commonDb": {
+        "jdbcUrl": "jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8",
+        "schema": "public",
+        "role": "CONTROL_PLANE"
+      },
+      "projectDb": {
+        "jdbcUrl": "jdbc:cubrid:localhost:33000:carbonet_p_template:::?charset=utf-8",
+        "schema": "public",
+        "role": "PROJECT_RUNTIME"
+      }
+    },
+    "menu": {
+      "profile": "template-admin-v1",
+      "rootCode": "PMENU_TEMPLATE",
+      "apiPrefix": "/api/v1/p-template"
+    },
+    "theme": {
+      "id": "carbonet-default-light",
+      "version": "1.0.0"
+    },
+    "runtime": {
+      "runtimeClass": "PROJECT_RUNTIME",
+      "adapterJar": "lib/project-adapter.jar",
+      "storageRoot": "var/file/P_TEMPLATE"
+    }
+  },
+  "artifactLocks": {
+    "projectRuntimeJar": "apps/project-runtime/target/project-runtime.jar",
+    "bootTarget": "var/run/project-runtime/P_TEMPLATE/project-runtime.jar"
+  },
+  "runtime": {
+    "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+    "lane": "PROJECT_RUNTIME",
+    "sharedRuntimeId": "project-runtime-common",
+    "routing": {
+      "selectorPath": "/projects/P_TEMPLATE",
+      "routePrefix": "/r/P_TEMPLATE",
+      "externalBaseUrl": "https://p-template.example.com",
+      "domainHost": "p-template.example.com",
+      "managementPath": "/api/operations/governance/runtime/projects/P_TEMPLATE",
+      "infoPath": "/api/runtime/project-info"
+    }
+  }
+}

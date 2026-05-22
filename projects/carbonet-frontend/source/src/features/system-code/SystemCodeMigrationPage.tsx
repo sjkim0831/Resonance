@@ -17,16 +17,15 @@ import {
   AdminSelect,
   AdminTable,
   GridToolbar,
-  LookupContextStrip,
   MemberButton,
   PageStatusNotice,
   SummaryMetricCard
 } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import {
   ActiveFilterChipBar,
   RecentWorkPanel,
-  ShortcutNotice,
   type RecentWorkItem,
   UseStatusFilterBar,
   type UseStatusFilter
@@ -386,6 +385,9 @@ export function SystemCodeMigrationPage() {
   const selectedClassRefCount = selectedClassRow ? numberOf(classCodeRefCounts, stringOf(selectedClassRow, "clCode", "CL_CODE")) : 0;
   const selectedGroupRefCount = selectedGroupRow ? numberOf(codeDetailRefCounts, stringOf(selectedGroupRow, "codeId", "CODE_ID")) : 0;
   const preferredGroupCreateClassCode = resolvePreferredGroupCreateClassCode(clCodeList, codeFilterClassCode, selectedClassCode);
+  const systemCodeMode = typeof window !== "undefined" && window.location.pathname.includes("/code/register") ? "register" : "list";
+  const showCodeLookup = systemCodeMode !== "register";
+  const showCodeRegister = systemCodeMode === "register";
 
   useEffect(() => {
     if (!detailCodeId && codeList.length > 0) {
@@ -815,10 +817,9 @@ export function SystemCodeMigrationPage() {
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
         { label: en ? "System" : "시스템" },
-        { label: en ? "Code Management" : "코드 관리" }
+        { label: en ? "Common Code" : "공통코드" }
       ]}
-      title={en ? "Code Management" : "코드 관리"}
-      subtitle={en ? "Manage class codes, code IDs, and detail codes." : "공통 분류 코드, 코드 ID, 상세 코드를 등록/수정/삭제합니다."}
+      title={systemCodeMode === "register" ? (en ? "Common Code Register" : "공통코드 등록") : (en ? "Common Code Search" : "공통코드 조회")}
     >
       {error || actionError || page?.codeMgmtError ? (
         <PageStatusNotice aria-live="assertive" role="alert" tone="error">
@@ -836,42 +837,7 @@ export function SystemCodeMigrationPage() {
         </PageStatusNotice>
       ) : null}
 
-      <LookupContextStrip
-        action={(
-          <div className="flex flex-wrap gap-2">
-            {detailCodeId ? (
-              <MemberButton
-                onClick={() => {
-                  setSelectedGroupCodeId(detailCodeId);
-                  focusDetailCodeInput();
-                }}
-                type="button"
-                variant="secondary"
-              >
-                {en ? "Add Detail Code" : "상세 코드 추가"}
-              </MemberButton>
-            ) : null}
-            <MemberButton
-              onClick={() => setDetailSortOption("useAt")}
-              type="button"
-              variant="secondary"
-            >
-              {en ? "Unused First" : "미사용 우선"}
-            </MemberButton>
-            <MemberButton onClick={resetFilters} type="button" variant="secondary">
-              {en ? "Reset Filters" : "검색 초기화"}
-            </MemberButton>
-          </div>
-        )}
-        label={en ? "Current Working Context" : "현재 작업 컨텍스트"}
-        value={detailCodeId
-          ? (en
-            ? `Detail work is scoped to ${detailCodeId}. Class/code-ID edits will keep this selection.`
-            : `상세 코드 작업 기준은 ${detailCodeId} 입니다. 분류/코드ID 작업 후에도 이 선택을 유지합니다.`)
-          : (en ? "No code ID is selected yet." : "선택된 코드 ID가 아직 없습니다.")}
-      />
-
-      <ShortcutNotice en={en} />
+      <GovernanceCompressionNav activeId={systemCodeMode === "register" ? "code-register" : "code-list"} en={en} />
 
       <UseStatusFilterBar en={en} onChange={setUseStatusFilter} useStatusFilter={useStatusFilter} />
 
@@ -880,10 +846,10 @@ export function SystemCodeMigrationPage() {
       <RecentWorkPanel en={en} onClear={() => setRecentWorks([])} onOpen={openRecentWork} recentWorks={recentWorks} />
 
       <section className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
-        <SummaryMetricCard title={en ? "Class Codes" : "분류 코드"} value={`${filteredClassList.length} / ${clCodeList.length}`} description={en ? "Visible / total" : "검색 결과 / 전체"} />
-        <SummaryMetricCard title={en ? "Code IDs" : "코드 ID"} value={`${filteredCodeList.length} / ${codeList.length}`} description={en ? "Visible / total" : "검색 결과 / 전체"} />
-        <SummaryMetricCard title={en ? "Detail Codes" : "상세 코드"} value={`${filteredDetailCodeList.length} / ${detailCodeList.length}`} description={en ? "Visible / selected code ID" : "검색 결과 / 선택된 코드 ID"} />
-        <SummaryMetricCard title={en ? "Selected Code ID" : "선택 코드 ID"} value={detailCodeId || "-"} description={en ? "Synced to URL query" : "URL 쿼리와 동기화"} />
+        <SummaryMetricCard title={en ? "Class Codes" : "분류 코드"} value={`${filteredClassList.length} / ${clCodeList.length}`} />
+        <SummaryMetricCard title={en ? "Code IDs" : "코드 ID"} value={`${filteredCodeList.length} / ${codeList.length}`} />
+        <SummaryMetricCard title={en ? "Detail Codes" : "상세 코드"} value={`${filteredDetailCodeList.length} / ${detailCodeList.length}`} />
+        <SummaryMetricCard title={en ? "Selected Code ID" : "선택 코드 ID"} value={detailCodeId || "-"} />
       </section>
 
       <AdminWorkspacePageFrame>
@@ -901,7 +867,6 @@ export function SystemCodeMigrationPage() {
               <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">category</span>
             )}
             className="mb-4"
-            meta={en ? "Search and select a class code before editing." : "검색 후 분류 코드를 선택해 수정합니다."}
             title={en ? "Class Codes" : "분류 코드"}
           />
 
@@ -921,7 +886,7 @@ export function SystemCodeMigrationPage() {
             </div>
           </div>
 
-          <form action={buildLocalizedPath("/admin/system/code/class/create", "/en/admin/system/code/class/create")} className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-5" data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
+          <form action={buildLocalizedPath("/admin/system/code/class/create", "/en/admin/system/code/class/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-5`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
             <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
             <div>
               <label className="gov-label" htmlFor="clCode">{en ? "Class Code" : "분류 코드"}</label>
@@ -947,7 +912,7 @@ export function SystemCodeMigrationPage() {
             </div>
           </form>
 
-          <div className="overflow-x-auto">
+          <div className={`${showCodeLookup ? "" : "hidden"} overflow-x-auto`}>
             <AdminTable>
               <thead>
                 <tr className="gov-table-header">
@@ -994,7 +959,7 @@ export function SystemCodeMigrationPage() {
             </AdminTable>
           </div>
 
-          {selectedClassRow ? (
+          {selectedClassRow && showCodeLookup ? (
             <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1051,11 +1016,6 @@ export function SystemCodeMigrationPage() {
               <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">list_alt</span>
             )}
             className="mb-4"
-            meta={codeFilterClassCode
-              ? (en
-                ? `Showing code IDs in class ${codeFilterClassCode}. Select "Show All Classes" to clear the scope.`
-                : `${codeFilterClassCode} 분류의 코드 ID만 표시 중입니다. "전체 분류 보기"로 범위를 해제할 수 있습니다.`)
-              : (en ? "Search code IDs and bind the detail panel to the selected code." : "코드 ID를 검색하고 상세 코드 패널과 연결합니다.")}
             title={en ? "Code IDs" : "코드 ID"}
           />
 
@@ -1085,7 +1045,7 @@ export function SystemCodeMigrationPage() {
             </div>
           </div>
 
-          <form action={buildLocalizedPath("/admin/system/code/group/create", "/en/admin/system/code/group/create")} className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-6" data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
+          <form action={buildLocalizedPath("/admin/system/code/group/create", "/en/admin/system/code/group/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-6`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
             <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
             <div>
               <label className="gov-label" htmlFor="codeId">{en ? "Code ID" : "코드 ID"}</label>
@@ -1121,7 +1081,7 @@ export function SystemCodeMigrationPage() {
             </div>
           </form>
 
-          <div className="overflow-x-auto">
+          <div className={`${showCodeLookup ? "" : "hidden"} overflow-x-auto`}>
             <AdminTable>
               <thead>
                 <tr className="gov-table-header">
@@ -1183,7 +1143,7 @@ export function SystemCodeMigrationPage() {
             </AdminTable>
           </div>
 
-          {selectedGroupRow ? (
+          {selectedGroupRow && showCodeLookup ? (
             <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1244,16 +1204,10 @@ export function SystemCodeMigrationPage() {
           <GridToolbar
             actions={<span className="material-symbols-outlined text-[var(--kr-gov-blue)]">fact_check</span>}
             className="mb-4"
-            meta={en ? "The selected code ID is reflected in the URL and detail create form." : "선택된 코드 ID는 URL과 상세 코드 등록 폼에 함께 반영됩니다."}
             title={en ? "Detail Codes" : "상세 코드"}
           />
 
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] px-4 py-3">
-            <p className="text-sm text-[var(--kr-gov-text-secondary)]">
-              {selectedDetailRowKeys.length > 0
-                ? (en ? `${selectedDetailRowKeys.length} detail codes selected for bulk update.` : `${selectedDetailRowKeys.length}개의 상세 코드를 일괄 수정 대상으로 선택했습니다.`)
-                : (en ? "Select detail codes to change use status in bulk." : "상세 코드를 선택하면 사용 여부를 일괄 변경할 수 있습니다.")}
-            </p>
+          <div className={`${showCodeLookup ? "flex" : "hidden"} mb-4 flex-wrap items-center justify-end gap-3 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] px-4 py-3`}>
             <div className="flex flex-wrap gap-2">
               <form action={buildLocalizedPath("/admin/system/code/detail/bulk-use", "/en/admin/system/code/detail/bulk-use")} method="post" onSubmit={handleSubmit}>
                 <input name="codeId" type="hidden" value={detailCodeId} />
@@ -1300,7 +1254,7 @@ export function SystemCodeMigrationPage() {
             </div>
           </div>
 
-          <form action={buildLocalizedPath("/admin/system/code/detail/create", "/en/admin/system/code/detail/create")} className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-6" data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
+          <form action={buildLocalizedPath("/admin/system/code/detail/create", "/en/admin/system/code/detail/create")} className={`${showCodeRegister ? "grid" : "hidden"} grid-cols-1 gap-4 mb-4 md:grid-cols-6`} data-reset-on-success="true" method="post" onSubmit={handleSubmit}>
             <div>
               <label className="gov-label" htmlFor="detailCodeIdInput">{en ? "Code ID" : "코드 ID"}</label>
               <AdminSelect id="detailCodeIdInput" name="codeId" onChange={(event) => {
@@ -1338,7 +1292,7 @@ export function SystemCodeMigrationPage() {
             </div>
           </form>
 
-          <div className="overflow-x-auto">
+          <div className={`${showCodeLookup ? "" : "hidden"} overflow-x-auto`}>
             <AdminTable>
               <thead>
                 <tr className="gov-table-header">
@@ -1418,7 +1372,7 @@ export function SystemCodeMigrationPage() {
             </AdminTable>
           </div>
 
-          {selectedDetailRow ? (
+          {selectedDetailRow && showCodeLookup ? (
             <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>

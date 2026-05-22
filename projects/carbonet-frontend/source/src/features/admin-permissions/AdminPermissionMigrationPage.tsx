@@ -13,6 +13,7 @@ import { AdminCheckbox, AdminSelect, PageStatusNotice, SummaryMetricCard, Warnin
 import { ADMIN_BUTTON_LABELS } from "../admin-ui/labels";
 import { GridToolbar, MemberActionBar } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
+import { MemberAuthorityNav } from "../member-authority/MemberAuthorityNav";
 import { MemberStateCard } from "../member/sections";
 
 function text(page: AdminPermissionPagePayload | null, ko: string, en: string) {
@@ -105,16 +106,12 @@ export function AdminPermissionMigrationPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: text(page, "홈", "Home"), href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: text(page, "회원·권한 관리", "Member / Authority Management") },
+        { label: text(page, "권한 관리", "Authority Management") },
         { label: text(page, "관리자 사용자 추가", "Administrator Account") }
       ]}
-      subtitle={text(
-        page,
-        "관리자 계정 정보와 권한, 소속 정보를 확인하고 권한 예외를 조정합니다.",
-        "Review administrator account data, authority, and affiliation, then adjust permission overrides."
-      )}
       title={text(page, "관리자 사용자 추가", "Administrator Account")}
     >
+      <MemberAuthorityNav activeId="admin-permission" en={!!page?.isEn} />
       {page?.adminPermissionError || error ? <PageStatusNotice tone="error">{String(page?.adminPermissionError || error)}</PageStatusNotice> : null}
       {validationErrors.length > 0 ? (
         <WarningPanel title={text(page, "입력값을 확인해 주세요.", "Please check the input values.")}>
@@ -131,10 +128,10 @@ export function AdminPermissionMigrationPage() {
       <CanView allowed={!!page?.canViewAdminPermissionEdit} fallback={null}>
         <AdminWorkspacePageFrame>
         <section className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-          <SummaryMetricCard title={text(page, "선택 권한 롤", "Selected role")} value={selectedAuthorName} description={text(page, "현재 기준 권한", "Current base authority")} />
-          <SummaryMetricCard title={text(page, "최종 권한 수", "Effective features")} value={featureCount} description={text(page, "관리자별 예외 반영", "Overrides applied")} />
-          <SummaryMetricCard title={text(page, "대상 메뉴 수", "Target menus")} value={pageCount} description={text(page, "권한 섹션 기준", "Permission sections")} />
-          <SummaryMetricCard title={text(page, "편집 상태", "Edit status")} value={readOnly ? text(page, "상세 모드", "Detail mode") : text(page, "편집 가능", "Editable")} description={readOnly ? text(page, "저장 비활성", "Save disabled") : text(page, "저장 가능", "Save enabled")} />
+          <SummaryMetricCard title={text(page, "선택 권한 롤", "Selected role")} value={selectedAuthorName} />
+          <SummaryMetricCard title={text(page, "최종 권한 수", "Effective features")} value={featureCount} />
+          <SummaryMetricCard title={text(page, "대상 메뉴 수", "Target menus")} value={pageCount} />
+          <SummaryMetricCard title={text(page, "편집 상태", "Edit status")} value={readOnly ? text(page, "상세 모드", "Detail mode") : text(page, "편집 가능", "Editable")} />
         </section>
         <section className="border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] bg-white shadow-sm mb-6" data-help-id="admin-permission-summary">
           <GridToolbar

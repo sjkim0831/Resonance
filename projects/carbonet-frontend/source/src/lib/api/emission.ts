@@ -76,7 +76,19 @@ function unwrapEcoinventResponse<T>(response: EcoinventApiResponse<T>, fallback:
   return response.data === undefined || response.data === null ? fallback : response.data;
 }
 
-export async function fetchEcoinventDatasets(params?: {
+export async function fetchChemicalMaterialSuggestions(keyword: string) {
+  const response = await fetch(`/api/chemical-materials/suggestions?keyword=${encodeURIComponent(keyword)}`);
+  if (!response.ok) throw new Error('Failed to fetch chemical material suggestions');
+  return response.json();
+}
+
+export async function fetchDropdownList() {
+    const response = await fetch('/api/translations/dropdown-list');
+    if (!response.ok) throw new Error('Failed to fetch dropdown list');
+    return response.json();
+  }
+  
+  export async function fetchEcoinventDatasets(params?: {
   keyword?: string;
   materialName?: string;
   activityName?: string;

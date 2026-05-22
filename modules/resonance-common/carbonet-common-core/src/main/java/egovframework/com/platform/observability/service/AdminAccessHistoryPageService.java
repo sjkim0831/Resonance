@@ -98,10 +98,16 @@ public class AdminAccessHistoryPageService {
         model.put("nextPage", endPage < totalPages ? endPage + 1 : totalPages);
     }
 
-    public Map<String, Object> buildPageData(
+  public Map<String, Object> buildPageData(
             String pageIndexParam,
             String searchKeyword,
             String insttId,
+            String startDate,
+            String endDate,
+            String httpMethod,
+            String responseStatus,
+            String sortKey,
+            String sortDirection,
             HttpServletRequest request,
             Locale locale) {
         boolean isEn = isEnglishRequest(request, locale);
@@ -122,7 +128,15 @@ public class AdminAccessHistoryPageService {
         }
 
         AccessHistoryRowsPage accessHistoryPage = canViewAccessHistory
-                ? buildAccessHistoryPage(normalizedKeyword, selectedInsttId, canManageAllCompanies, requestedPageIndex)
+                ? buildAccessHistoryPage(
+                        normalizedKeyword, 
+                        selectedInsttId, 
+                        canManageAllCompanies, 
+                        requestedPageIndex,
+                        safeString(startDate),
+                        safeString(endDate),
+                        safeString(httpMethod),
+                        safeString(responseStatus))
                 : new AccessHistoryRowsPage(Collections.emptyList(), 0);
         int totalCount = accessHistoryPage.getTotalCount();
 
@@ -132,6 +146,12 @@ public class AdminAccessHistoryPageService {
         model.put("companyOptions", companyOptions);
         model.put("selectedInsttId", safeString(selectedInsttId));
         model.put("searchKeyword", safeString(searchKeyword));
+        model.put("startDate", safeString(startDate));
+        model.put("endDate", safeString(endDate));
+        model.put("httpMethod", safeString(httpMethod));
+        model.put("responseStatus", safeString(responseStatus));
+        model.put("sortKey", safeString(sortKey));
+        model.put("sortDirection", safeString(sortDirection));
         appendPaging(model, requestedPageIndex, totalCount);
         model.put("accessHistoryList", accessHistoryPage.getRows());
         return model;
@@ -141,7 +161,11 @@ public class AdminAccessHistoryPageService {
             String normalizedKeyword,
             String selectedInsttId,
             boolean canManageAllCompanies,
-            int pageIndex) {
+            int pageIndex,
+            String startDate,
+            String endDate,
+            String httpMethod,
+            String responseStatus) {
         Map<String, String> companyNameByInsttId = buildAccessHistoryCompanyNameMap();
         RequestExecutionLogPage logPage = requestExecutionLogService.searchRecent(item -> {
             String effectiveInsttId = resolveEffectiveInsttId(item);
@@ -149,6 +173,15 @@ public class AdminAccessHistoryPageService {
                 return false;
             }
             if (canManageAllCompanies && !safeString(selectedInsttId).isEmpty() && !selectedInsttId.equals(effectiveInsttId)) {
+                return false;
+            }
+            if (!matchesAccessHistoryDateFilter(item, startDate, endDate)) {
+                return false;
+            }
+            if (!matchesAccessHistoryHttpMethodFilter(item, httpMethod)) {
+                return false;
+            }
+            if (!matchesAccessHistoryStatusFilter(item, responseStatus)) {
                 return false;
             }
             return matchesAccessHistoryKeyword(item, normalizedKeyword, effectiveInsttId, companyNameByInsttId.get(effectiveInsttId));
@@ -163,6 +196,103 @@ public class AdminAccessHistoryPageService {
             rows.add(createAccessHistoryRow(item, effectiveInsttId, companyNameByInsttId.get(effectiveInsttId)));
         }
         return new AccessHistoryRowsPage(rows, logPage.getTotalCount());
+    }
+
+    private boolean matchesAccessHistoryDateFilter(RequestExecutionLogVO item, String startDate, String endDate) {
+        if ((startDate == null || startDate.isEmpty()) && (endDate == null || endDate.isEmpty())) {
+            return true;
+        }
+        String executedAt = safeString(item.getExecutedAt());
+        if (executedAt.isEmpty()) {
+            return false;
+        }
+        try {
+            int executedYear = parseYear(executedAt);
+            int executedMonth = parseMonth(executedAt);
+            int executedDay = parseDay(executedAt);
+            
+            if (startDate != null && !startDate.isEmpty()) {
+                String[] startParts = startDate.split("-");
+                int startYear = Integer.parseInt(startParts[0]);
+                int startMonth = Integer.parseInt(startParts[1]);
+                int startDay = Integer.parseInt(startParts[2]);
+                
+                if (executedYear < startYear || (executedYear == startYear && executedMonth < startMonth) ||
+                    (executedYear == startYear && executedMonth == startMonth && executedDay < startDay)) {
+                    return false;
+                }
+            }
+            
+            if (endDate != null && !endDate.isEmpty()) {
+                String[] endParts = endDate.split("-");
+                int endYear = Integer.parseInt(endParts[0]);
+                int endMonth = Integer.parseInt(endParts[1]);
+                int endDay = Integer.parseInt(endParts[2]);
+                
+                if (executedYear > endYear || (executedYear == endYear && executedMonth > endMonth) ||
+                    (executedYear == endYear && executedMonth == endMonth && executedDay > endDay)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private boolean matchesAccessHistoryHttpMethodFilter(RequestExecutionLogVO item, String httpMethod) {
+        if (httpMethod == null || httpMethod.isEmpty() || "ALL".equals(httpMethod)) {
+            return true;
+        }
+        return httpMethod.equals(safeString(item.getHttpMethod()).toUpperCase(Locale.ROOT));
+    }
+
+    private boolean matchesAccessHistoryStatusFilter(RequestExecutionLogVO item, String responseStatus) {
+        if (responseStatus == null || responseStatus.isEmpty() || "ALL".equals(responseStatus)) {
+            return true;
+        }
+        int status = item.getResponseStatus();
+        if (responseStatus.equals("2xx")) return status >= 200 && status < 300;
+        if (responseStatus.equals("3xx")) return status >= 300 && status < 400;
+        if (responseStatus.equals("4xx")) return status >= 400 && status < 500;
+        if (responseStatus.equals("5xx")) return status >= 500;
+        return true;
+    }
+
+    private int parseYear(String executedAt) {
+        try {
+            String[] parts = executedAt.split("[ /]");
+            if (parts.length > 0) {
+                return Integer.parseInt(parts[0]);
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return 0;
+    }
+
+    private int parseMonth(String executedAt) {
+        try {
+            String[] parts = executedAt.split("[ /]");
+            if (parts.length > 1) {
+                return Integer.parseInt(parts[1]);
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return 0;
+    }
+
+    private int parseDay(String executedAt) {
+        try {
+            String[] parts = executedAt.split("[ /]");
+            if (parts.length > 2) {
+                return Integer.parseInt(parts[2]);
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return 0;
     }
 
     private boolean matchesAccessHistoryKeyword(

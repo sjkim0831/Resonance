@@ -102,7 +102,7 @@ export function MemberDetailMigrationPage() {
     <AdminPageShell
       breadcrumbs={[
         { label: "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: "회원·권한 관리" },
+        { label: "회원 관리" },
         { label: "회원 목록", href: buildLocalizedPath("/admin/member/list", "/en/admin/member/list") },
         { label: "상세 정보" }
       ]}

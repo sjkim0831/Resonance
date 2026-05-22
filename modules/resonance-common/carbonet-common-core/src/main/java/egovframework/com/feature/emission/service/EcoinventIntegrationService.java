@@ -43,6 +43,7 @@ public class EcoinventIntegrationService {
     private static final int SEARCH_PAGE_SIZE = 100;
     private static final int BATCH_IMPORT_SIZE = 100;
     private static final String MATERIAL_TRANSLATION_TABLE = "emission_material_translation";
+    private static final String CHEMICAL_DICTIONARY_TABLE = "emission_chemical_material_dictionary";
     private static final PageRequest MAPPING_RECOMMENDATION_LIMIT = PageRequest.of(0, 100);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -81,32 +82,44 @@ public class EcoinventIntegrationService {
 
     private String cachedAccessToken;
     private Instant cachedAccessTokenExpiresAt = Instant.EPOCH;
+    private boolean ecoinventTablesReady;
     private boolean materialTranslationTableReady;
+    private boolean chemicalDictionaryTableReady;
 
     @Transactional
     public void syncEcoinventData(String query) {
+        ensureEcoinventTablesReady();
         importRemoteDatasets(query);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Map<String, Object>> listLocalDatasets(String keyword) {
         return listLocalDatasetPage(Map.of("keyword", safe(keyword))).rows();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DatasetPage listLocalDatasetPage(Map<String, String> params) {
+        ensureEcoinventTablesReady();
+        ensureMaterialTranslationTableReady();
         SearchRequest request = SearchRequest.from(params);
-        QueryParts queryParts = buildLocalSearchQuery(request, false);
+        List<Long> matchedIds = findEcoinventIdsByKoreanKeyword(request.keyword());
+        QueryParts queryParts = buildLocalSearchQuery(request, matchedIds, false);
         TypedQuery<EcoinventMaster> query = entityManager.createQuery(queryParts.jpql(), EcoinventMaster.class);
         queryParts.parameters().forEach(query::setParameter);
         query.setFirstResult(request.offset());
         query.setMaxResults(request.pageSize());
-        List<Map<String, Object>> rows = query.getResultList().stream().map(this::toDatasetRow).toList();
+        List<Map<String, Object>> rows = prioritizeMappedRows(query.getResultList().stream().map(this::toDatasetRow).toList());
+        if (!request.keyword().isEmpty()) {
+            rows = mergeDatasetRows(findMappedFactors(request.keyword()), rows);
+        }
 
-        QueryParts countParts = buildLocalSearchQuery(request, true);
+        QueryParts countParts = buildLocalSearchQuery(request, matchedIds, true);
         TypedQuery<Long> countQuery = entityManager.createQuery(countParts.jpql(), Long.class);
         countParts.parameters().forEach(countQuery::setParameter);
         long totalCount = countQuery.getSingleResult();
+        if (!request.keyword().isEmpty()) {
+            totalCount = Math.max(totalCount, rows.size());
+        }
         return new DatasetPage(rows, totalCount, request.pageIndex(), request.pageSize());
     }
 
@@ -117,8 +130,9 @@ public class EcoinventIntegrationService {
         return new DatasetPage(rows, page.total(), request.pageIndex(), request.pageSize());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> filterOptions(String keyword) {
+        ensureEcoinventTablesReady();
         SearchRequest request = SearchRequest.from(Map.of("keyword", safe(keyword)));
         Map<String, Object> response = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : FILTERABLE_FIELDS.entrySet()) {
@@ -148,6 +162,7 @@ public class EcoinventIntegrationService {
     }
 
     public ImportResult importRemoteDatasets(String keyword) {
+        ensureEcoinventTablesReady();
         int importedCount = 0;
         int offset = 0;
         long total = Long.MAX_VALUE;
@@ -181,6 +196,7 @@ public class EcoinventIntegrationService {
 
     @Transactional
     public int importSelectedDatasets(List<Long> datasetIds) {
+        ensureEcoinventTablesReady();
         if (datasetIds == null || datasetIds.isEmpty()) {
             return 0;
         }
@@ -208,8 +224,15 @@ public class EcoinventIntegrationService {
 
     @Transactional
     public void saveMapping(String koreanName, Long datasetId, String memo) {
-        EcoinventMaster master = repository.findById(datasetId)
-                .orElseThrow(() -> new IllegalArgumentException("선택한 ecoinvent 데이터셋을 찾을 수 없습니다."));
+        ensureEcoinventTablesReady();
+        EcoinventMaster master = repository.findById(datasetId).orElse(null);
+        if (master == null && datasetId != null && datasetId > 0L) {
+            importSelectedDatasets(List.of(datasetId));
+            master = repository.findById(datasetId).orElse(null);
+        }
+        if (master == null) {
+            throw new IllegalArgumentException("선택한 ecoinvent 데이터셋을 찾을 수 없습니다.");
+        }
         saveMappingIfAbsent(safe(koreanName), master, safe(memo));
         String englishName = firstNonBlank(master.getProductName(), master.getMaterialName(), master.getActivityName());
         if (!safe(koreanName).isBlank() && !englishName.isBlank()) {
@@ -220,6 +243,7 @@ public class EcoinventIntegrationService {
 
     @Transactional
     public AutoMappingResult premapKoreanMaterialAliases() {
+        ensureEcoinventTablesReady();
         ensureMaterialTranslationTableReady();
         int datasetCount = 0;
         int aliasCount = 0;
@@ -259,7 +283,21 @@ public class EcoinventIntegrationService {
             insertedCount += savedForInput;
             aliasCount += searchTerms.size();
         }
-        return new AutoMappingResult(datasetCount, aliasCount, insertedCount, expectedInputCount, aiAssistedCount);
+        int rowTranslationCount = backfillEcoinventMaterialTranslations();
+        return new AutoMappingResult(datasetCount, aliasCount, insertedCount, expectedInputCount, aiAssistedCount, rowTranslationCount);
+    }
+
+    @Transactional
+    public int backfillEcoinventMaterialTranslations() {
+        ensureEcoinventTablesReady();
+        ensureMaterialTranslationTableReady();
+        int upsertedCount = 0;
+        for (EcoinventMaster master : repository.findAll()) {
+            if (upsertEcoinventMaterialTranslation(master)) {
+                upsertedCount += 1;
+            }
+        }
+        return upsertedCount;
     }
 
     private int premapKoreanInput(String koreanName, Set<String> searchTerms) {
@@ -300,8 +338,10 @@ public class EcoinventIntegrationService {
         return insertedCount;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Map<String, Object>> findMappedFactors(String materialName) {
+        ensureEcoinventTablesReady();
+        ensureMaterialTranslationTableReady();
         String keyword = safe(materialName);
         if (keyword.isEmpty()) {
             return List.of();
@@ -322,8 +362,76 @@ public class EcoinventIntegrationService {
         return rows;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
+    public List<Map<String, Object>> searchChemicalMaterials(String keyword, String language) {
+        ensureChemicalDictionaryTableReady();
+        String normalizedKeyword = safe(keyword);
+        if (normalizedKeyword.isBlank()) {
+            return List.of();
+        }
+        String keywordLike = "%" + normalizedKeyword.toLowerCase() + "%";
+        List<?> resultRows = entityManager.createNativeQuery("""
+                        SELECT id,
+                               cas_no,
+                               korean_name,
+                               english_name,
+                               synonyms,
+                               source_type,
+                               source_url,
+                               CASE
+                                 WHEN LOWER(korean_name) = LOWER(?) THEN 0
+                                 WHEN LOWER(english_name) = LOWER(?) THEN 1
+                                 WHEN LOWER(korean_name) LIKE LOWER(?) THEN 2
+                                 WHEN LOWER(english_name) LIKE LOWER(?) THEN 3
+                                 WHEN LOWER(COALESCE(cas_no, '')) = LOWER(?) THEN 4
+                                 WHEN LOWER(COALESCE(synonyms, '')) LIKE LOWER(?) THEN 5
+                                 ELSE 9
+                               END AS match_rank
+                          FROM emission_chemical_material_dictionary
+                         WHERE LOWER(korean_name) LIKE LOWER(?)
+                            OR LOWER(english_name) LIKE LOWER(?)
+                            OR LOWER(COALESCE(cas_no, '')) LIKE LOWER(?)
+                            OR LOWER(COALESCE(synonyms, '')) LIKE LOWER(?)
+                         ORDER BY match_rank ASC,
+                                  CASE WHEN LOWER(?) = 'en' THEN english_name ELSE korean_name END ASC,
+                                  id ASC
+                        """)
+                .setParameter(1, normalizedKeyword)
+                .setParameter(2, normalizedKeyword)
+                .setParameter(3, keywordLike)
+                .setParameter(4, keywordLike)
+                .setParameter(5, normalizedKeyword)
+                .setParameter(6, keywordLike)
+                .setParameter(7, keywordLike)
+                .setParameter(8, keywordLike)
+                .setParameter(9, keywordLike)
+                .setParameter(10, keywordLike)
+                .setParameter(11, safe(language))
+                .setMaxResults(30)
+                .getResultList();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Object resultRow : resultRows) {
+            if (!(resultRow instanceof Object[] columns)) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", longValue(columns[0], 0L));
+            row.put("casNo", safeObject(columns[1]));
+            row.put("koreanName", safeObject(columns[2]));
+            row.put("englishName", safeObject(columns[3]));
+            row.put("synonyms", safeObject(columns[4]));
+            row.put("sourceType", safeObject(columns[5]));
+            row.put("sourceUrl", safeObject(columns[6]));
+            row.put("matchedName", "en".equalsIgnoreCase(safe(language)) ? safeObject(columns[3]) : safeObject(columns[2]));
+            row.put("matchRank", longValue(columns[7], 9L));
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    @Transactional
     public DatasetPage recommendMappedDatasetPage(String materialName, Map<String, String> params) {
+        ensureEcoinventTablesReady();
         String keyword = safe(materialName);
         if (keyword.isEmpty()) {
             return listLocalDatasetPage(params);
@@ -345,8 +453,9 @@ public class EcoinventIntegrationService {
         return listLocalDatasetPage(recommendedParams);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DatasetPage recommendAiDatasetPage(String materialName, Map<String, String> params) {
+        ensureEcoinventTablesReady();
         String keyword = safe(materialName);
         if (keyword.isEmpty()) {
             return new DatasetPage(List.of(), 0L, 1, SearchRequest.from(params == null ? Map.of() : params).pageSize());
@@ -391,6 +500,7 @@ public class EcoinventIntegrationService {
 
     @Transactional
     public Map<String, String> materialEnglishNames(List<String> materialNames) {
+        ensureEcoinventTablesReady();
         ensureMaterialTranslationTableReady();
         LinkedHashSet<String> names = new LinkedHashSet<>();
         if (materialNames != null) {
@@ -404,6 +514,12 @@ public class EcoinventIntegrationService {
             String existingName = findMaterialEnglishName(name);
             if (!existingName.isBlank()) {
                 response.put(name, existingName);
+                continue;
+            }
+            String dictionaryEnglishName = searchChemicalDictionaryTerms(name).stream().findFirst().orElse("");
+            if (!dictionaryEnglishName.isBlank()) {
+                saveMaterialEnglishName(name, dictionaryEnglishName, "CHEMICAL_DICTIONARY");
+                response.put(name, dictionaryEnglishName);
                 continue;
             }
             String englishName = "";
@@ -458,8 +574,9 @@ public class EcoinventIntegrationService {
     private List<String> aiSearchTerms(String materialName) {
         List<String> dictionaryTerms = dictionarySearchTerms(materialName);
         LinkedHashSet<String> terms = new LinkedHashSet<>(dictionaryTerms);
+        terms.addAll(searchChemicalDictionaryTerms(materialName));
         if (requiresExactMineralSearch(materialName)) {
-            return dictionaryTerms;
+            return new ArrayList<>(terms);
         }
         ensureMaterialTranslationTableReady();
         String savedEnglishName = findMaterialEnglishName(materialName);
@@ -485,6 +602,23 @@ public class EcoinventIntegrationService {
                 || normalized.contains("울라스토나이트")
                 || normalized.contains("포스터라이트")
                 || normalized.contains("사문석");
+    }
+
+    private List<String> searchChemicalDictionaryTerms(String materialName) {
+        String keyword = safe(materialName);
+        if (keyword.isBlank()) {
+            return List.of();
+        }
+        return searchChemicalMaterials(keyword, "en").stream()
+                .flatMap(row -> List.of(
+                        safeObject(row.get("englishName")),
+                        safeObject(row.get("casNo"))
+                ).stream())
+                .map(this::safe)
+                .filter(term -> !term.isBlank() && !containsKorean(term))
+                .distinct()
+                .limit(8)
+                .toList();
     }
 
     private List<String> dictionarySearchTerms(String materialName) {
@@ -930,14 +1064,67 @@ public class EcoinventIntegrationService {
         if (tableCount == null || tableCount.longValue() == 0L) {
             entityManager.createNativeQuery("CREATE TABLE " + MATERIAL_TRANSLATION_TABLE + " ("
                     + "RAW_NAME VARCHAR(500) NOT NULL,"
+                    + "ECOINVENT_MASTER_ID BIGINT,"
+                    + "KOREAN_NAME VARCHAR(1000),"
                     + "ENGLISH_NAME VARCHAR(1000) NOT NULL,"
+                    + "ENGLISH_EXACT_NAME VARCHAR(2000),"
                     + "SOURCE_TYPE VARCHAR(40),"
+                    + "MAPPING_STATUS VARCHAR(40),"
+                    + "MAPPING_NOTE VARCHAR(1000),"
                     + "FRST_REGIST_PNTTM DATETIME DEFAULT CURRENT_DATETIME NOT NULL,"
                     + "LAST_UPDT_PNTTM DATETIME DEFAULT CURRENT_DATETIME NOT NULL,"
                     + "PRIMARY KEY (RAW_NAME)"
                     + ")").executeUpdate();
         }
+        ensureColumn(MATERIAL_TRANSLATION_TABLE, "ecoinvent_master_id", "ECOINVENT_MASTER_ID BIGINT");
+        ensureColumn(MATERIAL_TRANSLATION_TABLE, "korean_name", "KOREAN_NAME VARCHAR(1000)");
+        ensureColumn(MATERIAL_TRANSLATION_TABLE, "english_exact_name", "ENGLISH_EXACT_NAME VARCHAR(2000)");
+        ensureColumn(MATERIAL_TRANSLATION_TABLE, "mapping_status", "MAPPING_STATUS VARCHAR(40)");
+        ensureColumn(MATERIAL_TRANSLATION_TABLE, "mapping_note", "MAPPING_NOTE VARCHAR(1000)");
         materialTranslationTableReady = true;
+    }
+
+    private void ensureColumn(String tableName, String columnName, String columnDefinition) {
+        if (columnExists(tableName, columnName)) {
+            return;
+        }
+        entityManager.createNativeQuery("ALTER TABLE " + tableName + " ADD COLUMN " + columnDefinition).executeUpdate();
+    }
+
+    private boolean columnExists(String tableName, String columnName) {
+        Number columnCount = (Number) entityManager.createNativeQuery("""
+                        SELECT COUNT(*)
+                        FROM db_attribute
+                        WHERE LOWER(class_name) = LOWER(?)
+                          AND LOWER(attr_name) = LOWER(?)
+                        """)
+                .setParameter(1, tableName)
+                .setParameter(2, columnName)
+                .getSingleResult();
+        return columnCount != null && columnCount.longValue() > 0L;
+    }
+
+    private synchronized void ensureChemicalDictionaryTableReady() {
+        if (chemicalDictionaryTableReady) {
+            return;
+        }
+        if (!tableExists(CHEMICAL_DICTIONARY_TABLE)) {
+            entityManager.createNativeQuery("""
+                    CREATE TABLE emission_chemical_material_dictionary (
+                      id BIGINT NOT NULL,
+                      cas_no VARCHAR(80),
+                      korean_name VARCHAR(1000) NOT NULL,
+                      english_name VARCHAR(1000) NOT NULL,
+                      synonyms VARCHAR(4000),
+                      source_type VARCHAR(80),
+                      source_url VARCHAR(1000),
+                      frst_regist_pnttm DATETIME DEFAULT CURRENT_DATETIME NOT NULL,
+                      last_updt_pnttm DATETIME DEFAULT CURRENT_DATETIME NOT NULL,
+                      PRIMARY KEY (id)
+                    )
+                    """).executeUpdate();
+        }
+        chemicalDictionaryTableReady = true;
     }
 
     private String findMaterialEnglishName(String rawName) {
@@ -949,21 +1136,113 @@ public class EcoinventIntegrationService {
     }
 
     private void saveMaterialEnglishName(String rawName, String englishName, String sourceType) {
+        ensureMaterialTranslationTableReady();
         if (findMaterialEnglishName(rawName).isBlank()) {
             entityManager.createNativeQuery("INSERT INTO " + MATERIAL_TRANSLATION_TABLE
-                            + " (RAW_NAME, ENGLISH_NAME, SOURCE_TYPE) VALUES (?, ?, ?)")
+                            + " (RAW_NAME, KOREAN_NAME, ENGLISH_NAME, ENGLISH_EXACT_NAME, SOURCE_TYPE, MAPPING_STATUS)"
+                            + " VALUES (?, ?, ?, ?, ?, ?)")
                     .setParameter(1, rawName)
-                    .setParameter(2, englishName)
-                    .setParameter(3, sourceType)
+                    .setParameter(2, rawName)
+                    .setParameter(3, englishName)
+                    .setParameter(4, englishName)
+                    .setParameter(5, sourceType)
+                    .setParameter(6, "DIRECT")
                     .executeUpdate();
             return;
         }
         entityManager.createNativeQuery("UPDATE " + MATERIAL_TRANSLATION_TABLE
-                        + " SET ENGLISH_NAME = ?, SOURCE_TYPE = ?, LAST_UPDT_PNTTM = CURRENT_DATETIME WHERE RAW_NAME = ?")
-                .setParameter(1, englishName)
-                .setParameter(2, sourceType)
-                .setParameter(3, rawName)
+                        + " SET KOREAN_NAME = ?, ENGLISH_NAME = ?, ENGLISH_EXACT_NAME = ?, SOURCE_TYPE = ?,"
+                        + " MAPPING_STATUS = ?, LAST_UPDT_PNTTM = CURRENT_DATETIME WHERE RAW_NAME = ?")
+                .setParameter(1, rawName)
+                .setParameter(2, englishName)
+                .setParameter(3, englishName)
+                .setParameter(4, sourceType)
+                .setParameter(5, "DIRECT")
+                .setParameter(6, rawName)
                 .executeUpdate();
+    }
+
+    private boolean upsertEcoinventMaterialTranslation(EcoinventMaster master) {
+        if (master == null || master.getId() == null || master.getId() <= 0L) {
+            return false;
+        }
+        String rawName = "ecoinvent:" + master.getId();
+        String englishExactName = exactEnglishName(master);
+        String koreanExactName = exactKoreanName(master, englishExactName);
+        String status = containsKorean(koreanExactName) ? "PRODUCT_NAME_EXACT" : "PRODUCT_KO_PENDING_AI";
+        String storedKoreanName = containsKorean(koreanExactName) ? truncate(koreanExactName, 1000) : null;
+        String sourceType = "ECOINVENT_PRODUCT_EXACT";
+        String note = "ecoinvent_master product_name exact row mapping";
+
+        int updated = entityManager.createNativeQuery("UPDATE " + MATERIAL_TRANSLATION_TABLE
+                        + " SET ECOINVENT_MASTER_ID = ?, KOREAN_NAME = ?, ENGLISH_NAME = ?, ENGLISH_EXACT_NAME = ?,"
+                        + " SOURCE_TYPE = ?, MAPPING_STATUS = ?, MAPPING_NOTE = ?, LAST_UPDT_PNTTM = CURRENT_DATETIME"
+                        + " WHERE RAW_NAME = ?")
+                .setParameter(1, master.getId())
+                .setParameter(2, storedKoreanName)
+                .setParameter(3, truncate(englishExactName, 1000))
+                .setParameter(4, truncate(englishExactName, 2000))
+                .setParameter(5, sourceType)
+                .setParameter(6, status)
+                .setParameter(7, note)
+                .setParameter(8, rawName)
+                .executeUpdate();
+        if (updated > 0) {
+            return true;
+        }
+        entityManager.createNativeQuery("INSERT INTO " + MATERIAL_TRANSLATION_TABLE
+                        + " (RAW_NAME, ECOINVENT_MASTER_ID, KOREAN_NAME, ENGLISH_NAME, ENGLISH_EXACT_NAME,"
+                        + " SOURCE_TYPE, MAPPING_STATUS, MAPPING_NOTE)"
+                        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+                .setParameter(1, rawName)
+                .setParameter(2, master.getId())
+                .setParameter(3, storedKoreanName)
+                .setParameter(4, truncate(englishExactName, 1000))
+                .setParameter(5, truncate(englishExactName, 2000))
+                .setParameter(6, sourceType)
+                .setParameter(7, status)
+                .setParameter(8, note)
+                .executeUpdate();
+        return true;
+    }
+
+    private MaterialTranslationRow materialTranslationByDatasetId(Long datasetId) {
+        if (datasetId == null || datasetId <= 0L) {
+            return null;
+        }
+        List<?> rows = entityManager.createNativeQuery("SELECT KOREAN_NAME, ENGLISH_NAME, ENGLISH_EXACT_NAME, SOURCE_TYPE, MAPPING_STATUS"
+                        + " FROM " + MATERIAL_TRANSLATION_TABLE
+                        + " WHERE ECOINVENT_MASTER_ID = ? ORDER BY LAST_UPDT_PNTTM DESC")
+                .setParameter(1, datasetId)
+                .setMaxResults(1)
+                .getResultList();
+        if (rows.isEmpty() || !(rows.get(0) instanceof Object[] columns)) {
+            return null;
+        }
+        return new MaterialTranslationRow(
+                safeObject(columns[0]),
+                safeObject(columns[1]),
+                safeObject(columns[2]),
+                safeObject(columns[3]),
+                safeObject(columns[4])
+        );
+    }
+
+    private String exactEnglishName(EcoinventMaster master) {
+        String productName = firstNonBlank(master.getProductName(), master.getMaterialName());
+        return productName.isBlank() ? "ecoinvent dataset " + master.getId() : productName;
+    }
+
+    private String exactKoreanName(EcoinventMaster master, String englishExactName) {
+        String translatedProduct = translateEnglishTokensToKorean(firstNonBlank(master.getProductName(), master.getMaterialName()));
+        return firstNonBlank(translatedProduct, master.getProductName(), master.getMaterialName(), englishExactName, "ecoinvent 데이터셋");
+    }
+
+    private void addPart(List<String> parts, Object value) {
+        String text = safeObject(value);
+        if (!text.isBlank() && !parts.contains(text)) {
+            parts.add(text);
+        }
     }
 
     private List<String> parseAiSearchTerms(String responseText) {
@@ -994,6 +1273,54 @@ public class EcoinventIntegrationService {
             text = text.substring(0, text.length() - 1);
         }
         return text.isEmpty() ? "http://127.0.0.1:11434" : text;
+    }
+
+    private synchronized void ensureEcoinventTablesReady() {
+        if (ecoinventTablesReady) {
+            return;
+        }
+        if (!tableExists("ecoinvent_master")) {
+            entityManager.createNativeQuery("""
+                    CREATE TABLE ecoinvent_master (
+                      id BIGINT NOT NULL,
+                      material_name VARCHAR(255) NOT NULL,
+                      activity_name VARCHAR(1000),
+                      activity_type VARCHAR(255),
+                      product_name VARCHAR(1000),
+                      geography VARCHAR(120),
+                      reference_product_unit VARCHAR(120),
+                      time_period VARCHAR(255),
+                      indicator_id BIGINT,
+                      indicator_name VARCHAR(1000),
+                      impact_score DOUBLE NOT NULL,
+                      unit VARCHAR(255) NOT NULL,
+                      score_unit VARCHAR(120),
+                      version VARCHAR(255),
+                      last_sync_date DATETIME,
+                      PRIMARY KEY (id)
+                    )
+                    """).executeUpdate();
+        }
+        if (!tableExists("emission_mapping_log")) {
+            entityManager.createNativeQuery("""
+                    CREATE TABLE emission_mapping_log (
+                      id BIGINT NOT NULL,
+                      raw_material_name VARCHAR(255) NOT NULL,
+                      mapped_material_id BIGINT,
+                      note VARCHAR(255),
+                      PRIMARY KEY (id)
+                    )
+                    """).executeUpdate();
+        }
+        ecoinventTablesReady = true;
+    }
+
+    private boolean tableExists(String tableName) {
+        Number tableCount = (Number) entityManager.createNativeQuery(
+                        "SELECT COUNT(*) FROM db_class WHERE LOWER(class_name) = LOWER(?)")
+                .setParameter(1, tableName)
+                .getSingleResult();
+        return tableCount != null && tableCount.longValue() > 0L;
     }
 
     private List<Map<String, Object>> fetchRemoteDatasetBatch(List<Long> datasetIds) {
@@ -1201,10 +1528,16 @@ public class EcoinventIntegrationService {
     }
 
     private Map<String, Object> toDatasetRow(EcoinventMaster master) {
-        return toDatasetRow(master, "");
+        return toDatasetRow(master, mappedKoreanNames(master.getId()));
     }
 
     private Map<String, Object> toDatasetRow(EcoinventMaster master, String koreanName) {
+        MaterialTranslationRow translation = materialTranslationByDatasetId(master.getId());
+        String englishExactName = exactEnglishName(master);
+        String displayEnglishName = translation == null
+                ? englishExactName
+                : firstNonBlank(translation.englishExactName(), translation.englishName(), englishExactName);
+        String displayKoreanName = displayableKoreanName(translation, koreanName);
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("datasetId", master.getId());
         row.put("materialName", master.getMaterialName());
@@ -1220,8 +1553,130 @@ public class EcoinventIntegrationService {
         row.put("unit", firstNonBlank(master.getScoreUnit(), master.getReferenceProductUnit(), master.getUnit()));
         row.put("scoreUnit", master.getScoreUnit());
         row.put("version", master.getVersion());
-        row.put("koreanName", koreanName);
+        row.put("koreanName", displayKoreanName);
+        row.put("englishName", displayEnglishName);
+        row.put("translationSource", translation == null ? "" : translation.sourceType());
+        row.put("translationStatus", translation == null ? "NOT_MAPPED" : translation.mappingStatus());
         return row;
+    }
+
+    private String displayableKoreanName(MaterialTranslationRow translation, String mappedKoreanName) {
+        if (translation != null
+                && !isPendingProductTranslation(translation)
+                && containsKorean(translation.koreanName())) {
+            return translation.koreanName();
+        }
+        if (containsKorean(mappedKoreanName)) {
+            return mappedKoreanName;
+        }
+        return "";
+    }
+
+    private boolean isPendingProductTranslation(MaterialTranslationRow translation) {
+        return translation != null && "PRODUCT_KO_PENDING_AI".equals(safe(translation.mappingStatus()));
+    }
+
+    private List<Map<String, Object>> mergeDatasetRows(List<Map<String, Object>> firstRows, List<Map<String, Object>> secondRows) {
+        Map<Long, Map<String, Object>> rowsByDatasetId = new LinkedHashMap<>();
+        for (Map<String, Object> row : firstRows) {
+            long datasetId = longValue(row.get("datasetId"), 0L);
+            if (datasetId > 0L) {
+                rowsByDatasetId.putIfAbsent(datasetId, row);
+            }
+        }
+        for (Map<String, Object> row : secondRows) {
+            long datasetId = longValue(row.get("datasetId"), 0L);
+            if (datasetId > 0L) {
+                rowsByDatasetId.putIfAbsent(datasetId, row);
+            }
+        }
+        return prioritizeMappedRows(new ArrayList<>(rowsByDatasetId.values()));
+    }
+
+    private List<Map<String, Object>> prioritizeMappedRows(List<Map<String, Object>> rows) {
+        return rows.stream()
+                .sorted((left, right) -> {
+                    int leftPriority = safeObject(left.get("koreanName")).isBlank() ? 1 : 0;
+                    int rightPriority = safeObject(right.get("koreanName")).isBlank() ? 1 : 0;
+                    int mappedCompare = Integer.compare(leftPriority, rightPriority);
+                    if (mappedCompare != 0) {
+                        return mappedCompare;
+                    }
+                    int periodCompare = compareLongDesc(periodStart(left.get("timePeriod")), periodStart(right.get("timePeriod")));
+                    if (periodCompare != 0) {
+                        return periodCompare;
+                    }
+                    int periodEndCompare = compareLongDesc(periodEnd(left.get("timePeriod")), periodEnd(right.get("timePeriod")));
+                    if (periodEndCompare != 0) {
+                        return periodEndCompare;
+                    }
+                    int activityLengthCompare = Integer.compare(
+                            safeObject(left.get("activityName")).length(),
+                            safeObject(right.get("activityName")).length());
+                    if (activityLengthCompare != 0) {
+                        return activityLengthCompare;
+                    }
+                    int geographyCompare = Integer.compare(geographyRank(left.get("geography")), geographyRank(right.get("geography")));
+                    if (geographyCompare != 0) {
+                        return geographyCompare;
+                    }
+                    return safeObject(left.get("activityName")).compareToIgnoreCase(safeObject(right.get("activityName")));
+                })
+                .toList();
+    }
+
+    private int compareLongDesc(long left, long right) {
+        return Long.compare(right, left);
+    }
+
+    private long periodStart(Object value) {
+        List<Long> years = periodYears(value);
+        return years.isEmpty() ? Long.MIN_VALUE : years.get(0);
+    }
+
+    private long periodEnd(Object value) {
+        List<Long> years = periodYears(value);
+        return years.isEmpty() ? Long.MIN_VALUE : years.get(years.size() - 1);
+    }
+
+    private List<Long> periodYears(Object value) {
+        String text = safeObject(value);
+        if (text.isBlank()) {
+            return List.of();
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(19|20)\\d{2}").matcher(text);
+        List<Long> years = new ArrayList<>();
+        while (matcher.find()) {
+            years.add(Long.parseLong(matcher.group()));
+        }
+        return years;
+    }
+
+    private int geographyRank(Object value) {
+        String geography = safeObject(value).toLowerCase();
+        if (geography.equals("kr") || geography.contains("(kr)")) return 0;
+        if (geography.equals("row") || geography.contains("(row)") || geography.equals("rest-of-world (row)")) return 1;
+        if (geography.equals("rer") || geography.contains("(rer)")) return 2;
+        if (geography.equals("glo") || geography.contains("(glo)") || geography.equals("global (glo)")) return 3;
+        if (geography.equals("eu") || geography.contains("(eu)")) return 4;
+        if (geography.equals("us") || geography.contains("(us)")) return 5;
+        if (geography.equals("jp") || geography.contains("(jp)")) return 6;
+        if (geography.equals("cn") || geography.contains("(cn)")) return 7;
+        if (geography.equals("in") || geography.contains("(in)")) return 8;
+        return 9;
+    }
+
+    private String mappedKoreanNames(Long datasetId) {
+        if (datasetId == null || datasetId <= 0L) {
+            return "";
+        }
+        List<String> aliases = mappingLogRepository.findTop5ByMappedMaterial_IdOrderByRawMaterialNameAsc(datasetId).stream()
+                .map(EmissionMappingLog::getRawMaterialName)
+                .map(this::safe)
+                .filter(alias -> !alias.isBlank())
+                .distinct()
+                .toList();
+        return String.join(", ", aliases);
     }
 
     private Map<String, Object> toDatasetRow(Map<?, ?> dataset, boolean batchDataset) {
@@ -1310,10 +1765,18 @@ public class EcoinventIntegrationService {
                                     int aliasCount,
                                     int insertedCount,
                                     int expectedInputCount,
-                                    int aiAssistedCount) {
+                                    int aiAssistedCount,
+                                    int rowTranslationCount) {
     }
 
     private record QueryParts(String jpql, Map<String, Object> parameters) {
+    }
+
+    private record MaterialTranslationRow(String koreanName,
+                                          String englishName,
+                                          String englishExactName,
+                                          String sourceType,
+                                          String mappingStatus) {
     }
 
     private record SearchRequest(String keyword,
@@ -1360,7 +1823,7 @@ public class EcoinventIntegrationService {
             Map.entry("version", "version")
     );
 
-    private QueryParts buildLocalSearchQuery(SearchRequest request, boolean countOnly) {
+    private QueryParts buildLocalSearchQuery(SearchRequest request, List<Long> matchedIds, boolean countOnly) {
         StringBuilder jpql = new StringBuilder(countOnly
                 ? "select count(e) from EcoinventMaster e where 1 = 1"
                 : "select e from EcoinventMaster e where 1 = 1");
@@ -1379,8 +1842,12 @@ public class EcoinventIntegrationService {
                         or lower(coalesce(e.unit, '')) like :keyword
                         or lower(coalesce(e.scoreUnit, '')) like :keyword
                         or lower(coalesce(e.version, '')) like :keyword
-                    )
                     """);
+            if (matchedIds != null && !matchedIds.isEmpty()) {
+                jpql.append(" or e.id in :matchedIds");
+                parameters.put("matchedIds", matchedIds);
+            }
+            jpql.append("\n                    )\n");
             parameters.put("keyword", "%" + request.keyword().toLowerCase() + "%");
         }
         int index = 0;
@@ -1408,53 +1875,41 @@ public class EcoinventIntegrationService {
             if (!request.keyword().isEmpty()) {
                 jpql.append("""
                          order by
-                            case
-                                when lower(coalesce(e.productName, '')) = :keywordExact then 0
-                                when lower(coalesce(e.productName, '')) like :keywordStarts then 1
-                                when lower(coalesce(e.productName, '')) like :keyword then 2
-                                when lower(coalesce(e.materialName, '')) like :keyword then 3
-                                when lower(coalesce(e.activityName, '')) like :keyword then 4
-                                else 5
-                            end asc,
                             coalesce(e.timePeriod, '') desc,
+                            length(coalesce(e.activityName, '')) asc,
                             case
                                 when lower(coalesce(e.geography, '')) = 'kr' or lower(coalesce(e.geography, '')) like '%(kr)' then 0
                                 when lower(coalesce(e.geography, '')) = 'row' or lower(coalesce(e.geography, '')) like '%(row)' or lower(coalesce(e.geography, '')) = 'rest-of-world (row)' then 1
                                 when lower(coalesce(e.geography, '')) = 'rer' or lower(coalesce(e.geography, '')) like '%(rer)' then 2
                                 when lower(coalesce(e.geography, '')) = 'glo' or lower(coalesce(e.geography, '')) like '%(glo)' or lower(coalesce(e.geography, '')) = 'global (glo)' then 3
                                 when lower(coalesce(e.geography, '')) = 'eu' or lower(coalesce(e.geography, '')) like '%(eu)' then 4
-                                when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 5
-                                when lower(coalesce(e.geography, '')) = 'ch' or lower(coalesce(e.geography, '')) like '%(ch)' then 6
-                                when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 7
-                                else 8
-                            end asc,
-                            case
-                                when lower(coalesce(e.activityType, '')) = 'market_activity' then 0
-                                when lower(coalesce(e.activityName, '')) like :marketActivity then 1
-                                else 2
+                                when lower(coalesce(e.geography, '')) = 'us' or lower(coalesce(e.geography, '')) like '%(us)' then 5
+                                when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 6
+                                when lower(coalesce(e.geography, '')) = 'cn' or lower(coalesce(e.geography, '')) like '%(cn)' then 7
+                                when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 8
+                                else 9
                             end asc,
                             e.productName asc,
                             e.activityName asc,
                             e.geography asc,
                             e.id asc
                         """);
-                parameters.put("keywordExact", request.keyword().toLowerCase());
-                parameters.put("keywordStarts", request.keyword().toLowerCase() + "%");
-                parameters.put("marketActivity", "market for %" + request.keyword().toLowerCase() + "%");
             } else {
                 jpql.append("""
                          order by
                             coalesce(e.timePeriod, '') desc,
+                            length(coalesce(e.activityName, '')) asc,
                             case
                                 when lower(coalesce(e.geography, '')) = 'kr' or lower(coalesce(e.geography, '')) like '%(kr)' then 0
                                 when lower(coalesce(e.geography, '')) = 'row' or lower(coalesce(e.geography, '')) like '%(row)' or lower(coalesce(e.geography, '')) = 'rest-of-world (row)' then 1
                                 when lower(coalesce(e.geography, '')) = 'rer' or lower(coalesce(e.geography, '')) like '%(rer)' then 2
                                 when lower(coalesce(e.geography, '')) = 'glo' or lower(coalesce(e.geography, '')) like '%(glo)' or lower(coalesce(e.geography, '')) = 'global (glo)' then 3
                                 when lower(coalesce(e.geography, '')) = 'eu' or lower(coalesce(e.geography, '')) like '%(eu)' then 4
-                                when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 5
-                                when lower(coalesce(e.geography, '')) = 'ch' or lower(coalesce(e.geography, '')) like '%(ch)' then 6
-                                when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 7
-                                else 8
+                                when lower(coalesce(e.geography, '')) = 'us' or lower(coalesce(e.geography, '')) like '%(us)' then 5
+                                when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 6
+                                when lower(coalesce(e.geography, '')) = 'cn' or lower(coalesce(e.geography, '')) like '%(cn)' then 7
+                                when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 8
+                                else 9
                             end asc,
                             e.materialName asc,
                             e.geography asc,
@@ -1478,10 +1933,11 @@ public class EcoinventIntegrationService {
                         when lower(coalesce(e.%1$s, '')) = 'rer' or lower(coalesce(e.%1$s, '')) like '%%(rer)' then 2
                         when lower(coalesce(e.%1$s, '')) = 'glo' or lower(coalesce(e.%1$s, '')) like '%%(glo)' or lower(coalesce(e.%1$s, '')) = 'global (glo)' then 3
                         when lower(coalesce(e.%1$s, '')) = 'eu' or lower(coalesce(e.%1$s, '')) like '%%(eu)' then 4
-                        when lower(coalesce(e.%1$s, '')) = 'jp' or lower(coalesce(e.%1$s, '')) like '%%(jp)' then 5
-                        when lower(coalesce(e.%1$s, '')) = 'ch' or lower(coalesce(e.%1$s, '')) like '%%(ch)' then 6
-                        when lower(coalesce(e.%1$s, '')) = 'in' or lower(coalesce(e.%1$s, '')) like '%%(in)' then 7
-                        else 8
+                        when lower(coalesce(e.%1$s, '')) = 'us' or lower(coalesce(e.%1$s, '')) like '%%(us)' then 5
+                        when lower(coalesce(e.%1$s, '')) = 'jp' or lower(coalesce(e.%1$s, '')) like '%%(jp)' then 6
+                        when lower(coalesce(e.%1$s, '')) = 'cn' or lower(coalesce(e.%1$s, '')) like '%%(cn)' then 7
+                        when lower(coalesce(e.%1$s, '')) = 'in' or lower(coalesce(e.%1$s, '')) like '%%(in)' then 8
+                        else 9
                     end asc,
                     e.%1$s asc
                 """.formatted(property)
@@ -1604,6 +2060,45 @@ public class EcoinventIntegrationService {
         } catch (JsonProcessingException ignored) {
             return safeObject(value);
         }
+    }
+
+    private List<Long> findEcoinventIdsByKoreanKeyword(String keyword) {
+        String normalized = safe(keyword);
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+        String likeKeyword = "%" + normalized.toLowerCase() + "%";
+        
+        List<?> translationIds = entityManager.createNativeQuery(
+                "SELECT ecoinvent_master_id FROM " + MATERIAL_TRANSLATION_TABLE 
+                + " WHERE ecoinvent_master_id IS NOT NULL AND ("
+                + " LOWER(raw_name) LIKE ? OR LOWER(korean_name) LIKE ?)")
+                .setParameter(1, likeKeyword)
+                .setParameter(2, likeKeyword)
+                .setMaxResults(1000)
+                .getResultList();
+                
+        List<?> mappingIds = entityManager.createNativeQuery(
+                "SELECT mapped_material_id FROM emission_mapping_log "
+                + " WHERE mapped_material_id IS NOT NULL AND LOWER(raw_material_name) LIKE ?")
+                .setParameter(1, likeKeyword)
+                .setMaxResults(1000)
+                .getResultList();
+                
+        Set<Long> ids = new LinkedHashSet<>();
+        for (Object idObj : translationIds) {
+            Long id = longValueOrNull(idObj);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        for (Object idObj : mappingIds) {
+            Long id = longValueOrNull(idObj);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        return new ArrayList<>(ids);
     }
 
     private String truncate(String value, int maxLength) {

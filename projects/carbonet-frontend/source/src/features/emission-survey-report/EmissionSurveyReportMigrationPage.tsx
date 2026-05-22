@@ -735,7 +735,7 @@ export function EmissionSurveyReportMigrationPage() {
                 </div>
                 <div className="mt-5 grid gap-3 rounded-[var(--kr-gov-radius)] border border-amber-100 bg-white/85 p-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Output Mass" : "총 출력 질량"}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Total Output Mass" : "총 산출물 질량"}</p>
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">
                       {formatNumber(normalization.outputQuantityTotal, 6)}
                       {outputMassUnit ? <span className="ml-1 text-sm text-slate-500">{outputMassUnit}</span> : null}
@@ -746,12 +746,12 @@ export function EmissionSurveyReportMigrationPage() {
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">{normalization.applied ? formatNumber(normalization.factor, 6) : "1"}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Original Total" : "정규화 전 총배출량"}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Actual Emission" : "실제 배출량"}</p>
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(originalTotalEmission, 6)}</p>
                     <p className="text-[10px] font-bold text-slate-400">kg CO2e</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Normalized Total" : "정규화 기준 총배출량"}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Unit Emission (per 1 tonne of output)" : "단위 배출량 환산(산출물 1톤 기준)"}</p>
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(report.summary.totalEmission, 6)}</p>
                     <p className="text-[10px] font-bold text-slate-400">kg CO2e</p>
                   </div>
@@ -828,8 +828,8 @@ export function EmissionSurveyReportMigrationPage() {
                   <thead className="bg-slate-50">
                     <tr className="border-b border-slate-200 text-left text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
                       <th className="px-4 py-3">{en ? "Section / Substance" : "섹션 / 물질명"}</th>
-                      <th className="px-4 py-3">{en ? "Quantity" : "양"}</th>
-                      <th className="px-4 py-3">{en ? "Unit" : "단위"}</th>
+                      <th className="px-4 py-3">{en ? "Volume" : "배출량"}</th>
+
                       <th className="px-4 py-3">{en ? "Emission Factor" : "배출계수"}</th>
                       <th className="px-4 py-3">{en ? "Total CO2e" : "산출량"}</th>
                     </tr>
@@ -1330,7 +1330,7 @@ export function EmissionSurveyReportPrintPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             <PrintMetric
               editable
-              label={en ? "Output Mass" : "총 출력 질량"}
+              label={en ? "Total Output Mass" : "총 산출물 질량"}
               note={outputMassUnit}
               onCommit={updateOutputQuantityTotal}
               value={normalization.outputQuantityTotal}
@@ -1338,7 +1338,7 @@ export function EmissionSurveyReportPrintPage() {
 	            <PrintMetric
 	              editable
 	              digits={2}
-	              label={en ? "Original Total" : "정규화 전 총배출량"}
+		            label={en ? "Actual Emission" : "실제 배출량"}
 	              note="kg CO2e"
 	              onCommit={updateOriginalTotalEmission}
 	              value={originalTotalEmission}
@@ -1346,7 +1346,7 @@ export function EmissionSurveyReportPrintPage() {
 	            <PrintMetric
 	              editable
 	              digits={2}
-	              label={en ? "Normalized Total" : "정규화 기준 총배출량"}
+		            label={en ? "Unit Emission (per 1 tonne of output)" : "단위 배출량 환산(산출물 1톤 기준)"}
 	              note="kg CO2e"
 	              onCommit={updateTotalEmission}
 	              value={totalEmission}
@@ -1457,7 +1457,7 @@ export function EmissionSurveyReportPrintPage() {
               <thead className="bg-slate-50">
                 <tr className="text-left font-black text-slate-500">
                   <th className="w-[40%] px-3 py-2">{en ? "Section / Substance" : "섹션 / 물질명"}</th>
-                  <th className="w-[30%] px-3 py-2">{en ? "Quantity" : "양"}</th>
+                  <th className="w-[30%] px-3 py-2">{en ? "Volume" : "배출량"}</th>
                   <th className="w-[15%] px-3 py-2">{en ? "Emission Factor" : "배출계수"}</th>
                   <th className="w-[15%] px-3 py-2">{en ? "Emissions" : "배출량"}</th>
                 </tr>
@@ -1750,8 +1750,8 @@ export function EmissionSurveyLcaSummaryPrintPage() {
                     <div>· Upstream : secondary data(LCI DB)</div>
                     <div> · Core : 현장데이터 및 LCI DB</div>
                     <div className="pl-4">
-                      - Time Related Scope :{" "}
-                      <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[150px] align-middle`} onCommit={setDataPeriod} value={dataPeriod} />
+                   - Time Related Scope :{" "}
+                    <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[150px] align-middle`} onCommit={setDataPeriod} value={dataPeriod} placeholder="0000.00.00 ~ 0000.00.00" />
                     </div>
                     <div className="pl-4">
                       - Region Scope :{" "}
@@ -1872,12 +1872,14 @@ function EditableText({
   value,
   onCommit,
   className = "",
-  multiline = false
+  multiline = false,
+  placeholder = ""
 }: {
   value: string;
   onCommit: (value: string) => void;
   className?: string;
   multiline?: boolean;
+  placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -1899,25 +1901,22 @@ function EditableText({
           rows={3}
           value={draft}
         />
-        <span className="print-input-text">{draft}</span>
       </>
     );
   }
   return (
-    <>
-      <input
-        className={`print-input-control w-full ${className}`.trim()}
-        onBlur={() => onCommit(draft)}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.currentTarget.blur();
-          }
-        }}
-        value={draft}
-      />
-      <span className="print-input-text">{draft}</span>
-    </>
+    <input
+      className={`print-input-control w-full ${className}`.trim()}
+      onBlur={() => onCommit(draft)}
+      onChange={(event) => setDraft(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.currentTarget.blur();
+        }
+      }}
+      placeholder={placeholder}
+      value={draft}
+    />
   );
 }
 
@@ -2120,7 +2119,7 @@ function PrintSectionRows({
           <td className="px-3 py-2">
             <div className="grid gap-1.5">
             <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1">
-              <span className="min-w-12 text-[10px] font-bold text-slate-500">{en ? "After" : "변경 후"}</span>
+              <span className="min-w-12 text-[10px] font-bold text-slate-500">{en ? "Normalized" : "단위 배출량"}</span>
               <span className="whitespace-nowrap font-mono">
 	              <EditableNumber
 	                className="inline-block w-20 bg-transparent text-right font-mono"
@@ -2131,7 +2130,7 @@ function PrintSectionRows({
               </span>
             </div>
             <div className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-slate-500">
-              <span className="min-w-12 text-[10px] font-bold">{en ? "Before" : "변경 전"}</span>
+              <span className="min-w-12 text-[10px] font-bold">{en ? "Original" : "실제 배출량"}</span>
               <span className="whitespace-nowrap font-mono text-[10px]">
 	                <EditableNumber
 	                  className="inline-block w-20 bg-transparent text-right font-mono text-[10px] text-slate-500"

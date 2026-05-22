@@ -6,6 +6,7 @@ const observabilityLoader = () => import("../../features/observability/Observabi
 const helpManagementLoader = () => import("../../features/help-management/HelpManagementMigrationPage");
 const codexRequestLoader = () => import("../../features/codex-provision/CodexProvisionMigrationPage");
 const srWorkbenchLoader = () => import("../../features/sr-workbench/SrWorkbenchMigrationPage");
+const builderGovernanceLoader = () => import("../../features/builder-governance/BuilderGovernancePages");
 
 const PLATFORM_FOUNDATION_ROUTE_DEFINITIONS = [
   { id: "platform-studio", label: "플랫폼 스튜디오", group: "platform", koPath: "/admin/system/platform-studio", enPath: "/en/admin/system/platform-studio" },
@@ -17,6 +18,9 @@ const PLATFORM_FOUNDATION_ROUTE_DEFINITIONS = [
   { id: "db-table-management", label: "DB 테이블 관리", group: "platform", koPath: "/admin/system/db-table-management", enPath: "/en/admin/system/db-table-management" },
   { id: "column-management-console", label: "컬럼 관리", group: "platform", koPath: "/admin/system/column-management-console", enPath: "/en/admin/system/column-management-console" },
   { id: "automation-studio", label: "자동화 스튜디오", group: "platform", koPath: "/admin/system/automation-studio", enPath: "/en/admin/system/automation-studio" },
+  { id: "development-pattern-management", label: "개발 패턴 관리", group: "platform", koPath: "/admin/system/development-pattern-management", enPath: "/en/admin/system/development-pattern-management" },
+  { id: "css-management", label: "CSS 관리", group: "platform", koPath: "/admin/system/css-management", enPath: "/en/admin/system/css-management" },
+  { id: "ai-developer-team", label: "AI 개발팀", group: "platform", koPath: "/admin/system/ai-developer-team", enPath: "/en/admin/system/ai-developer-team" },
   { id: "codex-request", label: "Codex Execution Console", group: "platform", koPath: "/admin/system/codex-request", enPath: "/en/admin/system/codex-request" },
   { id: "unified-log", label: "통합 로그", group: "platform", koPath: "/admin/system/unified_log", enPath: "/en/admin/system/unified_log" },
   { id: "observability", label: "추적 조회", group: "platform", koPath: "/admin/system/observability", enPath: "/en/admin/system/observability" },
@@ -34,6 +38,9 @@ const PLATFORM_FOUNDATION_PAGE_UNITS = [
   { id: "db-table-management", exportName: "PlatformStudioMigrationPage", loader: platformStudioLoader },
   { id: "column-management-console", exportName: "PlatformStudioMigrationPage", loader: platformStudioLoader },
   { id: "automation-studio", exportName: "PlatformStudioMigrationPage", loader: platformStudioLoader },
+  { id: "development-pattern-management", exportName: "DevelopmentPatternManagementPage", loader: builderGovernanceLoader },
+  { id: "css-management", exportName: "CssManagementMigrationPage", loader: builderGovernanceLoader },
+  { id: "ai-developer-team", exportName: "AiDeveloperTeamManagementPage", loader: builderGovernanceLoader },
   { id: "codex-request", exportName: "CodexProvisionMigrationPage", loader: codexRequestLoader },
   { id: "unified-log", exportName: "ObservabilityMigrationPage", loader: observabilityLoader },
   { id: "observability", exportName: "ObservabilityMigrationPage", loader: observabilityLoader },

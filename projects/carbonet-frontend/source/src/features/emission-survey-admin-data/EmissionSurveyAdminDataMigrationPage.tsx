@@ -342,7 +342,7 @@ const GWP_ALLOWED_VALUE_KEYS = [
 const VISIBLE_COLUMN_LABELS: Record<(typeof VISIBLE_COLUMN_KEYS)[number], string> = {
   group: "구분",
   materialName: "물질명",
-  annualUnit: "단위(연간)",
+  annualUnit: "단위",
   remark: "비고"
 };
 
@@ -536,14 +536,14 @@ function renderSectionTable(
   const comparisonColSpan = 1 + visibleColumns.length + (showGwpMapping ? 1 : 0) + (editable ? 1 : 0);
   return (
     <article className="gov-card overflow-hidden" key={key}>
-      <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+      <div className="border-b border-[var(--kr-gov-border-light)] px-5 py-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{stringOf(section as Record<string, unknown>, "majorCode") || "-"}</p>
             <h3 className="mt-1 text-lg font-bold text-[var(--kr-gov-text-primary)]">{stringOf(section as Record<string, unknown>, "sectionLabel") || stringOf(section as Record<string, unknown>, "sectionCode") || "-"}</h3>
             <p className="mt-1 text-sm text-gray-500">행 수 {rows.length - deletedRows} / 삭제예정 {deletedRows} / 컬럼 {columns.length} / 저장 {stringOf(section as Record<string, unknown>, "savedAt") || "-"}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {editable ? (
               <MemberButton onClick={() => options?.onAddRow?.(options.sectionIndex || 0)} size="sm" type="button" variant="secondary">
                 행 추가
@@ -554,7 +554,7 @@ function renderSectionTable(
         </div>
       </div>
       {metadata.length ? (
-        <div className="flex flex-wrap gap-2 border-b border-[var(--kr-gov-border-light)] px-6 py-4">
+        <div className="flex flex-wrap gap-2 border-b border-[var(--kr-gov-border-light)] px-5 py-3">
           {metadata.map((item, index) => (
             <div className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs text-sky-800" key={`${key}-metadata-${index}`}>
               <span className="font-bold">{stringOf(item, "label") || "-"}</span>
@@ -567,12 +567,12 @@ function renderSectionTable(
         <AdminTable>
           <thead>
             <tr className="bg-gray-50 border-y border-[var(--kr-gov-border-light)] text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">
-              <th className="px-6 py-4 text-center w-16">번호</th>
+              <th className="w-16 px-4 py-3 text-center">번호</th>
               {visibleColumns.map((column) => (
-                <th className="px-6 py-4" key={column.key}>{column.label}</th>
+                <th className="min-w-[160px] px-4 py-3" key={column.key}>{column.label}</th>
               ))}
-              {showGwpMapping ? <th className="px-6 py-4">배출계수 매핑</th> : null}
-              {editable ? <th className="px-6 py-4 text-center w-28">상태</th> : null}
+              {showGwpMapping ? <th className="min-w-[240px] px-4 py-3">배출계수 매핑</th> : null}
+              {editable ? <th className="w-32 px-4 py-3 text-center">상태</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -597,9 +597,9 @@ function renderSectionTable(
               return (
                 <Fragment key={`${key}-${index}`}>
                   <tr className={`hover:bg-gray-50/50 transition-colors ${isDeletedRow ? "bg-rose-50/60 opacity-75" : selectedSource === "DB" ? "bg-sky-50/60" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-emerald-50/40" : ""}`} key={`${key}-${index}`}>
-                    <td className="px-6 py-4 text-center text-gray-500">{index + 1}</td>
+                    <td className="px-4 py-3 text-center text-gray-500">{index + 1}</td>
                     {visibleColumns.map((column) => (
-                      <td className="px-6 py-4 align-top" key={`${key}-${index}-${column.key}`}>
+                      <td className="px-4 py-3 align-top" key={`${key}-${index}-${column.key}`}>
                         {editable ? (
                           column.key === "annualUnit" ? (
                             <AdminSelect
@@ -658,7 +658,7 @@ function renderSectionTable(
                       </td>
                     ))}
                     {showGwpMapping ? (
-                      <td className="min-w-[240px] px-6 py-4 align-top">
+                      <td className="min-w-[240px] px-4 py-3 align-top">
                         <div className="space-y-2">
                           {summary ? (
                             <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-2 text-[11px] text-emerald-800">
@@ -683,7 +683,7 @@ function renderSectionTable(
                       </td>
                     ) : null}
                     {editable ? (
-                      <td className="px-6 py-4 text-center align-top">
+                      <td className="px-4 py-3 text-center align-top">
                         <div className="space-y-2">
                           <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full ${isDeletedRow ? "bg-rose-100 text-rose-800" : isNewRow ? "bg-emerald-100 text-emerald-700" : isIncomplete ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
                             {isDeletedRow ? "삭제예정" : isNewRow ? "신규" : isIncomplete ? "보정 필요" : "완료"}
@@ -709,15 +709,15 @@ function renderSectionTable(
                   </tr>
                   {editable && matchedExistingRow && !isDeletedRow ? (
                     <tr className="bg-slate-50/80">
-                      <td className="px-6 py-4" colSpan={comparisonColSpan}>
-                        <div className="grid gap-3 xl:grid-cols-[1fr,1fr,240px]">
+                      <td className="px-4 py-3" colSpan={comparisonColSpan}>
+                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
                           <div className="rounded border border-violet-200 bg-white px-4 py-3">
                             <p className="text-xs font-bold uppercase tracking-wide text-violet-700">현재 업로드 값</p>
                             <div className="mt-2 grid gap-1 text-sm text-slate-700">
                               {uploadValueSummary.map((item) => (
-                                <div className="flex justify-between gap-3" key={`${key}-${index}-upload-${item.label}`}>
+                                <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3" key={`${key}-${index}-upload-${item.label}`}>
                                   <span className="font-semibold text-slate-500">{item.label}</span>
-                                  <span className="text-right">{item.value}</span>
+                                  <span className="break-words text-right">{item.value}</span>
                                 </div>
                               ))}
                             </div>
@@ -726,9 +726,9 @@ function renderSectionTable(
                             <p className="text-xs font-bold uppercase tracking-wide text-sky-700">DB 저장 값</p>
                             <div className="mt-2 grid gap-1 text-sm text-slate-700">
                               {existingValueSummary.map((item) => (
-                                <div className="flex justify-between gap-3" key={`${key}-${index}-existing-${item.label}`}>
+                                <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3" key={`${key}-${index}-existing-${item.label}`}>
                                   <span className="font-semibold text-slate-500">{item.label}</span>
-                                  <span className="text-right">{item.value}</span>
+                                  <span className="break-words text-right">{item.value}</span>
                                 </div>
                               ))}
                             </div>
@@ -1193,11 +1193,11 @@ export function EmissionSurveyAdminDataMigrationPage() {
         const values = ((rows[index].values || {}) as Record<string, string>);
         const unitValue = String(values.annualUnit || "");
         if (!normalizedValue(unitValue)) {
-          setErrorMessage(`${sectionLabel} ${index + 1}행의 단위(연간)를 선택해야 저장할 수 있습니다.`);
+          setErrorMessage(`${sectionLabel} ${index + 1}행의 단위를 선택해야 저장할 수 있습니다.`);
           return;
         }
         if (!isMappedUnitValue(unitValue)) {
-          setErrorMessage(`${sectionLabel} ${index + 1}행의 단위(연간) 값 "${normalizeUnitValue(unitValue)}"은(는) 표준 단위와 매핑되지 않아 저장할 수 없습니다.`);
+          setErrorMessage(`${sectionLabel} ${index + 1}행의 단위 값 "${normalizeUnitValue(unitValue)}"은(는) 표준 단위와 매핑되지 않아 저장할 수 없습니다.`);
           return;
         }
       }
@@ -1352,56 +1352,58 @@ export function EmissionSurveyAdminDataMigrationPage() {
           title={en ? "DB Workbook Upload" : "DB 양식 업로드"}
         >
           <input accept=".xlsx" className="hidden" onChange={handleUploadChange} ref={fileInputRef} type="file" />
-          <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <MemberButton onClick={() => fileInputRef.current?.click()} type="button" variant="primary">
-                {uploading ? (en ? "Uploading..." : "업로드 중...") : (en ? "DB Workbook Upload" : "DB 양식 업로드")}
-              </MemberButton>
-              <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800">
+                  {uploadedFile ? uploadedFile.name : (en ? "No file selected" : "선택된 파일 없음")}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {uploadedFile
+                    ? (en ? "Preview is ready. Review rows before applying to DB." : "미리보기가 준비되었습니다. 행을 확인한 뒤 DB에 반영하세요.")
+                    : (en ? "Select an Excel workbook to preview rows." : "엑셀 파일을 선택하면 행 미리보기가 표시됩니다.")}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                <MemberButton onClick={() => fileInputRef.current?.click()} type="button" variant="primary">
+                  {uploading ? (en ? "Uploading..." : "업로드 중...") : (en ? "Upload Workbook" : "엑셀 업로드")}
+                </MemberButton>
                 <MemberButton onClick={() => { window.location.href = getEmissionSurveyAdminBlankTemplateDownloadUrl(); }} title={en ? "Download the DB workbook" : "DB 업로드 양식을 다운로드합니다."} type="button" variant="secondary">
-                  {en ? "DB Workbook" : "DB 업로드 양식"}
+                  {en ? "Download Template" : "양식 다운로드"}
                 </MemberButton>
                 <MemberButton disabled={!uploadedFile || applying || editablePreviewSections.length === 0} onClick={() => void handleApplyUploadedFile()} type="button" variant="secondary">
                   {applying ? (en ? "Applying To DB..." : "DB 반영 중...") : (en ? "Apply To DB" : "DB반영")}
                 </MemberButton>
               </div>
             </div>
-            <span className="text-xs text-slate-500">
-              {uploadedFile
-                ? `업로드 파일: ${uploadedFile.name}`
-                : "DB 업로드 양식은 업로드 직후 Ecoinvent 자동 매핑을 먼저 시도하고, 분홍색 행만 팝업에서 보정한 뒤 반영 버튼을 눌렀을 때만 기존 DB를 덮어씁니다."}
-            </span>
           </div>
         </CollectionResultPanel>
 
         <section className="mt-4 grid grid-cols-1 gap-4">
           {previewProductTitle ? (
-            <div className="rounded-[var(--kr-gov-radius)] border border-emerald-300 bg-gradient-to-r from-emerald-50 via-white to-emerald-100 px-5 py-4 shadow-sm">
-              <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                {en ? "Selected Product" : "제품명 기준"}
-              </div>
-              <div className="mt-2 text-2xl font-black tracking-tight text-emerald-950">
-                {previewProductTitle}
-              </div>
-              <div className="mt-2 text-sm text-emerald-800">
-                {en
-                  ? "Existing DB rows are compared under this uploaded product name."
-                  : "이 제품명 기준으로 기존 DB 데이터를 비교합니다."}
+            <div className="rounded-[var(--kr-gov-radius)] border border-emerald-200 bg-emerald-50 px-5 py-4">
+              <div className="grid gap-1 lg:grid-cols-[120px_minmax(0,1fr)] lg:items-center">
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+                  {en ? "Product" : "제품명"}
+                </div>
+                <div className="break-words text-xl font-black text-emerald-950">
+                  {previewProductTitle}
+                </div>
               </div>
             </div>
           ) : (
-            <div className="rounded-[var(--kr-gov-radius)] border border-emerald-200 bg-emerald-50/80 px-4 py-3">
+            <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 px-4 py-3">
               <div className="text-sm font-semibold text-emerald-900">
                 {en ? "Product-name comparison" : "제품명 기준 기존 DB 비교"}
               </div>
-              <div className="mt-1 text-sm text-emerald-800">
+              <div className="mt-1 text-sm text-slate-600">
                 {previewPayload
                   ? (en
-                    ? "Existing DB rows are grouped and compared under each uploaded product name so you can choose whether to keep DB values or use uploaded values."
-                    : "업로드한 제품명 기준으로 기존 DB 데이터를 각 행 아래에 묶어서 비교하며, DB 유지 또는 업로드 사용을 선택할 수 있습니다.")
+                    ? "Existing DB rows are grouped by uploaded product name."
+                    : "업로드한 제품명 기준으로 기존 DB 데이터를 비교합니다.")
                   : (en
-                    ? "After upload, existing DB rows will be loaded and compared by parsed product name."
-                    : "업로드가 완료되면 파싱한 제품명 기준으로 기존 DB 데이터를 불러와 비교합니다.")}
+                    ? "Upload a workbook to load the comparison view."
+                    : "엑셀 업로드 후 비교 화면이 표시됩니다.")}
               </div>
             </div>
           )}
@@ -1414,7 +1416,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
           >
             {!previewPayload ? (
               <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-                아직 업로드한 파일이 없습니다. 업로드가 끝나면 `OUTPUT_PRODUCTS`에서 파싱한 제품명 기준으로 기존 DB 값을 불러와 각 행 아래에서 비교하고, DB 유지/업로드 사용을 선택할 수 있습니다.
+                아직 업로드한 파일이 없습니다.
               </div>
             ) : editablePreviewSections.length === 0 ? (
               <div className="px-3 py-6 text-sm text-slate-500">파일에서 읽은 섹션이 없습니다.</div>

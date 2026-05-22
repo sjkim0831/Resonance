@@ -1,0 +1,1165 @@
+{
+  "version": "2026-05-18",
+  "projectId": "carbonet",
+  "patterns": [
+    {
+      "patternId": "BUILD_RESTART_18000",
+      "categoryCode": "DEPLOY",
+      "patternName": "Local build restart and freshness verification",
+      "riskLevel": "MEDIUM",
+      "skillName": "carbonet-fast-bootstrap-ops",
+      "defaultActionId": "build-restart-18000",
+      "triggerKeywords": [
+        "18000",
+        "구동",
+        "재시작",
+        "빌드",
+        "로컬",
+        "freshness",
+        "runtime"
+      ],
+      "routeHints": [
+        ":18000"
+      ],
+      "moduleHints": [
+        "frontend",
+        "apps/carbonet-app",
+        "ops/scripts"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "build-release",
+          "ops-control"
+        ],
+        "gateTeams": [
+          "build-release"
+        ],
+        "supportTeams": [
+          "web-pod-ops",
+          "qa-audit"
+        ],
+        "selectionReason": "로컬 런타임 freshness와 재시작 증거가 핵심이다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "요청 원문과 대상 런타임을 기록한다.",
+          "raw_request, trace_id"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "PRECHECK",
+          "git 상태와 기존 18000 프로세스/포트 상태를 확인한다.",
+          "git_status, pid_or_port_status"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "IMPLEMENT",
+          "필요한 소스 변경 또는 설정 변경을 적용한다.",
+          "changed_files, patch_summary"
+        ],
+        [
+          "VERIFY",
+          "ops/scripts/build-restart-18000.sh 후 freshness verifier를 실행한다.",
+          "build_log, runtime_jar_match, health_or_route_probe"
+        ],
+        [
+          "REFLECT",
+          "재사용 가능한 실패/성공 패턴을 Hermes memory에 남긴다.",
+          "result_summary, reusable_pattern"
+        ]
+      ],
+      "checks": [
+        [
+          "BUILD",
+          "bash ops/scripts/build-restart-18000.sh",
+          "exit_code=0"
+        ],
+        [
+          "RUNTIME",
+          "VERIFY_WAIT_SECONDS=20 bash ops/scripts/codex-verify-18000-freshness.sh",
+          "pid_alive, port_listening, jar_match"
+        ]
+      ],
+      "artifacts": [
+        [
+          "frontend",
+          "frontend/src/**",
+          "FRONTEND"
+        ],
+        [
+          "backend",
+          "apps/carbonet-app/**",
+          "BACKEND"
+        ],
+        [
+          "script",
+          "ops/scripts/**",
+          "SCRIPT"
+        ]
+      ]
+    },
+    {
+      "patternId": "BUILD_REDEPLOY_80",
+      "categoryCode": "DEPLOY",
+      "patternName": "Production-like port 80 build and redeploy",
+      "riskLevel": "HIGH",
+      "skillName": "carbonet-runtime-topology-ops",
+      "defaultActionId": "deploy-80",
+      "triggerKeywords": [
+        "80포트",
+        "재배포",
+        "배포",
+        "프로덕션",
+        "구동해줘",
+        "빌드 재배포"
+      ],
+      "routeHints": [
+        "http://172.16.1.232",
+        ":80"
+      ],
+      "moduleHints": [
+        "frontend",
+        "modules/resonance-common",
+        "ops/scripts"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "build-release",
+          "web-pod-ops",
+          "ops-control"
+        ],
+        "gateTeams": [
+          "build-release",
+          "web-pod-ops"
+        ],
+        "supportTeams": [
+          "qa-audit",
+          "codex55-execution-intelligence"
+        ],
+        "selectionReason": "80포트 배포는 빌드, 파드/트래픽, 런타임 확인이 함께 필요하다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "대상 서버, 포트, 배포 범위를 기록한다.",
+          "raw_request, deploy_target"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "PRECHECK",
+          "원격 git 상태, 빌드 산출물, 현재 서비스 상태를 확인한다.",
+          "git_status, service_status"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "IMPLEMENT",
+          "프론트 빌드와 백엔드 패키징 후 지정 배포 스크립트를 실행한다.",
+          "build_log, deploy_log"
+        ],
+        [
+          "VERIFY",
+          "80포트 URL과 핵심 관리자 라우트가 최신 산출물을 반환하는지 확인한다.",
+          "curl_status, route_probe"
+        ],
+        [
+          "REFLECT",
+          "배포 성공/실패 원인과 재실행 조건을 기록한다.",
+          "deployment_summary"
+        ]
+      ],
+      "checks": [
+        [
+          "BUILD",
+          "cd frontend && npm run build",
+          "exit_code=0"
+        ],
+        [
+          "BUILD",
+          "mvn -q -DskipTests package",
+          "exit_code=0"
+        ],
+        [
+          "ROUTE",
+          "curl -sI http://127.0.0.1/ | head",
+          "HTTP 2xx/3xx"
+        ]
+      ],
+      "artifacts": [
+        [
+          "frontend",
+          "frontend/dist/**",
+          "FRONTEND_BUILD"
+        ],
+        [
+          "backend",
+          "modules/**/target/**",
+          "BACKEND_BUILD"
+        ],
+        [
+          "script",
+          "ops/scripts/**",
+          "DEPLOY_SCRIPT"
+        ]
+      ]
+    },
+    {
+      "patternId": "ADMIN_REACT_PAGE_CHANGE",
+      "categoryCode": "FRONTEND",
+      "patternName": "Admin React page behavior or label change",
+      "riskLevel": "MEDIUM",
+      "skillName": "admin-screen-unifier",
+      "defaultActionId": "frontend-build",
+      "triggerKeywords": [
+        "관리자 화면",
+        "컬럼",
+        "라벨",
+        "정렬",
+        "드롭다운",
+        "팝업",
+        "화면",
+        "React"
+      ],
+      "routeHints": [
+        "/admin/"
+      ],
+      "moduleHints": [
+        "frontend/src/features",
+        "frontend/src/app/routes",
+        "frontend/src/platform/screen-registry"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "planning",
+          "frontend-dev",
+          "design-layout"
+        ],
+        "gateTeams": [
+          "qa-audit"
+        ],
+        "supportTeams": [
+          "uiux",
+          "validation",
+          "krds-theme"
+        ],
+        "selectionReason": "관리자 화면 변경은 요구사항 분해, React 구현, 레이아웃 일관성 확인이 먼저다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "대상 관리자 라우트와 화면 요구사항을 기록한다.",
+          "route, requested_change"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "SCOPE_ROUTE",
+          "라우트, manifest, feature 컴포넌트, API 호출 지점을 찾는다.",
+          "route_map, file_scope"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "IMPLEMENT",
+          "기존 admin UI 패턴에 맞춰 화면 변경을 적용한다.",
+          "changed_files"
+        ],
+        [
+          "VERIFY",
+          "frontend build와 변경 라우트 응답을 확인한다.",
+          "npm_build, route_probe"
+        ],
+        [
+          "REFLECT",
+          "화면 패턴 재사용 여부와 후속 공통화 필요성을 기록한다.",
+          "pattern_summary"
+        ]
+      ],
+      "checks": [
+        [
+          "BUILD",
+          "cd frontend && npm run build",
+          "exit_code=0"
+        ],
+        [
+          "DIFF",
+          "git diff --check",
+          "no_whitespace_errors"
+        ]
+      ],
+      "artifacts": [
+        [
+          "frontend",
+          "frontend/src/features/**",
+          "FRONTEND"
+        ],
+        [
+          "frontend",
+          "frontend/src/app/**",
+          "ROUTE_MANIFEST"
+        ],
+        [
+          "frontend",
+          "frontend/src/platform/**",
+          "SCREEN_REGISTRY"
+        ]
+      ]
+    },
+    {
+      "patternId": "BACKEND_CONTROLLER_SERVICE_API_CHANGE",
+      "categoryCode": "BACKEND",
+      "patternName": "Spring controller service repository API change",
+      "riskLevel": "MEDIUM",
+      "skillName": "carbonet-feature-builder",
+      "defaultActionId": "backend-package",
+      "triggerKeywords": [
+        "API",
+        "컨트롤러",
+        "서비스",
+        "백엔드",
+        "엔드포인트",
+        "조회",
+        "저장"
+      ],
+      "routeHints": [
+        "/api/",
+        "/admin/api/"
+      ],
+      "moduleHints": [
+        "modules/carbonet-common-core/src/main/java",
+        "src/main/java"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "planning",
+          "backend-dev",
+          "java-maven-egov"
+        ],
+        "gateTeams": [
+          "validation",
+          "qa-audit"
+        ],
+        "supportTeams": [
+          "query-dev",
+          "build-release"
+        ],
+        "selectionReason": "API 변경은 계약, Spring/eGovFrame 체인, 검증 게이트가 필요하다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "API 목적, 요청/응답, 권한 범위를 기록한다.",
+          "api_contract"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "SCOPE_ROUTE",
+          "controller, service, repository, DTO 경계를 찾는다.",
+          "backend_chain"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "IMPLEMENT",
+          "기존 패키지와 예외/응답 패턴에 맞춰 구현한다.",
+          "changed_files"
+        ],
+        [
+          "VERIFY",
+          "Maven package와 필요 시 curl/API probe를 수행한다.",
+          "maven_package, api_probe"
+        ],
+        [
+          "REFLECT",
+          "백엔드 체인 패턴과 재사용 지점을 기록한다.",
+          "backend_pattern_summary"
+        ]
+      ],
+      "checks": [
+        [
+          "BUILD",
+          "mvn -q -DskipTests package",
+          "exit_code=0"
+        ],
+        [
+          "DIFF",
+          "git diff --check",
+          "no_whitespace_errors"
+        ]
+      ],
+      "artifacts": [
+        [
+          "backend",
+          "modules/carbonet-common-core/src/main/java/**",
+          "BACKEND"
+        ],
+        [
+          "backend",
+          "src/main/java/**",
+          "APP_BACKEND"
+        ]
+      ]
+    },
+    {
+      "patternId": "DB_SCHEMA_PATCH_CHANGE",
+      "categoryCode": "DB",
+      "patternName": "Governed DB schema or seed patch",
+      "riskLevel": "HIGH",
+      "skillName": "carbonet-audit-trace-architecture",
+      "defaultActionId": "db-schema-patch",
+      "triggerKeywords": [
+        "DB",
+        "디비",
+        "테이블",
+        "컬럼",
+        "스키마",
+        "시드",
+        "마이그레이션",
+        "SQL"
+      ],
+      "routeHints": [],
+      "moduleHints": [
+        "ops/db/carbonet",
+        "docs/sql"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "db-cubrid",
+          "query-dev"
+        ],
+        "gateTeams": [
+          "db-cubrid",
+          "qa-audit"
+        ],
+        "supportTeams": [
+          "backend-dev",
+          "build-release"
+        ],
+        "selectionReason": "DB 변경은 CUBRID 호환성, migration guard, SQL 안전성이 우선이다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "DB 변경 목적과 대상 테이블을 기록한다.",
+          "db_change_request"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "PRECHECK",
+          "기존 스키마와 유사 migration을 확인한다.",
+          "schema_probe, existing_migration"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "IMPLEMENT",
+          "CUBRID 호환 SQL과 idempotent seed를 작성한다.",
+          "sql_file"
+        ],
+        [
+          "VERIFY",
+          "SQL 문법 리뷰와 관련 backend build를 수행한다.",
+          "sql_review, maven_package"
+        ],
+        [
+          "REFLECT",
+          "DB 변경 패턴, rollback 고려사항, 운영 적용 순서를 기록한다.",
+          "db_pattern_summary"
+        ]
+      ],
+      "checks": [
+        [
+          "SQL",
+          "rg -n \"CREATE TABLE|INSERT INTO\" ops/db/carbonet docs/sql",
+          "expected_objects_present"
+        ],
+        [
+          "BUILD",
+          "mvn -q -DskipTests package",
+          "exit_code=0"
+        ]
+      ],
+      "artifacts": [
+        [
+          "sql",
+          "ops/db/carbonet/*.sql",
+          "DB_MIGRATION"
+        ],
+        [
+          "sql",
+          "docs/sql/*.sql",
+          "DB_DOC"
+        ]
+      ]
+    },
+    {
+      "patternId": "FULLSTACK_ADMIN_DB_API_CHANGE",
+      "categoryCode": "FULLSTACK",
+      "patternName": "Admin screen with backend API and DB change",
+      "riskLevel": "HIGH",
+      "skillName": "carbonet-feature-builder",
+      "defaultActionId": "fullstack-admin-db-api",
+      "triggerKeywords": [
+        "화면 API DB",
+        "API랑 DB",
+        "화면이랑 DB",
+        "프론트 백엔드 DB",
+        "풀스택",
+        "관리자 화면 API",
+        "DB 컬럼"
+      ],
+      "routeHints": [
+        "/admin/",
+        "/api/"
+      ],
+      "moduleHints": [
+        "frontend/src/features",
+        "modules/carbonet-common-core/src/main/java",
+        "ops/db/carbonet"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "planning",
+          "frontend-dev",
+          "backend-dev",
+          "query-dev",
+          "db-cubrid"
+        ],
+        "gateTeams": [
+          "validation",
+          "qa-audit",
+          "build-release"
+        ],
+        "supportTeams": [
+          "design-layout",
+          "java-maven-egov",
+          "codex55-execution-intelligence"
+        ],
+        "selectionReason": "풀스택 작업은 화면, API, DB 변경을 순서대로 선별하고 검증해야 한다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "대상 관리자 화면, API 계약, DB 변경 범위를 함께 기록한다.",
+          "route, api_contract, db_change_request"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "SCOPE_ROUTE",
+          "프론트 컴포넌트, controller/service/repository, SQL migration 경계를 한 번에 매핑한다.",
+          "frontend_scope, backend_chain, sql_scope"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "PRECHECK",
+          "기존 화면/백엔드/DB 패턴과 유사 구현을 확인한다.",
+          "existing_pattern, schema_probe"
+        ],
+        [
+          "IMPLEMENT",
+          "DB migration, backend API, frontend binding 순서로 작게 구현한다.",
+          "sql_file, backend_files, frontend_files"
+        ],
+        [
+          "VERIFY",
+          "frontend build, Maven package, route/API probe를 수행한다.",
+          "npm_build, maven_package, route_or_api_probe"
+        ],
+        [
+          "REFLECT",
+          "풀스택 체인과 다음 재사용 가능한 패턴을 기록한다.",
+          "fullstack_pattern_summary"
+        ]
+      ],
+      "checks": [
+        [
+          "BUILD",
+          "cd frontend && npm run build",
+          "exit_code=0"
+        ],
+        [
+          "BUILD",
+          "mvn -q -DskipTests package",
+          "exit_code=0"
+        ],
+        [
+          "DIFF",
+          "git diff --check",
+          "no_whitespace_errors"
+        ]
+      ],
+      "artifacts": [
+        [
+          "frontend",
+          "frontend/src/features/**",
+          "FRONTEND"
+        ],
+        [
+          "backend",
+          "modules/carbonet-common-core/src/main/java/**",
+          "BACKEND"
+        ],
+        [
+          "sql",
+          "ops/db/carbonet/*.sql",
+          "DB_MIGRATION"
+        ]
+      ]
+    },
+    {
+      "patternId": "HERMES_PATTERN_REGISTRY_CHANGE",
+      "categoryCode": "AI",
+      "patternName": "Hermes DB-backed development pattern registry change",
+      "riskLevel": "MEDIUM",
+      "skillName": "resonance-ai-orchestrator",
+      "defaultActionId": "hermes-record-request",
+      "triggerKeywords": [
+        "에르메스",
+        "Hermes",
+        "패턴",
+        "작업 분류",
+        "에이전트",
+        "가이드",
+        "40B",
+        "모델",
+        "라우팅",
+        "컨텍스트",
+        "Skills",
+        "Docs",
+        "shadow",
+        "7B",
+        "14B",
+        "Gemma",
+        "Qwen",
+        "Ollama",
+        "번역"
+      ],
+      "routeHints": [
+        "/admin/system/development-pattern-management"
+      ],
+      "moduleHints": [
+        "ops/hermes",
+        "ops/scripts/hermes-record-request.sh",
+        "ops/scripts/resonance-dev-orchestrate-40b.sh",
+        "ops/scripts/ecoinvent-product-ko-translation-worker.py",
+        "ops/hermes/model-routing-policy.seed.json",
+        "ops/db/carbonet"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "codex55-execution-intelligence",
+          "planning"
+        ],
+        "gateTeams": [
+          "qa-audit",
+          "build-release"
+        ],
+        "supportTeams": [
+          "directory-refactor",
+          "log-schedule"
+        ],
+        "selectionReason": "Hermes 보정 작업은 요청 해석, 모델 lane, context pack, 실행 단계 분해, 증거 기록 정책을 함께 바꾼다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "자연어 요청과 기대되는 에이전트 보정 범위를 기록한다.",
+          "raw_request"
+        ],
+        [
+          "SIMILAR_WORK_RETRIEVAL",
+          "유사 작업, 참조 페이지, 실패/수정 이력, 추가 검수 항목을 조회하고 현재 작업 체크리스트에 반영한다.",
+          "reference_tasks, reference_pages, lessons_applied, additional_checks"
+        ],
+        [
+          "SCOPE_ROUTE",
+          "기존 Hermes workflow, action registry, model lane, context pack, pattern docs를 매핑한다.",
+          "memory_sources, model_lane, context_pack"
+        ],
+        [
+          "WORK_PACKET_READY",
+          "선택 패턴, 참조 작업, 참조 파일, 적용 교훈, 추가 검수, 기대 증거를 압축 가능한 작업 봉투로 저장한다.",
+          "work_packet_id, source_artifacts_to_open, expected_evidence"
+        ],
+        [
+          "IMPLEMENT",
+          "패턴 레지스트리/해석기/모델 라우팅 문서를 갱신한다.",
+          "sql, script, doc"
+        ],
+        [
+          "VERIFY",
+          "resolver dry-run과 shell syntax 검사를 수행한다.",
+          "resolver_json, bash_n"
+        ],
+        [
+          "REFLECT",
+          "새 패턴이 향후 요청에서 선택되는 조건을 기록한다.",
+          "pattern_match_rule"
+        ]
+      ],
+      "checks": [
+        [
+          "SCRIPT",
+          "bash -n ops/scripts/hermes-record-request.sh ops/scripts/hermes-resolve-pattern.sh",
+          "exit_code=0"
+        ],
+        [
+          "SCRIPT",
+          "bash ops/scripts/hermes-resolve-pattern.sh --request '80포트 빌드 재배포해줘' --out /tmp/hermes-pattern-test.json",
+          "selected_pattern"
+        ]
+      ],
+      "artifacts": [
+        [
+          "script",
+          "ops/scripts/hermes-*.sh",
+          "HERMES_SCRIPT"
+        ],
+        [
+          "sql",
+          "ops/db/carbonet/*hermes*.sql",
+          "HERMES_DB"
+        ],
+        [
+          "ai",
+          "ops/hermes/*.json",
+          "PATTERN_SEED"
+        ]
+      ]
+    },
+    {
+      "patternId": "AI_MODEL_SERVICE_RUNTIME_CHANGE",
+      "categoryCode": "AI",
+      "patternName": "AI model service runtime and Hermes routing change",
+      "riskLevel": "MEDIUM",
+      "skillName": "resonance-ai-orchestrator",
+      "defaultActionId": "ai-model-runtime-update",
+      "triggerKeywords": [
+        "에이전트 모델",
+        "에이전트",
+        "AI 모델",
+        "모델",
+        "모델 켜줘",
+        "모델 켜고",
+        "켜줘",
+        "켜고",
+        "기동",
+        "시작",
+        "40B",
+        "40비",
+        "7B",
+        "7비",
+        "Gemma4",
+        "Gemma",
+        "qwen7",
+        "fast-draft",
+        "llama-server",
+        "systemd",
+        "Hermes",
+        "라우팅",
+        "Hermes 라우팅",
+        "모델 서비스",
+        "shadow"
+      ],
+      "routeHints": [
+        "24036",
+        "24751",
+        "24451"
+      ],
+      "moduleHints": [
+        "/etc/systemd/system/resonance-shadow-qwen7.service",
+        "/etc/systemd/system/resonance-shadow-gemma4-e4b.service",
+        "/home/sjkim/.hermes/config.yaml",
+        "/usr/local/bin/qwen7-coder-ask",
+        "/usr/local/bin/gemma4-shadow-ask",
+        "ops/hermes/development-patterns.seed.json",
+        "ops/db/carbonet"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "codex55-execution-intelligence",
+          "ops-control"
+        ],
+        "gateTeams": [
+          "qa-audit",
+          "build-release"
+        ],
+        "supportTeams": [
+          "log-schedule"
+        ],
+        "selectionReason": "AI 모델 서비스 변경은 systemd 기동, 포트/API health, Hermes provider 라우팅, DB 패턴 증거를 함께 확인해야 한다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "요청 모델, 역할, 포트, CPU/GPU 경계를 기록한다.",
+          "requested_models, model_roles, port_plan"
+        ],
+        [
+          "PRECHECK",
+          "모델 파일, VRAM/RAM, 기존 포트와 systemd 상태를 확인한다.",
+          "model_files, resource_snapshot, service_state"
+        ],
+        [
+          "IMPLEMENT",
+          "필요한 systemd 서비스, helper command, Hermes provider 설정을 갱신한다.",
+          "service_units, helper_scripts, hermes_config"
+        ],
+        [
+          "VERIFY",
+          "각 모델의 /v1/models, /slots, smoke prompt, systemctl 상태를 확인한다.",
+          "models_api, slots, smoke_prompt, systemctl_status"
+        ],
+        [
+          "REFLECT",
+          "fast-draft는 7B, translation/glossary는 Gemma4 CPU, judge는 40B로 라우팅되는지 기록한다.",
+          "routing_policy, pattern_update"
+        ]
+      ],
+      "checks": [
+        [
+          "MODEL_API",
+          "curl -fsS -H 'Authorization: Bearer qwer1234' http://127.0.0.1:24036/v1/models",
+          "qwen3.6-40b-deck-opus-q4 is listed"
+        ],
+        [
+          "MODEL_API",
+          "curl -fsS -H 'Authorization: Bearer qwer1234' http://127.0.0.1:24751/v1/models",
+          "qwen2.5-coder-7b-instruct-shadow is listed"
+        ],
+        [
+          "MODEL_API",
+          "curl -fsS -H 'Authorization: Bearer qwer1234' http://127.0.0.1:24451/v1/models",
+          "gemma4-e4b-cpu-shadow is listed"
+        ],
+        [
+          "SCRIPT",
+          "/usr/local/bin/qwen7-coder-ask health && /usr/local/bin/gemma4-shadow-ask health",
+          "helpers return OK"
+        ]
+      ],
+      "artifacts": [
+        [
+          "systemd",
+          "/etc/systemd/system/resonance-shadow-*.service",
+          "MODEL_SERVICE"
+        ],
+        [
+          "config",
+          "/home/sjkim/.hermes/config.yaml",
+          "HERMES_MODEL_PROVIDER"
+        ],
+        [
+          "script",
+          "/usr/local/bin/*-ask",
+          "MODEL_HELPER"
+        ],
+        [
+          "sql",
+          "ops/db/carbonet/*model*runtime*.sql",
+          "HERMES_DB"
+        ]
+      ]
+    },
+    {
+      "patternId": "HERMES_AGENT_TEAM_MODEL_ORCHESTRATION_CHANGE",
+      "categoryCode": "AI",
+      "patternName": "Hermes agent team and model lane orchestration change",
+      "riskLevel": "MEDIUM",
+      "skillName": "resonance-ai-orchestrator",
+      "defaultActionId": "hermes-agent-orchestration-upgrade",
+      "triggerKeywords": [
+        "에르메스",
+        "Hermes",
+        "에이전트 팀",
+        "ai-agent-teams",
+        "모델 라우팅",
+        "7B",
+        "7비",
+        "4B",
+        "4비",
+        "14B",
+        "14비",
+        "26B",
+        "26비",
+        "supergemma",
+        "디자인 전문",
+        "파인튜닝",
+        "KRDS",
+        "RAG",
+        "개발 패턴",
+        "코덱스 5.5"
+      ],
+      "routeHints": [
+        "/admin/system/codex-request",
+        "/admin/system/development-pattern-management"
+      ],
+      "moduleHints": [
+        "/opt/Resonance/var/ai-agent-teams/ai-agent-teams.json",
+        "ops/hermes/model-routing-policy.seed.json",
+        "ops/scripts/hermes-record-request.sh",
+        "ops/scripts/hermes-resolve-pattern.sh",
+        "docs/ai/00-governance/ai-skill-doc-routing-matrix.md",
+        "docs/ai/60-operations/dev-orchestration/qwen40-first-development-orchestration.md",
+        "ops/db/carbonet"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "planning",
+          "codex55-execution-intelligence",
+          "development-rag-governor"
+        ],
+        "gateTeams": [
+          "qa-audit",
+          "build-release"
+        ],
+        "supportTeams": [
+          "framework-builder",
+          "design-specialist",
+          "model-benchmark",
+          "log-schedule"
+        ],
+        "selectionReason": "Hermes orchestration work must select teams from the registry, read DB-backed patterns/RAG, choose 4B/7B/14B/40B lanes, and keep 26B candidates behind a benchmark gate."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "요청을 에이전트 개선, 모델 라우팅, 개발 품질 게이트, DB 패턴 갱신으로 분해한다.",
+          "raw_request, affected_policy_files, requested_model_candidates"
+        ],
+        [
+          "SCOPE_ROUTE",
+          "/opt/Resonance/var/ai-agent-teams/ai-agent-teams.json, model-routing-policy, DB 패턴/RAG 테이블을 먼저 조회한다.",
+          "team_registry, model_lane_policy, pattern_registry, development_rag"
+        ],
+        [
+          "PRECHECK",
+          "4B/7B/14B/40B lane 역할과 26B candidate 금지/허용 범위를 확정한다.",
+          "lane_decision, benchmark_only_candidates, escalation_rules"
+        ],
+        [
+          "IMPLEMENT",
+          "Hermes script, seed JSON, DB patch, routing docs를 같은 정책으로 갱신한다.",
+          "script_diff, seed_diff, sql_patch, docs_diff"
+        ],
+        [
+          "VERIFY",
+          "JSON parse, bash syntax, resolver dry-run, DB 적용 결과를 검증한다.",
+          "node_json_parse, bash_n, resolver_json, db_counts"
+        ],
+        [
+          "REFLECT",
+          "부족한 에이전트 능력과 보완 lane을 DB 후보/패턴으로 기록한다.",
+          "agent_gap_registry, model_candidate_registry, patch_history"
+        ]
+      ],
+      "checks": [
+        [
+          "SCRIPT",
+          "bash -n ops/scripts/hermes-record-request.sh ops/scripts/hermes-resolve-pattern.sh",
+          "exit_code=0"
+        ],
+        [
+          "JSON",
+          "node -e \"JSON.parse(require('fs').readFileSync('ops/hermes/model-routing-policy.seed.json','utf8')); JSON.parse(require('fs').readFileSync('ops/hermes/development-patterns.seed.json','utf8'))\"",
+          "json_parse_ok"
+        ],
+        [
+          "SCRIPT",
+          "QWEN40_JUDGE_MODE=never FAST_DRAFT_ENABLE=0 bash ops/scripts/hermes-resolve-pattern.sh --request '에르메스가 ai-agent-teams와 7B 4B 모델을 참고해서 개발하도록 개선' --out /tmp/hermes-agent-route-test.json",
+          "selectedPattern=HERMES_AGENT_TEAM_MODEL_ORCHESTRATION_CHANGE"
+        ]
+      ],
+      "artifacts": [
+        [
+          "team-registry",
+          "/opt/Resonance/var/ai-agent-teams/ai-agent-teams.json",
+          "AGENT_TEAM_REGISTRY"
+        ],
+        [
+          "script",
+          "ops/scripts/hermes-*.sh",
+          "HERMES_SCRIPT"
+        ],
+        [
+          "policy",
+          "ops/hermes/*.json",
+          "MODEL_ROUTING_POLICY"
+        ],
+        [
+          "sql",
+          "ops/db/carbonet/*hermes*orchestration*.sql",
+          "HERMES_DB"
+        ]
+      ]
+    },
+    {
+      "patternId": "LAYOUT_FIRST_SERVICE_PAGE_DEVELOPMENT",
+      "categoryCode": "FULLSTACK",
+      "patternName": "Layout-first serviceable admin page development",
+      "riskLevel": "HIGH",
+      "skillName": "carbonet-feature-builder",
+      "defaultActionId": "layout-first-page-build",
+      "triggerKeywords": [
+        "실사용",
+        "서비스 가능",
+        "빈 페이지",
+        "프론트만",
+        "페이지 개발",
+        "관리자 화면",
+        "비즈니스 로직",
+        "레이아웃부터",
+        "디자인 꼼꼼",
+        "200여개",
+        "갭 후보"
+      ],
+      "routeHints": [
+        "/admin"
+      ],
+      "moduleHints": [
+        "frontend/src/features",
+        "modules/carbonet-common-core/src/main/java",
+        "modules/carbonet-common-core/src/main/resources",
+        "ops/db/carbonet",
+        "frontend/src/generated/pageDesignRegistryInventory.json",
+        "frontend/src/generated/developmentRagInventory.json"
+      ],
+      "teamRules": {
+        "requiredTeams": [
+          "planning",
+          "framework-builder",
+          "frontend-dev",
+          "backend-dev",
+          "db-cubrid"
+        ],
+        "gateTeams": [
+          "design-specialist",
+          "validation",
+          "qa-audit",
+          "build-release"
+        ],
+        "supportTeams": [
+          "development-rag-governor",
+          "krds-theme",
+          "query-dev"
+        ],
+        "selectionReason": "실사용 페이지 개발은 설계/레이아웃/디자인 DB/RAG를 먼저 확정하고, 프론트/백엔드/DB/권한/감사/검증을 같은 품질 점수 기준으로 닫아야 한다."
+      },
+      "steps": [
+        [
+          "REQUEST_CAPTURE",
+          "대상 route/page/menu와 이미 완성된 화면 skip 후보를 확정한다.",
+          "target_route, page_id, current_quality_score, skip_decision"
+        ],
+        [
+          "SCOPE_ROUTE",
+          "page design registry, quality score, development RAG, design/theme DB를 조회한다.",
+          "page_design_rows, quality_dimensions, rag_hits, theme_tokens"
+        ],
+        [
+          "PRECHECK",
+          "레이아웃, 섹션, 필드, 액션, API, DB, 권한, 감사 계약을 작업 전 설계한다.",
+          "layout_plan, field_plan, action_plan, api_contract, db_plan, authority_scope"
+        ],
+        [
+          "IMPLEMENT",
+          "기존 React 화면 수준에 맞춰 프론트, 백엔드, mapper, SQL, 메뉴/권한 메타데이터를 구현한다.",
+          "source_diff, sql_patch, manifest_update"
+        ],
+        [
+          "VERIFY",
+          "빌드, route 접속, API/DB proof, placeholder 제거, 권한/감사 동작을 검증한다.",
+          "npm_build, maven_package, route_probe, api_probe, db_rows, audit_trace"
+        ],
+        [
+          "REFLECT",
+          "품질 점수, RAG 청크, 개발 분기/패턴 바인딩을 갱신한다.",
+          "quality_score_update, rag_update, branch_decision_update"
+        ]
+      ],
+      "checks": [
+        [
+          "BUILD",
+          "cd frontend && npm run build",
+          "exit_code=0"
+        ],
+        [
+          "BUILD",
+          "mvn -q -DskipTests package",
+          "exit_code=0"
+        ],
+        [
+          "SCRIPT",
+          "node ops/scripts/carbonet-validate-page-serviceability.mjs",
+          "no_placeholder_blocker"
+        ]
+      ],
+      "artifacts": [
+        [
+          "frontend",
+          "frontend/src/features/**",
+          "FRONTEND"
+        ],
+        [
+          "backend",
+          "modules/carbonet-common-core/src/main/java/**",
+          "BACKEND"
+        ],
+        [
+          "mapper",
+          "modules/carbonet-common-core/src/main/resources/**",
+          "MYBATIS"
+        ],
+        [
+          "sql",
+          "ops/db/carbonet/*.sql",
+          "DB_MIGRATION"
+        ]
+      ]
+    }
+  ]
+}
