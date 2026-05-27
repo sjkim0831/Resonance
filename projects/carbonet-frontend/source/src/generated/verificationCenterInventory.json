@@ -10,12 +10,12 @@
     "governancePlan": "docs/architecture/verification-center-and-baseline-governance-plan.md"
   },
   "summary": {
-    "pageCount": 221,
-    "menuBoundPageCount": 221,
-    "staticMenuBoundPageCount": 220,
+    "pageCount": 230,
+    "menuBoundPageCount": 230,
+    "staticMenuBoundPageCount": 229,
     "dynamicMenuBoundPageCount": 1,
     "unmanagedPageCount": 0,
-    "routeBoundPageCount": 221,
+    "routeBoundPageCount": 230,
     "apiCount": 13,
     "uniqueRouteCount": 13,
     "functionCount": 59,
@@ -91,10 +91,24 @@
       "menuBindingType": "static"
     },
     {
+      "manifestKey": "api-management",
+      "pageId": "api-management",
+      "routePath": "/admin/system/api-management",
+      "menuCode": "A0060113",
+      "menuBindingType": "static"
+    },
+    {
       "manifestKey": "api-management-console",
       "pageId": "api-management-console",
       "routePath": "/admin/system/api-management-console",
       "menuCode": "A0060113",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "asset-deficiency-queue",
+      "pageId": "asset-deficiency-queue",
+      "routePath": "/admin/system/asset-deficiency-queue",
+      "menuCode": "A0060127",
       "menuBindingType": "static"
     },
     {
@@ -343,6 +357,13 @@
       "menuBindingType": "static"
     },
     {
+      "manifestKey": "column-management",
+      "pageId": "column-management",
+      "routePath": "/admin/system/column-management",
+      "menuCode": "A0060116",
+      "menuBindingType": "static"
+    },
+    {
       "manifestKey": "column-management-console",
       "pageId": "column-management-console",
       "routePath": "/admin/system/column-management-console",
@@ -375,6 +396,13 @@
       "pageId": "company-list",
       "routePath": "/admin/member/company_list",
       "menuCode": "AMENU_COMPANY_LIST",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "controller-management",
+      "pageId": "controller-management",
+      "routePath": "/admin/system/controller-management",
+      "menuCode": "A0060114",
       "menuBindingType": "static"
     },
     {
@@ -644,6 +672,13 @@
       "menuBindingType": "static"
     },
     {
+      "manifestKey": "event-management",
+      "pageId": "event-management",
+      "routePath": "/admin/system/event-management",
+      "menuCode": "A0060111",
+      "menuBindingType": "static"
+    },
+    {
       "manifestKey": "event-management-console",
       "pageId": "event-management-console",
       "routePath": "/admin/system/event-management-console",
@@ -760,6 +795,13 @@
       "pageId": "full-stack-management",
       "routePath": "/admin/system/full-stack-management",
       "menuCode": "A0060108",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "function-console",
+      "pageId": "function-console",
+      "routePath": "/admin/system/function-console",
+      "menuCode": "A0060112",
       "menuBindingType": "static"
     },
     {
@@ -963,6 +1005,13 @@
       "pageId": "menu-management",
       "routePath": "/admin/system/menu",
       "menuCode": "AMENU_MENU_MANAGEMENT",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "module",
+      "pageId": "module",
+      "routePath": "/admin/system/module",
+      "menuCode": "A0060131",
       "menuBindingType": "static"
     },
     {
@@ -1456,6 +1505,13 @@
       "menuBindingType": "static"
     },
     {
+      "manifestKey": "theme",
+      "pageId": "theme",
+      "routePath": "/admin/system/theme",
+      "menuCode": "A0060130",
+      "menuBindingType": "static"
+    },
+    {
       "manifestKey": "trade-approve",
       "pageId": "trade-approve",
       "routePath": "/admin/trade/approve",
@@ -1544,6 +1600,13 @@
       "pageId": "unified-log",
       "routePath": "/admin/system/unified_log",
       "menuCode": "AMENU_UNIFIED_LOG",
+      "menuBindingType": "static"
+    },
+    {
+      "manifestKey": "verification-asset-management",
+      "pageId": "verification-asset-management",
+      "routePath": "/admin/system/verification-asset-management",
+      "menuCode": "A0060129",
       "menuBindingType": "static"
     },
     {

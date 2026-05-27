@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { listRouteOwnershipTraces, type RouteOwnershipTrace } from "../../app/routes/routeCatalog";
 import { fetchMenuManagementPage, fetchScreenCommandPage, saveScreenCommandMenuMapping } from "../../lib/api/platform";
 import type { MenuManagementPagePayload, ScreenCommandPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
@@ -28,7 +29,10 @@ type AssignmentRow = {
   expsrAt: string;
   pageId: string;
   routePath: string;
-  status: "assigned" | "unassigned";
+  status: "assigned" | "unassigned" | "catalog" | "missing-screen";
+  source: "menu" | "route-catalog";
+  routeId?: string;
+  routeScope?: string;
 };
 
 type ScreenMenuAssignmentCloseoutRow = {
@@ -93,12 +97,22 @@ function normalizePath(value: string) {
   return value.trim().replace(/^\/en/, "");
 }
 
+function routeMatchesMenuType(trace: RouteOwnershipTrace, menuType: string) {
+  const routePath = normalizePath(trace.canonicalRoute || "");
+  if (menuType === "ADMIN") {
+    return routePath.startsWith("/admin/");
+  }
+  return !routePath.startsWith("/admin/");
+}
+
 function buildAssignments(
   menuRows: Array<Record<string, unknown>>,
-  pages: ScreenCommandPagePayload["pages"] | undefined
+  pages: ScreenCommandPagePayload["pages"] | undefined,
+  routeTraces: RouteOwnershipTrace[],
+  menuType: string
 ) {
   const pageList = pages || [];
-  return menuRows
+  const menuAssignments = menuRows
     .filter(isPageMenu)
     .map((row): AssignmentRow => {
       const menuCode = stringOf(row, "code").toUpperCase();
@@ -116,9 +130,71 @@ function buildAssignments(
         expsrAt: stringOf(row, "expsrAt") || "Y",
         pageId: matched?.pageId || "",
         routePath: matched?.routePath || "",
-        status: matched ? "assigned" : "unassigned"
+        status: matched ? "assigned" : "unassigned",
+        source: "menu"
       };
     });
+  const knownMenuCodes = new Set(menuAssignments.map((row) => row.menuCode).filter(Boolean));
+  const knownPaths = new Set(menuAssignments.map((row) => normalizePath(row.menuUrl)).filter(Boolean));
+  const routeAssignmentKeys = new Set<string>();
+  const routeAssignments = routeTraces
+    .filter((trace) => routeMatchesMenuType(trace, menuType))
+    .filter((trace) => {
+      const menuCode = String(trace.menuCode || "").toUpperCase();
+      const routePath = normalizePath(trace.canonicalRoute || "");
+      if (knownMenuCodes.has(menuCode) || knownPaths.has(routePath)) {
+        return false;
+      }
+      const routeAssignmentKey = menuCode || routePath;
+      if (routeAssignmentKeys.has(routeAssignmentKey)) {
+        return false;
+      }
+      routeAssignmentKeys.add(routeAssignmentKey);
+      return true;
+    })
+    .map((trace): AssignmentRow => {
+      const menuCode = String(trace.menuCode || "").toUpperCase();
+      const routePath = normalizePath(trace.canonicalRoute || "");
+      const matched = pageList.find((page) => (
+        String(page.pageId || "") === trace.pageId
+          || String(page.menuCode || "").toUpperCase() === menuCode
+          || normalizePath(String(page.routePath || "")) === routePath
+      ));
+      return {
+        menuCode,
+        menuName: trace.routeLabel,
+        menuUrl: routePath,
+        menuIcon: "web_asset",
+        useAt: "Y",
+        expsrAt: "Y",
+        pageId: matched?.pageId || trace.pageId,
+        routePath: matched?.routePath || routePath,
+        status: matched ? "catalog" : "missing-screen",
+        source: "route-catalog",
+        routeId: trace.routeId,
+        routeScope: trace.routeScope
+      };
+    });
+  return [...menuAssignments, ...routeAssignments].sort((left, right) => {
+    if (left.source !== right.source) {
+      return left.source === "menu" ? -1 : 1;
+    }
+    return left.menuUrl.localeCompare(right.menuUrl);
+  });
+}
+
+function assignmentStatusLabel(status: AssignmentRow["status"], en: boolean) {
+  if (status === "assigned") return en ? "Assigned" : "귀속";
+  if (status === "catalog") return en ? "Catalog" : "카탈로그";
+  if (status === "missing-screen") return en ? "Needs screen" : "화면 필요";
+  return en ? "Unassigned" : "미귀속";
+}
+
+function assignmentStatusClassName(status: AssignmentRow["status"]) {
+  if (status === "assigned") return "bg-emerald-50 text-emerald-700";
+  if (status === "catalog") return "bg-blue-50 text-[var(--kr-gov-blue)]";
+  if (status === "missing-screen") return "bg-rose-50 text-rose-700";
+  return "bg-amber-50 text-amber-700";
 }
 
 export function ScreenMenuAssignmentManagementMigrationPage() {
@@ -130,11 +206,12 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
   const [mappingMessage, setMappingMessage] = useState("");
   const [mappingError, setMappingError] = useState("");
   const [mappingSaving, setMappingSaving] = useState(false);
+  const routeTraces = useMemo(() => listRouteOwnershipTraces(), []);
   const menuState = useAsyncValue<MenuManagementPagePayload>(() => fetchMenuManagementPage(menuType), [menuType]);
   const catalogState = useAsyncValue<ScreenCommandPagePayload>(() => fetchScreenCommandPage(""), []);
   const assignments = useMemo(
-    () => buildAssignments((menuState.value?.menuRows || []) as Array<Record<string, unknown>>, catalogState.value?.pages),
-    [catalogState.value?.pages, menuState.value?.menuRows]
+    () => buildAssignments((menuState.value?.menuRows || []) as Array<Record<string, unknown>>, catalogState.value?.pages, routeTraces, menuType),
+    [catalogState.value?.pages, menuState.value?.menuRows, menuType, routeTraces]
   );
   const filteredAssignments = useMemo(() => {
     const normalized = filter.trim().toLowerCase();
@@ -175,6 +252,7 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
   const error = menuState.error || catalogState.error || detailState.error;
   const assignedCount = assignments.filter((item) => item.status === "assigned").length;
   const unassignedCount = assignments.filter((item) => item.status === "unassigned").length;
+  const routeCatalogCount = assignments.filter((item) => item.source === "route-catalog").length;
   const detailPage = detailState.value?.page || createEmptyScreenCommandPagePayload().page;
   const detailMetrics = resolveScreenCommandSummaryMetrics(detailPage);
   const availablePageOptions = useMemo(() => {
@@ -260,9 +338,9 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
           dataHelpId="screen-menu-assignment-summary"
           items={[
             {
-              title: en ? `${menuType} Page Menus` : `${menuType === "ADMIN" ? "관리자" : "홈"} 페이지 메뉴`,
+              title: en ? `${menuType} Screens` : `${menuType === "ADMIN" ? "관리자" : "홈"} 전체 화면`,
               value: assignments.length,
-              description: en ? "8-digit page menus with a runtime route." : "runtime URL이 등록된 8자리 페이지 메뉴 수입니다."
+              description: en ? "Menu rows plus route-catalog screens that should be included." : "메뉴 행과 포함되어야 할 route catalog 화면을 합산한 수입니다."
             },
             {
               title: en ? "Assigned" : "귀속 완료",
@@ -280,9 +358,9 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
               surfaceClassName: "bg-amber-50"
             },
             {
-              title: en ? "Orphaned Screens" : "고아 화면",
-              value: orphanPages.length,
-              description: en ? "Screen pages with no linked page menu." : "페이지 메뉴에 연결되지 않은 화면 수입니다.",
+              title: en ? "Route Catalog" : "카탈로그 보강",
+              value: routeCatalogCount,
+              description: en ? "Screens added from the full route catalog." : "전체 화면 카탈로그에서 보강한 화면 수입니다.",
               accentClassName: "text-slate-700",
               surfaceClassName: "bg-slate-100"
             }
@@ -353,13 +431,13 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
             filterPlaceholder={en ? "Search menu code, path, page ID" : "메뉴 코드, 경로, page ID 검색"}
             filterValue={filter}
             items={filteredAssignments.map((row) => ({
-              key: row.menuCode,
+              key: `${row.source}-${row.menuCode || row.routeId}-${row.menuUrl}`,
               title: row.menuName,
               subtitle: row.menuCode,
               description: row.menuUrl || "-",
               badge: (
-                <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${row.status === "assigned" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                  {row.status === "assigned" ? (en ? "Assigned" : "귀속") : (en ? "Unassigned" : "미귀속")}
+                <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${assignmentStatusClassName(row.status)}`}>
+                  {assignmentStatusLabel(row.status, en)}
                 </span>
               ),
               active: row.menuCode === selectedMenuCode,
@@ -375,8 +453,8 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
                 className="flex-1"
                 badges={selectedAssignment ? (
                   <>
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${selectedAssignment.status === "assigned" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                      {selectedAssignment.status === "assigned" ? (en ? "Screen linked" : "화면 연결됨") : (en ? "No linked screen" : "연결된 화면 없음")}
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${assignmentStatusClassName(selectedAssignment.status)}`}>
+                      {assignmentStatusLabel(selectedAssignment.status, en)}
                     </span>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
                       {`${en ? "Use" : "사용"} ${selectedAssignment.useAt} / ${en ? "Expose" : "노출"} ${selectedAssignment.expsrAt}`}
@@ -388,6 +466,7 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
                   { label: en ? "Menu Code" : "메뉴 코드", value: selectedAssignment?.menuCode || "-" },
                   { label: en ? "Page ID" : "페이지 ID", value: selectedAssignment?.pageId || "-" },
                   { label: en ? "Route" : "경로", value: selectedAssignment?.routePath || "-" },
+                  { label: en ? "Source" : "출처", value: selectedAssignment?.source || "-" },
                   { label: en ? "Linked Components" : "연결 컴포넌트", value: detailMetrics.componentCount }
                 ]}
                 metaTitle={en ? "Selected Assignment Metadata" : "선택 귀속 메타데이터"}
@@ -412,10 +491,12 @@ export function ScreenMenuAssignmentManagementMigrationPage() {
               <div className="p-6">
                 {!selectedAssignment ? (
                   <p className="text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Select a menu to inspect the binding." : "귀속 상태를 보려면 메뉴를 선택하세요."}</p>
-                ) : selectedAssignment.status === "unassigned" ? (
+                ) : selectedAssignment.status === "unassigned" || selectedAssignment.status === "missing-screen" ? (
                   <div className="space-y-4">
                     <WarningPanel title={en ? "No linked screen page" : "연결된 화면 페이지 없음"}>
-                      {en ? "This menu exists in menu management, but no screen command page is linked by menu code or route path yet." : "이 메뉴는 menu management에는 존재하지만, 메뉴 코드 또는 route path 기준으로 연결된 screen command 페이지가 아직 없습니다."}
+                      {selectedAssignment.source === "route-catalog"
+                        ? (en ? "This route exists in the full route catalog, but it is not yet present as a managed menu/screen binding." : "이 경로는 전체 route catalog에는 있지만 관리 메뉴/화면 귀속에는 아직 포함되지 않았습니다.")
+                        : (en ? "This menu exists in menu management, but no screen command page is linked by menu code or route path yet." : "이 메뉴는 menu management에는 존재하지만, 메뉴 코드 또는 route path 기준으로 연결된 screen command 페이지가 아직 없습니다.")}
                     </WarningPanel>
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_auto] xl:items-end">
                       <label className="block">

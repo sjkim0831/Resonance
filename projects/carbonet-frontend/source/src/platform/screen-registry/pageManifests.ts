@@ -1597,6 +1597,32 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "FullStackGovernancePanel", instanceKey: "menu-management-governance-panel", layoutZone: "content", propsSummary: ["governancePageId", "surfaceCount", "apiCount"] }
     ]
   },
+  "theme": {
+    pageId: "theme",
+    routePath: "/admin/system/theme",
+    menuCode: "A0060130",
+    domainCode: "admin",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "ThemeTokenEditor", instanceKey: "theme-token-editor", layoutZone: "actions", propsSummary: ["tokens", "selectedComponent", "selectedTemplate"] },
+      { componentId: "ThemeLivePreview", instanceKey: "theme-live-preview", layoutZone: "content", propsSummary: ["previewStyle", "componentPreset", "templatePreset"] },
+      { componentId: "ThemePayloadPanel", instanceKey: "theme-payload-panel", layoutZone: "content", propsSummary: ["themeId", "installScope", "componentLibrary", "templateLibrary"] }
+    ]
+  },
+  "module": {
+    pageId: "module",
+    routePath: "/admin/system/module",
+    menuCode: "A0060131",
+    domainCode: "admin",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "StandardFrameworkModuleTable", instanceKey: "module-standard-framework", layoutZone: "content", propsSummary: ["egovframeVersion", "moduleCount", "componentCount"] },
+      { componentId: "SystemRouteModuleTable", instanceKey: "module-system-routes", layoutZone: "content", propsSummary: ["familyId", "routeCount", "installScope"] },
+      { componentId: "ModuleSearchFilter", instanceKey: "module-search-filter", layoutZone: "actions", propsSummary: ["query", "scope"] }
+    ]
+  },
   "platform-studio": {
     pageId: "platform-studio",
     routePath: "/admin/system/platform-studio",
@@ -1635,9 +1661,33 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "PlatformStudioRegistry", instanceKey: "platform-studio-registry", layoutZone: "content", propsSummary: ["eventIds"] }
     ]
   },
+  "event-management": {
+    pageId: "event-management",
+    routePath: "/admin/system/event-management",
+    menuCode: "A0060111",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "PlatformStudioTabs", instanceKey: "platform-studio-tabs", layoutZone: "actions", propsSummary: ["focus=events"] },
+      { componentId: "PlatformStudioRegistry", instanceKey: "platform-studio-registry", layoutZone: "content", propsSummary: ["eventIds"] }
+    ]
+  },
   "function-management-console": {
     pageId: "function-management-console",
     routePath: "/admin/system/function-management-console",
+    menuCode: "A0060112",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "PlatformStudioTabs", instanceKey: "platform-studio-tabs", layoutZone: "actions", propsSummary: ["focus=functions"] },
+      { componentId: "PlatformStudioRegistry", instanceKey: "platform-studio-registry", layoutZone: "content", propsSummary: ["functionIds", "parameterSpecs", "resultSpecs"] }
+    ]
+  },
+  "function-console": {
+    pageId: "function-console",
+    routePath: "/admin/system/function-console",
     menuCode: "A0060112",
     domainCode: "platform",
     layoutVersion: "v1",
@@ -1659,9 +1709,33 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "PlatformStudioRegistry", instanceKey: "platform-studio-registry", layoutZone: "content", propsSummary: ["apiIds", "schemaIds"] }
     ]
   },
+  "api-management": {
+    pageId: "api-management",
+    routePath: "/admin/system/api-management",
+    menuCode: "A0060113",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "PlatformStudioTabs", instanceKey: "platform-studio-tabs", layoutZone: "actions", propsSummary: ["focus=apis"] },
+      { componentId: "PlatformStudioRegistry", instanceKey: "platform-studio-registry", layoutZone: "content", propsSummary: ["apiIds", "schemaIds"] }
+    ]
+  },
   "controller-management-console": {
     pageId: "controller-management-console",
     routePath: "/admin/system/controller-management-console",
+    menuCode: "A0060114",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "PlatformStudioTabs", instanceKey: "platform-studio-tabs", layoutZone: "actions", propsSummary: ["focus=controllers"] },
+      { componentId: "PlatformStudioMetadataTable", instanceKey: "platform-studio-controllers", layoutZone: "content", propsSummary: ["controllerActions", "serviceMethods", "mapperQueries"] }
+    ]
+  },
+  "controller-management": {
+    pageId: "controller-management",
+    routePath: "/admin/system/controller-management",
     menuCode: "A0060114",
     domainCode: "platform",
     layoutVersion: "v1",
@@ -1686,6 +1760,18 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
   "column-management-console": {
     pageId: "column-management-console",
     routePath: "/admin/system/column-management-console",
+    menuCode: "A0060116",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "PlatformStudioTabs", instanceKey: "platform-studio-tabs", layoutZone: "actions", propsSummary: ["focus=columns"] },
+      { componentId: "PlatformStudioRegistry", instanceKey: "platform-studio-registry", layoutZone: "content", propsSummary: ["columnNames"] }
+    ]
+  },
+  "column-management": {
+    pageId: "column-management",
+    routePath: "/admin/system/column-management",
     menuCode: "A0060116",
     domainCode: "platform",
     layoutVersion: "v1",
@@ -2639,6 +2725,20 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "AssetGapSupport", instanceKey: "asset-gap-support", layoutZone: "content", propsSummary: ["signalSourceCount"] }
     ]
   },
+  "asset-deficiency-queue": {
+    pageId: "asset-deficiency-queue",
+    routePath: "/admin/system/asset-deficiency-queue",
+    menuCode: "A0060127",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "AssetGapSummary", instanceKey: "asset-deficiency-queue-summary", layoutZone: "actions", propsSummary: ["queueTypeCount", "sourceConsoleCount"] },
+      { componentId: "AssetGapOverview", instanceKey: "asset-deficiency-queue-overview", layoutZone: "content", propsSummary: ["status"] },
+      { componentId: "AssetGapQueues", instanceKey: "asset-deficiency-queue-queues", layoutZone: "content", propsSummary: ["queueTypeCount"] },
+      { componentId: "AssetGapSupport", instanceKey: "asset-deficiency-queue-support", layoutZone: "content", propsSummary: ["signalSourceCount"] }
+    ]
+  },
   "verification-center": {
     pageId: "verification-center",
     routePath: "/admin/system/verification-center",
@@ -2671,6 +2771,20 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "VerificationAssetAccountForm", instanceKey: "verification-assets-account-form", layoutZone: "content", propsSummary: ["profileId", "role", "status", "expiresAt"] },
       { componentId: "VerificationAssetDatasetForm", instanceKey: "verification-assets-dataset-form", layoutZone: "content", propsSummary: ["datasetId", "type", "status", "lastRefreshedAt"] },
       { componentId: "VerificationAssetActionQueue", instanceKey: "verification-assets-action-queue", layoutZone: "content", propsSummary: ["actionQueueCount", "resolveAction"] }
+    ]
+  },
+  "verification-asset-management": {
+    pageId: "verification-asset-management",
+    routePath: "/admin/system/verification-asset-management",
+    menuCode: "A0060129",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "VerificationAssetBaselineForm", instanceKey: "verification-asset-management-baseline-form", layoutZone: "content", propsSummary: ["pageId", "routePath", "baselineId", "snapshotPath"] },
+      { componentId: "VerificationAssetAccountForm", instanceKey: "verification-asset-management-account-form", layoutZone: "content", propsSummary: ["profileId", "role", "status", "expiresAt"] },
+      { componentId: "VerificationAssetDatasetForm", instanceKey: "verification-asset-management-dataset-form", layoutZone: "content", propsSummary: ["datasetId", "type", "status", "lastRefreshedAt"] },
+      { componentId: "VerificationAssetActionQueue", instanceKey: "verification-asset-management-action-queue", layoutZone: "content", propsSummary: ["actionQueueCount", "resolveAction"] }
     ]
   },
   "screen-builder": {

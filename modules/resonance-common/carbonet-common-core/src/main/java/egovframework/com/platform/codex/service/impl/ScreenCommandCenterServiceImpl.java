@@ -97,15 +97,23 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
         addStaticPageOption(pages, knownPageIds, "performance", "성능", "/admin/system/performance", "ADMIN_SYSTEM_PERFORMANCE", "admin");
         addStaticPageOption(pages, knownPageIds, "notification", "알림센터", "/admin/system/notification", "ADMIN_SYSTEM_NOTIFICATION", "admin");
         addStaticPageOption(pages, knownPageIds, "monitoring-center", "운영센터", "/admin/monitoring/center", "ADMIN_MONITORING_CENTER", "admin");
+        addStaticPageOption(pages, knownPageIds, "full-stack-management", "풀스택 관리", "/admin/system/full-stack-management", "A0060108", "admin");
         addStaticPageOption(pages, knownPageIds, "platform-studio", "플랫폼 스튜디오", "/admin/system/platform-studio", "A0060109", "admin");
         addStaticPageOption(pages, knownPageIds, "screen-elements-management", "화면 요소 관리", "/admin/system/screen-elements-management", "A0060110", "admin");
         addStaticPageOption(pages, knownPageIds, "screen-flow-management", "화면 흐름 관리", "/admin/system/screen-flow-management", "A1900109", "admin");
         addStaticPageOption(pages, knownPageIds, "screen-menu-assignment-management", "화면-메뉴 귀속 관리", "/admin/system/screen-menu-assignment-management", "A1900110", "admin");
+        addStaticPageOption(pages, knownPageIds, "theme", "테마 관리", "/admin/system/theme", "A0060130", "admin");
+        addStaticPageOption(pages, knownPageIds, "module", "모듈 관리", "/admin/system/module", "A0060131", "admin");
+        addStaticPageOption(pages, knownPageIds, "event-management", "이벤트 관리", "/admin/system/event-management", "A0060111", "admin");
         addStaticPageOption(pages, knownPageIds, "event-management-console", "이벤트 관리", "/admin/system/event-management-console", "A0060111", "admin");
+        addStaticPageOption(pages, knownPageIds, "function-console", "함수 콘솔", "/admin/system/function-console", "A0060112", "admin");
         addStaticPageOption(pages, knownPageIds, "function-management-console", "함수 콘솔", "/admin/system/function-management-console", "A0060112", "admin");
+        addStaticPageOption(pages, knownPageIds, "api-management", "API 관리", "/admin/system/api-management", "A0060113", "admin");
         addStaticPageOption(pages, knownPageIds, "api-management-console", "API 관리", "/admin/system/api-management-console", "A0060113", "admin");
+        addStaticPageOption(pages, knownPageIds, "controller-management", "컨트롤러 관리", "/admin/system/controller-management", "A0060114", "admin");
         addStaticPageOption(pages, knownPageIds, "controller-management-console", "컨트롤러 관리", "/admin/system/controller-management-console", "A0060114", "admin");
         addStaticPageOption(pages, knownPageIds, "db-table-management", "DB 테이블 관리", "/admin/system/db-table-management", "A0060115", "admin");
+        addStaticPageOption(pages, knownPageIds, "column-management", "컬럼 관리", "/admin/system/column-management", "A0060116", "admin");
         addStaticPageOption(pages, knownPageIds, "column-management-console", "컬럼 관리", "/admin/system/column-management-console", "A0060116", "admin");
         addStaticPageOption(pages, knownPageIds, "automation-studio", "자동화 스튜디오", "/admin/system/automation-studio", "A0060117", "admin");
         addStaticPageOption(pages, knownPageIds, "backup-config", "백업 설정", "/admin/system/backup_config", "A0060401", "admin");
@@ -131,6 +139,8 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
         addStaticPageOption(pages, knownPageIds, "asset-detail", "자산 상세", "/admin/system/asset-detail", "A0060124", "admin");
         addStaticPageOption(pages, knownPageIds, "asset-impact", "자산 영향도", "/admin/system/asset-impact", "A0060125", "admin");
         addStaticPageOption(pages, knownPageIds, "asset-lifecycle", "자산 생명주기", "/admin/system/asset-lifecycle", "A0060126", "admin");
+        addStaticPageOption(pages, knownPageIds, "asset-deficiency-queue", "자산 미흡 큐", "/admin/system/asset-deficiency-queue", "A0060127", "admin");
+        addStaticPageOption(pages, knownPageIds, "verification-asset-management", "검증 자산 관리", "/admin/system/verification-asset-management", "A0060129", "admin");
         addStaticPageOption(pages, knownPageIds, "asset-gap", "자산 미흡 큐", "/admin/system/asset-gap", "A0060127", "admin");
         addStaticPageOption(pages, knownPageIds, "wbs-management", "WBS 관리", "/admin/system/wbs-management", "A1900104", "admin");
         addStaticPageOption(pages, knownPageIds, "new-page", "새 페이지", "/admin/system/new-page", "A1900106", "admin");
@@ -265,16 +275,26 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
                 return buildPlatformStudioPage("platform-studio", "플랫폼 스튜디오", "/admin/system/platform-studio", "A0060109", "overview");
             case "screen-elements-management":
                 return buildPlatformStudioPage("screen-elements-management", "화면 요소 관리", "/admin/system/screen-elements-management", "A0060110", "surfaces");
+            case "event-management":
+                return buildPlatformStudioPage("event-management", "이벤트 관리", "/admin/system/event-management", "A0060111", "events");
             case "event-management-console":
                 return buildPlatformStudioPage("event-management-console", "이벤트 관리", "/admin/system/event-management-console", "A0060111", "events");
+            case "function-console":
+                return buildPlatformStudioPage("function-console", "함수 콘솔", "/admin/system/function-console", "A0060112", "functions");
             case "function-management-console":
                 return buildPlatformStudioPage("function-management-console", "함수 콘솔", "/admin/system/function-management-console", "A0060112", "functions");
+            case "api-management":
+                return buildPlatformStudioPage("api-management", "API 관리", "/admin/system/api-management", "A0060113", "apis");
             case "api-management-console":
                 return buildPlatformStudioPage("api-management-console", "API 관리", "/admin/system/api-management-console", "A0060113", "apis");
+            case "controller-management":
+                return buildPlatformStudioPage("controller-management", "컨트롤러 관리", "/admin/system/controller-management", "A0060114", "controllers");
             case "controller-management-console":
                 return buildPlatformStudioPage("controller-management-console", "컨트롤러 관리", "/admin/system/controller-management-console", "A0060114", "controllers");
             case "db-table-management":
                 return buildPlatformStudioPage("db-table-management", "DB 테이블 관리", "/admin/system/db-table-management", "A0060115", "db");
+            case "column-management":
+                return buildPlatformStudioPage("column-management", "컬럼 관리", "/admin/system/column-management", "A0060116", "columns");
             case "column-management-console":
                 return buildPlatformStudioPage("column-management-console", "컬럼 관리", "/admin/system/column-management-console", "A0060116", "columns");
             case "automation-studio":
@@ -307,6 +327,10 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
                 return buildAssetImpactPage();
             case "asset-lifecycle":
                 return buildAssetLifecyclePage();
+            case "asset-deficiency-queue":
+                return buildAssetGapPage();
+            case "verification-asset-management":
+                return buildVerificationAssetsPage();
             case "asset-gap":
                 return buildAssetGapPage();
             case "wbs-management":
@@ -3062,7 +3086,7 @@ public class ScreenCommandCenterServiceImpl implements ScreenCommandCenterServic
     }
 
     private Map<String, Object> buildFullStackManagementPage() {
-        Map<String, Object> page = pageOption("full-stack-management", "풀스택 관리", "/admin/system/full-stack-management", "AMENU_SYSTEM_FULL_STACK_MANAGEMENT", "admin");
+        Map<String, Object> page = pageOption("full-stack-management", "풀스택 관리", "/admin/system/full-stack-management", "A0060108", "admin");
         page.put("summary", "메뉴를 기준으로 화면 요소, 이벤트, 함수, 파라미터, 결과값, API, 스키마, 테이블, 컬럼, 권한, 공통코드를 함께 추적하는 관리자 화면입니다.");
         page.put("source", "frontend/src/features/menu-management/FullStackManagementMigrationPage.tsx");
         page.put("surfaces", Arrays.asList(

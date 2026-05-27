@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class AdminAssetInventoryMenuBootstrapSupport {
+public class AdminPlatformFoundationMenuBootstrapSupport {
 
     private static final String DOMAIN_CODE = "A006";
     private static final String DOMAIN_NAME = "시스템";
@@ -21,12 +21,19 @@ public class AdminAssetInventoryMenuBootstrapSupport {
     private final PlatformMenuProvisionSupport platformMenuProvisionSupport;
 
     @EventListener(ApplicationReadyEvent.class)
-    public void ensureAssetManagementMenus() {
-        provisionMenu("A0060123", "자산 인벤토리", "Asset Inventory", "/admin/system/asset-inventory", "inventory_2");
-        provisionMenu("A0060124", "자산 상세", "Asset Detail", "/admin/system/asset-detail", "info");
-        provisionMenu("A0060125", "자산 영향도", "Asset Impact", "/admin/system/asset-impact", "query_stats");
-        provisionMenu("A0060126", "자산 생명주기", "Asset Lifecycle", "/admin/system/asset-lifecycle", "alt_route");
-        provisionMenu("A0060127", "자산 미흡 큐", "Asset Gap", "/admin/system/asset-gap", "running_with_errors");
+    public void ensurePlatformFoundationMenus() {
+        provisionMenu("A0060108", "풀스택 관리", "Full Stack Management", "/admin/system/full-stack-management", "hub");
+        provisionMenu("A0060109", "플랫폼 스튜디오", "Platform Studio", "/admin/system/platform-studio", "dashboard_customize");
+        provisionMenu("A0060110", "화면 요소 관리", "Screen Elements Management", "/admin/system/screen-elements-management", "crop_landscape");
+        provisionMenu("A0060111", "이벤트 관리", "Event Management", "/admin/system/event-management", "bolt");
+        provisionMenu("A0060112", "함수 콘솔", "Function Console", "/admin/system/function-console", "functions");
+        provisionMenu("A0060113", "API 관리", "API Management", "/admin/system/api-management", "api");
+        provisionMenu("A0060114", "컨트롤러 관리", "Controller Management", "/admin/system/controller-management", "account_tree");
+        provisionMenu("A0060115", "DB 테이블 관리", "DB Table Management", "/admin/system/db-table-management", "database");
+        provisionMenu("A0060116", "컬럼 관리", "Column Management", "/admin/system/column-management", "view_column");
+        provisionMenu("A0060117", "자동화 스튜디오", "Automation Studio", "/admin/system/automation-studio", "smart_toy");
+        provisionMenu("A0060130", "테마 관리", "Theme Management", "/admin/system/theme", "palette");
+        provisionMenu("A0060131", "모듈 관리", "Module Management", "/admin/system/module", "view_module");
     }
 
     private void provisionMenu(String menuCode, String nameKo, String nameEn, String url, String icon) {

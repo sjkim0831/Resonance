@@ -91,6 +91,150 @@ const SYSTEM_GOVERNANCE_NAV_ITEMS: GovernanceNavItem[] = [
     icon: "palette"
   },
   {
+    id: "theme",
+    labelKo: "테마 관리",
+    labelEn: "Theme",
+    koPath: "/admin/system/theme",
+    enPath: "/en/admin/system/theme",
+    icon: "palette"
+  },
+  {
+    id: "module",
+    labelKo: "모듈 관리",
+    labelEn: "Module",
+    koPath: "/admin/system/module",
+    enPath: "/en/admin/system/module",
+    icon: "view_module"
+  },
+  {
+    id: "full-stack-management",
+    labelKo: "풀스택 관리",
+    labelEn: "Full Stack",
+    koPath: "/admin/system/full-stack-management",
+    enPath: "/en/admin/system/full-stack-management",
+    icon: "hub"
+  },
+  {
+    id: "platform-studio",
+    labelKo: "플랫폼 스튜디오",
+    labelEn: "Platform Studio",
+    koPath: "/admin/system/platform-studio",
+    enPath: "/en/admin/system/platform-studio",
+    icon: "dashboard_customize"
+  },
+  {
+    id: "screen-elements-management",
+    labelKo: "화면 요소 관리",
+    labelEn: "Screen Elements",
+    koPath: "/admin/system/screen-elements-management",
+    enPath: "/en/admin/system/screen-elements-management",
+    icon: "crop_landscape"
+  },
+  {
+    id: "event-management",
+    labelKo: "이벤트 관리",
+    labelEn: "Event Management",
+    koPath: "/admin/system/event-management",
+    enPath: "/en/admin/system/event-management",
+    icon: "bolt"
+  },
+  {
+    id: "function-console",
+    labelKo: "함수 콘솔",
+    labelEn: "Function Console",
+    koPath: "/admin/system/function-console",
+    enPath: "/en/admin/system/function-console",
+    icon: "functions"
+  },
+  {
+    id: "api-management",
+    labelKo: "API 관리",
+    labelEn: "API Management",
+    koPath: "/admin/system/api-management",
+    enPath: "/en/admin/system/api-management",
+    icon: "api"
+  },
+  {
+    id: "controller-management",
+    labelKo: "컨트롤러 관리",
+    labelEn: "Controller Management",
+    koPath: "/admin/system/controller-management",
+    enPath: "/en/admin/system/controller-management",
+    icon: "account_tree"
+  },
+  {
+    id: "db-table-management",
+    labelKo: "DB 테이블 관리",
+    labelEn: "DB Table Management",
+    koPath: "/admin/system/db-table-management",
+    enPath: "/en/admin/system/db-table-management",
+    icon: "database"
+  },
+  {
+    id: "column-management",
+    labelKo: "컬럼 관리",
+    labelEn: "Column Management",
+    koPath: "/admin/system/column-management",
+    enPath: "/en/admin/system/column-management",
+    icon: "view_column"
+  },
+  {
+    id: "automation-studio",
+    labelKo: "자동화 스튜디오",
+    labelEn: "Automation Studio",
+    koPath: "/admin/system/automation-studio",
+    enPath: "/en/admin/system/automation-studio",
+    icon: "smart_toy"
+  },
+  {
+    id: "asset-inventory",
+    labelKo: "자산 인벤토리",
+    labelEn: "Asset Inventory",
+    koPath: "/admin/system/asset-inventory",
+    enPath: "/en/admin/system/asset-inventory",
+    icon: "inventory_2"
+  },
+  {
+    id: "asset-detail",
+    labelKo: "자산 상세",
+    labelEn: "Asset Detail",
+    koPath: "/admin/system/asset-detail",
+    enPath: "/en/admin/system/asset-detail",
+    icon: "info"
+  },
+  {
+    id: "asset-impact",
+    labelKo: "자산 영향도",
+    labelEn: "Asset Impact",
+    koPath: "/admin/system/asset-impact",
+    enPath: "/en/admin/system/asset-impact",
+    icon: "query_stats"
+  },
+  {
+    id: "asset-lifecycle",
+    labelKo: "자산 생명주기",
+    labelEn: "Asset Lifecycle",
+    koPath: "/admin/system/asset-lifecycle",
+    enPath: "/en/admin/system/asset-lifecycle",
+    icon: "alt_route"
+  },
+  {
+    id: "asset-deficiency-queue",
+    labelKo: "자산 미흡 큐",
+    labelEn: "Asset Deficiency Queue",
+    koPath: "/admin/system/asset-deficiency-queue",
+    enPath: "/en/admin/system/asset-deficiency-queue",
+    icon: "running_with_errors"
+  },
+  {
+    id: "verification-asset-management",
+    labelKo: "검증 자산 관리",
+    labelEn: "Verification Asset Management",
+    koPath: "/admin/system/verification-asset-management",
+    enPath: "/en/admin/system/verification-asset-management",
+    icon: "fact_check"
+  },
+  {
     id: "css-management",
     labelKo: "CSS 관리",
     labelEn: "CSS",

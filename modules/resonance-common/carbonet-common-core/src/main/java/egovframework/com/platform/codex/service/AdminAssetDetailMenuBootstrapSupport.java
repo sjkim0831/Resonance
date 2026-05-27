@@ -20,7 +20,7 @@ public class AdminAssetDetailMenuBootstrapSupport {
     private static final String MENU_NAME_KO = "자산 상세";
     private static final String MENU_NAME_EN = "Asset Detail";
     private static final String MENU_URL = "/admin/system/asset-detail";
-    private static final String MENU_ICON = "inventory";
+    private static final String MENU_ICON = "info";
     private static final String ACTOR_ID = "SYSTEM_BOOTSTRAP";
 
     private final PlatformMenuProvisionSupport platformMenuProvisionSupport;

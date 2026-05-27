@@ -169,11 +169,16 @@ const PLATFORM_STUDIO_ROUTE_CONTEXTS: Array<{
 }> = [
   { id: "platform-studio", suffix: "/platform-studio", focus: "overview", titleKo: "플랫폼 스튜디오", titleEn: "Platform Studio", koPath: "/admin/system/platform-studio", enPath: "/en/admin/system/platform-studio" },
   { id: "screen-elements-management", suffix: "/screen-elements-management", focus: "surfaces", titleKo: "화면 요소 관리", titleEn: "Screen Elements Management", koPath: "/admin/system/screen-elements-management", enPath: "/en/admin/system/screen-elements-management" },
+  { id: "event-management", suffix: "/event-management", focus: "events", titleKo: "이벤트 관리", titleEn: "Event Management", koPath: "/admin/system/event-management", enPath: "/en/admin/system/event-management" },
   { id: "event-management-console", suffix: "/event-management-console", focus: "events", titleKo: "이벤트 관리", titleEn: "Event Management", koPath: "/admin/system/event-management-console", enPath: "/en/admin/system/event-management-console" },
+  { id: "function-console", suffix: "/function-console", focus: "functions", titleKo: "함수 콘솔", titleEn: "Function Console", koPath: "/admin/system/function-console", enPath: "/en/admin/system/function-console" },
   { id: "function-management-console", suffix: "/function-management-console", focus: "functions", titleKo: "함수 콘솔", titleEn: "Function Console", koPath: "/admin/system/function-management-console", enPath: "/en/admin/system/function-management-console" },
+  { id: "api-management", suffix: "/api-management", focus: "apis", titleKo: "API 관리", titleEn: "API Management", koPath: "/admin/system/api-management", enPath: "/en/admin/system/api-management" },
   { id: "api-management-console", suffix: "/api-management-console", focus: "apis", titleKo: "API 관리", titleEn: "API Management", koPath: "/admin/system/api-management-console", enPath: "/en/admin/system/api-management-console" },
+  { id: "controller-management", suffix: "/controller-management", focus: "controllers", titleKo: "컨트롤러 관리", titleEn: "Controller Management", koPath: "/admin/system/controller-management", enPath: "/en/admin/system/controller-management" },
   { id: "controller-management-console", suffix: "/controller-management-console", focus: "controllers", titleKo: "컨트롤러 관리", titleEn: "Controller Management", koPath: "/admin/system/controller-management-console", enPath: "/en/admin/system/controller-management-console" },
   { id: "db-table-management", suffix: "/db-table-management", focus: "db", titleKo: "DB 테이블 관리", titleEn: "DB Table Management", koPath: "/admin/system/db-table-management", enPath: "/en/admin/system/db-table-management" },
+  { id: "column-management", suffix: "/column-management", focus: "columns", titleKo: "컬럼 관리", titleEn: "Column Management", koPath: "/admin/system/column-management", enPath: "/en/admin/system/column-management" },
   { id: "column-management-console", suffix: "/column-management-console", focus: "columns", titleKo: "컬럼 관리", titleEn: "Column Management", koPath: "/admin/system/column-management-console", enPath: "/en/admin/system/column-management-console" },
   { id: "automation-studio", suffix: "/automation-studio", focus: "automation", titleKo: "자동화 스튜디오", titleEn: "Automation Studio", koPath: "/admin/system/automation-studio", enPath: "/en/admin/system/automation-studio" }
 ];
