@@ -191,3 +191,14 @@ kubectl -n "$NAMESPACE" cp "$SQL_PATH" "$CUBRID_POD:$REMOTE_SQL" >/dev/null
 kubectl -n "$NAMESPACE" exec "$CUBRID_POD" -- bash -lc "csql -u '$DB_USER' '$DB_NAME' -i '$REMOTE_SQL'" >/dev/null
 date -Is > "$OUT_DIR/last-sync.txt"
 echo "Hermes native sessions synced from $SESSION_DIR"
+
+LEARNING_EXPORTER="${LEARNING_EXPORTER:-$ROOT_DIR/ops/scripts/hermes-session-learning-export.sh}"
+if [ -x "$LEARNING_EXPORTER" ]; then
+  LEARNING_LOG_DIR="${LEARNING_LOG_DIR:-$ROOT_DIR/var/ai-runtime/hermes-learning}"
+  mkdir -p "$LEARNING_LOG_DIR"
+  "$LEARNING_EXPORTER" export >"$LEARNING_LOG_DIR/last-export.log" 2>&1 || {
+    code=$?
+    cat "$LEARNING_LOG_DIR/last-export.log" >&2 || true
+    echo "WARN: Hermes learning export failed with exit code $code" >&2
+  }
+fi

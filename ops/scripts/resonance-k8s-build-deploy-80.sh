@@ -24,6 +24,16 @@ MANIFEST_LOG="$ROOT_DIR/var/ai-runtime/k8s-release-manifest.jsonl"
 ROLLOUT_TIMELINE_LOG="$ROOT_DIR/var/ai-runtime/k8s-rollout-timeline.jsonl"
 LOCK_FILE="$RUN_DIR/resonance-k8s-build-deploy-80.lock"
 
+log() {
+  printf '[k8s-build-deploy-80] %s\n' "$*"
+}
+
+# Always remove stale lock file at startup
+if [[ -e "$LOCK_FILE" ]]; then
+  rm -f "$LOCK_FILE" 2>/dev/null || true
+  log "removed stale lock file: $LOCK_FILE"
+fi
+
 mkdir -p "$RUN_DIR" "$LOG_DIR" "$K8S_DIR" "$BACKUP_DIR" "$RUNTIME_DATA_DIR/admin/emission-survey-admin" "$(dirname "$EVENT_LOG")"
 cd "$ROOT_DIR"
 

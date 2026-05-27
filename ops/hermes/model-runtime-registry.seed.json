@@ -3,17 +3,18 @@
   "selectionPolicy": {
     "activeWorkKind": "page-development",
     "activeRoles": {
-      "main": "main-qwen36-40b-gpu",
+      "main": "main-qwen36-40b-hermes-framework-exl3",
       "sub": "sub-qwen7-coder-cpu",
-      "translation": "translation-gemma4-e4b-gpu",
+      "translation": "utility-qwen15-cpu",
       "router": "micro-router-qwen05-cpu",
-      "utility": "utility-qwen15-cpu"
+      "utility": "utility-qwen15-cpu",
+      "judge": "main-qwen36-40b-hermes-framework-exl3"
     },
     "autoHermesDiscovery": true,
     "preferLiveOnly": true,
     "warmPoolPolicy": {
       "alwaysKeep": [
-        "main-qwen36-40b-gpu",
+        "main-qwen36-40b-hermes-framework-exl3",
         "sub-qwen7-coder-cpu",
         "translation-gemma4-e4b-gpu",
         "micro-router-qwen05-cpu",
@@ -24,13 +25,14 @@
       "idleStopMinutes": {
         "sub-qwen14-coder-gpu": 0,
         "utility-qwen3b-cpu": 30,
-        "main-qwen36-40b-gpu": 0
+        "main-qwen36-40b-gpu": 0,
+        "main-qwen36-40b-hermes-framework-exl3": 0,
+        "translation-qwen25-3b-exl2-gpu": 1
       },
       "oomFallbackOrder": [
-        "stop optional GPU 7B or 14B first",
-        "move Gemma4 translation back to CPU if Qwen40 131K cannot keep stable throughput",
-        "keep Qwen40 as main and do not reduce below Hermes minimum without operator approval",
-        "operator approval"
+        "keep main-qwen36-40b-hermes-framework-exl3 as the active main judge",
+        "stop optional GPU translation/sub models before stopping the active main judge",
+        "fall back to main-qwen36-40b-gpu only by explicit operator approval"
       ]
     },
     "hermesSupervisorPolicy": {
@@ -49,9 +51,80 @@
       ],
       "feedbackSink": "/opt/Resonance/var/ai-runtime/hermes-watchdog/hermes-watchdog-events.jsonl",
       "dbPolicy": "store task/checkpoint/problem/fix summaries after checkpoints; do not store secrets or raw credentials"
+    },
+    "exl2Policy": {
+      "qwen40Requested": true,
+      "qwen40Exl2Status": "unsupported-by-exllamav2-for-qwen3_5-linear-attention",
+      "activeServing": "tabbyapi-exllamav3-exl3-4.0bpw-with-qlora",
+      "activeProfile": "main-qwen36-40b-hermes-framework-exl3",
+      "reason": "Qwen3.6 40B HF config exposes Qwen3_5ForConditionalGeneration and linear_attn modules; ExLlamaV2 expects older module names."
     }
   },
   "profiles": [
+    {
+      "id": "main-qwen36-40b-hermes-framework-exl3",
+      "displayName": "메인 학습 모델 · Qwen3.6 40B Hermes/Framework QLoRA EXL3",
+      "role": "main",
+      "roleLabel": "메인 judge / Hermes·프레임워크 학습판",
+      "hardware": "gpu",
+      "serviceName": "resonance-hermes-framework-qwen40-exl3.service",
+      "port": 24453,
+      "baseUrl": "http://127.0.0.1:24453/v1",
+      "modelAlias": "qwen3.6-40b-hermes-framework-qlora",
+      "baseModelAlias": "qwen3.6-40b-hermes-framework-exl3-4.0bpw",
+      "contextLength": 131072,
+      "desired": "on",
+      "parallelSlots": 1,
+      "conflictGroup": "main-qwen36-gpu",
+      "backend": "tabbyapi-exllamav3",
+      "quantization": {
+        "format": "exl3",
+        "bitsPerWeight": 4.0,
+        "cacheMode": "4,4"
+      },
+      "adapter": {
+        "type": "qlora",
+        "name": "qwen3.6-40b-hermes-framework-qlora",
+        "path": "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final",
+        "servedVia": "/opt/util/ai/exl2/tabbyAPI/loras/qwen3.6-40b-hermes-framework-qlora"
+      },
+      "modelPath": "/opt/util/ai/vLLM/models/qwen3.6-40b-hermes-framework-exl3-4.0bpw",
+      "lanes": [
+        "judge",
+        "framework-builder",
+        "hermes-agent",
+        "monitoring-automation",
+        "deployment-ops",
+        "self-healing"
+      ],
+      "taskKinds": [
+        "page-development",
+        "architecture",
+        "backend-api",
+        "frontend-react",
+        "db-migration",
+        "deployment",
+        "monitoring",
+        "self-healing",
+        "failure-interpretation",
+        "final-judge"
+      ],
+      "notes": [
+        "Qwen3.6 40B architecture uses qwen3_5/linear attention, so pure ExLlamaV2 EXL2 conversion is unsupported.",
+        "Production serving is TabbyAPI + ExLlamaV3 EXL3 4.0bpw with the Hermes/Framework QLoRA adapter loaded.",
+        "Use as main/judge for Carbonet framework, Hermes Agent, screen builder, deployment and monitoring automation.",
+        "Context raised to 131072 for Hermes compacted-context workloads; optional GPU helper profiles are disabled to preserve VRAM."
+      ],
+      "training": {
+        "track": "hermes-framework-40b-qlora",
+        "records": 2414,
+        "steps": 200,
+        "finalAdapter": "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/outputs/hermes-framework-40b-qlora/final",
+        "completedAt": "2026-05-22"
+      },
+      "status": "approved-live-131k",
+      "updatedAt": "2026-05-22T15:23:56.330325+00:00"
+    },
     {
       "id": "main-qwen36-40b-gpu",
       "displayName": "메인 모델 · Qwen3.6 40B Deck Opus",
@@ -63,7 +136,7 @@
       "baseUrl": "http://127.0.0.1:24036/v1",
       "modelAlias": "qwen3.6-40b-deck-opus-q4",
       "contextLength": 131072,
-      "desired": "on",
+      "desired": "off",
       "parallelSlots": 1,
       "conflictGroup": "main-24036",
       "envFile": "/etc/default/codex-qwen36",
@@ -90,7 +163,8 @@
         "failure-interpretation",
         "final-judge"
       ],
-      "notes": "기본 메인 모델입니다. 속도 우선 정책으로 GPU 7B/14B 병행은 검증 전 기본 활성화하지 않습니다."
+      "notes": "Retained as fallback only. Disabled so health checks do not restart the old GGUF Qwen40 while the Hermes/Framework QLoRA EXL3 model is active.",
+      "status": "retained-fallback-stopped"
     },
     {
       "id": "sub-qwen14-coder-gpu",
@@ -484,5 +558,6 @@
         "unknown_escalate"
       ]
     }
-  ]
+  ],
+  "updatedAt": "2026-05-22T15:23:56.330334+00:00"
 }

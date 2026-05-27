@@ -56,7 +56,7 @@ public class CarbonetSecurityOverrideConfig {
     @Order(0)
     public SecurityFilterChain carbonetSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-            .securityMatcher("/admin/api/**", "/en/admin/api/**")
+            .securityMatcher("/admin/api/**", "/en/admin/api/**", "/admin/emission/**", "/en/admin/emission/**")
             .authorizeHttpRequests(authorize -> authorize
                 .anyRequest().permitAll()
             )

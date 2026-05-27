@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { KeyboardEvent } from "react";
 import {
   fetchEcoinventDatasetPage,
   fetchEcoinventFilterOptions,
@@ -34,7 +35,6 @@ function _detailValue(row: EcoinventDatasetRow | null, key: keyof EcoinventDatas
 }
 
 const FILTER_FIELDS = [
-  ["productName", "Product"],
   ["activityName", "Activity"],
   ["geography", "Geography"],
   ["activityType", "Activity Type"],
@@ -44,6 +44,8 @@ const FILTER_FIELDS = [
 ] as const;
 
 const KEYWORD_SUGGESTION_FIELDS = [
+  ["englishName", "English"],
+  ["koreanName", "한글명"],
   ["materialName", "한글명"],
   ["productName", "Product"],
   ["activityName", "Activity"],
@@ -57,16 +59,89 @@ const KEYWORD_SUGGESTION_FIELDS = [
   ["version", "Version"]
 ] as const;
 
+const KOREAN_SUGGESTION_FIELDS = [
+  ["koreanName", "한글명"],
+  ["materialName", "한글명"]
+] as const;
+
+const ENGLISH_SUGGESTION_FIELDS = [
+  ["englishName", "English"],
+  ["productName", "Product"],
+  ["activityName", "Activity"],
+  ["activityType", "Type"],
+  ["indicatorName", "Indicator"],
+  ["unit", "Score Unit"],
+  ["scoreUnit", "Score Unit"],
+  ["referenceProductUnit", "Unit"],
+  ["geography", "Geography"],
+  ["timePeriod", "Period"],
+  ["version", "Version"]
+] as const;
+
+const NUMBER_SUGGESTION_FIELDS = [
+  ["score", "Score"],
+  ["version", "Version"],
+  ["timePeriod", "Period"],
+  ["indicatorId", "Indicator ID"]
+] as const;
+
+type SortField = "productName" | "activityName" | "geography";
+type SortDirection = "asc" | "desc";
+
+function containsKorean(value: string) {
+  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(value);
+}
+
+function containsLetter(value: string) {
+  return /[A-Za-z]/.test(value);
+}
+
+function containsNumber(value: string) {
+  return /\d/.test(value);
+}
+
+function suggestionScore(value: string, keyword: string) {
+  const normalizedValue = value.toLocaleLowerCase();
+  const normalizedKeyword = keyword.trim().toLocaleLowerCase();
+  if (!normalizedKeyword) {
+    return 999;
+  }
+  if (normalizedValue === normalizedKeyword) {
+    return 0;
+  }
+  if (normalizedValue.startsWith(normalizedKeyword)) {
+    return 1;
+  }
+  const index = normalizedValue.indexOf(normalizedKeyword);
+  if (index >= 0) {
+    return 2 + index / 1000;
+  }
+  return 100 + Math.abs(normalizedValue.length - normalizedKeyword.length) / 1000;
+}
+
+function matchesSuggestion(value: string, keyword: string) {
+  return suggestionScore(value, keyword) < 100;
+}
+
+function sortIndicator(field: SortField, sortField: SortField | "", sortDirection: SortDirection) {
+  if (field !== sortField) {
+    return "↕";
+  }
+  return sortDirection === "asc" ? "↑" : "↓";
+}
+
 export function EmissionEcoinventAdminMigrationPage() {
   const en = isEnglish();
   const [keyword, setKeyword] = useState("");
-  const [composing, setComposing] = useState(false);
+  const [appliedKeyword, setAppliedKeyword] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({});
   const [minScore, setMinScore] = useState("");
   const [maxScore, setMaxScore] = useState("");
   const [pageIndex, setPageIndex] = useState(1);
   const [pageSize, setPageSize] = useState(100);
+  const [sortField, setSortField] = useState<SortField | "">("");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [rows, setRows] = useState<EcoinventDatasetRow[]>([]);
@@ -80,26 +155,44 @@ export function EmissionEcoinventAdminMigrationPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
+  const [keywordInputFocused, setKeywordInputFocused] = useState(false);
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const selectOptionLimit = 1000;
 
   const keywordSuggestions = useMemo(() => {
+    const normalizedKeyword = keyword.trim();
+    const fields = containsKorean(normalizedKeyword)
+      ? KOREAN_SUGGESTION_FIELDS
+      : containsLetter(normalizedKeyword)
+        ? ENGLISH_SUGGESTION_FIELDS
+        : containsNumber(normalizedKeyword)
+          ? NUMBER_SUGGESTION_FIELDS
+          : KEYWORD_SUGGESTION_FIELDS;
     const seen = new Set<string>();
     const suggestions: Array<{ label: string; value: string }> = [];
-    for (const [key, label] of KEYWORD_SUGGESTION_FIELDS) {
+    for (const [key, label] of fields) {
       for (const value of filterOptions[key] ?? []) {
         const normalized = value.trim();
         const dedupeKey = normalized.toLocaleLowerCase();
-        if (!normalized || seen.has(dedupeKey)) {
+        if (!normalized || seen.has(dedupeKey) || (normalizedKeyword && !matchesSuggestion(normalized, normalizedKeyword))) {
           continue;
         }
         seen.add(dedupeKey);
         suggestions.push({ label, value: normalized });
       }
     }
-    return suggestions.slice(0, 30000);
-  }, [filterOptions]);
+    return suggestions
+      .sort((left, right) => {
+        const scoreDiff = suggestionScore(left.value, normalizedKeyword) - suggestionScore(right.value, normalizedKeyword);
+        return scoreDiff !== 0 ? scoreDiff : left.value.localeCompare(right.value, containsKorean(normalizedKeyword) ? "ko" : "en");
+      })
+      .slice(0, 30000);
+  }, [filterOptions, keyword]);
 
-  async function loadLocal(nextKeyword = keyword) {
+  const visibleKeywordSuggestions = keywordSuggestions.slice(0, 50);
+
+  async function loadLocal(nextKeyword = appliedKeyword) {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -109,7 +202,9 @@ export function EmissionEcoinventAdminMigrationPage() {
         minScore,
         maxScore,
         pageIndex,
-        pageSize
+        pageSize,
+        sortField,
+        sortDirection
       });
       const data = response.data ?? [];
       setRows(data);
@@ -124,28 +219,62 @@ export function EmissionEcoinventAdminMigrationPage() {
   }
 
   useEffect(() => {
-    void loadLocal("");
+    void loadLocal(appliedKeyword);
+  }, [pageIndex, pageSize, appliedKeyword, sortField, sortDirection]);
+
+  useEffect(() => {
+    setFilterOptionsLoading(true);
+    setActiveSuggestionIndex(-1);
+    const controller = new AbortController();
+    void fetchEcoinventFilterOptions("").then((options) => {
+      if (!controller.signal.aborted) {
+        setFilterOptions(options);
+        setFilterOptionsLoading(false);
+      }
+    }).catch(() => {
+      if (!controller.signal.aborted) {
+        setFilterOptions({});
+        setFilterOptionsLoading(false);
+      }
+    });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    void loadLocal(keyword);
-  }, [pageIndex, pageSize]);
+    setActiveSuggestionIndex(-1);
+  }, [keyword]);
 
-  useEffect(() => {
-    if (composing) {
+  function chooseSuggestion(value: string) {
+    setKeyword(value);
+    setKeywordInputFocused(false);
+    setActiveSuggestionIndex(-1);
+    setPageIndex(1);
+  }
+
+  function handleKeywordKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (!keywordInputFocused || visibleKeywordSuggestions.length === 0) {
       return;
     }
-    const timer = setTimeout(() => {
-      setDebouncedKeyword(keyword);
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [keyword, composing]);
-
-  useEffect(() => {
-    void fetchEcoinventFilterOptions(debouncedKeyword).then(setFilterOptions).catch(() => setFilterOptions({}));
-  }, [debouncedKeyword]);
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSuggestionIndex((current) => Math.min(current + 1, visibleKeywordSuggestions.length - 1));
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSuggestionIndex((current) => Math.max(current - 1, 0));
+      return;
+    }
+    if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      chooseSuggestion(visibleKeywordSuggestions[activeSuggestionIndex].value);
+      return;
+    }
+    if (event.key === "Escape") {
+      setKeywordInputFocused(false);
+      setActiveSuggestionIndex(-1);
+    }
+  }
 
   // @ts-ignore - unused when mapping section is commented out
   async function _importSelected() {
@@ -246,9 +375,39 @@ export function EmissionEcoinventAdminMigrationPage() {
 
   function clearFilters() {
     setKeyword("");
+    setAppliedKeyword("");
     setFilters({});
     setMinScore("");
     setMaxScore("");
+    setPageIndex(1);
+  }
+
+  function applySearch() {
+    const nextKeyword = keyword.trim();
+    setAppliedKeyword(nextKeyword);
+    setPageIndex(1);
+    void loadLocal(nextKeyword);
+  }
+
+  function selectOptionsFor(key: string) {
+    const selected = filters[key] ?? "";
+    const options = filterOptions[key] ?? [];
+    if (!selected) {
+      return options.slice(0, selectOptionLimit);
+    }
+    const visible = options.slice(0, selectOptionLimit);
+    return visible.includes(selected) ? visible : [selected, ...visible];
+  }
+
+  function toggleSort(field: SortField) {
+    setSortField((currentField) => {
+      if (currentField === field) {
+        setSortDirection((currentDirection) => currentDirection === "asc" ? "desc" : "asc");
+        return currentField;
+      }
+      setSortDirection("asc");
+      return field;
+    });
     setPageIndex(1);
   }
 
@@ -273,69 +432,101 @@ export function EmissionEcoinventAdminMigrationPage() {
             title={<span>데이터셋 검색 및 저장</span>}
             actions={<></>}
           />
-          <div className="mt-4">
+          <div className="mt-4 relative">
             <AdminInput
-              list="ecoinvent-keyword-suggestions"
-              onChange={(event) => {
-                setKeyword(event.target.value);
-                if (!composing) {
-                  setPageIndex(1);
-                }
-              }}
-              onCompositionStart={() => setComposing(true)}
+              onFocus={() => setKeywordInputFocused(true)}
+              onBlur={() => setKeywordInputFocused(false)}
+              onChange={(event) => setKeyword(event.target.value)}
               onCompositionEnd={(event) => {
                 const target = event.target as HTMLInputElement;
-                setComposing(false);
                 setKeyword(target.value);
-                setPageIndex(1);
               }}
+              onKeyDown={handleKeywordKeyDown}
               placeholder="Search material name"
               value={keyword}
             />
-            <datalist id="ecoinvent-keyword-suggestions">
-              {keywordSuggestions.map((option) => (
-                <option key={`${option.label}:${option.value}`} label={option.label} value={option.value} />
-              ))}
-            </datalist>
+            {keywordInputFocused && keyword.trim() && (
+              <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                {filterOptionsLoading ? (
+                  <div className="flex items-center justify-center py-8 text-sm text-slate-400">
+                    <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-500" />
+                    제안 목록을 불러오는 중...
+                  </div>
+                ) : keywordSuggestions.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-slate-400">검색어에 맞는 제안이 없습니다.</div>
+                ) : (
+                  <ul className="max-h-48 overflow-y-auto">
+                    {visibleKeywordSuggestions.map((option, index) => (
+                      <li
+                        key={`${option.label}:${option.value}-${index}`}
+                        className={`flex cursor-pointer items-center justify-between px-4 py-2 text-sm hover:bg-sky-50 ${activeSuggestionIndex === index ? "bg-sky-50" : ""}`}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setActiveSuggestionIndex(index)}
+                        onClick={() => chooseSuggestion(option.value)}
+                      >
+                        <span className="text-slate-700">{option.value}</span>
+                        <span className="ml-2 text-xs text-slate-400">{option.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-4">
             {FILTER_FIELDS.map(([key, label]) => (
               <label className="text-sm font-bold text-slate-700" key={key}>
                 <span className="mb-1 block">{label}</span>
-                <input
-                  className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
-                  list={`ecoinvent-filter-${key}`}
+                <select
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 [color-scheme:light]"
                   onChange={(event) => setFilterValue(key, event.target.value)}
-                  placeholder={`${label} 선택/검색`}
                   value={filters[key] ?? ""}
-                />
-                <datalist id={`ecoinvent-filter-${key}`}>
-                  {(filterOptions[key] ?? []).map((option) => (
-                    <option key={option} value={option} />
+                >
+                  <option className="bg-white text-slate-700" value="">{label} 전체</option>
+                  {selectOptionsFor(key).map((option) => (
+                    <option className="bg-white text-slate-700" key={option} value={option}>
+                      {option}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </label>
             ))}
-            <AdminInput onChange={(event) => { setMinScore(event.target.value); setPageIndex(1); }} placeholder="최소 배출계수" value={minScore} />
-            <AdminInput onChange={(event) => { setMaxScore(event.target.value); setPageIndex(1); }} placeholder="최대 배출계수" value={maxScore} />
+            <label className="text-sm font-bold text-slate-700">
+              <span className="mb-1 block">최소 배출계수</span>
+              <input
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 placeholder:text-slate-400"
+                onChange={(event) => setMinScore(event.target.value)}
+                placeholder="최소 배출계수"
+                value={minScore}
+              />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              <span className="mb-1 block">최대 배출계수</span>
+              <input
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-700 placeholder:text-slate-400"
+                onChange={(event) => setMaxScore(event.target.value)}
+                placeholder="최대 배출계수"
+                value={maxScore}
+              />
+            </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
               <span>총 {totalCount.toLocaleString()}건</span>
               <span>페이지 {pageIndex.toLocaleString()} / {Math.max(totalPages, 1).toLocaleString()}</span>
               <select
-                className="h-9 rounded-lg border border-slate-300 px-2"
+                className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-slate-700 [color-scheme:light]"
                 onChange={(event) => { setPageSize(Number(event.target.value)); setPageIndex(1); }}
                 value={pageSize}
               >
-                <option value={50}>50개</option>
-                <option value={100}>100개</option>
+                <option className="bg-white text-slate-700" value={50}>50개</option>
+                <option className="bg-white text-slate-700" value={100}>100개</option>
               </select>
             </div>
             <div className="flex flex-wrap gap-2">
               <MemberButton disabled={loading || pageIndex <= 1} onClick={() => setPageIndex((current) => Math.max(current - 1, 1))} type="button" variant="secondary">이전</MemberButton>
               <MemberButton disabled={loading || pageIndex >= Math.max(totalPages, 1)} onClick={() => setPageIndex((current) => current + 1)} type="button" variant="secondary">다음</MemberButton>
-              <MemberButton disabled={loading} onClick={() => void loadLocal(keyword)} type="button" variant="secondary">현재 조건 검색</MemberButton>
+              <MemberButton disabled={loading} onClick={applySearch} type="button" variant="secondary">현재 조건 검색</MemberButton>
               <MemberButton disabled={loading} onClick={clearFilters} type="button" variant="secondary">조건 초기화</MemberButton>
             </div>
           </div>
@@ -348,9 +539,21 @@ export function EmissionEcoinventAdminMigrationPage() {
                 <tr>
                   <th className="px-4 py-3">선택</th>
                   <th className="px-4 py-3">한글 매핑명</th>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Activity</th>
-                  <th className="px-4 py-3">Geography</th>
+                  <th className="px-4 py-3">
+                    <button className="flex items-center gap-1 font-black uppercase" onClick={() => toggleSort("productName")} type="button">
+                      Product <span>{sortIndicator("productName", sortField, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <button className="flex items-center gap-1 font-black uppercase" onClick={() => toggleSort("activityName")} type="button">
+                      Activity <span>{sortIndicator("activityName", sortField, sortDirection)}</span>
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <button className="flex items-center gap-1 font-black uppercase" onClick={() => toggleSort("geography")} type="button">
+                      Geography <span>{sortIndicator("geography", sortField, sortDirection)}</span>
+                    </button>
+                  </th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Period</th>
                   <th className="px-4 py-3">Unit</th>

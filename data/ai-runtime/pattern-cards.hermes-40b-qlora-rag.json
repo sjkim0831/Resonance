@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "1.0",
+  "cards": [
+    {
+      "schemaVersion": "1.0",
+      "patternId": "ai.qlora.hermes-carbonet-40b",
+      "title": "Hermes Carbonet 40B QLoRA Training Pattern",
+      "layer": "operations-platform",
+      "languages": [
+        "python",
+        "shell",
+        "jsonl"
+      ],
+      "purpose": "Train a LoRA adapter for the HF safetensors 40B source model using Resonance framework and Hermes Agent SFT data, without using the GGUF runtime file as a base.",
+      "inputs": [
+        "hfRepoId",
+        "datasetJsonl",
+        "gpuFreeVram",
+        "loraRank",
+        "maxLength",
+        "trainingSteps"
+      ],
+      "readFirst": [
+        "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/README.md",
+        "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/scripts/run_qlora_pipeline.sh",
+        "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/scripts/train_qlora.py",
+        "/opt/util/ai/fine-tuning/hermes-framework-40b-qlora/logs"
+      ],
+      "allowedOutputs": [
+        "SFT dataset JSONL",
+        "HF base model snapshot",
+        "LoRA adapter",
+        "training summary",
+        "training log"
+      ],
+      "forbidden": [
+        "training directly from GGUF",
+        "overwriting the base model",
+        "starting training while production GPU runtimes still hold VRAM",
+        "shipping adapter without dry-run/tokenizer check"
+      ],
+      "verification": [
+        "dataset summary record count",
+        "HF config and safetensors index exist",
+        "tokenizer dry-run passes",
+        "nvidia-smi shows training process",
+        "outputs/.../final adapter exists"
+      ],
+      "risk": "master-only",
+      "modelRole": "validator",
+      "notes": "Confirmed source repo: DavidAU/Qwen3.6-40B-Claude-4.6-Opus-Deckard-Heretic-Uncensored-Thinking. Use 4bit NF4, batch 1, grad accumulation 16 on RTX 5090 32GB."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "rag.hermes-project-knowledge-sync",
+      "title": "Hermes Project Knowledge RAG Sync Pattern",
+      "layer": "operations-platform",
+      "languages": [
+        "shell",
+        "sql",
+        "json"
+      ],
+      "purpose": "Refresh DB-backed project knowledge assets for Hermes retrieval after framework, frontend, backend, operations, or agent changes.",
+      "inputs": [
+        "projectId",
+        "scanRoots",
+        "schemaSql",
+        "assetSql",
+        "cubridPod"
+      ],
+      "readFirst": [
+        "/opt/Resonance/ops/scripts/hermes-sync-project-knowledge.sh",
+        "/opt/Resonance/ops/db/carbonet/20260518_008_hermes_project_knowledge_and_work_guard.sql",
+        "/opt/Resonance/var/ai-runtime/hermes-project-knowledge"
+      ],
+      "allowedOutputs": [
+        "knowledge assets JSON",
+        "knowledge assets SQL",
+        "summary JSON",
+        "schema/data apply logs"
+      ],
+      "forbidden": [
+        "RAG refresh without DB apply evidence",
+        "invented source paths",
+        "stale generated assets presented as source of truth"
+      ],
+      "verification": [
+        "sync log has committed rows",
+        "summary JSON count",
+        "CUBRID pod ready",
+        "retrieval script smoke if available"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Run after substantial source changes and before relying on Hermes Agent retrieval for implementation planning."
+    },
+    {
+      "schemaVersion": "1.0",
+      "patternId": "ops.ecoinvent-restore-and-asset-freshness",
+      "title": "ecoinvent Restore And React Asset Freshness Pattern",
+      "layer": "project-carbonet",
+      "languages": [
+        "tsx",
+        "java",
+        "shell",
+        "kubernetes"
+      ],
+      "purpose": "Restore /admin/emission/ecoinvent frontend/backend to a known-good backup and prove the live runtime serves the restored React bundle.",
+      "inputs": [
+        "backupTimestamp",
+        "frontendSource",
+        "backendService",
+        "controllerCompatibility",
+        "bootstrapPath",
+        "runtimeImage"
+      ],
+      "readFirst": [
+        "/opt/Resonance/projects/carbonet-frontend/source/src/features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
+        "/opt/Resonance/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/emission/service/EcoinventIntegrationService.java",
+        "/opt/Resonance/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/emission/web/EcoinventManagementApiController.java",
+        "/opt/Resonance/ops/scripts/resonance-k8s-build-deploy-80.sh"
+      ],
+      "allowedOutputs": [
+        "current-file backup",
+        "source restore",
+        "compatibility patch",
+        "frontend/backend rebuild",
+        "runtime health and bootstrap evidence"
+      ],
+      "forbidden": [
+        "restoring generated assets only",
+        "leaving controller/service compile mismatch",
+        "claiming success without bootstrap asset hash",
+        "killing pod-owned Java processes as stale host runtimes"
+      ],
+      "verification": [
+        "source markers match desired design",
+        "built chunk markers match",
+        "bootstrap returns fresh index hash",
+        "deployment image updated",
+        "actuator health UP"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Captured from 2026-05-22 restore: first field productName/Search material name and title 데이터셋 검색 및 저장 restored from 2026-05-21 backup."
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "cards": [
+    {
+      "schemaVersion": "1.0",
+      "patternId": "builder.monitoring.self-maintaining-framework",
+      "title": "Screen Builder Monitoring Self Maintaining Framework Pattern",
+      "layer": "operations-platform",
+      "languages": [
+        "shell",
+        "tsx",
+        "java",
+        "kubernetes",
+        "json"
+      ],
+      "purpose": "Make screen development automation, Screen Builder governance, monitoring smoke checks, and self-healing probes run as one repeatable maintenance gate.",
+      "inputs": [
+        "changedScreenRoute",
+        "builderAuditScope",
+        "monitoringRoutes",
+        "runtimeNamespace",
+        "selfHealMode"
+      ],
+      "readFirst": [
+        "/opt/Resonance/ops/scripts/hermes-builder-monitoring-automation.sh",
+        "/opt/Resonance/docs/ai/hermes-builder-monitoring-automation.md",
+        "/opt/Resonance/projects/carbonet-frontend/source/src/features/screen-builder",
+        "/opt/Resonance/projects/carbonet-frontend/source/src/features/monitoring-dashboard",
+        "/opt/Resonance/projects/carbonet-frontend/source/src/features/observability"
+      ],
+      "allowedOutputs": [
+        "builder audit report",
+        "frontend verification result",
+        "bootstrap freshness evidence",
+        "runtime health smoke",
+        "self-heal dry-run report",
+        "RAG/project-knowledge sync"
+      ],
+      "forbidden": [
+        "screen generation without verification evidence",
+        "monitoring UI changes without runtime smoke",
+        "automatic destructive self-heal by default",
+        "claiming freshness without bootstrap asset hash"
+      ],
+      "verification": [
+        "hermes-builder-monitoring-automation.sh report JSON",
+        "builder-monitoring-events.jsonl",
+        "frontend verify output",
+        "actuator health UP",
+        "RAG sync summary assetCount"
+      ],
+      "risk": "high",
+      "modelRole": "validator",
+      "notes": "Default self-heal mode is probe/dry-run. Set APPLY_SELF_HEAL=true only for intentional recovery."
+    }
+  ]
+}

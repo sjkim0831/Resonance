@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="egovframework.com.platform.screenmenuassignment.dao.ScreenMenuAssignmentDao">
+
+    <select id="selectAssignmentList" parameterType="egovframework.com.platform.screenmenuassignment.vo.ScreenMenuAssignmentVO" resultType="egovframework.com.platform.screenmenuassignment.vo.ScreenMenuAssignmentVO">
+        SELECT id, name, version, status, owner, description, source
+        FROM CARR_SCREEN_MENU_ASSIGNMENT
+        <where>
+            <if test="source != null and source != '' and source != 'all'">
+                AND source = #{source}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE '%' || #{keyword} || '%'
+                     OR description LIKE '%' || #{keyword} || '%'
+                     OR id LIKE '%' || #{keyword} || '%')
+            </if>
+        </where>
+        ORDER BY status DESC, name
+    </select>
+
+    <select id="selectAssignmentById" parameterType="String" resultType="egovframework.com.platform.screenmenuassignment.vo.ScreenMenuAssignmentVO">
+        SELECT id, name, version, status, owner, description, source
+        FROM CARR_SCREEN_MENU_ASSIGNMENT
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insertAssignment" parameterType="egovframework.com.platform.screenmenuassignment.vo.ScreenMenuAssignmentVO">
+        INSERT INTO CARR_SCREEN_MENU_ASSIGNMENT (id, name, version, status, owner, description, source)
+        VALUES (#{id}, #{name}, #{version}, #{status}, #{owner}, #{description}, #{source})
+    </insert>
+
+    <update id="updateAssignment" parameterType="egovframework.com.platform.screenmenuassignment.vo.ScreenMenuAssignmentVO">
+        UPDATE CARR_SCREEN_MENU_ASSIGNMENT
+        SET name = #{name}, version = #{version}, status = #{status},
+            owner = #{owner}, description = #{description}, source = #{source}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteAssignment" parameterType="String">
+        DELETE FROM CARR_SCREEN_MENU_ASSIGNMENT WHERE id = #{id}
+    </delete>
+
+</mapper>

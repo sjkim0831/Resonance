@@ -104,6 +104,8 @@ export async function fetchDropdownList() {
   maxScore?: string;
   pageIndex?: number;
   pageSize?: number;
+  sortField?: string;
+  sortDirection?: string;
   remote?: boolean;
 }) {
   const response = await fetchEcoinventDatasetPage(params);
@@ -126,6 +128,8 @@ export async function fetchEcoinventDatasetPage(params?: {
   maxScore?: string;
   pageIndex?: number;
   pageSize?: number;
+  sortField?: string;
+  sortDirection?: string;
   remote?: boolean;
 }) {
   const response = await fetchJson<EcoinventApiResponse<EcoinventDatasetRow[]>>(

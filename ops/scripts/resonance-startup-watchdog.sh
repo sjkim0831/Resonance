@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-TARGET_URL="${TARGET_URL:-http://127.0.0.1:17890/?token=qwer1234}"
+TARGET_URL="${TARGET_URL:-http://172.16.1.232:17890/?token=qwer1234}"
 EVENT_LOG="${EVENT_LOG:-$ROOT_DIR/var/ai-runtime/startup-watchdog-events.jsonl}"
 START_SCRIPT="${START_SCRIPT:-$ROOT_DIR/ops/scripts/resonance-start-best-effort.sh}"
 
