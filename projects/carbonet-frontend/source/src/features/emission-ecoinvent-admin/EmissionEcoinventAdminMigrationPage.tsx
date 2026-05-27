@@ -44,6 +44,7 @@ const FILTER_FIELDS = [
 ] as const;
 
 const KEYWORD_SUGGESTION_FIELDS = [
+  ["materialName", "한글명"],
   ["productName", "Product"],
   ["activityName", "Activity"],
   ["geography", "Geography"],
@@ -59,6 +60,7 @@ const KEYWORD_SUGGESTION_FIELDS = [
 export function EmissionEcoinventAdminMigrationPage() {
   const en = isEnglish();
   const [keyword, setKeyword] = useState("");
+  const [composing, setComposing] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({});
   const [minScore, setMinScore] = useState("");
@@ -72,12 +74,13 @@ export function EmissionEcoinventAdminMigrationPage() {
   const [selectedRow, setSelectedRow] = useState<EcoinventDatasetRow | null>(null);
   const [koreanName, setKoreanName] = useState("");
   // @ts-ignore - unused when mapping section is commented out
-const [sortOrder, setSortOrder] = useState("0");
+  const [sortOrder, setSortOrder] = useState("0");
   // @ts-ignore - unused when mapping section is commented out
-const [memo, setMemo] = useState("");
+  const [memo, setMemo] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [debouncedKeyword, setDebouncedKeyword] = useState("");
 
   const keywordSuggestions = useMemo(() => {
     const seen = new Set<string>();
@@ -93,7 +96,7 @@ const [memo, setMemo] = useState("");
         suggestions.push({ label, value: normalized });
       }
     }
-    return suggestions.slice(0, 500);
+    return suggestions.slice(0, 30000);
   }, [filterOptions]);
 
   async function loadLocal(nextKeyword = keyword) {
@@ -129,11 +132,23 @@ const [memo, setMemo] = useState("");
   }, [pageIndex, pageSize]);
 
   useEffect(() => {
-    void fetchEcoinventFilterOptions(keyword).then(setFilterOptions).catch(() => setFilterOptions({}));
-  }, [keyword]);
+    if (composing) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(keyword);
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [keyword, composing]);
+
+  useEffect(() => {
+    void fetchEcoinventFilterOptions(debouncedKeyword).then(setFilterOptions).catch(() => setFilterOptions({}));
+  }, [debouncedKeyword]);
 
   // @ts-ignore - unused when mapping section is commented out
-async function _importSelected() {
+  async function _importSelected() {
     if (selectedIds.length === 0) {
       setErrorMessage("저장할 데이터셋을 선택하세요.");
       return;
@@ -153,7 +168,7 @@ async function _importSelected() {
   }
 
   // @ts-ignore - unused when mapping section is commented out
-async function _importAll() {
+  async function _importAll() {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -168,7 +183,7 @@ async function _importAll() {
   }
 
   // @ts-ignore - unused when mapping section is commented out
-async function _premapKoreanAliases() {
+  async function _premapKoreanAliases() {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -184,7 +199,7 @@ async function _premapKoreanAliases() {
   }
 
   // @ts-ignore - unused when mapping section is commented out
-async function _saveMapping() {
+  async function _saveMapping() {
     if (!selectedRow?.datasetId) {
       setErrorMessage("한글명과 연결할 데이터셋을 선택하세요.");
       return;
@@ -261,7 +276,19 @@ async function _saveMapping() {
           <div className="mt-4">
             <AdminInput
               list="ecoinvent-keyword-suggestions"
-              onChange={(event) => { setKeyword(event.target.value); setPageIndex(1); }}
+              onChange={(event) => {
+                setKeyword(event.target.value);
+                if (!composing) {
+                  setPageIndex(1);
+                }
+              }}
+              onCompositionStart={() => setComposing(true)}
+              onCompositionEnd={(event) => {
+                const target = event.target as HTMLInputElement;
+                setComposing(false);
+                setKeyword(target.value);
+                setPageIndex(1);
+              }}
               placeholder="Search material name"
               value={keyword}
             />

@@ -136,7 +136,7 @@ public class EcoinventIntegrationService {
         SearchRequest request = SearchRequest.from(Map.of("keyword", safe(keyword)));
         Map<String, Object> response = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : FILTERABLE_FIELDS.entrySet()) {
-            response.put(entry.getKey(), distinctOptions(entry.getValue(), request.keyword(), 300));
+            response.put(entry.getKey(), distinctOptions(entry.getValue(), request.keyword(), 30000));
         }
         return response;
     }
@@ -1942,31 +1942,49 @@ public class EcoinventIntegrationService {
                     e.%1$s asc
                 """.formatted(property)
                 : "order by count(e.id) desc, e.%1$s asc".formatted(property);
-        String jpql = """
-                select e.%1$s
-                from EcoinventMaster e
-                where e.%1$s is not null
-                  and e.%1$s <> ''
-                  and (:keyword = ''
-                    or lower(coalesce(e.materialName, '')) like :keywordLike
-                    or lower(coalesce(e.activityName, '')) like :keywordLike
-                    or lower(coalesce(e.activityType, '')) like :keywordLike
-                    or lower(coalesce(e.productName, '')) like :keywordLike
-                    or lower(coalesce(e.geography, '')) like :keywordLike
-                    or lower(coalesce(e.referenceProductUnit, '')) like :keywordLike
-                    or lower(coalesce(e.timePeriod, '')) like :keywordLike
-                    or lower(coalesce(e.indicatorName, '')) like :keywordLike
-                    or lower(coalesce(e.unit, '')) like :keywordLike
-                    or lower(coalesce(e.scoreUnit, '')) like :keywordLike
-                    or lower(coalesce(e.version, '')) like :keywordLike)
-                group by e.%1$s
-                %2$s
-                """.formatted(property, orderBy);
-        return entityManager.createQuery(jpql, String.class)
+        
+        // Find Korean keyword matches via translation/mapping tables
+        List<Long> matchedIds = containsKorean(keyword) ? findEcoinventIdsByKoreanKeyword(keyword) : List.of();
+        boolean hasKoreanMatches = matchedIds != null && !matchedIds.isEmpty();
+        
+        StringBuilder jpql = new StringBuilder();
+        jpql.append("select e.%1$s\n")
+            .append("from EcoinventMaster e\n")
+            .append("where e.%1$s is not null\n")
+            .append("  and e.%1$s <> ''\n")
+            .append("  and (:keyword = ''\n")
+            .append("    or lower(coalesce(e.materialName, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.activityName, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.activityType, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.productName, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.geography, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.referenceProductUnit, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.timePeriod, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.indicatorName, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.unit, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.scoreUnit, '')) like :keywordLike\n")
+            .append("    or lower(coalesce(e.version, '')) like :keywordLike");
+        
+        if (hasKoreanMatches) {
+            jpql.append("\n    or e.id in :matchedIds");
+        }
+        
+        jpql.append(")\n")
+            .append("group by e.%1$s\n")
+            .append("%2$s");
+        
+        String jpqlString = jpql.toString().formatted(property, orderBy);
+        
+        TypedQuery<String> query = entityManager.createQuery(jpqlString, String.class)
                 .setParameter("keyword", keyword)
                 .setParameter("keywordLike", "%" + keyword.toLowerCase() + "%")
-                .setMaxResults(limit)
-                .getResultList();
+                .setMaxResults(limit);
+        
+        if (hasKoreanMatches) {
+            query.setParameter("matchedIds", matchedIds);
+        }
+        
+        return query.getResultList();
     }
 
     private String firstNonBlank(Object... values) {
