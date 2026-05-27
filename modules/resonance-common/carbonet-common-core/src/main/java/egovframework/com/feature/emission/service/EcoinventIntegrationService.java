@@ -1860,17 +1860,7 @@ public class EcoinventIntegrationService {
             } else {
                 jpql.append("""
                         and (
-                            lower(coalesce(e.materialName, '')) like :keyword
-                            or lower(coalesce(e.activityName, '')) like :keyword
-                            or lower(coalesce(e.productName, '')) like :keyword
-                            or lower(coalesce(e.activityType, '')) like :keyword
-                            or lower(coalesce(e.geography, '')) like :keyword
-                            or lower(coalesce(e.referenceProductUnit, '')) like :keyword
-                            or lower(coalesce(e.timePeriod, '')) like :keyword
-                            or lower(coalesce(e.indicatorName, '')) like :keyword
-                            or lower(coalesce(e.unit, '')) like :keyword
-                            or lower(coalesce(e.scoreUnit, '')) like :keyword
-                            or lower(coalesce(e.version, '')) like :keyword
+                            lower(coalesce(e.productName, '')) like :keyword
                         """);
                 if (matchedIds != null && !matchedIds.isEmpty()) {
                     jpql.append(" or e.id in :matchedIds");
@@ -1913,15 +1903,9 @@ public class EcoinventIntegrationService {
                 appendMatchedIdOrder(jpql, parameters, matchedIds);
                 jpql.append("""
                             case
-                                when lower(coalesce(e.materialName, '')) = :keywordExact
-                                    or lower(coalesce(e.productName, '')) = :keywordExact
-                                    or lower(coalesce(e.activityName, '')) = :keywordExact then 0
-                                when lower(coalesce(e.materialName, '')) like :keywordPrefix
-                                    or lower(coalesce(e.productName, '')) like :keywordPrefix
-                                    or lower(coalesce(e.activityName, '')) like :keywordPrefix then 1
-                                when lower(coalesce(e.materialName, '')) like :keyword
-                                    or lower(coalesce(e.productName, '')) like :keyword
-                                    or lower(coalesce(e.activityName, '')) like :keyword then 2
+                                when lower(coalesce(e.productName, '')) = :keywordExact then 0
+                                when lower(coalesce(e.productName, '')) like :keywordPrefix then 1
+                                when lower(coalesce(e.productName, '')) like :keyword then 2
                                 else 3
                             end asc,
                             coalesce(e.timePeriod, '') desc,
@@ -1975,15 +1959,15 @@ public class EcoinventIntegrationService {
         if ("geography".equals(request.sortField())) {
             jpql.append("""
                             case
-                                when lower(coalesce(e.geography, '')) = 'kr' or lower(coalesce(e.geography, '')) like '%(kr)' then 0
-                                when lower(coalesce(e.geography, '')) = 'row' or lower(coalesce(e.geography, '')) like '%(row)' or lower(coalesce(e.geography, '')) = 'rest-of-world (row)' then 1
-                                when lower(coalesce(e.geography, '')) = 'rer' or lower(coalesce(e.geography, '')) like '%(rer)' then 2
-                                when lower(coalesce(e.geography, '')) = 'glo' or lower(coalesce(e.geography, '')) like '%(glo)' or lower(coalesce(e.geography, '')) = 'global (glo)' then 3
-                                when lower(coalesce(e.geography, '')) = 'eu' or lower(coalesce(e.geography, '')) like '%(eu)' then 4
-                                when lower(coalesce(e.geography, '')) = 'us' or lower(coalesce(e.geography, '')) like '%(us)' then 5
-                                when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%(jp)' then 6
-                                when lower(coalesce(e.geography, '')) = 'cn' or lower(coalesce(e.geography, '')) like '%(cn)' then 7
-                                when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%(in)' then 8
+                                when lower(coalesce(e.geography, '')) = 'kr' or lower(coalesce(e.geography, '')) like '%%(kr)' then 0
+                                when lower(coalesce(e.geography, '')) = 'row' or lower(coalesce(e.geography, '')) like '%%(row)' or lower(coalesce(e.geography, '')) = 'rest-of-world (row)' then 1
+                                when lower(coalesce(e.geography, '')) = 'rer' or lower(coalesce(e.geography, '')) like '%%(rer)' then 2
+                                when lower(coalesce(e.geography, '')) = 'glo' or lower(coalesce(e.geography, '')) like '%%(glo)' or lower(coalesce(e.geography, '')) = 'global (glo)' then 3
+                                when lower(coalesce(e.geography, '')) = 'eu' or lower(coalesce(e.geography, '')) like '%%(eu)' then 4
+                                when lower(coalesce(e.geography, '')) = 'us' or lower(coalesce(e.geography, '')) like '%%(us)' then 5
+                                when lower(coalesce(e.geography, '')) = 'jp' or lower(coalesce(e.geography, '')) like '%%(jp)' then 6
+                                when lower(coalesce(e.geography, '')) = 'cn' or lower(coalesce(e.geography, '')) like '%%(cn)' then 7
+                                when lower(coalesce(e.geography, '')) = 'in' or lower(coalesce(e.geography, '')) like '%%(in)' then 8
                                 else 9
                             end %s,
                             case
@@ -2334,14 +2318,18 @@ public class EcoinventIntegrationService {
                     .getResultList();
         }
                 
-        List<?> mappingIds = koreanKeyword
-                ? List.of()
-                : entityManager.createNativeQuery(
+        List<?> mappingIds = entityManager.createNativeQuery(
                         "SELECT mapped_material_id FROM emission_mapping_log "
-                        + " WHERE mapped_material_id IS NOT NULL AND LOWER(raw_material_name) LIKE ?")
-                        .setParameter(1, likeKeyword)
-                        .setMaxResults(1000)
-                        .getResultList();
+                        + " WHERE mapped_material_id IS NOT NULL AND LOWER(raw_material_name) LIKE ?"
+                        + " ORDER BY CASE"
+                        + " WHEN LOWER(raw_material_name) = ? THEN 0"
+                        + " WHEN LOWER(raw_material_name) LIKE ? THEN 1"
+                        + " ELSE 2 END, raw_material_name")
+                .setParameter(1, likeKeyword)
+                .setParameter(2, normalized.toLowerCase())
+                .setParameter(3, normalized.toLowerCase() + "%")
+                .setMaxResults(1000)
+                .getResultList();
                 
         Set<Long> ids = new LinkedHashSet<>();
         for (Object idObj : translationIds) {

@@ -192,7 +192,7 @@ export function EmissionEcoinventAdminMigrationPage() {
 
   const visibleKeywordSuggestions = keywordSuggestions.slice(0, 50);
 
-  async function loadLocal(nextKeyword = appliedKeyword) {
+  async function loadLocal(nextKeyword = appliedKeyword, nextPageIndex = pageIndex) {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -201,7 +201,7 @@ export function EmissionEcoinventAdminMigrationPage() {
         ...filters,
         minScore,
         maxScore,
-        pageIndex,
+        pageIndex: nextPageIndex,
         pageSize,
         sortField,
         sortDirection
@@ -386,7 +386,7 @@ export function EmissionEcoinventAdminMigrationPage() {
     const nextKeyword = keyword.trim();
     setAppliedKeyword(nextKeyword);
     setPageIndex(1);
-    void loadLocal(nextKeyword);
+    void loadLocal(nextKeyword, 1);
   }
 
   function selectOptionsFor(key: string) {
@@ -538,7 +538,7 @@ export function EmissionEcoinventAdminMigrationPage() {
               <thead className="bg-slate-50 text-left text-xs font-black uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3">선택</th>
-                  <th className="px-4 py-3">한글 매핑명</th>
+                  <th className="px-4 py-3">한글명</th>
                   <th className="px-4 py-3">
                     <button className="flex items-center gap-1 font-black uppercase" onClick={() => toggleSort("productName")} type="button">
                       Product <span>{sortIndicator("productName", sortField, sortDirection)}</span>
