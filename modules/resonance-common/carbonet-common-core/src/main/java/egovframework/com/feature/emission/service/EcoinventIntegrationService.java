@@ -102,6 +102,9 @@ public class EcoinventIntegrationService {
         ensureEcoinventTablesReady();
         ensureMaterialTranslationTableReady();
         SearchRequest request = SearchRequest.from(params);
+        if (!request.keyword().isEmpty() && containsKorean(request.keyword())) {
+            return listLocalKoreanDatasetPage(request);
+        }
         List<Long> matchedIds = findEcoinventIdsByTranslationKeyword(request.keyword());
         QueryParts queryParts = buildLocalSearchQuery(request, matchedIds, false);
         TypedQuery<EcoinventMaster> query = entityManager.createQuery(queryParts.jpql(), EcoinventMaster.class);
@@ -124,6 +127,40 @@ public class EcoinventIntegrationService {
             totalCount = Math.max(totalCount, rows.size());
         }
         return new DatasetPage(rows, totalCount, request.pageIndex(), request.pageSize());
+    }
+
+    private DatasetPage listLocalKoreanDatasetPage(SearchRequest request) {
+        List<Long> matchedIds = findEcoinventIdsByTranslationKeyword(request.keyword());
+        if (matchedIds.isEmpty()) {
+            return new DatasetPage(List.of(), 0L, request.pageIndex(), request.pageSize());
+        }
+        Map<Long, Integer> relevanceOrder = new LinkedHashMap<>();
+        for (int index = 0; index < matchedIds.size(); index++) {
+            relevanceOrder.putIfAbsent(matchedIds.get(index), index);
+        }
+        List<Map<String, Object>> allRows = repository.findAllById(relevanceOrder.keySet()).stream()
+                .filter(master -> request.minScore() == null
+                        || (master.getImpactScore() != null && master.getImpactScore() >= request.minScore()))
+                .filter(master -> request.maxScore() == null
+                        || (master.getImpactScore() != null && master.getImpactScore() <= request.maxScore()))
+                .sorted((left, right) -> {
+                    int relevanceCompare = Integer.compare(
+                            relevanceOrder.getOrDefault(left.getId(), Integer.MAX_VALUE),
+                            relevanceOrder.getOrDefault(right.getId(), Integer.MAX_VALUE));
+                    if (relevanceCompare != 0) {
+                        return relevanceCompare;
+                    }
+                    int geographyCompare = Integer.compare(geographyRank(left.getGeography()), geographyRank(right.getGeography()));
+                    if (geographyCompare != 0) {
+                        return geographyCompare;
+                    }
+                    return safe(left.getProductName()).compareToIgnoreCase(safe(right.getProductName()));
+                })
+                .map(this::toDatasetRow)
+                .toList();
+        int fromIndex = Math.min(request.offset(), allRows.size());
+        int toIndex = Math.min(fromIndex + request.pageSize(), allRows.size());
+        return new DatasetPage(allRows.subList(fromIndex, toIndex), allRows.size(), request.pageIndex(), request.pageSize());
     }
 
     public DatasetPage searchRemoteDatasetPage(Map<String, String> params) {
