@@ -1,34 +1,26 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-05-13T00:46:28.2684375+09:00",
+  "generatedAt": "2026-05-27T10:09:54+00:00",
   "canonicalRoot": "/opt/Resonance",
   "purpose": "Bounded RAG context pack for Hermes and deterministic 3B agents. Use this before model calls; do not scan the whole repository.",
   "clusterState": {
-    "currentContext": "docker-desktop",
-    "clusterType": "kind via Docker Desktop",
-    "nodeCount": 8,
-    "kubernetesVersion": "v1.34.3",
+    "currentContext": "kubernetes-admin@kubernetes",
+    "clusterType": "kubeadm single-node",
+    "nodeCount": 1,
+    "kubernetesVersion": "v1.35.5",
     "namespaces": [
       "resonance-ops",
       "carbonet-prod"
     ],
-    "workloadStatus": "operations-console is Running 1/1 in resonance-ops; carbonet-runtime is Running 1/1 in carbonet-prod.",
+    "workloadStatus": "carbonet-runtime is Running 2/2 in carbonet-prod; ops web runs as systemd resonance-ops-web.service on port 17890.",
     "services": [
-      {
-        "name": "operations-console",
-        "namespace": "resonance-ops",
-        "type": "ClusterIP",
-        "port": 80,
-        "image": "registry.local/operations-console:2026.05.11-java-fix-v5",
-        "status": "Running 1/1"
-      },
       {
         "name": "carbonet-runtime",
         "namespace": "carbonet-prod",
-        "type": "ClusterIP",
-        "port": 80,
-        "image": "registry.local/carbonet-runtime:2026.05.12-235223-local",
-        "status": "Running 1/1",
+        "type": "NodePort",
+        "port": "80/TCP,32947/TCP",
+        "image": "registry.local/carbonet-runtime:2026.05.27-125638-kubeadm",
+        "status": "Running 2/2",
         "health": "UP"
       }
     ]
@@ -41,6 +33,23 @@
     "note": "Qwen family remains restricted for bounded code assistance only because strict safety gates failed."
   },
   "activeObjectives": [
+    {
+      "id": "hermes-codex55-grade-40b-rag",
+      "zone": "operations-platform",
+      "status": "combined-rag-vector-ready",
+      "summary": "Use the combined Resonance plus Hermes sparse-vector RAG index before broad repository scans so 40B Hermes work stays accurate and within timeout budgets.",
+      "readFirst": [
+        "data/ai-runtime/hermes-combined-rag-manifest.json",
+        "data/ai-runtime/hermes-rag-vector.sqlite3",
+        "ops/scripts/query-hermes-rag.py",
+        "ops/scripts/update-hermes-vector-rag.sh",
+        "data/ai-runtime/hermes-rag-context-pack.json",
+        "/opt/util/ai/hermes/.hermes.md",
+        "/opt/util/ai/hermes/cli.py",
+        "/opt/util/ai/hermes/agent/prompt_builder.py",
+        "docs/ai/hermes-carbonet-40b-qlora-rag.md"
+      ]
+    },
     {
       "id": "project-split-hardening",
       "zone": "project-carbonet",
@@ -205,6 +214,9 @@
     ]
   },
   "nextSafeMoves": [
+    "For 40B Hermes work, read data/ai-runtime/hermes-combined-rag-manifest.json and then pull only the top matching sources.",
+    "On forced Hermes shutdown, resume from /opt/Resonance/var/ai-runtime/hermes-resume/latest.json or ~/.hermes/resume/latest.json.",
+    "Before scanning more than a narrow file set, query the combined Hermes/Resonance RAG DB with ops/scripts/query-hermes-rag.py.",
     "Keep resonance-ops and carbonet-prod unless a dedicated namespace rename wave is opened.",
     "Use ops/scripts/prepare-docker-desktop-k8s-gate.sh for config, secret, and runtime deployment gates.",
     "Treat tmux lane execution as a separate image hardening move because current runtime images start without tmux installed.",
@@ -229,5 +241,25 @@
     "Use RUN_MODEL_GATE=true MODEL=gemma3:4b bash ops/scripts/run-hermes-rag-smoke.sh when local Ollama safety and route behavior must be revalidated.",
     "Use this RAG context pack as Hermes' opening book.",
     "For KRDS, start with data/design-references/krds/krds-reference-map.md before reading component examples."
-  ]
+  ],
+  "ragIndexes": {
+    "combinedHermesResonance": {
+      "dbPath": "/opt/Resonance/data/ai-runtime/hermes-rag-vector.sqlite3",
+      "manifestPath": "/opt/Resonance/data/ai-runtime/hermes-combined-rag-manifest.json",
+      "queryCommand": "python3 /opt/Resonance/ops/scripts/query-hermes-rag.py \"검색어\" --limit 8",
+      "indexKind": "sqlite-fts5-with-sparse-document-vectors",
+      "documentCount": 20365,
+      "chunkCount": 43294,
+      "roots": [
+        {
+          "name": "resonance",
+          "path": "/opt/Resonance"
+        },
+        {
+          "name": "hermes",
+          "path": "/opt/util/ai/hermes"
+        }
+      ]
+    }
+  }
 }

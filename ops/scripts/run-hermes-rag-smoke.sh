@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/var/ai-model-gates}"
-K8S_CONTEXT="${K8S_CONTEXT:-docker-desktop}"
+K8S_CONTEXT="${K8S_CONTEXT:-$(kubectl config current-context 2>/dev/null || echo docker-desktop)}"
 OPS_NS="${OPS_NS:-resonance-ops}"
 RUNTIME_NS="${RUNTIME_NS:-carbonet-prod}"
 RUN_MODEL_GATE="${RUN_MODEL_GATE:-false}"
@@ -330,13 +330,19 @@ current_context="$(kubectl config current-context)"
 [ "$current_context" = "$K8S_CONTEXT" ] || fail "context mismatch expected=$K8S_CONTEXT actual=$current_context"
 write "- current context: $current_context"
 
-ops_ready="$(kubectl -n "$OPS_NS" get deploy operations-console -o jsonpath='{.status.readyReplicas}/{.status.replicas}')"
 runtime_ready="$(kubectl -n "$RUNTIME_NS" get deploy carbonet-runtime -o jsonpath='{.status.readyReplicas}/{.status.replicas}')"
-expected_ops_ready="$(jq -r '.deployments[] | select(.component == "operations-console") | .expectedReadyReplicas' "$ROOT_DIR/data/version-control/k8s-runtime-status-20260427.json")"
 expected_runtime_ready="$(jq -r '.deployments[] | select(.component == "carbonet-runtime") | .expectedReadyReplicas' "$ROOT_DIR/data/version-control/k8s-runtime-status-20260427.json")"
-[ "$ops_ready" = "$expected_ops_ready/$expected_ops_ready" ] || fail "operations-console not ready: $ops_ready"
 [ "$runtime_ready" = "$expected_runtime_ready/$expected_runtime_ready" ] || fail "carbonet-runtime not ready: $runtime_ready"
-write "- operations-console: $ops_ready"
+expected_ops_ready="$(jq -r '.deployments[]? | select(.component == "operations-console") | .expectedReadyReplicas' "$ROOT_DIR/data/version-control/k8s-runtime-status-20260427.json")"
+if [[ -n "$expected_ops_ready" && "$expected_ops_ready" != "null" ]]; then
+  ops_ready="$(kubectl -n "$OPS_NS" get deploy operations-console -o jsonpath='{.status.readyReplicas}/{.status.replicas}')"
+  [ "$ops_ready" = "$expected_ops_ready/$expected_ops_ready" ] || fail "operations-console not ready: $ops_ready"
+  write "- operations-console: $ops_ready"
+else
+  ops_web_status="$(systemctl is-active resonance-ops-web.service 2>/dev/null || true)"
+  [ "$ops_web_status" = "active" ] || fail "resonance-ops-web.service not active: $ops_web_status"
+  write "- resonance-ops-web.service: $ops_web_status"
+fi
 write "- carbonet-runtime: $runtime_ready"
 
 health_pod="hermes-rag-health-check-$(date +%H%M%S)"

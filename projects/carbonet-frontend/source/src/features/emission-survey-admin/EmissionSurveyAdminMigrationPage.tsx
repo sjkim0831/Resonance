@@ -567,7 +567,10 @@ function withOriginalSectionColumns(sectionCode: string | undefined, columns: Ar
   return mergedColumns;
 }
 function buildEditableColumns(section: EmissionSurveyAdminSection | undefined) {
-  const columns = withOriginalSectionColumns(section?.sectionCode, ((section?.columns || []) as Array<Record<string, string>>));
+  let columns = withOriginalSectionColumns(section?.sectionCode, ((section?.columns || []) as Array<Record<string, string>>));
+  if (section?.sectionCode === EMISSION_SURVEY_OUTPUT_SECTION_CODE) {
+    columns = columns.filter((column) => stringOf(column, "key") !== "costUnit");
+  }
   const hasAmountColumn = columns.some((column) => stringOf(column, "key") === "amount");
   if (!supportsEmissionFactorColumn(section?.sectionCode) || !hasAmountColumn) {
     return normalizeAnnualUnitColumns(withUnitCategoryColumns(columns));

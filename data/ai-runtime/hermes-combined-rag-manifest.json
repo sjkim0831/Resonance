@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-05-27T10:09:54+00:00",
+  "dbPath": "/opt/Resonance/data/ai-runtime/hermes-rag-vector.sqlite3",
+  "manifestPath": "/opt/Resonance/data/ai-runtime/hermes-combined-rag-manifest.json",
+  "roots": [
+    {
+      "name": "resonance",
+      "path": "/opt/Resonance"
+    },
+    {
+      "name": "hermes",
+      "path": "/opt/util/ai/hermes"
+    }
+  ],
+  "documentCount": 20365,
+  "chunkCount": 43294,
+  "rootFileCounts": {
+    "resonance": 18346,
+    "hermes": 2019
+  },
+  "rootChunkCounts": {
+    "resonance": 36158,
+    "hermes": 7136
+  },
+  "skippedMissingRoots": [],
+  "queryCommand": "python3 /opt/Resonance/ops/scripts/query-hermes-rag.py \"검색어\" --limit 8",
+  "indexKind": "sqlite-fts5-with-sparse-document-vectors",
+  "maxFileBytes": 524288,
+  "chunkChars": 5200,
+  "chunkOverlap": 500
+}

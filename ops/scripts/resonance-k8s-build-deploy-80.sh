@@ -619,7 +619,71 @@ write_release_manifest() {
     "$(json_escape "$jar_sha")" "$(json_escape "$disk_root")" "$(json_escape "$disk_opt")" >>"$MANIFEST_LOG"
 }
 
+is_frontend_path() {
+  local path="$1"
+  case "$path" in
+    projects/carbonet-frontend/source/*|\
+    projects/carbonet-frontend/src/main/resources/static/react-app/*|\
+    projects/carbonet-frontend/target/classes/static/react-app/*|\
+    apps/carbonet-app/src/main/resources/static/react-app/*|\
+    apps/project-runtime/src/main/resources/static/react-app/*|\
+    apps/project-runtime/target/classes/static/react-app/*)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+changed_paths_for_deploy() {
+  git -C "$ROOT_DIR" status --porcelain --untracked-files=all 2>/dev/null \
+    | sed -E 's/^...//; s/^.* -> //' \
+    | grep -v -E '^(var/|logs/|target/|\.gradle/|\.idea/|\.vscode/)' \
+    || true
+}
+
+should_frontend_only_deploy() {
+  if [[ "${FORCE_FULL_DEPLOY:-false}" == "true" ]]; then
+    return 1
+  fi
+  if [[ "${FRONTEND_ONLY:-false}" == "true" ]]; then
+    return 0
+  fi
+  if [[ "${AUTO_FRONTEND_ONLY:-true}" != "true" ]]; then
+    return 1
+  fi
+
+  local paths=() path
+  mapfile -t paths < <(changed_paths_for_deploy)
+  [[ "${#paths[@]}" -gt 0 ]] || return 1
+  for path in "${paths[@]}"; do
+    [[ -n "$path" ]] || continue
+    if ! is_frontend_path "$path"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+frontend_only_deploy() {
+  log_event START FRONTEND_ONLY_STARTED "frontend-only build deploy started"
+  cleanup_residual_runtime_processes
+  build_frontend
+  verify_survey_admin_combobox_bundle
+  ensure_runtime_config
+  ensure_ha_policy
+  verify_runtime
+  verify_react_bootstrap_assets
+  write_release_manifest
+  log_event OK FRONTEND_ONLY_DEPLOYED "frontend-only build deploy completed"
+  kubectl -n "$NAMESPACE" get deploy,svc,pod -o wide
+}
+
 main() {
+  if should_frontend_only_deploy; then
+    log "frontend-only deploy mode selected"
+    frontend_only_deploy
+    return 0
+  fi
   log_event START STARTED "build deploy started"
   cleanup_residual_runtime_processes
   backup_runtime
