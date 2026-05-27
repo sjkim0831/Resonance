@@ -59,3 +59,4 @@ deploy/k8s/**/*.secret.yaml
 # OS
 .DS_Store
 Thumbs.db
+.gitattributes
