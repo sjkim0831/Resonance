@@ -765,6 +765,7 @@ export function EmissionSurveyReportMigrationPage() {
                     en={en}
                     outputQuantityTotal={normalization.outputQuantityTotal}
                     normalizationFactor={normalization.factor}
+                    byproductAllocation={byproductAllocation}
                     rows={outputNormalizationRows}
                     totalEmission={report.summary.totalEmission}
                     productName={report.productName}
@@ -1358,6 +1359,7 @@ export function EmissionSurveyReportPrintPage() {
             englishNameMap={englishNameMap}
             outputQuantityTotal={normalization.outputQuantityTotal}
             normalizationFactor={normalization.factor}
+            byproductAllocation={byproductAllocation}
             onRowShareChange={updateOutputSharePercent}
             onRowNumberChange={updateOutputRowNumber}
             onRowTextChange={updateInventoryRow}
@@ -1946,6 +1948,7 @@ function PrintOutputAllocationTable({
   totalEmission,
   outputQuantityTotal,
   normalizationFactor,
+  byproductAllocation,
   onRowNumberChange,
   onRowTextChange,
   onRowShareChange,
@@ -1957,6 +1960,7 @@ function PrintOutputAllocationTable({
   totalEmission: number;
   outputQuantityTotal: number;
   normalizationFactor?: number;
+  byproductAllocation?: "allocated" | "unallocated";
   onRowNumberChange?: (rowId: string, key: "originalAmount" | "amount", value: number) => void;
   onRowTextChange?: (rowId: string, key: keyof EmissionSurveyReportRow, value: string | number) => void;
   onRowShareChange?: (rowId: string, value: number) => void;
@@ -1985,9 +1989,15 @@ function PrintOutputAllocationTable({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const massShare = outputMassShare(row, outputQuantityTotal);
+            const isByproduct = row.sectionCode === "OUTPUT_BYPRODUCTS";
+            const productOnlyMass = rows
+              .filter((r) => r.sectionCode === "OUTPUT_PRODUCTS")
+              .reduce((sum, r) => sum + (r.originalAmount || 0), 0);
+            const isUnallocated = byproductAllocation === "unallocated";
+            const effectiveOutputQuantityTotal = isUnallocated ? productOnlyMass : outputQuantityTotal;
+            const massShare = effectiveOutputQuantityTotal > 0 ? row.originalAmount / effectiveOutputQuantityTotal : 0;
             const displaySharePercent = massShare * 100;
-            const normalizedEmission = outputNormalizedEmission(row, totalEmission, outputQuantityTotal);
+            const normalizedEmission = isUnallocated && isByproduct ? 0 : totalEmission * massShare;
             const rawEmission = normalizedEmission * (normalizationFactor || 1);
             return (
               <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
