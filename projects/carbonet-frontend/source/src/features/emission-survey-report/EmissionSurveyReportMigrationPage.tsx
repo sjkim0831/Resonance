@@ -626,7 +626,6 @@ export function EmissionSurveyReportMigrationPage() {
   };
   const outputNormalizationRows = buildOutputNormalizationRows(report.rows || []);
   const maxChartEmission = Math.max(...chartSections.map((section) => section.totalEmission), 1);
-  const originalTotalEmission = normalization.factor > 0 ? report.summary.totalEmission / normalization.factor : report.summary.totalEmission;
   const outputMassUnit = outputMassUnitLabel(outputNormalizationRows, en);
   const handlePrintLanguage = (language: "ko" | "en") => {
     setPrintLanguageOpen(false);
@@ -746,8 +745,8 @@ export function EmissionSurveyReportMigrationPage() {
                   </div>
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Product GWP" : "제품 GWP"}</p>
-                    <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(originalTotalEmission, 6)}</p>
-                    <p className="text-[10px] font-bold text-slate-400">kg CO2e</p>
+                    <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], report.summary.totalEmission, normalization.outputQuantityTotal) : 0, 6)}</p>
+                    <p className="text-[10px] font-bold text-slate-400">kg CO2e/ton of {en ? (report.productName || "Product") : (report.productName || "제품")}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Process GWP" : "공정 GWP"}</p>
@@ -765,6 +764,7 @@ export function EmissionSurveyReportMigrationPage() {
                   <PrintOutputAllocationTable
                     en={en}
                     outputQuantityTotal={normalization.outputQuantityTotal}
+                    normalizationFactor={normalization.factor}
                     rows={outputNormalizationRows}
                     totalEmission={report.summary.totalEmission}
                     productName={report.productName}
@@ -1327,14 +1327,14 @@ export function EmissionSurveyReportPrintPage() {
               onCommit={updateOutputQuantityTotal}
               value={normalization.outputQuantityTotal}
             />
-	            <PrintMetric
-	              editable
-	              digits={2}
-		            label={en ? "Product GWP" : "제품 GWP"}
-	              note="kg CO2e"
-	              onCommit={updateOriginalTotalEmission}
-	              value={originalTotalEmission}
-	            />
+<PrintMetric
+                editable
+                digits={2}
+                label={en ? "Product GWP" : "제품 GWP"}
+                note={`kg CO2e/ton of ${en ? (effectiveReport.productName || "Product") : (effectiveReport.productName || "제품")}`}
+                onCommit={updateOriginalTotalEmission}
+                value={outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], totalEmission, normalization.outputQuantityTotal) : 0}
+              />
 	            <PrintMetric
 	              editable
 	              digits={2}
@@ -1357,6 +1357,7 @@ export function EmissionSurveyReportPrintPage() {
             en={en}
             englishNameMap={englishNameMap}
             outputQuantityTotal={normalization.outputQuantityTotal}
+            normalizationFactor={normalization.factor}
             onRowShareChange={updateOutputSharePercent}
             onRowNumberChange={updateOutputRowNumber}
             onRowTextChange={updateInventoryRow}
@@ -1944,6 +1945,7 @@ function PrintOutputAllocationTable({
   englishNameMap,
   totalEmission,
   outputQuantityTotal,
+  normalizationFactor,
   onRowNumberChange,
   onRowTextChange,
   onRowShareChange,
@@ -1954,6 +1956,7 @@ function PrintOutputAllocationTable({
   englishNameMap?: EnglishMaterialNameMap;
   totalEmission: number;
   outputQuantityTotal: number;
+  normalizationFactor?: number;
   onRowNumberChange?: (rowId: string, key: "originalAmount" | "amount", value: number) => void;
   onRowTextChange?: (rowId: string, key: keyof EmissionSurveyReportRow, value: string | number) => void;
   onRowShareChange?: (rowId: string, value: number) => void;
@@ -1972,11 +1975,12 @@ function PrintOutputAllocationTable({
       <table className="print-table w-full table-fixed border-separate border-spacing-0 text-[11px]">
         <thead className="bg-amber-50">
           <tr className="text-left font-black text-amber-900">
-            <th className="w-[14%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Type" : "구분"}</th>
-            <th className="w-[31%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
-            <th className="w-[18%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
-            <th className="w-[12%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Mass Share" : "질량 비중"}</th>
-            <th className="w-[25%] rounded-tr-3xl border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission (by Mass Share)" : "질량 비중에 따른 배출량 계산"}</th>
+            <th className="w-[12%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Type" : "구분"}</th>
+            <th className="w-[28%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
+            <th className="w-[16%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
+            <th className="w-[10%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Mass Share" : "질량 비중"}</th>
+            <th className="w-[17%] border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission (by Mass Share)" : "질량 비중에 따른 배출량 계산"}</th>
+            <th className="w-[17%] rounded-tr-3xl border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission per ton" : "배출량(1톤 기준)"}</th>
           </tr>
         </thead>
         <tbody>
@@ -1984,6 +1988,7 @@ function PrintOutputAllocationTable({
             const massShare = outputMassShare(row, outputQuantityTotal);
             const displaySharePercent = massShare * 100;
             const normalizedEmission = outputNormalizedEmission(row, totalEmission, outputQuantityTotal);
+            const rawEmission = normalizedEmission * (normalizationFactor || 1);
             return (
               <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
                 <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
@@ -2021,6 +2026,12 @@ function PrintOutputAllocationTable({
                     />
                     <span>%</span>
                   </span>
+                </td>
+                <td className="px-2 py-3 text-center align-middle">
+                  <div className="inline-flex flex-col items-center justify-center leading-none">
+                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(rawEmission, 2)}</span>
+                    <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">kg CO2e</span>
+                  </div>
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
