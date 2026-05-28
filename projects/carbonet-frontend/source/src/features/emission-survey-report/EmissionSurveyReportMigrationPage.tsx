@@ -584,6 +584,7 @@ function useEnglishMaterialNames(report: ReturnType<typeof loadEmissionSurveyRep
 export function EmissionSurveyReportMigrationPage() {
   const routeEn = isEnglish();
   const [printLanguageOpen, setPrintLanguageOpen] = useState(false);
+  const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
   const en = routeEn;
   const report = loadEmissionSurveyReportSession();
 
@@ -732,8 +733,20 @@ export function EmissionSurveyReportMigrationPage() {
                         : "질량은 각 행의 입력 단위를 따르며, 배분 배출량 단위는 kg CO2e입니다."}
                     </p>
                   </div>
+                  <div className="min-w-[160px] bg-white rounded-xl p-1 shadow-sm border border-amber-200">
+                    <label className="block p-1">
+                      <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-amber-800">{en ? "Byproduct Allocation" : "부산물 할당 여부"}</span>
+                      <AdminSelect
+                        value={byproductAllocation}
+                        onChange={(e) => setByproductAllocation(e.target.value as "allocated" | "unallocated")}
+                      >
+                        <option value="allocated">{en ? "Allocated" : "할당"}</option>
+                        <option value="unallocated">{en ? "Unallocated" : "미할당"}</option>
+                      </AdminSelect>
+                    </label>
+                  </div>
                 </div>
-                <div className="mt-5 grid gap-3 rounded-[var(--kr-gov-radius)] border border-amber-100 bg-white/85 p-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-5 grid gap-3 rounded-[var(--kr-gov-radius)] border border-amber-100 bg-white/85 p-4 sm:grid-cols-3 xl:grid-cols-3">
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Total Output Mass" : "총 산출물 질량"}</p>
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">
@@ -742,16 +755,12 @@ export function EmissionSurveyReportMigrationPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Factor" : "환산계수"}</p>
-                    <p className="mt-1 font-mono text-lg font-black text-slate-950">{normalization.applied ? formatNumber(normalization.factor, 6) : "1"}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Actual Emission" : "실제 배출량"}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Product GWP" : "제품 GWP"}</p>
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(originalTotalEmission, 6)}</p>
                     <p className="text-[10px] font-bold text-slate-400">kg CO2e</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Unit Emission (per 1 tonne of output)" : "단위 배출량 환산(산출물 1톤 기준)"}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Process GWP" : "공정 GWP"}</p>
                     <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(report.summary.totalEmission, 6)}</p>
                     <p className="text-[10px] font-bold text-slate-400">kg CO2e</p>
                   </div>
@@ -769,6 +778,7 @@ export function EmissionSurveyReportMigrationPage() {
                     outputQuantityTotal={normalization.outputQuantityTotal}
                     rows={outputNormalizationRows}
                     totalEmission={report.summary.totalEmission}
+                    productName={report.productName}
                   />
                 </section>
               </div>
@@ -881,6 +891,7 @@ export function EmissionSurveyReportMigrationPage() {
 export function EmissionSurveyReportPrintPage() {
   const report = useMemo(() => loadEmissionSurveyReportSession(), []);
   const [draftReport, setDraftReport] = useState<EmissionSurveyReportPayload | null>(report);
+  const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
   const language = new URLSearchParams(window.location.search).get("lang");
   const en = language ? language === "en" : isEnglish();
   const effectiveReport = draftReport || report;
@@ -1321,13 +1332,25 @@ export function EmissionSurveyReportPrintPage() {
 
         <div className="px-8 py-7">
         <section className="print-card print-soft-bg mt-7 rounded-3xl border border-amber-200 bg-[linear-gradient(135deg,#fffbeb,#fff7ed)] p-5">
-          <div className="flex flex-wrap justify-between gap-3">
+          <div className="flex flex-wrap justify-between gap-3 items-start">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Normalization Base" : "정규화 기준"}</p>
               <h2 className="mt-1 text-xl font-black">{en ? "Product And Byproduct Mass Basis" : "제품 및 부산물 질량 기준"}</h2>
             </div>
+            <div className="min-w-[160px] bg-white rounded-xl p-1 shadow-sm border border-amber-200 print:hidden">
+              <label className="block p-1">
+                <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-amber-800">{en ? "Byproduct Allocation" : "부산물 할당 여부"}</span>
+                <AdminSelect
+                  value={byproductAllocation}
+                  onChange={(e) => setByproductAllocation(e.target.value as "allocated" | "unallocated")}
+                >
+                  <option value="allocated">{en ? "Allocated" : "할당"}</option>
+                  <option value="unallocated">{en ? "Unallocated" : "미할당"}</option>
+                </AdminSelect>
+              </label>
+            </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <PrintMetric
               editable
               label={en ? "Total Output Mass" : "총 산출물 질량"}
@@ -1338,7 +1361,7 @@ export function EmissionSurveyReportPrintPage() {
 	            <PrintMetric
 	              editable
 	              digits={2}
-		            label={en ? "Actual Emission" : "실제 배출량"}
+		            label={en ? "Product GWP" : "제품 GWP"}
 	              note="kg CO2e"
 	              onCommit={updateOriginalTotalEmission}
 	              value={originalTotalEmission}
@@ -1346,17 +1369,10 @@ export function EmissionSurveyReportPrintPage() {
 	            <PrintMetric
 	              editable
 	              digits={2}
-		            label={en ? "Unit Emission (per 1 tonne of output)" : "단위 배출량 환산(산출물 1톤 기준)"}
+		            label={en ? "Process GWP" : "공정 GWP"}
 	              note="kg CO2e"
 	              onCommit={updateTotalEmission}
 	              value={totalEmission}
-	            />
-	            <PrintMetric
-	              editable
-	              digits={2}
-	              label={en ? "Emission Factor" : "환산계수"}
-	              onCommit={updateNormalizationFactor}
-	              value={normalization.applied ? normalization.factor : 1}
 	            />
           </div>
         </section>
@@ -1378,6 +1394,7 @@ export function EmissionSurveyReportPrintPage() {
             onRowTextChange={updateInventoryRow}
             rows={outputNormalizationRows}
             totalEmission={totalEmission}
+            productName={effectiveReport.productName}
           />
         </section>
 
@@ -1962,7 +1979,8 @@ function PrintOutputAllocationTable({
   normalizationFactor,
   onRowNumberChange,
   onRowTextChange,
-  onRowShareChange
+  onRowShareChange,
+  productName
 }: {
   rows: EmissionSurveyReportRow[];
   en: boolean;
@@ -1973,6 +1991,7 @@ function PrintOutputAllocationTable({
   onRowNumberChange?: (rowId: string, key: "originalAmount" | "amount", value: number) => void;
   onRowTextChange?: (rowId: string, key: keyof EmissionSurveyReportRow, value: string | number) => void;
   onRowShareChange?: (rowId: string, value: number) => void;
+  productName?: string;
 }) {
   if (rows.length === 0) {
     return (
@@ -1987,23 +2006,11 @@ function PrintOutputAllocationTable({
       <table className="print-table w-full table-fixed border-separate border-spacing-0 text-[11px]">
         <thead className="bg-amber-50">
           <tr className="text-left font-black text-amber-900">
-            <th className="w-[35%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-2">{en ? "Output" : "출력물"}</th>
-            <th className="w-[9%] whitespace-nowrap border-b border-amber-200 px-2 py-2">{en ? "Type" : "구분"}</th>
-	            <th className="w-[22%] border-b border-amber-200 px-2 py-2 text-center">
-	              <div className="font-black">{en ? "Mass" : "질량"}</div>
-	              <div className="mt-1 grid grid-cols-2 items-center border-t border-slate-300 pt-1 text-center text-[9px] font-black uppercase tracking-[0.08em] text-amber-700">
-	                <span>{en ? "Original" : "원본"}</span>
-	                <span className="border-l border-slate-300">{en ? "Normal" : "정규화"}</span>
-	              </div>
-	            </th>
-            <th className="w-[10%] whitespace-nowrap border-b border-amber-200 px-2 py-2 text-right">{en ? "Share" : "질량 비율"}</th>
-	            <th className="w-[24%] rounded-tr-3xl border-b border-amber-200 px-2 py-2 text-center">
-	              <div className="font-black">{en ? "Emission" : "배출량"}</div>
-	              <div className="mt-1 grid grid-cols-2 items-center border-t border-slate-300 pt-1 text-center text-[9px] font-black uppercase tracking-[0.08em] text-amber-700">
-	                <span>{en ? "Original" : "정규화 전"}</span>
-	                <span className="border-l border-slate-300">{en ? "Normal" : "정규화"}</span>
-	              </div>
-	            </th>
+            <th className="w-[14%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Type" : "구분"}</th>
+            <th className="w-[31%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
+            <th className="w-[18%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
+            <th className="w-[12%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Mass Share" : "질량 비중"}</th>
+            <th className="w-[25%] rounded-tr-3xl border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission (by Mass Share)" : "질량 비중에 따른 배출량 계산"}</th>
           </tr>
         </thead>
         <tbody>
@@ -2011,9 +2018,11 @@ function PrintOutputAllocationTable({
             const massShare = outputMassShare(row, outputQuantityTotal);
             const displaySharePercent = massShare * 100;
             const normalizedEmission = outputNormalizedEmission(row, totalEmission, outputQuantityTotal);
-            const originalEmission = outputOriginalEmission(row, totalEmission, outputQuantityTotal, normalizationFactor);
             return (
               <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
+                <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
+                  {groupLabel(row, en)}
+                </td>
                 <td className="px-3 py-3 align-middle">
 	                  <EditableText
 	                    multiline
@@ -2025,54 +2034,34 @@ function PrintOutputAllocationTable({
                     <div className="h-full rounded-full bg-amber-600" style={{ width: `${Math.max(2, Math.min(displaySharePercent, 100))}%` }} />
                   </div>
                 </td>
-                <td className="px-2 py-3 text-slate-600">{groupLabel(row, en)}</td>
-	                <td className="px-2 py-3 text-center">
-                  <div className="grid grid-cols-2 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 px-1.5 py-2 text-center">
-                    <div className="text-center">
-                      <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap font-mono text-[11px] text-slate-700">
-                        <EditableNumber
-                          className="inline-block w-8 bg-transparent text-center font-mono"
-                          digits={2}
-                          onCommit={(value) => onRowNumberChange?.(row.rowId, "originalAmount", value)}
-                          value={row.originalAmount}
-                        />
-                        <span className="text-[9px] font-bold text-slate-500">{row.unit || ""}</span>
-                      </span>
-                    </div>
-                    <div className="border-l border-slate-200 pl-1 text-center">
-                      <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap font-mono text-[11px] font-black text-slate-900">
-                        <EditableNumber
-                          className="inline-block w-8 bg-transparent text-center font-mono font-black"
-                          digits={2}
-                          onCommit={(value) => onRowNumberChange?.(row.rowId, "amount", value)}
-                          value={row.amount}
-                        />
-                        <span className="text-[9px] font-bold text-slate-500">{row.unit || ""}</span>
-                      </span>
-                    </div>
-                  </div>
+                <td className="px-2 py-3 text-center">
+                  <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap font-mono text-[11px] font-black text-slate-900">
+                    <EditableNumber
+                      className="inline-block w-12 bg-transparent text-center font-mono font-black"
+                      digits={2}
+                      onCommit={(value) => onRowNumberChange?.(row.rowId, "originalAmount", value)}
+                      value={row.originalAmount}
+                    />
+                    <span className="text-[9px] font-bold text-slate-500">{row.unit || ""}</span>
+                  </span>
                 </td>
-	                <td className="whitespace-nowrap px-2 py-3 text-center font-mono font-black">
-	                  <span className="inline-flex items-center justify-center gap-0.5 whitespace-nowrap">
-		                    <EditableNumber
+                <td className="whitespace-nowrap px-2 py-3 text-center font-mono font-black">
+                  <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap text-slate-950">
+                    <EditableNumber
                       className="inline-block w-10 bg-transparent text-center font-mono font-black"
-	                      digits={2}
+                      digits={2}
                       onCommit={(value) => onRowShareChange?.(row.rowId, value)}
                       value={displaySharePercent}
                     />
                     <span>%</span>
                   </span>
                 </td>
-                <td className="px-2 py-3 text-center">
-                  <div className="grid grid-cols-2 items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/70 px-1.5 py-2 text-center">
-                    <div className="inline-flex flex-col items-center justify-center leading-none">
-                      <span className="font-mono text-[11px] text-slate-700">{formatNumber(originalEmission, 2)}</span>
-                      <span className="mt-0.5 text-[8px] font-bold text-slate-400">kg CO2e</span>
-                    </div>
-                    <div className="inline-flex flex-col items-center justify-center border-l border-slate-200 pl-1 leading-none">
-                      <span className="font-mono text-[11px] font-black text-slate-950">{formatNumber(normalizedEmission, 2)}</span>
-                      <span className="mt-0.5 text-[8px] font-bold text-slate-400">kg CO2e</span>
-                    </div>
+                <td className="px-2 py-3 text-center align-middle">
+                  <div className="inline-flex flex-col items-center justify-center leading-none">
+                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(normalizedEmission, 2)}</span>
+                    <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">
+                      kg CO2e/ton of {en ? (productName || "Product") : (productName || "제품")}
+                    </span>
                   </div>
                 </td>
               </tr>
