@@ -1445,6 +1445,7 @@ export function EmissionSurveyAdminMigrationPage() {
   const [drafts, setDrafts] = useState<DraftState>({});
   const [activeCases, setActiveCases] = useState<SectionCaseState>({});
   const [expandedSections, setExpandedSections] = useState<SectionExpandState>({});
+  const [isCalculationCardCollapsed, setIsCalculationCardCollapsed] = useState(false);
   const [selectedProductName, setSelectedProductName] = useState("");
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productSearchDirty, setProductSearchDirty] = useState(false);
@@ -2823,19 +2824,48 @@ export function EmissionSurveyAdminMigrationPage() {
             />
           </div>
 
-          <aside className="xl:fixed xl:bottom-24 xl:right-6 xl:z-40 xl:w-[320px] xl:self-start">
+          <aside className="xl:fixed xl:bottom-24 xl:right-6 xl:z-40 xl:w-[320px] xl:self-start transition-all duration-300">
             <div className="rounded-[var(--kr-gov-radius)] border border-sky-200 bg-white/95 p-4 shadow-[0_20px_45px_rgba(15,23,42,0.18)] backdrop-blur">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">입력 안내</p>
-              <h3 className="mt-2 text-lg font-black text-[var(--kr-gov-text-primary)]">탄소배출량 미리 계산</h3>
-              <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-bold text-slate-500">합계 탄소배출량</p>
-                <p className="mt-1 text-2xl font-black text-[var(--kr-gov-text-primary)]">
-                  {previewSummary.totalEmission.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">입력 안내</p>
+                <button
+                  aria-label={isCalculationCardCollapsed ? "카드 펼치기" : "카드 접기"}
+                  className="rounded p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                  onClick={() => setIsCalculationCardCollapsed(!isCalculationCardCollapsed)}
+                  type="button"
+                >
+                  {isCalculationCardCollapsed ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path d="M5 15l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                    </svg>
+                  )}
+                </button>
               </div>
-              <MemberButton className="mt-4 w-full" onClick={handleMoveToCalculation} type="button">
-                {en ? "Calculate Carbon Emissions" : "실제 탄소배출량 계산"}
-              </MemberButton>
+              <h3 className="mt-2 text-lg font-black text-[var(--kr-gov-text-primary)] flex items-center justify-between">
+                <span>탄소배출량 미리 계산</span>
+                {isCalculationCardCollapsed && (
+                  <span className="text-xs font-bold bg-sky-100 text-[var(--kr-gov-blue)] px-2 py-0.5 rounded-[var(--kr-gov-radius)]">
+                    {previewSummary.totalEmission.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </span>
+                )}
+              </h3>
+              {!isCalculationCardCollapsed && (
+                <div className="transition-all duration-300 ease-in-out origin-top">
+                  <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-bold text-slate-500">합계 탄소배출량</p>
+                    <p className="mt-1 text-2xl font-black text-[var(--kr-gov-text-primary)]">
+                      {previewSummary.totalEmission.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                    </p>
+                  </div>
+                  <MemberButton className="mt-4 w-full" onClick={handleMoveToCalculation} type="button">
+                    {en ? "Calculate Carbon Emissions" : "실제 탄소배출량 계산"}
+                  </MemberButton>
+                </div>
+              )}
             </div>
           </aside>
         </div>
