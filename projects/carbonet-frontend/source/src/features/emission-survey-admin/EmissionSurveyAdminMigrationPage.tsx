@@ -2621,7 +2621,7 @@ export function EmissionSurveyAdminMigrationPage() {
             )}
           />
           <input accept=".xlsx" className="hidden" onChange={handleUploadChange} ref={fileInputRef} type="file" />
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.1fr)_minmax(0,0.5fr)]">
             <div
               className="relative z-50"
               data-help-id="emission-survey-product-combobox"
@@ -2715,7 +2715,7 @@ export function EmissionSurveyAdminMigrationPage() {
                       aria-selected={optionIndex === productActiveOptionIndex}
                       role="option"
                       type="button"
-                    >
+                      >
                       <span className="flex flex-wrap items-center gap-2 font-bold text-[var(--kr-gov-text-primary)]">
                         {option.label}
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-500">
@@ -2733,18 +2733,19 @@ export function EmissionSurveyAdminMigrationPage() {
                 </div>
               ) : null}
             </div>
-            <div className="flex flex-col items-end justify-end gap-2">
-              <label className="flex items-center gap-2 whitespace-nowrap">
-                <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">부산물 탄소배출량 산정</span>
-                <select
-                  className="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-[var(--kr-gov-blue)] focus:outline-none focus:ring-1 focus:ring-[var(--kr-gov-blue)]"
+            <div>
+              <label className="block">
+                <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">부산물 탄소배출량 산정</span>
+                <AdminSelect
                   value={includeByproductEmission ? "include" : "exclude"}
                   onChange={(e) => setIncludeByproductEmission(e.target.value === "include")}
                 >
-                  <option value="include">포함</option>
-                  <option value="exclude">비포함</option>
-                </select>
+                  <option value="include">산정 포함</option>
+                  <option value="exclude">산정 제외</option>
+                </AdminSelect>
               </label>
+            </div>
+            <div className="h-full flex flex-col justify-end">
               <MemberButton className="w-full" disabled={directInputMode} onClick={handleApplyProductSearch} type="button" variant="secondary">검색 적용</MemberButton>
             </div>
           </div>
