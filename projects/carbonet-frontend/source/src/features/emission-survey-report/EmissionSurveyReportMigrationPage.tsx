@@ -202,12 +202,29 @@ function buildOutputNormalizationRows(rows: EmissionSurveyReportRow[]) {
   return rows.filter((row) => row.sectionCode === "OUTPUT_PRODUCTS" && row.originalAmount > 0);
 }
 
-function outputMassShare(row: EmissionSurveyReportRow, outputQuantityTotal: number) {
+function isOutputByproductRow(row: EmissionSurveyReportRow) {
+  return cleanEnglishMaterialName(row.group || row.sectionLabel) === "부산물";
+}
+
+function outputProductMassTotal(rows: EmissionSurveyReportRow[]) {
+  return rows
+    .filter((row) => !isOutputByproductRow(row))
+    .reduce((sum, row) => sum + Math.max(row.originalAmount || 0, 0), 0);
+}
+
+function outputMassShare(row: EmissionSurveyReportRow, rows: EmissionSurveyReportRow[], outputQuantityTotal: number, byproductAllocation: "allocated" | "unallocated" = "allocated") {
+  if (byproductAllocation === "unallocated") {
+    if (isOutputByproductRow(row)) {
+      return 0;
+    }
+    const productOnlyMass = outputProductMassTotal(rows);
+    return productOnlyMass > 0 ? row.originalAmount / productOnlyMass : 0;
+  }
   return outputQuantityTotal > 0 ? row.originalAmount / outputQuantityTotal : 0;
 }
 
-function outputNormalizedEmission(row: EmissionSurveyReportRow, totalEmission: number, outputQuantityTotal: number) {
-  return totalEmission * outputMassShare(row, outputQuantityTotal);
+function outputNormalizedEmission(row: EmissionSurveyReportRow, rows: EmissionSurveyReportRow[], totalEmission: number, outputQuantityTotal: number, byproductAllocation: "allocated" | "unallocated" = "allocated") {
+  return totalEmission * outputMassShare(row, rows, outputQuantityTotal, byproductAllocation);
 }
 
 function normalizeReportSectionShares(report: EmissionSurveyReportPayload) {
@@ -745,7 +762,7 @@ export function EmissionSurveyReportMigrationPage() {
                   </div>
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Product GWP" : "제품 GWP"}</p>
-                    <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], report.summary.totalEmission, normalization.outputQuantityTotal) : 0, 6)}</p>
+                    <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], outputNormalizationRows, report.summary.totalEmission, normalization.outputQuantityTotal, byproductAllocation) : 0, 6)}</p>
                     <p className="text-[10px] font-bold text-slate-400">kg CO2e/ton of {en ? (report.productName || "Product") : (report.productName || "제품")}</p>
                   </div>
                   <div>
@@ -1334,7 +1351,7 @@ export function EmissionSurveyReportPrintPage() {
                 label={en ? "Product GWP" : "제품 GWP"}
                 note={`kg CO2e/ton of ${en ? (effectiveReport.productName || "Product") : (effectiveReport.productName || "제품")}`}
                 onCommit={updateOriginalTotalEmission}
-                value={outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], totalEmission, normalization.outputQuantityTotal) : 0}
+                value={outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], outputNormalizationRows, totalEmission, normalization.outputQuantityTotal, byproductAllocation) : 0}
               />
 	            <PrintMetric
 	              editable
@@ -1989,15 +2006,9 @@ function PrintOutputAllocationTable({
         </thead>
         <tbody>
           {rows.map((row) => {
-            const isByproduct = row.sectionCode === "OUTPUT_BYPRODUCTS";
-            const productOnlyMass = rows
-              .filter((r) => r.sectionCode === "OUTPUT_PRODUCTS")
-              .reduce((sum, r) => sum + (r.originalAmount || 0), 0);
-            const isUnallocated = byproductAllocation === "unallocated";
-            const effectiveOutputQuantityTotal = isUnallocated ? productOnlyMass : outputQuantityTotal;
-            const massShare = effectiveOutputQuantityTotal > 0 ? row.originalAmount / effectiveOutputQuantityTotal : 0;
+            const massShare = outputMassShare(row, rows, outputQuantityTotal, byproductAllocation || "allocated");
             const displaySharePercent = massShare * 100;
-            const normalizedEmission = isUnallocated && isByproduct ? 0 : totalEmission * massShare;
+            const normalizedEmission = totalEmission * massShare;
             const rawEmission = normalizedEmission * (normalizationFactor || 1);
             return (
               <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
