@@ -60,3 +60,14 @@ deploy/k8s/**/*.secret.yaml
 .DS_Store
 Thumbs.db
 .gitattributes
+
+# Codex/Hermes local vector DB and AI runtime state
+data/ai-runtime/*.sqlite3
+data/ai-runtime/*.sqlite
+data/ai-runtime/*.db
+data/ai-runtime/*.db-*
+data/ai-runtime/hermes-rag-vector.*
+vector_db/
+*.faiss
+*.hnsw
+*.ann
