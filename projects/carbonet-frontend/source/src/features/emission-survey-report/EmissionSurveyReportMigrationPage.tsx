@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
-import { MemberButton, MemberButtonGroup } from "../member/common";
+import { AdminSelect, MemberButton, MemberButtonGroup } from "../member/common";
 import {
   loadEmissionSurveyReportSession,
   type EmissionSurveyReportPayload,
@@ -208,16 +208,6 @@ function outputMassShare(row: EmissionSurveyReportRow, outputQuantityTotal: numb
 
 function outputNormalizedEmission(row: EmissionSurveyReportRow, totalEmission: number, outputQuantityTotal: number) {
   return totalEmission * outputMassShare(row, outputQuantityTotal);
-}
-
-function outputOriginalEmission(
-  row: EmissionSurveyReportRow,
-  totalEmission: number,
-  outputQuantityTotal: number,
-  normalizationFactor: number
-) {
-  const normalizedEmission = outputNormalizedEmission(row, totalEmission, outputQuantityTotal);
-  return normalizationFactor > 0 ? normalizedEmission / normalizationFactor : normalizedEmission;
 }
 
 function normalizeReportSectionShares(report: EmissionSurveyReportPayload) {
@@ -738,7 +728,7 @@ export function EmissionSurveyReportMigrationPage() {
                       <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-amber-800">{en ? "Byproduct Allocation" : "부산물 할당 여부"}</span>
                       <AdminSelect
                         value={byproductAllocation}
-                        onChange={(e) => setByproductAllocation(e.target.value as "allocated" | "unallocated")}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setByproductAllocation(e.target.value as "allocated" | "unallocated")}
                       >
                         <option value="allocated">{en ? "Allocated" : "할당"}</option>
                         <option value="unallocated">{en ? "Unallocated" : "미할당"}</option>
@@ -774,7 +764,6 @@ export function EmissionSurveyReportMigrationPage() {
                   </div>
                   <PrintOutputAllocationTable
                     en={en}
-                    normalizationFactor={normalization.factor}
                     outputQuantityTotal={normalization.outputQuantityTotal}
                     rows={outputNormalizationRows}
                     totalEmission={report.summary.totalEmission}
@@ -976,26 +965,6 @@ export function EmissionSurveyReportPrintPage() {
         ...current,
         rows: applyFactorToOutputRows(current.rows, nextFactor),
         normalization: { ...current.normalization, factor: nextFactor, applied: nextFactor !== 1 }
-      };
-    });
-  };
-  const updateNormalizationFactor = (value: number) => {
-    setDraftReport((current) => {
-      if (!current) {
-        return current;
-      }
-      const nextRows = applyFactorToOutputRows(current.rows, value);
-      if (value <= 0) {
-        return {
-          ...current,
-          rows: nextRows,
-          normalization: { ...current.normalization, factor: value, applied: true }
-        };
-      }
-      return {
-        ...scaleReportTotal(current, originalTotalEmission * value),
-        rows: nextRows,
-        normalization: { ...current.normalization, factor: value, applied: value !== 1 },
       };
     });
   };
@@ -1342,7 +1311,7 @@ export function EmissionSurveyReportPrintPage() {
                 <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-amber-800">{en ? "Byproduct Allocation" : "부산물 할당 여부"}</span>
                 <AdminSelect
                   value={byproductAllocation}
-                  onChange={(e) => setByproductAllocation(e.target.value as "allocated" | "unallocated")}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setByproductAllocation(e.target.value as "allocated" | "unallocated")}
                 >
                   <option value="allocated">{en ? "Allocated" : "할당"}</option>
                   <option value="unallocated">{en ? "Unallocated" : "미할당"}</option>
@@ -1386,7 +1355,6 @@ export function EmissionSurveyReportPrintPage() {
           </div>
           <PrintOutputAllocationTable
             en={en}
-            normalizationFactor={normalization.factor}
             englishNameMap={englishNameMap}
             outputQuantityTotal={normalization.outputQuantityTotal}
             onRowShareChange={updateOutputSharePercent}
@@ -1976,7 +1944,6 @@ function PrintOutputAllocationTable({
   englishNameMap,
   totalEmission,
   outputQuantityTotal,
-  normalizationFactor,
   onRowNumberChange,
   onRowTextChange,
   onRowShareChange,
@@ -1987,7 +1954,6 @@ function PrintOutputAllocationTable({
   englishNameMap?: EnglishMaterialNameMap;
   totalEmission: number;
   outputQuantityTotal: number;
-  normalizationFactor: number;
   onRowNumberChange?: (rowId: string, key: "originalAmount" | "amount", value: number) => void;
   onRowTextChange?: (rowId: string, key: keyof EmissionSurveyReportRow, value: string | number) => void;
   onRowShareChange?: (rowId: string, value: number) => void;
