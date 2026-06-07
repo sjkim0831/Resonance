@@ -54,6 +54,19 @@ type DraftState = Record<string, DraftCase>;
 type SectionCaseState = Record<string, "CASE_3_1" | "CASE_3_2">;
 type SectionExpandState = Record<string, boolean>;
 
+type SurveyAdminReturnState = {
+  pageOverride: EmissionSurveyAdminPagePayload | null;
+  drafts: DraftState;
+  activeCases: SectionCaseState;
+  expandedSections: SectionExpandState;
+  selectedProductName: string;
+  productSearchQuery: string;
+  productSearchDirty: boolean;
+  directInputMode: boolean;
+  includeByproductEmission: boolean;
+  savedAt: string;
+};
+
 type ClassificationRow = {
   code: string;
   label: string;
@@ -92,6 +105,26 @@ type ProductSearchOption = {
 
 const PRODUCT_SEARCH_DIRTY_MARKER = "productSearchDirty";
 const PRODUCT_SEARCH_SYNCED_MARKER = "productSearchSynced";
+const EMISSION_SURVEY_ADMIN_RETURN_STATE_KEY = "carbonet:emission-survey-admin:return-state:v1";
+
+function loadSurveyAdminReturnState(): SurveyAdminReturnState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const raw = window.sessionStorage.getItem(EMISSION_SURVEY_ADMIN_RETURN_STATE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as SurveyAdminReturnState;
+  } catch {
+    return null;
+  }
+}
+
+function saveSurveyAdminReturnState(state: SurveyAdminReturnState) {
+  window.sessionStorage.setItem(EMISSION_SURVEY_ADMIN_RETURN_STATE_KEY, JSON.stringify(state));
+}
 
 function chemicalDisplayName(row: ChemicalMaterialRow, englishSite = isEnglish()) {
   return stringValue(englishSite ? row.englishName : row.koreanName) || stringValue(row.koreanName) || stringValue(row.englishName);
@@ -1438,19 +1471,20 @@ function SectionEditor({
 export function EmissionSurveyAdminMigrationPage() {
   const en = isEnglish();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const restoredReturnState = useMemo(() => loadSurveyAdminReturnState(), []);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [pageOverride, setPageOverride] = useState<EmissionSurveyAdminPagePayload | null>(null);
-  const [drafts, setDrafts] = useState<DraftState>({});
-  const [activeCases, setActiveCases] = useState<SectionCaseState>({});
-  const [expandedSections, setExpandedSections] = useState<SectionExpandState>({});
+  const [pageOverride, setPageOverride] = useState<EmissionSurveyAdminPagePayload | null>(() => restoredReturnState?.pageOverride || null);
+  const [drafts, setDrafts] = useState<DraftState>(() => restoredReturnState?.drafts || {});
+  const [activeCases, setActiveCases] = useState<SectionCaseState>(() => restoredReturnState?.activeCases || {});
+  const [expandedSections, setExpandedSections] = useState<SectionExpandState>(() => restoredReturnState?.expandedSections || {});
   const [isCalculationCardCollapsed, setIsCalculationCardCollapsed] = useState(false);
-  const [includeByproductEmission, setIncludeByproductEmission] = useState(true);
-  const [selectedProductName, setSelectedProductName] = useState("");
-  const [productSearchQuery, setProductSearchQuery] = useState("");
-  const [productSearchDirty, setProductSearchDirty] = useState(false);
-  const [directInputMode, setDirectInputMode] = useState(false);
+  const [includeByproductEmission, setIncludeByproductEmission] = useState(() => restoredReturnState?.includeByproductEmission ?? true);
+  const [selectedProductName, setSelectedProductName] = useState(() => restoredReturnState?.selectedProductName || "");
+  const [productSearchQuery, setProductSearchQuery] = useState(() => restoredReturnState?.productSearchQuery || "");
+  const [productSearchDirty, setProductSearchDirty] = useState(() => restoredReturnState?.productSearchDirty || false);
+  const [directInputMode, setDirectInputMode] = useState(() => restoredReturnState?.directInputMode || false);
   const [productDropdownOpen, setProductDropdownOpen] = useState(false);
   const [productActiveOptionIndex, setProductActiveOptionIndex] = useState(0);
   const [productSuggestionRows, setProductSuggestionRows] = useState<ChemicalMaterialRow[]>([]);
@@ -2414,6 +2448,21 @@ export function EmissionSurveyAdminMigrationPage() {
     handleChangeProduct(productName);
   }
 
+  function persistReturnStateForReport() {
+    saveSurveyAdminReturnState({
+      pageOverride,
+      drafts,
+      activeCases,
+      expandedSections,
+      selectedProductName,
+      productSearchQuery,
+      productSearchDirty,
+      directInputMode,
+      includeByproductEmission,
+      savedAt: new Date().toISOString()
+    });
+  }
+
   function handleMoveToCalculation() {
     const resolvedProductName = selectedProductName || stringOf(page as Record<string, unknown>, "selectedProductName");
     if (!resolvedProductName) {
@@ -2583,6 +2632,7 @@ export function EmissionSurveyAdminMigrationPage() {
       scenarios,
       alerts
     };
+    persistReturnStateForReport();
     saveEmissionSurveyReportSession(payload);
     navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"));
   }

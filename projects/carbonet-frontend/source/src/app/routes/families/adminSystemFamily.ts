@@ -2,9 +2,14 @@ import { createRouteFamily, type PageUnitsOf, type RouteDefinitionsOf } from "..
 import { buildManifestBackedRoutePageContracts } from "./manifestBackedPageContracts";
 
 const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
-  { id: "system-code", label: "시스템 코드", group: "admin", koPath: "/admin/system/code", enPath: "/en/admin/system/code" },
-  { id: "system-code-list", label: "공통코드 조회", group: "admin", koPath: "/admin/system/code/list", enPath: "/en/admin/system/code/list" },
-  { id: "system-code-register", label: "공통코드 등록", group: "admin", koPath: "/admin/system/code/register", enPath: "/en/admin/system/code/register" },
+  { id: "system-code-inquiry", label: "코드 조회", group: "admin", koPath: "/admin/system/code", enPath: "/en/admin/system/code" },
+  { id: "system-code-inquiry-class", label: "대분류", group: "admin", koPath: "/admin/system/code/class", enPath: "/en/admin/system/code/class" },
+  { id: "system-code-inquiry-group", label: "중분류", group: "admin", koPath: "/admin/system/code/group", enPath: "/en/admin/system/code/group" },
+  { id: "system-code-inquiry-detail", label: "소분류", group: "admin", koPath: "/admin/system/code/detail", enPath: "/en/admin/system/code/detail" },
+  { id: "system-code-register", label: "코드 등록", group: "admin", koPath: "/admin/system/code/register", enPath: "/en/admin/system/code/register" },
+  { id: "system-code-register-class", label: "대분류 등록", group: "admin", koPath: "/admin/system/code/register/class", enPath: "/en/admin/system/code/register/class" },
+  { id: "system-code-register-group", label: "중분류 등록", group: "admin", koPath: "/admin/system/code/register/group", enPath: "/en/admin/system/code/register/group" },
+  { id: "system-code-register-detail", label: "소분류 등록", group: "admin", koPath: "/admin/system/code/register/detail", enPath: "/en/admin/system/code/register/detail" },
   { id: "page-management", label: "화면 관리", group: "admin", koPath: "/admin/system/page-management", enPath: "/en/admin/system/page-management" },
   { id: "function-management", label: "기능 관리", group: "admin", koPath: "/admin/system/feature-management", enPath: "/en/admin/system/feature-management" },
   { id: "menu-management", label: "메뉴 관리", group: "admin", koPath: "/admin/system/menu", enPath: "/en/admin/system/menu" },
@@ -13,6 +18,8 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "infra", label: "인프라", group: "admin", koPath: "/admin/system/infra", enPath: "/en/admin/system/infra" },
   { id: "screen-flow-management", label: "화면 흐름 관리", group: "admin", koPath: "/admin/system/screen-flow-management", enPath: "/en/admin/system/screen-flow-management" },
   { id: "screen-menu-assignment-management", label: "화면-메뉴 귀속 관리", group: "admin", koPath: "/admin/system/screen-menu-assignment-management", enPath: "/en/admin/system/screen-menu-assignment-management" },
+  { id: "screen-management", label: "화면 관리", group: "admin", koPath: "/admin/system/screen-management", enPath: "/en/admin/system/screen-management" },
+  { id: "screen-builder-dashboard", label: "빌더 대시보드", group: "admin", koPath: "/admin/system/screen-builder-dashboard", enPath: "/en/admin/system/screen-builder-dashboard" },
   { id: "wbs-management", label: "WBS 관리", group: "admin", koPath: "/admin/system/wbs-management", enPath: "/en/admin/system/wbs-management" },
   { id: "new-page", label: "새 페이지", group: "admin", koPath: "/admin/system/new-page", enPath: "/en/admin/system/new-page" },
   { id: "ip-whitelist", label: "IP 화이트리스트", group: "admin", koPath: "/admin/system/ip_whitelist", enPath: "/en/admin/system/ip_whitelist" },
@@ -65,13 +72,20 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "backup-config", label: "백업 설정", group: "admin", koPath: "/admin/system/backup_config", enPath: "/en/admin/system/backup_config" },
   { id: "backup-execution", label: "백업 실행", group: "admin", koPath: "/admin/system/backup", enPath: "/en/admin/system/backup" },
   { id: "restore-execution", label: "복구 실행", group: "admin", koPath: "/admin/system/restore", enPath: "/en/admin/system/restore" },
-  { id: "package-governance", label: "패키지 거버넌스", group: "admin", koPath: "/admin/system/package-governance", enPath: "/en/admin/system/package-governance" }
+  { id: "package-governance", label: "패키지 거버넌스", group: "admin", koPath: "/admin/system/package-governance", enPath: "/en/admin/system/package-governance" },
+  { id: "builder-studio", label: "빌더 스튜디오", group: "admin", koPath: "/admin/system/builder-studio", enPath: "/en/admin/system/builder-studio" },
+  { id: "component-management", label: "컴포넌트 관리", group: "admin", koPath: "/admin/system/component-management", enPath: "/en/admin/system/component-management" }
 ] as const satisfies RouteDefinitionsOf;
 
 const ADMIN_SYSTEM_PAGE_UNITS = [
-  { id: "system-code", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeMigrationPage") },
-  { id: "system-code-list", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeMigrationPage") },
-  { id: "system-code-register", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeMigrationPage") },
+  { id: "system-code-inquiry", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-inquiry-class", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-inquiry-group", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-inquiry-detail", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-register", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-register-class", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-register-group", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
+  { id: "system-code-register-detail", exportName: "SystemCodeMigrationPage", loader: () => import("../../../features/system-code/SystemCodeSimplePage") },
   { id: "page-management", exportName: "PageManagementMigrationPage", loader: () => import("../../../features/page-management/PageManagementMigrationPage") },
   { id: "function-management", exportName: "FunctionManagementMigrationPage", loader: () => import("../../../features/function-management/FunctionManagementMigrationPage") },
   { id: "menu-management", exportName: "MenuManagementMigrationPage", loader: () => import("../../../features/menu-management/MenuManagementMigrationPage") },
@@ -80,6 +94,8 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "infra", exportName: "InfraManagementMigrationPage", loader: () => import("../../../features/system-infra/InfraManagementMigrationPage") },
   { id: "screen-flow-management", exportName: "ScreenFlowManagementMigrationPage", loader: () => import("../../../features/screen-management/ScreenFlowManagementMigrationPage") },
   { id: "screen-menu-assignment-management", exportName: "ScreenMenuAssignmentManagementMigrationPage", loader: () => import("../../../features/screen-management/ScreenMenuAssignmentManagementMigrationPage") },
+  { id: "screen-management", exportName: "ScreenManagementMigrationPage", loader: () => import("../../../features/screen-management/ScreenManagementMigrationPage") },
+  { id: "screen-builder-dashboard", exportName: "ScreenBuilderDashboardPage", loader: () => import("../../../features/screen-builder/ScreenBuilderDashboardPage") },
   { id: "wbs-management", exportName: "WbsManagementMigrationPage", loader: () => import("../../../features/wbs-management/WbsManagementMigrationPage") },
   { id: "new-page", exportName: "NewPageMigrationPage", loader: () => import("../../../features/new-page") },
   { id: "ip-whitelist", exportName: "IpWhitelistMigrationPage", loader: () => import("../../../features/ip-whitelist/IpWhitelistMigrationPage") },
@@ -132,7 +148,9 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "backup-config", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
   { id: "backup-execution", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
   { id: "restore-execution", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
-  { id: "package-governance", exportName: "PackageGovernanceScreen", loader: () => import("../../../platform/operations/governance/PackageGovernanceScreen") }
+  { id: "package-governance", exportName: "PackageGovernanceScreen", loader: () => import("../../../platform/operations/governance/PackageGovernanceScreen") },
+  { id: "builder-studio", exportName: "BuilderStudioPage", loader: () => import("../../../features/builder-studio/BuilderStudioPage") },
+  { id: "component-management", exportName: "ComponentManagementPage", loader: () => import("../../../features/builder-studio/ComponentManagementPage") }
 ] as const satisfies PageUnitsOf<typeof ADMIN_SYSTEM_ROUTE_DEFINITIONS>;
 
 export const ADMIN_SYSTEM_FAMILY = createRouteFamily(ADMIN_SYSTEM_ROUTE_DEFINITIONS, ADMIN_SYSTEM_PAGE_UNITS, {

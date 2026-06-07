@@ -1,5 +1,6 @@
 import { buildLocalizedPath } from "../navigation/runtime";
 import {
+  apiFetch,
   buildAdminApiPath,
   buildFormUrlEncoded,
   buildQueryString,
@@ -7,6 +8,7 @@ import {
   fetchPageJson,
   fetchValidatedJson,
   fetchLocalizedPageJson,
+  postAdminJson,
   postAdminValidatedJson,
   postValidatedJson,
   postLocalizedValidatedAction,
@@ -463,6 +465,110 @@ export async function fetchScreenBuilderPage(params?: {
     cacheKey: buildPageCacheKey(`screen-builder/page${query}`),
     url: `${buildAdminApiPath("/api/platform/screen-builder/page")}${query}`,
     mapError: (body, status) => body.screenBuilderMessage || `Failed to load screen builder page: ${status}`
+  });
+}
+
+export type ThemeToken = {
+  id: string;
+  key: string;
+  labelKo: string;
+  labelEn: string;
+  value: string;
+  type: "color" | "size" | "density" | "font" | "text" | "spacing" | "border" | "shadow";
+  category: "color" | "typography" | "spacing" | "border" | "effect" | "layout";
+};
+
+export type ComponentStyle = {
+  id: string;
+  name: string;
+  nameKo: string;
+  description: string;
+  category: string;
+  layer: string;
+  className: string;
+  elementId: string;
+  styles: Record<string, string>;
+  useAt: "Y" | "N";
+};
+
+export type Theme = {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ThemeDetail = {
+  theme: Theme;
+  tokens: ThemeToken[];
+  components: ComponentStyle[];
+};
+
+export type ThemeExport = {
+  themeName: string;
+  tokens: Record<string, string>;
+  components: {
+    name: string;
+    category: string;
+    styles: Record<string, string>;
+  }[];
+};
+
+export async function fetchThemeList(ownerId?: string): Promise<Theme[]> {
+  const query = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+  return fetchJsonWithoutCache<Theme[]>({
+    url: `${buildAdminApiPath(`/api/platform/theme-builder/themes${query}`)}`,
+    mapError: (body, status) => body.message || `Failed to load themes: ${status}`
+  });
+}
+
+export async function fetchTheme(themeId: string): Promise<ThemeDetail> {
+  return fetchJsonWithoutCache<ThemeDetail>({
+    url: `${buildAdminApiPath(`/api/platform/theme-builder/themes/${themeId}`)}`,
+    mapError: (body, status) => body.message || `Failed to load theme: ${status}`
+  });
+}
+
+export async function createTheme(request: {
+  name: string;
+  ownerId: string;
+  tokens?: ThemeToken[];
+  components?: ComponentStyle[];
+}): Promise<ThemeDetail> {
+  return postAdminJson<ThemeDetail>("/api/platform/theme-builder/themes", request);
+}
+
+export async function updateTheme(
+  themeId: string,
+  request: {
+    name: string;
+    tokens?: ThemeToken[];
+    components?: ComponentStyle[];
+  }
+): Promise<ThemeDetail> {
+  return postAdminJson<ThemeDetail>(`/api/platform/theme-builder/themes/${themeId}`, {
+    ...request,
+    _method: "PUT"
+  });
+}
+
+export async function deleteTheme(themeId: string): Promise<void> {
+  const url = buildAdminApiPath(`/api/platform/theme-builder/themes/${themeId}`);
+  await apiFetch(url, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    }
+  });
+}
+
+export async function exportTheme(themeId: string): Promise<ThemeExport> {
+  return fetchJsonWithoutCache<ThemeExport>({
+    url: `${buildAdminApiPath(`/api/platform/theme-builder/themes/${themeId}/export`)}`,
+    mapError: (body, status) => body.message || `Failed to export theme: ${status}`
   });
 }
 

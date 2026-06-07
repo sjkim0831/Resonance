@@ -20,8 +20,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ScreenBuilderCarbonetAdapterConfiguration {
-
-    @Bean
     @ConditionalOnMissingBean(ScreenBuilderAuthorityContractPort.class)
     public ScreenBuilderAuthorityContractPort screenBuilderAuthorityContractPort(
             CarbonetScreenBuilderAuthoritySource carbonetScreenBuilderAuthoritySource) {

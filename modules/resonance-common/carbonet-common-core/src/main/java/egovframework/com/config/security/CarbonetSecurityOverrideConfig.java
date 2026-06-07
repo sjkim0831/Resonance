@@ -56,7 +56,38 @@ public class CarbonetSecurityOverrideConfig {
     @Order(0)
     public SecurityFilterChain carbonetSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-            .securityMatcher("/admin/api/**", "/en/admin/api/**", "/admin/emission/**", "/en/admin/emission/**")
+            .securityMatcher("/admin/api/**", "/en/admin/api/**", "/api/platform/**", "/en/api/platform/**", "/admin/ai/**", "/en/admin/ai/**", "/admin/emission/**", "/en/admin/emission/**")
+            .authorizeHttpRequests(authorize -> authorize
+                .anyRequest().permitAll()
+            )
+            .csrf(csrf -> csrf.disable())
+            .build();
+    }
+
+    @Bean
+    @Order(Integer.MAX_VALUE)
+    public SecurityFilterChain defaultPublicAccessSecurityFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .securityMatcher(
+                "/assets/react/**",
+                "/admin/assets/react/**",
+                "/en/admin/assets/react/**",
+                "/react-shell/**",
+                "/home/**",
+                "/en/home/**",
+                "/signin/**",
+                "/en/signin/**",
+                "/actuator/**",
+                "/error/**",
+                "/favicon.ico",
+                "/*.html",
+                "/css/**",
+                "/js/**",
+                "/images/**",
+                "/webjars/**",
+                "/join/**",
+                "/en/join/**"
+            )
             .authorizeHttpRequests(authorize -> authorize
                 .anyRequest().permitAll()
             )

@@ -364,6 +364,8 @@ function defaultLcaSoftwareLabel() {
   return "Carbonet LCA Engine / ecoinvent API beta, ecoinvent v3.12 LCI DB, IPCC 2021 GWP100";
 }
 
+const SURVEY_REPORT_BUILD_MARKER = "survey-report-sync-20260604-0105";
+
 type EnglishMaterialNameMap = Record<string, string>;
 
 const ENGLISH_MATERIAL_NAME_CACHE_KEY = "carbonet:survey-report:english-material-names:v1";
@@ -845,10 +847,10 @@ export function EmissionSurveyReportMigrationPage() {
                   <thead className="bg-slate-50">
                     <tr className="border-b border-slate-200 text-left text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
                       <th className="px-4 py-3">{en ? "Section / Substance" : "섹션 / 물질명"}</th>
-                      <th className="px-4 py-3">{en ? "Volume" : "배출량"}</th>
+                      <th className="px-4 py-3">{en ? "Mass" : "질량"}</th>
 
                       <th className="px-4 py-3">{en ? "Emission Factor" : "배출계수"}</th>
-                      <th className="px-4 py-3">{en ? "Total CO2e" : "산출량"}</th>
+                      <th className="px-4 py-3">{en ? "Product Standard Emission" : "제품 기준 배출량"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -858,7 +860,7 @@ export function EmissionSurveyReportMigrationPage() {
                   </tbody>
                   <tfoot className="bg-slate-900 text-white">
                     <tr>
-                      <td className="px-4 py-4 text-right text-xs font-black uppercase tracking-[0.16em] text-white/65" colSpan={4}>
+                      <td className="px-4 py-4 text-right text-xs font-black uppercase tracking-[0.16em] text-white/65" colSpan={3}>
                         {en ? "Summation Result" : "최종 합계"}
                       </td>
                       <td className="px-4 py-4">
@@ -1078,7 +1080,14 @@ export function EmissionSurveyReportPrintPage() {
           return row;
         }
         if (key === "totalEmission") {
-          return { ...row, totalEmission: value, calculated: true };
+          const nextEmissionFactor = row.originalAmount > 0 ? value / row.originalAmount : row.emissionFactor;
+          return {
+            ...row,
+            emissionFactor: nextEmissionFactor,
+            emissionFactorText: formatNumber(nextEmissionFactor, 6),
+            totalEmission: value,
+            calculated: true
+          };
         }
         if (key === "emissionFactor") {
           return recalculateRowEmission({
@@ -1173,16 +1182,31 @@ export function EmissionSurveyReportPrintPage() {
     });
   };
   const updateSectionEmission = (sectionCode: string, value: number) => {
+    setDraftSectionShares((current) => {
+      if (!(sectionCode in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[sectionCode];
+      return next;
+    });
+    setSectionShareMessage("");
     setDraftReport((current) => {
       if (!current) {
         return current;
       }
-      const nextReport = normalizeReportSectionShares({
-        ...current,
-        sectionSummaries: current.sectionSummaries.map((section) => (
-          section.sectionCode === sectionCode ? { ...section, totalEmission: value } : section
-        ))
-      });
+      const hasSectionRows = current.rows.some((row) => row.sectionCode === sectionCode && row.calculated && row.sectionCode !== "OUTPUT_PRODUCTS");
+      const nextReport = hasSectionRows
+        ? syncReportFromRows({
+            ...current,
+            rows: redistributeRowsBySectionEmission(current.rows, sectionCode, value, current.normalization?.factor || 1)
+          })
+        : normalizeReportSectionShares({
+            ...current,
+            sectionSummaries: current.sectionSummaries.map((section) => (
+              section.sectionCode === sectionCode ? { ...section, totalEmission: value } : section
+            ))
+          });
       setOriginalTotalEmission((nextReport.summary.totalEmission || 0) / (nextReport.normalization?.factor || 1));
       return nextReport;
     });
@@ -1251,7 +1275,7 @@ export function EmissionSurveyReportPrintPage() {
   return (
     <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}"}
+        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}}"}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
         <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
@@ -1448,6 +1472,9 @@ export function EmissionSurveyReportPrintPage() {
           <SectionContributionPieCard
             en={en}
             onCopy={() => handleCopyChart("pie")}
+            onSectionEmissionChange={updateSectionEmission}
+            onSectionShareChange={updateDraftSectionShare}
+            sectionShareInputs={sectionShareInputs}
             sections={chartSections}
             title={en ? "Section Contribution Pie" : "섹션별 탄소배출 기여 원그래프"}
           />
@@ -1462,9 +1489,9 @@ export function EmissionSurveyReportPrintPage() {
               <thead className="bg-slate-50">
                 <tr className="text-left font-black text-slate-500">
                   <th className="w-[40%] px-3 py-2">{en ? "Section / Substance" : "섹션 / 물질명"}</th>
-                  <th className="w-[30%] px-3 py-2">{en ? "Volume" : "배출량"}</th>
+                  <th className="w-[30%] px-3 py-2">{en ? "Mass" : "질량"}</th>
                   <th className="w-[15%] px-3 py-2">{en ? "Emission Factor" : "배출계수"}</th>
-                  <th className="w-[15%] px-3 py-2">{en ? "Emissions" : "배출량"}</th>
+                  <th className="w-[15%] px-3 py-2">{en ? "Product Standard Emission" : "제품 기준 배출량"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1491,7 +1518,7 @@ export function EmissionSurveyReportPrintPage() {
                           onCommit={updateTotalEmission}
                           value={totalEmission}
                         />
-                        <div className="mt-1 whitespace-nowrap text-xs font-black text-slate-600">kg CO2e</div>
+                        <div className="mt-1 whitespace-nowrap text-xs font-black text-slate-600">ton of {effectiveReport.productName || (en ? "Product" : "제품")}</div>
                       </div>
                     </div>
                   </td>
@@ -1520,12 +1547,13 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const [referenceFlow, setReferenceFlow] = useState("");
   const [dataPeriod, setDataPeriod] = useState("");
   const [regionScope, setRegionScope] = useState("");
-  const [lcaSoftware, setLcaSoftware] = useState(defaultLcaSoftwareLabel());
+  const lcaSoftware = defaultLcaSoftwareLabel();
 
   logGovernanceScope("PAGE", "emission-survey-lca-summary-print", {
     route: window.location.pathname,
     hasSessionPayload: Boolean(report),
-    productName: report?.productName || ""
+    productName: report?.productName || "",
+    buildMarker: SURVEY_REPORT_BUILD_MARKER
   });
 
   if (!report) {
@@ -1565,9 +1593,9 @@ export function EmissionSurveyLcaSummaryPrintPage() {
     }, 500);
   };
   const textFieldClass = "rounded-sm border border-emerald-300 bg-emerald-100/80 px-1.5 py-0.5 font-bold text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 print:border-0 print:bg-transparent print:px-0 print:py-0 print:shadow-none";
-  const tableHeaderClass = "border border-[#cccccc] bg-[#d9d9d9] px-3 py-2 text-center text-[13px] font-black text-slate-950";
-  const tableLabelClass = "border border-[#cccccc] bg-[#f2f2f2] px-3 py-2 text-[13px] font-black text-[#4f6fd5]";
-  const tableCellClass = "border border-[#cccccc] px-3 py-2 text-[13px] font-semibold leading-6 text-slate-800";
+  const tableHeaderClass = "border border-[#cccccc] bg-[#d9d9d9] px-3 py-2 text-center text-[8px] font-black text-slate-950";
+  const tableLabelClass = "border border-[#cccccc] bg-[#f2f2f2] px-3 py-2 text-[8px] font-black text-[#4f6fd5]";
+  const tableCellClass = "border border-[#cccccc] px-3 py-2 text-[8px] font-semibold leading-4 text-slate-800";
   const terms = [
     ["영향범주", "평가 대상 제품 또는 시스템에 영향을 미칠 수 있는 일반적인 환경영향, 지구온난화, 부영양화, 산성화 등이 해당"],
     ["전과정", "원료물질 채취부터 최종 처리에 이르는 제품 시스템 상의 연속적이고 상호 연관된 단계들"],
@@ -1589,7 +1617,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   return (
     <main className="min-h-screen bg-[#e8edf3] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:0;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:0!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;padding:20mm 10mm!important}.lca-section{break-inside:avoid;page-break-inside:avoid}.lca-table{break-inside:auto;page-break-inside:auto}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td.bg-\\[\\#f2f2f2\\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}}"}
+        {"@page{size:A4;margin:60px;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:60px!important;box-sizing:border-box!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;padding:0!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:10pt!important;font-weight:400!important;line-height:1.35!important}.lca-sheet header{min-height:25px!important;margin-bottom:8px!important}.lca-sheet header,.lca-sheet header *{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:18pt!important;font-weight:600!important;line-height:1.2!important}.lca-sheet h2{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:12pt!important;font-weight:600!important;line-height:1.2!important;margin-bottom:6px!important}.lca-page-2>h2{font-size:18pt!important;font-weight:600!important;margin-bottom:18pt!important}.lca-sheet p,.lca-overview-copy{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:9pt!important;font-weight:400!important;line-height:1.45!important}.lca-section{break-inside:avoid;page-break-inside:avoid;margin-top:26px!important}.lca-page-2{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:60px!important}.lca-sheet>.lca-section:last-child{padding-bottom:0!important}.lca-table{break-inside:auto;page-break-inside:auto;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;width:100%!important}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:500!important;line-height:1.25!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td{padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;line-height:1.25!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9pt!important;line-height:1.3!important}.lca-table td.bg-\[\#f2f2f2\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;font-weight:500!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}.lca-required-field{background-image:linear-gradient(135deg,#ef233c 0 8px,transparent 8px)!important;background-repeat:no-repeat!important;background-position:left top!important;background-size:12px 12px!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9px!important;line-height:1.3!important}.lca-overview-copy{font-size:9px!important;line-height:1.45!important}}"}
       </style>
 
       <div className="print-hidden mx-auto mb-4 flex max-w-[900px] justify-between gap-3">
@@ -1605,21 +1633,21 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         </button>
       </div>
 
-      <article className="lca-sheet mx-auto max-w-[900px] rounded-[26px] border border-white bg-white p-8 shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
+      <article className="lca-sheet mx-auto max-w-[900px] rounded-[20px] border border-white bg-white p-6 text-[12px] shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
         <header className="text-center">
           <div className="inline-flex flex-wrap items-center justify-center gap-2 text-3xl font-black tracking-[-0.04em] text-slate-950">
-            <EditableText className={`${textFieldClass} lca-fill !w-auto min-w-[170px] text-center text-3xl`} onCommit={setCompanyName} value={companyName} />
+            <EditableText className={`${textFieldClass} lca-fill !w-auto min-w-[170px] text-center text-2xl`} onCommit={setCompanyName} placeholder="* 기업명(예: 00건설)" value={companyName} />
             <span>{en ? "Product LCA Summary" : "제품 LCA 수행 개요"}</span>
           </div>
         </header>
 
-        <section className="lca-section mt-8">
-          <h2 className="mb-3 text-xl font-black text-slate-950">1. {en ? "Terms" : "용어정의"}</h2>
-          <table className="lca-table w-full border-collapse">
+        <section className="lca-section mt-4">
+          <h2 className="mb-2 text-base font-black text-slate-950">1. {en ? "Terms" : "용어정의"}</h2>
+          <table className="lca-table lca-page-1-table w-full border-collapse">
             <thead>
               <tr>
-                <th className={`${tableHeaderClass} w-[24%]`}>{en ? "Term" : "용어"}</th>
-                <th className={tableHeaderClass}>{en ? "Description" : "설명"}</th>
+                <th className={`${tableHeaderClass} w-[24%] text-left`}>{en ? "Term" : "용어"}</th>
+                <th className={`${tableHeaderClass} text-left`}>{en ? "Description" : "설명"}</th>
               </tr>
             </thead>
             <tbody>
@@ -1633,9 +1661,9 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           </table>
         </section>
 
-        <section className="lca-section mt-7">
-          <h2 className="mb-3 text-xl font-black text-slate-950">2. ISO 14040/44 {en ? "Main Application" : "기반의 주요 적용 사항"}</h2>
-          <table className="lca-table w-full border-collapse">
+        <section className="lca-section mt-4">
+          <h2 className="mb-2 text-base font-black text-slate-950">2. ISO 14040/44 {en ? "Main Application" : "기반의 주요 적용 사항"}</h2>
+          <table className="lca-table lca-page-1-table w-full border-collapse">
             <tbody>
               {[
                 ["기능단위", "제품 작동 시간 당 kg CO₂-eq"],
@@ -1653,156 +1681,136 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           </table>
         </section>
 
-        <section className="lca-section mt-7">
-          <h2 className="mb-3 text-xl font-black text-slate-950">{en ? "Summary" : "결과 요약"}</h2>
-          <p className="leading-8 text-slate-800">
+        <section className="lca-section lca-page-2 mt-0">
+          <h2 className="mb-5 text-base font-black text-slate-950">{en ? "Summary" : "결과 요약"}</h2>
+          <p className="lca-overview-copy leading-6 text-slate-800">
             {en ? "The target " : "당사가 생산하는 "}
-            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} onCommit={setProductFamily} value={productFamily} />
+            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} onCommit={setProductFamily} placeholder="* 구분(예: 건설기계)(제품명: 모델, A123-4)" value={productFamily} />
             {en ? " product was assessed according to ISO 14040 and ISO 14044 procedures. The scope was set as Cradle to Gate, including raw material acquisition, processing, and product manufacturing. The functional unit was defined as " : " 제품은 ISO14040 및 ISO14044 지침의 일반적 절차와 요구 사항에 따라 LCA를 수행하였다. 영향 평가의 대상 범위는 ISO14025, ISO/TS14067에 따라 Cradle to Gate로 설정하여, 원료채취 및 가공, 제품 제조를 포함하고 있다. 평가대상의 기준단위는 "}
-            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[240px] align-middle`} onCommit={setFunctionalUnit} value={functionalUnit} />
+            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} onCommit={setFunctionalUnit} placeholder={`* 산정된 탄소배출량의 단위\n예: 단위 제품 생산당, 단위 작동 시간당 등`} value={functionalUnit} />
             {en ? "." : " 배출량으로 정의하였다."}
           </p>
-          <p className="mt-3 leading-8 text-slate-800">
+          <p className="lca-overview-copy mt-2 leading-6 text-slate-800">
             {en ? "The LCA model was developed based on " : "LCA 수행은 ISO 지침에 따라 "}
-            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[180px] align-middle`} onCommit={setCompanyName} value={companyName} />
+            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[180px] align-middle`} onCommit={setCompanyName} placeholder="* 기업명(예: 00건설)" value={companyName} />
             {en ? " process information, and the carbon emission impact result was derived." : "의 공정현황을 기반으로 "}
             {!en ? (
-              <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[120px] align-middle`} onCommit={setProductFamily} value={productFamily} />
+              <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[160px] align-middle`} onCommit={setProductFamily} placeholder="* 구분(예: 건설기계)" value={productFamily} />
             ) : null}
             {en ? "" : " 제품 LCA 수행 모델을 개발하여 진행되었다. 해당 수행 모델을 기반으로 제품의 탄소배출량(Global Warming Potential)에 대한 영향 평가 결과를 도출하였다."}
           </p>
         </section>
 
-        <section className="lca-section mt-8">
-          <h2 className="mb-3 text-xl font-black text-slate-950">1. {en ? "Product Information" : "제품정보"}</h2>
+        <section className="lca-section mt-4">
+          <h2 className="mb-2 text-base font-black text-slate-950">1. {en ? "Product Information" : "제품정보"}</h2>
           <table className="lca-table w-full border-collapse">
             <tbody>
               <tr>
                 <td className={`${tableLabelClass} w-[28%]`}>{en ? "Product model" : "제품모델"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} value={productModel} /></td>
+                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} placeholder="* 제품명으로 수정" value={productModel} /></td>
               </tr>
               <tr>
                 <td className={tableLabelClass}>{en ? "General information" : "제품 일반 정보"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} multiline onCommit={setProductDescription} value={productDescription} /></td>
+                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} maxLength={300} multiline onCommit={setProductDescription} placeholder={`* 모델명으로 수정\n제품 일반 정보를 입력`} value={productDescription} /></td>
               </tr>
               <tr>
                 <td className={`${tableLabelClass} w-[28%] align-middle`} rowSpan={2}>Product Spec.</td>
                 <td className={tableHeaderClass}>{en ? "Product name" : "제품명"}</td>
-                <td className={tableHeaderClass}>{en ? "Type" : "구분"}</td>
+                <td className={tableHeaderClass}>{en ? "Model name" : "모델명"}</td>
                 <td className={tableHeaderClass}>{en ? "Equipment weight(ton)" : "장비중량(ton)"}</td>
                 <td className={tableHeaderClass}>버킷 용량(m2)</td>
               </tr>
               <tr>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductModel} value={productModel} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} value={productType} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setEquipmentWeight} value={equipmentWeight} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setBucketCapacity} value={bucketCapacity} /></td>
+                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductModel} placeholder="* 제품명" value={productModel} /></td>
+                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} placeholder="* 모델명" value={productType} /></td>
+                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setEquipmentWeight} placeholder="장비중량(ton)" value={equipmentWeight} /></td>
+                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setBucketCapacity} placeholder="버킷 용량(m2)" value={bucketCapacity} /></td>
               </tr>
               <tr>
                 <td className={`${tableLabelClass} w-[28%]`}>{en ? "Reference flow" : "중량정보(기준흐름)"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setReferenceFlow} value={referenceFlow} /></td>
+                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setReferenceFlow} placeholder="* 중량정보(기준흐름)" value={referenceFlow} /></td>
               </tr>
             </tbody>
           </table>
         </section>
 
-        <section className="lca-section mt-8">
-          <h2 className="mb-3 text-xl font-black text-slate-950">2. {en ? "LCA Execution Information" : "LCA 수행 정보"}</h2>
+        <section className="lca-section mt-4">
+          <h2 className="mb-2 text-base font-black text-slate-950">2. {en ? "LCA Execution Information" : "LCA 수행 정보"}</h2>
           <table className="lca-table w-full border-collapse">
             <tbody>
               <tr>
                 <td className={`${tableLabelClass} w-[25%]`}>{en ? "Functional unit" : "기능단위"}</td>
-                <td className={tableCellClass}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setFunctionalUnit} value={functionalUnit} /></td>
+                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setFunctionalUnit} placeholder={`* 산정된 탄소배출량의 단위\n예: 단위 제품 생산당, 단위 작동 시간당 등`} value={functionalUnit} /></td>
               </tr>
               <tr>
-                <td className={tableLabelClass}>{en ? "System boundary" : "시스템경계"}</td>
-                <td className={tableCellClass}>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr>
-                        <th className={tableHeaderClass}>{en ? "Analysis stage" : "분석 단계"}</th>
-                        <th className={tableHeaderClass}>{en ? "Detailed scope" : "세부 범위"}</th>
-                        <th className={tableHeaderClass}>{en ? "Included" : "분석 포함 여부"}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className={`${tableCellClass} text-center align-middle`} rowSpan={3}>제조전 단계</td>
-                        <td className={tableCellClass}>원료물질 채취 및 제조공정</td>
-                        <td className={`${tableCellClass} text-center`}>●</td>
-                      </tr>
-                      <tr>
-                        <td className={tableCellClass}>1차 협력업체 생산제품 제조</td>
-                        <td className={`${tableCellClass} text-center`}>X</td>
-                      </tr>
-                      <tr>
-                        <td className={tableCellClass}>수송(협력업체→제조사업장)</td>
-                        <td className={`${tableCellClass} text-center`}>X</td>
-                      </tr>
-                      <tr>
-                        <td className={`${tableCellClass} text-center align-middle`}>제조 단계</td>
-                        <td className={tableCellClass}>제품 제조 공정</td>
-                        <td className={`${tableCellClass} text-center`}>●</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
+                <td className={`${tableLabelClass} align-middle`} rowSpan={5}>{en ? "System boundary" : "시스템경계"}</td>
+                <th className={tableHeaderClass}>{en ? "Analysis stage" : "분석 단계"}</th>
+                <th className={tableHeaderClass} colSpan={2}>{en ? "Detailed scope" : "세부 범위"}</th>
+                <th className={tableHeaderClass}>{en ? "Included" : "분석 포함 여부"}</th>
+              </tr>
+              <tr>
+                <td className={`${tableCellClass} text-center align-middle`} rowSpan={3}>제조전 단계</td>
+                <td className={tableCellClass} colSpan={2}>원료물질 채취 및 제조공정</td>
+                <td className={`${tableCellClass} text-center`}>●</td>
+              </tr>
+              <tr>
+                <td className={tableCellClass} colSpan={2}>1차 협력업체 생산제품 제조</td>
+                <td className={`${tableCellClass} text-center`}>X</td>
+              </tr>
+              <tr>
+                <td className={tableCellClass} colSpan={2}>수송(협력업체→제조사업장)</td>
+                <td className={`${tableCellClass} text-center`}>X</td>
+              </tr>
+              <tr>
+                <td className={`${tableCellClass} text-center align-middle`}>제조 단계</td>
+                <td className={tableCellClass} colSpan={2}>제품 제조 공정</td>
+                <td className={`${tableCellClass} text-center`}>●</td>
               </tr>
               <tr>
                 <td className={tableLabelClass}>{en ? "Data quality" : "데이터 품질"}</td>
-                <td className={tableCellClass}>
+                <td className={tableCellClass} colSpan={4}>
                   <div className="leading-7">
                     <div>· Upstream : secondary data(LCI DB)</div>
                     <div> · Core : 현장데이터 및 LCI DB</div>
                     <div className="pl-4">
                    - Time Related Scope :{" "}
-                    <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[150px] align-middle`} onCommit={setDataPeriod} value={dataPeriod} placeholder="0000.00.00 ~ 0000.00.00" />
+                    <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[150px] align-middle`} onCommit={setDataPeriod} value={dataPeriod} placeholder="* 0000.00.00 ~ 0000.00.00" />
                     </div>
                     <div className="pl-4">
                       - Region Scope :{" "}
-                      <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[220px] align-middle`} onCommit={setRegionScope} value={regionScope} />
+                      <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[220px] align-middle`} onCommit={setRegionScope} placeholder="* 지역 범위(예: 00건설 00공장)" value={regionScope} />
                     </div>
                   </div>
                 </td>
               </tr>
               <tr>
                 <td className={tableLabelClass}>LCA Software</td>
-                <td className={`${tableCellClass} lca-auto bg-amber-100`}>
-                  <EditableText className="w-full rounded-md border border-amber-300 bg-amber-100 px-2 py-1 font-black text-slate-950 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 print:border-0 print:bg-amber-100 print:p-0" onCommit={setLcaSoftware} value={lcaSoftware} />
+                <td className={`${tableCellClass} lca-auto bg-amber-100`} colSpan={4}>
+                  <span className="block font-black text-slate-950">{lcaSoftware || "-"}</span>
                 </td>
               </tr>
               <tr>
-                <td className={`${tableLabelClass} align-middle`}>LCIA Method</td>
-                <td className={tableCellClass}>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr>
-                        <th className={`${tableHeaderClass} w-[27%]`}>Impact category</th>
-                        <th className={`${tableHeaderClass} w-[33%]`}>Indicator</th>
-                        <th className={`${tableHeaderClass} w-[16%]`}>Unit</th>
-                        <th className={`${tableHeaderClass} w-[24%]`}>Recommended default LCIA method</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className={`${tableCellClass} align-middle text-center`}>Global Warming Potential (GWP100)</td>
-                        <td className={`${tableCellClass} align-middle text-center`}>Radiative forcing as Global Warming Potential (GWP100)</td>
-                        <td className={`${tableCellClass} align-middle text-center`}>kg CO₂–eq.</td>
-                        <td className={`${tableCellClass} align-middle text-center`}>
-                          from openLCIA methods<br />
-                          <span className="font-black">✓ IPCC 2021, AR6</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <td className={`${tableLabelClass} align-middle`} rowSpan={2}>LCIA Method</td>
+                <th className={`${tableHeaderClass} w-[20%]`}>Impact category</th>
+                <th className={`${tableHeaderClass} w-[30%]`}>Indicator</th>
+                <th className={`${tableHeaderClass} w-[14%]`}>Unit</th>
+                <th className={`${tableHeaderClass} w-[26%]`}>Recommended default LCIA method</th>
+              </tr>
+              <tr>
+                <td className={`${tableCellClass} align-middle text-center`}>Global Warming Potential (GWP100)</td>
+                <td className={`${tableCellClass} align-middle text-center`}>Radiative forcing as Global Warming Potential (GWP100)</td>
+                <td className={`${tableCellClass} align-middle text-center`}>kg CO₂–eq.</td>
+                <td className={`${tableCellClass} align-middle text-center`}>
+                  from openLCIA methods<br />
+                  <span className="font-black">✓ IPCC 2021, AR6</span>
                 </td>
               </tr>
             </tbody>
           </table>
         </section>
 
-        <section className="lca-section mt-8">
-          <h2 className="mb-3 text-xl font-black text-slate-950">3. {en ? "Impact Assessment Result" : "영향평가 결과"}</h2>
+        <section className="lca-section mt-4">
+          <h2 className="mb-2 text-base font-black text-slate-950">3. {en ? "Impact Assessment Result" : "영향평가 결과"}</h2>
           <table className="lca-table w-full border-collapse">
             <thead>
               <tr>
@@ -1878,15 +1886,18 @@ function EditableText({
   onCommit,
   className = "",
   multiline = false,
-  placeholder = ""
+  placeholder = "",
+  maxLength = 500
 }: {
   value: string;
   onCommit: (value: string) => void;
   className?: string;
   multiline?: boolean;
   placeholder?: string;
+  maxLength?: number;
 }) {
   const [draft, setDraft] = useState(value);
+  const requiredClassName = placeholder.trim().startsWith("*") ? "lca-required-field" : "";
   useEffect(() => {
     setDraft(value);
   }, [value]);
@@ -1894,7 +1905,8 @@ function EditableText({
     return (
       <>
         <textarea
-          className={`print-input-control w-full ${className}`.trim()}
+          className={`print-input-control w-full ${requiredClassName} ${className}`.trim()}
+          maxLength={maxLength}
           onBlur={() => onCommit(draft)}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -1903,25 +1915,31 @@ function EditableText({
               event.currentTarget.blur();
             }
           }}
+          placeholder={placeholder}
           rows={3}
           value={draft}
         />
+          <span className="print-input-text">{draft.trim() || "-"}</span>
       </>
     );
   }
   return (
-    <input
-      className={`print-input-control w-full ${className}`.trim()}
-      onBlur={() => onCommit(draft)}
-      onChange={(event) => setDraft(event.target.value)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.currentTarget.blur();
-        }
-      }}
-      placeholder={placeholder}
-      value={draft}
-    />
+    <>
+      <input
+        className={`print-input-control w-full ${requiredClassName} ${className}`.trim()}
+        maxLength={maxLength}
+        onBlur={() => onCommit(draft)}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+        }}
+        placeholder={placeholder}
+        value={draft}
+      />
+      <span className="print-input-text">{draft.trim() || "-"}</span>
+    </>
   );
 }
 
@@ -1991,12 +2009,14 @@ function PrintOutputAllocationTable({
     );
   }
 
+  const editable = Boolean(onRowNumberChange || onRowTextChange || onRowShareChange);
+
   return (
     <div className="print-table overflow-hidden rounded-3xl border border-amber-300 bg-white print:overflow-hidden">
       <table className="print-table w-full table-fixed border-separate border-spacing-0 text-[11px]">
         <thead className="bg-amber-50">
           <tr className="text-left font-black text-amber-900">
-            <th className="w-[12%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Type" : "구분"}</th>
+            <th className="w-[12%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Model name" : "모델명"}</th>
             <th className="w-[28%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
             <th className="w-[16%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
             <th className="w-[10%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Mass Share" : "질량 비중"}</th>
@@ -2008,57 +2028,73 @@ function PrintOutputAllocationTable({
           {rows.map((row) => {
             const massShare = outputMassShare(row, rows, outputQuantityTotal, byproductAllocation || "allocated");
             const displaySharePercent = massShare * 100;
-            const normalizedEmission = totalEmission * massShare;
-            const rawEmission = normalizedEmission * (normalizationFactor || 1);
+            const effectiveNormalizationFactor = normalizationFactor || 1;
+            const sourceTotalEmission = effectiveNormalizationFactor > 0 ? totalEmission / effectiveNormalizationFactor : totalEmission;
+            const massShareEmission = sourceTotalEmission * massShare;
+            const perTonEmission = outputQuantityTotal > 0 ? (sourceTotalEmission / outputQuantityTotal) * massShare : totalEmission * massShare;
             return (
               <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
                 <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
                   {groupLabel(row, en)}
                 </td>
                 <td className="px-3 py-3 align-middle">
-	                  <EditableText
-	                    multiline
-	                    className="min-h-[3.9rem] resize-none bg-transparent text-sm font-black leading-snug text-slate-950 print:min-h-0 print:whitespace-pre-wrap"
-	                    onCommit={(value) => onRowTextChange?.(row.rowId, "materialName", value)}
-	                    value={en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
-	                  />
+                  {editable ? (
+                    <EditableText
+                      multiline
+                      className="min-h-[3.9rem] resize-none bg-transparent text-sm font-black leading-snug text-slate-950 print:min-h-0 print:whitespace-pre-wrap"
+                      onCommit={(value) => onRowTextChange?.(row.rowId, "materialName", value)}
+                      value={en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                    />
+                  ) : (
+                    <span className="block whitespace-pre-wrap text-sm font-black leading-snug text-slate-950">
+                      {en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                    </span>
+                  )}
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-amber-100">
                     <div className="h-full rounded-full bg-amber-600" style={{ width: `${Math.max(2, Math.min(displaySharePercent, 100))}%` }} />
                   </div>
                 </td>
                 <td className="px-2 py-3 text-center">
                   <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap font-mono text-[11px] font-black text-slate-900">
-                    <EditableNumber
-                      className="inline-block w-12 bg-transparent text-center font-mono font-black"
-                      digits={2}
-                      onCommit={(value) => onRowNumberChange?.(row.rowId, "originalAmount", value)}
-                      value={row.originalAmount}
-                    />
+                    {editable ? (
+                      <EditableNumber
+                        className="inline-block w-12 bg-transparent text-center font-mono font-black"
+                        digits={2}
+                        onCommit={(value) => onRowNumberChange?.(row.rowId, "originalAmount", value)}
+                        value={row.originalAmount}
+                      />
+                    ) : (
+                      <span>{formatNumber(row.originalAmount, 2)}</span>
+                    )}
                     <span className="text-[9px] font-bold text-slate-500">{row.unit || ""}</span>
                   </span>
                 </td>
                 <td className="whitespace-nowrap px-2 py-3 text-center font-mono font-black">
                   <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap text-slate-950">
-                    <EditableNumber
-                      className="inline-block w-10 bg-transparent text-center font-mono font-black"
-                      digits={2}
-                      onCommit={(value) => onRowShareChange?.(row.rowId, value)}
-                      value={displaySharePercent}
-                    />
+                    {editable ? (
+                      <EditableNumber
+                        className="inline-block w-10 bg-transparent text-center font-mono font-black"
+                        digits={2}
+                        onCommit={(value) => onRowShareChange?.(row.rowId, value)}
+                        value={displaySharePercent}
+                      />
+                    ) : (
+                      <span>{formatNumber(displaySharePercent, 2)}</span>
+                    )}
                     <span>%</span>
                   </span>
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
-                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(rawEmission, 2)}</span>
+                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(massShareEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">kg CO2e</span>
                   </div>
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
-                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(normalizedEmission, 2)}</span>
+                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(perTonEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">
-                      kg CO2e/ton of {en ? (productName || "Product") : (productName || "제품")}
+                      kg CO2e/ton of <br />{en ? (productName || "Product") : (productName || "제품")}
                     </span>
                   </div>
                 </td>
@@ -2086,6 +2122,8 @@ function PrintSectionRows({
   onRowChange?: (rowId: string, key: keyof EmissionSurveyReportRow, value: string | number) => void;
   onRowNumberChange?: (rowId: string, key: "amount" | "originalAmount" | "emissionFactor" | "totalEmission", value: number) => void;
 }) {
+  const editable = Boolean(onRowChange || onRowNumberChange);
+
   return (
     <>
       <tr className="bg-blue-50">
@@ -2096,54 +2134,56 @@ function PrintSectionRows({
       {group.rows.map((row) => (
         <tr className="border-b border-slate-100 align-top" key={row.rowId}>
           <td className="w-[40%] px-3 py-2">
-            <EditableText
-              className="w-full bg-transparent font-bold text-slate-900"
-              onCommit={(value) => onRowChange?.(row.rowId, "materialName", value)}
-              value={en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
-            />
-            <div className="mt-0.5 text-[10px] text-slate-500">{groupLabel(row, en)}</div>
+            {editable ? (
+              <EditableText
+                className="w-full bg-transparent font-bold leading-tight text-slate-900"
+                onCommit={(value) => onRowChange?.(row.rowId, "materialName", value)}
+                value={en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+              />
+            ) : (
+              <span className="block whitespace-nowrap font-bold leading-tight text-slate-900">
+                {en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+              </span>
+            )}
           </td>
           <td className="px-3 py-2">
-            <div className="grid gap-1.5">
             <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1">
-              <span className="min-w-12 text-[10px] font-bold text-slate-500">{en ? "Normalized" : "단위 배출량"}</span>
+              <span className="min-w-12 text-[10px] font-bold text-slate-500">{en ? "Mass" : "질량"}</span>
               <span className="whitespace-nowrap font-mono">
-	              <EditableNumber
-	                className="inline-block w-20 bg-transparent text-right font-mono"
-	                digits={2}
-	                onCommit={(value) => onRowNumberChange?.(row.rowId, "amount", value)}
-	                value={row.amount}
-	              /> {row.unit || ""}
+                {editable ? (
+                  <EditableNumber
+                    className="inline-block w-20 bg-transparent text-right font-mono"
+                    digits={2}
+                    onCommit={(value) => onRowNumberChange?.(row.rowId, "originalAmount", value)}
+                    value={row.originalAmount}
+                  />
+                ) : (
+                  <span>{formatNumber(row.originalAmount, 2)}</span>
+                )} {row.unit || ""}
               </span>
-            </div>
-            <div className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-slate-500">
-              <span className="min-w-12 text-[10px] font-bold">{en ? "Original" : "실제 배출량"}</span>
-              <span className="whitespace-nowrap font-mono text-[10px]">
-	                <EditableNumber
-	                  className="inline-block w-20 bg-transparent text-right font-mono text-[10px] text-slate-500"
-	                  digits={2}
-	                  onCommit={(value) => onRowNumberChange?.(row.rowId, "originalAmount", value)}
-	                  value={row.originalAmount}
-	                /> {row.unit || ""}
-              </span>
-            </div>
             </div>
           </td>
           <td className="px-3 py-2">
-	            <EditableNumber
-	              className="inline-block w-24 bg-transparent font-mono"
-	              digits={2}
-	              onCommit={(value) => onRowNumberChange?.(row.rowId, "emissionFactor", value)}
-	              value={row.emissionFactor}
-	            />
+            {editable ? (
+              <EditableNumber
+                className="inline-block w-24 bg-transparent font-mono"
+                digits={2}
+                onCommit={(value) => onRowNumberChange?.(row.rowId, "emissionFactor", value)}
+                value={row.emissionFactor}
+              />
+            ) : (
+              <span className="font-mono">{formatNumber(row.emissionFactor, 2)}</span>
+            )}
           </td>
           <td className="px-3 py-2 font-black">
-            {row.calculated ? (
+            {row.calculated && editable ? (
               <EditableNumber
                 className="w-20 bg-transparent font-black"
                 onCommit={(value) => onRowNumberChange?.(row.rowId, "totalEmission", value)}
-                value={row.totalEmission}
+                value={row.originalAmount * row.emissionFactor}
               />
+            ) : row.calculated ? (
+              <span className="font-mono">{formatNumber(row.originalAmount * row.emissionFactor, 2)}</span>
             ) : "-"}
           </td>
         </tr>
@@ -2156,19 +2196,24 @@ function SectionContributionPieCard({
   sections,
   title,
   en,
-  onCopy
+  onCopy,
+  onSectionEmissionChange,
+  onSectionShareChange,
+  sectionShareInputs = {}
 }: {
   sections: EmissionSurveyReportSectionSummary[];
   title: string;
   en: boolean;
   onCopy?: () => void;
+  onSectionEmissionChange?: (sectionCode: string, value: number) => void;
+  onSectionShareChange?: (sectionCode: string, value: number) => void;
+  sectionShareInputs?: Record<string, number>;
 }) {
   const pieSlices = buildPieSlices(sections);
   return (
     <div className="rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--kr-gov-blue)]">{en ? "Same Data View" : "동일 데이터 그래프"}</p>
           <h3 className="mt-1 text-lg font-black tracking-[-0.03em] text-slate-950">{title}</h3>
         </div>
         {onCopy ? (
@@ -2201,8 +2246,27 @@ function SectionContributionPieCard({
                 <span className="truncate text-xs font-bold text-slate-700">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-xs font-black text-slate-950">{formatPercent(section.sharePercent)}</p>
-	                <p className="text-[10px] font-bold text-slate-500">{formatNumber(section.totalEmission)} kg CO2e</p>
+                <p className="text-xs font-black text-slate-950">
+                  {onSectionShareChange ? (
+                    <>
+                      <EditableNumber
+                        className="inline-block w-14 bg-transparent text-right font-mono font-black"
+                        digits={1}
+                        onCommit={(value) => onSectionShareChange(section.sectionCode, value)}
+                        value={sectionShareInputs[section.sectionCode] ?? section.sharePercent}
+                      />%
+                    </>
+                  ) : formatPercent(section.sharePercent)}
+                </p>
+                <p className="text-[10px] font-bold text-slate-500">
+                  {onSectionEmissionChange ? (
+                    <EditableNumber
+                      className="inline-block w-20 bg-transparent text-right font-mono font-bold text-slate-500"
+                      onCommit={(value) => onSectionEmissionChange(section.sectionCode, value)}
+                      value={section.totalEmission}
+                    />
+                  ) : formatNumber(section.totalEmission)} kg CO2e
+                </p>
               </div>
             </div>
           ))}

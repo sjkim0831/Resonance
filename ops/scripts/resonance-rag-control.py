@@ -207,7 +207,8 @@ def sqlite_query(policy: dict, question: str, limit: int) -> list[dict]:
     db_path = Path(policy.get("sqliteRag", {}).get("dbPath", ""))
     if not db_path.exists():
         return []
-    query = " OR ".join(dict.fromkeys(token.lower() for token in TOKEN_RE.findall(question) if len(token) >= 2))
+    terms = list(dict.fromkeys(token.lower() for token in TOKEN_RE.findall(question) if len(token) >= 2))
+    query = " OR ".join(terms)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     if query:
@@ -224,13 +225,29 @@ def sqlite_query(policy: dict, question: str, limit: int) -> list[dict]:
                 """,
                 (query, limit),
             ).fetchall()
-            return [dict(row) for row in rows]
+            if rows:
+                return [dict(row) for row in rows]
         except sqlite3.OperationalError:
             pass
     rows = conn.execute(
         "SELECT root, path, kind, title, chunk_index, text, 0.0 AS rank FROM chunks WHERE lower(text) LIKE lower(?) LIMIT ?",
         (f"%{question}%", limit),
     ).fetchall()
+    if rows:
+        return [dict(row) for row in rows]
+    if terms:
+        clauses = []
+        params = []
+        for term in terms[:12]:
+            clauses.append("(lower(text) LIKE lower(?) OR lower(path) LIKE lower(?) OR lower(title) LIKE lower(?))")
+            params.extend([f"%{term}%", f"%{term}%", f"%{term}%"])
+        params.append(limit)
+        rows = conn.execute(
+            "SELECT root, path, kind, title, chunk_index, text, 0.0 AS rank FROM chunks WHERE "
+            + " OR ".join(clauses)
+            + " LIMIT ?",
+            params,
+        ).fetchall()
     return [dict(row) for row in rows]
 
 
@@ -300,6 +317,9 @@ def prepare_dataset(policy: dict, candidate: str) -> dict:
         "dataset": str(out_path),
         "records": count,
         "recommendedMethod": "QLoRA",
+        "embeddingPipeline": policy.get("embeddingPipeline", []),
+        "metadataSchema": policy.get("metadataSchema", {}),
+        "reranking": policy.get("reranking", {}),
         "servingPromotion": policy.get("servingPolicy", {}).get("promotionFlow"),
         "notes": "Train in a shadow slot first, then expose through the existing model runtime profile start/stop flow.",
     }

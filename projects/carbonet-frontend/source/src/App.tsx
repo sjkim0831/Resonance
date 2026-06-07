@@ -397,7 +397,7 @@ export default function App() {
         >
           <div className="flex items-start justify-between gap-3 cursor-move select-none" onMouseDown={handleContextMenuHeaderMouseDown}>
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-sky-700">Codex Context</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-sky-700">Hermes Context</p>
               <p className="mt-1 text-sm font-bold text-slate-900">{highlightLabel || "선택 영역"}</p>
               <p className="mt-1 text-xs text-slate-500">{contextMenu.match?.surface?.selector || contextMenu.match?.event?.triggerSelector || routePath}</p>
             </div>
@@ -431,7 +431,7 @@ export default function App() {
               {contextActionLoading ? "처리 중..." : "스택 추가 후 워크벤치 열기"}
             </button>
             <button className="gov-btn gov-btn-primary w-full justify-center" disabled={contextActionLoading} onClick={() => { void handleQuickExecute(); }} type="button">
-              {contextActionLoading ? "Codex 실행 중..." : "이 영역 바로 수정 실행"}
+              {contextActionLoading ? "Hermes 실행 중..." : "이 영역 바로 수정 실행"}
             </button>
           </div>
         </div>

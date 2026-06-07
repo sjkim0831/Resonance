@@ -322,6 +322,31 @@ verify_survey_admin_combobox_bundle() {
   "$verifier" || rollback_and_fail SURVEY_ADMIN_COMBOBOX_STALE "survey-admin product combobox source/bundle markers are stale"
 }
 
+verify_screen_management_bundle() {
+  if [[ "${VERIFY_SCREEN_MANAGEMENT:-true}" != "true" ]]; then
+    log 'screen-management bundle verification skipped'
+    return 0
+  fi
+  local bundle_dir=""
+  for dir in \
+    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app/assets" \
+    "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app/assets" \
+    "$ROOT_DIR/projects/carbonet-frontend/source/dist/assets"; do
+    if [[ -d "$dir" ]]; then
+      bundle_dir="$dir"
+      break
+    fi
+  done
+  if [[ -z "$bundle_dir" ]]; then
+    rollback_and_fail SCREEN_MGMT_BUNDLE_DIR_MISSING "cannot find react-app assets directory"
+  fi
+  local screen_mgmt_bundle=$(ls "$bundle_dir"/ScreenManagementMigrationPage-*.js 2>/dev/null | head -1 || true)
+  if [[ -z "$screen_mgmt_bundle" ]]; then
+    rollback_and_fail SCREEN_MGMT_BUNDLE_MISSING "ScreenManagementMigrationPage bundle not found in $bundle_dir"
+  fi
+  log "screen-management bundle verified: $(basename "$screen_mgmt_bundle")"
+}
+
 build_maven() {
   if [[ "${SKIP_MAVEN:-false}" == "true" ]]; then
     log 'maven package skipped'
@@ -338,6 +363,7 @@ build_maven() {
     mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package
   fi
   verify_survey_admin_combobox_bundle
+  verify_screen_management_bundle
 }
 
 build_image() {

@@ -11,7 +11,7 @@ Purpose:
 
 Follow with:
   bash ops/scripts/run-large-move-app-closure.sh
-  bash ops/scripts/codex-verify-18000-freshness.sh
+  bash ops/scripts/hermes-verify-18000-freshness.sh
 
 Quick guide:
   bash ops/scripts/show-app-closure-sequence.sh

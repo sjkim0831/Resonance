@@ -71,3 +71,11 @@ export function buildScreenFlowManagementPath() {
 export function buildScreenMenuAssignmentManagementPath() {
   return buildLocalizedPath("/admin/system/screen-menu-assignment-management", "/en/admin/system/screen-menu-assignment-management");
 }
+
+export function buildScreenBuilderDashboardPath() {
+  return buildLocalizedPath("/admin/system/screen-builder-dashboard", "/en/admin/system/screen-builder-dashboard");
+}
+
+export function buildScreenManagementPath() {
+  return buildLocalizedPath("/admin/system/screen-management", "/en/admin/system/screen-management");
+}

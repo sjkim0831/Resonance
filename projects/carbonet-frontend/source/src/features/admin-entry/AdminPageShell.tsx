@@ -357,6 +357,22 @@ function resolveMenuIndexEntry(menuIndex: MenuIndex, currentPath: string) {
   return menuIndex.exactPathMap[currentFull] || menuIndex.basePathMap[currentBase] || null;
 }
 
+function findDomainKeyByPrefix(menuTree: Record<string, AdminMenuDomain>, ...prefixes: string[]) {
+  const normalizedPrefixes = prefixes.map((prefix) => prefix.toUpperCase());
+  return Object.keys(menuTree).find((domainKey) => {
+    const normalizedDomainKey = domainKey.toUpperCase();
+    return normalizedPrefixes.some((prefix) => normalizedDomainKey.startsWith(prefix));
+  }) || "";
+}
+
+function resolveFallbackDomainKey(menuTree: Record<string, AdminMenuDomain>, currentPath: string) {
+  const currentBase = pathOnly(currentPath);
+  if (currentBase.startsWith("/admin/emission/") || currentBase.startsWith("/en/admin/emission/")) {
+    return findDomainKeyByPrefix(menuTree, "A002");
+  }
+  return "";
+}
+
 function resolveFirstDomainPath(domain: AdminMenuDomain | undefined) {
   if (!domain) {
     return "#";
@@ -501,7 +517,8 @@ export function AdminPageShell({
   );
   const menuIndex = useMemo(() => buildMenuIndex(menuTree), [menuTree]);
   const activeMenuEntry = useMemo(() => resolveMenuIndexEntry(menuIndex, currentPath), [menuIndex, currentPath]);
-  const activeDomainKey = activeMenuEntry?.domainKey || Object.keys(menuTree)[0] || "";
+  const fallbackActiveDomainKey = useMemo(() => resolveFallbackDomainKey(menuTree, currentPath), [currentPath, menuTree]);
+  const activeDomainKey = activeMenuEntry?.domainKey || fallbackActiveDomainKey || Object.keys(menuTree)[0] || "";
   const [selectedDomainKey, setSelectedDomainKey] = useState(activeDomainKey);
   const [menuFilter, setMenuFilter] = useState("");
   const deferredMenuFilter = useDeferredValue(menuFilter);

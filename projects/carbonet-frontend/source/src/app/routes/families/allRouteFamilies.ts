@@ -3,6 +3,7 @@ import { normalizeRegistryPath } from "../../../framework/registry/pathNormaliza
 import { EXTERNAL_ROUTE_FAMILIES } from "../../../platform/routes/platformRouteRegistry";
 import { ADMIN_MEMBER_FAMILY } from "./adminMemberFamily";
 import { ADMIN_SYSTEM_FAMILY } from "./adminSystemFamily";
+import { AI_MANAGEMENT_FAMILY } from "./aiManagementFamily";
 import { APP_OWNED_FAMILY } from "./appOwnedFamily";
 import { CONTENT_SUPPORT_FAMILY } from "./contentSupportFamily";
 import { EMISSION_MONITORING_FAMILY } from "./emissionMonitoringFamily";
@@ -15,6 +16,7 @@ export const APP_ROUTE_FAMILIES = [
   TRADE_PAYMENT_FAMILY,
   EMISSION_MONITORING_FAMILY,
   ADMIN_SYSTEM_FAMILY,
+  AI_MANAGEMENT_FAMILY,
   CONTENT_SUPPORT_FAMILY,
   HOME_EXPERIENCE_FAMILY
 ] as const;

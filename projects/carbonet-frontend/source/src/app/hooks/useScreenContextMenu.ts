@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchScreenCommandPage } from "../../lib/api/platform";
-import type { ScreenCommandEvent, ScreenCommandPagePayload, ScreenCommandSurface } from "../../lib/api/platformTypes";
+import type { ScreenCommandChangeTarget, ScreenCommandEvent, ScreenCommandPagePayload, ScreenCommandSurface } from "../../lib/api/platformTypes";
 import { resolveManagedRuntimeHref, resolveRuntimeRoutePath, type ManagedRuntimeRoute } from "../routes/runtime";
 
 type ContextMenuTarget = Pick<ManagedRuntimeRoute, "pageId" | "routePath">;
@@ -310,7 +310,18 @@ export function useScreenContextMenu(page: string, routePath: string) {
     event.stopPropagation();
   }
 
-  const availableChangeTargets = contextMenu.pageData?.page?.changeTargets || [];
+  const defaultChangeTargets: ScreenCommandChangeTarget[] = [
+    { targetId: "ui", label: "UI 요소 수정", editableFields: ["selector", "layoutZone", "label", "visibleCondition"], notes: "화면 요소 구조, 라벨, 렌더링 조건을 조정합니다." },
+    { targetId: "css", label: "CSS 매핑 수정", editableFields: ["className", "spacing", "stateStyle"], notes: "class, spacing token, 상태별 표현을 수정합니다." },
+    { targetId: "event", label: "이벤트 연결 수정", editableFields: ["eventType", "handler", "triggerSelector"], notes: "클릭/submit/change 이벤트와 프론트 핸들러를 바꿉니다." },
+    { targetId: "api", label: "API 연결 수정", editableFields: ["method", "endpoint", "payload", "response"], notes: "프론트 API 호출과 DTO 연결을 수정합니다." },
+    { targetId: "backend", label: "컨트롤러/서비스/매퍼 수정", editableFields: ["controller", "service", "mapperQuery"], notes: "백엔드 호출 체인과 조회/저장 경로를 정리합니다." },
+    { targetId: "schema", label: "스키마/테이블 수정", editableFields: ["table", "column", "writeType", "audit"], notes: "관련 테이블, 컬럼, 쓰기 유형을 점검합니다." },
+    { targetId: "menu-auth", label: "메뉴/기능권한 수정", editableFields: ["menuCode", "featureCode", "authorRelation"], notes: "페이지 메뉴 코드, 기능 코드, 권한 연결을 조정합니다." },
+    { targetId: "common-code", label: "공통코드 수정", editableFields: ["codeId", "code", "label"], notes: "상태코드, 메뉴코드, 분류코드 라벨과 값을 정리합니다." }
+  ];
+
+  const availableChangeTargets = contextMenu.pageData?.page?.changeTargets?.length ? contextMenu.pageData.page.changeTargets : defaultChangeTargets;
   const selectedChangeTarget = availableChangeTargets.find((item) => item.targetId === contextTargetId) || availableChangeTargets[0];
 
   return {

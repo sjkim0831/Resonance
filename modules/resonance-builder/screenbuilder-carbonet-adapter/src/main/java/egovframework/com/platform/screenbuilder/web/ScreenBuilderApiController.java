@@ -12,6 +12,8 @@ import egovframework.com.platform.screenbuilder.model.ScreenBuilderDraftDocument
 import egovframework.com.platform.screenbuilder.model.ScreenBuilderSaveRequestVO;
 import egovframework.com.platform.screenbuilder.model.ScreenBuilderVersionSummaryVO;
 import egovframework.com.platform.screenbuilder.service.ScreenBuilderDraftService;
+import egovframework.com.platform.screenbuilder.service.ScreenConfigService;
+import egovframework.com.platform.screenbuilder.model.ScreenConfigVO;
 import egovframework.com.platform.screenbuilder.support.ScreenBuilderArtifactNamingPolicyPort;
 import egovframework.com.platform.screenbuilder.support.ScreenBuilderRequestContextPolicyPort;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ import java.util.Map;
 public class ScreenBuilderApiController {
 
     private final ScreenBuilderDraftService screenBuilderDraftService;
+    private final ScreenConfigService screenConfigService;
     private final ScreenBuilderArtifactNamingPolicyPort screenBuilderArtifactNamingPolicyPort;
     private final ScreenBuilderRequestContextPolicyPort screenBuilderRequestContextPolicyPort;
     private final CarbonetScreenBuilderAuditSource carbonetScreenBuilderAuditSource;
@@ -540,6 +543,212 @@ public class ScreenBuilderApiController {
         });
     }
 
+    @PostMapping("/config")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> saveScreenConfig(
+            @RequestBody ScreenConfigVO config,
+            HttpServletRequest httpServletRequest,
+            Locale locale) {
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                safe(config == null ? null : config.getMenuCode()),
+                safe(config == null ? null : config.getMenuUrl()),
+                "UPDATE",
+                httpServletRequest,
+                "SCREEN_CONFIG_SAVE");
+        if (denied != null) {
+            return denied;
+        }
+        return execute(() -> {
+            ScreenConfigVO saved = screenConfigService.createOrUpdateConfig(config);
+            recordScreenBuilderAudit(
+                    httpServletRequest,
+                    safe(config == null ? null : config.getMenuCode()),
+                    "SCREEN_CONFIG_SAVE",
+                    "SCREEN_CONFIG",
+                    safe(saved.getScreenId()),
+                    "Screen config saved",
+                    "",
+                    saved);
+            return successResponse(
+                    isEn(httpServletRequest, locale) ? "Screen config saved." : "화면 설정이 저장되었습니다.",
+                    "config", saved);
+        });
+    }
+
+    @GetMapping("/config")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getScreenConfig(
+            @RequestParam(value = "menuCode", required = false) String menuCode,
+            @RequestParam(value = "screenId", required = false) String screenId,
+            HttpServletRequest request,
+            Locale locale) throws Exception {
+        String authMenuCode = safe(menuCode);
+        String authMenuUrl = "";
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                authMenuCode,
+                authMenuUrl,
+                "QUERY",
+                request,
+                "SCREEN_CONFIG_VIEW");
+        if (denied != null) {
+            return denied;
+        }
+        ScreenConfigVO config = null;
+        if (menuCode != null && !menuCode.isEmpty()) {
+            config = screenConfigService.getConfigByMenuCode(menuCode).orElse(null);
+        } else if (screenId != null && !screenId.isEmpty()) {
+            config = screenConfigService.getConfigByScreenId(screenId).orElse(null);
+        }
+        if (config == null) {
+            return notFound(isEn(request, locale) ? "Screen config not found." : "화면 설정을 찾을 수 없습니다.");
+        }
+        return ok(orderedMap(
+                "config", config,
+                "themes", screenConfigService.getAvailableThemes()));
+    }
+
+    @GetMapping("/config/list")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> listScreenConfigs(
+            @RequestParam(value = "status", required = false) String status,
+            HttpServletRequest request,
+            Locale locale) throws Exception {
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                "",
+                "/admin/system/screen-builder",
+                "QUERY",
+                request,
+                "SCREEN_CONFIG_LIST_VIEW");
+        if (denied != null) {
+            return denied;
+        }
+        List<ScreenConfigVO> configs = status != null && !status.isEmpty()
+                ? screenConfigService.getConfigsByStatus(status)
+                : screenConfigService.getAllConfigs();
+        return ok(orderedMap(
+                "configs", configs,
+                "count", configs.size()));
+    }
+
+    @PostMapping("/config/publish")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> publishScreenConfig(
+            @RequestParam("screenId") String screenId,
+            HttpServletRequest httpServletRequest,
+            Locale locale) {
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                "",
+                "/admin/screen-runtime",
+                "APPROVE",
+                httpServletRequest,
+                "SCREEN_CONFIG_PUBLISH");
+        if (denied != null) {
+            return denied;
+        }
+        return execute(() -> {
+            ScreenConfigVO published = screenConfigService.publishConfig(screenId);
+            recordScreenBuilderAudit(
+                    httpServletRequest,
+                    safe(published.getMenuCode()),
+                    "SCREEN_CONFIG_PUBLISH",
+                    "SCREEN_CONFIG",
+                    safe(screenId),
+                    "Screen config published",
+                    "",
+                    published);
+            return successResponse(
+                    isEn(httpServletRequest, locale) ? "Screen config published." : "화면 설정이 게시되었습니다.",
+                    "config", published);
+        });
+    }
+
+    @PostMapping("/config/duplicate")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> duplicateScreenConfig(
+            @RequestParam("screenId") String sourceScreenId,
+            @RequestParam("newMenuCode") String newMenuCode,
+            @RequestParam("newMenuTitle") String newMenuTitle,
+            HttpServletRequest httpServletRequest,
+            Locale locale) {
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                "",
+                "/admin/system/screen-builder",
+                "CREATE",
+                httpServletRequest,
+                "SCREEN_CONFIG_DUPLICATE");
+        if (denied != null) {
+            return denied;
+        }
+        return execute(() -> {
+            ScreenConfigVO duplicated = screenConfigService.duplicateConfig(sourceScreenId, newMenuCode, newMenuTitle);
+            recordScreenBuilderAudit(
+                    httpServletRequest,
+                    safe(newMenuCode),
+                    "SCREEN_CONFIG_DUPLICATE",
+                    "SCREEN_CONFIG",
+                    safe(duplicated.getScreenId()),
+                    "Screen config duplicated",
+                    "",
+                    duplicated);
+            return successResponse(
+                    isEn(httpServletRequest, locale) ? "Screen config duplicated." : "화면 설정이 복제되었습니다.",
+                    "config", duplicated);
+        });
+    }
+
+    @PostMapping("/config/delete")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteScreenConfig(
+            @RequestParam("screenId") String screenId,
+            HttpServletRequest httpServletRequest,
+            Locale locale) {
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                "",
+                "/admin/system/screen-builder",
+                "DELETE",
+                httpServletRequest,
+                "SCREEN_CONFIG_DELETE");
+        if (denied != null) {
+            return denied;
+        }
+        return execute(() -> {
+            boolean deleted = screenConfigService.deleteConfig(screenId);
+            if (deleted) {
+                recordScreenBuilderAudit(
+                        httpServletRequest,
+                        "",
+                        "SCREEN_CONFIG_DELETE",
+                        "SCREEN_CONFIG",
+                        safe(screenId),
+                        "Screen config deleted",
+                        "",
+                        "");
+                return successResponse(
+                        isEn(httpServletRequest, locale) ? "Screen config deleted." : "화면 설정이 삭제되었습니다.");
+            }
+            return errorResponse(
+                    new IllegalArgumentException(isEn(httpServletRequest, locale) ? "Config not found." : "설정을 찾을 수 없습니다."));
+        });
+    }
+
+    @GetMapping("/config/themes")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getAvailableThemes(
+            HttpServletRequest request,
+            Locale locale) throws Exception {
+        ResponseEntity<Map<String, Object>> denied = authorizeMenuAccess(
+                "",
+                "/admin/system/screen-builder",
+                "QUERY",
+                request,
+                "SCREEN_THEMES_VIEW");
+        if (denied != null) {
+            return denied;
+        }
+        return ok(orderedMap(
+                "themes", screenConfigService.getAvailableThemes()));
+    }
+
     @PostMapping("/publish")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> publishScreenBuilderDraft(
@@ -669,6 +878,10 @@ public class ScreenBuilderApiController {
 
     private ResponseEntity<Map<String, Object>> ok(Map<String, Object> body) {
         return ResponseEntity.ok(body);
+    }
+
+    private ResponseEntity<Map<String, Object>> notFound(String message) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse(new Exception(message)));
     }
 
     private ResponseEntity<Map<String, Object>> execute(ScreenBuilderAction action) {

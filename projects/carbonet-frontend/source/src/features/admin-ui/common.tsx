@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import {
   AppButton,
@@ -477,7 +478,7 @@ export function MetaListPanel({
   sections,
   className = "",
   ...props
-}: HTMLAttributes<HTMLElement> & {
+}: HTMLAttributes<HTMLDivElement> & {
   sections: MetaListPanelSection[];
 }) {
   return (
@@ -493,4 +494,168 @@ export function MetaListPanel({
       ))}
     </section>
   );
+}
+
+type AdminSearchBarProps = {
+  placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  className?: string;
+};
+
+export function AdminSearchBar({ placeholder, value = "", onChange, className = "" }: AdminSearchBarProps) {
+  return (
+    <div className={`relative ${className}`.trim()}>
+      <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--kr-gov-text-secondary)]">search</span>
+      <input
+        className="gov-input w-full pl-10 pr-4"
+        onChange={(e) => onChange?.(e.target.value)}
+        placeholder={placeholder}
+        type="search"
+        value={value}
+      />
+    </div>
+  );
+}
+
+type AdminSearchSectionProps = {
+  children: ReactNode;
+  onSearch: (e: React.FormEvent<HTMLFormElement>) => void;
+  onReset: () => void;
+  totalCount?: number;
+  searchLabel?: string;
+  metaLabel?: string;
+  en?: boolean;
+};
+
+export function AdminSearchSection({
+  children,
+  onSearch,
+  onReset,
+  totalCount,
+  searchLabel,
+  metaLabel,
+  en = false
+}: AdminSearchSectionProps) {
+  return (
+    <div className="gov-card mb-8">
+      <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+        <MemberSectionToolbar
+          actions={
+            totalCount !== undefined ? (
+              <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+                {en ? "Total" : "전체"}: {totalCount}
+              </span>
+            ) : undefined
+          }
+          meta={metaLabel}
+          title={searchLabel || (en ? "Search" : "검색")}
+        />
+      </div>
+      <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" onSubmit={onSearch}>
+        {children}
+        <div className="md:col-span-4">
+          <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
+              {metaLabel || (en ? "Enter search criteria" : "검색 조건을 입력하세요")}
+            </p>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <MemberButton onClick={onReset} type="button" variant="secondary">
+                {en ? "Reset" : "초기화"}
+              </MemberButton>
+              <MemberButton icon="search" type="submit" variant="primary">
+                {en ? "Search" : "검색"}
+              </MemberButton>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export function AdminSearchField({
+  label,
+  children,
+  className = ""
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+type SortState = {
+  column: string;
+  direction: "asc" | "desc";
+};
+
+type AdminSortableHeaderProps = {
+  column: string;
+  label: string;
+  currentSort: SortState;
+  onSort: (column: string) => void;
+};
+
+export function AdminSortableHeader({ column, label, currentSort, onSort }: AdminSortableHeaderProps) {
+  const isActive = currentSort.column === column;
+  const icon = isActive
+    ? currentSort.direction === "asc" ? "expand_less" : "expand_more"
+    : "unfold_more";
+
+  return (
+    <th className="cursor-pointer px-6 py-4 hover:bg-gray-100" onClick={() => onSort(column)}>
+      <div className="flex items-center gap-1">
+        {label}
+        <span className="material-symbols-outlined text-base">{icon}</span>
+      </div>
+    </th>
+  );
+}
+
+export function useAdminSort(initialColumn = "", initialDirection: "asc" | "desc" = "asc") {
+  const [sortState, setSortState] = useState<SortState>({
+    column: initialColumn,
+    direction: initialDirection
+  });
+
+  function handleSort(column: string) {
+    setSortState((prev) => {
+      if (prev.column === column) {
+        return { column, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { column, direction: "asc" };
+    });
+  }
+
+  return { sortState, handleSort };
+}
+
+export function useAdminSearch() {
+  const [keyword, setKeyword] = useState("");
+  const [draftKeyword, setDraftKeyword] = useState("");
+
+  function handleSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setKeyword(draftKeyword);
+  }
+
+  function handleReset() {
+    setDraftKeyword("");
+    setKeyword("");
+  }
+
+  return {
+    keyword,
+    draftKeyword,
+    setDraftKeyword,
+    handleSearchSubmit,
+    handleReset
+  };
 }

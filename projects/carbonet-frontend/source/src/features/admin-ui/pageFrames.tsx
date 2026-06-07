@@ -16,25 +16,12 @@ export function AdminPageFrame({ children, className = "", ...props }: AdminPage
   );
 }
 
-export function AdminListPageFrame(props: AdminPageFrameProps) {
-  return <AdminPageFrame {...props} className={joinClassName("space-y-6", props.className)} />;
-}
-
-export function AdminEditPageFrame(props: AdminPageFrameProps) {
-  return <AdminPageFrame {...props} className={joinClassName("space-y-6", props.className)} />;
-}
-
-export function AdminAuthorityPageFrame(props: AdminPageFrameProps) {
-  return <AdminPageFrame {...props} className={joinClassName("space-y-6", props.className)} />;
-}
-
-export function AdminPolicyPageFrame(props: AdminPageFrameProps) {
-  return <AdminPageFrame {...props} className={joinClassName("space-y-6", props.className)} />;
-}
-
-export function AdminWorkspacePageFrame(props: AdminPageFrameProps) {
-  return <AdminPageFrame {...props} className={joinClassName("space-y-6", props.className)} />;
-}
+// Aliases for backward compatibility - all identical implementations
+export const AdminListPageFrame = AdminPageFrame;
+export const AdminEditPageFrame = AdminPageFrame;
+export const AdminAuthorityPageFrame = AdminPageFrame;
+export const AdminPolicyPageFrame = AdminPageFrame;
+export const AdminWorkspacePageFrame = AdminPageFrame;
 
 export function AdminSummaryStrip({ children, className = "", ...props }: AdminPageFrameProps) {
   return (

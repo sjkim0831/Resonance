@@ -52,6 +52,13 @@ Authority and scope work:
 - `ROLE_SYSTEM_ADMIN` may create and prepare SR work, but must not approve, execute, run Codex, or edit WBS.
 - `ROLE_SYSTEM_MASTER` owns dangerous execution features. Verify with COMTNAUTHORFUNCTIONRELATE in the host Docker CUBRID container `11.2`, DB `carbonet`.
 
+
+Carbonet React report editing:
+
+- For editable report/chart screens, distinguish source values from derived values. Source values include emissions, amounts, factors, and output mass. Derived values include percentages, shares, ratios, normalized totals, and chart widths.
+- If a user edits a derived value and then edits the source value for the same row or section, clear that derived-value draft override before recalculating. Example: in emission survey reports, updateSectionEmission must remove draftSectionShares[sectionCode] so sharePercent resumes automatic recalculation.
+- When a page has both normal and print/PDF components with duplicated handlers, apply the same state-invariant fix to both components and verify with npm run build.
+
 Builder and theme work:
 
 - Keep screen builder core in modules/resonance-builder.

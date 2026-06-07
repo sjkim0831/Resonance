@@ -330,15 +330,19 @@ export function ScreenBuilderMigrationPage() {
     routePath: String(commandState.value?.page?.routePath || page?.menuUrl || ""),
     menuLookupUrl: String(commandState.value?.page?.menuLookupUrl || "")
   }), [commandState.value?.page, page?.menuUrl]);
+  const isHmenuPage = (page?.menuCode || pageQuery.menuCode || "").toUpperCase().startsWith("HMENU_");
+  const effectiveRequiredViewFeatureCode = isHmenuPage
+    ? ""
+    : (commandState.value?.page?.menuPermission?.requiredViewFeatureCode || "");
   const screenBuilderAuthority = useMemo(() => resolveAuthorityScope({
     scopeName: "screen-builder",
     routePath: getScreenBuilderRoutePath(),
     session: sessionState.value,
     menuCode: page?.menuCode || pageQuery.menuCode,
-    requiredViewFeatureCode: commandState.value?.page?.menuPermission?.requiredViewFeatureCode,
+    requiredViewFeatureCode: effectiveRequiredViewFeatureCode,
     featureCodes: commandState.value?.page?.menuPermission?.featureCodes,
     featureRows: commandState.value?.page?.menuPermission?.featureRows
-  }), [commandState.value?.page?.menuPermission?.featureCodes, commandState.value?.page?.menuPermission?.featureRows, commandState.value?.page?.menuPermission?.requiredViewFeatureCode, page?.menuCode, pageQuery.menuCode, sessionState.value]);
+  }), [commandState.value?.page?.menuPermission?.featureCodes, commandState.value?.page?.menuPermission?.featureRows, commandState.value?.page?.menuPermission?.requiredViewFeatureCode, effectiveRequiredViewFeatureCode, page?.menuCode, pageQuery.menuCode, sessionState.value]);
   const pagePermissionDenied = !sessionState.loading && !screenBuilderAuthority.entryAllowed;
   const packageArtifactEvidence = (page?.artifactEvidence || {}) as Record<string, unknown>;
   const projectId = getScreenBuilderProjectId();

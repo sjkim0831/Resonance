@@ -71,3 +71,4 @@ vector_db/
 *.faiss
 *.hnsw
 *.ann
+data/cubrid/backup/

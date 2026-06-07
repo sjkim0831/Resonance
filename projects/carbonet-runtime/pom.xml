@@ -22,6 +22,11 @@
             <artifactId>carbonet-adapter</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
+            <artifactId>screenbuilder-carbonet-adapter</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

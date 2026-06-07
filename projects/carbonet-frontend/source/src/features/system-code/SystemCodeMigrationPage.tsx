@@ -21,19 +21,17 @@ import {
   PageStatusNotice,
   SummaryMetricCard
 } from "../admin-ui/common";
+import { MemberModal } from "../admin-ui/Modal";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import {
   ActiveFilterChipBar,
-  RecentWorkPanel,
-  type RecentWorkItem,
   UseStatusFilterBar,
   type UseStatusFilter
 } from "./SystemCodeSupportPanels";
 
 type DetailSortOption = "code-asc" | "code-desc" | "name-asc" | "useAt";
 type SystemCodeFormKind = "class-create" | "class-update" | "group-create" | "group-update" | "detail-create" | "detail-update" | "other";
-const SYSTEM_CODE_UI_STATE_STORAGE_KEY = "carbonet.system-code.ui-state";
 
 function normalizeUseStatusFilter(value: string): UseStatusFilter {
   return value === "Y" || value === "N" ? value : "";
@@ -52,49 +50,6 @@ function readSystemCodeUiStateFromLocation() {
     detailSortOption: (getSearchParam("detailSortOption") as DetailSortOption) || "code-asc",
     useStatusFilter: normalizeUseStatusFilter(getSearchParam("useStatusFilter"))
   };
-}
-
-function readSystemCodeUiStateFromSession() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  try {
-    const raw = window.sessionStorage.getItem(SYSTEM_CODE_UI_STATE_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return {
-      detailCodeId: String(parsed.detailCodeId || ""),
-      classSearchKeyword: String(parsed.classSearchKeyword || ""),
-      codeSearchKeyword: String(parsed.codeSearchKeyword || ""),
-      detailSearchKeyword: String(parsed.detailSearchKeyword || ""),
-      codeFilterClassCode: String(parsed.codeFilterClassCode || ""),
-      detailSortOption: ((String(parsed.detailSortOption || "code-asc")) as DetailSortOption),
-      useStatusFilter: normalizeUseStatusFilter(String(parsed.useStatusFilter || ""))
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeSystemCodeUiStateToSession(state: {
-  detailCodeId: string;
-  classSearchKeyword: string;
-  codeSearchKeyword: string;
-  detailSearchKeyword: string;
-  codeFilterClassCode: string;
-  detailSortOption: DetailSortOption;
-  useStatusFilter: UseStatusFilter;
-}) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  try {
-    window.sessionStorage.setItem(SYSTEM_CODE_UI_STATE_STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // ignore session storage failures
-  }
 }
 
 function createDetailRowKey(row: Record<string, unknown> | null | undefined) {
@@ -125,14 +80,6 @@ function resolveSystemCodeFormKind(action: string): SystemCodeFormKind {
   return "other";
 }
 
-function parseDetailCodeIdFromResponseUrl(url: string) {
-  try {
-    return new URL(url, window.location.origin).searchParams.get("detailCodeId") || "";
-  } catch {
-    return "";
-  }
-}
-
 function focusDetailCodeInput() {
   window.requestAnimationFrame(() => {
     const element = document.getElementById("detailCode");
@@ -143,16 +90,12 @@ function focusDetailCodeInput() {
   });
 }
 
-function focusElementById(id: string) {
-  window.requestAnimationFrame(() => {
-    const element = document.getElementById(id);
-    if (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) {
-      element.focus();
-      if (element instanceof HTMLInputElement) {
-        element.select();
-      }
-    }
-  });
+function parseDetailCodeIdFromResponseUrl(url: string) {
+  try {
+    return new URL(url, window.location.origin).searchParams.get("detailCodeId") || "";
+  } catch {
+    return "";
+}
 }
 
 function handleRowKeyboardSelect(
@@ -185,8 +128,7 @@ async function copyText(value: string) {
 }
 
 function useSystemCodePage() {
-  const initialSessionState = readSystemCodeUiStateFromSession();
-  const [detailCodeId, setDetailCodeId] = useState(readDetailCodeIdFromLocation() || initialSessionState?.detailCodeId || "");
+  const [detailCodeId, setDetailCodeId] = useState(readDetailCodeIdFromLocation() || "");
   const state = useAsyncValue<SystemCodePagePayload>(() => fetchSystemCodePage(detailCodeId || undefined), [detailCodeId], {
     onSuccess(payload) {
       const nextDetailCodeId = String(payload.detailCodeId || "");
@@ -291,27 +233,6 @@ function filterRowsByUseAt(rows: Array<Record<string, unknown>>, useStatusFilter
   return rows.filter((row) => (stringOf(row, "useAt", "USE_AT") || "Y") === useStatusFilter);
 }
 
-function hasClassCode(rows: Array<Record<string, unknown>>, classCode: string) {
-  if (!classCode) {
-    return false;
-  }
-  return rows.some((row) => stringOf(row, "clCode", "CL_CODE") === classCode);
-}
-
-function resolvePreferredGroupCreateClassCode(
-  rows: Array<Record<string, unknown>>,
-  filteredClassCode: string,
-  selectedClassCode: string
-) {
-  if (hasClassCode(rows, filteredClassCode)) {
-    return filteredClassCode;
-  }
-  if (hasClassCode(rows, selectedClassCode)) {
-    return selectedClassCode;
-  }
-  return stringOf(rows[0], "clCode", "CL_CODE");
-}
-
 function sortDetailRows(rows: Array<Record<string, unknown>>, sortOption: DetailSortOption) {
   const nextRows = [...rows];
   nextRows.sort((left, right) => {
@@ -341,8 +262,7 @@ function sortDetailRows(rows: Array<Record<string, unknown>>, sortOption: Detail
 export function SystemCodeMigrationPage() {
   const en = isEnglish();
   const { value: page, error, reload, detailCodeId, setDetailCodeId } = useSystemCodePage();
-  const initialSessionState = readSystemCodeUiStateFromSession();
-  const initialUiState = { ...initialSessionState, ...readSystemCodeUiStateFromLocation() };
+  const initialUiState = readSystemCodeUiStateFromLocation();
   const [actionError, setActionError] = useState("");
   const [classSearchKeyword, setClassSearchKeyword] = useState(initialUiState.classSearchKeyword);
   const [codeSearchKeyword, setCodeSearchKeyword] = useState(initialUiState.codeSearchKeyword);
@@ -356,8 +276,9 @@ export function SystemCodeMigrationPage() {
   const [selectedDetailRowKey, setSelectedDetailRowKey] = useState("");
   const [selectedDetailRowKeys, setSelectedDetailRowKeys] = useState<string[]>([]);
   const [copiedMessage, setCopiedMessage] = useState("");
-  const [recentWorks, setRecentWorks] = useState<RecentWorkItem[]>([]);
-  const [highlightKey, setHighlightKey] = useState("");
+  const [editClassModalOpen, setEditClassModalOpen] = useState(false);
+  const [editGroupModalOpen, setEditGroupModalOpen] = useState(false);
+  const [editDetailModalOpen, setEditDetailModalOpen] = useState(false);
 
   const deferredClassSearchKeyword = useDeferredValue(classSearchKeyword);
   const deferredCodeSearchKeyword = useDeferredValue(codeSearchKeyword);
@@ -384,7 +305,6 @@ export function SystemCodeMigrationPage() {
     || null;
   const selectedClassRefCount = selectedClassRow ? numberOf(classCodeRefCounts, stringOf(selectedClassRow, "clCode", "CL_CODE")) : 0;
   const selectedGroupRefCount = selectedGroupRow ? numberOf(codeDetailRefCounts, stringOf(selectedGroupRow, "codeId", "CODE_ID")) : 0;
-  const preferredGroupCreateClassCode = resolvePreferredGroupCreateClassCode(clCodeList, codeFilterClassCode, selectedClassCode);
   const systemCodeMode = typeof window !== "undefined" && window.location.pathname.includes("/code/register") ? "register" : "list";
   const showCodeLookup = systemCodeMode !== "register";
   const showCodeRegister = systemCodeMode === "register";
@@ -432,177 +352,7 @@ export function SystemCodeMigrationPage() {
       }
       return createDetailRowKey(filteredDetailCodeList[0]);
     });
-  }, [filteredDetailCodeList]);
-
-  useEffect(() => {
-    setSelectedDetailRowKeys((currentValue) => currentValue.filter((rowKey) => detailCodeList.some((row) => createDetailRowKey(row) === rowKey)));
-  }, [detailCodeList]);
-
-  useEffect(() => {
-    if (selectedGroupCodeId && selectedGroupCodeId !== detailCodeId) {
-      setDetailCodeId(selectedGroupCodeId);
-    }
-  }, [detailCodeId, selectedGroupCodeId, setDetailCodeId]);
-
-  useEffect(() => {
-    const nextClassCode = stringOf(selectedGroupRow, "clCode", "CL_CODE");
-    if (!nextClassCode) {
-      return;
-    }
-    setSelectedClassCode((currentValue) => currentValue === nextClassCode ? currentValue : nextClassCode);
-  }, [selectedGroupRow]);
-
-  useEffect(() => {
-    setGroupCreateClassCode((currentValue) => {
-      if (hasClassCode(clCodeList, currentValue)) {
-        return currentValue;
-      }
-      return preferredGroupCreateClassCode;
-    });
-  }, [clCodeList, preferredGroupCreateClassCode]);
-
-  useEffect(() => {
-    if (detailCodeId) {
-      focusDetailCodeInput();
-    }
-  }, [detailCodeId]);
-
-  useEffect(() => {
-    function syncUiStateFromLocation() {
-      const nextState = readSystemCodeUiStateFromLocation();
-      setClassSearchKeyword((currentValue) => currentValue === nextState.classSearchKeyword ? currentValue : nextState.classSearchKeyword);
-      setCodeSearchKeyword((currentValue) => currentValue === nextState.codeSearchKeyword ? currentValue : nextState.codeSearchKeyword);
-      setDetailSearchKeyword((currentValue) => currentValue === nextState.detailSearchKeyword ? currentValue : nextState.detailSearchKeyword);
-      setCodeFilterClassCode((currentValue) => currentValue === nextState.codeFilterClassCode ? currentValue : nextState.codeFilterClassCode);
-      setDetailSortOption((currentValue) => currentValue === nextState.detailSortOption ? currentValue : nextState.detailSortOption);
-      setUseStatusFilter((currentValue) => currentValue === nextState.useStatusFilter ? currentValue : nextState.useStatusFilter);
-    }
-    const navigationEventName = getNavigationEventName();
-    window.addEventListener("popstate", syncUiStateFromLocation);
-    window.addEventListener(navigationEventName, syncUiStateFromLocation);
-    return () => {
-      window.removeEventListener("popstate", syncUiStateFromLocation);
-      window.removeEventListener(navigationEventName, syncUiStateFromLocation);
-    };
-  }, []);
-
-  useEffect(() => {
-    const currentSearch = new URLSearchParams(window.location.search);
-    if (detailCodeId) {
-      currentSearch.set("detailCodeId", detailCodeId);
-    } else {
-      currentSearch.delete("detailCodeId");
-    }
-    if (classSearchKeyword) {
-      currentSearch.set("classSearchKeyword", classSearchKeyword);
-    } else {
-      currentSearch.delete("classSearchKeyword");
-    }
-    if (codeSearchKeyword) {
-      currentSearch.set("codeSearchKeyword", codeSearchKeyword);
-    } else {
-      currentSearch.delete("codeSearchKeyword");
-    }
-    if (detailSearchKeyword) {
-      currentSearch.set("detailSearchKeyword", detailSearchKeyword);
-    } else {
-      currentSearch.delete("detailSearchKeyword");
-    }
-    if (codeFilterClassCode) {
-      currentSearch.set("codeFilterClassCode", codeFilterClassCode);
-    } else {
-      currentSearch.delete("codeFilterClassCode");
-    }
-    if (detailSortOption && detailSortOption !== "code-asc") {
-      currentSearch.set("detailSortOption", detailSortOption);
-    } else {
-      currentSearch.delete("detailSortOption");
-    }
-    if (useStatusFilter) {
-      currentSearch.set("useStatusFilter", useStatusFilter);
-    } else {
-      currentSearch.delete("useStatusFilter");
-    }
-    const nextQuery = currentSearch.toString();
-    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
-    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
-    if (nextUrl !== currentUrl) {
-      window.history.replaceState({}, "", nextUrl);
-    }
-  }, [detailCodeId, classSearchKeyword, codeSearchKeyword, detailSearchKeyword, codeFilterClassCode, detailSortOption, useStatusFilter]);
-
-  useEffect(() => {
-    writeSystemCodeUiStateToSession({
-      detailCodeId,
-      classSearchKeyword,
-      codeSearchKeyword,
-      detailSearchKeyword,
-      codeFilterClassCode,
-      detailSortOption,
-      useStatusFilter
-    });
-  }, [detailCodeId, classSearchKeyword, codeSearchKeyword, detailSearchKeyword, codeFilterClassCode, detailSortOption, useStatusFilter]);
-
-  useEffect(() => {
-    if (!highlightKey) {
-      return;
-    }
-    const timeout = window.setTimeout(() => setHighlightKey(""), 2200);
-    return () => window.clearTimeout(timeout);
-  }, [highlightKey]);
-
-  useEffect(() => {
-    function handleShortcut(event: KeyboardEvent) {
-      const target = event.target;
-      const isTypingTarget = target instanceof HTMLInputElement
-        || target instanceof HTMLTextAreaElement
-        || target instanceof HTMLSelectElement
-        || (target instanceof HTMLElement && target.isContentEditable);
-      if (event.key === "/" && !isTypingTarget) {
-        event.preventDefault();
-        focusElementById("detailSearchKeyword");
-        return;
-      }
-      if (event.key === "Escape" && !isTypingTarget) {
-        event.preventDefault();
-        resetFilters();
-        return;
-      }
-      if ((event.key === "n" || event.key === "N") && !isTypingTarget) {
-        event.preventDefault();
-        if (detailCodeId) {
-          setSelectedGroupCodeId(detailCodeId);
-          focusDetailCodeInput();
-        }
-      }
-    }
-    window.addEventListener("keydown", handleShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleShortcut);
-    };
-  }, [detailCodeId]);
-
-  function pushRecentWork(item: RecentWorkItem) {
-    setRecentWorks((current) => [item, ...current].slice(0, 8));
-  }
-
-  function openRecentWork(item: RecentWorkItem) {
-    if (item.kind === "class") {
-      setSelectedClassCode(item.targetId);
-      setHighlightKey(`class:${item.targetId}`);
-      return;
-    }
-    if (item.kind === "group") {
-      setSelectedGroupCodeId(item.targetId);
-      setDetailCodeId(item.detailCodeId || item.targetId);
-      setHighlightKey(`group:${item.targetId}`);
-      return;
-    }
-    setSelectedGroupCodeId(item.detailCodeId || "");
-    setDetailCodeId(item.detailCodeId || "");
-    setSelectedDetailRowKey(item.targetId);
-    setHighlightKey(`detail:${item.targetId}`);
-  }
+}, [filteredDetailCodeList]);
 
   function syncSelectionAfterSubmit(
     formKind: SystemCodeFormKind,
@@ -616,13 +366,6 @@ export function SystemCodeMigrationPage() {
     if (formKind === "class-create") {
       const clCode = normalizeCodeToken(formData.get("clCode"));
       setSelectedClassCode(clCode);
-      setHighlightKey(`class:${clCode}`);
-      pushRecentWork({
-        id: `class:${clCode}:${Date.now()}`,
-        kind: "class",
-        label: en ? `Class created: ${clCode}` : `분류 코드 등록: ${clCode}`,
-        targetId: clCode
-      });
       return;
     }
     if (formKind === "group-create") {
@@ -632,14 +375,6 @@ export function SystemCodeMigrationPage() {
       setDetailCodeId(codeId);
       setSelectedClassCode(clCode);
       setGroupCreateClassCode(clCode);
-      setHighlightKey(`group:${codeId}`);
-      pushRecentWork({
-        id: `group:${codeId}:${Date.now()}`,
-        kind: "group",
-        label: en ? `Code ID created: ${codeId}` : `코드 ID 등록: ${codeId}`,
-        targetId: codeId,
-        detailCodeId: codeId
-      });
       focusDetailCodeInput();
       return;
     }
@@ -649,62 +384,18 @@ export function SystemCodeMigrationPage() {
       setSelectedGroupCodeId(codeId);
       setDetailCodeId(codeId);
       setSelectedDetailRowKey(`${codeId}::${code}`);
-      setHighlightKey(`detail:${codeId}::${code}`);
-      pushRecentWork({
-        id: `detail:${codeId}:${code}:${Date.now()}`,
-        kind: "detail",
-        label: en ? `Detail code created: ${codeId} / ${code}` : `상세 코드 등록: ${codeId} / ${code}`,
-        targetId: `${codeId}::${code}`,
-        detailCodeId: codeId
-      });
       focusDetailCodeInput();
       return;
     }
     if (formKind === "class-update") {
-      const clCode = normalizeCodeToken(formData.get("clCode"));
-      setHighlightKey(`class:${clCode}`);
-      pushRecentWork({
-        id: `class-update:${clCode}:${Date.now()}`,
-        kind: "class",
-        label: en ? `Class updated: ${clCode}` : `분류 코드 수정: ${clCode}`,
-        targetId: clCode
-      });
       return;
     }
     if (formKind === "group-update") {
-      const codeId = normalizeCodeToken(formData.get("codeId"));
-      setHighlightKey(`group:${codeId}`);
-      pushRecentWork({
-        id: `group-update:${codeId}:${Date.now()}`,
-        kind: "group",
-        label: en ? `Code ID updated: ${codeId}` : `코드 ID 수정: ${codeId}`,
-        targetId: codeId,
-        detailCodeId: codeId
-      });
       return;
     }
     if (formKind === "detail-update") {
-      const codeId = normalizeCodeToken(formData.get("codeId"));
-      const code = normalizeCodeToken(formData.get("code"));
-      setHighlightKey(`detail:${codeId}::${code}`);
-      pushRecentWork({
-        id: `detail-update:${codeId}:${code}:${Date.now()}`,
-        kind: "detail",
-        label: en ? `Detail code updated: ${codeId} / ${code}` : `상세 코드 수정: ${codeId} / ${code}`,
-        targetId: `${codeId}::${code}`,
-        detailCodeId: codeId
-      });
       focusDetailCodeInput();
     }
-  }
-
-  function resetFilters() {
-    setClassSearchKeyword("");
-    setCodeSearchKeyword("");
-    setDetailSearchKeyword("");
-    setCodeFilterClassCode("");
-    setDetailSortOption("code-asc");
-    setUseStatusFilter("");
   }
 
   function toggleDetailRowSelection(rowKey: string) {
@@ -843,8 +534,6 @@ export function SystemCodeMigrationPage() {
 
       <ActiveFilterChipBar chips={activeFilterChips} />
 
-      <RecentWorkPanel en={en} onClear={() => setRecentWorks([])} onOpen={openRecentWork} recentWorks={recentWorks} />
-
       <section className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
         <SummaryMetricCard title={en ? "Class Codes" : "분류 코드"} value={`${filteredClassList.length} / ${clCodeList.length}`} />
         <SummaryMetricCard title={en ? "Code IDs" : "코드 ID"} value={`${filteredCodeList.length} / ${codeList.length}`} />
@@ -932,7 +621,7 @@ export function SystemCodeMigrationPage() {
                   return (
                     <tr
                       aria-label={en ? `Select class code ${clCode}` : `${clCode} 분류 코드 선택`}
-                      className={`${isSelected ? "bg-[var(--kr-gov-surface-subtle)]" : ""} ${highlightKey === `class:${clCode}` ? "bg-amber-50" : ""} cursor-pointer transition-colors`}
+                      className={`${isSelected ? "bg-[var(--kr-gov-surface-subtle)]" : ""} cursor-pointer transition-colors`}
                       key={clCode}
                       onClick={() => setSelectedClassCode(clCode)}
                       onKeyDown={(event) => handleRowKeyboardSelect(event, () => setSelectedClassCode(clCode))}
@@ -947,8 +636,8 @@ export function SystemCodeMigrationPage() {
                           <MemberButton aria-label={en ? `Copy class code ${clCode}` : `${clCode} 분류 코드 복사`} onClick={() => void handleCopy(clCode, en ? "Class code" : "분류 코드")} type="button" variant="secondary">
                             {en ? "Copy" : "복사"}
                           </MemberButton>
-                          <MemberButton onClick={() => setSelectedClassCode(clCode)} type="button" variant={isSelected ? "primary" : "secondary"}>
-                            {isSelected ? (en ? "Selected" : "선택됨") : (en ? "Select" : "선택")}
+                          <MemberButton onClick={() => { setSelectedClassCode(clCode); setEditClassModalOpen(true); }} type="button" variant={isSelected ? "primary" : "secondary"}>
+                            {isSelected ? (en ? "Editing" : "편집중") : (en ? "Edit" : "편집")}
                           </MemberButton>
                         </div>
                       </td>
@@ -959,51 +648,7 @@ export function SystemCodeMigrationPage() {
             </AdminTable>
           </div>
 
-          {selectedClassRow && showCodeLookup ? (
-            <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{en ? "Edit class code" : "분류 코드 수정"}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-bold text-[var(--kr-gov-text-primary)]">{stringOf(selectedClassRow, "clCode", "CL_CODE")}</h3>
-                    <MemberButton onClick={() => void handleCopy(stringOf(selectedClassRow, "clCode", "CL_CODE"), en ? "Class code" : "분류 코드")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
-                  </div>
-                  <p className="mt-2 text-sm text-[var(--kr-gov-text-secondary)]">
-                    {selectedClassRefCount > 0
-                      ? (en ? `${selectedClassRefCount} code IDs are linked. Delete is blocked until they are cleared.` : `${selectedClassRefCount}개의 코드 ID가 연결되어 있어 삭제할 수 없습니다.`)
-                      : (en ? "No linked code IDs. Delete is available." : "연결된 코드 ID가 없어 삭제할 수 있습니다.")}
-                  </p>
-                </div>
-                <form action={buildLocalizedPath("/admin/system/code/class/delete", "/en/admin/system/code/class/delete")} data-confirm-message={en ? "Delete the selected class code?" : "선택한 분류 코드를 삭제하시겠습니까?"} method="post" onSubmit={handleSubmit}>
-                  <input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} />
-                  <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
-                  <MemberButton disabled={selectedClassRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton>
-                </form>
-              </div>
-              <form action={buildLocalizedPath("/admin/system/code/class/update", "/en/admin/system/code/class/update")} className="grid grid-cols-1 gap-4 md:grid-cols-4" method="post" onSubmit={handleSubmit}>
-                <input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} />
-                <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
-                <div>
-                  <label className="gov-label" htmlFor="selectedClCodeNm">{en ? "Class Name" : "분류명"}</label>
-                  <AdminInput defaultValue={stringOf(selectedClassRow, "clCodeNm", "CL_CODE_NM")} id="selectedClCodeNm" name="clCodeNm" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="gov-label" htmlFor="selectedClCodeDc">{en ? "Description (EN)" : "설명(영문)"}</label>
-                  <AdminInput defaultValue={stringOf(selectedClassRow, "clCodeDc", "CL_CODE_DC")} id="selectedClCodeDc" name="clCodeDc" />
-                </div>
-                <div>
-                  <label className="gov-label" htmlFor="selectedClUseAt">{en ? "Use" : "사용여부"}</label>
-                  <AdminSelect defaultValue={stringOf(selectedClassRow, "useAt", "USE_AT") || "Y"} id="selectedClUseAt" name="useAt">
-                    <option value="Y">Y</option>
-                    <option value="N">N</option>
-                  </AdminSelect>
-                </div>
-                <div className="md:col-span-4 flex justify-end gap-2">
-                  <MemberButton type="submit">{en ? "Update" : ADMIN_BUTTON_LABELS.save}</MemberButton>
-                </div>
-              </form>
-            </div>
-          ) : null}
+          
         </section>
 
         <section className="gov-card" data-help-id="system-code-group">
@@ -1102,7 +747,7 @@ export function SystemCodeMigrationPage() {
                   return (
                     <tr
                       aria-label={en ? `Select code ID ${codeId}` : `${codeId} 코드 ID 선택`}
-                      className={`${isSelected ? "bg-[var(--kr-gov-surface-subtle)]" : ""} ${highlightKey === `group:${codeId}` ? "bg-amber-50" : ""} cursor-pointer transition-colors`}
+                      className={`${isSelected ? "bg-[var(--kr-gov-surface-subtle)]" : ""} cursor-pointer transition-colors`}
                       key={codeId}
                       onClick={() => {
                         setSelectedGroupCodeId(codeId);
@@ -1128,11 +773,12 @@ export function SystemCodeMigrationPage() {
                             onClick={() => {
                               setSelectedGroupCodeId(codeId);
                               setDetailCodeId(codeId);
+                              setEditGroupModalOpen(true);
                             }}
                             type="button"
                             variant={isSelected ? "primary" : "secondary"}
                           >
-                            {isSelected ? (en ? "Selected" : "선택됨") : (en ? "Select" : "선택")}
+                            {isSelected ? (en ? "Editing" : "편집중") : (en ? "Edit" : "편집")}
                           </MemberButton>
                         </div>
                       </td>
@@ -1143,61 +789,7 @@ export function SystemCodeMigrationPage() {
             </AdminTable>
           </div>
 
-          {selectedGroupRow && showCodeLookup ? (
-            <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{en ? "Edit code ID" : "코드 ID 수정"}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-bold text-[var(--kr-gov-text-primary)]">{stringOf(selectedGroupRow, "codeId", "CODE_ID")}</h3>
-                    <MemberButton onClick={() => void handleCopy(stringOf(selectedGroupRow, "codeId", "CODE_ID"), en ? "Code ID" : "코드 ID")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
-                  </div>
-                  <p className="mt-2 text-sm text-[var(--kr-gov-text-secondary)]">
-                    {selectedGroupRefCount > 0
-                      ? (en ? `${selectedGroupRefCount} detail codes are linked. Delete is blocked until they are cleared.` : `${selectedGroupRefCount}개의 상세 코드가 연결되어 있어 삭제할 수 없습니다.`)
-                      : (en ? "No linked detail codes. Delete is available." : "연결된 상세 코드가 없어 삭제할 수 있습니다.")}
-                  </p>
-                </div>
-                <form action={buildLocalizedPath("/admin/system/code/group/delete", "/en/admin/system/code/group/delete")} data-confirm-message={en ? "Delete the selected code ID?" : "선택한 코드 ID를 삭제하시겠습니까?"} method="post" onSubmit={handleSubmit}>
-                  <input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} />
-                  <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
-                  <MemberButton disabled={selectedGroupRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton>
-                </form>
-              </div>
-              <form action={buildLocalizedPath("/admin/system/code/group/update", "/en/admin/system/code/group/update")} className="grid grid-cols-1 gap-4 md:grid-cols-5" method="post" onSubmit={handleSubmit}>
-                <input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} />
-                <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
-                <div>
-                  <label className="gov-label" htmlFor="selectedCodeIdNm">{en ? "Code Name" : "코드명"}</label>
-                  <AdminInput defaultValue={stringOf(selectedGroupRow, "codeIdNm", "CODE_ID_NM")} id="selectedCodeIdNm" name="codeIdNm" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="gov-label" htmlFor="selectedCodeIdDc">{en ? "Description (EN)" : "설명(영문)"}</label>
-                  <AdminInput defaultValue={stringOf(selectedGroupRow, "codeIdDc", "CODE_ID_DC")} id="selectedCodeIdDc" name="codeIdDc" />
-                </div>
-                <div>
-                  <label className="gov-label" htmlFor="selectedGroupClCode">{en ? "Class Code" : "분류 코드"}</label>
-                  <AdminSelect defaultValue={stringOf(selectedGroupRow, "clCode", "CL_CODE")} id="selectedGroupClCode" name="clCode">
-                    {clCodeList.map((classRow) => (
-                      <option key={stringOf(classRow, "clCode", "CL_CODE")} value={stringOf(classRow, "clCode", "CL_CODE")}>
-                        {`${stringOf(classRow, "clCode", "CL_CODE")} - ${stringOf(classRow, "clCodeNm", "CL_CODE_NM")}`}
-                      </option>
-                    ))}
-                  </AdminSelect>
-                </div>
-                <div>
-                  <label className="gov-label" htmlFor="selectedCodeUseAt">{en ? "Use" : "사용여부"}</label>
-                  <AdminSelect defaultValue={stringOf(selectedGroupRow, "useAt", "USE_AT") || "Y"} id="selectedCodeUseAt" name="useAt">
-                    <option value="Y">Y</option>
-                    <option value="N">N</option>
-                  </AdminSelect>
-                </div>
-                <div className="md:col-span-5 flex justify-end gap-2">
-                  <MemberButton type="submit">{en ? "Update" : ADMIN_BUTTON_LABELS.save}</MemberButton>
-                </div>
-              </form>
-            </div>
-          ) : null}
+          
         </section>
 
         <section className="gov-card" data-help-id="system-code-detail">
@@ -1322,7 +914,7 @@ export function SystemCodeMigrationPage() {
                   return (
                     <tr
                       aria-label={en ? `Select detail code ${stringOf(row, "code", "CODE")}` : `${stringOf(row, "code", "CODE")} 상세 코드 선택`}
-                      className={`${isSelected ? "bg-[var(--kr-gov-surface-subtle)]" : ""} ${highlightKey === `detail:${rowKey}` ? "bg-amber-50" : ""} cursor-pointer transition-colors`}
+                      className={`${isSelected ? "bg-[var(--kr-gov-surface-subtle)]" : ""} cursor-pointer transition-colors`}
                       key={rowKey}
                       onClick={() => setSelectedDetailRowKey(rowKey)}
                       onKeyDown={(event) => handleRowKeyboardSelect(event, () => setSelectedDetailRowKey(rowKey))}
@@ -1360,8 +952,8 @@ export function SystemCodeMigrationPage() {
                                 : (en ? "Set Active" : "사용중")}
                             </MemberButton>
                           </form>
-                          <MemberButton onClick={() => setSelectedDetailRowKey(rowKey)} type="button" variant={isSelected ? "primary" : "secondary"}>
-                            {isSelected ? (en ? "Selected" : "선택됨") : (en ? "Select" : "선택")}
+                          <MemberButton onClick={() => { setSelectedDetailRowKey(rowKey); setEditDetailModalOpen(true); }} type="button" variant={isSelected ? "primary" : "secondary"}>
+                            {isSelected ? (en ? "Editing" : "편집중") : (en ? "Edit" : "편집")}
                           </MemberButton>
                         </div>
                       </td>
@@ -1372,50 +964,84 @@ export function SystemCodeMigrationPage() {
             </AdminTable>
           </div>
 
-          {selectedDetailRow && showCodeLookup ? (
-            <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-4">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{en ? "Edit detail code" : "상세 코드 수정"}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-bold text-[var(--kr-gov-text-primary)]">
-                      {`${stringOf(selectedDetailRow, "codeId", "CODE_ID")} / ${stringOf(selectedDetailRow, "code", "CODE")}`}
-                    </h3>
-                    <MemberButton onClick={() => void handleCopy(stringOf(selectedDetailRow, "code", "CODE"), en ? "Detail code" : "상세 코드")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
-                  </div>
-                </div>
-                <form action={buildLocalizedPath("/admin/system/code/detail/delete", "/en/admin/system/code/detail/delete")} data-confirm-message={en ? "Delete the selected detail code?" : "선택한 상세 코드를 삭제하시겠습니까?"} method="post" onSubmit={handleSubmit}>
-                  <input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} />
-                  <input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} />
-                  <MemberButton type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton>
-                </form>
-              </div>
-              <form action={buildLocalizedPath("/admin/system/code/detail/update", "/en/admin/system/code/detail/update")} className="grid grid-cols-1 gap-4 md:grid-cols-4" method="post" onSubmit={handleSubmit}>
-                <input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} />
-                <input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} />
-                <div>
-                  <label className="gov-label" htmlFor="selectedDetailCodeNm">{en ? "Code Name" : "코드명"}</label>
-                  <AdminInput defaultValue={stringOf(selectedDetailRow, "codeNm", "CODE_NM")} id="selectedDetailCodeNm" name="codeNm" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="gov-label" htmlFor="selectedDetailCodeDc">{en ? "Description (EN)" : "설명(영문)"}</label>
-                  <AdminInput defaultValue={stringOf(selectedDetailRow, "codeDc", "CODE_DC")} id="selectedDetailCodeDc" name="codeDc" />
-                </div>
-                <div>
-                  <label className="gov-label" htmlFor="selectedDetailUseAt">{en ? "Use" : "사용여부"}</label>
-                  <AdminSelect defaultValue={stringOf(selectedDetailRow, "useAt", "USE_AT") || "Y"} id="selectedDetailUseAt" name="useAt">
-                    <option value="Y">Y</option>
-                    <option value="N">N</option>
-                  </AdminSelect>
-                </div>
-                <div className="md:col-span-4 flex justify-end gap-2">
-                  <MemberButton type="submit">{en ? "Update" : ADMIN_BUTTON_LABELS.save}</MemberButton>
-                </div>
-              </form>
-            </div>
-          ) : null}
+          
         </section>
       </AdminWorkspacePageFrame>
+    {editClassModalOpen && selectedClassRow && (
+        <MemberModal onClose={() => setEditClassModalOpen(false)} size="md" title={en ? "Edit Class Code" : "분류 코드 수정"}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="font-bold">{stringOf(selectedClassRow, "clCode", "CL_CODE")}</span>
+              <MemberButton onClick={() => void handleCopy(stringOf(selectedClassRow, "clCode", "CL_CODE"), en ? "Class code" : "분류 코드")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
+            </div>
+            <p className="text-sm text-[var(--kr-gov-text-secondary)]">
+              {selectedClassRefCount > 0 ? (en ? `${selectedClassRefCount} code IDs linked.` : `${selectedClassRefCount}개 코드 ID 연결됨`) : (en ? "No linked code IDs." : "연결된 코드 ID 없음")}
+            </p>
+            <form action={buildLocalizedPath("/admin/system/code/class/update", "/en/admin/system/code/class/update")} className="grid grid-cols-1 gap-4 md:grid-cols-4" method="post" onSubmit={handleSubmit}>
+              <input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} />
+              <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
+              <div><label className="gov-label">{en ? "Class Name" : "분류명"}</label><AdminInput defaultValue={stringOf(selectedClassRow, "clCodeNm", "CL_CODE_NM")} name="clCodeNm" /></div>
+              <div className="md:col-span-2"><label className="gov-label">{en ? "Description" : "설명"}</label><AdminInput defaultValue={stringOf(selectedClassRow, "clCodeDc", "CL_CODE_DC")} name="clCodeDc" /></div>
+              <div><label className="gov-label">{en ? "Use" : "사용"}</label><AdminSelect defaultValue={stringOf(selectedClassRow, "useAt", "USE_AT") || "Y"} name="useAt"><option value="Y">Y</option><option value="N">N</option></AdminSelect></div>
+              <div className="md:col-span-4 flex justify-end gap-2">
+                <form action={buildLocalizedPath("/admin/system/code/class/delete", "/en/admin/system/code/class/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="clCode" type="hidden" value={stringOf(selectedClassRow, "clCode", "CL_CODE")} /><input name="currentDetailCodeId" type="hidden" value={detailCodeId} /><MemberButton disabled={selectedClassRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
+                <MemberButton onClick={() => setEditClassModalOpen(false)} type="button" variant="secondary">{en ? "Cancel" : "취소"}</MemberButton>
+                <MemberButton type="submit" variant="primary">{en ? "Save" : "저장"}</MemberButton>
+              </div>
+            </form>
+          </div>
+        </MemberModal>
+      )}
+
+      {editGroupModalOpen && selectedGroupRow && (
+        <MemberModal onClose={() => setEditGroupModalOpen(false)} size="md" title={en ? "Edit Code ID" : "코드 ID 수정"}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="font-bold">{stringOf(selectedGroupRow, "codeId", "CODE_ID")}</span>
+              <MemberButton onClick={() => void handleCopy(stringOf(selectedGroupRow, "codeId", "CODE_ID"), en ? "Code ID" : "코드 ID")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
+            </div>
+            <p className="text-sm text-[var(--kr-gov-text-secondary)]">
+              {selectedGroupRefCount > 0 ? (en ? `${selectedGroupRefCount} detail codes linked.` : `${selectedGroupRefCount}개 상세 코드 연결됨`) : (en ? "No linked detail codes." : "연결된 상세 코드 없음")}
+            </p>
+            <form action={buildLocalizedPath("/admin/system/code/group/update", "/en/admin/system/code/group/update")} className="grid grid-cols-1 gap-4 md:grid-cols-5" method="post" onSubmit={handleSubmit}>
+              <input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} />
+              <input name="currentDetailCodeId" type="hidden" value={detailCodeId} />
+              <div><label className="gov-label">{en ? "Code Name" : "코드명"}</label><AdminInput defaultValue={stringOf(selectedGroupRow, "codeIdNm", "CODE_ID_NM")} name="codeIdNm" /></div>
+              <div className="md:col-span-2"><label className="gov-label">{en ? "Description" : "설명"}</label><AdminInput defaultValue={stringOf(selectedGroupRow, "codeIdDc", "CODE_ID_DC")} name="codeIdDc" /></div>
+              <div><label className="gov-label">{en ? "Class Code" : "분류 코드"}</label><AdminSelect defaultValue={stringOf(selectedGroupRow, "clCode", "CL_CODE")} name="clCode">{clCodeList.map((row) => <option key={stringOf(row, "clCode", "CL_CODE")} value={stringOf(row, "clCode", "CL_CODE")}>{stringOf(row, "clCode", "CL_CODE")} - {stringOf(row, "clCodeNm", "CL_CODE_NM")}</option>)}</AdminSelect></div>
+              <div><label className="gov-label">{en ? "Use" : "사용"}</label><AdminSelect defaultValue={stringOf(selectedGroupRow, "useAt", "USE_AT") || "Y"} name="useAt"><option value="Y">Y</option><option value="N">N</option></AdminSelect></div>
+              <div className="md:col-span-5 flex justify-end gap-2">
+                <form action={buildLocalizedPath("/admin/system/code/group/delete", "/en/admin/system/code/group/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="codeId" type="hidden" value={stringOf(selectedGroupRow, "codeId", "CODE_ID")} /><input name="currentDetailCodeId" type="hidden" value={detailCodeId} /><MemberButton disabled={selectedGroupRefCount > 0} type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
+                <MemberButton onClick={() => setEditGroupModalOpen(false)} type="button" variant="secondary">{en ? "Cancel" : "취소"}</MemberButton>
+                <MemberButton type="submit" variant="primary">{en ? "Save" : "저장"}</MemberButton>
+              </div>
+            </form>
+          </div>
+        </MemberModal>
+      )}
+
+      {editDetailModalOpen && selectedDetailRow && (
+        <MemberModal onClose={() => setEditDetailModalOpen(false)} size="md" title={en ? "Edit Detail Code" : "상세 코드 수정"}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="font-bold">{stringOf(selectedDetailRow, "codeId", "CODE_ID")} / {stringOf(selectedDetailRow, "code", "CODE")}</span>
+              <MemberButton onClick={() => void handleCopy(stringOf(selectedDetailRow, "code", "CODE"), en ? "Detail code" : "상세 코드")} type="button" variant="secondary">{en ? "Copy" : "복사"}</MemberButton>
+            </div>
+            <form action={buildLocalizedPath("/admin/system/code/detail/update", "/en/admin/system/code/detail/update")} className="grid grid-cols-1 gap-4 md:grid-cols-4" method="post" onSubmit={handleSubmit}>
+              <input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} />
+              <input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} />
+              <div><label className="gov-label">{en ? "Code Name" : "코드명"}</label><AdminInput defaultValue={stringOf(selectedDetailRow, "codeNm", "CODE_NM")} name="codeNm" /></div>
+              <div className="md:col-span-2"><label className="gov-label">{en ? "Description" : "설명"}</label><AdminInput defaultValue={stringOf(selectedDetailRow, "codeDc", "CODE_DC")} name="codeDc" /></div>
+              <div><label className="gov-label">{en ? "Use" : "사용"}</label><AdminSelect defaultValue={stringOf(selectedDetailRow, "useAt", "USE_AT") || "Y"} name="useAt"><option value="Y">Y</option><option value="N">N</option></AdminSelect></div>
+              <div className="md:col-span-4 flex justify-end gap-2">
+                <form action={buildLocalizedPath("/admin/system/code/detail/delete", "/en/admin/system/code/detail/delete")} data-confirm-message={en ? "Delete?" : "삭제?"} method="post" onSubmit={handleSubmit}><input name="codeId" type="hidden" value={stringOf(selectedDetailRow, "codeId", "CODE_ID")} /><input name="code" type="hidden" value={stringOf(selectedDetailRow, "code", "CODE")} /><MemberButton type="submit" variant="danger">{en ? "Delete" : "삭제"}</MemberButton></form>
+                <MemberButton onClick={() => setEditDetailModalOpen(false)} type="button" variant="secondary">{en ? "Cancel" : "취소"}</MemberButton>
+                <MemberButton type="submit" variant="primary">{en ? "Save" : "저장"}</MemberButton>
+              </div>
+            </form>
+          </div>
+        </MemberModal>
+      )}
     </AdminPageShell>
   );
 }

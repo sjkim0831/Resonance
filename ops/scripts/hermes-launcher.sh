@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
-DEFAULT_REAL_HERMES="/opt/util/ai/hermes-agent-active/venv/bin/hermes"
+DEFAULT_REAL_HERMES="/opt/Resonance/hermes/venv/bin/hermes"
 if [ ! -x "$DEFAULT_REAL_HERMES" ]; then
-  DEFAULT_REAL_HERMES="/opt/util/ai/hermes-agent-v20260516/venv/bin/hermes"
+  DEFAULT_REAL_HERMES="/opt/Resonance/hermes/hermes"
 fi
 REAL_HERMES="${REAL_HERMES:-$DEFAULT_REAL_HERMES}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"

@@ -273,6 +273,47 @@ export default function ScreenBuilderEditorPanels({
                     <input className="gov-input" value={String(selectedNodeProps.summary || "")} onChange={(event) => updateSelectedNodeField("summary", event.target.value)} />
                   </label>
                 ) : null}
+
+                <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-4">
+                  <p className="text-sm font-black text-[var(--kr-gov-text-primary)]">{en ? "Component Identity" : "컴포넌트 식별정보"}</p>
+                  <div className="mt-4 space-y-4">
+                    <label className="block">
+                      <span className="gov-label">{en ? "Custom ID" : "커스텀 ID"}</span>
+                      <input className="gov-input font-mono" placeholder={en ? "e.g. userNameInput" : "예) userNameInput"} value={String(selectedNodeProps.customId || selectedNode.nodeId || "")} onChange={(event) => updateSelectedNodeField("customId", event.target.value)} />
+                      <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{en ? "HTML id attribute for the element" : "元素的HTML id属性"}</p>
+                    </label>
+                    <label className="block">
+                      <span className="gov-label">{en ? "CSS Classes" : "CSS 클래스"}</span>
+                      <input className="gov-input font-mono" placeholder={en ? "e.g. form-control text-primary" : "예) form-control text-primary"} value={String(selectedNodeProps.className || "")} onChange={(event) => updateSelectedNodeField("className", event.target.value)} />
+                      <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Space-separated CSS class names" : "공백으로 구분된 CSS 클래스명"}</p>
+                    </label>
+                    <label className="block">
+                      <span className="gov-label">{en ? "Data Attributes (JSON)" : "데이터 속성 (JSON)"}</span>
+                      <textarea className="gov-input font-mono min-h-[80px] py-2 text-xs" placeholder={'{"data-id": "123", "data-mode": "edit"}'} value={JSON.stringify(selectedNodeProps.dataAttrs || {}, null, 2)} onChange={(event) => { try { updateSelectedNodeField("dataAttrs", JSON.parse(event.target.value || "{}")); } catch { updateSelectedNodeField("dataAttrs", {}); } }} />
+                      <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Key-value pairs for data-* attributes" : "data-* 속성용 키-값 쌍"}</p>
+                    </label>
+                    <label className="block">
+                      <span className="gov-label">{en ? "Inline Styles (JSON)" : "인라인 스타일 (JSON)"}</span>
+                      <textarea className="gov-input font-mono min-h-[80px] py-2 text-xs" placeholder={'{"color": "red", "fontSize": "14px"}'} value={JSON.stringify(selectedNodeProps.style || {}, null, 2)} onChange={(event) => { try { updateSelectedNodeField("style", JSON.parse(event.target.value || "{}")); } catch { updateSelectedNodeField("style", {}); } }} />
+                      <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{en ? "CSS properties as JSON object" : "JSON 객체로 CSS 속성"}</p>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-4">
+                  <p className="text-sm font-black text-[var(--kr-gov-text-primary)]">{en ? "Component Type & Slot" : "컴포넌트 타입 및 슬롯"}</p>
+                  <div className="mt-4 space-y-4">
+                    <label className="block">
+                      <span className="gov-label">{en ? "Component Type" : "컴포넌트 타입"}</span>
+                      <input className="gov-input font-mono" readOnly value={selectedNode.componentType} />
+                    </label>
+                    <label className="block">
+                      <span className="gov-label">{en ? "Node ID" : "노드 ID"}</span>
+                      <input className="gov-input font-mono" readOnly value={selectedNode.nodeId} />
+                    </label>
+                  </div>
+                </div>
+
                 {selectedNode.componentType !== "page" ? (
                   <label className="block">
                     <span className="gov-label">{en ? "Layout Slot" : "레이아웃 슬롯"}</span>
@@ -347,7 +388,7 @@ export default function ScreenBuilderEditorPanels({
                   </div>
                 </div>
 
-                <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-4">
+<div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-black text-[var(--kr-gov-text-primary)]">{en ? "Event Binding" : "이벤트 연결"}</p>
                     <MemberButton onClick={() => { ensureSelectedEvent(); }} size="xs" type="button" variant="secondary">
@@ -359,11 +400,48 @@ export default function ScreenBuilderEditorPanels({
                       <label className="block">
                         <span className="gov-label">{en ? "Event Name" : "이벤트명"}</span>
                         <select className="gov-select" value={selectedEvent.eventName} onChange={(event) => updateSelectedEvent("eventName", event.target.value)}>
-                          <option value="onClick">onClick</option>
-                          <option value="onChange">onChange</option>
-                          <option value="onSubmit">onSubmit</option>
+                          <option value="onClick">{en ? "onClick - Click" : "onClick - 클릭"}</option>
+                          <option value="onChange">{en ? "onChange - Change" : "onChange - 변경"}</option>
+                          <option value="onSubmit">{en ? "onSubmit - Submit" : "onSubmit - 제출"}</option>
+                          <option value="onFocus">{en ? "onFocus - Focus" : "onFocus - 포커스"}</option>
+                          <option value="onBlur">{en ? "onBlur - Blur" : "onBlur - 블러"}</option>
+                          <option value="onKeyDown">{en ? "onKeyDown - Key Down" : "onKeyDown - 키 누름"}</option>
+                          <option value="onKeyUp">{en ? "onKeyUp - Key Up" : "onKeyUp - 키 놓음"}</option>
+                          <option value="onMouseOver">{en ? "onMouseOver - Mouse Over" : "onMouseOver - 마우스 오버"}</option>
+                          <option value="onMouseOut">{en ? "onMouseOut - Mouse Out" : "onMouseOut - 마우스 아웃"}</option>
+                          <option value="onLoad">{en ? "onLoad - Load" : "onLoad - 로드"}</option>
+                          <option value="onError">{en ? "onError - Error" : "onError - 오류"}</option>
+                          <option value="custom">{en ? "custom - Custom Function" : "custom - 커스텀 함수"}</option>
                         </select>
                       </label>
+                      <label className="block">
+                        <span className="gov-label">{en ? "Action Type" : "액션 타입"}</span>
+                        <select className="gov-select" value={selectedEvent.actionType} onChange={(event) => updateSelectedEvent("actionType", event.target.value)}>
+                          <option value="navigate">{en ? "navigate - Page Move" : "navigate - 페이지 이동"}</option>
+                          <option value="open_modal">{en ? "open_modal - Open Modal" : "open_modal - 모달 열기"}</option>
+                          <option value="close_modal">{en ? "close_modal - Close Modal" : "close_modal - 모달 닫기"}</option>
+                          <option value="api_call">{en ? "api_call - API Call" : "api_call - API 호출"}</option>
+                          <option value="set_state">{en ? "set_state - Set State" : "set_state - 상태 설정"}</option>
+                          <option value="toggle">{en ? "toggle - Toggle" : "toggle - 토글"}</option>
+                          <option value="custom_fn">{en ? "custom_fn - Custom Function" : "custom_fn - 커스텀 함수"}</option>
+                          <option value="console_log">{en ? "console_log - Debug Log" : "console_log - 디버그 로그"}</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="gov-label">{en ? "Target / Config" : "대상 / 설정"}</span>
+                        <input className="gov-input" value={String(selectedEvent.actionConfig?.target || "")} onChange={(event) => updateSelectedEventTarget(event.target.value)} />
+                      </label>
+                      {selectedEvent.actionType === "custom_fn" ? (
+                        <label className="block">
+                          <span className="gov-label">{en ? "Custom Function Body" : "커스텀 함수 본문"}</span>
+                          <textarea className="gov-input font-mono min-h-[120px] py-3" rows={5} placeholder={en ? "e.g.\n(node, event, state) => {\n  console.log('clicked', node);\n  state.set('count', state.get('count', 0) + 1);\n}" : "예)\n(node, event, state) => {\n  console.log('클릭됨', node);\n  state.set('count', state.get('count', 0) + 1);\n}"} value={String(selectedEvent.actionConfig?.functionBody || "")} onChange={(event) => {
+                            const base = ensureSelectedEvent();
+                            if (!base) return;
+                            setEvents((current) => current.map((item) => item.eventBindingId === base.eventBindingId ? { ...item, actionConfig: { ...(item.actionConfig || {}), functionBody: event.target.value } } : item));
+                          }} />
+                          <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Function receives: node, event, state objects" : "함수는 node, event, state 객체를 받습니다"}</p>
+                        </label>
+                      ) : null}
                       <label className="block">
                         <span className="gov-label">{en ? "Action Type" : "액션 타입"}</span>
                         <select className="gov-select" value={selectedEvent.actionType} onChange={(event) => updateSelectedEvent("actionType", event.target.value)}>

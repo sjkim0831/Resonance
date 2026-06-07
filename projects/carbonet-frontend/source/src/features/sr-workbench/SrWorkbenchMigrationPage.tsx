@@ -353,20 +353,24 @@ export function SrWorkbenchMigrationPage() {
     setError("");
     setMessage("");
     try {
+      const stackItemsToUse = (workbench?.stackItems || []).filter((item) => stackItemIds.includes(item.stackItemId));
+      const primaryItem = stackItemsToUse[0] || {};
+      const aggregatedSummary = stackItemsToUse.map((item) => item.summary).filter(Boolean).join("; ") || summary;
+      const aggregatedInstruction = stackItemsToUse.map((item) => item.instruction).filter(Boolean).join("\n---\n") || instruction;
       const response = await createSrTicket({
-        pageId: "",
-        pageLabel: "",
-        routePath: "",
-        menuCode: "",
-        menuLookupUrl: "",
-        surfaceId: "",
-        surfaceLabel: "",
-        eventId: "",
-        eventLabel: "",
-        targetId: selectedTarget?.targetId || "",
-        targetLabel: selectedTarget?.label || "",
-        summary,
-        instruction,
+        pageId: primaryItem.pageId || page?.pageId || "",
+        pageLabel: primaryItem.pageLabel || page?.label || "",
+        routePath: primaryItem.routePath || page?.routePath || "",
+        menuCode: primaryItem.menuCode || page?.menuCode || "",
+        menuLookupUrl: primaryItem.menuLookupUrl || page?.menuLookupUrl || "",
+        surfaceId: primaryItem.surfaceId || "",
+        surfaceLabel: primaryItem.surfaceLabel || "",
+        eventId: primaryItem.eventId || "",
+        eventLabel: primaryItem.eventLabel || "",
+        targetId: primaryItem.targetId || selectedTarget?.targetId || "",
+        targetLabel: primaryItem.targetLabel || selectedTarget?.label || "",
+        summary: aggregatedSummary,
+        instruction: aggregatedInstruction,
         generatedDirection: "",
         commandPrompt: "",
         stackItemIds

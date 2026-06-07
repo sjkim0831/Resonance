@@ -2,13 +2,39 @@ package egovframework.com;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import egovframework.com.config.data.DataSourceConfig;
+import egovframework.com.platform.screenbuilder.web.ThemeBuilderApiController;
+import egovframework.com.platform.screenbuilder.repository.impl.ComponentRepositoryImpl;
+import egovframework.com.platform.screenbuilder.repository.impl.ScreenConfigRepositoryImpl;
+import egovframework.com.platform.screenbuilder.service.impl.BuilderComponentServiceImpl;
+import egovframework.com.platform.screenbuilder.service.impl.BuilderScreenServiceImpl;
+import egovframework.com.platform.screenbuilder.web.BuilderApiController;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import javax.sql.DataSource;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Independent runtime for Carbonet projects.
  * Focuses on project execution and business logic, excluding management/builder internals.
+ *
+ * NOTE: screenbuilder-carbonet-adapter package is excluded from component scan because it contains
+ * Process.exec dependencies that cause startup failures in containerized environments.
+ * Controllers that need to be exposed are manually registered as beans below.
  */
 @SpringBootApplication
 @ComponentScan(
@@ -22,7 +48,121 @@ import org.springframework.scheduling.annotation.EnableScheduling;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "egovframework\\.com\\.platform\\.runtimecontrol\\..*")
         })
 @EnableScheduling
+@Import(DataSourceConfig.class)
 public class ProjectRuntimeApplication {
+
+    @Bean
+    public ThemeBuilderApiController themeBuilderApiController(ObjectMapper objectMapper) {
+        return new ThemeBuilderApiController(objectMapper);
+    }
+
+    @Bean
+    public ScreenBuilderMockController screenBuilderMockController(ObjectMapper objectMapper) {
+        return new ScreenBuilderMockController(objectMapper);
+    }
+
+    @Bean
+    public JdbcTemplate jdbcTemplate(@Qualifier("dataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+
+    @Bean
+    public ComponentRepositoryImpl componentRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        return new ComponentRepositoryImpl(jdbcTemplate, objectMapper);
+    }
+
+    @Bean
+    public ScreenConfigRepositoryImpl screenConfigRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        return new ScreenConfigRepositoryImpl(jdbcTemplate, objectMapper);
+    }
+
+    @Bean
+    public BuilderComponentServiceImpl builderComponentService(ComponentRepositoryImpl componentRepository) {
+        return new BuilderComponentServiceImpl(componentRepository);
+    }
+
+    @Bean
+    public BuilderScreenServiceImpl builderScreenService(ScreenConfigRepositoryImpl screenConfigRepository, ObjectMapper objectMapper) {
+        return new BuilderScreenServiceImpl(screenConfigRepository, objectMapper);
+    }
+
+    @Bean
+    public BuilderApiController builderApiController(BuilderComponentServiceImpl builderComponentService, BuilderScreenServiceImpl builderScreenService, ObjectMapper objectMapper) {
+        return new BuilderApiController(builderComponentService, builderScreenService, objectMapper);
+    }
+
+    @RequestMapping({"/api/platform/screen-builder", "/en/api/platform/screen-builder",
+             "/admin/api/platform/screen-builder", "/en/admin/api/platform/screen-builder"})
+    public static class ScreenBuilderMockController {
+        private final ObjectMapper objectMapper;
+
+        public ScreenBuilderMockController(ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
+        }
+
+        @GetMapping("/page")
+        public Map<String, Object> getScreenBuilderPage() {
+            ObjectNode page = objectMapper.createObjectNode();
+            page.put("status", "ok");
+            page.put("message", "Screen Builder API ready");
+            page.put("menuCode", "A0060100");
+            page.put("pageTitle", "Screen Builder");
+            page.putArray("components");
+            return Map.of("data", page, "status", "success");
+        }
+
+        @GetMapping("/components")
+        public Map<String, Object> getComponents() {
+            ArrayNode components = objectMapper.createArrayNode();
+            ObjectNode btn = objectMapper.createObjectNode();
+            btn.put("id", "btn-001");
+            btn.put("type", "button");
+            btn.put("label", "Button");
+            btn.put("category", "form");
+            components.add(btn);
+            ObjectNode input = objectMapper.createObjectNode();
+            input.put("id", "input-001");
+            input.put("type", "input");
+            input.put("label", "Input Field");
+            input.put("category", "form");
+            components.add(input);
+            ObjectNode table = objectMapper.createObjectNode();
+            table.put("id", "table-001");
+            table.put("type", "table");
+            table.put("label", "Data Table");
+            table.put("category", "data");
+            components.add(table);
+            ObjectNode grid = objectMapper.createObjectNode();
+            grid.put("id", "grid-001");
+            grid.put("type", "grid");
+            grid.put("label", "Grid Layout");
+            grid.put("category", "layout");
+            components.add(grid);
+            ObjectNode card = objectMapper.createObjectNode();
+            card.put("id", "card-001");
+            card.put("type", "card");
+            card.put("label", "Card");
+            card.put("category", "display");
+            components.add(card);
+            return Map.of("data", components, "status", "success");
+        }
+
+        @GetMapping("/drafts")
+        public Map<String, Object> getDrafts() {
+            return Map.of("data", objectMapper.createArrayNode(), "status", "success");
+        }
+
+        @GetMapping("/versions")
+        public Map<String, Object> getVersions() {
+            return Map.of("data", objectMapper.createArrayNode(), "status", "success");
+        }
+
+        @GetMapping("/themes")
+        public Map<String, Object> getThemes() {
+            return Map.of("data", objectMapper.createArrayNode(), "status", "success");
+        }
+    }
+
     public static void main(String[] args) {
         System.setProperty("file.encoding", "UTF-8");
         System.setProperty("spring.application.name", "project-runtime");
