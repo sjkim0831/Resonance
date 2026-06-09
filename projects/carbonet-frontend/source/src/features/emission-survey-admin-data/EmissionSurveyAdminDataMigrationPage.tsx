@@ -1601,13 +1601,22 @@ export function EmissionSurveyAdminDataMigrationPage() {
         const hasCustomSort = mappingSortField?.geography || mappingSortField?.timePeriod;
         const serverSortField = hasCustomSort ? undefined : (Object.keys(mappingSortField || {})[0] || undefined);
         const serverSortDirection = hasCustomSort ? undefined : (Object.values(mappingSortField || {})[0] || undefined);
-        const { rows, total } = await searchEcoinvent(keyword, page, mappingGeography, mappingTimePeriod, serverSortField, serverSortDirection);
-        const sortedRows = hasCustomSort && mappingSortField
-          ? sortEcoinventRowsByCustomField(rows, mappingSortField, keyword)
-          : rows;
+        const { rows } = await searchEcoinvent(keyword, page, mappingGeography, mappingTimePeriod, serverSortField, serverSortDirection);
+        const filteredRows = rows.filter((row) => {
+          if (mappingGeography && normalizedValue(row.geography) !== mappingGeography) {
+            return false;
+          }
+          if (mappingTimePeriod && normalizedValue(row.timePeriod) !== mappingTimePeriod) {
+            return false;
+          }
+          return true;
+        });
+        const sortedRows = (hasCustomSort && mappingSortField)
+          ? sortEcoinventRowsByCustomField(filteredRows, mappingSortField, keyword)
+          : filteredRows;
         const start = page * mappingPageSize;
         const pagedRows = sortedRows.slice(start, start + mappingPageSize);
-        setMappingTotalCount(total);
+        setMappingTotalCount(filteredRows.length);
         setMappingRows(pagedRows);
         if (pagedRows.length > 0) {
           const nextSelectedCandidateId = String(pagedRows[0].rowId || "");
