@@ -1601,7 +1601,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
         const hasCustomSort = mappingSortField?.geography || mappingSortField?.timePeriod;
         const serverSortField = hasCustomSort ? undefined : (Object.keys(mappingSortField || {})[0] || undefined);
         const serverSortDirection = hasCustomSort ? undefined : (Object.values(mappingSortField || {})[0] || undefined);
-        const { rows } = await searchEcoinvent(keyword, page, mappingGeography, mappingTimePeriod, serverSortField, serverSortDirection);
+        const { rows, total } = await searchEcoinvent(keyword, page, mappingGeography, mappingTimePeriod, serverSortField, serverSortDirection);
         const filteredRows = rows.filter((row) => {
           if (mappingGeography && normalizedValue(row.geography) !== mappingGeography) {
             return false;
@@ -1616,7 +1616,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
           : filteredRows;
         const start = page * mappingPageSize;
         const pagedRows = sortedRows.slice(start, start + mappingPageSize);
-        setMappingTotalCount(filteredRows.length);
+        setMappingTotalCount(total);
         setMappingRows(pagedRows);
         if (pagedRows.length > 0) {
           const nextSelectedCandidateId = String(pagedRows[0].rowId || "");
