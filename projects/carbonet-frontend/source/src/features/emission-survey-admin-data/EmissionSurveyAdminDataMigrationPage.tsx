@@ -1126,7 +1126,7 @@ function GwpMappingModal({
                   </div>
                 </>
               )}
-              {totalCount !== undefined && totalCount > (pageSize || 100) && (
+              {totalCount !== undefined && totalCount >= (pageSize || 100) && (
                 <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 bg-slate-50">
                   <span className="text-xs text-slate-600">
                     전체 {totalCount}개 중 {(currentPage * (pageSize || 100)) + 1}-{Math.min((currentPage + 1) * (pageSize || 100), totalCount)}개
