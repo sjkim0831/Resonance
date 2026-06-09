@@ -924,7 +924,7 @@ function GwpMappingModal({
   onSortFieldChange?: (value: SortState) => void;
   filterOptions?: Record<string, string[]>;
 }) {
-  const selectedCandidate = rows.find((row) => String(row.rowId || "") === selectedCandidateId) || null;
+  const selectedCandidate = rows.find((row) => String(row.rowId || row.datasetId || "") === selectedCandidateId) || null;
   const isGwpSource = mappingSource === "GWP";
   const ecoinventValue = normalizedValue(selectedCandidate?.score) || normalizedValue(selectedCandidate?.manualInputValue);
   const datasetArPreview = displayValue(
@@ -1103,9 +1103,10 @@ function GwpMappingModal({
                       <div className="px-4 py-8 text-sm text-slate-500">검색 결과가 없습니다.</div>
                     ) : (
                       rows.map((row) => {
-                        const selected = String(row.rowId || "") === selectedCandidateId;
+                        const rowId = String(row.rowId || row.datasetId || "");
+                        const selected = rowId === selectedCandidateId;
                         return (
-                          <div className={`grid grid-cols-[80px,1.2fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={String(row.rowId || row.commonName || Math.random())}>
+                          <div className={`grid grid-cols-[80px,1.2fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={rowId || String(row.commonName || row.productName || Math.random())}>
                             <div className="px-3 py-3 text-[11px] font-bold text-[var(--kr-gov-blue)]">
                               {mapPriority(row, searchKeyword) === 0 ? "1순위" : mapPriority(row, searchKeyword) === 1 ? "정확 일치" : "후보"}
                             </div>
@@ -1117,7 +1118,7 @@ function GwpMappingModal({
                             <div className="px-3 py-3">{displayValue(row.geography) || "-"}</div>
                             <div className="px-3 py-3">{displayValue(row.timePeriod) || "-"}</div>
                             <div className="flex items-center justify-center px-3 py-3">
-                              <MemberButton onClick={() => onSelectCandidate(String(row.rowId || ""))} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
+                              <MemberButton onClick={() => onSelectCandidate(rowId)} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
                             </div>
                           </div>
                         );
@@ -1619,7 +1620,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
         setMappingTotalCount(total);
         setMappingRows(pagedRows);
         if (pagedRows.length > 0) {
-          const nextSelectedCandidateId = String(pagedRows[0].rowId || "");
+          const firstRow = pagedRows[0];
+          const nextSelectedCandidateId = String(firstRow.rowId || firstRow.datasetId || "");
           setSelectedCandidateId(nextSelectedCandidateId);
           if (normalizedValue(pagedRows[0].score) || normalizedValue(pagedRows[0].manualInputValue)) {
             setFactorType("ECOINVENT");
