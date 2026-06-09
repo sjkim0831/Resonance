@@ -1216,7 +1216,7 @@ function GwpMappingModal({
 
             <div className="flex justify-end gap-2">
               <MemberButton onClick={onClose} type="button" variant="secondary">취소</MemberButton>
-              <MemberButton onClick={onApply} type="button" variant="primary">이 행에 적용</MemberButton>
+              <MemberButton onClick={onApply} type="button" variant="primary">적용</MemberButton>
             </div>
           </section>
         </div>
@@ -1646,7 +1646,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     if (!mappingTarget) {
       return;
     }
-    const candidate = mappingRows.find((row) => String(row.rowId || "") === selectedCandidateId) || null;
+    const candidate = mappingRows.find((row) => String(row.rowId || row.datasetId || "") === selectedCandidateId) || null;
     if (!candidate) {
       setErrorMessage("먼저 매핑할 물질을 선택하세요.");
       return;
