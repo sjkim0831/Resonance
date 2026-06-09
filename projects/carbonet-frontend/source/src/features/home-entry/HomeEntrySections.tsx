@@ -1,50 +1,51 @@
 import { buildLocalizedPath, navigate } from "../../lib/navigation/runtime";
-import { useMemo, useState } from "react";
-import { HomeButton, HomeInput, HomeLinkButton } from "../home-ui/common";
+import { HomeButton, HomeLinkButton } from "../home-ui/common";
 import { HOME_ENTRY_ASSETS, LOCALIZED_CONTENT, LocalizedHomeContent } from "./homeEntryContent";
-import { HomeMenuItem, HomeQuickLink } from "./homeEntryTypes";
+import { HomeMenuItem } from "./homeEntryTypes";
 
-function getDesktopNavClass(en: boolean) {
-  return en
-    ? "hidden xl:flex items-center h-full ml-4 2xl:ml-8 flex-1 justify-center min-w-0"
-    : "hidden xl:flex items-center space-x-1 h-full ml-8 flex-1 justify-center";
+function getDesktopNavClass(_en: boolean) {
+  return "hidden md:flex gap-6";
 }
 
-function getDesktopNavLinkClass(en: boolean) {
-  return en
-    ? "h-full flex items-center justify-center px-[6px] 2xl:px-2 text-[12px] 2xl:text-[13px] font-bold whitespace-normal text-center leading-[1.15] break-words max-w-[92px] 2xl:max-w-[104px] tracking-[-0.01em] text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible"
-    : "h-full flex items-center px-4 text-[17px] font-bold text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible";
+function getDesktopNavLinkClass(_en: boolean) {
+  return "text-primary font-bold border-b-2 border-transparent hover:text-primary hover:border-primary transition-colors duration-200 text-label-md";
 }
 
-function resolveFooterHref(label: string) {
-  if (label === "사이트맵") {
-    return "/sitemap";
-  }
-  if (label === "Sitemap") {
-    return "/en/sitemap";
+function resolveFooterHref(label: string, en: boolean) {
+  if (label === "사이트맵" || label === "Sitemap") {
+    return en ? "/en/sitemap" : "/sitemap";
   }
   return "#";
 }
 
-export function HomeInlineStyles({ en }: { en: boolean }) {
+export function HomeInlineStyles(_props: { en: boolean }) {
   return (
     <style>{`
       :root {
-        --kr-gov-blue: #00378b;
-        --kr-gov-blue-hover: #002d72;
-        --kr-gov-text-primary: #1a1a1a;
-        --kr-gov-text-secondary: #4d4d4d;
-        --kr-gov-border-light: #d9d9d9;
-        --kr-gov-focus: #005fde;
-        --kr-gov-bg-gray: #f2f2f2;
-        --kr-gov-radius: 5px;
+        --primary: #001e40;
+        --secondary: #1b6d24;
+        --surface: #f8f9fa;
+        --surface-container-lowest: #ffffff;
+        --surface-container: #edeeef;
+        --surface-container-high: #e7e8e9;
+        --surface-container-highest: #e1e3e4;
+        --on-primary: #ffffff;
+        --on-surface: #191c1d;
+        --on-surface-variant: #43474f;
+        --outline: #737780;
+        --outline-variant: #c3c6d1;
+        --primary-container: #003366;
+        --secondary-container: #a0f399;
+        --primary-fixed: #d5e3ff;
+        --primary-fixed-dim: #a7c8ff;
+        --error: #ba1a1a;
       }
-      body { font-family: ${en ? "'Public Sans', 'Noto Sans KR', sans-serif" : "'Noto Sans KR', 'Public Sans', sans-serif"}; -webkit-font-smoothing: antialiased; }
+      body { font-family: 'Inter', 'Noto Sans KR', sans-serif; -webkit-font-smoothing: antialiased; }
       .skip-link {
         position: absolute;
         top: -100px;
         left: 0;
-        background: var(--kr-gov-blue);
+        background: var(--primary);
         color: white;
         padding: 12px;
         z-index: 100;
@@ -52,63 +53,131 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
       }
       .skip-link:focus { top: 0; }
       .focus-visible:focus-visible {
-        outline: 3px solid var(--kr-gov-focus);
+        outline: 3px solid var(--primary);
         outline-offset: 2px;
       }
       .material-symbols-outlined {
         font-variation-settings: 'wght' 400, 'opsz' 24;
         font-size: 24px;
+        vertical-align: middle;
       }
-      .home-brand-copy { min-width: 0; }
-      .home-brand-title {
-        margin: 0 !important;
-        font-size: inherit !important;
-        line-height: 1.2 !important;
+      .glass-effect {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(8px);
       }
-      .home-brand-subtitle {
-        margin: 0 !important;
-        line-height: 1.2;
-      }
-      .gnb-item:hover .gnb-depth2 { display: block; }
-      .gnb-depth2 { width: 560px !important; padding: 10px; }
-      .gnb-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .gnb-section { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; background: #fafafa; }
-      .gnb-section-title { display: block; font-size: 12px; font-weight: 700; color: var(--kr-gov-blue); margin-bottom: 6px; padding: 0 4px; }
+      .font-headline-lg { font-family: 'Public Sans', sans-serif; font-size: 32px; font-weight: 700; line-height: 1.3; }
+      .font-headline-md { font-family: 'Public Sans', sans-serif; font-size: 24px; font-weight: 600; line-height: 1.4; }
+      .font-display-lg { font-family: 'Public Sans', sans-serif; font-size: 48px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+      .font-label-md { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: 0.05em; }
+      .font-body-lg { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 400; line-height: 1.6; }
+      .font-body-md { font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 400; line-height: 1.6; }
+      .font-body-sm { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400; line-height: 1.5; }
+      .max-w-container-max { max-width: 1280px; }
+      .px-margin-desktop { padding-left: 40px; padding-right: 40px; }
+      .py-stack-lg { padding-top: 32px; padding-bottom: 32px; }
+      .gap-gutter { gap: 24px; }
+      .stack-md { margin-top: 16px; margin-bottom: 16px; }
+      .stack-sm { margin-top: 8px; margin-bottom: 8px; }
+      .rounded-lg { border-radius: 0.25rem; }
+      .rounded-xl { border-radius: 0.5rem; }
+      .rounded-2xl { border-radius: 0.75rem; }
+      .rounded-full { border-radius: 9999px; }
+      .text-headline-lg { font-family: 'Public Sans', sans-serif; font-size: 32px; font-weight: 700; line-height: 1.3; color: var(--primary); }
+      .text-headline-md { font-family: 'Public Sans', sans-serif; font-size: 24px; font-weight: 600; line-height: 1.4; color: var(--on-surface); }
+      .text-display-lg { font-family: 'Public Sans', sans-serif; font-size: 48px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; color: white; }
+      .text-label-md { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: 0.05em; color: var(--on-surface-variant); }
+      .text-body-lg { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 400; line-height: 1.6; color: white; }
+      .text-body-md { font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 400; line-height: 1.6; color: var(--on-surface); }
+      .text-body-sm { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--on-surface-variant); }
+      .bg-primary { background-color: var(--primary); }
+      .bg-secondary { background-color: var(--secondary); }
+      .bg-surface { background-color: var(--surface); }
+      .bg-surface-container-lowest { background-color: var(--surface-container-lowest); }
+      .bg-surface-container { background-color: var(--surface-container); }
+      .bg-surface-container-high { background-color: var(--surface-container-high); }
+      .bg-surface-container-highest { background-color: var(--surface-container-highest); }
+      .bg-primary-fixed { background-color: var(--primary-fixed); }
+      .bg-white { background-color: white; }
+      .text-primary { color: var(--primary); }
+      .text-secondary { color: var(--secondary); }
+      .text-on-primary { color: var(--on-primary); }
+      .text-on-surface { color: var(--on-surface); }
+      .text-on-surface-variant { color: var(--on-surface-variant); }
+      .text-white { color: white; }
+      .border-primary { border-color: var(--primary); }
+      .border-outline-variant { border-color: var(--outline-variant); }
+      .border-white\\/20 { border-color: rgba(255,255,255,0.2); }
+      .border-b-2 { border-bottom-width: 2px; }
+      .border-t { border-top-width: 1px; }
+      .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
+      .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
+      .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+      .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.05); }
+      .hover\\:bg-surface-container:hover { background-color: var(--surface-container); }
+      .hover\\:opacity-90:hover { opacity: 0.9; }
+      .hover\\:translate-x-1:hover { transform: translateX(4px); }
+      .hover\\:border-primary:hover { border-color: var(--primary); }
+      .hover\\:shadow-xl:hover { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
+      .hover\\:-translate-y-1:hover { transform: translateY(-4px); }
+      .group:hover .group-hover\\:translate-x-1 { transform: translateX(4px); }
+      .group-hover\\:scale-110 { transition: transform 0.2s ease; }
+      .group:hover .group-hover\\:scale-110 { transform: scale(1.1); }
+      .group:hover .group-hover\\:text-white { color: white; }
+      .transition-all { transition: all 0.2s ease; }
+      .transition-colors { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+      .active\\:scale-95:active { transform: scale(0.95); }
+      .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+      .min-h-\\[280px\\] { min-height: 280px; }
+      .tracking-wider { letter-spacing: 0.05em; }
+      .tracking-tighter { letter-spacing: -0.02em; }
+      .text-4xl { font-size: 2.25rem; }
+      .uppercase { text-transform: uppercase; }
       body.mobile-menu-open { overflow: hidden; }
+      @media (max-width: 768px) {
+        .px-margin-desktop { padding-left: 16px; padding-right: 16px; }
+        .text-display-lg { font-size: 24px; }
+      }
     `}</style>
   );
 }
 
 export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en: boolean }) {
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex items-center gap-3 shrink-0">
-      <HomeLinkButton className="max-w-[78vw] xl:max-w-none !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-2" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
-        <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
-        <div className="home-brand-copy flex flex-col">
-          <h1 className="home-brand-title text-base sm:text-xl font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-tight">{content.logoTitle}</h1>
-          <p className={`home-brand-subtitle ${en ? "hidden 2xl:block" : "hidden sm:block"} text-[10px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider`}>{content.logoSubtitle}</p>
-        </div>
+    <div className="flex items-center gap-8">
+      <HomeLinkButton
+        className="!min-h-0 !border-0 !bg-transparent !p-0 !text-inherit hover:!bg-transparent flex items-center gap-2"
+        href={buildLocalizedPath("/home", "/en/home")}
+        variant="ghost"
+      >
+        <span className="text-headline-md font-bold text-primary">{content.logoTitle}</span>
       </HomeLinkButton>
+      <nav className="hidden md:flex gap-6">
+        <a className="text-primary font-bold border-b-2 border-primary pb-1 text-label-md" href="#">{en ? "About" : "소개"}</a>
+        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "Simulation" : "시뮬레이션"}</a>
+        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "Certification" : "인증서비스"}</a>
+        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "Support" : "고객지원"}</a>
+        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "My Page" : "마이페이지"}</a>
+      </nav>
     </div>
   );
 }
 
 export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: HomeMenuItem[] }) {
   return (
-    <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
+    <nav className={getDesktopNavClass(en)} aria-label={LOCALIZED_CONTENT.en.navAria}>
       {homeMenu.map((top, index) => (
         <div className="gnb-item h-full relative group min-w-0" key={`${top.label || "top"}-${index}`}>
           <a className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
             {top.label || (en ? "Menu" : "메뉴")}
           </a>
           {top.sections && top.sections.length > 0 ? (
-            <div className="gnb-depth2 hidden absolute top-full left-0 w-56 bg-white border border-[var(--kr-gov-border-light)] shadow-lg rounded-b-[var(--kr-gov-radius)] py-2">
+            <div className="gnb-depth2 hidden absolute top-full left-0 w-56 bg-white border border-outline-variant shadow-xl rounded-b-lg py-2">
               <div className="gnb-sections">
                 {top.sections.map((section, sectionIndex) => (
                   <div className="gnb-section" key={`${section.label || "section"}-${sectionIndex}`}>
                     <strong className="gnb-section-title">{section.label || (en ? "Section" : "섹션")}</strong>
                     {(section.items || []).map((item, itemIndex) => (
-                      <a className="block px-4 py-2 hover:bg-gray-50 text-sm" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
+                      <a className="block px-4 py-2 hover:bg-surface-container text-sm text-on-surface" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
                         {item.label || (en ? "Item" : "항목")}
                       </a>
                     ))}
@@ -128,7 +197,6 @@ export function HeaderMobileMenu({
   en,
   homeMenu,
   isLoggedIn,
-  canEnterAdminConsole = false,
   onClose,
   onLogout
 }: {
@@ -141,22 +209,17 @@ export function HeaderMobileMenu({
   onLogout: () => void | Promise<void>;
 }) {
   return (
-    <aside className="absolute top-0 right-0 h-full w-[90%] max-w-[380px] bg-white shadow-2xl border-l border-[var(--kr-gov-border-light)] overflow-y-auto">
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b border-[var(--kr-gov-border-light)] bg-white">
-        <strong className="text-lg font-bold text-[var(--kr-gov-text-primary)]">{content.allMenu}</strong>
-        <HomeButton id="mobile-menu-close" className="w-10 h-10 !p-0 text-[var(--kr-gov-text-secondary)]" type="button" aria-label={content.closeAllMenu} onClick={onClose}>
+    <aside className="absolute top-0 right-0 h-full w-[90%] max-w-[380px] bg-white shadow-2xl border-l border-outline-variant overflow-y-auto">
+      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b border-outline-variant bg-surface-container-lowest">
+        <strong className="text-lg font-bold text-on-surface">{content.allMenu}</strong>
+        <HomeButton className="w-10 h-10 !p-0 text-on-surface-variant" type="button" aria-label={content.closeAllMenu} onClick={onClose}>
           <span className="material-symbols-outlined">close</span>
         </HomeButton>
       </div>
       <div className="p-4 space-y-4">
         <div className="flex items-center gap-2">
           {isLoggedIn ? (
-            <>
-              {canEnterAdminConsole ? (
-                <HomeLinkButton className="flex-1" href={buildLocalizedPath("/admin/", "/en/admin/")} variant="secondary">{en ? "Admin Console" : "관리자 콘솔"}</HomeLinkButton>
-              ) : null}
-              <HomeButton className="flex-1" type="button" onClick={() => void onLogout()} variant="primary">{content.logout}</HomeButton>
-            </>
+            <HomeButton className="flex-1" type="button" onClick={() => void onLogout()} variant="primary">{content.logout}</HomeButton>
           ) : (
             <>
               <HomeLinkButton className="flex-1" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")} variant="primary">{content.login}</HomeLinkButton>
@@ -165,19 +228,19 @@ export function HeaderMobileMenu({
           )}
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <HomeButton type="button" className={en ? "!text-[var(--kr-gov-text-secondary)]" : ""} onClick={() => navigate("/home")} variant={en ? "secondary" : "primary"}>KO</HomeButton>
-          <HomeButton type="button" className={en ? "" : "!text-[var(--kr-gov-text-secondary)]"} onClick={() => navigate("/en/home")} variant={en ? "primary" : "secondary"}>EN</HomeButton>
+          <HomeButton type="button" className={en ? "!text-on-surface-variant" : ""} onClick={() => navigate("/home")} variant={en ? "secondary" : "primary"}>KO</HomeButton>
+          <HomeButton type="button" className={en ? "" : "!text-on-surface-variant"} onClick={() => navigate("/en/home")} variant={en ? "primary" : "secondary"}>EN</HomeButton>
         </div>
         <div className="space-y-3">
           {homeMenu.map((top, index) => (
-            <section className="border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] p-3" key={`${top.label || "mobile-top"}-${index}`}>
-              <h3 className="text-sm font-extrabold text-[var(--kr-gov-blue)] mb-2">{top.label || (en ? "Menu" : "메뉴")}</h3>
+            <section className="border border-outline-variant rounded-lg p-3" key={`${top.label || "mobile-top"}-${index}`}>
+              <h3 className="text-sm font-extrabold text-primary mb-2">{top.label || (en ? "Menu" : "메뉴")}</h3>
               {(top.sections || []).map((section, sectionIndex) => (
                 <div key={`${section.label || "mobile-section"}-${sectionIndex}`}>
-                  <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)] mt-2 mb-1">{section.label || (en ? "Section" : "섹션")}</p>
-                  <div className="space-y-1 text-sm mb-2">
+                  <p className="text-xs font-bold text-on-surface-variant mt-2 mb-1">{section.label || (en ? "Section" : "섹션")}</p>
+                  <div className="space-y-1 text-sm">
                     {(section.items || []).map((item, itemIndex) => (
-                      <a className="block py-1" href={item.url || "#"} key={`${item.label || "mobile-item"}-${itemIndex}`}>
+                      <a className="block py-1 text-on-surface" href={item.url || "#"} key={`${item.label || "mobile-item"}-${itemIndex}`}>
                         {item.label || (en ? "Item" : "항목")}
                       </a>
                     ))}
@@ -194,23 +257,25 @@ export function HeaderMobileMenu({
 
 export function HeroSection({ content }: { content: LocalizedHomeContent }) {
   return (
-    <section className="relative h-[480px] bg-slate-900 overflow-hidden" data-help-id="home-hero">
-      <div className="absolute inset-0">
-        <img alt="Carbon capture facility" className="w-full h-full object-cover opacity-60" src={HOME_ENTRY_ASSETS.HERO_IMAGE} />
-        <div className="absolute inset-0 bg-gradient-to-r from-[var(--kr-gov-blue)]/90 via-[var(--kr-gov-blue)]/40 to-transparent" />
+    <section className="relative h-[400px] flex items-center overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <img alt="CCUS Industrial Facility" className="w-full h-full object-cover" src={HOME_ENTRY_ASSETS.HERO_IMAGE} />
+        <div className="absolute inset-0 bg-primary/60 backdrop-blur-[2px]"></div>
       </div>
-      <div className="relative max-w-7xl mx-auto px-4 lg:px-8 h-full flex flex-col justify-center items-start text-white">
-        <span className="px-4 py-1.5 rounded-full bg-white/20 border border-white/30 text-sm font-bold mb-6 backdrop-blur-sm">{content.heroBadge}</span>
-        <h2 className="text-5xl font-extrabold mb-4 leading-tight">{content.heroTitle.split("\n").map((line, index) => (<span key={`${line}-${index}`}>{line}{index === 0 ? <br /> : null}</span>))}</h2>
-        <p className="text-xl text-blue-50/90 mb-10 max-w-2xl font-medium leading-relaxed">{content.heroDescription}</p>
-        <div className="flex gap-4">
-          <HomeButton type="button" className="px-8 py-4 text-lg" variant="secondary">
-            {content.heroButton} <span className="material-symbols-outlined">arrow_forward</span>
-          </HomeButton>
-          <div className="flex items-center gap-2 mt-auto self-end pb-4 ml-8">
-            <HomeButton type="button" className="w-10 h-10 rounded-full border-white/30 !bg-transparent !p-0 !text-white hover:!bg-white/10" variant="ghost"><span className="material-symbols-outlined">chevron_left</span></HomeButton>
-            <span className="text-sm font-bold tracking-widest">1 / 4</span>
-            <HomeButton type="button" className="w-10 h-10 rounded-full border-white/30 !bg-transparent !p-0 !text-white hover:!bg-white/10" variant="ghost"><span className="material-symbols-outlined">chevron_right</span></HomeButton>
+      <div className="relative z-10 w-full px-margin-desktop max-w-container-max mx-auto text-center">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-display-lg mb-6 leading-tight">{content.heroTitle}</h1>
+          <p className="text-primary-fixed text-body-lg mb-8 opacity-90">{content.heroDescription}</p>
+          <div className="glass-effect p-2 rounded-xl flex items-center shadow-xl border border-white/20 max-w-2xl mx-auto">
+            <span className="material-symbols-outlined text-outline px-4">search</span>
+            <input
+              className="w-full border-none bg-transparent focus:ring-0 text-on-surface font-body-md py-3 placeholder:text-outline"
+              placeholder={content.searchPlaceholder}
+              type="text"
+            />
+            <button className="bg-primary text-on-primary px-8 py-3 rounded text-label-md hover:opacity-90 active:scale-95 transition-all whitespace-nowrap">
+              {content.heroButton}
+            </button>
           </div>
         </div>
       </div>
@@ -223,85 +288,146 @@ type SearchSectionProps = {
   homeMenu: HomeMenuItem[];
 };
 
-type SearchCandidate = {
-  label: string;
-  href: string;
-  tone: "menu" | "service" | "tag";
-};
-
-function normalizeSearchValue(value: string) {
-  return value.trim().toLowerCase().replace(/#/g, "");
+export function SearchSection(_props: SearchSectionProps) {
+  return null;
 }
 
-function buildSearchCandidates(content: LocalizedHomeContent, homeMenu: HomeMenuItem[]) {
-  const menuCandidates = homeMenu.flatMap((top) => {
-    const topItem = top.label && top.url ? [{ label: top.label, href: top.url, tone: "menu" as const }] : [];
-    const sectionItems = (top.sections || []).flatMap((section) =>
-      (section.items || [])
-        .filter((item) => item.label && item.url)
-        .map((item) => ({ label: String(item.label), href: String(item.url), tone: "menu" as const }))
-    );
-    return [...topItem, ...sectionItems];
-  });
-  const serviceCandidates = content.services.map((service) => ({
-    label: service.title,
-    href: service.href,
-    tone: "service" as const
-  }));
-  const tagCandidates = content.popularTags.map((tag) => ({
-    label: tag.query || tag.label,
-    href: tag.href,
-    tone: "tag" as const
-  }));
-  const deduped = new Map<string, SearchCandidate>();
-  [...menuCandidates, ...serviceCandidates, ...tagCandidates].forEach((candidate) => {
-    deduped.set(`${candidate.label}::${candidate.href}`, candidate);
-  });
-  return Array.from(deduped.values());
-}
-
-export function SearchSection({ content, homeMenu }: SearchSectionProps) {
-  const [query, setQuery] = useState("");
-  const candidates = useMemo(() => buildSearchCandidates(content, homeMenu), [content, homeMenu]);
-  const normalizedQuery = normalizeSearchValue(query);
-  const suggestions = normalizedQuery
-    ? candidates.filter((candidate) => normalizeSearchValue(candidate.label).includes(normalizedQuery)).slice(0, 6)
-    : [];
-
-  function executeSearch(nextQuery?: string, preferredLink?: HomeQuickLink) {
-    const effectiveQuery = normalizeSearchValue(nextQuery ?? query);
-    if (preferredLink?.href) {
-      navigate(preferredLink.href);
-      return;
-    }
-    const match = candidates.find((candidate) => normalizeSearchValue(candidate.label).includes(effectiveQuery));
-    navigate(match?.href || buildLocalizedPath("/home", "/en/home"));
-  }
-
+export function DashboardSection({ content }: { content: LocalizedHomeContent }) {
   return (
-    <section className="bg-[var(--kr-gov-bg-gray)] py-14 border-b border-[var(--kr-gov-border-light)]" data-help-id="home-search">
-      <div className="max-w-4xl mx-auto px-4 text-center">
-        <h3 className="text-2xl font-bold mb-8 text-[var(--kr-gov-text-primary)]">{content.searchTitle}</h3>
-        <div className="relative group max-w-3xl mx-auto">
-          <HomeInput className="h-16 border-2 border-[var(--kr-gov-blue)] pl-8 pr-20 text-lg shadow-sm placeholder-gray-500 focus:border-[var(--kr-gov-blue)] focus:ring-4 focus:ring-[var(--kr-gov-blue)]/10" placeholder={content.searchPlaceholder} type="text" aria-label={content.searchAria} autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { executeSearch(); } }} />
-          <HomeButton type="button" className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 !p-0" onClick={() => executeSearch()} variant="primary">
-            <span className="material-symbols-outlined text-[28px]">search</span>
-          </HomeButton>
-          {suggestions.length > 0 ? (
-            <div className="absolute left-0 right-0 mt-3 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white text-left shadow-xl overflow-hidden">
-              {suggestions.map((candidate) => (
-                <HomeButton key={`${candidate.label}-${candidate.href}`} type="button" className="flex w-full items-center justify-between gap-3 !border-0 !bg-transparent px-5 py-4 text-sm hover:!bg-slate-50" onClick={() => navigate(candidate.href)} variant="ghost">
-                  <span className="font-bold text-[var(--kr-gov-text-primary)]">{candidate.label}</span>
-                  <span className="text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-blue)]">{candidate.tone}</span>
-                </HomeButton>
-              ))}
-            </div>
-          ) : null}
+    <section className="py-stack-lg px-margin-desktop max-w-container-max mx-auto">
+      <div className="flex items-end justify-between mb-8">
+        <div>
+          <h2 className="font-headline-lg text-headline-lg text-primary">{content.dashboardTitle}</h2>
+          <p className="text-on-surface-variant text-body-sm mt-1">{content.dashboardSubtitle}</p>
         </div>
-        <div className="mt-6 flex flex-wrap justify-center items-center gap-3 text-sm">
-          <span className="font-bold text-[var(--kr-gov-text-secondary)]">{content.popularSearches}</span>
-          {content.popularTags.map((tag) => (
-            <HomeButton type="button" className="rounded-full px-3 py-1 text-[13px]" key={tag.label} onClick={() => { setQuery(tag.query || tag.label); executeSearch(tag.query || tag.label, tag); }} variant="secondary">{tag.label}</HomeButton>
+        <button className="flex items-center gap-2 text-primary text-label-md hover:underline font-bold">
+          {content.heroButton} <span className="material-symbols-outlined">arrow_forward</span>
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+        <KpiCard1 content={content} />
+        <KpiCard2 content={content} />
+        <KpiCard3 content={content} />
+      </div>
+    </section>
+  );
+}
+
+function KpiCard1({ content }: { content: LocalizedHomeContent }) {
+  const card = content.summaryCards[0];
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant p-8 rounded-xl shadow-sm">
+      <div className="flex justify-between items-start mb-6">
+        <span className="text-on-surface-variant text-label-md tracking-wider">{card.title}</span>
+        <span className="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-label-md font-bold">{card.badge}</span>
+      </div>
+      <div className="text-[44px] font-bold text-primary leading-none mb-4">
+        {card.value} <span className="text-headline-md font-medium text-on-surface-variant">{card.unit}</span>
+      </div>
+      <div className="flex items-center gap-2 text-secondary font-bold text-body-md">
+        <span className="material-symbols-outlined">trending_up</span> 전월 대비 +12.4%
+      </div>
+      <div className="mt-8">
+        <div className="flex justify-between text-label-md mb-2">
+          <span className="text-on-surface-variant">{card.progressLabel}</span>
+          <span className="text-primary font-bold">{card.progressValue}</span>
+        </div>
+        <div className="h-3 bg-surface-container rounded-full overflow-hidden">
+          <div className="h-full bg-secondary w-[72.6%] rounded-full transition-all duration-1000 ease-out"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard2({ content }: { content: LocalizedHomeContent }) {
+  const card = content.summaryCards[1];
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant p-8 rounded-xl shadow-sm">
+      <span className="text-on-surface-variant text-label-md tracking-wider mb-8 block">{card.title}</span>
+      <div className="flex gap-4 items-center h-full pb-4">
+        <div className="flex-1">
+          <div className="text-[44px] font-bold text-primary">{card.statBlocks?.[0].value}</div>
+          <div className="text-label-md font-bold text-on-surface-variant">{card.statBlocks?.[0].label}</div>
+        </div>
+        <div className="w-px h-16 bg-outline-variant"></div>
+        <div className="flex-1 text-right">
+          <div className="text-[44px] font-bold text-primary">{card.statBlocks?.[1].value}</div>
+          <div className="text-label-md font-bold text-on-surface-variant">{card.statBlocks?.[1].label}</div>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-2">
+        <div className="h-2 bg-surface-container rounded-full flex overflow-hidden">
+          <div className="h-full bg-primary w-[40%]"></div>
+          <div className="h-full bg-primary-fixed-dim w-[60%]"></div>
+        </div>
+        <div className="flex justify-between text-[11px] font-bold text-on-surface-variant">
+          <span>수도권 클러스터 (40%)</span>
+          <span>영남권 클러스터 (60%)</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiCard3({ content }: { content: LocalizedHomeContent }) {
+  const card = content.summaryCards[2];
+  return (
+    <div className="bg-surface-container-lowest border border-outline-variant p-8 rounded-xl shadow-sm">
+      <span className="text-on-surface-variant text-label-md tracking-wider mb-6 block">{card.title}</span>
+      <div className="flex items-center gap-8">
+        <div className="relative w-28 h-28">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+            <circle className="stroke-surface-container fill-none" cx="18" cy="18" r="15.9155" strokeWidth="3.5"></circle>
+            <circle className="stroke-primary fill-none" cx="18" cy="18" r="15.9155" strokeDasharray="85, 100" strokeLinecap="round" strokeWidth="3.5"></circle>
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-headline-md font-bold text-primary">{card.ringText}</span>
+            <span className="text-[10px] text-on-surface-variant font-bold">완료율</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="w-4 h-4 rounded-sm bg-primary"></span>
+            <span className="text-body-sm font-bold text-on-surface">{card.rows?.[0].label}: {card.rows?.[0].value}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-4 h-4 rounded-sm bg-primary-fixed-dim"></span>
+            <span className="text-body-sm font-bold text-on-surface">{card.rows?.[1].label}: {card.rows?.[1].value}</span>
+          </div>
+        </div>
+      </div>
+      <button className="w-full mt-8 py-3 bg-white border-2 border-primary text-primary font-bold text-label-md rounded-lg hover:bg-primary/5 transition-colors">
+        {content.services[1].title}
+      </button>
+    </div>
+  );
+}
+
+export function CoreServiceGrid({ content }: { content: LocalizedHomeContent }) {
+  return (
+    <section className="bg-surface-container py-stack-lg border-t border-outline-variant">
+      <div className="px-margin-desktop max-w-container-max mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-2 h-8 bg-primary"></div>
+          <h2 className="font-headline-lg text-headline-lg">{content.coreServicesTitle}</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+          {content.services.map((service, index) => (
+            <a
+              className={`${index === 0 ? "bg-primary text-white" : "bg-white border border-outline-variant"} p-8 rounded-xl flex flex-col justify-between group hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer min-h-[280px]`}
+              href={service.href}
+              key={service.title}
+            >
+              <div>
+                <span className="material-symbols-outlined text-4xl mb-6 block" style={{ fontVariationSettings: "'wght' 400, 'opsz' 24, 'FILL' 1" }}>{service.icon}</span>
+                <h3 className="text-headline-md mb-3">{service.title}</h3>
+                <p className={`text-body-sm leading-relaxed ${index === 0 ? "text-on-primary-fixed/90" : "text-on-surface-variant"}`}>{service.description}</p>
+              </div>
+              <div className={`flex items-center gap-2 font-bold text-label-md mt-6 ${index === 0 ? "text-on-primary" : "text-primary"}`}>
+                {service.title === "배출량 시뮬레이션" ? "시뮬레이터 실행" : service.title === "인증 신청" ? "신청 시작하기" : service.title === "CO2 태그 검색" ? "태그 조회" : "리포지토리 방문"} <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+              </div>
+            </a>
           ))}
         </div>
       </div>
@@ -309,96 +435,39 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
   );
 }
 
-export function CoreServiceGrid({ content }: { content: LocalizedHomeContent }) {
+export function AnnouncementsAndSupportSection({ content }: { content: LocalizedHomeContent }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-help-id="home-services">
-      {content.services.map((service) => (
-        <a className="border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] bg-white transition-all hover:shadow-lg focus-visible outline-none flex flex-col items-start h-full p-6 group h-full" href={service.href} key={service.title}>
-          <div className="w-14 h-14 bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-blue)] rounded-[var(--kr-gov-radius)] flex items-center justify-center mb-6 group-hover:bg-[var(--kr-gov-blue)] group-hover:text-white transition-colors border border-[var(--kr-gov-border-light)]">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'wght' 400" }}>{service.icon}</span>
-          </div>
-          <h3 className="text-lg font-bold mb-2">{service.title}</h3>
-          <p className="text-[var(--kr-gov-text-secondary)] text-sm leading-relaxed">{service.description}</p>
-        </a>
-      ))}
-    </div>
-  );
-}
-
-export function SummarySection({ content }: { content: LocalizedHomeContent }) {
-  return (
-    <section className="bg-gray-50 border-y border-[var(--kr-gov-border-light)] py-20" data-help-id="home-summary">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
-          <div>
-            <h2 className="text-3xl font-bold mb-2">{content.summaryTitle}</h2>
-            <p className="text-[var(--kr-gov-text-secondary)] font-medium">{content.summaryDescription}</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-[var(--kr-gov-text-secondary)] font-bold">
-            <span className="material-symbols-outlined text-[18px]">update</span>
-            {content.summaryUpdated}
-          </div>
+    <section className="py-stack-lg px-margin-desktop max-w-container-max mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div>
+        <div className="flex items-center justify-between mb-8 border-b border-outline-variant pb-4">
+          <h3 className="font-headline-md text-headline-md text-primary">{content.announcementsTitle}</h3>
+          <a className="text-on-surface-variant text-label-md font-bold hover:text-primary transition-colors" href="#">{content.heroButton}</a>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="bg-white p-8 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-6">
-              <h4 className="font-bold text-[var(--kr-gov-text-secondary)]">{content.summaryCards[0].title}</h4>
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">{content.summaryCards[0].badge}</span>
+        <div className="space-y-2">
+          <AnnouncementItem day="24" month="8월" title="2025년 탄소 격리세 가이드라인 개정 안내" description="중화학 공업 분야의 상업 포집 배출권에 관한 공식 개정안 공고..." />
+          <AnnouncementItem day="21" month="8월" title="프로젝트 베타 모니터링 시스템 업그레이드 공지" description="동남권 클러스터 IoT 센서 정기 점검 및 시스템 고도화 작업..." />
+          <AnnouncementItem day="18" month="8월" title="제4회 연례 CCUS 기술 심포지엄 참가 신청" description="2025년 환경 과학계 및 산업계 리더들과 함께하는 기술 서밋..." />
+        </div>
+      </div>
+      <div className="bg-surface-container rounded-2xl p-8 flex flex-col shadow-inner">
+        <div className="mb-8">
+          <h3 className="font-headline-md text-headline-md text-primary mb-4">{content.supportTitle}</h3>
+          <p className="text-on-surface-variant text-body-md leading-relaxed">{content.supportDescription}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 flex-1">
+          <SupportCard icon="help" title="헬프 센터" subtitle="자주 묻는 질문" />
+          <SupportCard icon="forum" title="실시간 채팅" subtitle="전문가 즉시 상담" />
+          <SupportCard icon="description" title="API 문서" subtitle="개발자 가이드" />
+          <SupportCard icon="mail" title="이메일 문의" subtitle="공식 서면 지원" />
+        </div>
+        <div className="mt-8 pt-8 border-t border-outline-variant/30">
+          <div className="flex items-center gap-4 bg-primary/5 p-4 rounded-xl border border-primary/10">
+            <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-lg">
+              <span className="material-symbols-outlined">call</span>
             </div>
-            <div className="flex items-baseline gap-2 mb-6">
-              <span className="text-4xl font-black text-[var(--kr-gov-blue)] tracking-tight">{content.summaryCards[0].value}</span>
-              <span className="text-lg font-bold text-gray-400">{content.summaryCards[0].unit}</span>
-            </div>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs font-bold">
-                <span>{content.summaryCards[0].progressLabel}</span>
-                <span className="text-[var(--kr-gov-blue)]">{content.summaryCards[0].progressValue}</span>
-              </div>
-              <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[var(--kr-gov-blue)]" style={{ width: content.summaryCards[0].progressWidth }} />
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-8 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] hover:shadow-md transition-shadow">
-            <h4 className="font-bold text-[var(--kr-gov-text-secondary)] mb-6">{content.summaryCards[1].title}</h4>
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              {(content.summaryCards[1].statBlocks || []).map((block) => (
-                <div className="text-center p-4 bg-gray-50 rounded-[var(--kr-gov-radius)]" key={block.label}>
-                  <p className="text-xs font-bold text-gray-400 mb-1">{block.label}</p>
-                  <p className="text-2xl font-black">{block.value}<span className="text-sm ml-1">{block.unit}</span></p>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 text-sm font-bold text-[var(--kr-gov-blue)]">
-              <span className="material-symbols-outlined">trending_up</span>
-              {content.summaryCards[1].note}
-            </div>
-          </div>
-          <div className="bg-white p-8 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] hover:shadow-md transition-shadow">
-            <h4 className="font-bold text-[var(--kr-gov-text-secondary)] mb-6">{content.summaryCards[2].title}</h4>
-            <div className="flex items-center justify-between gap-6">
-              <div className="relative w-24 h-24">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 96 96">
-                  <circle className="text-gray-100" cx="48" cy="48" fill="transparent" r="42" stroke="currentColor" strokeWidth="8" />
-                  <circle className="text-emerald-500" cx="48" cy="48" fill="transparent" r="42" stroke="currentColor" strokeDasharray="263.8" strokeDashoffset="39.5" strokeLinecap="round" strokeWidth="8" />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold">{content.summaryCards[2].ringText}</span>
-                </div>
-              </div>
-              <div className="flex-1 space-y-2">
-                {(content.summaryCards[2].rows || []).map((row) => (
-                  <div className="flex justify-between items-center" key={row.label}>
-                    <span className="text-sm font-medium">{row.label}</span>
-                    <span className="text-sm font-bold">{row.value}</span>
-                  </div>
-                ))}
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">check_circle</span> {content.summaryCards[2].ringNote}
-                  </p>
-                </div>
-              </div>
+            <div>
+              <div className="text-label-md font-bold text-on-surface-variant uppercase tracking-tighter">긴급 기술 지원 라인</div>
+              <div className="text-headline-md font-bold text-primary">{content.supportHotline}</div>
             </div>
           </div>
         </div>
@@ -407,50 +476,56 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
   );
 }
 
+function AnnouncementItem({ day, month, title, description }: { day: string; month: string; title: string; description: string }) {
+  return (
+    <div className="flex gap-6 p-4 hover:bg-surface-container transition-colors rounded-lg border border-transparent hover:border-outline-variant group cursor-pointer">
+      <div className="flex flex-col items-center justify-center min-w-[64px] h-[64px] bg-primary-fixed rounded-lg">
+        <span className="text-on-primary-fixed font-bold text-lg">{day}</span>
+        <span className="text-on-primary-fixed text-[10px] font-bold uppercase">{month}</span>
+      </div>
+      <div className="flex-1">
+        <h4 className="font-bold text-body-md group-hover:text-primary transition-colors">{title}</h4>
+        <p className="text-on-surface-variant text-body-sm mt-1 line-clamp-1">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function SupportCard({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-outline-variant hover:border-primary transition-all cursor-pointer group">
+      <span className="material-symbols-outlined text-primary mb-3 block group-hover:scale-110 transition-transform">{icon}</span>
+      <div className="font-bold text-body-sm">{title}</div>
+      <div className="text-[11px] text-on-surface-variant mt-1">{subtitle}</div>
+    </div>
+  );
+}
+
 export function HomeFooter({ content }: { content: LocalizedHomeContent }) {
   const english = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
   return (
-    <footer className="bg-white border-t border-[var(--kr-gov-border-light)]">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-12 pb-8">
-        <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-[var(--kr-gov-border-light)]">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <img alt={content.govAlt} className="h-8 grayscale" src={HOME_ENTRY_ASSETS.FOOTER_SYMBOL} />
-              <span className="text-xl font-black text-[var(--kr-gov-text-primary)]">{content.footerOrg}</span>
-            </div>
-            <address className="not-italic text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed">
-              {content.footerAddress}<br />
-              {content.footerDesc}
-            </address>
-          </div>
-          <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-            {content.footerLinks.map((link, index) => (
-              <a
-                className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-[var(--kr-gov-text-primary)] hover:underline"}
-                href={resolveFooterHref(link)}
-                key={link}
-                onClick={(event) => {
-                  if (resolveFooterHref(link) === "#") {
-                    event.preventDefault();
-                  }
-                }}
-              >
-                {link}
-              </a>
-            ))}
+    <footer className="bg-surface-container-highest border-t border-outline-variant mt-stack-lg">
+      <div className="flex flex-col md:flex-row justify-between items-center w-full px-margin-desktop py-stack-lg max-w-container-max mx-auto gap-4">
+        <div className="flex flex-col items-center md:items-start gap-3">
+          <span className="text-headline-md font-bold text-primary">{content.footerOrg}</span>
+          <p className="text-on-surface-variant text-body-sm text-center md:text-left">
+            {content.footerAddress}
+          </p>
+          <div className="flex gap-4 mt-2">
+            <span className="text-xs text-on-surface-variant font-medium">사업자등록번호: 000-00-00000</span>
+            <span className="text-xs text-on-surface-variant font-medium">대표전화: 02-000-0000</span>
           </div>
         </div>
-        <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-xs font-medium text-[var(--kr-gov-text-secondary)]">
-            <p>© 2025 CCUS Carbon Footprint Platform. All rights reserved.</p>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 px-3 py-1 bg-[var(--kr-gov-bg-gray)] rounded-[var(--kr-gov-radius)] text-xs font-bold text-[var(--kr-gov-text-secondary)]">
-              <span>{content.lastModified}</span>
-              <time dateTime="2025-08-14">{english ? "Aug 14, 2025" : "2025.08.14"}</time>
-            </div>
-            <img alt={content.waAlt} className="h-10" src={HOME_ENTRY_ASSETS.WA_MARK} />
-          </div>
+        <div className="flex flex-wrap justify-center gap-6">
+          {content.footerLinks.map((link) => (
+            <a
+              className="text-on-surface font-bold hover:text-primary transition-colors text-label-md"
+              href={resolveFooterHref(link, english)}
+              key={link}
+            >
+              {link}
+            </a>
+          ))}
         </div>
       </div>
     </footer>
