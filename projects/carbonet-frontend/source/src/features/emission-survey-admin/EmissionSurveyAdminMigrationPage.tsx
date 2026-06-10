@@ -294,27 +294,6 @@ function parseTimePeriod(timePeriod: string | number | undefined): { startYear: 
   return { startYear: 0, endYear: 0 };
 }
 
-function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: EcoinventDatasetRow[]) {
-  const nextRows: EcoinventDatasetRow[] = [];
-  const seenDatasetIds = new Set<string>();
-  [...previousRows, ...searchRows].forEach((row) => {
-    const datasetId = stringValue(row.datasetId);
-    if (!datasetId || seenDatasetIds.has(datasetId)) {
-      return;
-    }
-    seenDatasetIds.add(datasetId);
-    nextRows.push(row);
-  });
-  return nextRows.sort((left, right) => {
-    const leftPrevious = stringValue(left.koreanName) ? 0 : 1;
-    const rightPrevious = stringValue(right.koreanName) ? 0 : 1;
-    if (leftPrevious !== rightPrevious) {
-      return leftPrevious - rightPrevious;
-    }
-    return geographyPriority(left) - geographyPriority(right);
-  });
-}
-
 function buildMappedProductOptionFromValues(values: Record<string, string>): EcoinventDatasetRow | null {
   const datasetId = stringValue(values.ecoinventDatasetId);
   const productName = stringValue(values.ecoinventEnglishName);
@@ -873,6 +852,7 @@ function EcoinventFactorMappingDialog({
   filterOptions,
   onFilterChange,
   rows,
+  previousRows,
   chemicalRows,
   aiRows,
   selectedDatasetId,
@@ -893,6 +873,7 @@ function EcoinventFactorMappingDialog({
   filterOptions: Record<string, string[]>;
   onFilterChange: (key: string, value: string) => void;
   rows: EcoinventDatasetRow[];
+  previousRows: EcoinventDatasetRow[];
   chemicalRows: ChemicalMaterialRow[];
   aiRows: EcoinventDatasetRow[];
   selectedDatasetId: string;
@@ -976,7 +957,7 @@ function EcoinventFactorMappingDialog({
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const paginatedRows = sortedRows.slice((pageIndex - 1) * pageSize, pageIndex * pageSize);
   const selectedRow = rows.find((row) => String(row.datasetId || "") === selectedDatasetId) || null;
-  const previousMappingRows = rows.filter((row) => stringValue(row.koreanName)).slice(0, 3);
+  const previousMappingRows = previousRows.slice(0, 3);
   const visibleAiRows = aiRows.slice(0, 3);
   const filterFields = [
     ["productName", "Product"],
@@ -1608,6 +1589,7 @@ export function EmissionSurveyAdminMigrationPage() {
   const [ecoinventMappingFilters, setEcoinventMappingFilters] = useState<Record<string, string>>({});
   const [ecoinventMappingFilterOptions, setEcoinventMappingFilterOptions] = useState<Record<string, string[]>>({});
   const [ecoinventMappingRows, setEcoinventMappingRows] = useState<EcoinventDatasetRow[]>([]);
+  const [ecoinventPreviousMappingRows, setEcoinventPreviousMappingRows] = useState<EcoinventDatasetRow[]>([]);
   const [ecoinventChemicalRows, setEcoinventChemicalRows] = useState<ChemicalMaterialRow[]>([]);
   const [ecoinventAiMappingRows, setEcoinventAiMappingRows] = useState<EcoinventDatasetRow[]>([]);
   const [ecoinventSelectedDatasetId, setEcoinventSelectedDatasetId] = useState("");
@@ -2184,10 +2166,11 @@ export function EmissionSurveyAdminMigrationPage() {
         fetchEcoinventMappedFactors(keyword || currentTarget.materialName).catch(() => [] as EcoinventDatasetRow[]),
         fetchEcoinventDatasetPage(requestParams).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0, success: true }))
       ]);
-      const rows = mergeEcoinventRows(previousMappings, response.data || []);
+      const rows = response.data || [];
       setEcoinventChemicalRows(chemicalRows);
       setEcoinventAiMappingRows([]);
       setEcoinventMappingRows(rows);
+      setEcoinventPreviousMappingRows(previousMappings);
       setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
       setEcoinventSelectedDatasetId(rows.length > 0 ? stringValue(rows[0].datasetId) : "");
     } catch (error) {
@@ -2218,8 +2201,9 @@ export function EmissionSurveyAdminMigrationPage() {
           remote: true
         })
       ]);
-      const rows = mergeEcoinventRows(previousMappings, response.data || []);
+      const rows = response.data || [];
       setEcoinventMappingRows(rows);
+      setEcoinventPreviousMappingRows(previousMappings);
       setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
       setEcoinventSelectedDatasetId(rows.length > 0 ? stringValue(rows[0].datasetId) : "");
       setMessage(`${chemicalDisplayName(row)} 기준 ecoinvent API 후보를 불러왔습니다.`);
@@ -3050,6 +3034,7 @@ export function EmissionSurveyAdminMigrationPage() {
             onSearch={() => void handleSearchEcoinventMapping()}
             onSelectDataset={setEcoinventSelectedDatasetId}
             onSelectChemical={handleSelectChemicalMaterial}
+            previousRows={ecoinventPreviousMappingRows}
             rows={ecoinventMappingRows}
             selectedDatasetId={ecoinventSelectedDatasetId}
             target={ecoinventMappingTarget}
