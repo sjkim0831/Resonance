@@ -1175,7 +1175,16 @@ function EcoinventFactorMappingDialog({
                   <span className="text-xs font-bold text-slate-500">
                     총 {totalCount.toLocaleString()}건 중 {(pageIndex - 1) * pageSize + 1}～{Math.min(pageIndex * pageSize, sortedRows.length)}건 표시
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="rounded border border-slate-300 px-2 py-1 text-xs font-bold text-slate-600"
+                      value={pageIndex}
+                      onChange={(e) => setPageIndex(Number(e.target.value))}
+                    >
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                        <option key={p} value={p}>{p} 페이지</option>
+                      ))}
+                    </select>
                     <button
                       className="rounded px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-40"
                       disabled={pageIndex <= 1}
