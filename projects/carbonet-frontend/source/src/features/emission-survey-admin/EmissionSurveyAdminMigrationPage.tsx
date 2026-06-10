@@ -933,8 +933,8 @@ function EcoinventFactorMappingDialog({
     const sorted = [...rows].sort((a, b) => {
       const priorityA = ecoinventPriority(a, keyword);
       const priorityB = ecoinventPriority(b, keyword);
-      const geoA = geographyOrder(stringValue(a.geography));
-      const geoB = geographyOrder(stringValue(b.geography));
+      const geoA = geographyPriority(a);
+      const geoB = geographyPriority(b);
       const timeA = stringValue(a.timePeriod || "");
       const timeB = stringValue(b.timePeriod || "");
 
