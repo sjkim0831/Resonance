@@ -1127,7 +1127,7 @@ function EcoinventFactorMappingDialog({
               ))}
             </div>
             <div className="min-w-0 overflow-hidden rounded-[var(--kr-gov-radius)] border border-slate-200">
-              <div className="grid grid-cols-[88px,76px,minmax(170px,1.2fr),minmax(150px,1fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+              <div className="grid grid-cols-[88px,76px,1fr,minmax(96px,0.75fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
                 <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("priority")} type="button">우선순위{sortIndicator("priority")}</button>
                 <div className="px-3 py-2">Dataset</div>
                 <div className="px-3 py-2">Product</div>
@@ -1144,8 +1144,10 @@ function EcoinventFactorMappingDialog({
                   const datasetId = String(row.datasetId || "");
                   const selected = datasetId === selectedDatasetId;
                   const priority = ecoinventPriority(row, keyword);
+                  const rowTimePeriod = stringValue(row.timePeriod);
+                  const rowTimePeriodDisplay = rowTimePeriod && rowTimePeriod.includes("-") ? rowTimePeriod : "-";
                   return (
-                    <div className={`grid grid-cols-[88px,76px,minmax(170px,1.2fr),minmax(150px,1fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={`${datasetId}-${row.productName || ""}-${row.geography || ""}`}>
+                    <div className={`grid grid-cols-[88px,76px,1fr,minmax(96px,0.75fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={`${datasetId}-${row.productName || ""}-${row.geography || ""}`}>
                       <div className="px-3 py-3">
                         <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-black ${priority <= 1 ? "bg-blue-100 text-blue-800" : priority <= 3 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
                           {ecoinventPriorityLabel(priority)}
@@ -1157,14 +1159,14 @@ function EcoinventFactorMappingDialog({
                       <div className="px-3 py-3 font-mono text-xs text-slate-500">{datasetId || "-"}</div>
                       <div className="px-3 py-3">
                         <p className="font-bold text-slate-900">{stringValue(row.productName) || "-"}</p>
-                        <p className="mt-1 text-xs text-slate-500">{stringValue(row.indicatorName) || "-"}</p>
+                        <p className="mt-1 text-xs text-slate-500">{stringValue(row.activityName) || "-"}</p>
                       </div>
-                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.timePeriod) || "-"}</div>
+                      <div className="px-3 py-3 text-xs text-slate-600">{rowTimePeriodDisplay}</div>
                       <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.geography) || "-"}</div>
                       <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.referenceProductUnit) || stringValue(row.unit) || "-"}</div>
                       <div className="px-3 py-3 font-mono text-xs text-slate-700">{stringValue(row.score) || "-"}</div>
                       <div className="flex items-center justify-center px-3 py-3">
-                        <button className={`rounded px-3 py-1.5 text-xs font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`} onClick={() => onSelectDataset(datasetId)} type="button">
+                        <button className={`rounded px-3 py-1.5 text-xs font-bold min-w-[48px] ${selected ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`} onClick={() => onSelectDataset(datasetId)} type="button">
                           선택
                         </button>
                       </div>
