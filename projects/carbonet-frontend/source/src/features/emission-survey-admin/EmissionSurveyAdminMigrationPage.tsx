@@ -1131,7 +1131,7 @@ function EcoinventFactorMappingDialog({
                 <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("priority")} type="button">우선순위{sortIndicator("priority")}</button>
                 <div className="px-3 py-2">Dataset</div>
                 <div className="px-3 py-2">Product</div>
-                <div className="px-3 py-2">Activity</div>
+                <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("timePeriod")} type="button">Time Period{sortIndicator("timePeriod")}</button>
                 <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("geography")} type="button">Geography{sortIndicator("geography")}</button>
                 <div className="px-3 py-2">Unit</div>
                 <div className="px-3 py-2">Score</div>
@@ -1159,12 +1159,14 @@ function EcoinventFactorMappingDialog({
                         <p className="font-bold text-slate-900">{stringValue(row.productName) || "-"}</p>
                         <p className="mt-1 text-xs text-slate-500">{stringValue(row.indicatorName) || "-"}</p>
                       </div>
-                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.activityName) || "-"}</div>
+                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.timePeriod) || "-"}</div>
                       <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.geography) || "-"}</div>
                       <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.referenceProductUnit) || stringValue(row.unit) || "-"}</div>
                       <div className="px-3 py-3 font-mono text-xs text-slate-700">{stringValue(row.score) || "-"}</div>
                       <div className="flex items-center justify-center px-3 py-3">
-                        <MemberButton onClick={() => onSelectDataset(datasetId)} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
+                        <button className={`rounded px-3 py-1.5 text-xs font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`} onClick={() => onSelectDataset(datasetId)} type="button">
+                          선택
+                        </button>
                       </div>
                     </div>
                   );
