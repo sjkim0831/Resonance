@@ -898,6 +898,68 @@ function EcoinventFactorMappingDialog({
   onClose: () => void;
   onApply: () => void;
 }) {
+  type SortState = {
+    priority?: "asc" | "desc";
+    geography?: "asc" | "desc";
+    timePeriod?: "asc" | "desc";
+  };
+  const [sortState, setSortState] = useState<SortState>({});
+  const [pageIndex, setPageIndex] = useState(1);
+  const pageSize = 50;
+
+  const toggleSort = (column: keyof SortState) => {
+    setSortState((prev) => {
+      const current = prev[column];
+      if (current === "asc") {
+        return { ...prev, [column]: "desc" as const };
+      }
+      if (current === "desc") {
+        const next = { ...prev };
+        delete next[column];
+        return next;
+      }
+      return { ...prev, [column]: "asc" as const };
+    });
+    setPageIndex(1);
+  };
+
+  const sortIndicator = (column: keyof SortState) => {
+    const dir = sortState[column];
+    if (!dir) return null;
+    return dir === "asc" ? " ▲" : " ▼";
+  };
+
+  const sortedRows = useMemo(() => {
+    const sorted = [...rows].sort((a, b) => {
+      const priorityA = ecoinventPriority(a, keyword);
+      const priorityB = ecoinventPriority(b, keyword);
+      const geoA = geographyOrder(stringValue(a.geography));
+      const geoB = geographyOrder(stringValue(b.geography));
+      const timeA = stringValue(a.timePeriod || "");
+      const timeB = stringValue(b.timePeriod || "");
+
+      if (sortState.priority) {
+        const cmp = priorityA - priorityB;
+        if (cmp !== 0) return sortState.priority === "asc" ? cmp : -cmp;
+      }
+      if (sortState.geography) {
+        const cmp = geoA - geoB;
+        if (cmp !== 0) return sortState.geography === "asc" ? cmp : -cmp;
+      }
+      if (sortState.timePeriod) {
+        const startA = parseInt(timeA.split("-")[0] || "0") || 0;
+        const startB = parseInt(timeB.split("-")[0] || "0") || 0;
+        const cmp = startA - startB;
+        if (cmp !== 0) return sortState.timePeriod === "asc" ? cmp : -cmp;
+      }
+      const cmp = priorityA - priorityB;
+      return cmp;
+    });
+    return sorted;
+  }, [rows, sortState, keyword]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const paginatedRows = sortedRows.slice((pageIndex - 1) * pageSize, pageIndex * pageSize);
   const selectedRow = rows.find((row) => String(row.datasetId || "") === selectedDatasetId) || null;
   const previousMappingRows = rows.filter((row) => stringValue(row.koreanName)).slice(0, 3);
   const visibleAiRows = aiRows.slice(0, 3);
@@ -1066,19 +1128,19 @@ function EcoinventFactorMappingDialog({
             </div>
             <div className="min-w-0 overflow-hidden rounded-[var(--kr-gov-radius)] border border-slate-200">
               <div className="grid grid-cols-[88px,76px,minmax(170px,1.2fr),minmax(150px,1fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
-                <div className="px-3 py-2">우선순위</div>
+                <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("priority")} type="button">우선순위{sortIndicator("priority")}</button>
                 <div className="px-3 py-2">Dataset</div>
                 <div className="px-3 py-2">Product</div>
                 <div className="px-3 py-2">Activity</div>
-                <div className="px-3 py-2">Geography</div>
+                <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("geography")} type="button">Geography{sortIndicator("geography")}</button>
                 <div className="px-3 py-2">Unit</div>
                 <div className="px-3 py-2">Score</div>
                 <div className="px-3 py-2 text-center">선택</div>
               </div>
               <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden">
-                {rows.length === 0 ? (
+                {paginatedRows.length === 0 ? (
                   <div className="px-4 py-8 text-sm text-slate-500">{loading ? "검색 중입니다." : "검색 결과가 없습니다."}</div>
-                ) : rows.map((row) => {
+                ) : paginatedRows.map((row) => {
                   const datasetId = String(row.datasetId || "");
                   const selected = datasetId === selectedDatasetId;
                   const priority = ecoinventPriority(row, keyword);
@@ -1108,8 +1170,31 @@ function EcoinventFactorMappingDialog({
                   );
                 })}
               </div>
-              <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-500">
-                총 {totalCount.toLocaleString()}건 중 {rows.length.toLocaleString()}건 표시
+              <div className="border-t border-slate-100 bg-slate-50 px-4 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-500">
+                    총 {totalCount.toLocaleString()}건 중 {(pageIndex - 1) * pageSize + 1}～{Math.min(pageIndex * pageSize, sortedRows.length)}건 표시
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="rounded px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+                      disabled={pageIndex <= 1}
+                      onClick={() => setPageIndex((p) => Math.max(1, p - 1))}
+                      type="button"
+                    >
+                      ◀
+                    </button>
+                    <span className="text-xs font-bold text-slate-600">{pageIndex}/{totalPages}</span>
+                    <button
+                      className="rounded px-2 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+                      disabled={pageIndex >= totalPages}
+                      onClick={() => setPageIndex((p) => Math.min(totalPages, p + 1))}
+                      type="button"
+                    >
+                      ▶
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
