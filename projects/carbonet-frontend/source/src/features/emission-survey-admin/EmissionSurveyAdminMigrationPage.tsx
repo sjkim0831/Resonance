@@ -286,6 +286,20 @@ function containsKorean(value: string) {
   return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(value);
 }
 
+function parseTimePeriod(timePeriod: string | number | undefined): { startYear: number; endYear: number } {
+  if (!timePeriod) {
+    return { startYear: 0, endYear: 0 };
+  }
+  const match = String(timePeriod).match(/(\d{4})[-~]?(\d{4})?/);
+  if (match) {
+    return {
+      startYear: parseInt(match[1], 10),
+      endYear: match[2] ? parseInt(match[2], 10) : parseInt(match[1], 10)
+    };
+  }
+  return { startYear: 0, endYear: 0 };
+}
+
 function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: EcoinventDatasetRow[]) {
   const nextRows: EcoinventDatasetRow[] = [];
   const seenDatasetIds = new Set<string>();
@@ -899,7 +913,6 @@ function EcoinventFactorMappingDialog({
   onApply: () => void;
 }) {
   type SortState = {
-    priority?: "asc" | "desc";
     geography?: "asc" | "desc";
     timePeriod?: "asc" | "desc";
   };
@@ -930,32 +943,40 @@ function EcoinventFactorMappingDialog({
   };
 
   const sortedRows = useMemo(() => {
-    const sorted = [...rows].sort((a, b) => {
-      const priorityA = ecoinventPriority(a, keyword);
-      const priorityB = ecoinventPriority(b, keyword);
-      const geoA = geographyPriority(a);
-      const geoB = geographyPriority(b);
-      const timeA = stringValue(a.timePeriod || "");
-      const timeB = stringValue(b.timePeriod || "");
-
-      if (sortState.priority) {
-        const cmp = priorityA - priorityB;
-        if (cmp !== 0) return sortState.priority === "asc" ? cmp : -cmp;
+    const priorityItems: EcoinventDatasetRow[] = [];
+    const normalItems: EcoinventDatasetRow[] = [];
+    rows.forEach((row) => {
+      if (stringValue(row.koreanName)) {
+        priorityItems.push(row);
+      } else {
+        normalItems.push(row);
       }
-      if (sortState.geography) {
-        const cmp = geoA - geoB;
-        if (cmp !== 0) return sortState.geography === "asc" ? cmp : -cmp;
-      }
-      if (sortState.timePeriod) {
-        const startA = parseInt(timeA.split("-")[0] || "0") || 0;
-        const startB = parseInt(timeB.split("-")[0] || "0") || 0;
-        const cmp = startA - startB;
-        if (cmp !== 0) return sortState.timePeriod === "asc" ? cmp : -cmp;
-      }
-      const cmp = priorityA - priorityB;
-      return cmp;
     });
-    return sorted;
+    const sortItems = (items: EcoinventDatasetRow[]) => {
+      return [...items].sort((a, b) => {
+        const geoA = geographyPriority(a);
+        const geoB = geographyPriority(b);
+        const periodA = parseTimePeriod(a.timePeriod);
+        const periodB = parseTimePeriod(b.timePeriod);
+        const hasGeoSort = sortState.geography;
+        const hasPeriodSort = sortState.timePeriod;
+        if (hasGeoSort) {
+          const cmp = geoA - geoB;
+          if (cmp !== 0) return sortState.geography === "asc" ? cmp : -cmp;
+        }
+        if (hasPeriodSort) {
+          if (periodA.startYear !== periodB.startYear) {
+            return sortState.timePeriod === "asc" ? periodA.startYear - periodB.startYear : periodB.startYear - periodA.startYear;
+          }
+          if (periodA.endYear !== periodB.endYear) {
+            return sortState.timePeriod === "asc" ? periodA.endYear - periodB.endYear : periodB.endYear - periodA.endYear;
+          }
+        }
+        const cmp = geoA - geoB;
+        return cmp;
+      });
+    };
+    return [...priorityItems, ...sortItems(normalItems)];
   }, [rows, sortState, keyword]);
 
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
@@ -1128,7 +1149,7 @@ function EcoinventFactorMappingDialog({
             </div>
             <div className="min-w-0 overflow-hidden rounded-[var(--kr-gov-radius)] border border-slate-200">
               <div className="grid grid-cols-[88px,76px,1fr,minmax(96px,0.75fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
-                <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("priority")} type="button">우선순위{sortIndicator("priority")}</button>
+                <div className="px-3 py-2">우선순위</div>
                 <div className="px-3 py-2">Dataset</div>
                 <div className="px-3 py-2">Product</div>
                 <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("timePeriod")} type="button">Time Period{sortIndicator("timePeriod")}</button>
@@ -1144,8 +1165,8 @@ function EcoinventFactorMappingDialog({
                   const datasetId = String(row.datasetId || "");
                   const selected = datasetId === selectedDatasetId;
                   const priority = ecoinventPriority(row, keyword);
-                  const rowTimePeriod = stringValue(row.timePeriod);
-                  const rowTimePeriodDisplay = rowTimePeriod && rowTimePeriod.includes("-") ? rowTimePeriod : "-";
+                  const period = parseTimePeriod(row.timePeriod);
+                  const rowTimePeriodDisplay = period.startYear > 0 ? `${period.startYear}-${period.endYear}` : "-";
                   return (
                     <div className={`grid grid-cols-[88px,76px,1fr,minmax(96px,0.75fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={`${datasetId}-${row.productName || ""}-${row.geography || ""}`}>
                       <div className="px-3 py-3">
