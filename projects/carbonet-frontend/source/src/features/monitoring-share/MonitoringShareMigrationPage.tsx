@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { HomePayload } from "../home-entry/homeEntryTypes";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminSelect, MemberButton, PageStatusNotice } from "../member/common";
 
 type AudienceKey = "executive" | "stakeholder" | "audit";
@@ -310,11 +314,44 @@ export function MonitoringShareMigrationPage() {
   const session = useFrontendSession();
   const en = isEnglish();
   const content = CONTENT[en ? "en" : "ko"];
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [audience, setAudience] = useState<AudienceKey>("executive");
 
   const goToLocalized = (href: string) => {
     navigate(buildLocalizedPath(href, `/en${href}`));
   };
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+
+  const mobileMenuItems = useMemo(() => content.navItems.map((item) => ({
+    label: item.label,
+    href: buildLocalizedPath(item.href, `/en${item.href}`)
+  })), [content.navItems]);
 
   useEffect(() => {
     document.title = content.pageTitle;
@@ -324,9 +361,12 @@ export function MonitoringShareMigrationPage() {
     logGovernanceScope("PAGE", "monitoring-share", {
       language: en ? "en" : "ko",
       userType: session.value?.authorCode || "guest",
-      audience
+      audience,
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
     });
-  }, [audience, en, session.value?.authorCode]);
+  }, [audience, en, session.value?.authorCode, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[var(--kr-gov-text-primary)]">
@@ -365,6 +405,14 @@ export function MonitoringShareMigrationPage() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              className="xl:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              type="button"
+              aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
+            >
+              <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+            </button>
             <UserLanguageToggle en={en} onEn={() => navigate("/en/monitoring/share")} onKo={() => navigate("/monitoring/share")} />
             <div className="hidden text-right md:block">
               <p className="text-xs font-bold text-slate-500">{content.roleLabel}</p>
@@ -380,6 +428,30 @@ export function MonitoringShareMigrationPage() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="absolute top-[81px] left-0 right-0 border-b border-gray-200 bg-white shadow-lg xl:hidden z-50">
+          <nav className="flex flex-col p-4 gap-2">
+            {mobileMenuItems.map((item) => (
+              <button
+                className="!rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left hover:!bg-slate-50"
+                key={item.label}
+                onClick={() => {
+                  navigate(item.href);
+                  setMobileMenuOpen(false);
+                }}
+                type="button"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">circle</span>
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
 
       <main id="main-content">
         <section className="overflow-hidden bg-slate-900 pb-24 pt-10 text-white" data-help-id="monitoring-share-hero">

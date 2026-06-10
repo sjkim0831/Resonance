@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { HomePayload } from "../home-entry/homeEntryTypes";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomeButton, HomeLinkButton } from "../home-ui/common";
 import { AdminSelect } from "../member/common";
 
@@ -569,7 +573,35 @@ export function MonitoringRealtimeMigrationPage() {
   const en = isEnglish();
   const content = CONTENT[en ? "en" : "ko"];
   const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
 
   const visibleQueue = content.queueItems.filter((item) => queueFilter === "all" || item.tone === queueFilter);
   const queueCounts = content.queueItems.reduce<Record<QueueTone, number>>(
@@ -587,14 +619,22 @@ export function MonitoringRealtimeMigrationPage() {
     buildLocalizedPath("/certificate/list", "/en/certificate/list")
   ];
 
+  const mobileMenuItems = useMemo(() => content.navItems.map((item, index) => ({
+    label: item,
+    href: navTargets[index] ?? navTargets[0]
+  })), [content.navItems, navTargets]);
+
   useEffect(() => {
     logGovernanceScope("PAGE", "monitoring-realtime", {
       language: en ? "en" : "ko",
       queueFilter,
       queueCount: visibleQueue.length,
-      screenFamily: "home-monitoring-workspace"
+      screenFamily: "home-monitoring-workspace",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
     });
-  }, [en, queueFilter, visibleQueue.length]);
+  }, [en, queueFilter, visibleQueue.length, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
 
   return (
     <>
@@ -649,6 +689,14 @@ export function MonitoringRealtimeMigrationPage() {
                 <HomeButton onClick={() => navigate(buildLocalizedPath("/admin/external/monitoring", "/en/admin/external/monitoring"))} type="button" variant="secondary">
                   {content.systemButton}
                 </HomeButton>
+                <button
+                  className="xl:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  type="button"
+                  aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
+                >
+                  <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+                </button>
                 <UserLanguageToggle en={en} onKo={() => navigate("/monitoring/realtime")} onEn={() => navigate("/en/monitoring/realtime")} />
                 {session.value?.authenticated ? (
                   <HomeButton onClick={() => void session.logout()} type="button" variant="primary">
@@ -663,6 +711,31 @@ export function MonitoringRealtimeMigrationPage() {
             </div>
           </div>
         </header>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="absolute top-[81px] left-0 right-0 border-b border-[var(--kr-gov-border-light)] bg-white shadow-lg xl:hidden z-50">
+            <nav className="flex flex-col p-4 gap-2">
+              {mobileMenuItems.map((item) => (
+                <HomeButton
+                  className="!rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left hover:!bg-indigo-50"
+                  key={item.label}
+                  onClick={() => {
+                    navigate(item.href);
+                    setMobileMenuOpen(false);
+                  }}
+                  type="button"
+                  variant="ghost"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">circle</span>
+                    {item.label}
+                  </span>
+                </HomeButton>
+              ))}
+            </nav>
+          </div>
+        )}
 
         <main id="main-content">
           <section className="monitoring-dashboard-hero relative overflow-hidden" data-help-id="monitoring-dashboard-hero">
