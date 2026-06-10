@@ -1,29 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: carbonet-runtime
+  name: carbonet-runtime-review
   namespace: carbonet-prod
   labels:
-    app: carbonet-runtime
+    app: carbonet-runtime-review
     framework: resonance
     project: carbonet
-    tier: dev
+    tier: review
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: carbonet-runtime
+      app: carbonet-runtime-review
   template:
     metadata:
       labels:
-        app: carbonet-runtime
+        app: carbonet-runtime-review
         framework: resonance
         project: carbonet
-        tier: dev
+        tier: review
     spec:
       containers:
         - name: carbonet-runtime
-          image: registry.local/carbonet-runtime:2026.05.11-164122-local
+          image: registry.local/carbonet-runtime:2026.06.10-110734-kubeadm
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -86,17 +86,17 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: carbonet-runtime
+  name: carbonet-runtime-review
   namespace: carbonet-prod
   labels:
-    app: carbonet-runtime
-    tier: dev
+    app: carbonet-runtime-review
+    tier: review
 spec:
   type: NodePort
   selector:
-    app: carbonet-runtime
+    app: carbonet-runtime-review
   ports:
     - name: http
       port: 80
       targetPort: 8080
-      nodePort: 80
+      nodePort: 20080
