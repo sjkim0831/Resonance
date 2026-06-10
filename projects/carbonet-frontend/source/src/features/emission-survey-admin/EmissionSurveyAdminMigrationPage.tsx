@@ -8,8 +8,6 @@ import {
   fetchEcoinventFilterOptions,
   fetchEcoinventMappedFactors,
   fetchEmissionSurveyAdminPage,
-  fetchSurveyEcoinventAiRecommendationPage,
-  fetchSurveyEcoinventRecommendationPage,
   fetchEmissionTiers,
   fetchEmissionVariableDefinitions,
   importSelectedEcoinventDatasets,
@@ -280,10 +278,6 @@ function ecoinventPriorityLabel(priority: number) {
     return "관련 Product";
   }
   return "후보";
-}
-
-function containsKorean(value: string) {
-  return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(value);
 }
 
 function parseTimePeriod(timePeriod: string | number | undefined): { startYear: number; endYear: number } {
@@ -1148,15 +1142,15 @@ function EcoinventFactorMappingDialog({
               ))}
             </div>
             <div className="min-w-0 overflow-hidden rounded-[var(--kr-gov-radius)] border border-slate-200">
-              <div className="grid grid-cols-[88px,76px,1fr,minmax(96px,0.75fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
-                <div className="px-3 py-2">우선순위</div>
-                <div className="px-3 py-2">Dataset</div>
-                <div className="px-3 py-2">Product</div>
-                <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("timePeriod")} type="button">Time Period{sortIndicator("timePeriod")}</button>
-                <button className="px-3 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("geography")} type="button">Geography{sortIndicator("geography")}</button>
-                <div className="px-3 py-2">Unit</div>
-                <div className="px-3 py-2">Score</div>
-                <div className="px-3 py-2 text-center">선택</div>
+              <div className="grid grid-cols-[80px,70px,1fr,90px,90px,60px,70px,64px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+                <div className="px-2 py-2">우선순위</div>
+                <div className="px-2 py-2">Dataset</div>
+                <div className="px-2 py-2">Product</div>
+                <button className="px-2 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("timePeriod")} type="button">Period{sortIndicator("timePeriod")}</button>
+                <button className="px-2 py-2 text-left hover:bg-slate-100 cursor-pointer" onClick={() => toggleSort("geography")} type="button">Geo{sortIndicator("geography")}</button>
+                <div className="px-2 py-2">Unit</div>
+                <div className="px-2 py-2">Score</div>
+                <div className="px-2 py-2 text-center">선택</div>
               </div>
               <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden">
                 {paginatedRows.length === 0 ? (
@@ -1165,29 +1159,29 @@ function EcoinventFactorMappingDialog({
                   const datasetId = String(row.datasetId || "");
                   const selected = datasetId === selectedDatasetId;
                   const priority = ecoinventPriority(row, keyword);
-                  const period = parseTimePeriod(row.timePeriod);
-                  const rowTimePeriodDisplay = period.startYear > 0 ? `${period.startYear}-${period.endYear}` : "-";
+                  const rawTimePeriod = stringValue(row.timePeriod);
+                  const rowTimePeriodDisplay = rawTimePeriod || "-";
                   return (
-                    <div className={`grid grid-cols-[88px,76px,1fr,minmax(96px,0.75fr),minmax(96px,0.75fr),72px,88px,72px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={`${datasetId}-${row.productName || ""}-${row.geography || ""}`}>
-                      <div className="px-3 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-black ${priority <= 1 ? "bg-blue-100 text-blue-800" : priority <= 3 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                    <div className={`grid grid-cols-[80px,70px,1fr,90px,90px,60px,70px,64px] border-b border-slate-100 text-xs ${selected ? "bg-blue-50/70" : ""}`} key={`${datasetId}-${row.productName || ""}-${row.geography || ""}`}>
+                      <div className="px-2 py-2 flex flex-col justify-center">
+                        <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-black w-fit ${priority <= 1 ? "bg-blue-100 text-blue-800" : priority <= 3 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
                           {ecoinventPriorityLabel(priority)}
                         </span>
                         {stringValue(row.koreanName) ? (
-                          <p className="mt-1 text-[11px] font-bold text-blue-700">{stringValue(row.koreanName)}</p>
+                          <span className="text-[10px] font-bold text-blue-700 mt-0.5 truncate">{stringValue(row.koreanName)}</span>
                         ) : null}
                       </div>
-                      <div className="px-3 py-3 font-mono text-xs text-slate-500">{datasetId || "-"}</div>
-                      <div className="px-3 py-3">
-                        <p className="font-bold text-slate-900">{stringValue(row.productName) || "-"}</p>
-                        <p className="mt-1 text-xs text-slate-500">{stringValue(row.activityName) || "-"}</p>
+                      <div className="px-2 py-2 font-mono text-slate-500 flex items-center truncate">{datasetId || "-"}</div>
+                      <div className="px-2 py-2 flex flex-col justify-center">
+                        <span className="font-bold text-slate-900 truncate">{stringValue(row.productName) || "-"}</span>
+                        <span className="text-slate-500 truncate">{stringValue(row.activityName) || "-"}</span>
                       </div>
-                      <div className="px-3 py-3 text-xs text-slate-600">{rowTimePeriodDisplay}</div>
-                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.geography) || "-"}</div>
-                      <div className="px-3 py-3 text-xs text-slate-600">{stringValue(row.referenceProductUnit) || stringValue(row.unit) || "-"}</div>
-                      <div className="px-3 py-3 font-mono text-xs text-slate-700">{stringValue(row.score) || "-"}</div>
-                      <div className="flex items-center justify-center px-3 py-3">
-                        <button className={`rounded px-3 py-1.5 text-xs font-bold min-w-[48px] ${selected ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`} onClick={() => onSelectDataset(datasetId)} type="button">
+                      <div className="px-2 py-2 text-slate-600 flex items-center truncate">{rowTimePeriodDisplay}</div>
+                      <div className="px-2 py-2 text-slate-600 flex items-center truncate">{stringValue(row.geography) || "-"}</div>
+                      <div className="px-2 py-2 text-slate-600 flex items-center truncate">{stringValue(row.referenceProductUnit) || stringValue(row.unit) || "-"}</div>
+                      <div className="px-2 py-2 font-mono text-slate-700 flex items-center">{stringValue(row.score) || "-"}</div>
+                      <div className="px-2 py-2 flex items-center justify-center">
+                        <button className={`rounded px-2 py-1 text-xs font-bold whitespace-nowrap ${selected ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`} onClick={() => onSelectDataset(datasetId)} type="button">
                           선택
                         </button>
                       </div>
@@ -2179,36 +2173,20 @@ export function EmissionSurveyAdminMigrationPage() {
     setEcoinventAiMappingLoading(true);
     setErrorMessage("");
     try {
-      const useKoreanRecommendation = containsKorean(keyword)
-        || (!!currentTarget.materialName && normalizeSearchKeyword(keyword) === normalizeSearchKeyword(currentTarget.materialName));
       const requestParams = {
         keyword,
         ...filters,
-        pageIndex: 1,
-        pageSize: 100
+        pageIndex: 0,
+        pageSize: 30
       };
-      const chemicalPromise = fetchChemicalMaterialSuggestions(keyword || currentTarget.materialName)
-        .catch(() => [] as ChemicalMaterialRow[]);
-      const aiPromise = fetchSurveyEcoinventAiRecommendationPage({
-        ...requestParams,
-        materialName: currentTarget.materialName || keyword,
-        pageSize: 12
-      }).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0 }));
-      const [chemicalRows, previousMappings, aiResponse, response] = await Promise.all([
-        chemicalPromise,
-        fetchEcoinventMappedFactors(keyword || currentTarget.materialName),
-        aiPromise,
-        useKoreanRecommendation ? fetchSurveyEcoinventRecommendationPage({
-          ...requestParams,
-          materialName: currentTarget.materialName || keyword
-        }) : fetchEcoinventDatasetPage({
-          ...requestParams
-        })
+      const [chemicalRows, previousMappings, response] = await Promise.all([
+        fetchChemicalMaterialSuggestions(keyword || currentTarget.materialName).catch(() => [] as ChemicalMaterialRow[]),
+        fetchEcoinventMappedFactors(keyword || currentTarget.materialName).catch(() => [] as EcoinventDatasetRow[]),
+        fetchEcoinventDatasetPage(requestParams).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0, success: true }))
       ]);
-      const aiRows = aiResponse.data || [];
-      const rows = mergeEcoinventRows(mergeEcoinventRows(previousMappings, aiRows), response.data || []);
+      const rows = mergeEcoinventRows(previousMappings, response.data || []);
       setEcoinventChemicalRows(chemicalRows);
-      setEcoinventAiMappingRows(aiRows);
+      setEcoinventAiMappingRows([]);
       setEcoinventMappingRows(rows);
       setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
       setEcoinventSelectedDatasetId(rows.length > 0 ? stringValue(rows[0].datasetId) : "");
@@ -2235,8 +2213,8 @@ export function EmissionSurveyAdminMigrationPage() {
         fetchEcoinventMappedFactors(stringValue(row.koreanName) || stringValue(row.englishName) || nextKeyword),
         fetchEcoinventDatasetPage({
           keyword: nextKeyword,
-          pageIndex: 1,
-          pageSize: 100,
+          pageIndex: 0,
+          pageSize: 30,
           remote: true
         })
       ]);
