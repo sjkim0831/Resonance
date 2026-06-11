@@ -29,6 +29,7 @@ public class CarbonetAdminAwareLoginUrlAuthenticationEntryPoint extends LoginUrl
                                                      jakarta.servlet.http.HttpServletResponse response,
                                                      org.springframework.security.core.AuthenticationException exception) {
         String uri = safe(request == null ? null : request.getRequestURI());
+        String queryString = request != null ? request.getQueryString() : null;
         String target;
         if (uri.startsWith("/en/admin")) {
             target = EN_ADMIN_LOGIN_URL;
@@ -39,6 +40,15 @@ public class CarbonetAdminAwareLoginUrlAuthenticationEntryPoint extends LoginUrl
         } else {
             target = defaultLoginUrl;
         }
+
+        String encodedReturnUrl = "";
+        try {
+            encodedReturnUrl = java.net.URLEncoder.encode(uri + (queryString != null && !queryString.isEmpty() ? "?" + queryString : ""), "UTF-8");
+        } catch (java.io.UnsupportedEncodingException e) {
+            // ignore
+        }
+        target = target + "?returnUrl=" + encodedReturnUrl;
+
         log.warn("security.authentication-entry-point uri={} method={} target={} session={} requestedWith={} accept={} referer={} exception={}: {}",
                 uri,
                 safe(request == null ? null : request.getMethod()),

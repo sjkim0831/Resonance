@@ -75,6 +75,8 @@ public class CarbonetSecurityOverrideConfig {
                 "/react-shell/**",
                 "/home/**",
                 "/en/home/**",
+                "/emission/**",
+                "/en/emission/**",
                 "/signin/**",
                 "/en/signin/**",
                 "/actuator/**",

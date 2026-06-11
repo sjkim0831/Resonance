@@ -675,9 +675,7 @@ function renderSectionTable(
               const sectionCode = stringOf(section as Record<string, unknown>, "sectionCode");
               const matchedExistingRow = editable && !isNewRow ? findMatchingExistingRow(section, row as EmissionSurveyAdminRow, existingSections) : null;
               const selectedSource = options?.rowSourceSelections?.[rowSelectionKey(sectionCode, rowId)] || "UPLOAD";
-              const annualUnitValue = String(values.annualUnit || "");
-              const hasAnnualUnitIssue = hasUnitMappingIssue(annualUnitValue);
-              const isIncomplete = !isDeletedRow && (visibleColumns.some((column) => !normalizedValue(values[column.key])) || hasAnnualUnitIssue || requiresAttention);
+              const isIncomplete = !isDeletedRow && (visibleColumns.some((column) => !normalizedValue(values[column.key])) || requiresAttention);
               const uploadValueSummary = describeRowValues(section, values);
               const existingValueSummary = matchedExistingRow
                 ? describeRowValues(section, ((matchedExistingRow.values || {}) as Record<string, string>))
@@ -694,8 +692,6 @@ function renderSectionTable(
                               className={
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
-                                  : hasAnnualUnitIssue
-                                  ? "border-pink-400 bg-pink-50 text-pink-800"
                                   : !normalizedValue(values[column.key])
                                     ? "border-amber-300 bg-amber-50"
                                     : ""
@@ -705,11 +701,6 @@ function renderSectionTable(
                               value={normalizeUnitValue(String(values[column.key] || ""))}
                             >
                               <option value="">단위를 선택하세요</option>
-                              {hasAnnualUnitIssue ? (
-                                <option value={normalizeUnitValue(annualUnitValue)}>
-                                  매핑 필요: {normalizeUnitValue(annualUnitValue)}
-                                </option>
-                              ) : null}
                               {UNIT_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
@@ -741,7 +732,7 @@ function renderSectionTable(
                             />
                           )
                         ) : (
-                          column.key === "annualUnit" && hasAnnualUnitIssue ? `매핑 필요: ${normalizeUnitValue(annualUnitValue)}` : displayValue(values[column.key])
+                          column.key === "annualUnit" ? displayValue(values[column.key]) : displayValue(values[column.key])
                         )}
                       </td>
                     ))}

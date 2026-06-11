@@ -90,6 +90,9 @@ ensure_runtime() {
     kubectl -n "$NAMESPACE" rollout restart deployment/carbonet-runtime || true
     kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=300s || true
   fi
+
+  ensure_endpoints || true
+
   if curl -fsS --max-time 10 "$WEB_URL/actuator/health" >/dev/null 2>&1; then
     log 'runtime health ok'
     return 0
@@ -97,14 +100,106 @@ ensure_runtime() {
   log 'runtime health failed, restarting deployment'
   kubectl -n "$NAMESPACE" rollout restart deployment/carbonet-runtime || true
   kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=300s || true
+
+  ensure_endpoints || true
+
   if curl -fsS --max-time 10 "$WEB_URL/actuator/health" >/dev/null 2>&1; then
     log 'runtime recovered after restart'
+    return 0
+  fi
+  log 'runtime still unhealthy, attempting service recreation'
+  recover_service || true
+
+  ensure_endpoints || true
+
+  if curl -fsS --max-time 10 "$WEB_URL/actuator/health" >/dev/null 2>&1; then
+    log 'runtime recovered after service recreation'
     return 0
   fi
   if [[ "$REBUILD_ON_FAILURE" == "true" && -x "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" ]]; then
     log 'runtime still unhealthy, rebuilding and redeploying'
     (cd "$ROOT_DIR" && SKIP_FRONTEND="${SELF_HEAL_SKIP_FRONTEND:-false}" SKIP_MAVEN_CLEAN=true RESONANCE_AUTO_GIT_COMMIT="${RESONANCE_AUTO_GIT_COMMIT:-false}" RESONANCE_AUTO_GIT_PUSH="${RESONANCE_AUTO_GIT_PUSH:-false}" bash ops/scripts/resonance-k8s-build-deploy-80.sh) || true
   fi
+}
+
+ensure_endpoints() {
+  local endpoints
+  endpoints=$(kubectl -n "$NAMESPACE" get endpoints carbonet-runtime -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || echo "")
+
+  if [[ -n "$endpoints" ]]; then
+    log "endpoints OK: $endpoints"
+    return 0
+  fi
+
+  log "endpoints empty, repairing"
+  repair_endpoints
+  return $?
+}
+
+repair_endpoints() {
+  local pod_ips
+  pod_ips=$(kubectl -n "$NAMESPACE" get pods -l app=carbonet-runtime \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[*]}{.status.podIP}{"\n"}{end}' 2>/dev/null | grep -v '^$')
+
+  local pod_count
+  pod_count=$(echo "$pod_ips" | grep -c . || echo 0)
+
+  if [[ "$pod_count" -eq 0 ]]; then
+    log "no running pods found for endpoint repair"
+    return 1
+  fi
+
+  log "repair endpoints with pods: $(echo "$pod_ips" | tr '\n' ' ')"
+
+  kubectl -n "$NAMESPACE" delete endpoints carbonet-runtime --ignore-not-found=true >/dev/null 2>&1 || true
+
+  cat <<EOF | kubectl apply -f - >/dev/null 2>&1
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: carbonet-runtime
+  namespace: $NAMESPACE
+  labels:
+    app: carbonet-runtime
+subsets:
+- addresses:
+$(echo "$pod_ips" | sed 's/^/  - ip: /')
+  ports:
+  - port: 8080
+    protocol: TCP
+EOF
+  return $?
+}
+
+recover_service() {
+  log "recovering service by recreation"
+  kubectl -n "$NAMESPACE" delete service carbonet-runtime --ignore-not-found=true >/dev/null 2>&1 || true
+  sleep 3
+
+  cat <<EOF | kubectl apply -f - >/dev/null 2>&1
+apiVersion: v1
+kind: Service
+metadata:
+  name: carbonet-runtime
+  namespace: $NAMESPACE
+  labels:
+    app: carbonet-runtime
+spec:
+  type: NodePort
+  selector:
+    app: carbonet-runtime
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    nodePort: 80
+  - name: http-alt-32947
+    port: 32947
+    targetPort: 8080
+    nodePort: 32947
+EOF
+  sleep 5
 }
 
 prune_images() {

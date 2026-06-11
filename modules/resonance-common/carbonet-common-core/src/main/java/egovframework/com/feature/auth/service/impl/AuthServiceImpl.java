@@ -63,7 +63,8 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             case "ENT":
                 LoginResponseDTO enterpriseUser = authLoginMapper.selectEnterpriseLoginUser(userId);
                 if (enterpriseUser == null) {
-                    return null;
+                    LoginResponseDTO employeeUser = fallbackEmployeeLogin(userId, loginVO.getUserPw());
+                    return employeeUser;
                 }
                 if (!matchesPassword(loginVO.getUserPw(), userId, enterpriseUser.getUserPw())) {
                     return null;
@@ -81,6 +82,17 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             default:
                 return null;
         }
+    }
+
+    private LoginResponseDTO fallbackEmployeeLogin(String userId, String rawPassword) {
+        LoginResponseDTO employeeUser = authLoginMapper.selectEmployeeLoginUser(userId);
+        if (employeeUser == null) {
+            return null;
+        }
+        if (!matchesPassword(rawPassword, userId, employeeUser.getUserPw())) {
+            return null;
+        }
+        return employeeUser;
     }
 
     @Override

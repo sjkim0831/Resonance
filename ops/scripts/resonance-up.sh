@@ -103,22 +103,142 @@ recover_web() {
   }
 }
 
+ensure_endpoints() {
+  log "ensure service $WEB_SERVICE has endpoints"
+  local max_wait=30
+  local waited=0
+
+  while true; do
+    local endpoints
+    endpoints=$(kubectl -n "$NAMESPACE" get endpoints "$WEB_SERVICE" -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || echo "")
+
+    if [[ -n "$endpoints" ]]; then
+      log "endpoints OK: $endpoints"
+      return 0
+    fi
+
+    if (( waited >= max_wait )); then
+      log "endpoints still empty after ${max_wait}s, attempting repair"
+      break
+    fi
+
+    log "waiting for endpoints... (${waited}s/${max_wait}s)"
+    sleep 3
+    waited=$((waited + 3))
+  done
+
+  repair_endpoints
+}
+
+repair_endpoints() {
+  log "repair endpoints for $WEB_SERVICE"
+
+  local pod_ips
+  pod_ips=$(kubectl -n "$NAMESPACE" get pods -l app="$WEB_SERVICE" \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{range .items[*]}{.status.podIP}{"\n"}{end}' 2>/dev/null | grep -v '^$')
+
+  local pod_count
+  pod_count=$(echo "$pod_ips" | grep -c . || echo 0)
+
+  if [[ "$pod_count" -eq 0 ]]; then
+    log "no running pods found, skipping endpoint repair"
+    return 1
+  fi
+
+  log "found $pod_count running pods: $(echo "$pod_ips" | tr '\n' ' ')"
+
+  kubectl -n "$NAMESPACE" delete endpoints "$WEB_SERVICE" --ignore-not-found=true >/dev/null 2>&1 || true
+
+  local endpoint_yaml
+  endpoint_yaml=$(cat <<EOF
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: $WEB_SERVICE
+  namespace: $NAMESPACE
+  labels:
+    app: $WEB_SERVICE
+subsets:
+- addresses:
+$(echo "$pod_ips" | sed 's/^/  - ip: /')
+  ports:
+  - port: 8080
+    protocol: TCP
+EOF
+)
+
+  printf '%s' "$endpoint_yaml" | kubectl apply -f - >/dev/null 2>&1
+
+  if [[ $? -eq 0 ]]; then
+    log "endpoints created manually"
+    return 0
+  fi
+
+  log "manual endpoint creation failed, attempting service recreation"
+  recover_service
+  return $?
+}
+
+recover_service() {
+  log "recover service $WEB_SERVICE by recreation"
+
+  kubectl -n "$NAMESPACE" delete service "$WEB_SERVICE" --ignore-not-found=true >/dev/null 2>&1 || true
+  sleep 3
+
+  local new_yaml
+  new_yaml=$(cat <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: $WEB_SERVICE
+  namespace: $NAMESPACE
+  labels:
+    app: $WEB_SERVICE
+spec:
+  type: NodePort
+  selector:
+    app: $WEB_SERVICE
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    nodePort: 80
+  - name: http-alt-32947
+    port: 32947
+    targetPort: 8080
+    nodePort: 32947
+EOF
+)
+
+  printf '%s' "$new_yaml" | kubectl apply -f - >/dev/null 2>&1
+
+  if [[ $? -eq 0 ]]; then
+    log "service recreated, waiting for endpoints"
+    sleep 5
+    return 0
+  fi
+
+  log "service recreation failed"
+  return 1
+}
+
 ensure_port_80() {
   log "ensure service $WEB_SERVICE port 80"
-  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type merge -p '{"spec":{"type":"NodePort"}}' >/dev/null || true
-  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type json -p='[{"op":"replace","path":"/spec/ports","value":[{"name":"http","port":80,"targetPort":"http","nodePort":80,"protocol":"TCP"},{"name":"http-alt-32947","port":32947,"targetPort":"http","nodePort":32947,"protocol":"TCP"}]}]' >/dev/null || true
+  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type merge -p '{"spec":{"type":"NodePort"}}' >/dev/null 2>&1 || true
+  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type json -p='[{"op":"replace","path":"/spec/ports","value":[{"name":"http","port":80,"targetPort":8080,"nodePort":80,"protocol":"TCP"},{"name":"http-alt-32947","port":32947,"targetPort":8080,"nodePort":32947,"protocol":"TCP"}]}]' >/dev/null 2>&1 || true
 
- log "ensure java opts on $WEB_DEPLOYMENT (no resource limits)"
+  log "ensure java opts on $WEB_DEPLOYMENT (no resource limits)"
   kubectl -n "$NAMESPACE" patch "deployment/$WEB_DEPLOYMENT" --type json -p='[
     {"op":"remove","path":"/spec/template/spec/containers/0/resources"}
-  ]' >/dev/null || true
+  ]' >/dev/null 2>&1 || true
   kubectl -n "$NAMESPACE" set env deployment/$WEB_DEPLOYMENT \
     JAVA_OPTS="-XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-    -n "$NAMESPACE" >/dev/null || true
+    -n "$NAMESPACE" >/dev/null 2>&1 || true
 
   log "ensure HA policy"
-  kubectl -n "$NAMESPACE" scale "deployment/$WEB_DEPLOYMENT" --replicas=2 >/dev/null || true
-  kubectl -n "$NAMESPACE" patch "deployment/$WEB_DEPLOYMENT" --type strategic --patch-file /dev/stdin <<'PATCH' >/dev/null || true
+  kubectl -n "$NAMESPACE" scale "deployment/$WEB_DEPLOYMENT" --replicas=2 >/dev/null 2>&1 || true
+  kubectl -n "$NAMESPACE" patch "deployment/$WEB_DEPLOYMENT" --type strategic --patch-file /dev/stdin <<'PATCH' >/dev/null 2>&1 || true
 spec:
   replicas: 2
   minReadySeconds: 20
@@ -165,20 +285,20 @@ main() {
   command -v kubectl >/dev/null 2>&1 || { log_event FAIL NO_KUBECTL 'kubectl not found'; exit 1; }
   ensure_services
   wait_for_kube_api || { log_event FAIL KUBE_API_DOWN 'kubernetes api not reachable'; exit 1; }
-  kubectl get namespace "$NAMESPACE" >/dev/null
+  kubectl get namespace "$NAMESPACE" >/dev/null 2>&1
   recover_db
   recover_web
   ensure_port_80
+  ensure_endpoints
   health_check || {
-    log 'health failed, try existing 80 repair deploy without rebuilding'
-    if [[ -x "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" ]]; then
-      SKIP_FRONTEND="${REPAIR_SKIP_FRONTEND:-true}" SKIP_MAVEN="${REPAIR_SKIP_MAVEN:-true}" SKIP_IMAGE_BUILD="${REPAIR_SKIP_IMAGE_BUILD:-true}" \
-        "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh"
-      health_check
-    else
-      log_event FAIL HEALTH_FAILED 'health check failed and repair script missing'
-      exit 1
+    log 'health failed, running self-heal then retry'
+    if [[ -x "$ROOT_DIR/ops/scripts/resonance-k8s-self-heal.sh" ]]; then
+      bash "$ROOT_DIR/ops/scripts/resonance-k8s-self-heal.sh" || true
     fi
+    health_check || {
+      log_event FAIL HEALTH_FAILED 'health check failed after repair attempts'
+      exit 1
+    }
   }
   snapshot
   log_event OK READY 'resonance is up'

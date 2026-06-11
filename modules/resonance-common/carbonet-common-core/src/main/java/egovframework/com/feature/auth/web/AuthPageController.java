@@ -67,6 +67,24 @@ public class AuthPageController {
             if (adminLoginRequest) {
                 return "en".equals(resolvedLanguage) ? "redirect:/en/admin/" : "redirect:/admin/";
             }
+            HttpSession session = request.getSession(false);
+            if (session != null) {
+                Object savedRequest = session.getAttribute("SPRING_SECURITY_SAVED_REQUEST");
+                if (savedRequest instanceof DefaultSavedRequest) {
+                    String redirectUrl = ((DefaultSavedRequest) savedRequest).getRedirectUrl();
+                    if (!ObjectUtils.isEmpty(redirectUrl)) {
+                        int queryIndex = redirectUrl.indexOf('?');
+                        String cleanUrl = queryIndex > 0 ? redirectUrl.substring(0, queryIndex) : redirectUrl;
+                        String requestUri = request.getRequestURI();
+                        if (!ObjectUtils.isEmpty(requestUri) && !requestUri.equals(cleanUrl)
+                                && !cleanUrl.contains("/signin") && !cleanUrl.contains("/login")
+                                && !cleanUrl.endsWith("/signin") && !cleanUrl.endsWith("/login")) {
+                            return "redirect:" + cleanUrl;
+                        }
+                    }
+                }
+                session.removeAttribute("SPRING_SECURITY_SAVED_REQUEST");
+            }
             return "en".equals(resolvedLanguage) ? "redirect:/en/home" : "redirect:/home";
         }
     }

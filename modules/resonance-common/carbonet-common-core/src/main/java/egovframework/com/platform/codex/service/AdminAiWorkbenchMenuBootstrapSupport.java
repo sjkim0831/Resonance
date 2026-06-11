@@ -37,6 +37,17 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
     private static final String NEW_PAGE_MENU_CODE = "A1900106";
     private static final String HERMES_WORKFLOW_MENU_CODE = "A1900107";
     private static final String SYSTEM_AUDIT_LOG_MENU_CODE = "A0060303";
+    private static final String AI_MANAGEMENT_GROUP_CODE = "A19020";
+    private static final String AI_MANAGEMENT_GROUP_NAME = "AI 관리";
+    private static final String AI_MANAGEMENT_GROUP_NAME_EN = "AI Management";
+    private static final String AI_DASHBOARD_MENU_CODE = "A1902001";
+    private static final String AI_MODELS_MENU_CODE = "A1902002";
+    private static final String AI_TRAINING_MENU_CODE = "A1902003";
+    private static final String AI_RAG_MENU_CODE = "A1902004";
+    private static final String AI_AGENTS_MENU_CODE = "A1902005";
+    private static final String AI_LOGS_MENU_CODE = "A1902006";
+    private static final String AI_QUALITY_MENU_CODE = "A1902007";
+    private static final String AI_OBSERVABILITY_MENU_CODE = "A1902008";
     private static final String ACTOR_ID = "SYSTEM_BOOTSTRAP";
     private static final List<String> STANDARD_ADMIN_ROLES = Arrays.asList(
             "ROLE_SYSTEM_MASTER",
@@ -58,6 +69,14 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
         provision("wbs-management", buildWbsManagementRequest());
         provision("new-page", buildNewPageRequest());
         provision("hermes-workflow", buildHermesWorkflowRequest());
+        provision("ai-dashboard", buildAiDashboardRequest());
+        provision("ai-models", buildAiModelsRequest());
+        provision("ai-training", buildAiTrainingRequest());
+        provision("ai-rag", buildAiRagRequest());
+        provision("ai-agents", buildAiAgentsRequest());
+        provision("ai-logs", buildAiLogsRequest());
+        provision("ai-quality", buildAiQualityRequest());
+        provision("ai-observability", buildAiObservabilityRequest());
         cleanupLegacyMenus();
     }
 
@@ -191,6 +210,142 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
         );
     }
 
+    private CodexProvisionRequest buildAiDashboardRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-DASHBOARD",
+                "/admin/ai/dashboard",
+                aiPageRequest(AI_DASHBOARD_MENU_CODE, "AI 대시보드", "AI Dashboard", "/admin/ai/dashboard", "dashboard"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_DASHBOARD_MENU_CODE, AI_DASHBOARD_MENU_CODE + "_VIEW", "AI 대시보드 조회", "View AI Dashboard", "AI dashboard page access")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiModelsRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-MODELS",
+                "/admin/ai/models",
+                aiPageRequest(AI_MODELS_MENU_CODE, "모델 관리", "Model Management", "/admin/ai/models", "智能模型"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_MODELS_MENU_CODE, AI_MODELS_MENU_CODE + "_VIEW", "모델 관리 조회", "View Model Management", "Model management page access"),
+                        featureRequest(AI_MODELS_MENU_CODE, AI_MODELS_MENU_CODE + "_CREATE", "모델 등록", "Create Model", "Model registration"),
+                        featureRequest(AI_MODELS_MENU_CODE, AI_MODELS_MENU_CODE + "_EDIT", "모델 편집", "Edit Model", "Model editing")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiTrainingRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-TRAINING",
+                "/admin/ai/training",
+                aiPageRequest(AI_TRAINING_MENU_CODE, "학습 관리", "AI Training", "/admin/ai/training", "school"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_TRAINING_MENU_CODE, AI_TRAINING_MENU_CODE + "_VIEW", "학습 관리 조회", "View AI Training", "Training page access"),
+                        featureRequest(AI_TRAINING_MENU_CODE, AI_TRAINING_MENU_CODE + "_CREATE", "학습 작업 생성", "Create Training Job", "Training job creation"),
+                        featureRequest(AI_TRAINING_MENU_CODE, AI_TRAINING_MENU_CODE + "_EXECUTE", "학습 실행", "Execute Training", "Training execution")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiRagRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-RAG",
+                "/admin/ai/rag",
+                aiPageRequest(AI_RAG_MENU_CODE, "RAG 관리", "RAG Management", "/admin/ai/rag", " armazenamento"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_RAG_MENU_CODE, AI_RAG_MENU_CODE + "_VIEW", "RAG 관리 조회", "View RAG Management", "RAG management page access"),
+                        featureRequest(AI_RAG_MENU_CODE, AI_RAG_MENU_CODE + "_CREATE", "문서 업로드", "Upload Document", "Document upload"),
+                        featureRequest(AI_RAG_MENU_CODE, AI_RAG_MENU_CODE + "_EDIT", "RAG 편집", "Edit RAG", "RAG editing")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiAgentsRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-AGENTS",
+                "/admin/ai/agents",
+                aiPageRequest(AI_AGENTS_MENU_CODE, "에이전트 관리", "Agent Management", "/admin/ai/agents", "psychology"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_AGENTS_MENU_CODE, AI_AGENTS_MENU_CODE + "_VIEW", "에이전트 관리 조회", "View Agent Management", "Agent management page access"),
+                        featureRequest(AI_AGENTS_MENU_CODE, AI_AGENTS_MENU_CODE + "_CREATE", "에이전트 등록", "Create Agent", "Agent creation"),
+                        featureRequest(AI_AGENTS_MENU_CODE, AI_AGENTS_MENU_CODE + "_EDIT", "에이전트 편집", "Edit Agent", "Agent editing")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiLogsRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-LOGS",
+                "/admin/ai/logs",
+                aiPageRequest(AI_LOGS_MENU_CODE, "로그 관리", "Log Management", "/admin/ai/logs", "receipt_long"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_LOGS_MENU_CODE, AI_LOGS_MENU_CODE + "_VIEW", "로그 관리 조회", "View Log Management", "Log management page access"),
+                        featureRequest(AI_LOGS_MENU_CODE, AI_LOGS_MENU_CODE + "_EXPORT", "로그 내보내기", "Export Logs", "Log export")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiQualityRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-QUALITY",
+                "/admin/ai/quality",
+                aiPageRequest(AI_QUALITY_MENU_CODE, "품질 관리", "Quality Management", "/admin/ai/quality", "verified"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_QUALITY_MENU_CODE, AI_QUALITY_MENU_CODE + "_VIEW", "품질 관리 조회", "View Quality Management", "Quality management page access"),
+                        featureRequest(AI_QUALITY_MENU_CODE, AI_QUALITY_MENU_CODE + "_EVALUATE", "응답 평가", "Evaluate Response", "Response evaluation")
+                }
+        );
+    }
+
+    private CodexProvisionRequest buildAiObservabilityRequest() {
+        return aiManagementMenuRequest(
+                "BOOTSTRAP-AI-OBSERVABILITY",
+                "/admin/ai/observability",
+                aiPageRequest(AI_OBSERVABILITY_MENU_CODE, "AI 관측", "AI Observability", "/admin/ai/observability", "visibility"),
+                new CodexProvisionRequest.FeatureRequest[]{
+                        featureRequest(AI_OBSERVABILITY_MENU_CODE, AI_OBSERVABILITY_MENU_CODE + "_VIEW", "AI 관측 조회", "View AI Observability", "Observability page access"),
+                        featureRequest(AI_OBSERVABILITY_MENU_CODE, AI_OBSERVABILITY_MENU_CODE + "_TRACE", "추적 분석", "Trace Analysis", "Trace analysis")
+                }
+        );
+    }
+
+    private CodexProvisionRequest aiManagementMenuRequest(String registrationId, String menuUrl,
+            CodexProvisionRequest.PageRequest pageRequest, CodexProvisionRequest.FeatureRequest[] features) {
+        String[] featureCodes = new String[features.length];
+        for (int i = 0; i < features.length; i++) {
+            featureCodes[i] = features[i].getFeatureCode();
+        }
+        return PlatformMenuProvisionSupport.adminMenuRequest(
+                registrationId,
+                ACTOR_ID,
+                menuUrl,
+                pageRequest,
+                features,
+                new CodexProvisionRequest.AuthorRequest[]{
+                        authorRequest("ROLE_SYSTEM_MASTER", "시스템 마스터", "System Master", featureCodes),
+                        authorRequest("ROLE_SYSTEM_ADMIN", "시스템 관리자", "System Administrator", featureCodes),
+                        authorRequest("ROLE_ADMIN", "일반 관리자", "General Administrator", featureCodes)
+                }
+        );
+    }
+
+    private CodexProvisionRequest.PageRequest aiPageRequest(String menuCode, String nameKo, String nameEn,
+            String menuUrl, String menuIcon) {
+        return PlatformMenuProvisionSupport.pageRequest(
+                DOMAIN_CODE,
+                DOMAIN_NAME,
+                DOMAIN_NAME_EN,
+                AI_MANAGEMENT_GROUP_CODE,
+                AI_MANAGEMENT_GROUP_NAME,
+                AI_MANAGEMENT_GROUP_NAME_EN,
+                menuCode,
+                nameKo,
+                nameEn,
+                menuUrl,
+                menuIcon
+        );
+    }
+
     private void reconcileStandardRoleAssignments(String registrationId) {
         Map<String, Set<String>> desiredByRole = buildDesiredFeatureCodesByRole();
         Set<String> targetFeatureCodes = new LinkedHashSet<>();
@@ -238,7 +393,26 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 WBS_MENU_CODE + "_EDIT",
                 NEW_PAGE_MENU_CODE + "_VIEW",
                 HERMES_WORKFLOW_MENU_CODE + "_VIEW",
-                SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW"
+                SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW",
+                AI_DASHBOARD_MENU_CODE + "_VIEW",
+                AI_MODELS_MENU_CODE + "_VIEW",
+                AI_MODELS_MENU_CODE + "_CREATE",
+                AI_MODELS_MENU_CODE + "_EDIT",
+                AI_TRAINING_MENU_CODE + "_VIEW",
+                AI_TRAINING_MENU_CODE + "_CREATE",
+                AI_TRAINING_MENU_CODE + "_EXECUTE",
+                AI_RAG_MENU_CODE + "_VIEW",
+                AI_RAG_MENU_CODE + "_CREATE",
+                AI_RAG_MENU_CODE + "_EDIT",
+                AI_AGENTS_MENU_CODE + "_VIEW",
+                AI_AGENTS_MENU_CODE + "_CREATE",
+                AI_AGENTS_MENU_CODE + "_EDIT",
+                AI_LOGS_MENU_CODE + "_VIEW",
+                AI_LOGS_MENU_CODE + "_EXPORT",
+                AI_QUALITY_MENU_CODE + "_VIEW",
+                AI_QUALITY_MENU_CODE + "_EVALUATE",
+                AI_OBSERVABILITY_MENU_CODE + "_VIEW",
+                AI_OBSERVABILITY_MENU_CODE + "_TRACE"
         ));
         desired.put("ROLE_SYSTEM_ADMIN", linkedSet(
                 HELP_MENU_CODE + "_VIEW",
@@ -254,7 +428,26 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 WBS_MENU_CODE + "_EDIT",
                 NEW_PAGE_MENU_CODE + "_VIEW",
                 HERMES_WORKFLOW_MENU_CODE + "_VIEW",
-                SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW"
+                SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW",
+                AI_DASHBOARD_MENU_CODE + "_VIEW",
+                AI_MODELS_MENU_CODE + "_VIEW",
+                AI_MODELS_MENU_CODE + "_CREATE",
+                AI_MODELS_MENU_CODE + "_EDIT",
+                AI_TRAINING_MENU_CODE + "_VIEW",
+                AI_TRAINING_MENU_CODE + "_CREATE",
+                AI_TRAINING_MENU_CODE + "_EXECUTE",
+                AI_RAG_MENU_CODE + "_VIEW",
+                AI_RAG_MENU_CODE + "_CREATE",
+                AI_RAG_MENU_CODE + "_EDIT",
+                AI_AGENTS_MENU_CODE + "_VIEW",
+                AI_AGENTS_MENU_CODE + "_CREATE",
+                AI_AGENTS_MENU_CODE + "_EDIT",
+                AI_LOGS_MENU_CODE + "_VIEW",
+                AI_LOGS_MENU_CODE + "_EXPORT",
+                AI_QUALITY_MENU_CODE + "_VIEW",
+                AI_QUALITY_MENU_CODE + "_EVALUATE",
+                AI_OBSERVABILITY_MENU_CODE + "_VIEW",
+                AI_OBSERVABILITY_MENU_CODE + "_TRACE"
         ));
         desired.put("ROLE_ADMIN", linkedSet(
                 HELP_MENU_CODE + "_VIEW",
@@ -267,7 +460,18 @@ public class AdminAiWorkbenchMenuBootstrapSupport {
                 WBS_MENU_CODE + "_EDIT",
                 NEW_PAGE_MENU_CODE + "_VIEW",
                 HERMES_WORKFLOW_MENU_CODE + "_VIEW",
-                SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW"
+                SYSTEM_AUDIT_LOG_MENU_CODE + "_VIEW",
+                AI_DASHBOARD_MENU_CODE + "_VIEW",
+                AI_MODELS_MENU_CODE + "_VIEW",
+                AI_MODELS_MENU_CODE + "_CREATE",
+                AI_TRAINING_MENU_CODE + "_VIEW",
+                AI_RAG_MENU_CODE + "_VIEW",
+                AI_RAG_MENU_CODE + "_CREATE",
+                AI_AGENTS_MENU_CODE + "_VIEW",
+                AI_AGENTS_MENU_CODE + "_CREATE",
+                AI_LOGS_MENU_CODE + "_VIEW",
+                AI_QUALITY_MENU_CODE + "_VIEW",
+                AI_OBSERVABILITY_MENU_CODE + "_VIEW"
         ));
         desired.put("ROLE_OPERATION_ADMIN", Collections.emptySet());
         return desired;
