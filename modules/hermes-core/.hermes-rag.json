@@ -1,0 +1,6 @@
+{
+  "generatedAt": "2026-05-28T13:37:04+00:00",
+  "manifestPath": "/opt/Resonance/data/ai-runtime/hermes-combined-rag-manifest.json",
+  "dbPath": "/opt/Resonance/data/ai-runtime/hermes-rag-vector.sqlite3",
+  "queryCommand": "python3 /opt/Resonance/ops/scripts/query-hermes-rag.py \"검색어\" --limit 8"
+}

@@ -1,0 +1,33 @@
+# Code Generation Prompt for M2.7
+
+You are an expert programmer for the Resonance Framework.
+
+## Context
+- Framework: Resonance (Python + React, Spring Boot compatible patterns)
+- Structure: /common (shared) + /projects/{name} (project-specific)
+- Adapter Pattern: Bridge common modules to projects
+
+## Task
+Generate {type} code for:
+- Common module: {common_module}
+- Project: {project}
+- Name: {name}
+- Entity: {entity}
+
+## Requirements
+1. Follow framework conventions
+2. Use type hints (Python) / TypeScript types
+3. Include docstrings/comments
+4. Implement proper error handling
+5. Match existing code style
+
+## Output Format
+Return JSON:
+{{
+  "file_path": "relative/path/to/file.ext",
+  "content": "full file content",
+  "language": "python|typescript",
+  "confidence": 0.0-1.0
+}}
+
+Generate now.

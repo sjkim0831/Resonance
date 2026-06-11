@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="egovframework.com.feature.admin.framework.screenbuilder.mapper.ScreenBuilderDraftStorageMapper">
+
+    <select id="selectDraft" resultType="map">
+        SELECT
+            MENU_CODE AS menuCode,
+            BUILDER_ID AS builderId,
+            VERSION_ID AS versionId,
+            PAGE_ID AS pageId,
+            MENU_TITLE AS menuTitle,
+            MENU_URL AS menuUrl,
+            TEMPLATE_TYPE AS templateType,
+            AUTHORITY_PROFILE_JSON AS authorityProfileJson,
+            VERSION_STATUS AS versionStatus,
+            NODES_JSON AS nodesJson,
+            EVENTS_JSON AS eventsJson,
+            CREATED_AT AS createdAt,
+            UPDATED_AT AS updatedAt
+        FROM SB_SCREEN_BUILDER_DRAFT
+        WHERE MENU_CODE = #{menuCode}
+    </select>
+
+    <select id="countDraft" resultType="int">
+        SELECT COUNT(*) FROM SB_SCREEN_BUILDER_DRAFT
+        WHERE MENU_CODE = #{menuCode}
+    </select>
+
+    <insert id="insertDraft" parameterType="map">
+        INSERT INTO SB_SCREEN_BUILDER_DRAFT (
+            MENU_CODE,
+            BUILDER_ID,
+            VERSION_ID,
+            PAGE_ID,
+            MENU_TITLE,
+            MENU_URL,
+            TEMPLATE_TYPE,
+            AUTHORITY_PROFILE_JSON,
+            VERSION_STATUS,
+            NODES_JSON,
+            EVENTS_JSON,
+            CREATED_AT,
+            UPDATED_AT
+        ) VALUES (
+            #{menuCode},
+            #{builderId},
+            #{versionId},
+            #{pageId},
+            #{menuTitle},
+            #{menuUrl},
+            #{templateType},
+            #{authorityProfileJson},
+            #{versionStatus},
+            #{nodesJson},
+            #{eventsJson},
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateDraft" parameterType="map">
+        UPDATE SB_SCREEN_BUILDER_DRAFT
+        SET
+            BUILDER_ID = #{builderId},
+            VERSION_ID = #{versionId},
+            PAGE_ID = #{pageId},
+            MENU_TITLE = #{menuTitle},
+            MENU_URL = #{menuUrl},
+            TEMPLATE_TYPE = #{templateType},
+            AUTHORITY_PROFILE_JSON = #{authorityProfileJson},
+            VERSION_STATUS = #{versionStatus},
+            NODES_JSON = #{nodesJson},
+            EVENTS_JSON = #{eventsJson},
+            UPDATED_AT = CURRENT_TIMESTAMP
+        WHERE MENU_CODE = #{menuCode}
+    </update>
+
+    <delete id="deleteDraft">
+        DELETE FROM SB_SCREEN_BUILDER_DRAFT
+        WHERE MENU_CODE = #{menuCode}
+    </delete>
+
+    <select id="selectAllDrafts" resultType="map">
+        SELECT
+            MENU_CODE AS menuCode,
+            BUILDER_ID AS builderId,
+            VERSION_ID AS versionId,
+            PAGE_ID AS pageId,
+            MENU_TITLE AS menuTitle,
+            MENU_URL AS menuUrl,
+            TEMPLATE_TYPE AS templateType,
+            AUTHORITY_PROFILE_JSON AS authorityProfileJson,
+            VERSION_STATUS AS versionStatus,
+            NODES_JSON AS nodesJson,
+            EVENTS_JSON AS eventsJson,
+            CREATED_AT AS createdAt,
+            UPDATED_AT AS updatedAt
+        FROM SB_SCREEN_BUILDER_DRAFT
+        ORDER BY UPDATED_AT DESC
+    </select>
+
+    <select id="selectHistoryVersion" resultType="map">
+        SELECT
+            MENU_CODE AS menuCode,
+            BUILDER_ID AS builderId,
+            VERSION_ID AS versionId,
+            PAGE_ID AS pageId,
+            MENU_TITLE AS menuTitle,
+            MENU_URL AS menuUrl,
+            TEMPLATE_TYPE AS templateType,
+            VERSION_STATUS AS versionStatus,
+            NODES_JSON AS nodesJson,
+            EVENTS_JSON AS eventsJson,
+            CREATED_AT AS createdAt
+        FROM SB_SCREEN_BUILDER_HISTORY
+        WHERE MENU_CODE = #{menuCode} AND VERSION_ID = #{versionId}
+    </select>
+
+    <select id="countHistoryVersion" resultType="int">
+        SELECT COUNT(*) FROM SB_SCREEN_BUILDER_HISTORY
+        WHERE MENU_CODE = #{menuCode} AND VERSION_ID = #{versionId}
+    </select>
+
+    <insert id="insertHistoryVersion" parameterType="map">
+        INSERT INTO SB_SCREEN_BUILDER_HISTORY (
+            MENU_CODE,
+            BUILDER_ID,
+            VERSION_ID,
+            PAGE_ID,
+            MENU_TITLE,
+            MENU_URL,
+            TEMPLATE_TYPE,
+            VERSION_STATUS,
+            NODES_JSON,
+            EVENTS_JSON,
+            CREATED_AT
+        ) VALUES (
+            #{menuCode},
+            #{builderId},
+            #{versionId},
+            #{pageId},
+            #{menuTitle},
+            #{menuUrl},
+            #{templateType},
+            #{versionStatus},
+            #{nodesJson},
+            #{eventsJson},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <select id="selectHistoryVersions" resultType="map">
+        SELECT
+            MENU_CODE AS menuCode,
+            BUILDER_ID AS builderId,
+            VERSION_ID AS versionId,
+            PAGE_ID AS pageId,
+            MENU_TITLE AS menuTitle,
+            MENU_URL AS menuUrl,
+            TEMPLATE_TYPE AS templateType,
+            VERSION_STATUS AS versionStatus,
+            NODES_JSON AS nodesJson,
+            EVENTS_JSON AS eventsJson,
+            CREATED_AT AS createdAt
+        FROM SB_SCREEN_BUILDER_HISTORY
+        WHERE MENU_CODE = #{menuCode}
+        ORDER BY CREATED_AT DESC
+    </select>
+
+    <select id="selectHistoryMenuCodes" resultType="string">
+        SELECT DISTINCT MENU_CODE
+        FROM SB_SCREEN_BUILDER_HISTORY
+        ORDER BY MENU_CODE
+    </select>
+
+    <select id="selectStatusSummary" resultType="map">
+        SELECT
+            MENU_CODE AS menuCode,
+            LANG_CODE AS langCode,
+            SUMMARY_JSON AS summaryJson,
+            UPDATED_AT AS updatedAt
+        FROM SB_STATUS_SUMMARY
+        WHERE MENU_CODE = #{menuCode} AND LANG_CODE = #{langCode}
+    </select>
+
+    <select id="countStatusSummary" resultType="int">
+        SELECT COUNT(*) FROM SB_STATUS_SUMMARY
+        WHERE MENU_CODE = #{menuCode} AND LANG_CODE = #{langCode}
+    </select>
+
+    <insert id="insertStatusSummary" parameterType="map">
+        INSERT INTO SB_STATUS_SUMMARY (
+            MENU_CODE,
+            LANG_CODE,
+            SUMMARY_JSON,
+            UPDATED_AT
+        ) VALUES (
+            #{menuCode},
+            #{langCode},
+            #{summaryJson},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateStatusSummary" parameterType="map">
+        UPDATE SB_STATUS_SUMMARY
+        SET
+            SUMMARY_JSON = #{summaryJson},
+            UPDATED_AT = CURRENT_TIMESTAMP
+        WHERE MENU_CODE = #{menuCode} AND LANG_CODE = #{langCode}
+    </update>
+
+    <delete id="deleteStatusSummary">
+        DELETE FROM SB_STATUS_SUMMARY
+        WHERE MENU_CODE = #{menuCode} AND LANG_CODE = #{langCode}
+    </delete>
+
+    <delete id="deleteAllStatusSummaries">
+        DELETE FROM SB_STATUS_SUMMARY
+    </delete>
+
+</mapper>

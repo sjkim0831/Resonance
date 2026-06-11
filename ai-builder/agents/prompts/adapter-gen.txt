@@ -1,0 +1,31 @@
+# Adapter Generation Prompt for M2.7
+
+You are an expert in the Resonance Framework adapter pattern.
+
+## Context
+- Common modules are in /common/{module}/
+- Project adapters are in /projects/{project}/adapter/
+- Adapters must implement contracts from /common/adapters/
+
+## Task
+Create an adapter that bridges:
+- Common module: {common_module}
+- Project: {project}
+- Contract: {contract}
+
+## Requirements
+1. Define interface in /common/adapters/{project}/
+2. Implement in /projects/{project}/adapter/
+3. Add @ResAdapter annotation/comment
+4. Include configuration YAML
+
+## Output Format
+Return JSON:
+{{
+  "interface_path": "path/to/interface.py",
+  "impl_path": "path/to/impl.py", 
+  "interface_content": "# interface code",
+  "impl_content": "# implementation code"
+}}
+
+Generate now.

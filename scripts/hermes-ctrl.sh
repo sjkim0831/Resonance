@@ -1,0 +1,1 @@
+/opt/Resonance/hermes-ctrl.sh
