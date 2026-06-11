@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchBatchManagementPage } from "../../lib/api/ops";
 import type { BatchManagementPagePayload } from "../../lib/api/opsTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, CollectionResultPanel, GridToolbar, PageStatusNotice, SummaryMetricCard, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -113,6 +114,7 @@ function BatchCloseoutPanel({
 
 export function BatchManagementMigrationPage() {
   const en = isEnglish();
+  void useFrontendSession();
   const pageState = useAsyncValue<BatchManagementPagePayload>(fetchBatchManagementPage, [], {});
   const page = pageState.value;
   const jobs = ((page?.batchJobRows || []) as Array<Record<string, string>>);
@@ -123,6 +125,22 @@ export function BatchManagementMigrationPage() {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [jobStatus, setJobStatus] = useState("ALL");
   const [nodeStatus, setNodeStatus] = useState("ALL");
+
+  useEffect(() => {
+    function syncFromNavigation() {
+      const params = new URLSearchParams(window.location.search);
+      setSearchKeyword(params.get("keyword") || "");
+      setJobStatus(params.get("jobStatus") || "ALL");
+      setNodeStatus(params.get("nodeStatus") || "ALL");
+    }
+    const navigationEventName = getNavigationEventName();
+    window.addEventListener("popstate", syncFromNavigation);
+    window.addEventListener(navigationEventName, syncFromNavigation);
+    return () => {
+      window.removeEventListener("popstate", syncFromNavigation);
+      window.removeEventListener(navigationEventName, syncFromNavigation);
+    };
+  }, []);
 
   const keyword = searchKeyword.trim().toLowerCase();
   const filteredJobs = useMemo(() => jobs.filter((row) => {

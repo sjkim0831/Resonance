@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchAdminListPage } from "../../lib/api/adminMember";
 import type { AdminListPagePayload } from "../../lib/api/memberTypes";
-import { buildLocalizedPath } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, AdminTable, MemberButton, MemberPagination, MemberSectionToolbar, PageStatusNotice } from "../member/common";
 import { CollectionResultPanel, SummaryMetricCard } from "../admin-ui/common";
@@ -46,6 +47,7 @@ function statusBadgeClass(code: string) {
 }
 
 export function AdminListMigrationPage() {
+  const sessionState = useFrontendSession();
   const [page, setPage] = useState<AdminListPagePayload | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [status, setStatus] = useState("");
@@ -56,11 +58,36 @@ export function AdminListMigrationPage() {
   const currentPage = Math.max(1, Number(page?.pageIndex || 1));
 
   useEffect(() => {
+    function syncFiltersFromLocation() {
+      const params = new URLSearchParams(window.location.search);
+      const nextKeyword = params.get("searchKeyword") || "";
+      const nextStatus = params.get("sbscrbSttus") || "";
+      const nextPageIndex = Number(params.get("pageIndex") || "1");
+      if (nextKeyword !== searchKeyword) setSearchKeyword(nextKeyword);
+      if (nextStatus !== status) setStatus(nextStatus);
+      if (Number.isFinite(nextPageIndex) && nextPageIndex > 0 && nextPageIndex !== currentPage) {
+        load({ pageIndex: nextPageIndex, searchKeyword: nextKeyword, sbscrbSttus: nextStatus }).catch((err: Error) => setError(err.message));
+      }
+    }
+    const eventName = getNavigationEventName();
+    window.addEventListener(eventName, syncFiltersFromLocation);
+    window.addEventListener("popstate", syncFiltersFromLocation);
+    return () => {
+      window.removeEventListener(eventName, syncFiltersFromLocation);
+      window.removeEventListener("popstate", syncFiltersFromLocation);
+    };
+  }, [currentPage, searchKeyword, status]);
+
+  useEffect(() => {
     if (!page) {
       return;
     }
+    const session = sessionState.value;
     logGovernanceScope("PAGE", "admin-list", {
       route: window.location.pathname,
+      actorUserId: session?.userId || "",
+      actorAuthorCode: session?.authorCode || "",
+      actorInsttId: session?.insttId || "",
       canView: !!page.canViewAdminList,
       canUseActions: !!page.canUseAdminListActions,
       currentPage,
@@ -74,7 +101,7 @@ export function AdminListMigrationPage() {
       currentPage,
       totalPages
     });
-  }, [currentPage, page, searchKeyword, status, totalPages]);
+  }, [currentPage, page, searchKeyword, sessionState.value, status, totalPages]);
 
   async function load(next?: { pageIndex?: number; searchKeyword?: string; sbscrbSttus?: string; }) {
     logGovernanceScope("ACTION", "admin-list-load", {

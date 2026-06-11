@@ -8,7 +8,7 @@ import { fetchAuditEvents } from "../../platform/observability/observability";
 import { buildObservabilityPath } from "../../platform/routes/platformPaths";
 import { fetchScreenBuilderPage, fetchScreenBuilderPreview, fetchScreenCommandPage } from "../../lib/api/platform";
 import type { ScreenCommandPagePayload } from "../../lib/api/platformTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ContextKeyStrip } from "../admin-ui/ContextKeyStrip";
 import { CopyableCodeBlock, DiagnosticCard, GridToolbar, KeyValueGridPanel, MemberLinkButton, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
@@ -164,6 +164,17 @@ export function ScreenRuntimeMigrationPage() {
     runtimeBlocked,
     screenBuilderAudits.length
   ]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void commandState.reload();
+      void pageState.reload();
+      void previewState.reload();
+      void sessionState.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [commandState, pageState, previewState, sessionState]);
 
   return (
     <AdminPageShell

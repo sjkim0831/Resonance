@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { readBootstrappedEmissionDataHistoryPageData } from "../../lib/api/bootstrap";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedEmissionDataHistoryPageData, readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { fetchEmissionDataHistoryPage } from "../../lib/api/emission";
 import type { EmissionDataHistoryPagePayload } from "../../lib/api/emissionTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, CollectionResultPanel, GridToolbar, MemberPagination, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -116,10 +119,43 @@ function matchesInitialHistoryPayload(payload: EmissionDataHistoryPagePayload | 
 
 export function EmissionDataHistoryMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+
   const returnUrl = readReturnUrl();
   const initial = useMemo<Filters>(() => readInitialFilters(), []);
-  const initialPayload = useMemo(() => readBootstrappedEmissionDataHistoryPageData(), []);
-  const canUseInitialPayload = matchesInitialHistoryPayload(initialPayload, initial);
+  const initialPagePayload = useMemo(() => readBootstrappedEmissionDataHistoryPageData(), []);
+  const canUseInitialPayload = matchesInitialHistoryPayload(initialPagePayload, initial);
   const [filters, setFilters] = useState(initial);
   const [draft, setDraft] = useState(initial);
   const pageState = useAsyncValue<EmissionDataHistoryPagePayload>(() => fetchEmissionDataHistoryPage(filters), [filters.pageIndex, filters.searchKeyword, filters.changeType, filters.changeTarget], {
@@ -191,6 +227,9 @@ export function EmissionDataHistoryMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-data-history", {
       language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
       pageIndex: currentPage,
       searchKeyword: filters.searchKeyword,
       changeType: filters.changeType,
@@ -202,7 +241,7 @@ export function EmissionDataHistoryMigrationPage() {
       totalPages,
       currentPage
     });
-  }, [currentPage, en, filters.changeTarget, filters.changeType, filters.searchKeyword, rows.length, totalPages]);
+  }, [currentPage, en, filters.changeTarget, filters.changeType, filters.searchKeyword, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, rows.length, totalPages]);
 
   function resolveMetaLabel(meta: Record<string, Record<string, unknown>>, code: string, fallback: string) {
     if (!code) {
@@ -219,20 +258,21 @@ export function EmissionDataHistoryMigrationPage() {
   }
 
   return (
-    <AdminPageShell
-      breadcrumbs={[
-        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: en ? "Calculation & Certification" : "산정·인증" },
-        ...(returnUrl ? [{ label: en ? "Emission Result Detail" : "산정 결과 상세", href: returnUrl }] : []),
-        { label: en ? "Data Change History" : "데이터 변경 이력" }
-      ]}
-      title={en ? "Data Change History" : "데이터 변경 이력"}
-      subtitle={en ? "Track before and after values for emission calculation data, approval states, and site metadata." : "배출 산정 데이터, 승인 상태, 배출지 메타데이터의 변경 전후 값을 추적합니다."}
-    >
-      <AdminWorkspacePageFrame>
-        {pageState.error ? <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice> : null}
+    <>
+      <AdminPageShell
+        breadcrumbs={[
+          { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
+          { label: en ? "Calculation & Certification" : "산정·인증" },
+          ...(returnUrl ? [{ label: en ? "Emission Result Detail" : "산정 결과 상세", href: returnUrl }] : []),
+          { label: en ? "Data Change History" : "데이터 변경 이력" }
+        ]}
+        title={en ? "Data Change History" : "데이터 변경 이력"}
+        subtitle={en ? "Track before and after values for emission calculation data, approval states, and site metadata." : "배출 산정 데이터, 승인 상태, 배출지 메타데이터의 변경 전후 값을 추적합니다."}
+      >
+        <AdminWorkspacePageFrame>
+          {pageState.error ? <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice> : null}
 
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-4" data-help-id="emission-data-history-summary">
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-4" data-help-id="emission-data-history-summary">
           {summaryCards.map((card, index) => (
             <SummaryMetricCard
               key={`${stringOf(card, "title")}-${index}`}
@@ -365,5 +405,63 @@ export function EmissionDataHistoryMigrationPage() {
         </section>
       </AdminWorkspacePageFrame>
     </AdminPageShell>
+
+    {/* Mobile Menu Button */}
+    <button
+      id="mobile-menu-toggle"
+      className="fixed bottom-6 right-6 z-50 xl:hidden w-12 h-12 rounded-full bg-[var(--kr-gov-blue)] text-white shadow-lg flex items-center justify-center"
+      type="button"
+      aria-controls="mobile-menu"
+      aria-expanded={mobileMenuOpen}
+      aria-label={en ? "Open menu" : "메뉴 열기"}
+      onClick={() => setMobileMenuOpen((current) => !current)}
+    >
+      <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+    </button>
+
+    {/* Mobile Menu Drawer */}
+    <div id="mobile-menu" className={`${mobileMenuOpen ? "" : "hidden"} xl:hidden fixed inset-0 z-[70]`} aria-hidden={!mobileMenuOpen}>
+      <button type="button" className="absolute inset-0 bg-black/50" aria-label={en ? "Close menu" : "메뉴 닫기"} onClick={() => setMobileMenuOpen(false)} />
+      <aside className="absolute top-0 right-0 h-full w-[280px] bg-white shadow-xl overflow-y-auto">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b border-[var(--kr-gov-border-light)] bg-white">
+          <strong className="text-lg font-bold text-[var(--kr-gov-text-primary)]">{en ? "Menu" : "메뉴"}</strong>
+          <button className="w-10 h-10 p-0 text-[var(--kr-gov-text-secondary)]" type="button" onClick={() => setMobileMenuOpen(false)}>
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <nav className="p-4">
+          {homeMenu.length === 0 ? (
+            <p className="text-sm text-[var(--kr-gov-text-secondary)]">{en ? "No menu items" : "메뉴 항목이 없습니다."}</p>
+          ) : (
+            <ul className="space-y-2">
+              {homeMenu.map((item, index) => (
+                <li key={`${item.label || "menu"}-${index}`}>
+                  <a
+                    className="block px-4 py-3 rounded-lg hover:bg-gray-50 text-[var(--kr-gov-text-primary)] font-medium"
+                    href={item.url || "#"}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label || ""}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-6 pt-6 border-t border-[var(--kr-gov-border-light)]">
+            <button
+              className="w-full px-4 py-3 rounded-lg bg-red-50 text-red-600 font-bold hover:bg-red-100"
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                void session.logout();
+              }}
+            >
+              {en ? "Logout" : "로그아웃"}
+            </button>
+          </div>
+        </nav>
+      </aside>
+    </div>
+    </>
   );
 }

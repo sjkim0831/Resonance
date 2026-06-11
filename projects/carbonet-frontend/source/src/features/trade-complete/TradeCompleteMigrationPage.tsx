@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { HomePayload } from "../home-entry/homeEntryTypes";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminInput, AdminSelect, MemberButton, PageStatusNotice } from "../member/common";
 
 type AlertTone = "danger" | "success" | "warning" | "signal";
@@ -515,9 +519,20 @@ export function TradeCompleteMigrationPage() {
   const en = isEnglish();
   const content = CONTENT[en ? "en" : "ko"];
   const session = useFrontendSession();
+  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [riskFilter, setRiskFilter] = useState("ALL");
   const [submittedMessage, setSubmittedMessage] = useState("");
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
 
   const filteredStrategies = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -528,14 +543,37 @@ export function TradeCompleteMigrationPage() {
     });
   }, [content.strategies, riskFilter, searchKeyword]);
 
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+  const mobileMenuItems = useMemo(() => homeMenu.flatMap(item => item.sections?.flatMap(section => section.items || []) || []), [homeMenu]);
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
+
   useEffect(() => {
     logGovernanceScope("PAGE", "trade-complete", {
       language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
       searchKeyword,
       riskFilter,
       visibleStrategyCount: filteredStrategies.length
     });
-  }, [en, filteredStrategies.length, riskFilter, searchKeyword]);
+  }, [en, filteredStrategies.length, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, riskFilter, searchKeyword]);
 
   function handleReportExport() {
     setSubmittedMessage(en
@@ -546,6 +584,40 @@ export function TradeCompleteMigrationPage() {
   return (
     <>
       <InlineStyles />
+      <button
+        className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--kr-gov-blue)] text-white shadow-lg xl:hidden"
+        onClick={() => setMobileMenuOpen((prev) => !prev)}
+        type="button"
+      >
+        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+      </button>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 xl:hidden" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      <div
+        className={`fixed right-0 top-0 z-50 h-full w-72 transform overflow-y-auto bg-white shadow-2xl transition-transform duration-300 xl:hidden ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--kr-gov-border-light)] px-4 py-4">
+          <h2 className="text-lg font-bold">{en ? "Menu" : "메뉴"}</h2>
+          <button onClick={() => setMobileMenuOpen(false)} type="button">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <nav className="p-4">
+          {mobileMenuItems.map((item, idx) => (
+            <a
+              className="block rounded-lg px-4 py-3 text-sm font-medium text-[var(--kr-gov-text-primary)] hover:bg-[var(--kr-gov-bg-gray)]"
+              href={item.url || "#"}
+              key={`${item.label || "menu"}-${idx}`}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
       <div className="trade-complete-shell min-h-screen text-[var(--kr-gov-text-primary)]">
         <UserGovernmentBar
           governmentText={en ? "Official Government Service of the Republic of Korea" : "대한민국 정부 공식 서비스"}

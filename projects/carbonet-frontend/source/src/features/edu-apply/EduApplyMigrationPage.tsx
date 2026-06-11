@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import { logGovernanceScope } from "../../app/policy/debug";
 import {
   UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomeButton, HomeInput, HomeRadio, HomeSelect, HomeTextarea } from "../home-ui/common";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 type StepState = "complete" | "active" | "pending";
 
@@ -117,6 +123,9 @@ function stepClassName(state: StepState) {
 
 export function EduApplyMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0]?.id ?? "");
   const [selectedSessionId, setSelectedSessionId] = useState(SESSIONS[0]?.id ?? "");
   const [deliveryMode, setDeliveryMode] = useState("offline");
@@ -124,6 +133,43 @@ export function EduApplyMigrationPage() {
   const selectedSession = SESSIONS.find((session) => session.id === selectedSessionId) ?? SESSIONS[0];
   const applyPath = buildLocalizedPath("/edu/apply", "/en/edu/apply");
   const listPath = buildLocalizedPath("/edu/course_list", "/en/edu/course_list");
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+  const isLoggedIn = payload.isLoggedIn;
+  const menuCount = homeMenu.length;
+
+  useEffect(() => {
+    logGovernanceScope("PAGE", "edu-apply", {
+      language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount,
+      isLoggedIn
+    });
+  }, [en, mobileMenuOpen, menuCount, isLoggedIn]);
 
   const copy = {
     skip: en ? "Skip to main content" : "본문 바로가기",
@@ -221,6 +267,29 @@ export function EduApplyMigrationPage() {
           </>
         )}
       />
+
+      <button
+        aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
+        className="fixed right-4 top-4 z-[60] flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg lg:hidden"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        type="button"
+      >
+        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+      </button>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-[var(--kr-gov-bg-gray)] lg:hidden">
+          <div className="flex h-full flex-col pt-20">
+            <nav className="flex-1 overflow-y-auto px-4">
+              <div className="space-y-2">
+                <a className="block rounded-lg px-4 py-3 text-lg font-bold hover:bg-slate-100" href={listPath} onClick={() => setMobileMenuOpen(false)}>{copy.navCatalog}</a>
+                <a className="block rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-lg font-bold text-white" href={applyPath} onClick={() => setMobileMenuOpen(false)}>{copy.navApply}</a>
+                <a className="block rounded-lg px-4 py-3 text-lg font-bold hover:bg-slate-100" href="#support-guide" onClick={() => setMobileMenuOpen(false)}>{copy.navSupport}</a>
+              </div>
+            </nav>
+          </div>
+        </div>
+      )}
 
       <main id="main-content">
         <section className="border-b border-[var(--kr-gov-border-light)] bg-white" data-help-id="edu-apply-hero">

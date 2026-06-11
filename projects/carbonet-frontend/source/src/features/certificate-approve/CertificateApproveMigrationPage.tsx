@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, getSearchParam, isEnglish } from "../../lib/navigation/runtime";
 import { CanView } from "../../components/access/CanView";
 import { submitCertificateApproveAction } from "../../lib/api/adminActions";
 import { fetchCertificateApprovePage } from "../../lib/api/adminMember";
-import { buildLocalizedPath, getSearchParam } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { MemberPermissionButton, MEMBER_BUTTON_LABELS, PageStatusNotice } from "../member/common";
 import { MemberStateCard, ReviewModalFrame } from "../member/sections";
@@ -59,6 +63,35 @@ export function CertificateApproveMigrationPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const sessionState = useFrontendSession();
+  const en = isEnglish();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void sessionState.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, sessionState]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +154,11 @@ export function CertificateApproveMigrationPage() {
       actorInsttId: sessionState.value.insttId || "",
       canUseAction: result.canUseAction,
       selectedCount: selectedIds.length,
-      totalCount: result.totalCount
+      totalCount: result.totalCount,
+      language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn)
     });
     logGovernanceScope("COMPONENT", "certificate-approve-table", {
       component: "certificate-approve-table",
@@ -129,7 +166,7 @@ export function CertificateApproveMigrationPage() {
       selectedCount: selectedIds.length,
       currentPage: result.pageIndex
     });
-  }, [result, selectedIds.length, sessionState.value]);
+  }, [result, selectedIds.length, sessionState.value, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
 
   useEffect(() => {
     if (!reviewRow) {

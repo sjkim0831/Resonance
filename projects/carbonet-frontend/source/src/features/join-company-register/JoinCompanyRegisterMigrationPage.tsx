@@ -1,6 +1,7 @@
 import { ChangeEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useExternalScript } from "../../app/hooks/useExternalScript";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
   UserGovernmentBar,
@@ -248,6 +249,7 @@ export function JoinCompanyRegisterMigrationPage() {
   const searchTotalPages = Math.max(0, Number(searchState.totalPages || 0));
   const canViewPage = page?.canViewCompanyRegister !== false;
   const canUseSubmit = page?.canUseCompanyRegister !== false;
+  const session = useFrontendSession();
 
   useExternalScript("//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js");
 
@@ -262,6 +264,7 @@ export function JoinCompanyRegisterMigrationPage() {
   }, [searchPage, searchTotalPages]);
 
   useEffect(() => {
+    void session.reload();
     logGovernanceScope("PAGE", "join-company-register", {
       language: en ? "en" : "ko",
       membershipType: form.membershipType,
@@ -288,6 +291,7 @@ export function JoinCompanyRegisterMigrationPage() {
     searchLoading,
     searchRows.length,
     searchState.totalCnt,
+    session,
     uploadRows.length
   ]);
 

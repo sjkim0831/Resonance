@@ -345,7 +345,7 @@ export function EmissionLciMigrationPage() {
           <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
             <div className="relative flex items-center h-24">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
-              <HeaderBrand content={content} en={en} />
+              <HeaderBrand content={content} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
                 <div className="hidden xl:flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">

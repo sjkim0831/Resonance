@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminInput, AdminSelect, MemberButton, PageStatusNotice } from "../member/common";
 
 type OpportunityCard = {
@@ -337,6 +341,8 @@ export function TradeAutoOrderMigrationPage() {
   const en = isEnglish();
   const content = CONTENT[en ? "en" : "ko"];
   const session = useFrontendSession();
+  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState(content.rows[0]?.id ?? "");
   const [mode, setMode] = useState(content.modeOptions[0]?.value ?? "profit");
@@ -345,6 +351,19 @@ export function TradeAutoOrderMigrationPage() {
   const [maxQuantity, setMaxQuantity] = useState("25000");
   const [approvalPolicy, setApprovalPolicy] = useState(content.approvalOptions[0]?.value ?? "manual");
   const [submittedMessage, setSubmittedMessage] = useState("");
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+  const mobileMenuItems = useMemo(() => homeMenu.flatMap(item => item.sections?.flatMap(section => section.items || []) || []), [homeMenu]);
 
   const visibleRows = useMemo(() => {
     const keyword = searchKeyword.trim().toLowerCase();
@@ -355,6 +374,22 @@ export function TradeAutoOrderMigrationPage() {
   }, [content.rows, searchKeyword]);
 
   const selectedRow = visibleRows.find((row) => row.id === selectedOrderId) || visibleRows[0] || null;
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
 
   useEffect(() => {
     if (!selectedRow && visibleRows[0]) {
@@ -372,6 +407,9 @@ export function TradeAutoOrderMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "trade-auto-order", {
       language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
       searchKeyword,
       selectedOrderId,
       selectedAsset,
@@ -381,7 +419,7 @@ export function TradeAutoOrderMigrationPage() {
       approvalPolicy,
       visibleRowCount: visibleRows.length
     });
-  }, [approvalPolicy, en, maxQuantity, mode, searchKeyword, selectedAsset, selectedOrderId, spreadThreshold, visibleRows.length]);
+  }, [approvalPolicy, en, homeMenu.length, maxQuantity, mobileMenuOpen, mode, payload.isLoggedIn, searchKeyword, selectedAsset, selectedOrderId, spreadThreshold, visibleRows.length]);
 
   function handleApply() {
     const approvalLabel = content.approvalOptions.find((option) => option.value === approvalPolicy)?.label ?? approvalPolicy;
@@ -393,6 +431,40 @@ export function TradeAutoOrderMigrationPage() {
   return (
     <>
       <InlineStyles />
+      <button
+        className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--trade-accent)] text-white shadow-lg lg:hidden"
+        onClick={() => setMobileMenuOpen((prev) => !prev)}
+        type="button"
+      >
+        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+      </button>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      <div
+        className={`fixed right-0 top-0 z-50 h-full w-72 transform overflow-y-auto bg-white shadow-2xl transition-transform duration-300 lg:hidden ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
+          <h2 className="text-lg font-bold text-gray-900">{en ? "Menu" : "메뉴"}</h2>
+          <button onClick={() => setMobileMenuOpen(false)} type="button">
+            <span className="material-symbols-outlined text-gray-500">close</span>
+          </button>
+        </div>
+        <nav className="p-4">
+          {mobileMenuItems.map((item, idx) => (
+            <a
+              className="block rounded-lg px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              href={item.url || "#"}
+              key={`${item.label || "menu"}-${idx}`}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
       <div className="trade-auto-shell min-h-screen text-[var(--trade-text)]">
         <UserGovernmentBar
           governmentText={en ? "Official Government Service of the Republic of Korea" : "대한민국 정부 공식 서비스"}

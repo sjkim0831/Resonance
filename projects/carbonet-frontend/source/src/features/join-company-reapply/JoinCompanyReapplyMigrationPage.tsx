@@ -1,6 +1,7 @@
 import { ChangeEvent, useEffect, useId, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useExternalScript } from "../../app/hooks/useExternalScript";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
 import {
@@ -92,6 +93,7 @@ export function JoinCompanyReapplyMigrationPage() {
   );
   const page = pageState.value;
   const loading = pageState.loading;
+  const session = useFrontendSession();
   const error = actionError || pageState.error;
 
   useExternalScript("//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js");
@@ -102,6 +104,7 @@ export function JoinCompanyReapplyMigrationPage() {
   }, []);
 
   useEffect(() => {
+    void session.reload();
     logGovernanceScope("PAGE", "join-company-reapply", {
       language: en ? "en" : "ko",
       bizNo: bizNo.trim(),
@@ -123,6 +126,7 @@ export function JoinCompanyReapplyMigrationPage() {
     form.insttId,
     loading,
     repName,
+    session,
     submitting,
     uploadRows
   ]);

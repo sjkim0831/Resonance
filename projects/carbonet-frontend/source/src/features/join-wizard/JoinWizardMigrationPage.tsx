@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { resetJoinSession, saveJoinStep1 } from "../../lib/api/joinSession";
 import { useJoinSession } from "../../app/hooks/useJoinSession";
 import {
@@ -23,6 +24,7 @@ export function JoinWizardMigrationPage() {
   const session = sessionState.value;
   const error = actionError || sessionState.error;
   const cards = en ? EN_MEMBERSHIP_CARDS : KO_MEMBERSHIP_CARDS;
+  const frontendSession = useFrontendSession();
 
   useEffect(() => {
     if (getSearchParam("expired") === "1") {
@@ -36,6 +38,7 @@ export function JoinWizardMigrationPage() {
   }, [en]);
 
   useEffect(() => {
+    void frontendSession.reload();
     logGovernanceScope("PAGE", "join-step1", {
       route: window.location.pathname,
       membershipType,
@@ -46,7 +49,7 @@ export function JoinWizardMigrationPage() {
       membershipType,
       cardCount: cards.length
     });
-  }, [cards.length, membershipType, session?.canViewStep1]);
+  }, [cards.length, frontendSession, membershipType, session?.canViewStep1]);
 
   async function handleHome() {
     await resetJoinSession();

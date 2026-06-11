@@ -439,7 +439,7 @@ export function EmissionDataInputMigrationPage() {
           <div className="mx-auto max-w-7xl px-4 lg:px-8">
             <div className="relative flex h-24 items-center">
               <div className="h-11 w-11 shrink-0 xl:hidden" aria-hidden="true" />
-              <HeaderBrand content={content} en={en} />
+              <HeaderBrand content={content} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
                 <button

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { readBootstrappedTradeDuplicatePageData } from "../../lib/api/bootstrap";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload, readBootstrappedTradeDuplicatePageData } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import { HomePayload } from "../home-entry/homeEntryTypes";
 import { fetchTradeDuplicatePage } from "../../lib/api/trade";
 import type { TradeDuplicatePagePayload } from "../../lib/api/tradeTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import {
   AdminInput,
@@ -93,10 +96,22 @@ function reviewBadgeClass(code: string) {
 
 export function TradeDuplicateMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
   const initial = useMemo<Filters>(() => readInitialFilters(), []);
   const initialPayload = useMemo(() => readBootstrappedTradeDuplicatePageData(), []);
+  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [filters, setFilters] = useState(initial);
   const [draft, setDraft] = useState(initial);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
 
   const pageState = useAsyncValue<TradeDuplicatePagePayload>(
     () => fetchTradeDuplicatePage(filters),
@@ -130,6 +145,25 @@ export function TradeDuplicateMigrationPage() {
   const pageSize = numberOf(page?.pageSize) || 10;
   const totalCount = numberOf(page?.totalCount);
   const selectedRow = rows[0] || null;
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+  const mobileMenuItems = useMemo(() => homeMenu.flatMap(item => item.sections?.flatMap(section => section.items || []) || []), [homeMenu]);
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -158,6 +192,9 @@ export function TradeDuplicateMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "trade-duplicate", {
       language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
       pageIndex: currentPage,
       searchKeyword: filters.searchKeyword,
       detectionType: filters.detectionType,
@@ -165,9 +202,44 @@ export function TradeDuplicateMigrationPage() {
       riskLevel: filters.riskLevel,
       rowCount: rows.length
     });
-  }, [currentPage, en, filters.detectionType, filters.reviewStatus, filters.riskLevel, filters.searchKeyword, rows.length]);
+  }, [currentPage, en, filters.detectionType, filters.reviewStatus, filters.riskLevel, filters.searchKeyword, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, rows.length]);
 
   return (
+    <div className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen">
+      <button
+        className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--kr-gov-blue)] text-white shadow-lg xl:hidden"
+        onClick={() => setMobileMenuOpen((prev) => !prev)}
+        type="button"
+      >
+        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+      </button>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 xl:hidden" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      <div
+        className={`fixed right-0 top-0 z-50 h-full w-72 transform overflow-y-auto bg-white shadow-2xl transition-transform duration-300 xl:hidden ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--kr-gov-border-light)] px-4 py-4">
+          <h2 className="text-lg font-bold">{en ? "Menu" : "메뉴"}</h2>
+          <button onClick={() => setMobileMenuOpen(false)} type="button">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <nav className="p-4">
+          {mobileMenuItems.map((item, idx) => (
+            <a
+              className="block rounded-lg px-4 py-3 text-sm font-medium text-[var(--kr-gov-text-primary)] hover:bg-[var(--kr-gov-bg-gray)]"
+              href={item.url || "#"}
+              key={`${item.label || "menu"}-${idx}`}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </div>
+
     <AdminPageShell
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
@@ -361,5 +433,6 @@ export function TradeDuplicateMigrationPage() {
         <MemberPagination currentPage={currentPage} totalPages={totalPages} onPageChange={(pageIndex) => setFilters((current) => ({ ...current, pageIndex }))} />
       </AdminWorkspacePageFrame>
     </AdminPageShell>
+    </div>
   );
 }

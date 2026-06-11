@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchJoinCompanyStatusDetail } from "../../lib/api/join";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -175,6 +176,7 @@ export function JoinCompanyStatusMigrationPage() {
   );
   const detail = detailState.value;
   const error = detailState.error;
+  const session = useFrontendSession();
 
   const result = (detail?.result || {}) as DetailResult;
   const files = (detail?.insttFiles || []) as DetailFile[];
@@ -187,6 +189,7 @@ export function JoinCompanyStatusMigrationPage() {
   const submittedDate = getSearchParam("regDate");
 
   useEffect(() => {
+    void session.reload();
     logGovernanceScope("PAGE", "join-company-status", {
       language: en ? "en" : "ko",
       mode,
@@ -218,6 +221,7 @@ export function JoinCompanyStatusMigrationPage() {
     mode,
     rejectReason,
     repName,
+    session,
     status,
     submitted
   ]);

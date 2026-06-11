@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { resetJoinSession, saveJoinStep3 } from "../../lib/api/joinSession";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -83,6 +84,7 @@ export function JoinAuthMigrationPage() {
   const [submittingMethod, setSubmittingMethod] = useState("");
   const [error, setError] = useState("");
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const frontendSession = useFrontendSession();
 
   function resolveCertificationGatewayPath(pathname: string) {
     if (typeof window === "undefined") {
@@ -102,6 +104,7 @@ export function JoinAuthMigrationPage() {
   }
 
   useEffect(() => {
+    void frontendSession.reload();
     logGovernanceScope("PAGE", "join-step3", {
       route: window.location.pathname,
       optionCount: options.length,
@@ -112,7 +115,7 @@ export function JoinAuthMigrationPage() {
       optionCount: options.length,
       selectedMethod: options[selectedIndex]?.method ?? ""
     });
-  }, [options, selectedIndex]);
+  }, [frontendSession, options, selectedIndex]);
 
   useEffect(() => {
     if (selectedIndex >= options.length) {

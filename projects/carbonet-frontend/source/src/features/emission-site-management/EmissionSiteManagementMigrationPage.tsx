@@ -1,12 +1,16 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import {
   readBootstrappedEmissionSiteManagementPageData
 } from "../../lib/api/bootstrap";
 import { fetchEmissionSiteManagementPage } from "../../lib/api/emission";
 import type { EmissionSiteManagementPagePayload } from "../../lib/api/emissionTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 
 function stringOf(row: Record<string, string> | undefined, key: string) {
@@ -15,10 +19,43 @@ function stringOf(row: Record<string, string> | undefined, key: string) {
 
 export function EmissionSiteManagementMigrationPage() {
   const en = isEnglish();
-  const initialPayload = useMemo(() => readBootstrappedEmissionSiteManagementPageData(), []);
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+
+  const pageInitialPayload = useMemo(() => readBootstrappedEmissionSiteManagementPageData(), []);
   const pageState = useAsyncValue<EmissionSiteManagementPagePayload>(() => fetchEmissionSiteManagementPage(), [], {
-    initialValue: initialPayload,
-    skipInitialLoad: Boolean(initialPayload)
+    initialValue: pageInitialPayload,
+    skipInitialLoad: Boolean(pageInitialPayload)
   });
   const page = pageState.value || {};
   const summaryCards = (page.summaryCards || []) as Array<Record<string, string>>;
@@ -30,6 +67,9 @@ export function EmissionSiteManagementMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-site-management", {
       language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
       menuCode: page.menuCode || "",
       summaryCount: summaryCards.length,
       quickLinkCount: quickLinks.length,
@@ -41,7 +81,7 @@ export function EmissionSiteManagementMigrationPage() {
       quickLinkCount: quickLinks.length,
       referenceCount: referenceRows.length
     });
-  }, [en, featureRows.length, operationCards.length, page.menuCode, quickLinks.length, referenceRows.length, summaryCards.length]);
+  }, [en, featureRows.length, homeMenu.length, mobileMenuOpen, operationCards.length, page.menuCode, payload.isLoggedIn, quickLinks.length, referenceRows.length, summaryCards.length]);
 
   return (
     <AdminPageShell

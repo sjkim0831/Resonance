@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchDbPromotionPolicyPage, saveDbPromotionPolicy } from "../../lib/api/ops";
 import type { DbPromotionPolicyPagePayload } from "../../lib/api/opsTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { stringOf } from "../admin-system/adminSystemShared";
 import { AdminInput, AdminSelect, AdminTextarea, CollectionResultPanel, GridToolbar, MemberButton, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
@@ -23,6 +24,7 @@ function buildCommentPreview(form: Record<string, string>, en: boolean) {
 
 export function DbPromotionPolicyMigrationPage() {
   const en = isEnglish();
+  void useFrontendSession();
   const pageState = useAsyncValue<DbPromotionPolicyPagePayload>(fetchDbPromotionPolicyPage, []);
   const page = pageState.value;
   const rows = (page?.dbPromotionPolicyRows || []) as Array<Record<string, string>>;
@@ -30,6 +32,24 @@ export function DbPromotionPolicyMigrationPage() {
   const guidance = (page?.dbPromotionPolicyGuidance || []) as Array<Record<string, string>>;
   const summary = (page?.dbPromotionPolicySummary || []) as Array<Record<string, string>>;
   const [selectedTable, setSelectedTable] = useState("");
+
+  useEffect(() => {
+    function syncFromNavigation() {
+      const params = new URLSearchParams(window.location.search);
+      const table = params.get("table");
+      if (table) {
+        setSelectedTable(table);
+      }
+    }
+    const navigationEventName = getNavigationEventName();
+    window.addEventListener("popstate", syncFromNavigation);
+    window.addEventListener(navigationEventName, syncFromNavigation);
+    return () => {
+      window.removeEventListener("popstate", syncFromNavigation);
+      window.removeEventListener(navigationEventName, syncFromNavigation);
+    };
+  }, []);
+
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");

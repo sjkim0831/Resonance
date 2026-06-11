@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
 import { AdminInput, AdminSelect, MemberButton, PageStatusNotice } from "../member/common";
 
 type SummaryCard = {

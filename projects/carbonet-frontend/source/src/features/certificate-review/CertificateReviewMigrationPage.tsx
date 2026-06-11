@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { readBootstrappedCertificateReviewPageData } from "../../lib/api/bootstrap";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import { logGovernanceScope } from "../../app/policy/debug";
+import { readBootstrappedCertificateReviewPageData, readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { fetchCertificateReviewPage } from "../../lib/api/member";
 import type { CertificateReviewPagePayload } from "../../lib/api/memberTypes";
-import { buildLocalizedPath, getSearchParam, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, getSearchParam, isEnglish } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { SummaryMetricCard } from "../admin-ui/common";
 import { AdminListPageFrame, AdminSummaryStrip } from "../admin-ui/pageFrames";
@@ -55,12 +60,51 @@ function readInitialFilters(): ReviewFilters {
 
 export function CertificateReviewMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
   const initialPayload = useMemo(() => readBootstrappedCertificateReviewPageData(), []);
+  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const homePayloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  const homeMenu = homePayloadState.value?.homeMenu || [];
+
   const [filters, setFilters] = useState<ReviewFilters>(readInitialFilters);
   const [draft, setDraft] = useState<ReviewFilters>(readInitialFilters);
   const [result, setResult] = useState<CertificateReviewPagePayload | null>(initialPayload);
   const [loading, setLoading] = useState(!initialPayload);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void homePayloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [homePayloadState, session]);
+
+  useEffect(() => {
+    logGovernanceScope("PAGE", "certificate-review", {
+      language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(homePayloadState.value?.isLoggedIn),
+      totalCount: Number(result?.totalCount || 0)
+    });
+  }, [en, mobileMenuOpen, homeMenu.length, homePayloadState.value?.isLoggedIn, result?.totalCount]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload, readBootstrappedCertificateAuditLogPageData } from "../../lib/api/bootstrap";
 import { fetchCertificateAuditLogPage } from "../../lib/api/ops";
-import { readBootstrappedCertificateAuditLogPageData } from "../../lib/api/bootstrap";
 import type { CertificateAuditLogPagePayload } from "../../lib/api/opsTypes";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { SummaryMetricCard } from "../admin-ui/common";
 import { AdminListPageFrame } from "../admin-ui/pageFrames";
@@ -142,7 +145,20 @@ function summarySurfaceClass(tone: string) {
 
 export function CertificateAuditLogMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
   const initialPayload = useMemo(() => readBootstrappedCertificateAuditLogPageData(), []);
+  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const homePayloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
   const [filters, setFilters] = useState<Filters>(() => readInitialFilters());
   const [draftFilters, setDraftFilters] = useState<Filters>(() => readInitialFilters());
   const pageState = useAsyncValue<CertificateAuditLogPagePayload>(
@@ -175,6 +191,23 @@ export function CertificateAuditLogMigrationPage() {
   const totalPages = Math.max(1, Number(page?.totalPages || 1));
   const totalCount = Number(page?.totalCount || rows.length);
 
+  const homePayload = homePayloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = homePayload.homeMenu || [];
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void homePayloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [homePayloadState, session]);
+
   useEffect(() => {
     if (!page) {
       return;
@@ -185,9 +218,13 @@ export function CertificateAuditLogMigrationPage() {
       totalCount,
       auditType: filters.auditType,
       status: filters.status,
-      certificateType: filters.certificateType
+      certificateType: filters.certificateType,
+      language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(homePayload.isLoggedIn)
     });
-  }, [currentPage, filters.auditType, filters.certificateType, filters.status, page, totalCount]);
+  }, [currentPage, filters.auditType, filters.certificateType, filters.status, page, totalCount, mobileMenuOpen, homeMenu.length, homePayload.isLoggedIn]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { resetJoinSession } from "../../lib/api/joinSession";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -29,8 +30,10 @@ function readPayload(): JoinCompletePayload {
 export function JoinCompleteMigrationPage() {
   const en = isEnglish();
   const payload = readPayload();
+  const session = useFrontendSession();
 
   useEffect(() => {
+    void session.reload();
     logGovernanceScope("PAGE", "join-step5", {
       route: window.location.pathname,
       memberId: payload.mberId || "",
@@ -41,7 +44,7 @@ export function JoinCompleteMigrationPage() {
       memberId: payload.mberId || "",
       memberName: payload.mberNm || ""
     });
-  }, [payload.insttNm, payload.mberId, payload.mberNm]);
+  }, [payload.insttNm, payload.mberId, payload.mberNm, session]);
 
   async function handleHome() {
     logGovernanceScope("ACTION", "join-step5-home", {

@@ -4,7 +4,7 @@ import { logGovernanceScope } from "../../app/policy/debug";
 import { CanView } from "../../components/access/CanView";
 import { fetchErrorLogPage } from "../../lib/api/security";
 import type { ErrorLogPagePayload } from "../../lib/api/securityTypes";
-import { buildLocalizedPath } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, AdminTable, MemberButton, MemberPagination, MemberSectionToolbar } from "../member/common";
 
@@ -56,6 +56,27 @@ function stringOf(row: Record<string, unknown> | null | undefined, ...keys: stri
 
 export function ErrorLogMigrationPage() {
   const [filters, setFilters] = useState<Filters>(() => readInitialFilters());
+
+  useEffect(() => {
+    function syncFromNavigation() {
+      const params = new URLSearchParams(window.location.search);
+      setFilters((current) => ({
+        pageIndex: Number(params.get("pageIndex") || "1") || 1,
+        searchKeyword: params.get("searchKeyword") || "",
+        insttId: params.get("insttId") || current.insttId,
+        sourceType: params.get("sourceType") || current.sourceType,
+        errorType: params.get("errorType") || current.errorType
+      }));
+    }
+    const navigationEventName = getNavigationEventName();
+    window.addEventListener("popstate", syncFromNavigation);
+    window.addEventListener(navigationEventName, syncFromNavigation);
+    return () => {
+      window.removeEventListener("popstate", syncFromNavigation);
+      window.removeEventListener(navigationEventName, syncFromNavigation);
+    };
+  }, []);
+
   const [draftFilters, setDraftFilters] = useState<Filters>(() => readInitialFilters());
   const pageState = useAsyncValue<ErrorLogPagePayload>(
     () => fetchErrorLogPage(filters),

@@ -141,7 +141,7 @@ export function HomeInlineStyles(_props: { en: boolean }) {
   );
 }
 
-export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en: boolean }) {
+export function HeaderBrand({ content }: { content: LocalizedHomeContent }) {
   return (
     <div className="flex items-center gap-8">
       <HomeLinkButton
@@ -152,11 +152,6 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
         <span className="text-headline-md font-bold text-primary">{content.logoTitle}</span>
       </HomeLinkButton>
       <nav className="hidden md:flex gap-6">
-        <a className="text-primary font-bold border-b-2 border-primary pb-1 text-label-md" href="#">{en ? "About" : "소개"}</a>
-        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "Simulation" : "시뮬레이션"}</a>
-        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "Certification" : "인증서비스"}</a>
-        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "Support" : "고객지원"}</a>
-        <a className="text-on-surface-variant font-medium hover:text-primary transition-colors text-label-md" href="#">{en ? "My Page" : "마이페이지"}</a>
       </nav>
     </div>
   );

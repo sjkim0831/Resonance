@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminInput, MemberButton, PageStatusNotice } from "../member/common";
+import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
 
 type NavItem = {
   label: string;
@@ -560,9 +564,38 @@ function localizedPath(path: string) {
 export function PaymentPayMigrationPage() {
   const session = useFrontendSession();
   const en = isEnglish();
-  const content = CONTENT[en ? "en" : "ko"];
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [copiedAccount, setCopiedAccount] = useState("");
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+
+  const content = CONTENT[en ? "en" : "ko"];
 
   useEffect(() => {
     document.title = content.pageTitle;
@@ -572,9 +605,12 @@ export function PaymentPayMigrationPage() {
     logGovernanceScope("PAGE", "payment-pay", {
       language: en ? "en" : "ko",
       userType: session.value?.authorCode || "guest",
-      queryLength: query.trim().length
+      queryLength: query.trim().length,
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
     });
-  }, [en, query, session.value?.authorCode]);
+  }, [en, query, session.value?.authorCode, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredManagedAccounts = useMemo(
@@ -641,6 +677,14 @@ export function PaymentPayMigrationPage() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              className="lg:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-600 hover:bg-gray-50"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              type="button"
+              aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
+            >
+              <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+            </button>
             <UserLanguageToggle en={en} onKo={() => navigate("/payment/pay")} onEn={() => navigate("/en/payment/pay")} />
             <div className="hidden text-right md:block">
               <p className="text-xs font-bold text-slate-500">{content.roleLabel}</p>
@@ -652,6 +696,30 @@ export function PaymentPayMigrationPage() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="absolute top-[73px] left-0 right-0 border-b border-gray-200 bg-white shadow-lg lg:hidden z-50">
+          <nav className="flex flex-col p-4 gap-2">
+            {content.navItems.map((item) => (
+              <button
+                className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition ${
+                  item.active ? "bg-blue-50 text-[var(--kr-gov-blue)]" : "text-slate-600 hover:bg-gray-50"
+                }`}
+                key={item.href}
+                onClick={() => {
+                  navigate(localizedPath(item.href));
+                  setMobileMenuOpen(false);
+                }}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-lg">{item.active ? "check_circle" : "circle"}</span>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
 
       <main id="main-content">
         <section className="overflow-hidden border-b border-slate-800 bg-slate-900 py-10">

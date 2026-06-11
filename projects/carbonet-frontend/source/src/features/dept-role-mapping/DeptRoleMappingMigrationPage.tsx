@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { CanView } from "../../components/access/CanView";
 import { readBootstrappedDeptRolePageData } from "../../lib/api/bootstrap";
 import { fetchDeptRolePage } from "../../lib/api/adminMember";
 import { saveDeptRoleMapping, saveDeptRoleMember } from "../../lib/api/adminActions";
-import { fetchFrontendSession } from "../../lib/api/adminShell";
-import type { FrontendSession } from "../../lib/api/adminShellTypes";
 import type { DeptRolePagePayload } from "../../lib/api/authTypes";
-import { buildLocalizedPath } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminAuthorityPageFrame } from "../admin-ui/pageFrames";
 import { MemberAuthorityNav } from "../member-authority/MemberAuthorityNav";
@@ -21,7 +20,7 @@ function t(page: DeptRolePagePayload | null, ko: string, en: string) {
 
 export function DeptRoleMappingMigrationPage() {
   const bootstrappedPage = readBootstrappedDeptRolePageData();
-  const [session, setSession] = useState<FrontendSession | null>(null);
+  const sessionState = useFrontendSession();
   const [page, setPage] = useState<DeptRolePagePayload | null>(bootstrappedPage);
   const [insttId, setInsttId] = useState(bootstrappedPage?.selectedInsttId || "");
   const [memberSearchKeyword, setMemberSearchKeyword] = useState(String(bootstrappedPage?.companyMemberSearchKeyword || ""));
@@ -33,8 +32,7 @@ export function DeptRoleMappingMigrationPage() {
   const [message, setMessage] = useState("");
   const [skipInitialFetch, setSkipInitialFetch] = useState(Boolean(bootstrappedPage));
 
-  function applyPayload(sessionPayload: FrontendSession, payload: DeptRolePagePayload) {
-    setSession(sessionPayload);
+  function applyPayload(payload: DeptRolePagePayload) {
     setPage(payload);
     setInsttId(payload.selectedInsttId || "");
     setMemberSearchKeyword(String(payload.companyMemberSearchKeyword || ""));
@@ -52,28 +50,38 @@ export function DeptRoleMappingMigrationPage() {
     setMemberDrafts(nextMemberDrafts);
   }
 
-  function loadPage(nextInsttId?: string, existingSession?: FrontendSession | null, options?: { memberSearchKeyword?: string; memberPageIndex?: number }) {
+  function loadPage(nextInsttId?: string, options?: { memberSearchKeyword?: string; memberPageIndex?: number }) {
     setError("");
-    return Promise.all([
-      existingSession ? Promise.resolve(existingSession) : fetchFrontendSession(),
-      fetchDeptRolePage({ insttId: nextInsttId ?? insttId, memberSearchKeyword: options?.memberSearchKeyword ?? memberSearchKeyword, memberPageIndex: options?.memberPageIndex ?? memberPageIndex })
-    ]).then(([sessionPayload, payload]) => {
-      applyPayload(sessionPayload, payload);
-      return { sessionPayload, payload };
-    });
+    return fetchDeptRolePage({ insttId: nextInsttId ?? insttId, memberSearchKeyword: options?.memberSearchKeyword ?? memberSearchKeyword, memberPageIndex: options?.memberPageIndex ?? memberPageIndex })
+      .then((payload) => {
+        applyPayload(payload);
+        return payload;
+      });
   }
 
   useEffect(() => {
     if (skipInitialFetch && page) {
       setSkipInitialFetch(false);
-      fetchFrontendSession().then((sessionPayload) => {
-        setSession(sessionPayload);
-        applyPayload(sessionPayload, page);
-      }).catch((err: Error) => setError(err.message));
+      applyPayload(page);
       return;
     }
-    loadPage(insttId, undefined, { memberSearchKeyword, memberPageIndex }).catch((err: Error) => setError(err.message));
+    loadPage(insttId, { memberSearchKeyword, memberPageIndex }).catch((err: Error) => setError(err.message));
   }, [insttId, memberSearchKeyword, memberPageIndex]);
+
+  useEffect(() => {
+    function syncFiltersFromLocation() {
+      const params = new URLSearchParams(window.location.search);
+      const nextInsttId = params.get("insttId") || "";
+      if (nextInsttId !== insttId) setInsttId(nextInsttId);
+    }
+    const eventName = getNavigationEventName();
+    window.addEventListener(eventName, syncFiltersFromLocation);
+    window.addEventListener("popstate", syncFiltersFromLocation);
+    return () => {
+      window.removeEventListener(eventName, syncFiltersFromLocation);
+      window.removeEventListener("popstate", syncFiltersFromLocation);
+    };
+  }, [insttId]);
 
   const canViewCompanySelector = !!page;
   const canUseAllCompanies = !!page?.canManageAllCompanies;
@@ -83,6 +91,7 @@ export function DeptRoleMappingMigrationPage() {
   const totalMemberPages = Math.max(1, Number(page?.companyMemberTotalPages || 1));
 
   useEffect(() => {
+    const session = sessionState.value;
     if (!page || !session) {
       return;
     }
@@ -102,9 +111,10 @@ export function DeptRoleMappingMigrationPage() {
       departmentCount: (page.departmentMappings || []).length,
       memberCount: (page.companyMembers || []).length
     });
-  }, [insttId, memberSearchKeyword, page, session]);
+  }, [insttId, memberSearchKeyword, page, sessionState.value]);
 
   function handleMemberSearchSubmit() {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "dept-role-member-search", {
       actorInsttId: session?.insttId || "",
       selectedInsttId: insttId,
@@ -120,6 +130,7 @@ export function DeptRoleMappingMigrationPage() {
   }
 
   function handleDeptSave(row: Record<string, string>) {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "dept-role-save", {
       actorInsttId: session?.insttId || "",
       selectedInsttId: row.insttId || insttId,
@@ -130,12 +141,13 @@ export function DeptRoleMappingMigrationPage() {
     setError("");
     setMessage("");
     saveDeptRoleMapping(session, { insttId: row.insttId || insttId, cmpnyNm: row.cmpnyNm || "", deptNm: row.deptNm || "", authorCode: deptDrafts[`${row.insttId}:${row.deptNm}`] || "" })
-      .then(() => loadPage(row.insttId || insttId, session, { memberSearchKeyword, memberPageIndex }))
+      .then(() => loadPage(row.insttId || insttId, { memberSearchKeyword, memberPageIndex }))
       .then(() => setMessage(t(page, `${row.deptNm} 부서 권한을 저장했습니다.`, `Saved the department role for ${row.deptNm}.`)))
       .catch((err: Error) => setError(err.message));
   }
 
   function handleMemberSave(userId: string) {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "dept-role-member-save", {
       actorInsttId: session?.insttId || "",
       selectedInsttId: insttId,
@@ -146,7 +158,7 @@ export function DeptRoleMappingMigrationPage() {
     setError("");
     setMessage("");
     saveDeptRoleMember(session, { insttId, entrprsMberId: userId, authorCode: memberDrafts[userId] || "" })
-      .then(() => loadPage(insttId, session, { memberSearchKeyword, memberPageIndex }))
+      .then(() => loadPage(insttId, { memberSearchKeyword, memberPageIndex }))
       .then(() => setMessage(t(page, `${userId} 회원 권한을 저장했습니다.`, `Saved the member role for ${userId}.`)))
       .catch((err: Error) => setError(err.message));
   }
@@ -167,7 +179,7 @@ export function DeptRoleMappingMigrationPage() {
       {(page?.deptRoleError || error) ? <PageStatusNotice tone="error">{page?.deptRoleError || error}</PageStatusNotice> : null}
       {page?.deptRoleUpdated || message ? <PageStatusNotice tone="success">{message || (page?.deptRoleTargetInsttId ? t(page, `${page.deptRoleTargetInsttId} 부서 권한 맵핑이 저장되었습니다.`, `Saved department role mappings for ${page.deptRoleTargetInsttId}.`) : t(page, "부서 권한 맵핑이 저장되었습니다.", "Department role mappings have been saved."))}</PageStatusNotice> : null}
       {page?.deptRoleMessage && !message ? <PageStatusNotice tone="warning">{page.deptRoleMessage}</PageStatusNotice> : null}
-      {!page && !error && !session ? null : !canViewCompanySelector ? (
+      {!page && !error && !sessionState.value ? null : !canViewCompanySelector ? (
         <MemberStateCard description={t(page, "현재 계정으로는 부서 권한 맵핑 화면을 조회할 수 없습니다.", "The current account cannot access the department role mapping screen.")} icon="lock" title={t(page, "권한이 없습니다.", "Permission denied.")} tone="warning" />
       ) : null}
       <CanView allowed={canViewCompanySelector} fallback={null}>

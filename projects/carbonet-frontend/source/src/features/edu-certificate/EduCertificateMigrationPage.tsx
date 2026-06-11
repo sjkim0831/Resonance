@@ -1,10 +1,17 @@
+import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import { logGovernanceScope } from "../../app/policy/debug";
 import {
   UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 const COURSE_PROGRESS = [
   {
@@ -76,6 +83,46 @@ const ACTION_ITEMS = {
 
 export function EduCertificateMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+  const isLoggedIn = payload.isLoggedIn;
+  const menuCount = homeMenu.length;
+
+  useEffect(() => {
+    logGovernanceScope("PAGE", "edu-certificate", {
+      language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount,
+      isLoggedIn
+    });
+  }, [en, mobileMenuOpen, menuCount, isLoggedIn]);
 
   const copy = {
     skip: en ? "Skip to main content" : "본문 바로가기",
@@ -169,6 +216,29 @@ export function EduCertificateMigrationPage() {
           </>
         )}
       />
+
+      <button
+        aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
+        className="fixed right-4 top-4 z-[60] flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg lg:hidden"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        type="button"
+      >
+        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
+      </button>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-[var(--kr-gov-bg-gray)] lg:hidden">
+          <div className="flex h-full flex-col pt-20">
+            <nav className="flex-1 overflow-y-auto px-4">
+              <div className="space-y-2">
+                <button className="block w-full rounded-lg px-4 py-3 text-left text-lg font-bold hover:bg-slate-100" onClick={() => { navigate(buildLocalizedPath("/edu/my_course", "/en/edu/my_course")); setMobileMenuOpen(false); }} type="button">{copy.navClassroom}</button>
+                <button className="block w-full rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-left text-lg font-bold text-white" onClick={() => { navigate(buildLocalizedPath("/edu/certificate", "/en/edu/certificate")); setMobileMenuOpen(false); }} type="button">{copy.navCertificate}</button>
+                <button className="block w-full rounded-lg px-4 py-3 text-left text-lg font-bold hover:bg-slate-100" onClick={() => { navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list")); setMobileMenuOpen(false); }} type="button">{copy.navNotice}</button>
+              </div>
+            </nav>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-[1440px] px-4 py-8 lg:px-8" id="main-content">
         <div className="mb-8 hidden h-14 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm xl:flex">

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchExternalConnectionListPage } from "../../lib/api/ops";
 import type { ExternalConnectionListPagePayload } from "../../lib/api/opsTypes";
-import { buildLocalizedPath, isEnglish, replace } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, replace } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -108,6 +109,7 @@ function readInitialFilters() {
 
 export function ExternalConnectionListMigrationPage() {
   const en = isEnglish();
+  void useFrontendSession();
   const initialFilters = useMemo(() => readInitialFilters(), []);
   const pageState = useAsyncValue<ExternalConnectionListPagePayload>(fetchExternalConnectionListPage, [], {});
   const page = pageState.value;
@@ -122,6 +124,25 @@ export function ExternalConnectionListMigrationPage() {
   const [source, setSource] = useState(initialFilters.source);
   const [sortBy, setSortBy] = useState(initialFilters.sortBy);
   const [pageNumber, setPageNumber] = useState(initialFilters.pageNumber);
+
+  useEffect(() => {
+    function syncFromNavigation() {
+      const params = new URLSearchParams(window.location.search);
+      setKeyword(params.get("keyword") || initialFilters.keyword);
+      setStatus(params.get("status") || initialFilters.status);
+      setProtocol(params.get("protocol") || initialFilters.protocol);
+      setSource(params.get("source") || initialFilters.source);
+      setSortBy(params.get("sortBy") || initialFilters.sortBy);
+      setPageNumber(Math.max(1, Number(params.get("page") || "1") || 1));
+    }
+    const navigationEventName = getNavigationEventName();
+    window.addEventListener("popstate", syncFromNavigation);
+    window.addEventListener(navigationEventName, syncFromNavigation);
+    return () => {
+      window.removeEventListener("popstate", syncFromNavigation);
+      window.removeEventListener(navigationEventName, syncFromNavigation);
+    };
+  }, [initialFilters]);
 
   const statusOptions = useMemo(
     () => Array.from(new Set(rows.map((row) => stringOf(row, "operationStatus", "status").toUpperCase()).filter(Boolean))),

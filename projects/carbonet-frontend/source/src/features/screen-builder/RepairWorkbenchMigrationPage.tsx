@@ -19,7 +19,7 @@ import {
 } from "../../lib/api/resonanceControlPlane";
 import { fetchScreenBuilderPage, fetchScreenBuilderPreview, fetchScreenCommandPage } from "../../lib/api/platform";
 import type { ScreenCommandPagePayload } from "../../lib/api/platformTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ContextKeyStrip } from "../admin-ui/ContextKeyStrip";
 import { buildCurrentRuntimeComparePath, buildScreenBuilderPath } from "./screenBuilderPaths";
@@ -404,6 +404,17 @@ export function RepairWorkbenchMigrationPage() {
     selectedElementSet.length,
     selectedScreenId
   ]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void commandState.reload();
+      void pageState.reload();
+      void auditState.reload();
+      void sessionState.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [commandState, pageState, auditState, sessionState]);
 
   async function handleOpenRepair() {
     if (!repairWorkbenchAuthority.allowsAction("execute")) {

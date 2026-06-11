@@ -1,5 +1,12 @@
-import { useMemo, useState } from "react";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath } from "../../lib/navigation/runtime";
 
 type MethodologyCard = {
   icon: string;
@@ -188,6 +195,19 @@ function SectionTitle(props: { id: string; title: string }) {
 
 export function EduCourseDetailMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
   const [expandedModule, setExpandedModule] = useState("03");
 
   const copy = useMemo(() => ({
@@ -261,6 +281,34 @@ export function EduCourseDetailMigrationPage() {
     copyright: en ? "© 2025 CCUS Carbon Footprint Academy. All Rights Reserved." : "© 2025 CCUS Carbon Footprint Academy. All Rights Reserved."
   }), [en]);
 
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+  const isLoggedIn = payload.isLoggedIn;
+  const menuCount = homeMenu.length;
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  useEffect(() => {
+    logGovernanceScope("PAGE", "edu-course-detail", {
+      mobileMenuOpen,
+      menuCount,
+      isLoggedIn,
+      pathname: window.location.pathname
+    });
+  }, [mobileMenuOpen, menuCount, isLoggedIn]);
+
   return (
     <div
       className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)]"
@@ -274,6 +322,9 @@ export function EduCourseDetailMigrationPage() {
         ["--kr-gov-radius" as string]: "8px"
       }}
     >
+      <a className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-[var(--kr-gov-blue)] focus:px-4 focus:py-3 focus:text-white" href="#main-content">
+        {copy.navDetail}
+      </a>
       <header className="sticky top-0 z-50 border-b border-[var(--kr-gov-border-light)] bg-white shadow-sm">
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
           <div className="flex h-20 items-center justify-between">
@@ -299,10 +350,44 @@ export function EduCourseDetailMigrationPage() {
               <button className="rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200" type="button">
                 <span className="material-symbols-outlined text-gray-600">notifications</span>
               </button>
+              <button
+                className="rounded-lg border border-gray-200 bg-white p-2 xl:hidden"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-gray-600">{mobileMenuOpen ? "close" : "menu"}</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 xl:hidden">
+          <div className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white">
+            <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white p-4">
+              <span className="font-bold text-gray-900">{copy.navList}</span>
+              <button onClick={() => setMobileMenuOpen(false)} type="button">
+                <span className="material-symbols-outlined text-gray-600">close</span>
+              </button>
+            </div>
+            <nav className="p-4">
+              <a className="flex items-center gap-3 rounded-lg border-b border-gray-100 py-3 text-gray-700" href={buildLocalizedPath("/edu/course_list", "/en/edu/course_list")} onClick={() => setMobileMenuOpen(false)}>
+                <span className="material-symbols-outlined text-gray-400">list</span>
+                {copy.navList}
+              </a>
+              <a className="flex items-center gap-3 rounded-lg border-b border-gray-100 py-3 text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/edu/course_detail", "/en/edu/course_detail")} onClick={() => setMobileMenuOpen(false)}>
+                <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">school</span>
+                {copy.navDetail}
+              </a>
+              <a className="flex items-center gap-3 rounded-lg py-3 text-gray-700" href={buildLocalizedPath("/mypage", "/en/mypage")} onClick={() => setMobileMenuOpen(false)}>
+                <span className="material-symbols-outlined text-gray-400">person</span>
+                {copy.navClassroom}
+              </a>
+            </nav>
+          </div>
+        </div>
+      )}
 
       <div className="sticky top-20 z-40 border-b border-gray-200 bg-white shadow-sm" data-help-id="edu-course-detail-summary-bar">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 lg:px-8">

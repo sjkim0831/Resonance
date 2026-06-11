@@ -1,6 +1,9 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import {
   fetchEmissionGwpValuesPage,
   fetchEmissionSurveyAdminDataPage,
@@ -15,7 +18,8 @@ import type {
   EmissionSurveyAdminRow,
   EmissionSurveyAdminSection
 } from "../../lib/api/emissionTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { hasUnitMappingIssue, isMappedUnitValue, normalizeUnitValue, UNIT_OPTIONS } from "../emission-common/unitOptions";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, MemberButton, PageStatusNotice } from "../admin-ui/common";
@@ -1227,6 +1231,36 @@ function GwpMappingModal({
 
 export function EmissionSurveyAdminDataMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
+
   const pageTitle = en ? "Shared Dataset Excel Apply" : "공통 데이터셋 엑셀 반영";
   const pageSubtitle = en
     ? "Upload a workbook, map emission factors, and then replace the shared dataset."

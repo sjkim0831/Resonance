@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -592,16 +597,55 @@ function useEnglishMaterialNames(report: ReturnType<typeof loadEmissionSurveyRep
 
 export function EmissionSurveyReportMigrationPage() {
   const routeEn = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [routeEn],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: routeEn, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: routeEn, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+
   const [printLanguageOpen, setPrintLanguageOpen] = useState(false);
   const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
   const en = routeEn;
   const report = loadEmissionSurveyReportSession();
 
-  logGovernanceScope("PAGE", "emission-survey-report", {
-    route: window.location.pathname,
-    hasSessionPayload: Boolean(report),
-    productName: report?.productName || ""
-  });
+  useEffect(() => {
+    logGovernanceScope("PAGE", "emission-survey-report", {
+      route: window.location.pathname,
+      language: en ? "en" : "ko",
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn),
+      hasSessionPayload: Boolean(report),
+      productName: report?.productName || ""
+    });
+  }, [en, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, report]);
 
   const chartSections = useMemo(
     () => (report?.sectionSummaries || []).filter((section) => section.totalEmission > 0),

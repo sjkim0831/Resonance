@@ -408,7 +408,7 @@ export function EmissionReportSubmitMigrationPage() {
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="relative flex items-center h-20">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
-              <HeaderBrand content={sharedContent} en={en} />
+              <HeaderBrand content={sharedContent} />
               <ReportSubmitDesktopNav en={en} homeMenu={homeMenu} />
               <div className="ml-auto flex items-center gap-3 shrink-0">
                 <div className="hidden xl:flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">

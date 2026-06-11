@@ -1,0 +1,1 @@
+export { SecurityMonitoringMigrationPage } from "../security-monitoring/SecurityMonitoringMigrationPage";

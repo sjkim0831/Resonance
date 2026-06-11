@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { resetJoinSession, saveJoinStep2 } from "../../lib/api/joinSession";
 import { useJoinSession } from "../../app/hooks/useJoinSession";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -67,8 +68,10 @@ export function JoinTermsMigrationPage() {
   });
   const session = sessionState.value;
   const error = actionError || sessionState.error;
+  const frontendSession = useFrontendSession();
 
   useEffect(() => {
+    void frontendSession.reload();
     logGovernanceScope("PAGE", "join-step2", {
       route: window.location.pathname,
       canViewStep2: !!session?.canViewStep2
@@ -79,7 +82,7 @@ export function JoinTermsMigrationPage() {
       agreePrivacy,
       marketingAgree
     });
-  }, [agreePrivacy, agreeTerms, marketingAgree, session?.canViewStep2]);
+  }, [agreePrivacy, agreeTerms, frontendSession, marketingAgree, session?.canViewStep2]);
 
   async function handleHome() {
     await resetJoinSession();

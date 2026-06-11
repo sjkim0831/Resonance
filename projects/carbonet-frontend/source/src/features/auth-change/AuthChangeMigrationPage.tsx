@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { CanView } from "../../components/access/CanView";
 import { readBootstrappedAuthChangePageData } from "../../lib/api/bootstrap";
 import { fetchAuthChangeHistory, fetchAuthChangePage } from "../../lib/api/adminMember";
 import { saveAdminAuthChange } from "../../lib/api/adminActions";
-import { fetchFrontendSession } from "../../lib/api/adminShell";
-import type { FrontendSession } from "../../lib/api/adminShellTypes";
 import type { AuthChangeHistoryRow, AuthChangePagePayload } from "../../lib/api/authTypes";
-import { buildLocalizedPath } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminAuthorityPageFrame } from "../admin-ui/pageFrames";
 import { MemberAuthorityNav } from "../member-authority/MemberAuthorityNav";
@@ -21,7 +20,7 @@ function t(page: AuthChangePagePayload | null, ko: string, en: string) {
 
 export function AuthChangeMigrationPage() {
   const bootstrappedPage = readBootstrappedAuthChangePageData();
-  const [session, setSession] = useState<FrontendSession | null>(null);
+  const sessionState = useFrontendSession();
   const [page, setPage] = useState<AuthChangePagePayload | null>(bootstrappedPage);
   const [drafts, setDrafts] = useState<Record<string, string>>(() => {
     const nextDrafts: Record<string, string> = {};
@@ -42,8 +41,7 @@ export function AuthChangeMigrationPage() {
   const [initialBootstrapped, setInitialBootstrapped] = useState(!!bootstrappedPage);
   const [historyRows, setHistoryRows] = useState<AuthChangeHistoryRow[]>(bootstrappedPage?.recentRoleChangeHistory || []);
 
-  function applyPayload(sessionPayload: FrontendSession, payload: AuthChangePagePayload) {
-    setSession(sessionPayload);
+  function applyPayload(payload: AuthChangePagePayload) {
     setPage(payload);
     setSearchKeyword(payload.assignmentSearchKeyword || "");
     setSearchDraft(payload.assignmentSearchKeyword || "");
@@ -64,26 +62,38 @@ export function AuthChangeMigrationPage() {
     });
   }
 
-  function loadPage(existingSession?: FrontendSession | null) {
+  function loadPage() {
     setError("");
-    return Promise.all([
-      existingSession ? Promise.resolve(existingSession) : fetchFrontendSession(),
-      fetchAuthChangePage({ searchKeyword, pageIndex })
-    ]).then(([sessionPayload, payload]) => {
-      applyPayload(sessionPayload, payload);
-      return { sessionPayload, payload };
+    return fetchAuthChangePage({ searchKeyword, pageIndex }).then((payload) => {
+      applyPayload(payload);
+      return payload;
     });
   }
 
   useEffect(() => {
     if (initialBootstrapped && bootstrappedPage) {
       setInitialBootstrapped(false);
-      fetchFrontendSession()
-        .then((sessionPayload) => applyPayload(sessionPayload, bootstrappedPage))
-        .catch((err: Error) => setError(err.message));
+      applyPayload(bootstrappedPage);
       return;
     }
     loadPage().catch((err: Error) => setError(err.message));
+  }, [pageIndex, searchKeyword]);
+
+  useEffect(() => {
+    function syncFiltersFromLocation() {
+      const params = new URLSearchParams(window.location.search);
+      const nextKeyword = params.get("searchKeyword") || "";
+      const nextPageIndex = Number(params.get("pageIndex") || "1");
+      if (nextKeyword !== searchKeyword) setSearchKeyword(nextKeyword);
+      if (Number.isFinite(nextPageIndex) && nextPageIndex > 0 && nextPageIndex !== pageIndex) setPageIndex(nextPageIndex);
+    }
+    const eventName = getNavigationEventName();
+    window.addEventListener(eventName, syncFiltersFromLocation);
+    window.addEventListener("popstate", syncFiltersFromLocation);
+    return () => {
+      window.removeEventListener(eventName, syncFiltersFromLocation);
+      window.removeEventListener("popstate", syncFiltersFromLocation);
+    };
   }, [pageIndex, searchKeyword]);
 
   useEffect(() => {
@@ -122,6 +132,7 @@ export function AuthChangeMigrationPage() {
   }, [historyRows, selectedAdminId]);
 
   useEffect(() => {
+    const session = sessionState.value;
     if (!page || !session) {
       return;
     }
@@ -141,9 +152,10 @@ export function AuthChangeMigrationPage() {
       visibleAssignmentCount: visibleAssignments.length,
       pendingCount: pendingChanges.length
     });
-  }, [page, pendingChanges.length, searchKeyword, selectedAdminId, session, visibleAssignments.length]);
+  }, [page, pendingChanges.length, searchKeyword, selectedAdminId, sessionState.value, visibleAssignments.length]);
 
   function handleSearchSubmit() {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "auth-change-search", {
       actorInsttId: session?.insttId || "",
       searchDraft,
@@ -151,7 +163,7 @@ export function AuthChangeMigrationPage() {
     });
     const nextKeyword = searchDraft.trim();
     if (nextKeyword === searchKeyword && pageIndex === 1) {
-      loadPage(session).catch((err: Error) => setError(err.message));
+      loadPage().catch((err: Error) => setError(err.message));
       return;
     }
     setPageIndex(1);
@@ -159,6 +171,7 @@ export function AuthChangeMigrationPage() {
   }
 
   function handleSave(emplyrId: string) {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "auth-change-save", {
       actorInsttId: session?.insttId || "",
       targetAdminId: emplyrId,
@@ -181,7 +194,7 @@ export function AuthChangeMigrationPage() {
     setMessage("");
     setSavingEmplyrId(emplyrId);
     saveAdminAuthChange(session, { emplyrId, authorCode: nextAuthorCode })
-      .then(() => loadPage(session))
+      .then(() => loadPage())
       .then(() => {
         setSelectedAdminId(emplyrId);
         setRestoreEmplyrId(emplyrId);
@@ -192,6 +205,7 @@ export function AuthChangeMigrationPage() {
   }
 
   async function handleBulkSave() {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "auth-change-bulk-save", {
       actorInsttId: session?.insttId || "",
       pendingCount: pendingChanges.length
@@ -209,7 +223,7 @@ export function AuthChangeMigrationPage() {
       for (const row of pendingChanges) {
         await saveAdminAuthChange(session, { emplyrId: row.emplyrId, authorCode: drafts[row.emplyrId] || "" });
       }
-      await loadPage(session);
+      await loadPage();
       setSelectedAdminId(pendingChanges[0]?.emplyrId || "");
       setRestoreEmplyrId(pendingChanges[0]?.emplyrId || "");
       setMessage(t(page, "권한 변경을 일괄 저장했습니다.", "Authority changes have been saved in bulk."));
@@ -235,7 +249,7 @@ export function AuthChangeMigrationPage() {
       <MemberAuthorityNav activeId="auth-change" en={!!page?.isEn} />
       {(page?.authChangeError || error) ? <PageStatusNotice tone="error">{page?.authChangeError || error}</PageStatusNotice> : null}
       {(message || page?.authChangeMessage) ? <PageStatusNotice tone="success">{message || page?.authChangeMessage}</PageStatusNotice> : null}
-      {!page && !error && !session ? null : !canView ? (
+      {!page && !error && !sessionState.value ? null : !canView ? (
         <MemberStateCard description={t(page, "현재 계정으로는 권한 변경 화면을 조회할 수 없습니다.", "The current account cannot access the authority change screen.")} icon="lock" title={t(page, "권한이 없습니다.", "Permission denied.")} tone="warning" />
       ) : null}
       <CanView allowed={canView} fallback={null}>

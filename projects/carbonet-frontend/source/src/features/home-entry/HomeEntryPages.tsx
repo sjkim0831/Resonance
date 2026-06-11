@@ -88,7 +88,7 @@ export function HomeLandingPage() {
           <div className="max-w-container-max mx-auto px-margin-desktop">
             <div className="relative flex items-center h-16">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
-              <HeaderBrand content={content} en={en} />
+              <HeaderBrand content={content} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
                 <div className="hidden xl:flex border border-outline-variant rounded-lg overflow-hidden">

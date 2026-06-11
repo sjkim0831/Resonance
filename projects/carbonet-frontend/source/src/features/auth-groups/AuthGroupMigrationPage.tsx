@@ -1,15 +1,14 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { readBootstrappedAuthGroupPageData } from "../../lib/api/bootstrap";
 import { createAuthGroup, saveAuthorRoleProfile, saveAuthGroupFeatures } from "../../lib/api/adminActions";
 import { fetchAuthGroupPage } from "../../lib/api/adminMember";
-import { fetchFrontendSession } from "../../lib/api/adminShell";
 import { fetchAuditEvents } from "../../lib/api/platform";
-import type { FrontendSession } from "../../lib/api/adminShellTypes";
 import type { AuthGroupPagePayload } from "../../lib/api/authTypes";
+import { buildLocalizedPath, getNavigationEventName } from "../../lib/navigation/runtime";
 import { CanView } from "../../components/access/CanView";
 import { deriveUiPermissions } from "../../lib/auth/permissions";
-import { buildLocalizedPath } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, AdminTable, GridToolbar, MemberButton, MemberPermissionButton } from "../admin-ui/common";
 import { AdminAuthorityPageFrame } from "../admin-ui/pageFrames";
@@ -178,7 +177,7 @@ function summarizeAuthAuditDiff(page: AuthGroupPagePayload | null, row: Record<s
 export function AuthGroupMigrationPage() {
   const initialSearch = new URLSearchParams(window.location.search);
   const bootstrappedPage = readBootstrappedAuthGroupPageData();
-  const [session, setSession] = useState<FrontendSession | null>(null);
+  const sessionState = useFrontendSession();
   const [page, setPage] = useState<AuthGroupPagePayload | null>(bootstrappedPage);
   const [roleCategory, setRoleCategory] = useState(bootstrappedPage?.selectedRoleCategory || "GENERAL");
   const [insttId, setInsttId] = useState(bootstrappedPage?.authGroupSelectedInsttId || "");
@@ -220,6 +219,7 @@ export function AuthGroupMigrationPage() {
   });
 
   const payload = (page || {}) as Record<string, unknown>;
+  const session = sessionState.value;
   const permissions = deriveUiPermissions(session, page);
   const canManageAllCompanies = !!page?.canManageAllCompanies;
   const roleCategories = (payload.roleCategories as Array<Record<string, string>> | undefined) || [];
@@ -264,27 +264,20 @@ export function AuthGroupMigrationPage() {
       setSkipInitialFetch(false);
       setLoading(true);
       setError("");
-      fetchFrontendSession()
-        .then((sessionPayload) => setSession(sessionPayload))
-        .catch((err: Error) => setError(err.message))
-        .finally(() => setLoading(false));
+      setLoading(false);
       return;
     }
     setLoading(true);
     setError("");
-    Promise.all([
-      fetchFrontendSession(),
-      fetchAuthGroupPage({
-        authorCode,
-        roleCategory,
-        insttId,
-        menuCode: focusedMenuCode,
-        featureCode: focusedFeatureCode,
-        userSearchKeyword: submittedUserSearchKeyword
-      })
-    ])
-      .then(([sessionPayload, nextPage]) => {
-        setSession(sessionPayload);
+    fetchAuthGroupPage({
+      authorCode,
+      roleCategory,
+      insttId,
+      menuCode: focusedMenuCode,
+      featureCode: focusedFeatureCode,
+      userSearchKeyword: submittedUserSearchKeyword
+    })
+      .then((nextPage) => {
         setPage(nextPage);
         setRoleCategory(nextPage.selectedRoleCategory || "GENERAL");
         setInsttId(nextPage.authGroupSelectedInsttId || "");
@@ -385,6 +378,25 @@ export function AuthGroupMigrationPage() {
   }, [authorCode, page?.selectedAuthorProfile, roleCategory, selectedAuthorGroup?.authorDc, selectedAuthorName]);
 
   useEffect(() => {
+    function syncFiltersFromLocation() {
+      const params = new URLSearchParams(window.location.search);
+      const nextRoleCategory = params.get("roleCategory") || "GENERAL";
+      const nextInsttId = params.get("insttId") || bootstrappedPage?.authGroupSelectedInsttId || "";
+      const nextAuthorCode = params.get("authorCode") || "";
+      if (nextRoleCategory !== roleCategory) setRoleCategory(nextRoleCategory);
+      if (nextInsttId !== insttId) setInsttId(nextInsttId);
+      if (nextAuthorCode !== authorCode) setAuthorCode(nextAuthorCode);
+    }
+    const eventName = getNavigationEventName();
+    window.addEventListener(eventName, syncFiltersFromLocation);
+    window.addEventListener("popstate", syncFiltersFromLocation);
+    return () => {
+      window.removeEventListener(eventName, syncFiltersFromLocation);
+      window.removeEventListener("popstate", syncFiltersFromLocation);
+    };
+  }, [authorCode, insttId, roleCategory]);
+
+  useEffect(() => {
     if (!restoreTarget) {
       return;
     }
@@ -433,6 +445,7 @@ export function AuthGroupMigrationPage() {
 
   function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "auth-group-create", {
       actorInsttId: session?.insttId || "",
       roleCategory,
@@ -461,6 +474,7 @@ export function AuthGroupMigrationPage() {
   }
 
   function handleSaveFeatures() {
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "auth-group-save-features", {
       actorInsttId: session?.insttId || "",
       selectedAuthorCode: authorCode,
@@ -510,6 +524,7 @@ export function AuthGroupMigrationPage() {
 
   function handleSaveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const session = sessionState.value;
     logGovernanceScope("ACTION", "auth-group-save-profile", {
       actorInsttId: session?.insttId || "",
       selectedAuthorCode: authorCode,

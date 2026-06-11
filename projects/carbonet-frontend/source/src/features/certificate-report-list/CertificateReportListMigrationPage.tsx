@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 type WorkflowCard = {
   stage: "draft" | "review" | "issued";
@@ -98,6 +102,18 @@ function stageTone(stage: DocumentRow["stageKey"]) {
 export function CertificateReportListMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
   const [searchKeyword, setSearchKeyword] = useState("");
   const [stageFilter, setStageFilter] = useState<"ALL" | DocumentRow["stageKey"]>("ALL");
   const [priorityFilter, setPriorityFilter] = useState<"ALL" | DocumentRow["priority"]>("ALL");
@@ -119,15 +135,35 @@ export function CertificateReportListMigrationPage() {
   const issuedCount = rows.filter((row) => row.stageKey === "issued").length;
   const urgentCount = rows.filter((row) => row.priority === "urgent").length;
 
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
   useEffect(() => {
     logGovernanceScope("PAGE", "certificate-report-list", {
       language: en ? "en" : "ko",
       totalCount: rows.length,
       filteredCount: filteredRows.length,
       stageFilter,
-      priorityFilter
+      priorityFilter,
+      mobileMenuOpen,
+      menuCount: homeMenu.length,
+      isLoggedIn: Boolean(payload.isLoggedIn)
     });
-  }, [en, filteredRows.length, priorityFilter, rows.length, stageFilter]);
+  }, [en, filteredRows.length, priorityFilter, rows.length, stageFilter, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
 
   return (
     <>

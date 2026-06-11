@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { CanView } from "../../components/access/CanView";
 import { PermissionButton } from "../../components/access/CanUse";
-import { buildLocalizedPath, getSearchParam } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getNavigationEventName, getSearchParam } from "../../lib/navigation/runtime";
 import { fetchAdminPermissionPage } from "../../lib/api/adminMember";
 import { saveAdminPermission } from "../../lib/api/adminActions";
-import { fetchFrontendSession } from "../../lib/api/adminShell";
-import type { FrontendSession } from "../../lib/api/adminShellTypes";
 import type { AdminPermissionPagePayload } from "../../lib/api/memberTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminCheckbox, AdminSelect, PageStatusNotice, SummaryMetricCard, WarningPanel, getMemberButtonClassName } from "../admin-ui/common";
@@ -29,7 +28,7 @@ export function AdminPermissionMigrationPage() {
   const initialEmplyrId = resolveInitialEmplyrId();
   const initialUpdated = getSearchParam("updated");
   const initialMode = getSearchParam("mode") || "edit";
-  const [session, setSession] = useState<FrontendSession | null>(null);
+  const sessionState = useFrontendSession();
   const [page, setPage] = useState<AdminPermissionPagePayload | null>(null);
   const [authorCode, setAuthorCode] = useState("");
   const [featureCodes, setFeatureCodes] = useState<string[]>([]);
@@ -37,11 +36,7 @@ export function AdminPermissionMigrationPage() {
   const [message, setMessage] = useState("");
 
   async function load(target: string) {
-    const [sessionPayload, pagePayload] = await Promise.all([
-      session ? Promise.resolve(session) : fetchFrontendSession(),
-      fetchAdminPermissionPage(target, { updated: initialUpdated, mode: initialMode })
-    ]);
-    setSession(sessionPayload);
+    const pagePayload = await fetchAdminPermissionPage(target, { updated: initialUpdated, mode: initialMode });
     setPage(pagePayload);
     setAuthorCode(String(pagePayload.permissionSelectedAuthorCode || ""));
     setFeatureCodes((pagePayload.permissionEffectiveFeatureCodes as string[]) || []);
@@ -65,7 +60,25 @@ export function AdminPermissionMigrationPage() {
   const validationErrors = (page?.adminPermissionErrors as string[] | undefined) || [];
 
   useEffect(() => {
-    if (!page) {
+    function syncFiltersFromLocation() {
+      const params = new URLSearchParams(window.location.search);
+      const nextEmplyrId = params.get("emplyrId") || "";
+      if (nextEmplyrId && nextEmplyrId !== initialEmplyrId) {
+        load(nextEmplyrId).catch((err: Error) => setError(err.message));
+      }
+    }
+    const eventName = getNavigationEventName();
+    window.addEventListener(eventName, syncFiltersFromLocation);
+    window.addEventListener("popstate", syncFiltersFromLocation);
+    return () => {
+      window.removeEventListener(eventName, syncFiltersFromLocation);
+      window.removeEventListener("popstate", syncFiltersFromLocation);
+    };
+  }, [initialEmplyrId]);
+
+  useEffect(() => {
+    const session = sessionState.value;
+    if (!page || !session) {
       return;
     }
     logGovernanceScope("PAGE", "admin-permission", {
@@ -83,9 +96,10 @@ export function AdminPermissionMigrationPage() {
       pageCount,
       featureCount
     });
-  }, [authorCode, featureCodes.length, initialEmplyrId, page, pageCount, readOnly, selectedAuthorName]);
+  }, [authorCode, featureCodes.length, initialEmplyrId, page, pageCount, readOnly, selectedAuthorName, sessionState.value]);
 
   async function handleSave() {
+    const session = sessionState.value;
     if (!session || !page?.adminPermissionTarget) return;
     logGovernanceScope("ACTION", "admin-permission-save", {
       emplyrId: page.adminPermissionTarget.emplyrId,

@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { navigate } from "../../lib/navigation/runtime";
 
 type StepState = "complete" | "active" | "pending";
 
@@ -175,6 +180,18 @@ function stepClassName(state: StepState) {
 export function CertificateApplyMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
   const content = APPLY_CONTENT[en ? "en" : "ko"];
   const [selectedSiteId, setSelectedSiteId] = useState(content.sites[0]?.id ?? "");
   const [managerName, setManagerName] = useState(content.managerName);
@@ -188,14 +205,32 @@ export function CertificateApplyMigrationPage() {
   );
 
   useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+  }, [payloadState, session]);
+
+  useEffect(() => {
     logGovernanceScope("PAGE", "certificate-apply", {
       language: en ? "en" : "ko",
+      mobileMenuOpen,
       selectedSiteId,
       managerName,
       periodStart,
       periodEnd
     });
-  }, [en, managerName, periodEnd, periodStart, selectedSiteId]);
+  }, [en, managerName, periodEnd, periodStart, selectedSiteId, mobileMenuOpen]);
+
+  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const homeMenu = payload.homeMenu || [];
 
   return (
     <>
@@ -222,7 +257,15 @@ export function CertificateApplyMigrationPage() {
               <a className="rounded-full border border-slate-200 px-4 py-2 hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/co2/analysis", "/en/co2/analysis")}>{en ? "Analytics" : "성과 분석"}</a>
             </nav>
             <div className="flex items-center gap-3">
-              <UserLanguageToggle en={en} onKo={() => navigate("/certificate/apply")} onEn={() => navigate("/en/certificate/apply")} />
+              <UserLanguageToggle en={en} onKo={() => navigate(buildLocalizedPath("/certificate/apply", "/en/certificate/apply"))} onEn={() => navigate(buildLocalizedPath("/en/certificate/apply", "/certificate/apply"))} />
+              <button
+                aria-label={en ? "Open menu" : "메뉴 열기"}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 lg:hidden"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-2xl text-slate-600">{mobileMenuOpen ? "close" : "menu"}</span>
+              </button>
               {session.value?.authenticated ? (
                 <button className="gov-btn gov-btn-primary px-4 py-2" type="button" onClick={() => void session.logout()}>{en ? "Logout" : "로그아웃"}</button>
               ) : (
@@ -393,6 +436,39 @@ export function CertificateApplyMigrationPage() {
           lastModifiedLabel={en ? "Last Modified:" : "최종 수정일:"}
           waAlt={en ? "Web Accessibility Quality Mark" : "웹 접근성 품질인증 마크"}
         />
+
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
+            <nav className="fixed bottom-0 right-0 top-0 w-72 bg-white shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+                <span className="font-black text-[var(--kr-gov-blue)]">{en ? "Menu" : "메뉴"}</span>
+                <button className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100" onClick={() => setMobileMenuOpen(false)} type="button">
+                  <span className="material-symbols-outlined text-xl text-slate-600">close</span>
+                </button>
+              </div>
+              <div className="overflow-y-auto p-4">
+                {homeMenu.length === 0 ? (
+                  <p className="p-4 text-sm text-slate-500">{en ? "No menu items available." : "메뉴 항목이 없습니다."}</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {homeMenu.map((item, index) => (
+                      <li key={item.label || index}>
+                        <a
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-[var(--kr-gov-blue)]"
+                          href={item.url || "#"}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {item.label || (en ? "Menu item" : "메뉴")}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </nav>
+          </div>
+        )}
       </div>
     </>
   );
