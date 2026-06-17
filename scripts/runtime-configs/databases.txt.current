@@ -1,0 +1,2 @@
+#db-name	vol-path		db-host		log-path		lob-base-path
+carbonet	/tmp/cubrid_test	localhost	/tmp/cubrid_test/log	file:/tmp/cubrid_test/lob

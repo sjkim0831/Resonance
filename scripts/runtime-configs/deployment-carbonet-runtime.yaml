@@ -1,0 +1,204 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "112"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"carbonet-runtime","framework":"resonance","project":"carbonet","tier":"dev"},"name":"carbonet-runtime","namespace":"carbonet-prod"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"metadata":{"labels":{"app":"carbonet-runtime","framework":"resonance","project":"carbonet","tier":"dev"}},"spec":{"containers":[{"env":[{"name":"CARBONET_ECOINVENT_CLIENT_ID","valueFrom":{"secretKeyRef":{"key":"CARBONET_ECOINVENT_CLIENT_ID","name":"carbonet-runtime-ecoinvent-secret"}}},{"name":"CARBONET_ECOINVENT_CLIENT_SECRET","valueFrom":{"secretKeyRef":{"key":"CARBONET_ECOINVENT_CLIENT_SECRET","name":"carbonet-runtime-ecoinvent-secret"}}},{"name":"TOKEN_ACCESS_SECRET","valueFrom":{"secretKeyRef":{"key":"TOKEN_ACCESS_SECRET","name":"carbonet-runtime-secret"}}},{"name":"TOKEN_REFRESH_SECRET","valueFrom":{"secretKeyRef":{"key":"TOKEN_REFRESH_SECRET","name":"carbonet-runtime-secret"}}},{"name":"JAVA_OPTS","value":"-XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8"}],"envFrom":[{"configMapRef":{"name":"carbonet-runtime-config"}},{"secretRef":{"name":"carbonet-runtime-secret"}}],"image":"localhost:5000/carbonet-runtime:2026.06.14-023404-kubeadm","imagePullPolicy":"IfNotPresent","livenessProbe":{"httpGet":{"path":"/actuator/health/liveness","port":8080},"initialDelaySeconds":90,"periodSeconds":20,"timeoutSeconds":3},"name":"carbonet-runtime","ports":[{"containerPort":8080}],"readinessProbe":{"httpGet":{"path":"/actuator/health/readiness","port":8080},"initialDelaySeconds":30,"periodSeconds":10,"timeoutSeconds":3},"resources":{"limits":{"cpu":"4","memory":"8Gi"},"requests":{"cpu":"500m","memory":"2Gi"}},"securityContext":{"runAsGroup":1000,"runAsUser":1000},"startupProbe":{"failureThreshold":60,"httpGet":{"path":"/actuator/health/liveness","port":8080},"periodSeconds":10}}],"securityContext":{"fsGroup":1000,"runAsGroup":1000,"runAsNonRoot":true,"runAsUser":1000}}}}}
+    resonance.ai/image: registry.local/carbonet-runtime:2026.06.17-113819-kubeadm
+    resonance.ai/released-at: "2026-06-17T11:44:14+00:00"
+  creationTimestamp: "2026-06-17T05:11:36Z"
+  generation: 148
+  labels:
+    app: carbonet-runtime
+    framework: resonance
+    project: carbonet
+    tier: dev
+  name: carbonet-runtime
+  namespace: carbonet-prod
+  resourceVersion: "5583498"
+  uid: 8825a8e9-29c9-4639-a5b7-8c1eac7912da
+spec:
+  minReadySeconds: 20
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: carbonet-runtime
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "2026-06-17T11:59:47Z"
+      labels:
+        app: carbonet-runtime
+        framework: resonance
+        project: carbonet
+        tier: dev
+    spec:
+      containers:
+      - env:
+        - name: CARBONET_ECOINVENT_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              key: CARBONET_ECOINVENT_CLIENT_ID
+              name: carbonet-runtime-ecoinvent-secret
+        - name: CARBONET_ECOINVENT_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: CARBONET_ECOINVENT_CLIENT_SECRET
+              name: carbonet-runtime-ecoinvent-secret
+        - name: TOKEN_ACCESS_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: TOKEN_ACCESS_SECRET
+              name: carbonet-runtime-secret
+        - name: TOKEN_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: TOKEN_REFRESH_SECRET
+              name: carbonet-runtime-secret
+        - name: JAVA_OPTS
+          value: -XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50
+            -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:cubrid:cubrid-carbonet.carbonet-prod.svc.cluster.local:33000:carbonet:::?charset=UTF-8&connectTimeout=5&queryTimeout=30
+        - name: CARBONET_REACT_APP_FS_OVERRIDE_ENABLED
+          value: "true"
+        - name: CARBONET_REACT_APP_FS_OVERRIDE_PATH
+          value: /app/react-app-overlay
+        - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+          value: "2"
+        - name: SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE
+          value: "0"
+        - name: SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT
+          value: "8000"
+        - name: SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT
+          value: "3000"
+        - name: SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT
+          value: "30000"
+        - name: SPRING_DATASOURCE_HIKARI_MAX_LIFETIME
+          value: "300000"
+        - name: SPRING_DATASOURCE_HIKARI_LEAK_DETECTION_THRESHOLD
+          value: "60000"
+        envFrom:
+        - configMapRef:
+            name: carbonet-runtime-config
+        - secretRef:
+            name: carbonet-runtime-secret
+        image: registry.local/carbonet-runtime:2026.06.17-113819-kubeadm
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - sleep 10
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 3
+        name: carbonet-runtime
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        resources:
+          limits:
+            cpu: "4"
+            memory: 8Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          runAsGroup: 1000
+          runAsUser: 1000
+        startupProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/config/manifest.json
+          name: runtime-manifest
+          readOnly: true
+          subPath: manifest.json
+        - mountPath: /app/react-app-overlay
+          name: react-app-overlay
+          readOnly: true
+        - mountPath: /app/data
+          name: carbonet-runtime-data
+        - mountPath: /tmp
+          name: tmp
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - hostPath:
+          path: /opt/Resonance/data
+          type: DirectoryOrCreate
+        name: carbonet-runtime-data
+      - configMap:
+          defaultMode: 420
+          name: carbonet-runtime-manifest
+        name: runtime-manifest
+      - hostPath:
+          path: /opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app
+          type: DirectoryOrCreate
+        name: react-app-overlay
+      - emptyDir:
+          sizeLimit: 2Gi
+        name: tmp
+status:
+  availableReplicas: 2
+  conditions:
+  - lastTransitionTime: "2026-06-17T11:54:14Z"
+    lastUpdateTime: "2026-06-17T11:54:14Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2026-06-17T08:11:19Z"
+    lastUpdateTime: "2026-06-17T12:01:28Z"
+    message: ReplicaSet "carbonet-runtime-55dd446df6" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 148
+  readyReplicas: 2
+  replicas: 2
+  terminatingReplicas: 0
+  updatedReplicas: 2

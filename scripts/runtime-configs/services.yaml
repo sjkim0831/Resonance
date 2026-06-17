@@ -1,0 +1,173 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: "2026-06-17T12:01:45Z"
+    labels:
+      app: carbonet-runtime
+      framework: resonance
+      project: carbonet
+      tier: dev
+    name: carbonet-runtime
+    namespace: carbonet-prod
+    resourceVersion: "5583399"
+    uid: a4574d06-2057-4d94-97ab-eaa53803fddf
+  spec:
+    clusterIP: 10.98.208.151
+    clusterIPs:
+    - 10.98.208.151
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - nodePort: 80
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: carbonet-runtime
+    sessionAffinity: None
+    type: NodePort
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"app":"carbonet-runtime-review","tier":"review"},"name":"carbonet-runtime-review","namespace":"carbonet-prod"},"spec":{"ports":[{"name":"http","nodePort":20080,"port":80,"targetPort":8080}],"selector":{"app":"carbonet-runtime-review"},"type":"NodePort"}}
+    creationTimestamp: "2026-06-10T11:49:04Z"
+    labels:
+      app: carbonet-runtime-review
+      tier: review
+    name: carbonet-runtime-review
+    namespace: carbonet-prod
+    resourceVersion: "4223481"
+    uid: d35aa5f3-c6db-451c-8e38-634a17155c72
+  spec:
+    clusterIP: 10.100.118.163
+    clusterIPs:
+    - 10.100.118.163
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: http
+      nodePort: 20080
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: carbonet-runtime-review
+    sessionAffinity: None
+    type: NodePort
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"labels":{"app":"cubrid-carbonet"},"name":"cubrid-carbonet","namespace":"carbonet-prod"},"spec":{"ports":[{"name":"broker","port":33000,"targetPort":33000}],"selector":{"app":"cubrid-carbonet"},"type":"ClusterIP"}}
+    creationTimestamp: "2026-06-16T05:56:57Z"
+    labels:
+      app: cubrid-carbonet
+    name: cubrid-carbonet
+    namespace: carbonet-prod
+    resourceVersion: "5482383"
+    uid: 5623b412-ed91-4ffb-be21-a5ac463eabe4
+  spec:
+    clusterIP: 10.103.4.203
+    clusterIPs:
+    - 10.103.4.203
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: broker
+      nodePort: 33001
+      port: 33000
+      protocol: TCP
+      targetPort: 33000
+    selector:
+      app: cubrid-carbonet
+    sessionAffinity: None
+    type: NodePort
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: "2026-06-10T06:34:28Z"
+    labels:
+      app: cubrid-carbonet
+      apps.kubernetes.io/pod-index: "0"
+      controller-revision-hash: cubrid-carbonet-5d78565d78
+      framework: resonance
+      project: carbonet
+      statefulset.kubernetes.io/pod-name: cubrid-carbonet-0
+    name: local-registry
+    namespace: carbonet-prod
+    resourceVersion: "3711619"
+    uid: 2d530602-a6df-4db6-9d81-4e527cf96286
+  spec:
+    clusterIP: 10.100.80.172
+    clusterIPs:
+    - 10.100.80.172
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 5000
+      protocol: TCP
+      targetPort: 5000
+    selector:
+      app: cubrid-carbonet
+      apps.kubernetes.io/pod-index: "0"
+      controller-revision-hash: cubrid-carbonet-5d78565d78
+      framework: resonance
+      project: carbonet
+      statefulset.kubernetes.io/pod-name: cubrid-carbonet-0
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: "2026-06-01T12:34:41Z"
+    labels:
+      app: ollama-gpu
+    name: ollama-gpu
+    namespace: carbonet-prod
+    resourceVersion: "4938587"
+    uid: ee73f91b-3806-4ee8-bd3a-2f331c1fb5f0
+  spec:
+    clusterIP: 10.111.124.217
+    clusterIPs:
+    - 10.111.124.217
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - port: 11434
+      protocol: TCP
+      targetPort: 11434
+    selector:
+      app: ollama-gpu
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+kind: List
+metadata:
+  resourceVersion: ""

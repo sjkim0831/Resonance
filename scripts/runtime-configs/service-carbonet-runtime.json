@@ -1,0 +1,25 @@
+{
+    "clusterIP": "10.98.208.151",
+    "clusterIPs": [
+        "10.98.208.151"
+    ],
+    "externalTrafficPolicy": "Cluster",
+    "internalTrafficPolicy": "Cluster",
+    "ipFamilies": [
+        "IPv4"
+    ],
+    "ipFamilyPolicy": "SingleStack",
+    "ports": [
+        {
+            "nodePort": 80,
+            "port": 80,
+            "protocol": "TCP",
+            "targetPort": 8080
+        }
+    ],
+    "selector": {
+        "app": "carbonet-runtime"
+    },
+    "sessionAffinity": "None",
+    "type": "NodePort"
+}

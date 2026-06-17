@@ -1,0 +1,3 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p3  1.6T  774G  685G  54% /var/lib/cubrid
+overlay         1.6T  774G  685G  54% /
