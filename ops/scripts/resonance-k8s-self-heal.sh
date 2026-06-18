@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
-WEB_URL="${WEB_URL:-http://127.0.0.1}"
+WEB_URL="${WEB_URL:-http://127.0.0.1:8080}"
 LOG_FILE="${LOG_FILE:-/var/log/resonance-k8s-self-heal.log}"
 LOCK_FILE="${LOCK_FILE:-/var/lock/resonance-k8s-self-heal.lock}"
 REBUILD_ON_FAILURE="${REBUILD_ON_FAILURE:-true}"
@@ -38,7 +38,45 @@ cleanup_cni_leftovers() {
   fi
 }
 
+REGISTRY_HOST="${REGISTRY_HOST:-registry.local}"
+REGISTRY_IP="${REGISTRY_IP:-10.0.0.100}"
+
+check_registry_dns() {
+  if nslookup "$REGISTRY_HOST" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+repair_registry_dns() {
+  log "registry DNS ($REGISTRY_HOST) not resolving, attempting repair"
+  if systemctl is-active --quiet systemd-resolved; then
+    log "restarting systemd-resolved"
+    systemctl restart systemd-resolved 2>/dev/null || true
+    sleep 3
+  fi
+
+  if ! check_registry_dns; then
+    log "adding $REGISTRY_HOST to /etc/hosts as fallback"
+    if ! grep -q "$REGISTRY_HOST" /etc/hosts 2>/dev/null; then
+      echo "$REGISTRY_IP $REGISTRY_HOST" >> /etc/hosts 2>/dev/null || true
+    fi
+    sleep 2
+  fi
+
+  if check_registry_dns; then
+    log "registry DNS restored"
+    return 0
+  fi
+  log "registry DNS repair failed"
+  return 1
+}
+
 ensure_system_services() {
+  if ! check_registry_dns; then
+    repair_registry_dns || true
+  fi
+
   systemctl is-active --quiet containerd || systemctl restart containerd || true
   systemctl is-active --quiet kubelet || systemctl restart kubelet || true
   if ! kubectl_ok; then

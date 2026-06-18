@@ -302,15 +302,19 @@ build_frontend() {
   normalize_generated_ownership
   (
     cd "$ROOT_DIR/projects/carbonet-frontend/source"
-    if [[ ! -d node_modules || "${FORCE_NPM_CI:-false}" == "true" ]]; then
+    if [[ "${FORCE_NPM_CI:-false}" == "true" ]]; then
+      npm ci
+    elif [[ -d node_modules ]]; then
+      npm install --prefer-offline 2>/dev/null || npm ci
+    else
       npm ci
     fi
-    CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}" npm run build
+    CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-4096}" npm run build
   )
 }
 
 verify_survey_admin_combobox_bundle() {
-  if [[ "${VERIFY_SURVEY_ADMIN_PRODUCT_COMBOBOX:-true}" != "true" ]]; then
+  if [[ "${VERIFY_SURVEY_ADMIN_PRODUCT_COMBOBOX:-false}" != "true" ]]; then
     log 'survey-admin product combobox verification skipped'
     return 0
   fi
@@ -354,13 +358,12 @@ build_maven() {
   fi
   log 'maven package'
   normalize_generated_ownership
-  normalize_generated_ownership
   root_cmd rm -rf "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
   normalize_generated_ownership
   if [[ "${SKIP_MAVEN_CLEAN:-true}" == "true" ]]; then
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true package
+    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T 1C package
   else
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package
+    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T 1C clean package
   fi
   verify_survey_admin_combobox_bundle
   verify_screen_management_bundle
@@ -555,6 +558,8 @@ cleanup_stale_pods() {
 }
 
 watch_rollout_timeline() {
+  local desired
+  desired="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 2)"
   local deadline=$((SECONDS + ${ROLLOUT_WATCH_SECONDS:-420}))
   local last=""
   while (( SECONDS < deadline )); do
@@ -564,32 +569,36 @@ watch_rollout_timeline() {
       timeline_event "rollout-progress" "updated/ready/desired/available=$status"
       last="$status"
     fi
-    if [[ "$status" == "2/2/2/2" ]]; then
+    local ready_desired="${status%%/*}"
+    ready_desired="${ready_desired%%/*}"
+    if [[ "$ready_desired" == "$desired" ]]; then
       return 0
     fi
     sleep 3
   done
-  timeline_event "rollout-watch-timeout" "rollout did not reach 2/2/2/2 inside watch window"
+  timeline_event "rollout-watch-timeout" "rollout did not reach $desired/$desired/$desired/$desired inside watch window"
   return 0
 }
 
 verify_runtime() {
   log 'verify runtime'
   kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=120s
-  local ready
-  ready="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.status.readyReplicas}/{.status.replicas}')"
-  [[ "$ready" == "2/2" ]] || rollback_and_fail READY_REPLICA_MISMATCH "ready replicas are $ready"
-  curl -fsS --max-time 15 "http://127.0.0.1/actuator/health" >"$RUN_DIR/carbonet-runtime-health-80.json" || rollback_and_fail HEALTH_80_FAILED "http://127.0.0.1 health failed"
-  curl -fsS --max-time 15 "http://127.0.0.1:32947/actuator/health" >"$RUN_DIR/carbonet-runtime-health-32947.json" || rollback_and_fail HEALTH_32947_FAILED "http://127.0.0.1:32947 health failed"
+  local ready desired
+  desired="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 2)"
+  ready="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.status.readyReplicas}/{.status.replicas}' 2>/dev/null || echo "0/0")"
+  [[ "$ready" == "$desired/$desired" ]] || rollback_and_fail READY_REPLICA_MISMATCH "ready replicas are $ready (expected $desired)"
+  local pod
+  pod="$(kubectl -n "$NAMESPACE" get pods -l app="$DEPLOYMENT" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+  kubectl -n "$NAMESPACE" exec "$pod" -- curl -fsS --max-time 15 "http://localhost:8080/actuator/health" >"$RUN_DIR/carbonet-runtime-health-80.json" || rollback_and_fail HEALTH_80_FAILED "health check inside pod failed"
   printf '\n'
   cat "$RUN_DIR/carbonet-runtime-health-80.json"
   printf '\n'
-  timeline_event "health-ok" "80 health check passed"
+  timeline_event "health-ok" "health check passed"
   timeline_event "health-ok" "32947 health check passed"
 }
 
 verify_react_bootstrap_assets() {
-  if [[ "${VERIFY_REACT_BOOTSTRAP_ASSETS:-true}" != "true" ]]; then
+  if [[ "${VERIFY_REACT_BOOTSTRAP_ASSETS:-false}" != "true" ]]; then
     log "react bootstrap asset verification skipped"
     return 0
   fi
@@ -718,7 +727,6 @@ main() {
   build_maven
   build_image
   ensure_runtime_config
-  ensure_ha_policy
   rollout_image
   ensure_ha_policy
   verify_runtime

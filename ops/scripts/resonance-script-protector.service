@@ -1,0 +1,9 @@
+[Unit]
+Description=Protect critical Resonance scripts from deletion
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/Resonance/ops/scripts/resonance-script-protector.sh
+StandardOutput=journal+console
+StandardError=journal+console
