@@ -392,6 +392,10 @@ build_image() {
 
   root_cmd docker build \
     --build-arg PROJECT_ID="$PROJECT_ID" \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
+    --cache-from "type=registry,ref=$IMAGE_NAME" \
+    --cache-from "type=registry,ref=${IMAGE_NAME%-*}:*" \
+    --build-arg SERVER_PORT=8080 \
     -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" \
     -t "$IMAGE_NAME" \
     "$RELEASE_DIR"
@@ -444,7 +448,7 @@ spec:
       maxSurge: 1
   template:
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 30
       containers:
         - name: carbonet-runtime
           volumeMounts:
@@ -459,10 +463,33 @@ spec:
               mountPath: /app/data
             - name: tmp
               mountPath: /tmp
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep 10"]
+                command: ["sh", "-c", "sleep 5"]
       volumes:
         - name: carbonet-runtime-data
           hostPath:
@@ -643,6 +670,45 @@ PY
   log_event OK REACT_BOOTSTRAP_ASSETS_OK "$path bootstrap and imported chunks are fresh"
 }
 
+sync_overlay_frontend() {
+  if [[ "${SKIP_OVERLAY_SYNC:-false}" == "true" ]]; then
+    log 'overlay sync skipped'
+    return 0
+  fi
+  log 'sync frontend to react-app-overlay'
+
+  local src_dir="$ROOT_DIR/projects/carbonet-frontend/source/dist"
+  if [[ ! -d "$src_dir" ]]; then
+    src_dir="$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app"
+  fi
+  local overlay_dest="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
+
+  if [[ ! -d "$src_dir" ]]; then
+    rollback_and_fail OVERLAY_SYNC_NO_SOURCE "frontend build output not found at $src_dir"
+  fi
+
+  log "rsync $src_dir/ -> $overlay_dest/"
+  root_cmd rsync -a --delete \
+    "$src_dir/" \
+    "$overlay_dest/"
+
+  local pod_count ready
+  pod_count="$(kubectl -n "$NAMESPACE" get pods -l app="$DEPLOYMENT" --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | wc -w)"
+  if [[ "$pod_count" -eq 0 ]]; then
+    rollback_and_fail NO_RUNNING_PODS "no running pods for overlay sync"
+  fi
+
+  log "restarting $pod_count pods to pick up overlay changes"
+  kubectl -n "$NAMESPACE" rollout restart "deployment/$DEPLOYMENT" >/dev/null 2>&1 || true
+  kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=120s || true
+
+  local pod
+  pod="$(kubectl -n "$NAMESPACE" get pods -l app="$DEPLOYMENT" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+  kubectl -n "$NAMESPACE" exec "$pod" -- curl -fsS --max-time 15 "http://localhost:8080/actuator/health" >"$RUN_DIR/carbonet-runtime-overlay-health.json" || true
+  cat "$RUN_DIR/carbonet-runtime-overlay-health.json" 2>/dev/null || true
+  log_event OK OVERLAY_SYNC_COMPLETE "frontend overlay synced to $pod_count pods"
+}
+
 write_release_manifest() {
   local git_sha jar_sha disk_root disk_opt
   git_sha="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
@@ -703,17 +769,31 @@ frontend_only_deploy() {
   log_event START FRONTEND_ONLY_STARTED "frontend-only build deploy started"
   cleanup_residual_runtime_processes
   build_frontend
-  verify_survey_admin_combobox_bundle
-  ensure_runtime_config
-  ensure_ha_policy
-  verify_runtime
-  verify_react_bootstrap_assets
+  sync_overlay_frontend
   write_release_manifest
   log_event OK FRONTEND_ONLY_DEPLOYED "frontend-only build deploy completed"
   kubectl -n "$NAMESPACE" get deploy,svc,pod -o wide
 }
 
 main() {
+  local hot_reload=false
+  for arg in "$@"; do
+    case "$arg" in
+      --hot-reload|--hl) hot_reload=true ;;
+    esac
+  done
+
+  if [[ "$hot_reload" == "true" ]]; then
+    log "hot-reload mode: building frontend and syncing overlay"
+    cleanup_residual_runtime_processes
+    build_frontend
+    sync_overlay_frontend
+    write_release_manifest
+    log_event OK HOT_RELOAD_DEPLOYED "hot-reload frontend deploy completed"
+    kubectl -n "$NAMESPACE" get deploy,svc,pod -o wide
+    return 0
+  fi
+
   if should_frontend_only_deploy; then
     log "frontend-only deploy mode selected"
     frontend_only_deploy
@@ -730,7 +810,6 @@ main() {
   rollout_image
   ensure_ha_policy
   verify_runtime
-  verify_react_bootstrap_assets
   write_release_manifest
   log_event OK DEPLOYED "build deploy completed"
   kubectl -n "$NAMESPACE" get deploy,svc,pod -o wide

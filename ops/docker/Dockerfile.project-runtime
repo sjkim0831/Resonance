@@ -1,5 +1,7 @@
-# Base image using Eclipse Temurin (Java 17)
-FROM eclipse-temurin:17-jre-focal
+# Base image using Eclipse Temurin (Java 21)
+FROM eclipse-temurin:21-jre
+
+ARG BUILDKIT_INLINE_CACHE=1
 
 # Arguments for flexible builds
 ARG PROJECT_ID

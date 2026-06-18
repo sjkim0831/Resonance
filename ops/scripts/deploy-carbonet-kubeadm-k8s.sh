@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
 PROJECT_ID="${PROJECT_ID:-P003}"
-SERVICE_NODE_PORT="${SERVICE_NODE_PORT:-18080}"
+SERVICE_NODE_PORT="${SERVICE_NODE_PORT:-80}"
 CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_USER="${DB_USER:-dba}"
@@ -158,6 +158,7 @@ build_image() {
     return 0
   fi
   log "image context $IMAGE_NAME"
+  export DOCKER_BUILDKIT=1
   rm -rf "$RELEASE_DIR"
   mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
   cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RELEASE_DIR/project-runtime.jar"
@@ -172,7 +173,10 @@ build_image() {
   fi
   cp -R "$RELEASE_DIR/config/." "$RELEASE_DIR/ops/config/" 2>/dev/null || true
 
-  sudo docker build --build-arg PROJECT_ID="$PROJECT_ID" \
+  sudo docker build \
+    --build-arg PROJECT_ID="$PROJECT_ID" \
+    --build-arg BUILDKIT_INLINE_CACHE=1 \
+    --cache-from "type=registry,ref=registry.local/carbonet-runtime:2026.06.18-*" \
     -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" \
     -t "$IMAGE_NAME" \
     "$RELEASE_DIR"
@@ -192,7 +196,7 @@ metadata:
     framework: resonance
     project: carbonet
 spec:
-  replicas: 1
+  replicas: 4
   revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
@@ -211,7 +215,12 @@ spec:
       annotations:
         resonance.ai/image: ${IMAGE_NAME}
     spec:
-      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: 30
       containers:
         - name: carbonet-runtime
           image: ${IMAGE_NAME}
@@ -253,25 +262,25 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: http
-            failureThreshold: 90
-            periodSeconds: 10
+            failureThreshold: 30
+            periodSeconds: 5
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: http
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 12
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
-            initialDelaySeconds: 180
-            periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 6
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
           resources:
             requests:
               cpu: "500m"
