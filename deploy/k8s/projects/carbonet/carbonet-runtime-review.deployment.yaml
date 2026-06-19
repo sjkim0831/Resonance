@@ -21,6 +21,11 @@ spec:
         project: carbonet
         tier: review
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
       containers:
         - name: carbonet-runtime
           image: registry.local/carbonet-runtime:2026.06.10-110734-kubeadm
@@ -62,6 +67,9 @@ spec:
                   key: TOKEN_REFRESH_SECRET
             - name: JAVA_OPTS
               value: "-XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8"
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
           startupProbe:
             httpGet:
               path: /actuator/health/liveness

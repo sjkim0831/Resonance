@@ -1,0 +1,87 @@
+{
+  "id": "dark",
+  "name": "다크 테마",
+  "colors": {
+    "primary": "#60A5FA",
+    "secondary": "#818CF8",
+    "accent": "#A78BFA",
+    "background": "#111827",
+    "surface": "#1F2937",
+    "text": "#F9FAFB",
+    "textSecondary": "#9CA3AF",
+    "border": "#374151",
+    "error": "#F87171",
+    "warning": "#FBBF24",
+    "success": "#34D399",
+    "info": "#60A5FA"
+  },
+  "fonts": {
+    "family": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    "size": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "xxl": "1.5rem"
+    },
+    "weight": {
+      "normal": 400,
+      "medium": 500,
+      "bold": 600
+    }
+  },
+  "spacing": {
+    "xs": "0.25rem",
+    "sm": "0.5rem",
+    "md": "1rem",
+    "lg": "1.5rem",
+    "xl": "2rem"
+  },
+  "borderRadius": {
+    "sm": "0.25rem",
+    "md": "0.375rem",
+    "lg": "0.5rem",
+    "full": "9999px"
+  },
+  "shadows": {
+    "sm": "0 1px 2px 0 rgb(0 0 0 / 0.3)",
+    "md": "0 4px 6px -1px rgb(0 0 0 / 0.4)",
+    "lg": "0 10px 15px -3px rgb(0 0 0 / 0.5)",
+    "none": "none"
+  },
+  "components": {
+    "button": {
+      "primaryBg": "#60A5FA",
+      "primaryColor": "#111827",
+      "secondaryBg": "#374151",
+      "secondaryColor": "#F9FAFB",
+      "borderRadius": "0.375rem",
+      "padding": "0.5rem 1rem",
+      "fontSize": "0.875rem"
+    },
+    "input": {
+      "background": "#1F2937",
+      "border": "#4B5563",
+      "color": "#F9FAFB",
+      "focusBorder": "#60A5FA",
+      "borderRadius": "0.375rem",
+      "padding": "0.5rem 0.75rem"
+    },
+    "table": {
+      "headerBg": "#1F2937",
+      "headerColor": "#F9FAFB",
+      "rowBg": "#111827",
+      "rowAltBg": "#1F2937",
+      "border": "#374151",
+      "hoverBg": "#374151"
+    },
+    "card": {
+      "background": "#1F2937",
+      "border": "#374151",
+      "borderRadius": "0.5rem",
+      "padding": "1rem",
+      "shadow": "0 1px 3px 0 rgb(0 0 0 / 0.4)"
+    }
+  }
+}

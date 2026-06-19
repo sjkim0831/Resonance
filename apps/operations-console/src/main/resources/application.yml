@@ -37,7 +37,7 @@ spring:
     hikari:
       maximum-pool-size: 20
       connection-timeout: 30000
-      initialization-fail-timeout: -1
+      initialization-fail-timeout: 60000
   jpa:
     database-platform: org.hibernate.community.dialect.CUBRIDDialect
     hibernate:

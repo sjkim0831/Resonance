@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app: influxdb
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: influxdb
+  namespace: monitoring
+spec:
+  ports:
+  - name: http
+    port: 8086
+    targetPort: 8086
+  - name: rpc
+    port: 8088
+    targetPort: 8088
+  selector:
+    app: influxdb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: influxdb
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: influxdb
+  template:
+    metadata:
+      labels:
+        app: influxdb
+    spec:
+      containers:
+      - name: influxdb
+        image: influxdb:2.7-alpine
+        ports:
+        - containerPort: 8086
+          name: http
+        - containerPort: 8088
+          name: rpc
+        env:
+        - name: DOCKER_INFLUXDB_INIT_MODE
+          value: "setup"
+        - name: DOCKER_INFLUXDB_INIT_USERNAME
+          value: "admin"
+        - name: DOCKER_INFLUXDB_INIT_PASSWORD
+          value: "admin123"
+        - name: DOCKER_INFLUXDB_INIT_ORG
+          value: "hermes"
+        - name: DOCKER_INFLUXDB_INIT_BUCKET
+          value: "events"
+        - name: DOCKER_INFLUXDB_INIT_RETENTION
+          value: "30d"
+        - name: DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+          value: "hermes-admin-token"
+        volumeMounts:
+        - name: influxdb-data
+          mountPath: /var/lib/influxdb2
+      volumes:
+      - name: influxdb-data
+        emptyDir: {}

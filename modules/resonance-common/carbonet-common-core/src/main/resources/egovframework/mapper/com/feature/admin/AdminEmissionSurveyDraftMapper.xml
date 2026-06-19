@@ -15,7 +15,7 @@
         FROM ADMIN_EMISSION_SURVEY_UPLOAD_LOG
     </select>
 
-    <select id="selectCaseHeaders" resultType="hashmap">
+    <select id="selectCaseHeaders" parameterType="hashmap" resultType="hashmap">
         SELECT
             CASE_ID AS "caseId",
             OWNER_ACTOR_ID AS "ownerActorId",
@@ -40,7 +40,7 @@
             GUIDANCE_JSON AS "guidanceJson",
             LAST_SAVED_BY AS "lastSavedBy",
             TO_CHAR(LAST_SAVED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "savedAt"
-        FROM ADMIN_EMISSION_SURVEY_CASE
+        FROM ADMIN_EMISSION_SURVEY_CASE WHERE OWNER_ACTOR_ID = #{ownerActorId}
         ORDER BY MAJOR_CODE, SECTION_CODE, CASE_CODE
     </select>
 

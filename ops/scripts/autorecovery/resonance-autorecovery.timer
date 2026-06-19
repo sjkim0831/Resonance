@@ -1,0 +1,11 @@
+[Unit]
+Description=Resonance Auto-Recovery Timer
+Requires=resonance-autorecovery.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

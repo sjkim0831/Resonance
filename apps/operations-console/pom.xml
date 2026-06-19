@@ -38,10 +38,16 @@
             <artifactId>stable-execution-gate</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+<dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <version>3.5.6</version>
+        </dependency>
         <dependency>
-            <groupId>egovframework</groupId>
-            <artifactId>screenbuilder-carbonet-adapter</artifactId>
-            <version>${project.parent.version}</version>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.224</version>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>egovframework</groupId>
@@ -61,11 +67,6 @@
         <dependency>
             <groupId>egovframework</groupId>
             <artifactId>resonance-ollama-control-plane</artifactId>
-            <version>${project.parent.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>egovframework</groupId>
-            <artifactId>resonance-workbench-core</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
     </dependencies>

@@ -2234,7 +2234,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     private Map<String, Map<String, Object>> readDraftRegistryFromDatabase(String actorId) {
         try {
             Map<String, Map<String, Object>> result = new LinkedHashMap<>();
-            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders();
+            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
             for (Map<String, Object> header : headers) {
                 if (!matchesOwner(header, actorId)) {
                     continue;
@@ -2374,7 +2374,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
 
     private void deleteCaseDraftFromDatabase(String sectionCode, String caseCode, String productName, String actorId) {
         try {
-            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders();
+            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
             for (Map<String, Object> header : headers) {
                 if (!matchesSectionAndCase(header, sectionCode, caseCode)) {
                     continue;
@@ -3085,7 +3085,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         String resolvedActorId = storageActorId();
         if (isDraftTableReady()) {
             try {
-                for (Map<String, Object> header : adminEmissionSurveyDraftMapper.selectCaseHeaders()) {
+                for (Map<String, Object> header : adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()))) {
                     if (!matchesOwner(header, resolvedActorId)) {
                         continue;
                     }
@@ -3142,7 +3142,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
             return;
         }
         try {
-            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders();
+            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
             for (Map<String, Object> header : headers) {
                 if (!matchesOwner(header, storageActorId())) {
                     continue;
@@ -3183,7 +3183,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
             return;
         }
         try {
-            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders();
+            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
             for (Map<String, Object> header : headers) {
                 if (!matchesOwner(header, storageActorId())) {
                     continue;

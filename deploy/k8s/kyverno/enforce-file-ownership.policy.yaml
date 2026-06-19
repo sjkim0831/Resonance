@@ -1,0 +1,73 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-file-ownership
+  annotations:
+    policies.kyverno.io/title: "Enforce File Ownership"
+    policies.kyverno.io/subject: "SecurityContext"
+    policies.kyverno.io/description: >-
+      Enforces consistent UID/GID (1000) for all pods to prevent
+      file ownership issues in AI workloads.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-pod-security-context
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - carbonet-prod
+      validate:
+        message: "Pods in carbonet-prod must have securityContext.runAsUser=1000, runAsGroup=1000, fsGroup=1000, runAsNonRoot=true."
+        pattern:
+          spec:
+            securityContext:
+              runAsUser: 1000
+              runAsGroup: 1000
+              fsGroup: 1000
+              runAsNonRoot: true
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-privileged-pods
+  annotations:
+    policies.kyverno.io/title: "Restrict Privileged Containers"
+    policies.kyverno.io/subject: "SecurityContext"
+    policies.kyverno.io/description: >-
+      Prevents privileged containers and ensures non-root execution.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Pods must run as non-root (runAsNonRoot: true)."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+    - name: no-privileged-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Containers must not run as privileged."
+        foreach:
+          - list: "request.object.spec.template.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.securityContext.privileged }}"
+                    operator: Equals
+                    value: true
