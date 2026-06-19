@@ -1,0 +1,12 @@
+use strict;
+use warnings;
+my $path = "/opt/Resonance/projects/carbonet-frontend/source/src/features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx";
+open my $fh, '<:raw', $path or die $!;
+local $/;
+my $s = <$fh>;
+close $fh;
+$s =~ s/\.lca-section\{break-inside:avoid;page-break-inside:avoid;margin-top:12px!important\}/.lca-section{break-inside:avoid;page-break-inside:avoid;margin-top:26px!important}/;
+$s =~ s/\.lca-page-2\{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:30px!important\}/.lca-page-2{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:30px!important}/;
+open my $out, '>:raw', $path or die $!;
+print $out $s;
+close $out;

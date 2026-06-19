@@ -1,0 +1,52 @@
+# Common AI Module Configuration
+# /opt/Resonance/common/ai/config.yaml
+
+ai:
+  # NVIDIA API Configuration (16 keys for parallel processing)
+  nvidia:
+    endpoint: "https://integrate.api.nvidia.com/v1/chat/completions"
+    model: "minimaxai/minimax-m2.7"
+    max_tokens: 4096
+    temperature: 0.3
+    parallel_limit: 16
+    retry:
+      max_attempts: 3
+      delay_seconds: 5
+
+  # RAG Configuration
+  rag:
+    chunk_size: 512
+    chunk_overlap: 50
+    embedding_model: "nvidia/nv-embed-v1"
+    top_k: 5
+
+  # Glossary Configuration
+  glossary:
+    categories:
+      - emission
+      - carbon
+      - material
+      - energy
+      - waste
+      - water
+      - transport
+      - building
+      - process
+      - climate
+      - regulation
+      - certificate
+      - general
+    confidence_threshold: 0.8
+
+  # Workflow Configuration
+  workflow:
+    max_steps: 10
+    timeout_seconds: 300
+
+# Database (CUBRID)
+database:
+  resonance:
+    host: "cubrid-carbonet-0"
+    namespace: "carbonet-prod"
+    name: "resonance"
+    user: "dba"

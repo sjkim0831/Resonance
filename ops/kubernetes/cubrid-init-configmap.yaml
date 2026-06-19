@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cubrid-init-script
+  namespace: carbonet-prod
+data:
+  init-cubrid.sh: |
+    #!/bin/bash
+    set -e
+    
+    HOST_PATH="/hostpath-data"
+    CUBRID_CONF="/home/cubrid/CUBRID/conf"
+    CUBRID_DATA="/var/lib/cubrid"
+    
+    echo "[CUBRID-INIT] Starting initialization..."
+    
+    # 설정 파일 복원
+    if [ -f "$HOST_PATH/conf/cubrid_broker.conf" ]; then
+        echo "[CUBRID-INIT] Restoring broker config..."
+        cp "$HOST_PATH/conf/cubrid_broker.conf" "$CUBRID_CONF/"
+        chmod 644 "$CUBRID_CONF/cubrid_broker.conf"
+    else
+        echo "[CUBRID-INIT] WARNING: No broker config found in HostPath"
+    fi
+    
+    if [ -f "$HOST_PATH/databases.txt" ]; then
+        echo "[CUBRID-INIT] Restoring databases.txt..."
+        cp "$hostpath-data/databases.txt" "$CUBRID_DATA/"
+    fi
+    
+    # Shared Memory 정리
+    echo "[CUBRID-INIT] Cleaning shared memory..."
+    for shm in $(ipcs -m 2>/dev/null | awk "/0x0003/ {print \$2}"); do
+        echo "[CUBRID-INIT] Removing shm $shm"
+        ipcrm -m $shm 2>/dev/null || true
+    done
+    
+    echo "[CUBRID-INIT] Done"

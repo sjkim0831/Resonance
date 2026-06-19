@@ -1,0 +1,17 @@
+[Unit]
+Description=Resonance Pod Watchdog Daemon
+After=network.target kubelet.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/Resonance/ops/scripts/autorecovery/watchdog-daemon.sh
+Restart=always
+RestartSec=10
+User=root
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

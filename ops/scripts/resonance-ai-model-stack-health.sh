@@ -47,7 +47,7 @@ data = json.load(open(sys.argv[1], encoding="utf-8"))
 active_roles = (data.get("selectionPolicy") or {}).get("activeRoles") or {}
 active_ids = set(active_roles.values())
 for profile in data.get("profiles", []):
-    if profile.get("desired") != "on" and profile.get("id") not in active_ids:
+    if profile.get("desired") != "on":
         continue
     service = profile.get("serviceName")
     port = profile.get("port")

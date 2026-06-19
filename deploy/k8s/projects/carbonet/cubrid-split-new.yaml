@@ -1,0 +1,467 @@
+# CUBRID 분리 구성 - Server/Broker 분리 및 장애 복구
+# 사용: kubectl apply -f cubrid-split.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cubrid-split-config
+  namespace: carbonet-prod
+data:
+  # CUBRID 복구 스크립트 (컨테이너 시작 시 자동 실행)
+  cubrid-init.sh: |
+    #!/bin/bash
+    set -e
+
+    LOG_DIR="/var/lib/cubrid/logs/init"
+    mkdir -p ${LOG_DIR}
+    exec > >(tee -a ${LOG_DIR}/init_$(date +%Y%m%d_%H%M%S).log) 2>&1
+
+    echo "=== CUBRID 초기화 시작 $(date) ==="
+
+    # 환경변수 설정
+    export CUBRID=/home/cubrid/CUBRID
+    export CUBRID_DATABASES=/home/cubrid/CUBRID/databases
+    export PATH=$CUBRID/bin:$PATH
+
+    # databases.txt 자동 수정
+    fix_databases_txt() {
+        echo "databases.txt 확인 중..."
+        local correct_path="/var/lib/cubrid/databases/carbonet"
+        local txt="/var/lib/cubrid/databases.txt"
+
+        if [[ -f "$txt" ]]; then
+            local db_path=$(head -1 "$txt" | awk '{print $1}')
+            if [[ "$db_path" != "$correct_path" ]]; then
+                echo "경로 수정: $db_path -> $correct_path"
+                echo "${correct_path} carbonet" > "$txt"
+            fi
+        fi
+    }
+
+    # 마스터 시작
+    start_master() {
+        echo "마스터 확인 중..."
+        if ! pgrep -f "cub_master" > /dev/null; then
+            echo "마스터 시작..."
+            su - cubrid -c "cubrid master start"
+            sleep 3
+        else
+            echo "마스터 실행 중"
+        fi
+    }
+
+    # 서버 시작
+    start_server() {
+        echo "서버 시작: carbonet"
+        local output=$(su - cubrid -c "cubrid server start carbonet 2>&1")
+        echo "$output"
+
+        if echo "$output" | grep -q "already running"; then
+            echo "서버 이미 실행 중"
+            return 0
+        elif echo "$output" | grep -q "is running"; then
+            echo "서버 시작 성공"
+            return 0
+        elif echo "$output" | grep -q "Invalid database location"; then
+            echo "databases.txt 오류, 수정 시도..."
+            fix_databases_txt
+            su - cubrid -c "cubrid server start carbonet 2>&1"
+        fi
+    }
+
+    # 브로커 시작
+    start_broker() {
+        echo "브로커 시작..."
+        local output=$(su - cubrid -c "cubrid broker start 2>&1")
+        echo "$output"
+        sleep 3
+    }
+
+    # 상태 확인
+    check_status() {
+        echo ""
+        echo "=== CUBRID 상태 확인 ==="
+        su - cubrid -c "cubrid service status" || true
+        echo ""
+        echo "=== 포트 상태 ==="
+        ss -tlnp | grep -E "33000|1523" || echo "포트 미열림"
+        echo ""
+        echo "=== 프로세스 상태 ==="
+        ps aux | grep -E "cubrid|cub_server|cub_broker|cub_master" | grep -v grep || echo "프로세스 없음"
+    }
+
+    # 메인 실행
+    fix_databases_txt
+    start_master
+    start_server
+    start_broker
+    check_status
+
+    echo "=== CUBRID 초기화 완료 $(date) ==="
+
+  # 상태 체크 및 자동 복구 스크립트
+  health-check.sh: |
+    #!/bin/bash
+    set -e
+
+    CHECK_INTERVAL=10
+    MAX_RESTART_COUNT=5
+    RESTART_COOLDOWN=60
+
+    check_broker() {
+        su - cubrid -c "cubrid broker status" > /dev/null 2>&1
+        return $?
+    }
+
+    check_server() {
+        su - cubrid -c "cubrid server status carbonet" 2>&1 | grep -q "running"
+        return $?
+    }
+
+    restart_broker() {
+        echo "[$(date)] 브로커 재시작..."
+        su - cubrid -c "cubrid broker stop" 2>/dev/null || true
+        sleep 2
+        su - cubrid -c "cubrid broker start" 2>&1
+        sleep 3
+    }
+
+    restart_server() {
+        echo "[$(date)] 서버 재시작..."
+        su - cubrid -c "cubrid server stop carbonet" 2>/dev/null || true
+        sleep 2
+        su - cubrid -c "cubrid server start carbonet" 2>&1
+        sleep 5
+    }
+
+    echo "=== CUBRID 상태 모니터 시작 $(date) ==="
+
+    restart_count=0
+    last_restart=0
+
+    while true; do
+        if ! check_broker; then
+            echo "[$(date)] 브로커 응답 없음"
+
+            # 재시작 횟수 제한
+            now=$(date +%s)
+            if [[ $((now - last_restart)) -gt $RESTART_COOLDOWN ]]; then
+                restart_count=0
+            fi
+
+            if [[ $restart_count -lt $MAX_RESTART_COUNT ]]; then
+                restart_broker
+                ((restart_count++))
+                last_restart=$(date +%s)
+            else
+                echo "재시작 횟수 초과 ($MAX_RESTART_COUNT), 대기 중..."
+                sleep $((RESTART_COOLDOWN / 2))
+            fi
+        fi
+
+        if ! check_server; then
+            echo "[$(date)] 서버 응답 없음"
+            restart_server
+        fi
+
+        sleep $CHECK_INTERVAL
+    done
+
+  # 장애 복구 스크립트
+  failover.sh: |
+    #!/bin/bash
+    # CUBRID 장애 복구 및 연결 우회 스크립트
+    # Usage: /scripts/failover.sh [check|connect|switch|report]
+
+    CUBRID_HOST="${CUBRID_HOST:-localhost}"
+    CUBRID_PORT="${CUBRID_PORT:-33000}"
+    DB_NAME="${DB_NAME:-carbonet}"
+    DB_USER="${DB_USER:-dba}"
+    DB_PASS="${DB_PASS:-}"
+
+    LOG_FILE="/var/lib/cubrid/logs/failover/failover_$(date +%Y%m%d).log"
+    mkdir -p /var/lib/cubrid/logs/failover
+
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"; }
+
+    check_connection() {
+        log "연결 테스트: ${CUBRID_HOST}:${CUBRID_PORT}"
+
+        # 포트 체크
+        if ! nc -z -w3 ${CUBRID_HOST} ${CUBRID_PORT} 2>/dev/null; then
+            log "ERROR: 포트 연결 실패"
+            return 1
+        fi
+
+        # CSQL 연결 테스트
+        if [[ -n "$DB_PASS" ]]; then
+            result=$(cubrid sql -h ${CUBRID_HOST} -p ${CUBRID_PORT} -u ${DB_USER} -c "SELECT 1" 2>&1)
+        else
+            result=$(su - cubrid -c "cubrid sql -u ${DB_USER} -c 'SELECT 1'" 2>&1)
+        fi
+
+        if echo "$result" | grep -q "1"; then
+            log "연결 성공"
+            return 0
+        else
+            log "ERROR: $result"
+            return 1
+        fi
+    }
+
+    switch_to_backup() {
+        log "백업 서버로 전환 시도..."
+        # TODO: 백업 서버 정보로 전환
+        log "WARN: 백업 서버 전환 미구현"
+    }
+
+    case "${1:-check}" in
+        check)
+            check_connection
+            ;;
+        connect)
+            check_connection || switch_to_backup
+            ;;
+        switch)
+            switch_to_backup
+            ;;
+        report)
+            log "=== 장애 복구 보고서 ==="
+            echo "호스트: ${CUBRID_HOST}"
+            echo "포트: ${CUBRID_PORT}"
+            echo "데이터베이스: ${DB_NAME}"
+            echo ""
+            echo "=== 최근 로그 ==="
+            tail -20 "$LOG_FILE" 2>/dev/null || echo "로그 없음"
+            ;;
+        *)
+            echo "Usage: $0 {check|connect|switch|report}"
+            ;;
+    esac
+
+---
+# CUBRID Server만 실행하는 StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cubrid-server
+  namespace: carbonet-prod
+  labels:
+    app: cubrid-server
+    framework: resonance
+    project: carbonet
+    component: database
+spec:
+  serviceName: cubrid-server
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cubrid-server
+  template:
+    metadata:
+      labels:
+        app: cubrid-server
+        framework: resonance
+        project: carbonet
+        component: database
+    spec:
+      initContainers:
+      - name: init-script
+        image: busybox:1.36
+        command: ["sh", "-c", "
+          echo 'init container 시작';
+          # 데이터 디렉토리 설정
+          chown -R cubrid:cubrid /var/lib/cubrid;
+          sleep 5;
+        "]
+        volumeMounts:
+        - name: cubrid-data
+          mountPath: /var/lib/cubrid
+      containers:
+      - name: cubrid-server
+        image: cubrid/cubrid:11.4
+        imagePullPolicy: IfNotPresent
+        command: ["/scripts/cubrid-init.sh"]
+        ports:
+        - name: server
+          containerPort: 1523
+          protocol: TCP
+        - name: broker-port
+          containerPort: 33000
+          protocol: TCP
+        env:
+        - name: CUBRID_COMPONENTS
+          value: "SERVER,BROKER"
+        - name: CUBRID_DB
+          value: "carbonet"
+        volumeMounts:
+        - name: cubrid-data
+          mountPath: /var/lib/cubrid
+        - name: scripts
+          mountPath: /scripts
+        - name: dshm
+          mountPath: /dev/shm
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "cubrid server status carbonet | grep -q running"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "cubrid broker status | grep -q broker1"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - "cubrid server status carbonet | grep -q running"
+          initialDelaySeconds: 10
+          periodSeconds: 20
+          failureThreshold: 30
+      volumes:
+      - name: cubrid-data
+        hostPath:
+          path: /opt/Resonance/data/cubrid
+          type: DirectoryOrCreate
+      - name: scripts
+        configMap:
+          name: cubrid-split-config
+          defaultMode: 0755
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 1Gi
+      restartPolicy: Always
+
+---
+# CUBRID Broker만 실행하는 Deployment (Server 장애 시 우회)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cubrid-broker
+  namespace: carbonet-prod
+  labels:
+    app: cubrid-broker
+    framework: resonance
+    project: carbonet
+    component: broker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cubrid-broker
+  template:
+    metadata:
+      labels:
+        app: cubrid-broker
+        framework: resonance
+        project: carbonet
+        component: broker
+    spec:
+      containers:
+      - name: cubrid-broker
+        image: cubrid/cubrid:11.4
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "CUBRID Broker 시작..."
+
+          # 마스터가 없으면 시작
+          if ! pgrep -f "cub_master" > /dev/null; then
+            echo "마스터 시작..."
+            su - cubrid -c "cubrid master start"
+            sleep 3
+          fi
+
+          # 브로커 시작
+          echo "브로커 시작..."
+          su - cubrid -c "cubrid broker start"
+
+          # 상태 모니터링 루프
+          while true; do
+            if ! su - cubrid -c "cubrid broker status" > /dev/null 2>&1; then
+              echo "[$(date)] 브로커 재시작..."
+              su - cubrid -c "cubrid broker stop" 2>/dev/null || true
+              sleep 2
+              su - cubrid -c "cubrid broker start"
+            fi
+            sleep 30
+          done
+        ports:
+        - name: broker
+          containerPort: 33000
+          protocol: TCP
+        env:
+        - name: CUBRID_COMPONENTS
+          value: "BROKER"
+        - name: CUBRID_DB
+          value: "carbonet"
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: 1
+            memory: 1Gi
+        livenessProbe:
+          tcpSocket:
+            port: 33000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 33000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 512Mi
+      restartPolicy: Always
+
+---
+# 서비스 (고정 IP로 브로커 접근)
+apiVersion: v1
+kind: Service
+metadata:
+  name: cubrid-broker
+  namespace: carbonet-prod
+  labels:
+    app: cubrid-broker
+spec:
+  type: NodePort
+  ports:
+  - name: broker
+    port: 33000
+    targetPort: 33000
+    nodePort: 33000
+    protocol: TCP
+  - name: server
+    port: 1523
+    targetPort: 1523
+    protocol: TCP
+  selector:
+    app: cubrid-broker

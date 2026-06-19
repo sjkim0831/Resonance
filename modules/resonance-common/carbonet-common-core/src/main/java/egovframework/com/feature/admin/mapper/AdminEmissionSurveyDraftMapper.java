@@ -20,8 +20,8 @@ public class AdminEmissionSurveyDraftMapper extends BaseMapperSupport {
     }
 
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> selectCaseHeaders() {
-        return (List<Map<String, Object>>) (List<?>) selectList("AdminEmissionSurveyDraftMapper.selectCaseHeaders");
+    public List<Map<String, Object>> selectCaseHeaders(Map<String, Object> params) {
+        return (List<Map<String, Object>>) (List<?>) selectList("AdminEmissionSurveyDraftMapper.selectCaseHeaders", params);
     }
 
     @SuppressWarnings("unchecked")

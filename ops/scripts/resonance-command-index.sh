@@ -9,6 +9,9 @@ case "$cmd" in
   deploy|redeploy|배포)
     exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" "${@:2}"
     ;;
+  hot-reload|hl|빠른재배포)
+    exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" --hot-reload
+    ;;
   doctor|status|점검)
     exec "$ROOT_DIR/ops/scripts/resonance-k8s-doctor.sh" "${@:2}"
     ;;

@@ -1,0 +1,14 @@
+[Unit]
+Description=Resonance Auto-Recovery Service
+After=network.target kubelet.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/Resonance/ops/scripts/autorecovery/check-and-recover.sh
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

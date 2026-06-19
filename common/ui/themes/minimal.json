@@ -1,0 +1,87 @@
+{
+  "id": "minimal",
+  "name": "미니멀 테마",
+  "colors": {
+    "primary": "#000000",
+    "secondary": "#374151",
+    "accent": "#6B7280",
+    "background": "#FFFFFF",
+    "surface": "#FAFAFA",
+    "text": "#000000",
+    "textSecondary": "#6B7280",
+    "border": "#E5E5E5",
+    "error": "#EF4444",
+    "warning": "#F59E0B",
+    "success": "#22C55E",
+    "info": "#3B82F6"
+  },
+  "fonts": {
+    "family": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    "size": {
+      "xs": "0.75rem",
+      "sm": "0.8125rem",
+      "base": "0.875rem",
+      "lg": "1rem",
+      "xl": "1.125rem",
+      "xxl": "1.25rem"
+    },
+    "weight": {
+      "normal": 400,
+      "medium": 500,
+      "bold": 600
+    }
+  },
+  "spacing": {
+    "xs": "0.25rem",
+    "sm": "0.375rem",
+    "md": "0.75rem",
+    "lg": "1rem",
+    "xl": "1.5rem"
+  },
+  "borderRadius": {
+    "sm": "0",
+    "md": "0",
+    "lg": "0",
+    "full": "9999px"
+  },
+  "shadows": {
+    "sm": "none",
+    "md": "none",
+    "lg": "none",
+    "none": "none"
+  },
+  "components": {
+    "button": {
+      "primaryBg": "#000000",
+      "primaryColor": "#FFFFFF",
+      "secondaryBg": "#FFFFFF",
+      "secondaryColor": "#000000",
+      "borderRadius": "0",
+      "padding": "0.5rem 1rem",
+      "fontSize": "0.875rem"
+    },
+    "input": {
+      "background": "#FFFFFF",
+      "border": "#E5E5E5",
+      "color": "#000000",
+      "focusBorder": "#000000",
+      "borderRadius": "0",
+      "padding": "0.5rem 0.75rem"
+    },
+    "table": {
+      "headerBg": "#FFFFFF",
+      "headerColor": "#000000",
+      "rowBg": "#FFFFFF",
+      "rowAltBg": "#FAFAFA",
+      "border": "#E5E5E5",
+      "hoverBg": "#F5F5F5"
+    },
+    "card": {
+      "background": "#FFFFFF",
+      "border": "#E5E5E5",
+      "borderRadius": "0",
+      "padding": "1rem",
+      "shadow": "none"
+    }
+  }
+}
