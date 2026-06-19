@@ -72,3 +72,14 @@ vector_db/
 *.hnsw
 *.ann
 data/cubrid/backup/
+
+# Database tools (large binaries)
+ops/tools/
+!ops/tools/README.txt
+!ops/tools/ABOUT.txt
+!ops/tools/LICENSE.txt
+!ops/tools/GETTING_STARTED.txt
+!ops/tools/UNINSTALL.txt
+!ops/tools/changelog.txt
+!ops/tools/lib/
+!ops/tools/licenses/
