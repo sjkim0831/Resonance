@@ -1,0 +1,773 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Generated: 2026-06-19T08:34:15.818614 -->
+    <!-- Tables: 127 -->
+
+    <changeSet id="create-access_event" author="db-gitops">
+        <createTable tableName="access_event">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-adapter_change_log" author="db-gitops">
+        <createTable tableName="adapter_change_log">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-admin_emission_gwp_value" author="db-gitops">
+        <createTable tableName="admin_emission_gwp_value">
+            <column name="row_id                section_code          section_ordr  common_name           formula               ar4_value             ar5_value             ar6_value             note_txt              source_document_nm    source_page_no    sort_ordr  frst_regist_pnttm              frst_register_id      last_updt_pnttm                last_updusr_id        source_txt            manual_input_value" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-artifact_lock" author="db-gitops">
+        <createTable tableName="artifact_lock">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-artifact_version_registry" author="db-gitops">
+        <createTable tableName="artifact_version_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-audit_event" author="db-gitops">
+        <createTable tableName="audit_event">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-business_change_log" author="db-gitops">
+        <createTable tableName="business_change_log">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-common_module_registry" author="db-gitops">
+        <createTable tableName="common_module_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtccmmnclcode" author="db-gitops">
+        <createTable tableName="comtccmmnclcode">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtccmmncode" author="db-gitops">
+        <createTable tableName="comtccmmncode">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtccmmndetailcode" author="db-gitops">
+        <createTable tableName="comtccmmndetailcode">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtecopseq" author="db-gitops">
+        <createTable tableName="comtecopseq">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnauthorfunctionrelate" author="db-gitops">
+        <createTable tableName="comtnauthorfunctionrelate">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnauthorgroupinfo" author="db-gitops">
+        <createTable tableName="comtnauthorgroupinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnauthorinfo" author="db-gitops">
+        <createTable tableName="comtnauthorinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnauthorrolerelate" author="db-gitops">
+        <createTable tableName="comtnauthorrolerelate">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnauthtokenstore" author="db-gitops">
+        <createTable tableName="comtnauthtokenstore">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnbbs" author="db-gitops">
+        <createTable tableName="comtnbbs">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnbbsmaster" author="db-gitops">
+        <createTable tableName="comtnbbsmaster">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnbbsmasteroptn" author="db-gitops">
+        <createTable tableName="comtnbbsmasteroptn">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnbbssynclog" author="db-gitops">
+        <createTable tableName="comtnbbssynclog">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnblocklistactionhist" author="db-gitops">
+        <createTable tableName="comtnblocklistactionhist">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnblocklistentry" author="db-gitops">
+        <createTable tableName="comtnblocklistentry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnblog" author="db-gitops">
+        <createTable tableName="comtnblog">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnbloguser" author="db-gitops">
+        <createTable tableName="comtnbloguser">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtncmmnty" author="db-gitops">
+        <createTable tableName="comtncmmnty">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtncmmntyuser" author="db-gitops">
+        <createTable tableName="comtncmmntyuser">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtncomment" author="db-gitops">
+        <createTable tableName="comtncomment">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtndeptauthorrelate" author="db-gitops">
+        <createTable tableName="comtndeptauthorrelate">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnemplyrinfo" author="db-gitops">
+        <createTable tableName="comtnemplyrinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnemplyrscrtyestbs" author="db-gitops">
+        <createTable tableName="comtnemplyrscrtyestbs">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnentrprsmber" author="db-gitops">
+        <createTable tableName="comtnentrprsmber">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnentrprsmberfile" author="db-gitops">
+        <createTable tableName="comtnentrprsmberfile">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnfile" author="db-gitops">
+        <createTable tableName="comtnfile">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnfiledetail" author="db-gitops">
+        <createTable tableName="comtnfiledetail">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtngnrlmber" author="db-gitops">
+        <createTable tableName="comtngnrlmber">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtninsttfile" author="db-gitops">
+        <createTable tableName="comtninsttfile">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtninsttinfo" author="db-gitops">
+        <createTable tableName="comtninsttinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtninsttinfo_bak_20260302_212335" author="db-gitops">
+        <createTable tableName="comtninsttinfo_bak_20260302_212335">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnipwhitelistrequest" author="db-gitops">
+        <createTable tableName="comtnipwhitelistrequest">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnipwhitelistrule" author="db-gitops">
+        <createTable tableName="comtnipwhitelistrule">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnloginhist" author="db-gitops">
+        <createTable tableName="comtnloginhist">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnloginpolicy" author="db-gitops">
+        <createTable tableName="comtnloginpolicy">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnmenucreatdtls" author="db-gitops">
+        <createTable tableName="comtnmenucreatdtls">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnmenufunctioninfo" author="db-gitops">
+        <createTable tableName="comtnmenufunctioninfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnmenuinfo" author="db-gitops">
+        <createTable tableName="comtnmenuinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnmenuorder" author="db-gitops">
+        <createTable tableName="comtnmenuorder">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnpasswordresethist" author="db-gitops">
+        <createTable tableName="comtnpasswordresethist">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnqestnrinfo" author="db-gitops">
+        <createTable tableName="comtnqestnrinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnqustnriem" author="db-gitops">
+        <createTable tableName="comtnqustnriem">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnqustnrqesitm" author="db-gitops">
+        <createTable tableName="comtnqustnrqesitm">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnqustnrrespondinfo" author="db-gitops">
+        <createTable tableName="comtnqustnrrespondinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnqustnrrspnsresult" author="db-gitops">
+        <createTable tableName="comtnqustnrrspnsresult">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnqustnrtmplat" author="db-gitops">
+        <createTable tableName="comtnqustnrtmplat">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnroleinfo" author="db-gitops">
+        <createTable tableName="comtnroleinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnstsfdg" author="db-gitops">
+        <createTable tableName="comtnstsfdg">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtntmplatinfo" author="db-gitops">
+        <createTable tableName="comtntmplatinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comtnuserfeatureoverride" author="db-gitops">
+        <createTable tableName="comtnuserfeatureoverride">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-comvnusermaster" author="db-gitops">
+        <createTable tableName="comvnusermaster">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-db_change_promotion_policy" author="db-gitops">
+        <createTable tableName="db_change_promotion_policy">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-db_migration_history" author="db-gitops">
+        <createTable tableName="db_migration_history">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-db_patch_history" author="db-gitops">
+        <createTable tableName="db_patch_history">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-delete_plan" author="db-gitops">
+        <createTable tableName="delete_plan">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-delete_plan_item" author="db-gitops">
+        <createTable tableName="delete_plan_item">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-deployable_db_patch_queue" author="db-gitops">
+        <createTable tableName="deployable_db_patch_queue">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-deployable_db_patch_result" author="db-gitops">
+        <createTable tableName="deployable_db_patch_result">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ecoinvent_export_tail" author="db-gitops">
+        <createTable tableName="ecoinvent_export_tail">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ecoinvent_master" author="db-gitops">
+        <createTable tableName="ecoinvent_master">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_calc_result" author="db-gitops">
+        <createTable tableName="emission_calc_result">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_category" author="db-gitops">
+        <createTable tableName="emission_category">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_factor" author="db-gitops">
+        <createTable tableName="emission_factor">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_input_session" author="db-gitops">
+        <createTable tableName="emission_input_session">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_input_value" author="db-gitops">
+        <createTable tableName="emission_input_value">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_mapping_log" author="db-gitops">
+        <createTable tableName="emission_mapping_log">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_material_translation" author="db-gitops">
+        <createTable tableName="emission_material_translation">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-emission_variable_def" author="db-gitops">
+        <createTable tableName="emission_variable_def">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-error_event" author="db-gitops">
+        <createTable tableName="error_event">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-full_stack_governance_registry" author="db-gitops">
+        <createTable tableName="full_stack_governance_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_development_pattern" author="db-gitops">
+        <createTable tableName="hermes_development_pattern">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_development_pattern_artifact_rule" author="db-gitops">
+        <createTable tableName="hermes_development_pattern_artifact_rule">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_development_pattern_check" author="db-gitops">
+        <createTable tableName="hermes_development_pattern_check">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_development_pattern_step" author="db-gitops">
+        <createTable tableName="hermes_development_pattern_step">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_development_pattern_team_rule" author="db-gitops">
+        <createTable tableName="hermes_development_pattern_team_rule">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_model_lane_policy" author="db-gitops">
+        <createTable tableName="hermes_model_lane_policy">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_pattern_match" author="db-gitops">
+        <createTable tableName="hermes_pattern_match">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_project_knowledge_asset" author="db-gitops">
+        <createTable tableName="hermes_project_knowledge_asset">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_project_scan_batch" author="db-gitops">
+        <createTable tableName="hermes_project_scan_batch">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_similar_work_match" author="db-gitops">
+        <createTable tableName="hermes_similar_work_match">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_task_lesson" author="db-gitops">
+        <createTable tableName="hermes_task_lesson">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_task_work_checkpoint" author="db-gitops">
+        <createTable tableName="hermes_task_work_checkpoint">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_work_checkpoint_template" author="db-gitops">
+        <createTable tableName="hermes_work_checkpoint_template">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_work_execution_guard_policy" author="db-gitops">
+        <createTable tableName="hermes_work_execution_guard_policy">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-hermes_work_packet" author="db-gitops">
+        <createTable tableName="hermes_work_packet">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-install_unit" author="db-gitops">
+        <createTable tableName="install_unit">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-install_unit_common_module" author="db-gitops">
+        <createTable tableName="install_unit_common_module">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnauthorgroupinfo" author="db-gitops">
+        <createTable tableName="msatnauthorgroupinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnauthorinfo" author="db-gitops">
+        <createTable tableName="msatnauthorinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnauthorrolerelate" author="db-gitops">
+        <createTable tableName="msatnauthorrolerelate">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnemplyrscrtyestbs" author="db-gitops">
+        <createTable tableName="msatnemplyrscrtyestbs">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnmenucreatdtls" author="db-gitops">
+        <createTable tableName="msatnmenucreatdtls">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnroleinfo" author="db-gitops">
+        <createTable tableName="msatnroleinfo">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-msatnroles_hierarchy" author="db-gitops">
+        <createTable tableName="msatnroles_hierarchy">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-project_artifact_install" author="db-gitops">
+        <createTable tableName="project_artifact_install">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-project_compatibility_run" author="db-gitops">
+        <createTable tableName="project_compatibility_run">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-project_db_connection" author="db-gitops">
+        <createTable tableName="project_db_connection">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-project_db_migration_status" author="db-gitops">
+        <createTable tableName="project_db_migration_status">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-project_deployment_history" author="db-gitops">
+        <createTable tableName="project_deployment_history">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-project_registry" author="db-gitops">
+        <createTable tableName="project_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-release_unit" author="db-gitops">
+        <createTable tableName="release_unit">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-release_unit_registry" author="db-gitops">
+        <createTable tableName="release_unit_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-resource_dependency" author="db-gitops">
+        <createTable tableName="resource_dependency">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-resource_registry" author="db-gitops">
+        <createTable tableName="resource_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-rsn_deploy_trace" author="db-gitops">
+        <createTable tableName="rsn_deploy_trace">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-rsn_release_unit" author="db-gitops">
+        <createTable tableName="rsn_release_unit">
+            <column name="release_unit_id       project_id            release_version       release_status        description           row_version  created_by            updated_by            created_at                     updated_at" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-rsn_runtime_package" author="db-gitops">
+        <createTable tableName="rsn_runtime_package">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-server_deployment_state" author="db-gitops">
+        <createTable tableName="server_deployment_state">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-system_asset_composition" author="db-gitops">
+        <createTable tableName="system_asset_composition">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-system_asset_inventory" author="db-gitops">
+        <createTable tableName="system_asset_inventory">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-system_asset_lifecycle_evidence" author="db-gitops">
+        <createTable tableName="system_asset_lifecycle_evidence">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-system_asset_lifecycle_plan" author="db-gitops">
+        <createTable tableName="system_asset_lifecycle_plan">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-system_asset_scan_log" author="db-gitops">
+        <createTable tableName="system_asset_scan_log">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-trace_event" author="db-gitops">
+        <createTable tableName="trace_event">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ui_component_registry" author="db-gitops">
+        <createTable tableName="ui_component_registry">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ui_help_item" author="db-gitops">
+        <createTable tableName="ui_help_item">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ui_help_page" author="db-gitops">
+        <createTable tableName="ui_help_page">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ui_page_component_map" author="db-gitops">
+        <createTable tableName="ui_page_component_map">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-ui_page_manifest" author="db-gitops">
+        <createTable tableName="ui_page_manifest">
+            <column name="There are no results." type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
