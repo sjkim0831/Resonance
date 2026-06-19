@@ -1,0 +1,537 @@
+{
+  "exportedAt": "2026-06-19T07:48:20.449774Z",
+  "tables": [
+    {
+      "name": "access_event",
+      "columns": []
+    },
+    {
+      "name": "adapter_change_log",
+      "columns": []
+    },
+    {
+      "name": "admin_emission_gwp_value",
+      "columns": []
+    },
+    {
+      "name": "artifact_lock",
+      "columns": []
+    },
+    {
+      "name": "artifact_version_registry",
+      "columns": []
+    },
+    {
+      "name": "audit_event",
+      "columns": []
+    },
+    {
+      "name": "business_change_log",
+      "columns": []
+    },
+    {
+      "name": "common_module_registry",
+      "columns": []
+    },
+    {
+      "name": "comtccmmnclcode",
+      "columns": []
+    },
+    {
+      "name": "comtccmmncode",
+      "columns": []
+    },
+    {
+      "name": "comtccmmndetailcode",
+      "columns": []
+    },
+    {
+      "name": "comtecopseq",
+      "columns": []
+    },
+    {
+      "name": "comtnauthorfunctionrelate",
+      "columns": []
+    },
+    {
+      "name": "comtnauthorgroupinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnauthorinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnauthorrolerelate",
+      "columns": []
+    },
+    {
+      "name": "comtnauthtokenstore",
+      "columns": []
+    },
+    {
+      "name": "comtnbbs",
+      "columns": []
+    },
+    {
+      "name": "comtnbbsmaster",
+      "columns": []
+    },
+    {
+      "name": "comtnbbsmasteroptn",
+      "columns": []
+    },
+    {
+      "name": "comtnbbssynclog",
+      "columns": []
+    },
+    {
+      "name": "comtnblocklistactionhist",
+      "columns": []
+    },
+    {
+      "name": "comtnblocklistentry",
+      "columns": []
+    },
+    {
+      "name": "comtnblog",
+      "columns": []
+    },
+    {
+      "name": "comtnbloguser",
+      "columns": []
+    },
+    {
+      "name": "comtncmmnty",
+      "columns": []
+    },
+    {
+      "name": "comtncmmntyuser",
+      "columns": []
+    },
+    {
+      "name": "comtncomment",
+      "columns": []
+    },
+    {
+      "name": "comtndeptauthorrelate",
+      "columns": []
+    },
+    {
+      "name": "comtnemplyrinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnemplyrscrtyestbs",
+      "columns": []
+    },
+    {
+      "name": "comtnentrprsmber",
+      "columns": []
+    },
+    {
+      "name": "comtnentrprsmberfile",
+      "columns": []
+    },
+    {
+      "name": "comtnfile",
+      "columns": []
+    },
+    {
+      "name": "comtnfiledetail",
+      "columns": []
+    },
+    {
+      "name": "comtngnrlmber",
+      "columns": []
+    },
+    {
+      "name": "comtninsttfile",
+      "columns": []
+    },
+    {
+      "name": "comtninsttinfo",
+      "columns": []
+    },
+    {
+      "name": "comtninsttinfo_bak_20260302_212335",
+      "columns": []
+    },
+    {
+      "name": "comtnipwhitelistrequest",
+      "columns": []
+    },
+    {
+      "name": "comtnipwhitelistrule",
+      "columns": []
+    },
+    {
+      "name": "comtnloginhist",
+      "columns": []
+    },
+    {
+      "name": "comtnloginpolicy",
+      "columns": []
+    },
+    {
+      "name": "comtnmenucreatdtls",
+      "columns": []
+    },
+    {
+      "name": "comtnmenufunctioninfo",
+      "columns": []
+    },
+    {
+      "name": "comtnmenuinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnmenuorder",
+      "columns": []
+    },
+    {
+      "name": "comtnpasswordresethist",
+      "columns": []
+    },
+    {
+      "name": "comtnqestnrinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnqustnriem",
+      "columns": []
+    },
+    {
+      "name": "comtnqustnrqesitm",
+      "columns": []
+    },
+    {
+      "name": "comtnqustnrrespondinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnqustnrrspnsresult",
+      "columns": []
+    },
+    {
+      "name": "comtnqustnrtmplat",
+      "columns": []
+    },
+    {
+      "name": "comtnroleinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnstsfdg",
+      "columns": []
+    },
+    {
+      "name": "comtntmplatinfo",
+      "columns": []
+    },
+    {
+      "name": "comtnuserfeatureoverride",
+      "columns": []
+    },
+    {
+      "name": "comvnusermaster",
+      "columns": []
+    },
+    {
+      "name": "db_change_promotion_policy",
+      "columns": []
+    },
+    {
+      "name": "db_migration_history",
+      "columns": []
+    },
+    {
+      "name": "db_patch_history",
+      "columns": []
+    },
+    {
+      "name": "delete_plan",
+      "columns": []
+    },
+    {
+      "name": "delete_plan_item",
+      "columns": []
+    },
+    {
+      "name": "deployable_db_patch_queue",
+      "columns": []
+    },
+    {
+      "name": "deployable_db_patch_result",
+      "columns": []
+    },
+    {
+      "name": "ecoinvent_export_tail",
+      "columns": []
+    },
+    {
+      "name": "ecoinvent_master",
+      "columns": []
+    },
+    {
+      "name": "emission_calc_result",
+      "columns": []
+    },
+    {
+      "name": "emission_calc_result",
+      "columns": []
+    },
+    {
+      "name": "emission_category",
+      "columns": []
+    },
+    {
+      "name": "emission_category",
+      "columns": []
+    },
+    {
+      "name": "emission_factor",
+      "columns": []
+    },
+    {
+      "name": "emission_factor",
+      "columns": []
+    },
+    {
+      "name": "emission_input_session",
+      "columns": []
+    },
+    {
+      "name": "emission_input_session",
+      "columns": []
+    },
+    {
+      "name": "emission_input_value",
+      "columns": []
+    },
+    {
+      "name": "emission_input_value",
+      "columns": []
+    },
+    {
+      "name": "emission_mapping_log",
+      "columns": []
+    },
+    {
+      "name": "emission_material_translation",
+      "columns": []
+    },
+    {
+      "name": "emission_variable_def",
+      "columns": []
+    },
+    {
+      "name": "emission_variable_def",
+      "columns": []
+    },
+    {
+      "name": "error_event",
+      "columns": []
+    },
+    {
+      "name": "full_stack_governance_registry",
+      "columns": []
+    },
+    {
+      "name": "hermes_development_pattern",
+      "columns": []
+    },
+    {
+      "name": "hermes_development_pattern_artifact_rule",
+      "columns": []
+    },
+    {
+      "name": "hermes_development_pattern_check",
+      "columns": []
+    },
+    {
+      "name": "hermes_development_pattern_step",
+      "columns": []
+    },
+    {
+      "name": "hermes_development_pattern_team_rule",
+      "columns": []
+    },
+    {
+      "name": "hermes_model_lane_policy",
+      "columns": []
+    },
+    {
+      "name": "hermes_pattern_match",
+      "columns": []
+    },
+    {
+      "name": "hermes_project_knowledge_asset",
+      "columns": []
+    },
+    {
+      "name": "hermes_project_scan_batch",
+      "columns": []
+    },
+    {
+      "name": "hermes_similar_work_match",
+      "columns": []
+    },
+    {
+      "name": "hermes_task_lesson",
+      "columns": []
+    },
+    {
+      "name": "hermes_task_work_checkpoint",
+      "columns": []
+    },
+    {
+      "name": "hermes_work_checkpoint_template",
+      "columns": []
+    },
+    {
+      "name": "hermes_work_execution_guard_policy",
+      "columns": []
+    },
+    {
+      "name": "hermes_work_packet",
+      "columns": []
+    },
+    {
+      "name": "install_unit",
+      "columns": []
+    },
+    {
+      "name": "install_unit_common_module",
+      "columns": []
+    },
+    {
+      "name": "msatnauthorgroupinfo",
+      "columns": []
+    },
+    {
+      "name": "msatnauthorinfo",
+      "columns": []
+    },
+    {
+      "name": "msatnauthorrolerelate",
+      "columns": []
+    },
+    {
+      "name": "msatnemplyrscrtyestbs",
+      "columns": []
+    },
+    {
+      "name": "msatnmenucreatdtls",
+      "columns": []
+    },
+    {
+      "name": "msatnroleinfo",
+      "columns": []
+    },
+    {
+      "name": "msatnroles_hierarchy",
+      "columns": []
+    },
+    {
+      "name": "project_artifact_install",
+      "columns": []
+    },
+    {
+      "name": "project_compatibility_run",
+      "columns": []
+    },
+    {
+      "name": "project_db_connection",
+      "columns": []
+    },
+    {
+      "name": "project_db_migration_status",
+      "columns": []
+    },
+    {
+      "name": "project_deployment_history",
+      "columns": []
+    },
+    {
+      "name": "project_registry",
+      "columns": []
+    },
+    {
+      "name": "release_unit",
+      "columns": []
+    },
+    {
+      "name": "release_unit_registry",
+      "columns": []
+    },
+    {
+      "name": "resource_dependency",
+      "columns": []
+    },
+    {
+      "name": "resource_registry",
+      "columns": []
+    },
+    {
+      "name": "rsn_deploy_trace",
+      "columns": []
+    },
+    {
+      "name": "rsn_release_unit",
+      "columns": []
+    },
+    {
+      "name": "rsn_runtime_package",
+      "columns": []
+    },
+    {
+      "name": "server_deployment_state",
+      "columns": []
+    },
+    {
+      "name": "system_asset_composition",
+      "columns": []
+    },
+    {
+      "name": "system_asset_inventory",
+      "columns": []
+    },
+    {
+      "name": "system_asset_lifecycle_evidence",
+      "columns": []
+    },
+    {
+      "name": "system_asset_lifecycle_plan",
+      "columns": []
+    },
+    {
+      "name": "system_asset_scan_log",
+      "columns": []
+    },
+    {
+      "name": "trace_event",
+      "columns": []
+    },
+    {
+      "name": "ui_component_registry",
+      "columns": []
+    },
+    {
+      "name": "ui_help_item",
+      "columns": []
+    },
+    {
+      "name": "ui_help_page",
+      "columns": []
+    },
+    {
+      "name": "ui_page_component_map",
+      "columns": []
+    },
+    {
+      "name": "ui_page_manifest",
+      "columns": []
+    }
+  ]
+}
