@@ -1,0 +1,13 @@
+{
+  "table": "rsn_release_unit",
+  "exportedAt": "2026-06-19T08:08:01.765822Z",
+  "columns": [
+    "release_unit_id       project_id            release_version       release_status        description           row_version  created_by            updated_by            created_at                     updated_at"
+  ],
+  "count": 1,
+  "rows": [
+    {
+      "release_unit_id       project_id            release_version       release_status        description           row_version  created_by            updated_by            created_at                     updated_at": "'RU-3f9fea6d'         'carbonet'            '1.0.0-SNAPSHOT'      'DRAFT'               'Initial bootstrap release unit for Carbonet platform.'            0  'SYSTEM'              'SYSTEM'              07:21:49.024 AM 06/19/2026     07:21:49.024 AM 06/19/2026"
+    }
+  ]
+}
