@@ -1,9 +1,19 @@
 {
   "table": "ui_component_registry",
-  "exportedAt": "2026-06-19T08:08:02.331064Z",
+  "exportedAt": "2026-06-21T08:04:48.072776+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "omponent_id'        ",
+    "omponent_name'      ",
+    "omponent_type'      ",
+    "wner_domain'        ",
+    "rops_schema_json'   ",
+    "esign_reference'    ",
+    "ctive_yn'           ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 109,
   "rows": []
 }

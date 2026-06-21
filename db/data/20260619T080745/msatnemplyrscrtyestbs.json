@@ -1,9 +1,13 @@
 {
   "table": "msatnemplyrscrtyestbs",
-  "exportedAt": "2026-06-19T08:08:00.822805Z",
+  "exportedAt": "2026-06-21T08:04:44.935459+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "crty_dtrmn_trget_id",
+    "ber_ty_code'        ",
+    "uthor_code'         ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 30,
   "rows": []
 }

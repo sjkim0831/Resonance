@@ -1,8 +1,16 @@
 {
   "table": "comtnbbsmasteroptn",
-  "exportedAt": "2026-06-19T08:07:55.345279Z",
+  "exportedAt": "2026-06-21T08:04:32.103698+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "bs_id'              ",
+    "nswer_at'           ",
+    "tsfdg_at'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rst_register_id'    ",
+    "ast_updusr_id'      ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

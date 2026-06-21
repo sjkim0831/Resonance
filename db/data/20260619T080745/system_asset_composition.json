@@ -1,8 +1,15 @@
 {
   "table": "system_asset_composition",
-  "exportedAt": "2026-06-19T08:08:01.955483Z",
+  "exportedAt": "2026-06-21T08:04:47.299386+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "omposition_id'      ",
+    "arent_asset_id'     ",
+    "hild_asset_id'      ",
+    "elation_type'       ",
+    "apping_notes'       ",
+    "reated_at'          ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

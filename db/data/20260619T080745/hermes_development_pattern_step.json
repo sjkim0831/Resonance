@@ -1,9 +1,21 @@
 {
   "table": "hermes_development_pattern_step",
-  "exportedAt": "2026-06-19T08:07:59.741251Z",
+  "exportedAt": "2026-06-21T08:04:42.423133+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "attern_step_id'     ",
+    "attern_id'          ",
+    "tep_order'          ",
+    "tage_code'          ",
+    "tep_title'          ",
+    "tep_instruction'    ",
+    "xpected_evidence'   ",
+    "llowed_executor'    ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 43,
   "rows": []
 }

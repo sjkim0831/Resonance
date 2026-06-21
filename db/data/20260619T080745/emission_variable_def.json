@@ -1,9 +1,35 @@
 {
   "table": "emission_variable_def",
-  "exportedAt": "2026-06-19T08:07:59.359061Z",
+  "exportedAt": "2026-06-21T08:04:41.334043+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ariable_id'         ",
+    "ategory_id'         ",
+    "ier'                ",
+    "ar_code'            ",
+    "ar_name'            ",
+    "ar_desc'            ",
+    "nit'                ",
+    "nput_type'          ",
+    "ource_type'         ",
+    "s_repeatable'       ",
+    "s_required'         ",
+    "ort_order'          ",
+    "isplay_name'        ",
+    "isplay_code'        ",
+    "i_hint'             ",
+    "erived_yn'          ",
+    "upplemental_yn'     ",
+    "epeat_group_key'    ",
+    "ection_id'          ",
+    "ection_title'       ",
+    "ection_description",
+    "ection_formula'     ",
+    "se_yn'              ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 40,
   "rows": []
 }

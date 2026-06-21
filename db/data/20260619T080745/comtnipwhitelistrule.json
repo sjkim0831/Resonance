@@ -1,9 +1,28 @@
 {
   "table": "comtnipwhitelistrule",
-  "exportedAt": "2026-06-19T08:07:56.716424Z",
+  "exportedAt": "2026-06-21T08:04:35.211982+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ule_id'             ",
+    "equest_id'          ",
+    "p_address'          ",
+    "ccess_scope'        ",
+    "escription'         ",
+    "escription_en'      ",
+    "wner'               ",
+    "wner_en'            ",
+    "tatus'              ",
+    "pdated_at'          ",
+    "emo'                ",
+    "emo_en'             ",
+    "xpires_at'          ",
+    "se_at'              ",
+    "rst_register_id'    ",
+    "rst_regist_pnttm'   ",
+    "ast_updusr_id'      ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 4,
   "rows": []
 }

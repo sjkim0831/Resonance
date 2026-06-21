@@ -1,8 +1,21 @@
 {
   "table": "comtncomment",
-  "exportedAt": "2026-06-19T08:07:55.878140Z",
+  "exportedAt": "2026-06-21T08:04:33.065391+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "tt_id'              ",
+    "bs_id'              ",
+    "nswer_no'           ",
+    "rter_id'            ",
+    "rter_nm'            ",
+    "nswer'              ",
+    "se_at'              ",
+    "rst_regist_pnttm'   ",
+    "rst_register_id'    ",
+    "ast_updt_pnttm'     ",
+    "ast_updusr_id'      ",
+    "assword'            ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

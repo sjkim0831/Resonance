@@ -1,9 +1,24 @@
 {
   "table": "db_patch_history",
-  "exportedAt": "2026-06-19T08:07:58.073391Z",
+  "exportedAt": "2026-06-21T08:04:38.313992+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "atch_id'            ",
+    "atch_name'          ",
+    "ource_env'          ",
+    "arget_env'          ",
+    "atch_direction'     ",
+    "isk_level'          ",
+    "tatus'              ",
+    "ql_file_path'       ",
+    "ql_preview'         ",
+    "hecksum'            ",
+    "pplied_at'          ",
+    "pplied_by'          ",
+    "esult_message'      ",
+    "reated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 11,
   "rows": []
 }

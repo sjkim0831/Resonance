@@ -1,9 +1,25 @@
 {
   "table": "ecoinvent_export_tail",
-  "exportedAt": "2026-06-19T08:07:58.395514Z",
+  "exportedAt": "2026-06-21T08:04:38.977556+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "d'                  ",
+    "aterial_name'       ",
+    "mpact_score'        ",
+    "nit'                ",
+    "ersion'             ",
+    "ast_sync_date'      ",
+    "ctivity_name'       ",
+    "ctivity_type'       ",
+    "roduct_name'        ",
+    "eography'           ",
+    "eference_product_unit",
+    "ime_period'         ",
+    "ndicator_id'        ",
+    "ndicator_name'      ",
+    "core_unit'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 1324,
   "rows": []
 }

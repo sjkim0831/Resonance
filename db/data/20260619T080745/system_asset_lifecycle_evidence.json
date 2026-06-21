@@ -1,8 +1,16 @@
 {
   "table": "system_asset_lifecycle_evidence",
-  "exportedAt": "2026-06-19T08:08:02.080367Z",
+  "exportedAt": "2026-06-21T08:04:47.536487+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "vidence_id'         ",
+    "lan_id'             ",
+    "heckpoint_key'      ",
+    "vidence_type'       ",
+    "vidence_value'      ",
+    "erified_by'         ",
+    "reated_at'          ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

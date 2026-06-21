@@ -1,8 +1,20 @@
 {
   "table": "project_db_connection",
-  "exportedAt": "2026-06-19T08:08:01.201660Z",
+  "exportedAt": "2026-06-21T08:04:45.827670+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "onnection_id'       ",
+    "roject_id'          ",
+    "nvironment_code'    ",
+    "b_host'             ",
+    "b_port'             ",
+    "b_name'             ",
+    "sername_ref'        ",
+    "ccess_policy'       ",
+    "ctive_yn'           ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

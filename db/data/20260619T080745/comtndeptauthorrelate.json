@@ -1,9 +1,19 @@
 {
   "table": "comtndeptauthorrelate",
-  "exportedAt": "2026-06-19T08:07:55.941208Z",
+  "exportedAt": "2026-06-21T08:04:33.183396+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "nstt_id'            ",
+    "mpny_nm'            ",
+    "ept_nm'             ",
+    "uthor_code'         ",
+    "se_at'              ",
+    "rst_register_id'    ",
+    "rst_regist_dt'      ",
+    "ast_updusr_id'      ",
+    "ast_updt_dt'        ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 1,
   "rows": []
 }

@@ -1,8 +1,18 @@
 {
   "table": "project_artifact_install",
-  "exportedAt": "2026-06-19T08:08:01.071681Z",
+  "exportedAt": "2026-06-21T08:04:45.585374+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "roject_artifact_insta",
+    "roject_id'          ",
+    "rtifact_version_id",
+    "nstall_scope'       ",
+    "elease_unit_id'     ",
+    "ctive_yn'           ",
+    "ollback_target_versio",
+    "nstalled_at'        ",
+    "nstalled_by'        ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

@@ -1,8 +1,27 @@
 {
   "table": "system_asset_inventory",
-  "exportedAt": "2026-06-19T08:08:02.019207Z",
+  "exportedAt": "2026-06-21T08:04:47.417936+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "sset_id'            ",
+    "sset_type'          ",
+    "sset_name'          ",
+    "sset_version'       ",
+    "ource_path'         ",
+    "ource_symbol'       ",
+    "ontent_hash'        ",
+    "wner_domain'        ",
+    "riticality'         ",
+    "ealth_status'       ",
+    "ast_scan_at'        ",
+    "ctive_yn'           ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "sset_family'        ",
+    "wner_scope'         ",
+    "perator_owner'      ",
+    "ervice_owner'       ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

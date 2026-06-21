@@ -1,8 +1,16 @@
 {
   "table": "comtnbbssynclog",
-  "exportedAt": "2026-06-19T08:07:55.411074Z",
+  "exportedAt": "2026-06-21T08:04:32.220845+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ync_id'             ",
+    "tt_id'              ",
+    "bs_id'              ",
+    "ync_sttus_code'     ",
+    "egist_pnttm'        ",
+    "ync_pnttm'          ",
+    "rror_pnttm'         ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

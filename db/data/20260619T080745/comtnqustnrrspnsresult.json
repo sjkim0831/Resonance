@@ -1,8 +1,21 @@
 {
   "table": "comtnqustnrrspnsresult",
-  "exportedAt": "2026-06-19T08:07:57.493955Z",
+  "exportedAt": "2026-06-21T08:04:37.054334+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ustnr_rspns_result_id",
+    "estnr_id'           ",
+    "ustnr_qesitm_id'    ",
+    "ustnr_tmplat_id'    ",
+    "espond_answer_cn'   ",
+    "tc_answer_cn'       ",
+    "espond_nm'          ",
+    "rst_regist_pnttm'   ",
+    "rst_register_id'    ",
+    "ast_updt_pnttm'     ",
+    "ast_updusr_id'      ",
+    "ustnr_iem_id'       ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

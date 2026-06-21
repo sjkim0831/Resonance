@@ -1,8 +1,23 @@
 {
   "table": "project_registry",
-  "exportedAt": "2026-06-19T08:08:01.388672Z",
+  "exportedAt": "2026-06-21T08:04:46.172028+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "roject_id'          ",
+    "roject_code'        ",
+    "roject_name'        ",
+    "oute_prefix'        ",
+    "omain_host'         ",
+    "eployment_target'   ",
+    "ava_version'        ",
+    "b_driver_version'   ",
+    "latform_version'    ",
+    "roject_module_version",
+    "tatus'              ",
+    "wner_admin_id'      ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

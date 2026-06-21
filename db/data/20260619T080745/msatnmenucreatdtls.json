@@ -1,8 +1,12 @@
 {
   "table": "msatnmenucreatdtls",
-  "exportedAt": "2026-06-19T08:08:00.886506Z",
+  "exportedAt": "2026-06-21T08:04:45.109356+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "enu_no'             ",
+    "uthor_code'         ",
+    "apng_creat_id'      ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

@@ -1,8 +1,21 @@
 {
   "table": "project_db_migration_status",
-  "exportedAt": "2026-06-19T08:08:01.263711Z",
+  "exportedAt": "2026-06-21T08:04:45.944036+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "tatus_id'           ",
+    "roject_id'          ",
+    "nvironment_code'    ",
+    "b_migration_version",
+    "latform_version'    ",
+    "roject_module_version",
+    "ast_applied_at'     ",
+    "ast_verified_at'    ",
+    "tatus'              ",
+    "rift_yn'            ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

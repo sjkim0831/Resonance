@@ -1,8 +1,17 @@
 {
   "table": "comtnfiledetail",
-  "exportedAt": "2026-06-19T08:07:56.330092Z",
+  "exportedAt": "2026-06-21T08:04:34.196607+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "tch_file_id'        ",
+    "ile_sn'             ",
+    "ile_stre_cours'     ",
+    "tre_file_nm'        ",
+    "rignl_file_nm'      ",
+    "ile_extsn'          ",
+    "ile_cn'             ",
+    "ile_size'           ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

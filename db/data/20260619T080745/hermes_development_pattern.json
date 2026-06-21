@@ -1,9 +1,24 @@
 {
   "table": "hermes_development_pattern",
-  "exportedAt": "2026-06-19T08:07:59.551488Z",
+  "exportedAt": "2026-06-21T08:04:41.876730+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "attern_id'          ",
+    "roject_id'          ",
+    "ategory_code'       ",
+    "attern_name'        ",
+    "attern_summary'     ",
+    "rigger_keywords'    ",
+    "oute_hints'         ",
+    "odule_hints'        ",
+    "isk_level'          ",
+    "kill_name'          ",
+    "efault_action_id'   ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 7,
   "rows": []
 }

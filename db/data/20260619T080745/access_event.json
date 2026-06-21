@@ -1,9 +1,35 @@
 {
   "table": "access_event",
-  "exportedAt": "2026-06-19T08:07:54.120040Z",
+  "exportedAt": "2026-06-21T08:04:29.119610+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "vent_id'            ",
+    "race_id'            ",
+    "equest_id'          ",
+    "age_id'             ",
+    "pi_id'              ",
+    "equest_uri'         ",
+    "ttp_method'         ",
+    "eature_type'        ",
+    "ctor_id'            ",
+    "ctor_type'          ",
+    "ctor_role'          ",
+    "ctor_instt_id'      ",
+    "ompany_context_id'  ",
+    "arget_company_context",
+    "emote_addr'         ",
+    "esponse_status'     ",
+    "uration_ms'         ",
+    "equest_content_type",
+    "uery_string'        ",
+    "arameter_summary'   ",
+    "rror_message'       ",
+    "ompany_scope_decision",
+    "ompany_scope_reason",
+    "reated_at'          ",
+    "roject_id'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 45760,
   "rows": []
 }

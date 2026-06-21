@@ -1,9 +1,21 @@
 {
   "table": "comtnauthtokenstore",
-  "exportedAt": "2026-06-19T08:07:55.149433Z",
+  "exportedAt": "2026-06-21T08:04:31.689960+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ser_id'             ",
+    "ser_se'             ",
+    "oken_key'           ",
+    "ccess_token_hash'   ",
+    "efresh_token_hash'  ",
+    "xpiration_at'       ",
+    "lient_ip'           ",
+    "ser_agent'          ",
+    "ast_used_at'        ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 1,
   "rows": []
 }

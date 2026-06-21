@@ -1,8 +1,18 @@
 {
   "table": "resource_dependency",
-  "exportedAt": "2026-06-19T08:08:01.576833Z",
+  "exportedAt": "2026-06-21T08:04:46.527854+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ependency_id'       ",
+    "arent_resource_id'  ",
+    "hild_resource_id'   ",
+    "ependency_type'     ",
+    "equired_yn'         ",
+    "elete_order'        ",
+    "hared_block_reason",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

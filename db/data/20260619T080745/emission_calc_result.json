@@ -1,8 +1,16 @@
 {
   "table": "emission_calc_result",
-  "exportedAt": "2026-06-19T08:07:58.588788Z",
+  "exportedAt": "2026-06-21T08:04:39.466643+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "esult_id'           ",
+    "ession_id'          ",
+    "o2_total'           ",
+    "ormula_summary'     ",
+    "actor_snapshot_json",
+    "efault_applied_yn'  ",
+    "reated_at'          ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

@@ -1,8 +1,12 @@
 {
   "table": "comtnfile",
-  "exportedAt": "2026-06-19T08:07:56.264858Z",
+  "exportedAt": "2026-06-21T08:04:34.076717+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "tch_file_id'        ",
+    "reat_dt'            ",
+    "se_at'              ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

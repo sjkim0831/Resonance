@@ -1,8 +1,24 @@
 {
   "table": "hermes_work_packet",
-  "exportedAt": "2026-06-19T08:08:00.436192Z",
+  "exportedAt": "2026-06-21T08:04:44.035404+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ork_packet_id'      ",
+    "ermes_task_id'      ",
+    "attern_id'          ",
+    "acket_version'      ",
+    "acket_status'       ",
+    "eference_tasks_json",
+    "eference_pages_json",
+    "ource_artifacts_to_op",
+    "essons_applied_json",
+    "dditional_checks_json",
+    "xpected_evidence_json",
+    "acket_hash'         ",
+    "vidence_ref'        ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

@@ -1,9 +1,26 @@
 {
   "table": "db_migration_history",
-  "exportedAt": "2026-06-19T08:07:58.006860Z",
+  "exportedAt": "2026-06-21T08:04:38.133679+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "igration_id'        ",
+    "roject_id'          ",
+    "arget_env'          ",
+    "b_name'             ",
+    "ql_file_path'       ",
+    "hecksum_sha256'     ",
+    "pplied_status'      ",
+    "pplied_by'          ",
+    "tarted_at'          ",
+    "inished_at'         ",
+    "ackup_path'         ",
+    "ollback_file_path'  ",
+    "heck_file_path'     ",
+    "rror_message'       ",
+    "it_revision'        ",
+    "reated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 3,
   "rows": []
 }

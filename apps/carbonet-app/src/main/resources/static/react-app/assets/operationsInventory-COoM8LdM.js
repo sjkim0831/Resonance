@@ -1,1 +1,0 @@
-import{aM as t,o as a,aN as o}from"./environmentManagementShared-1Ljv2wBu.js";async function n(){const e=await t(a("/system/operations/page-data"),{credentials:"include",cache:"no-store",headers:{Accept:"application/json","X-Requested-With":"XMLHttpRequest"}});if(!e.ok)throw new Error(`Failed to load operations inventory: ${e.status}`);return o(e)}export{n as f};

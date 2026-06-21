@@ -1,9 +1,25 @@
 {
   "table": "ui_help_item",
-  "exportedAt": "2026-06-19T08:08:02.395982Z",
+  "exportedAt": "2026-06-21T08:04:48.252038+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "tem_id'             ",
+    "age_id'             ",
+    "itle'               ",
+    "ody'                ",
+    "nchor_selector'     ",
+    "isplay_order'       ",
+    "ctive_yn'           ",
+    "lacement'           ",
+    "mage_url'           ",
+    "con_name'           ",
+    "ighlight_style'     ",
+    "ta_label'           ",
+    "ta_url'             ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 84,
   "rows": []
 }

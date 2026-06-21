@@ -1,8 +1,20 @@
 {
   "table": "comtnbloguser",
-  "exportedAt": "2026-06-19T08:07:55.671537Z",
+  "exportedAt": "2026-06-21T08:04:32.703286+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "log_id'             ",
+    "mplyr_id'           ",
+    "ngr_at'             ",
+    "ber_sttus'          ",
+    "bscrb_de'           ",
+    "ecsn_de'            ",
+    "se_at'              ",
+    "rst_regist_pnttm'   ",
+    "rst_register_id'    ",
+    "ast_updt_pnttm'     ",
+    "ast_updusr_id'      ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

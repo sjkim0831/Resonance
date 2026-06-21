@@ -1,8 +1,21 @@
 {
   "table": "db_change_promotion_policy",
-  "exportedAt": "2026-06-19T08:07:57.940751Z",
+  "exportedAt": "2026-06-21T08:04:38.014104+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "olicy_id'           ",
+    "able_name'          ",
+    "olicy_code'         ",
+    "hange_types_json'   ",
+    "asking_profile_code",
+    "ql_render_mode'     ",
+    "ctive_yn'           ",
+    "olicy_reason'       ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "reated_by'          ",
+    "pdated_by'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

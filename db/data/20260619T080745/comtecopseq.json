@@ -1,9 +1,12 @@
 {
   "table": "comtecopseq",
-  "exportedAt": "2026-06-19T08:07:54.825548Z",
+  "exportedAt": "2026-06-21T08:04:30.793298+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "able_name'          ",
+    "ext_id'             ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 18,
   "rows": []
 }

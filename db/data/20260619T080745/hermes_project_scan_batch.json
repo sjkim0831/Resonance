@@ -1,8 +1,20 @@
 {
   "table": "hermes_project_scan_batch",
-  "exportedAt": "2026-06-19T08:08:00.057099Z",
+  "exportedAt": "2026-06-21T08:04:43.192787+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "can_batch_id'       ",
+    "roject_id'          ",
+    "can_type'           ",
+    "oot_path'           ",
+    "tatus'              ",
+    "sset_count'         ",
+    "vidence_ref'        ",
+    "ummary'             ",
+    "canned_by'          ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

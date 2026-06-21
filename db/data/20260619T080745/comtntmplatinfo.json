@@ -1,9 +1,19 @@
 {
   "table": "comtntmplatinfo",
-  "exportedAt": "2026-06-19T08:07:57.751141Z",
+  "exportedAt": "2026-06-21T08:04:37.597947+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "mplat_id'           ",
+    "mplat_nm'           ",
+    "mplat_cours'        ",
+    "se_at'              ",
+    "mplat_se_code'      ",
+    "rst_register_id'    ",
+    "rst_regist_pnttm'   ",
+    "ast_updusr_id'      ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 3,
   "rows": []
 }

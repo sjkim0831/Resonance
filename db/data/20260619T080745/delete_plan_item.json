@@ -1,8 +1,19 @@
 {
   "table": "delete_plan_item",
-  "exportedAt": "2026-06-19T08:07:58.200576Z",
+  "exportedAt": "2026-06-21T08:04:38.616410+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "elete_plan_item_id",
+    "elete_plan_id'      ",
+    "esource_id'         ",
+    "arget_type'         ",
+    "arget_name'         ",
+    "ction_type'         ",
+    "lock_reason'        ",
+    "elete_order'        ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

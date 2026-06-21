@@ -1,9 +1,17 @@
 {
   "table": "msatnroleinfo",
-  "exportedAt": "2026-06-19T08:08:00.946590Z",
+  "exportedAt": "2026-06-21T08:04:45.226850+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ole_code'           ",
+    "ole_nm'             ",
+    "ole_pttrn'          ",
+    "ole_dc'             ",
+    "ole_ty'             ",
+    "ole_sort'           ",
+    "ole_creat_de'       ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 22,
   "rows": []
 }

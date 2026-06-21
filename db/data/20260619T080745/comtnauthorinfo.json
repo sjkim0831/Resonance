@@ -1,9 +1,14 @@
 {
   "table": "comtnauthorinfo",
-  "exportedAt": "2026-06-19T08:07:55.021840Z",
+  "exportedAt": "2026-06-21T08:04:31.336761+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "uthor_code'         ",
+    "uthor_nm'           ",
+    "uthor_dc'           ",
+    "uthor_creat_de'     ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 20,
   "rows": []
 }

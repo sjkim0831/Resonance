@@ -1,8 +1,22 @@
 {
   "table": "hermes_task_lesson",
-  "exportedAt": "2026-06-19T08:08:00.182699Z",
+  "exportedAt": "2026-06-21T08:04:43.436576+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ask_lesson_id'      ",
+    "roject_id'          ",
+    "ermes_task_id'      ",
+    "attern_id'          ",
+    "esson_type'         ",
+    "esson_title'        ",
+    "esson_body'         ",
+    "pplies_to_json'     ",
+    "revention_check'    ",
+    "vidence_ref'        ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

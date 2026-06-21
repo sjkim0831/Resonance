@@ -1,8 +1,19 @@
 {
   "table": "comvnusermaster",
-  "exportedAt": "2026-06-19T08:07:57.877693Z",
+  "exportedAt": "2026-06-21T08:04:37.896067+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "sntl_id'            ",
+    "ser_id'             ",
+    "assword'            ",
+    "ser_nm'             ",
+    "ser_zip'            ",
+    "ser_adres'          ",
+    "ser_email'          ",
+    "roup_id'            ",
+    "ser_se'             ",
+    "rgnzt_id'           ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

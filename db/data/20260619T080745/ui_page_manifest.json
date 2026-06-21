@@ -1,9 +1,20 @@
 {
   "table": "ui_page_manifest",
-  "exportedAt": "2026-06-19T08:08:02.584793Z",
+  "exportedAt": "2026-06-21T08:04:48.792937+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "age_id'             ",
+    "age_name'           ",
+    "oute_path'          ",
+    "omain_code'         ",
+    "enu_code'           ",
+    "ayout_version'      ",
+    "esign_token_version",
+    "ctive_yn'           ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 61,
   "rows": []
 }

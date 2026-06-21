@@ -1,9 +1,33 @@
 {
   "table": "comtnipwhitelistrequest",
-  "exportedAt": "2026-06-19T08:07:56.655364Z",
+  "exportedAt": "2026-06-21T08:04:35.032009+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "equest_id'          ",
+    "ule_id'             ",
+    "p_address'          ",
+    "ccess_scope'        ",
+    "eason'              ",
+    "eason_en'           ",
+    "pproval_status'     ",
+    "pproval_status_en'  ",
+    "equested_at'        ",
+    "equester'           ",
+    "equester_en'        ",
+    "eview_note'         ",
+    "eviewed_at'         ",
+    "eviewed_by'         ",
+    "eviewed_by_en'      ",
+    "xpires_at'          ",
+    "emo'                ",
+    "emo_en'             ",
+    "se_at'              ",
+    "rst_register_id'    ",
+    "rst_regist_pnttm'   ",
+    "ast_updusr_id'      ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 3,
   "rows": []
 }

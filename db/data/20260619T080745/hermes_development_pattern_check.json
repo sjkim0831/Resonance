@@ -1,9 +1,19 @@
 {
   "table": "hermes_development_pattern_check",
-  "exportedAt": "2026-06-19T08:07:59.678414Z",
+  "exportedAt": "2026-06-21T08:04:42.239384+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "attern_check_id'    ",
+    "attern_id'          ",
+    "heck_order'         ",
+    "heck_type'          ",
+    "ommand_template'    ",
+    "ass_criteria'       ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 10,
   "rows": []
 }

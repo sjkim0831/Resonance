@@ -1,8 +1,23 @@
 {
   "table": "deployable_db_patch_result",
-  "exportedAt": "2026-06-19T08:07:58.332684Z",
+  "exportedAt": "2026-06-21T08:04:38.853077+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "esult_id'           ",
+    "ueue_id'            ",
+    "xecution_batch_id'  ",
+    "roject_id'          ",
+    "arget_env'          ",
+    "xecution_status'    ",
+    "xecution_message'   ",
+    "esult_sql_preview'  ",
+    "hecksum_sha256'     ",
+    "b_patch_history_id",
+    "tarted_at'          ",
+    "inished_at'         ",
+    "xecuted_by'         ",
+    "reated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

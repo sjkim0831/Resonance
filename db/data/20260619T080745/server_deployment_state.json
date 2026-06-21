@@ -1,8 +1,18 @@
 {
   "table": "server_deployment_state",
-  "exportedAt": "2026-06-19T08:08:01.891768Z",
+  "exportedAt": "2026-06-21T08:04:47.180479+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "erver_deployment_id",
+    "erver_id'           ",
+    "erver_role'         ",
+    "roject_id'          ",
+    "elease_unit_id'     ",
+    "eploy_trace_id'     ",
+    "ealth_status'       ",
+    "eployed_at'         ",
+    "eployed_by'         ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

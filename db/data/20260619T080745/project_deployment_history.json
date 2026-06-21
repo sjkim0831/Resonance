@@ -1,8 +1,24 @@
 {
   "table": "project_deployment_history",
-  "exportedAt": "2026-06-19T08:08:01.324735Z",
+  "exportedAt": "2026-06-21T08:04:46.059020+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "eployment_history_id",
+    "roject_id'          ",
+    "elease_version'     ",
+    "elease_title'       ",
+    "elease_content'     ",
+    "tatus'              ",
+    "erver_target'       ",
+    "elease_unit_id'     ",
+    "eploy_trace_id'     ",
+    "it_commit_sha'      ",
+    "esult_message'      ",
+    "tarted_at'          ",
+    "inished_at'         ",
+    "pdated_at'          ",
+    "reated_by'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

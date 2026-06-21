@@ -1,8 +1,27 @@
 {
   "table": "artifact_version_registry",
-  "exportedAt": "2026-06-19T08:07:54.377199Z",
+  "exportedAt": "2026-06-21T08:04:29.715723+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "rtifact_version_id",
+    "rtifact_id'         ",
+    "rtifact_type'       ",
+    "rtifact_family'     ",
+    "rtifact_version'    ",
+    "roup_line'          ",
+    "torage_key'         ",
+    "hecksum_sha256'     ",
+    "ommon_core_version",
+    "dapter_contract_versi",
+    "pi_contract_version",
+    "anifest_contract_vers",
+    "apability_catalog_ver",
+    "ompatibility_status",
+    "ublished_yn'        ",
+    "uilt_at'            ",
+    "ublished_at'        ",
+    "ublished_by'        ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

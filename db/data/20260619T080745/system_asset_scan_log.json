@@ -1,8 +1,16 @@
 {
   "table": "system_asset_scan_log",
-  "exportedAt": "2026-06-19T08:08:02.206562Z",
+  "exportedAt": "2026-06-21T08:04:47.777897+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "can_id'             ",
+    "sset_id'            ",
+    "revious_hash'       ",
+    "urrent_hash'        ",
+    "can_result'         ",
+    "can_details'        ",
+    "reated_at'          ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

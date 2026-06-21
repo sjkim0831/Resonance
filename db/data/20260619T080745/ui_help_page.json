@@ -1,9 +1,17 @@
 {
   "table": "ui_help_page",
-  "exportedAt": "2026-06-19T08:08:02.459995Z",
+  "exportedAt": "2026-06-21T08:04:48.432052+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "age_id'             ",
+    "itle'               ",
+    "ummary'             ",
+    "elp_version'        ",
+    "ctive_yn'           ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 32,
   "rows": []
 }

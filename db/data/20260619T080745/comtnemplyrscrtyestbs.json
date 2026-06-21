@@ -1,9 +1,13 @@
 {
   "table": "comtnemplyrscrtyestbs",
-  "exportedAt": "2026-06-19T08:07:56.072772Z",
+  "exportedAt": "2026-06-21T08:04:33.539075+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "crty_dtrmn_trget_id",
+    "ber_ty_code'        ",
+    "uthor_code'         ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 30,
   "rows": []
 }

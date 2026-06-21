@@ -1,9 +1,13 @@
 {
   "table": "comtnauthorrolerelate",
-  "exportedAt": "2026-06-19T08:07:55.085031Z",
+  "exportedAt": "2026-06-21T08:04:31.514190+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "uthor_code'         ",
+    "ole_code'           ",
+    "reat_dt'            ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 9,
   "rows": []
 }

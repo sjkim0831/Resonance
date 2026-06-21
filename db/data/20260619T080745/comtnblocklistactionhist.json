@@ -1,8 +1,26 @@
 {
   "table": "comtnblocklistactionhist",
-  "exportedAt": "2026-06-19T08:07:55.476753Z",
+  "exportedAt": "2026-06-21T08:04:32.343829+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ction_id'           ",
+    "lock_id'            ",
+    "arget'              ",
+    "ction_type'         ",
+    "tatus'              ",
+    "etail'              ",
+    "etail_en'           ",
+    "ctor_id'            ",
+    "ctor_name'          ",
+    "ource'              ",
+    "ction_at'           ",
+    "xpires_at'          ",
+    "se_at'              ",
+    "rst_register_id'    ",
+    "rst_regist_pnttm'   ",
+    "ast_updusr_id'      ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

@@ -1,9 +1,14 @@
 {
   "table": "comtnauthorfunctionrelate",
-  "exportedAt": "2026-06-19T08:07:54.890712Z",
+  "exportedAt": "2026-06-21T08:04:30.979300+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "uthor_code'         ",
+    "eature_code'        ",
+    "rant_authority_yn'  ",
+    "reat_dt'            ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 1194,
   "rows": []
 }

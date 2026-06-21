@@ -1,9 +1,13 @@
 {
   "table": "msatnauthorrolerelate",
-  "exportedAt": "2026-06-19T08:08:00.756409Z",
+  "exportedAt": "2026-06-21T08:04:44.757118+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "uthor_code'         ",
+    "ole_code'           ",
+    "reat_dt'            ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 22,
   "rows": []
 }

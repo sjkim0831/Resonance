@@ -1,9 +1,14 @@
 {
   "table": "comtnmenuorder",
-  "exportedAt": "2026-06-19T08:07:57.104823Z",
+  "exportedAt": "2026-06-21T08:04:36.181378+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "enu_code'           ",
+    "ort_ordr'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 146,
   "rows": []
 }

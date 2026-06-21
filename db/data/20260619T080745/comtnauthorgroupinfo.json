@@ -1,9 +1,14 @@
 {
   "table": "comtnauthorgroupinfo",
-  "exportedAt": "2026-06-19T08:07:54.955964Z",
+  "exportedAt": "2026-06-21T08:04:31.157422+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "roup_id'            ",
+    "roup_nm'            ",
+    "roup_creat_de'      ",
+    "roup_dc'            ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 1,
   "rows": []
 }

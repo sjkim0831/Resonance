@@ -1,8 +1,22 @@
 {
   "table": "comtnstsfdg",
-  "exportedAt": "2026-06-19T08:07:57.687474Z",
+  "exportedAt": "2026-06-21T08:04:37.478266+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "tsfdg_no'           ",
+    "tt_id'              ",
+    "bs_id'              ",
+    "rter_id'            ",
+    "rter_nm'            ",
+    "assword'            ",
+    "tsfdg'              ",
+    "tsfdg_cn'           ",
+    "se_at'              ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rst_register_id'    ",
+    "ast_updusr_id'      ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

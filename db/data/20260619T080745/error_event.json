@@ -1,9 +1,27 @@
 {
   "table": "error_event",
-  "exportedAt": "2026-06-19T08:07:59.423588Z",
+  "exportedAt": "2026-06-21T08:04:41.517318+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "rror_id'            ",
+    "race_id'            ",
+    "equest_id'          ",
+    "age_id'             ",
+    "pi_id'              ",
+    "ource_type'         ",
+    "rror_type'          ",
+    "ctor_id'            ",
+    "ctor_role'          ",
+    "ctor_instt_id'      ",
+    "equest_uri'         ",
+    "emote_addr'         ",
+    "essage'             ",
+    "tack_summary'       ",
+    "esult_status'       ",
+    "ser_agent'          ",
+    "reated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 1356,
   "rows": []
 }

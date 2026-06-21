@@ -1,9 +1,19 @@
 {
   "table": "comtnmenuinfo",
-  "exportedAt": "2026-06-19T08:07:57.040766Z",
+  "exportedAt": "2026-06-21T08:04:35.994047+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "enu_code'           ",
+    "enu_nm'             ",
+    "enu_nm_en'          ",
+    "enu_url'            ",
+    "enu_icon'           ",
+    "se_at'              ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "xpsr_at'            ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 281,
   "rows": []
 }

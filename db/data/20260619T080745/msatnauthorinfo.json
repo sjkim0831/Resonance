@@ -1,9 +1,14 @@
 {
   "table": "msatnauthorinfo",
-  "exportedAt": "2026-06-19T08:08:00.689186Z",
+  "exportedAt": "2026-06-21T08:04:44.578631+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "uthor_code'         ",
+    "uthor_nm'           ",
+    "uthor_dc'           ",
+    "uthor_creat_de'     ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 6,
   "rows": []
 }

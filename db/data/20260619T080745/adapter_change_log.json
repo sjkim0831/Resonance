@@ -1,8 +1,21 @@
 {
   "table": "adapter_change_log",
-  "exportedAt": "2026-06-19T08:07:54.185044Z",
+  "exportedAt": "2026-06-21T08:04:29.295612+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "dapter_change_id'   ",
+    "roject_id'          ",
+    "dapter_artifact_versi",
+    "dapter_contract_versi",
+    "hanged_port_set_json",
+    "hanged_dto_set_json",
+    "apping_impact_summary",
+    "ompatibility_class",
+    "igration_required_yn",
+    "elated_release_unit_i",
+    "ecorded_at'         ",
+    "ecorded_by'         ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

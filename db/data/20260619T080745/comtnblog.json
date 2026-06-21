@@ -1,8 +1,21 @@
 {
   "table": "comtnblog",
-  "exportedAt": "2026-06-19T08:07:55.603865Z",
+  "exportedAt": "2026-06-21T08:04:32.582919+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "log_id'             ",
+    "log_nm'             ",
+    "log_intrcn'         ",
+    "se_at'              ",
+    "egist_se_code'      ",
+    "mplat_id'           ",
+    "rst_regist_pnttm'   ",
+    "rst_register_id'    ",
+    "ast_updt_pnttm'     ",
+    "ast_updusr_id'      ",
+    "bs_id'              ",
+    "log_at'             ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

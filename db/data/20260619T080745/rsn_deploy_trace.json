@@ -1,8 +1,22 @@
 {
   "table": "rsn_deploy_trace",
-  "exportedAt": "2026-06-19T08:08:01.704433Z",
+  "exportedAt": "2026-06-21T08:04:46.759804+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "eploy_trace_id'     ",
+    "untime_package_id'  ",
+    "arget_env'          ",
+    "eploy_status'       ",
+    "perator_id'         ",
+    "eploy_log'          ",
+    "tarted_at'          ",
+    "inished_at'         ",
+    "ow_version'         ",
+    "reated_by'          ",
+    "pdated_by'          ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

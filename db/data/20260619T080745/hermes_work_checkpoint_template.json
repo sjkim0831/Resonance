@@ -1,9 +1,26 @@
 {
   "table": "hermes_work_checkpoint_template",
-  "exportedAt": "2026-06-19T08:08:00.311079Z",
+  "exportedAt": "2026-06-21T08:04:43.679770+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "heckpoint_template_id",
+    "roject_id'          ",
+    "attern_id'          ",
+    "heckpoint_order'    ",
+    "heckpoint_code'     ",
+    "heckpoint_stage'    ",
+    "heckpoint_name'     ",
+    "nstruction'         ",
+    "ommand_template'    ",
+    "xpected_evidence'   ",
+    "eport_policy'       ",
+    "ework_trigger'      ",
+    "estore_anchor_policy",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 6,
   "rows": []
 }

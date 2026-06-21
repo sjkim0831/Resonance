@@ -1,9 +1,26 @@
 {
   "table": "comtninsttinfo_bak_20260302_212335",
-  "exportedAt": "2026-06-19T08:07:56.592049Z",
+  "exportedAt": "2026-06-21T08:04:34.850677+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "nstt_id'            ",
+    "nstt_nm'            ",
+    "eprsnt_nm'          ",
+    "izrno'              ",
+    "ip'                 ",
+    "dres'               ",
+    "etail_adres'        ",
+    "iz_reg_file_path'   ",
+    "nstt_sttus'         ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "harger_nm'          ",
+    "harger_email'       ",
+    "harger_tel'         ",
+    "jct_rsn'            ",
+    "jct_pnttm'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 4,
   "rows": []
 }

@@ -1,9 +1,21 @@
 {
   "table": "emission_factor",
-  "exportedAt": "2026-06-19T08:07:58.841630Z",
+  "exportedAt": "2026-06-21T08:04:40.123504+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "actor_id'           ",
+    "ategory_id'         ",
+    "ier'                ",
+    "actor_code'         ",
+    "actor_name'         ",
+    "actor_value'        ",
+    "nit'                ",
+    "efault_yn'          ",
+    "emark'              ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 19,
   "rows": []
 }

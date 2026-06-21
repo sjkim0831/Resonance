@@ -1,8 +1,22 @@
 {
   "table": "project_compatibility_run",
-  "exportedAt": "2026-06-19T08:08:01.136541Z",
+  "exportedAt": "2026-06-21T08:04:45.706671+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "un_id'              ",
+    "roject_id'          ",
+    "ource_release_unit_id",
+    "arget_common_version",
+    "uild_status'        ",
+    "dapter_contract_statu",
+    "b_diff_status'      ",
+    "moke_status'        ",
+    "ompatibility_status",
+    "locking_reason'     ",
+    "ollback_release_unit_",
+    "ested_at'           ",
+    "ested_by'           ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

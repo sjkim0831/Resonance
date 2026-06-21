@@ -1,8 +1,28 @@
 {
   "table": "hermes_project_knowledge_asset",
-  "exportedAt": "2026-06-19T08:07:59.994267Z",
+  "exportedAt": "2026-06-21T08:04:43.078477+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "nowledge_asset_id'  ",
+    "roject_id'          ",
+    "can_batch_id'       ",
+    "sset_type'          ",
+    "sset_path'          ",
+    "arent_path'         ",
+    "sset_depth'         ",
+    "wner_surface'       ",
+    "rimary_pattern_id'  ",
+    "rimary_team_id'     ",
+    "ile_count'          ",
+    "irectory_count'     ",
+    "ontent_hash'        ",
+    "ummary'             ",
+    "attern_hints'       ",
+    "vidence_ref'        ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

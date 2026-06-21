@@ -1,9 +1,19 @@
 {
   "table": "ui_page_component_map",
-  "exportedAt": "2026-06-19T08:08:02.521837Z",
+  "exportedAt": "2026-06-21T08:04:48.614984+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ap_id'              ",
+    "age_id'             ",
+    "ayout_zone'         ",
+    "omponent_id'        ",
+    "nstance_key'        ",
+    "isplay_order'       ",
+    "onditional_rule_summa",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 145,
   "rows": []
 }

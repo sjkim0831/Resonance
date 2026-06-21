@@ -1,8 +1,19 @@
 {
   "table": "system_asset_lifecycle_plan",
-  "exportedAt": "2026-06-19T08:08:02.143489Z",
+  "exportedAt": "2026-06-21T08:04:47.659136+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "lan_id'             ",
+    "sset_id'            ",
+    "arget_stage'        ",
+    "lan_status'         ",
+    "equester_id'        ",
+    "pprover_id'         ",
+    "arget_date'         ",
+    "eason'              ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

@@ -1,8 +1,20 @@
 {
   "table": "comtnqustnrqesitm",
-  "exportedAt": "2026-06-19T08:07:57.366709Z",
+  "exportedAt": "2026-06-21T08:04:36.813950+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "estnr_id'           ",
+    "ustnr_qesitm_id'    ",
+    "ustnr_tmplat_id'    ",
+    "estn_sn'            ",
+    "estn_ty_code'       ",
+    "estn_cn'            ",
+    "xmm_choise_co'      ",
+    "rst_regist_pnttm'   ",
+    "rst_register_id'    ",
+    "ast_updt_pnttm'     ",
+    "ast_updusr_id'      ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

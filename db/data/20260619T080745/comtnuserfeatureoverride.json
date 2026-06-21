@@ -1,8 +1,18 @@
 {
   "table": "comtnuserfeatureoverride",
-  "exportedAt": "2026-06-19T08:07:57.813263Z",
+  "exportedAt": "2026-06-21T08:04:37.774878+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "crty_dtrmn_trget_id",
+    "ber_ty_code'        ",
+    "eature_code'        ",
+    "verride_type'       ",
+    "se_at'              ",
+    "rst_register_id'    ",
+    "rst_regist_dt'      ",
+    "ast_updusr_id'      ",
+    "ast_updt_dt'        ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

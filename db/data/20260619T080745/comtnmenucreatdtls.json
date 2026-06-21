@@ -1,8 +1,12 @@
 {
   "table": "comtnmenucreatdtls",
-  "exportedAt": "2026-06-19T08:07:56.911027Z",
+  "exportedAt": "2026-06-21T08:04:35.684080+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "enu_no'             ",
+    "uthor_code'         ",
+    "apng_creat_id'      ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []

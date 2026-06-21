@@ -1,9 +1,18 @@
 {
   "table": "comtnmenufunctioninfo",
-  "exportedAt": "2026-06-19T08:07:56.976076Z",
+  "exportedAt": "2026-06-21T08:04:35.804371+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "enu_code'           ",
+    "eature_code'        ",
+    "eature_nm'          ",
+    "eature_nm_en'       ",
+    "eature_dc'          ",
+    "se_at'              ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 367,
   "rows": []
 }

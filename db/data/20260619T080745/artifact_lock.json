@@ -1,8 +1,17 @@
 {
   "table": "artifact_lock",
-  "exportedAt": "2026-06-19T08:07:54.314203Z",
+  "exportedAt": "2026-06-21T08:04:29.592677+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "roject_id'          ",
+    "elease_unit_id'     ",
+    "roup_id'            ",
+    "rtifact_id'         ",
+    "rtifact_version'    ",
+    "rtifact_sha256'     ",
+    "ock_source'         ",
+    "reated_at'          ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

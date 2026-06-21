@@ -1,9 +1,14 @@
 {
   "table": "emission_mapping_log",
-  "exportedAt": "2026-06-19T08:07:59.163595Z",
+  "exportedAt": "2026-06-21T08:04:40.783878+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "d'                  ",
+    "aw_material_name'   ",
+    "apped_material_id'  ",
+    "ote'                ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 21791,
   "rows": []
 }

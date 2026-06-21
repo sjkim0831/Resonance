@@ -1,8 +1,18 @@
 {
   "table": "hermes_pattern_match",
-  "exportedAt": "2026-06-19T08:07:59.929571Z",
+  "exportedAt": "2026-06-21T08:04:42.960568+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ermes_pattern_match_i",
+    "ermes_task_id'      ",
+    "attern_id'          ",
+    "onfidence_score'    ",
+    "atched_reason'      ",
+    "elected_by'         ",
+    "ccepted_yn'         ",
+    "vidence_ref'        ",
+    "rst_regist_pnttm'   ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

@@ -1,9 +1,12 @@
 {
   "table": "msatnroles_hierarchy",
-  "exportedAt": "2026-06-19T08:08:01.006611Z",
+  "exportedAt": "2026-06-21T08:04:45.407607+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "arnts_role'         ",
+    "hldrn_role'         ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 5,
   "rows": []
 }

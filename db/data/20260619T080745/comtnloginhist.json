@@ -1,9 +1,18 @@
 {
   "table": "comtnloginhist",
-  "exportedAt": "2026-06-19T08:07:56.779529Z",
+  "exportedAt": "2026-06-21T08:04:35.389550+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ist_id'             ",
+    "ser_id'             ",
+    "ser_nm'             ",
+    "ser_se'             ",
+    "ogin_result'        ",
+    "ogin_ip'            ",
+    "ogin_message'       ",
+    "ogin_pnttm'         ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 309,
   "rows": []
 }

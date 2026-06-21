@@ -1,8 +1,16 @@
 {
   "table": "emission_input_session",
-  "exportedAt": "2026-06-19T08:07:58.970706Z",
+  "exportedAt": "2026-06-21T08:04:40.427813+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ession_id'          ",
+    "ategory_id'         ",
+    "ier'                ",
+    "reated_by'          ",
+    "alc_status'         ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.000"
   ],
   "count": 0,
   "rows": []

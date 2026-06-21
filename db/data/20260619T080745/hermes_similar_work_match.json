@@ -1,8 +1,23 @@
 {
   "table": "hermes_similar_work_match",
-  "exportedAt": "2026-06-19T08:08:00.121332Z",
+  "exportedAt": "2026-06-21T08:04:43.312792+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "imilar_work_match_id",
+    "ermes_task_id'      ",
+    "eference_task_id'   ",
+    "eference_route'     ",
+    "eference_artifact_pat",
+    "eference_pattern_id",
+    "imilarity_score'    ",
+    "imilarity_reason'   ",
+    "essons_applied'     ",
+    "dditional_checks'   ",
+    "vidence_ref'        ",
+    "ccepted_yn'         ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

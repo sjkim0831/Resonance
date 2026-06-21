@@ -1,8 +1,21 @@
 {
   "table": "release_unit_registry",
-  "exportedAt": "2026-06-19T08:08:01.514994Z",
+  "exportedAt": "2026-06-21T08:04:46.409114+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "elease_unit_id'     ",
+    "roject_id'          ",
+    "untime_package_id'  ",
+    "roject_runtime_versio",
+    "dapter_artifact_versi",
+    "dapter_contract_versi",
+    "ommon_artifact_set_js",
+    "ackage_version_set_js",
+    "ollback_target_releas",
+    "uilt_at'            ",
+    "pproved_at'         ",
+    "pproved_by'         ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

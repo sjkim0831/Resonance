@@ -1,9 +1,15 @@
 {
   "table": "emission_material_translation",
-  "exportedAt": "2026-06-19T08:07:59.227444Z",
+  "exportedAt": "2026-06-21T08:04:40.963084+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "aw_name'            ",
+    "nglish_name'        ",
+    "ource_type'         ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 113,
   "rows": []
 }

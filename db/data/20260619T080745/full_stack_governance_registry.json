@@ -1,9 +1,32 @@
 {
   "table": "full_stack_governance_registry",
-  "exportedAt": "2026-06-19T08:07:59.488252Z",
+  "exportedAt": "2026-06-21T08:04:41.695499+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "enu_code'           ",
+    "age_id'             ",
+    "enu_url'            ",
+    "ummary'             ",
+    "wner_scope'         ",
+    "otes'               ",
+    "rontend_sources_json",
+    "omponent_ids_json'  ",
+    "vent_ids_json'      ",
+    "unction_ids_json'   ",
+    "arameter_specs_json",
+    "esult_specs_json'   ",
+    "pi_ids_json'        ",
+    "chema_ids_json'     ",
+    "able_names_json'    ",
+    "olumn_names_json'   ",
+    "eature_codes_json'  ",
+    "ommon_code_groups_jso",
+    "ags_json'           ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "ource_type'         ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 30,
   "rows": []
 }

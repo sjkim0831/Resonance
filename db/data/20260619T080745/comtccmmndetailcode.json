@@ -1,9 +1,19 @@
 {
   "table": "comtccmmndetailcode",
-  "exportedAt": "2026-06-19T08:07:54.758880Z",
+  "exportedAt": "2026-06-21T08:04:30.610323+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ode_id'             ",
+    "ode'                ",
+    "ode_nm'             ",
+    "ode_dc'             ",
+    "se_at'              ",
+    "rst_regist_pnttm'   ",
+    "rst_register_id'    ",
+    "ast_updt_pnttm'     ",
+    "ast_updusr_id'      ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 737,
   "rows": []
 }

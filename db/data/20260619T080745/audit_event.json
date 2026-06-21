@@ -1,9 +1,28 @@
 {
   "table": "audit_event",
-  "exportedAt": "2026-06-19T08:07:54.439443Z",
+  "exportedAt": "2026-06-21T08:04:29.837081+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "udit_id'            ",
+    "race_id'            ",
+    "equest_id'          ",
+    "ctor_id'            ",
+    "ctor_role'          ",
+    "enu_code'           ",
+    "age_id'             ",
+    "ction_code'         ",
+    "ntity_type'         ",
+    "ntity_id'           ",
+    "efore_summary'      ",
+    "fter_summary'       ",
+    "esult_status'       ",
+    "eason_summary'      ",
+    "p_address'          ",
+    "ser_agent'          ",
+    "reated_at'          ",
+    "roject_id'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 2865,
   "rows": []
 }

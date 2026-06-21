@@ -1,9 +1,18 @@
 {
   "table": "emission_category",
-  "exportedAt": "2026-06-19T08:07:58.715617Z",
+  "exportedAt": "2026-06-21T08:04:39.766822+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ategory_id'         ",
+    "ajor_code'          ",
+    "ajor_name'          ",
+    "ub_code'            ",
+    "ub_name'            ",
+    "se_yn'              ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 2,
   "rows": []
 }

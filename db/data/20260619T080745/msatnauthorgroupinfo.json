@@ -1,9 +1,14 @@
 {
   "table": "msatnauthorgroupinfo",
-  "exportedAt": "2026-06-19T08:08:00.625596Z",
+  "exportedAt": "2026-06-21T08:04:44.401853+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "roup_id'            ",
+    "roup_nm'            ",
+    "roup_creat_de'      ",
+    "roup_dc'            ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 1,
   "rows": []
 }

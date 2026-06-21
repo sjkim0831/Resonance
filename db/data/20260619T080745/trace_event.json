@@ -1,9 +1,24 @@
 {
   "table": "trace_event",
-  "exportedAt": "2026-06-19T08:08:02.267269Z",
+  "exportedAt": "2026-06-21T08:04:47.894332+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "vent_id'            ",
+    "race_id'            ",
+    "pan_id'             ",
+    "arent_span_id'      ",
+    "vent_type'          ",
+    "age_id'             ",
+    "omponent_id'        ",
+    "unction_id'         ",
+    "pi_id'              ",
+    "esult_code'         ",
+    "uration_ms'         ",
+    "ayload_summary'     ",
+    "reated_at'          ",
+    "roject_id'          ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 140921,
   "rows": []
 }

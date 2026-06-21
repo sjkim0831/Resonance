@@ -1,9 +1,20 @@
 {
   "table": "comtninsttfile",
-  "exportedAt": "2026-06-19T08:07:56.462741Z",
+  "exportedAt": "2026-06-21T08:04:34.491067+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "ile_id'             ",
+    "nstt_id'            ",
+    "ile_sn'             ",
+    "tre_file_nm'        ",
+    "rignl_file_nm'      ",
+    "ile_stre_path'      ",
+    "ile_mg'             ",
+    "ile_extsn'          ",
+    "ile_cn'             ",
+    "egist_pnttm'        ",
+    "rows selected. (0.00"
   ],
-  "count": 0,
+  "count": 15,
   "rows": []
 }

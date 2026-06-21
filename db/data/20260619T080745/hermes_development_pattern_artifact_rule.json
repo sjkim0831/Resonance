@@ -1,9 +1,18 @@
 {
   "table": "hermes_development_pattern_artifact_rule",
-  "exportedAt": "2026-06-19T08:07:59.615729Z",
+  "exportedAt": "2026-06-21T08:04:42.056949+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "rtifact_rule_id'    ",
+    "attern_id'          ",
+    "rtifact_type'       ",
+    "ath_glob'           ",
+    "wnership_scope'     ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.001"
   ],
-  "count": 0,
+  "count": 7,
   "rows": []
 }

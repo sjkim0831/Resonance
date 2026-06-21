@@ -1,9 +1,18 @@
 {
   "table": "hermes_development_pattern_team_rule",
-  "exportedAt": "2026-06-19T08:07:59.808161Z",
+  "exportedAt": "2026-06-21T08:04:42.601661+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "eam_rule_id'        ",
+    "attern_id'          ",
+    "eam_id'             ",
+    "eam_role'           ",
+    "election_reason'    ",
+    "ctive_yn'           ",
+    "rst_regist_pnttm'   ",
+    "ast_updt_pnttm'     ",
+    "rows selected. (0.000"
   ],
-  "count": 0,
+  "count": 16,
   "rows": []
 }

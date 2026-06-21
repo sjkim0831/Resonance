@@ -1,8 +1,23 @@
 {
   "table": "resource_registry",
-  "exportedAt": "2026-06-19T08:08:01.642128Z",
+  "exportedAt": "2026-06-21T08:04:46.643349+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "esource_id'         ",
+    "roject_id'          ",
+    "ackage_id'          ",
+    "esource_type'       ",
+    "wner_scope'         ",
+    "sage_mode'          ",
+    "ogical_name'        ",
+    "hysical_name'       ",
+    "ource_path'         ",
+    "b_object_name'      ",
+    "tatus'              ",
+    "ast_verified_at'    ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.00"
   ],
   "count": 0,
   "rows": []

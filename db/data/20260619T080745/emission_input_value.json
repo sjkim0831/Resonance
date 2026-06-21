@@ -1,8 +1,17 @@
 {
   "table": "emission_input_value",
-  "exportedAt": "2026-06-19T08:07:59.099784Z",
+  "exportedAt": "2026-06-21T08:04:40.667280+00:00Z",
   "columns": [
-    "There are no results."
+    "eld                 T",
+    "nput_value_id'      ",
+    "ession_id'          ",
+    "ar_code'            ",
+    "ine_no'             ",
+    "alue_num'           ",
+    "alue_text'          ",
+    "reated_at'          ",
+    "pdated_at'          ",
+    "rows selected. (0.001"
   ],
   "count": 0,
   "rows": []
