@@ -369,7 +369,7 @@ import_csv_data() {
     log_step "Copying CSV to pod..."
     kubectl cp "${csv_file}" "${NAMESPACE}/${POD_NAME}:/tmp/import_data.csv"
 
-    log_step "Creating import script..."
+    log_step "Creating import script (12 columns)..."
     exec_in_pod "cat > /tmp/csv_import.py << 'PYEOF'
 import csv
 import subprocess
@@ -385,6 +385,14 @@ def dv(val):
         return 'DEFAULT'
     val = val.strip().replace(\"'\", \"''\")
     return \"'\" + val + \"'\"
+
+def di(val):
+    if val is None or val.strip() == '':
+        return 'DEFAULT'
+    try:
+        return str(int(float(val.strip())))
+    except:
+        return 'DEFAULT'
 
 def dt(val):
     if not val or val.strip() == '':
@@ -415,9 +423,20 @@ for i, r in enumerate(rows):
     st = dv(r.get('source_type', ''))
     fr = dt(r.get('frst_regist_pnttm', ''))
     lu = dt(r.get('last_updt_pnttm', ''))
+    kn = dv(r.get('korean_name', ''))
+    ee = dv(r.get('english_exact_name', ''))
+    ei = di(r.get('ecoinvent_master_id', ''))
+    ms = dv(r.get('mapping_status', ''))
+    mn = dv(r.get('mapping_note', ''))
+    sj = dv(r.get('shadow_translation_json', ''))
+    ss = dv(r.get('shadow_translation_status', ''))
+
     if rn == 'DEFAULT':
         continue
-    buf.append('INSERT INTO %s (raw_name, english_name, source_type, frst_regist_pnttm, last_updt_pnttm) VALUES (%%s, %%s, %%s, %%s, %%s);' %% (rn, en, st, fr, lu))
+
+    sql = 'INSERT INTO %s VALUES (%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s,%%s);' %% (rn, en, st, fr, lu, kn, ee, ei, ms, mn, sj, ss)
+    buf.append(sql)
+
     if len(buf) >= BATCH:
         with open(SQL_FILE, 'w') as f:
             f.write('\n'.join(buf))
