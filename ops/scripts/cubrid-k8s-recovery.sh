@@ -355,6 +355,98 @@ full_check() {
     check_current_baseline
 }
 
+import_csv_data() {
+    local csv_file="$1"
+    local table_name="$2"
+
+    log_step "Importing CSV to table: ${table_name}"
+
+    if [[ ! -f "$csv_file" ]]; then
+        log_err "CSV file not found: ${csv_file}"
+        return 1
+    fi
+
+    log_step "Copying CSV to pod..."
+    kubectl cp "${csv_file}" "${NAMESPACE}/${POD_NAME}:/tmp/import_data.csv"
+
+    log_step "Creating import script..."
+    exec_in_pod "cat > /tmp/csv_import.py << 'PYEOF'
+import csv
+import subprocess
+from datetime import datetime
+
+CSV_FILE = '/tmp/import_data.csv'
+DB = 'carbonet@localhost'
+SQL_FILE = '/tmp/insert.sql'
+BATCH = 200
+
+def dv(val):
+    if val is None or val.strip() == '':
+        return 'DEFAULT'
+    val = val.strip().replace(\"'\", \"''\")
+    return \"'\" + val + \"'\"
+
+def dt(val):
+    if not val or val.strip() == '':
+        return 'DEFAULT'
+    val = val.strip()
+    for fmt in ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S']:
+        try:
+            d = datetime.strptime(val, fmt)
+            return \"'\" + d.strftime('%m/%d/%Y %H:%M:%S') + \"'\"
+        except:
+            pass
+    return 'DEFAULT'
+
+count = 0
+err = 0
+total = 0
+
+with open(CSV_FILE, 'r', encoding='utf-8') as f:
+    reader = csv.DictReader(f)
+    rows = list(reader)
+    total = len(rows)
+    print('Total rows: %d' % total)
+
+buf = []
+for i, r in enumerate(rows):
+    rn = dv(r.get('raw_name', ''))
+    en = dv(r.get('english_name', ''))
+    st = dv(r.get('source_type', ''))
+    fr = dt(r.get('frst_regist_pnttm', ''))
+    lu = dt(r.get('last_updt_pnttm', ''))
+    if rn == 'DEFAULT':
+        continue
+    buf.append('INSERT INTO %s (raw_name, english_name, source_type, frst_regist_pnttm, last_updt_pnttm) VALUES (%%s, %%s, %%s, %%s, %%s);' %% (rn, en, st, fr, lu))
+    if len(buf) >= BATCH:
+        with open(SQL_FILE, 'w') as f:
+            f.write('\n'.join(buf))
+        rc = subprocess.call('csql -C -u dba -p \"\" %s < %s' %% (DB, SQL_FILE), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if rc == 0:
+            count += len(buf)
+            print('Done: %d/%d' %% (count, total))
+        else:
+            err += len(buf)
+        buf = []
+
+if buf:
+    with open(SQL_FILE, 'w') as f:
+        f.write('\n'.join(buf))
+    rc = subprocess.call('csql -C -u dba -p \"\" %s < %s' %% (DB, SQL_FILE), shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if rc == 0:
+        count += len(buf)
+    else:
+        err += len(buf)
+
+print('Import done: %d rows, %d errors' %% (count, err))
+PYEOF"
+
+    log_step "Running import..."
+    exec_in_pod "source /home/cubrid/.cubrid.sh && python3 /tmp/csv_import.py"
+
+    log_ok "CSV import completed"
+}
+
 case "${1:-full-check}" in
     full-check|check)
         full_check
@@ -388,8 +480,13 @@ case "${1:-full-check}" in
         fi
         rollback_from_snapshot "$SNAPSHOT_NAME"
         ;;
+    import-csv)
+        CSV_FILE="${2:-/home/sjkim/Downloads/_emission_material_translation__202606172021.csv}"
+        TABLE_NAME="${3:-emission_material_translation}"
+        import_csv_data "$CSV_FILE" "$TABLE_NAME"
+        ;;
     *)
-        echo "Usage: $0 {full-check|diagnose|restore|phase1|phase2|phase3|validate|snapshot|rollback}"
+        echo "Usage: $0 {full-check|diagnose|restore|phase1|phase2|phase3|validate|snapshot|rollback|import-csv}"
         echo ""
         echo "  full-check  - Comprehensive system check (default)"
         echo "  diagnose    - Detailed diagnosis of issues"
@@ -400,6 +497,11 @@ case "${1:-full-check}" in
         echo "  validate    - Validate current database"
         echo "  snapshot    - Create pre-restore snapshot"
         echo "  rollback    - Rollback from snapshot"
+        echo "  import-csv  - Import CSV data to table"
+        echo ""
+        echo "  Examples:"
+        echo "    $0 import-csv /path/to/file.csv emission_material_translation"
+        echo "    $0 import-csv  # uses default file and table"
         exit 1
         ;;
 esac
