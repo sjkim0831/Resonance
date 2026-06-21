@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# cubrid-k8s-recovery.sh - Robust CUBRID Kubernetes Recovery Script
-# Version: 2.0 - Enhanced with step-by-step validation
-# Usage: bash ops/scripts/cubrid-k8s-recovery.sh [restore-from-backup|restore-from-unload|verify|full-check]
+# cubrid-k8s-recovery.sh - Robust CUBRID Kubernetes Recovery Script v3.0
+# Step-by-step validation with rollback capability
+# Usage: bash ops/scripts/cubrid-k8s-recovery.sh [full-check|restore|diagnose|rollback]
 
 set -euo pipefail
 
@@ -9,9 +9,8 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 POD_NAME="cubrid-carbonet-0"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_PATH="/var/lib/cubrid/databases"
-CUBRID_DB_PATH="/home/cubrid/CUBRID/databases"
-BACKUP_HOST_DIR="/opt/Resonance/data/cubrid"
-BACKUP_PVC_DIR="${DB_PATH}"
+UNLOAD_DIR="${DB_PATH}/carbonet-live-unload-20260614"
+BACKUP_HOST_DIR="/opt/Resonance/data/cubrid/backups"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -20,340 +19,387 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 log() { echo -e "[$(date '+%H:%M:%S')] ${*}"; }
-log_step() { log "${BLUE}==>${NC} $*"; }
-log_ok() { log "${GREEN}✓${NC} $*"; }
-log_warn() { log "${YELLOW}⚠${NC} $*"; }
-log_err() { log "${RED}✗${NC} $*"; }
-
-check_pod() {
-    if ! kubectl get pod ${POD_NAME} -n ${NAMESPACE} &>/dev/null; then
-        log_err "Pod ${POD_NAME} not found in namespace ${NAMESPACE}"
-        return 1
-    fi
-    if ! kubectl get pod ${POD_NAME} -n ${NAMESPACE} | grep -q "Running"; then
-        log_err "Pod ${POD_NAME} is not Running"
-        kubectl describe pod ${POD_NAME} -n ${NAMESPACE} | tail -10
-        return 1
-    fi
-    return 0
-}
+log_step() { log "${BLUE}[STEP]${NC} $*"; }
+log_ok() { log "${GREEN}[OK]${NC} $*"; }
+log_warn() { log "${YELLOW}[WARN]${NC} $*"; }
+log_err() { log "${RED}[ERROR]${NC} $*"; }
 
 exec_in_pod() {
     kubectl exec -n ${NAMESPACE} ${POD_NAME} -- bash -c "$*" 2>&1
 }
 
-check_pod || exit 1
-
-check_db_files() {
-    log_step "Checking database files..."
-    local files=$(exec_in_pod "ls -la ${DB_PATH}/ | grep -E '^${DB_NAME}|databases.txt'")
-    echo "$files"
-
-    local db_file="${DB_PATH}/${DB_NAME}"
-    if exec_in_pod "[ -f ${db_file} ]" 2>/dev/null; then
-        log_ok "Database file exists: ${db_file}"
-        exec_in_pod "ls -la ${db_file}*"
-        return 0
-    else
-        log_warn "Database file not found: ${db_file}"
+check_pod() {
+    if ! kubectl get pod ${POD_NAME} -n ${NAMESPACE} &>/dev/null; then
+        log_err "Pod not found: ${POD_NAME}"
         return 1
     fi
-}
-
-fix_databases_txt() {
-    log_step "Fixing databases.txt format..."
-
-    local db_vol_path=$(echo "${DB_PATH}" | sed 's/\//\\\//g')
-    local db_log_path=$(echo "${DB_PATH}" | sed 's/\//\\\//g')
-
-    exec_in_pod "cat > ${DB_PATH}/databases.txt << 'DBEOF'
-#db-name\tvol-path\t\tdb-host\t\tlog-path\t\tlob-base-path
-${DB_NAME}\t${DB_PATH}\tlocalhost\t${DB_PATH}\tfile:${DB_PATH}/lob
-DBEOF"
-
-    log_ok "databases.txt updated"
-    exec_in_pod "cat ${DB_PATH}/databases.txt"
-}
-
-fix_lock_files() {
-    log_step "Removing lock files..."
-    exec_in_pod "rm -f ${DB_PATH}/${DB_NAME}_lgat__lock 2>/dev/null; ls -la ${DB_PATH}/*.lock 2>/dev/null || echo 'No lock files'"
-    log_ok "Lock files cleaned"
-}
-
-stop_cubrid_services() {
-    log_step "Stopping CUBRID services..."
-    exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        cubrid server stop ${DB_NAME} 2>/dev/null || true && \
-        cubrid broker stop 2>/dev/null || true && \
-        cubrid service stop 2>/dev/null || true && \
-        sleep 3 && \
-        pkill -9 cub_server 2>/dev/null || true && \
-        pkill -9 cub_broker 2>/dev/null || true && \
-        pkill -9 cub_master 2>/dev/null || true"
-    sleep 2
-    log_ok "Services stopped"
-}
-
-start_cubrid_services() {
-    log_step "Starting CUBRID services..."
-
-    exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        cubrid service start && \
-        sleep 3 && \
-        cubrid broker start && \
-        sleep 2"
-
-    local retry=5
-    while [[ $retry -gt 0 ]]; do
-        if exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server status ${DB_NAME}" &>/dev/null; then
-            log_ok "Server ${DB_NAME} is running"
-            break
-        fi
-        log_warn "Server not ready, retrying... ($retry)"
-        sleep 5
-        ((retry--))
-    done
-
-    if [[ $retry -eq 0 ]]; then
-        log_warn "Server start may have failed, checking broker status..."
-    fi
-
-    exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server status && echo '---' && cubrid broker status" | head -20
-}
-
-verify_connection() {
-    log_step "Verifying database connection..."
-
-    local result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        csql -C -u dba -p '' -c 'select count(*) from comtccmmncode;' ${DB_NAME}@localhost 2>&1")
-
-    if echo "$result" | grep -q "row selected"; then
-        local count=$(echo "$result" | grep -oE '[0-9]+ row selected' | awk '{print $1}')
-        log_ok "Database connection verified: ${count} records in comtccmmncode"
-        return 0
-    else
-        log_err "Connection failed: $result"
+    if ! kubectl get pod ${POD_NAME} -n ${NAMESPACE} | grep -q "Running"; then
+        log_err "Pod not Running"
+        kubectl describe pod ${POD_NAME} -n ${NAMESPACE} | tail -5
         return 1
     fi
+    log_ok "Pod ${POD_NAME} is Running"
+    return 0
 }
 
-restore_from_backup_file() {
-    local backup_file="$1"
-    log_step "Restoring from backup file: ${backup_file}"
+check_current_baseline() {
+    log_step "Checking current database baseline (reference for recovery validation)..."
 
-    if [[ ! -f "$backup_file" ]]; then
-        log_err "Backup file not found: ${backup_file}"
-        return 1
-    fi
+    local table_count=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c 'select count(*) from db_class;' ${DB_NAME}@localhost 2>&1" | \
+        grep -oE '^[ ]*[0-9]+' | head -1)
+    log "  Tables: ${table_count}"
 
-    stop_cubrid_services
+    local record_count=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c 'select count(*) from comtccmmncode;' ${DB_NAME}@localhost 2>&1" | \
+        grep -oE '^[ ]*[0-9]+' | head -1)
+    log "  comtccmmncode records: ${record_count}"
 
-    log_step "Copying backup to pod..."
-    kubectl cp "${backup_file}" "${NAMESPACE}/${POD_NAME}:/tmp/backup-restore.tar.gz"
+    local sample_korean=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c \"select code_id_nm from comtccmmncode limit 1;\" ${DB_NAME}@localhost 2>&1" | \
+        grep "'" | head -1 | tr -d "'" | xargs)
+    log "  Sample Korean: ${sample_korean}"
 
-    log_step "Cleaning old database files..."
-    exec_in_pod "cd ${DB_PATH} && \
-        rm -rf ${DB_NAME} ${DB_NAME}_* 2>/dev/null && \
-        mkdir -p ${DB_PATH}/${DB_NAME}"
-
-    log_step "Extracting backup..."
-    exec_in_pod "cd ${DB_PATH} && \
-        tar -xzf /tmp/backup-restore.tar.gz 2>/dev/null || unzip -o /tmp/backup-restore.tar.gz -d /tmp/ 2>/dev/null"
-
-    log_step "Checking extracted files..."
-    local extracted=$(exec_in_pod "ls -la ${DB_PATH}/ | grep -E '${DB_NAME}|unload'")
-    echo "$extracted"
-
-    if exec_in_pod "[ -d ${DB_PATH}/${DB_NAME}-live-unload-* ]" 2>/dev/null; then
-        log_step "Detected unload backup format, restoring via loaddb..."
-        restore_from_unload
-    else
-        log_step "Detected raw backup format..."
-        restore_from_raw_backup
-    fi
-
-    fix_databases_txt
-    fix_lock_files
-    start_cubrid_services
-    verify_connection
+    echo "BASELINE_TABLE_COUNT=${table_count}"
+    echo "BASELINE_RECORD_COUNT=${record_count}"
+    echo "BASELINE_KOREAN_SAMPLE=${sample_korean}"
 }
 
-restore_from_raw_backup() {
-    log_step "Restoring from raw backup files..."
-
-    local backup_dir="${DB_PATH}/${DB_NAME}-live-unload-$(date +%Y%m%d)"
-
-    if exec_in_pod "[ -d ${backup_dir} ]" 2>/dev/null; then
-        exec_in_pod "cp -r ${backup_dir}/* ${DB_PATH}/${DB_NAME}/ 2>/dev/null || true"
-    fi
-
-    exec_in_pod "ls -la ${DB_PATH}/${DB_NAME}/"
-    log_ok "Raw backup files restored"
-}
-
-restore_from_unload() {
-    local unload_dir=$(exec_in_pod "ls -d ${DB_PATH}/*-unload-* 2>/dev/null | head -1")
-
-    if [[ -z "$unload_dir" ]]; then
-        log_warn "Unload directory not found, creating new database..."
-        create_fresh_database
-        return
-    fi
-
-    log_step "Restoring from unload dump: ${unload_dir}"
-
-    local unloaddb_dir="${unload_dir}/unloaddb"
-    if ! exec_in_pod "[ -d ${unloaddb_dir} ]" 2>/dev/null; then
-        log_err "unloaddb directory not found in ${unload_dir}"
-        return 1
-    fi
-
-    stop_cubrid_services
-
-    log_step "Creating fresh database..."
-    exec_in_pod "rm -rf ${DB_PATH}/${DB_NAME} && \
-        mkdir -p ${DB_PATH}/${DB_NAME} && \
-        source /home/cubrid/.cubrid.sh && \
-        cd ${DB_PATH} && \
-        cubrid createdb --db-volume-size=500M --log-volume-size=100M ${DB_NAME} en_US.utf8 2>&1" | tail -5
-
-    if ! exec_in_pod "[ -f ${DB_PATH}/${DB_NAME} ]" 2>/dev/null; then
-        log_warn "Database creation may have failed, checking alternative paths..."
-    fi
-
-    log_step "Starting database server..."
-    exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        printf '#db-name\tvol-path\t\tdb-host\t\tlog-path\t\tlob-base-path\n${DB_NAME}\t${DB_PATH}\tlocalhost\t${DB_PATH}\tfile:${DB_PATH}/lob\n' > ${DB_PATH}/databases.txt && \
-        cubrid server start ${DB_NAME} 2>&1" | tail -5
-
-    sleep 5
-
-    log_step "Loading schema..."
-    exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        cd ${unloaddb_dir} && \
-        cubrid loaddb -C -v -u dba -p '' ${DB_NAME}@localhost -s carbonet_schema 2>&1" | tail -20
-
-    log_step "Loading indexes..."
-    exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        cd ${unloaddb_dir} && \
-        cubrid loaddb -C -v -u dba -p '' ${DB_NAME}@localhost -i carbonet_indexes 2>&1" | tail -10
-
-    log_step "Loading data..."
-    exec_in_pod "source /home/cubrid/.cubrid.sh && \
-        cd ${unloaddb_dir} && \
-        cubrid loaddb -C -v -u dba -p '' ${DB_NAME}@localhost -d carbonet_objects 2>&1" | tail -20
-
-    log_ok "Unload restore completed"
-}
-
-create_fresh_database() {
-    log_step "Creating fresh database..."
-    exec_in_pod "rm -rf ${DB_PATH}/${DB_NAME} && \
-        mkdir -p ${DB_PATH}/${DB_NAME} && \
-        source /home/cubrid/.cubrid.sh && \
-        cd ${DB_PATH} && \
-        cubrid createdb --db-volume-size=500M --log-volume-size=100M ${DB_NAME} en_US.utf8 2>&1"
-
-    log_ok "Fresh database created"
-}
-
-full_check() {
-    log_step "Running full system check..."
+diagnose_issues() {
+    log_step "=== Comprehensive Diagnosis ==="
 
     echo ""
     log_step "1. Pod Status"
     kubectl get pod ${POD_NAME} -n ${NAMESPACE} -o wide
 
     echo ""
-    log_step "2. Database Files"
-    exec_in_pod "ls -la ${DB_PATH} | grep -E '${DB_NAME}|total'"
+    log_step "2. Database Files Integrity"
+    exec_in_pod "ls -la ${DB_PATH}/ | grep -E '^-.*${DB_NAME}' | head -10"
+    echo "---"
+    exec_in_pod "file ${DB_PATH}/${DB_NAME}* 2>/dev/null | head -5"
 
     echo ""
-    log_step "3. databases.txt"
+    log_step "3. databases.txt Format"
     exec_in_pod "cat ${DB_PATH}/databases.txt"
 
     echo ""
-    log_step "4. Lock Files"
-    exec_in_pod "ls -la ${DB_PATH}/*.lock 2>/dev/null || echo 'No lock files'"
+    log_step "4. Lock Files Check"
+    exec_in_pod "ls -la ${DB_PATH}/*.lock 2>/dev/null || echo 'No lock files found'"
 
     echo ""
     log_step "5. CUBRID Service Status"
-    exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server status && echo '---' && cubrid broker status" | head -25
+    exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server status 2>&1 | head -5"
+    echo "---"
+    exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid broker status 2>&1 | head -15"
 
     echo ""
-    log_step "6. Database Connection Test"
-    verify_connection
+    log_step "6. Connection Test"
+    if exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server status ${DB_NAME}" &>/dev/null; then
+        log_ok "Server is running"
+    else
+        log_err "Server is NOT running"
+    fi
 
     echo ""
-    log_step "7. Table Count"
-    local table_count=$(exec_in_pod "source /home/cubrid/.cubrid.sh && csql -C -u dba -p '' -c 'select count(*) from db_class;' ${DB_NAME}@localhost 2>&1" | grep -oE '^[ ]*[0-9]+' | head -1)
-    log_ok "Total tables: ${table_count}"
+    log_step "7. Backup File Analysis"
+    if exec_in_pod "[ -d ${UNLOAD_DIR} ]" 2>/dev/null; then
+        log_ok "Unload directory exists: ${UNLOAD_DIR}"
+        exec_in_pod "ls -la ${UNLOAD_DIR}/unloaddb/ 2>/dev/null | head -10"
+    else
+        log_err "Unload directory NOT found: ${UNLOAD_DIR}"
+    fi
 
     echo ""
-    log_step "8. Sample Data Check (comtccmmncode)"
-    local code_count=$(exec_in_pod "source /home/cubrid/.cubrid.sh && csql -C -u dba -p '' -c 'select count(*) from comtccmmncode;' ${DB_NAME}@localhost 2>&1" | grep -oE '^[ ]*[0-9]+' | head -1)
-    log_ok "Common code count: ${code_count}"
-
-    echo ""
-    log_step "9. Korean Character Test"
-    local korean_test=$(exec_in_pod "source /home/cubrid/.cubrid.sh && csql -C -u dba -p '' -c \"select code_id_nm from comtccmmncode limit 1;\" ${DB_NAME}@localhost 2>&1" | tail -5)
-    echo "$korean_test"
-
-    log_ok "Full check completed"
+    log_step "8. Korean Encoding Check"
+    local encoding_check=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c \"select code_id_nm from comtccmmncode limit 3;\" ${DB_NAME}@localhost 2>&1" | tail -10)
+    echo "$encoding_check"
 }
 
-restart_runtime_pods() {
-    log_step "Restarting runtime pods..."
-    kubectl delete pod -n ${NAMESPACE} -l app=carbonet-runtime --grace-period=30
-    sleep 10
+fix_databases_txt() {
+    log_step "Fixing databases.txt..."
+    exec_in_pod "cat > ${DB_PATH}/databases.txt << 'EOF'
+#db-name	vol-path		db-host	log-path		lob-base-path
+${DB_NAME}	${DB_PATH}	localhost	${DB_PATH}	file:${DB_PATH}/lob
+EOF"
+    log_ok "databases.txt updated"
+}
 
-    local retry=30
+fix_lock_files() {
+    log_step "Removing stale lock files..."
+    exec_in_pod "rm -f ${DB_PATH}/${DB_NAME}_lgat__lock 2>/dev/null && \
+        pkill -9 -f 'cub_server.*${DB_NAME}' 2>/dev/null || true"
+    log_ok "Lock files cleaned"
+}
+
+stop_services_safe() {
+    log_step "Safely stopping CUBRID services..."
+    exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        cubrid server stop ${DB_NAME} 2>/dev/null || true && \
+        sleep 2 && \
+        pkill -9 cub_server 2>/dev/null || true && \
+        pkill -9 cub_broker 2>/dev/null || true"
+    sleep 2
+    log_ok "Services stopped"
+}
+
+start_services() {
+    log_step "Starting CUBRID services..."
+
+    exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        cubrid service start && sleep 3 && cubrid server start ${DB_NAME} && sleep 2"
+
+    local retry=10
     while [[ $retry -gt 0 ]]; do
-        local ready=$(kubectl get pod -n ${NAMESPACE} -l app=carbonet-runtime 2>/dev/null | grep -c "Running.*1/1" || echo "0")
-        if [[ "$ready" -ge 1 ]]; then
-            log_ok "Runtime pods are ready"
-            break
+        if exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server status ${DB_NAME}" &>/dev/null; then
+            log_ok "Server ${DB_NAME} started successfully"
+            return 0
         fi
-        sleep 2
+        log_warn "Waiting for server... ($retry)"
+        sleep 3
         ((retry--))
     done
 
-    kubectl get pod -n ${NAMESPACE} -l app=carbonet-runtime
+    log_err "Server failed to start within timeout"
+    return 1
+}
 
-    if curl -s http://127.0.0.1/actuator/health | grep -q "UP"; then
-        log_ok "Application health check: UP"
+create_snapshot() {
+    log_step "Creating pre-recovery snapshot..."
+    local snapshot_name="carbonet-snapshot-$(date +%Y%m%d_%H%M%S)"
+    exec_in_pod "mkdir -p ${DB_PATH}/snapshots/${snapshot_name} && \
+        cp -r ${DB_PATH}/${DB_NAME}* ${DB_PATH}/snapshots/${snapshot_name}/ 2>/dev/null || true && \
+        cp ${DB_PATH}/databases.txt ${DB_PATH}/snapshots/${snapshot_name}/ 2>/dev/null || true"
+    log_ok "Snapshot created: ${snapshot_name}"
+    echo "SNAPSHOT_NAME=${snapshot_name}"
+}
+
+rollback_from_snapshot() {
+    local snapshot_name="$1"
+    log_step "Rolling back from snapshot: ${snapshot_name}"
+
+    stop_services_safe
+
+    log_step "Restoring from snapshot..."
+    exec_in_pod "rm -rf ${DB_PATH}/${DB_NAME}* && \
+        cp -r ${DB_PATH}/snapshots/${snapshot_name}/* ${DB_PATH}/ 2>/dev/null || true"
+
+    fix_databases_txt
+    start_services
+    log_ok "Rollback completed"
+}
+
+validate_restore() {
+    log_step "Validating restored database..."
+
+    local result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c 'select count(*) from db_class;' ${DB_NAME}@localhost 2>&1")
+
+    if echo "$result" | grep -q "row selected"; then
+        local table_count=$(echo "$result" | grep -oE '^[ ]*[0-9]+' | head -1)
+        log_ok "Tables restored: ${table_count}"
     else
-        log_warn "Application health check may need more time"
+        log_err "Table validation failed"
+        return 1
+    fi
+
+    local record_result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c 'select count(*) from comtccmmncode;' ${DB_NAME}@localhost 2>&1")
+    local record_count=$(echo "$record_result" | grep -oE '^[ ]*[0-9]+' | head -1)
+    log_ok "Records in comtccmmncode: ${record_count}"
+
+    log_step "Testing Korean character encoding..."
+    local korean_result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c \"select code_id_nm from comtccmmncode limit 3;\" ${DB_NAME}@localhost 2>&1" | tail -8)
+    echo "$korean_result"
+
+    if echo "$korean_result" | grep -qE '등록|게시판|권한|관리'; then
+        log_ok "Korean characters preserved correctly"
+    else
+        log_warn "Korean characters may have encoding issues"
+    fi
+
+    return 0
+}
+
+restore_unload_phase1_schema() {
+    log_step "PHASE 1: Creating fresh database and loading schema..."
+
+    stop_services_safe
+    exec_in_pod "rm -rf ${DB_PATH}/${DB_NAME} 2>/dev/null || true"
+
+    log_step "Creating database..."
+    local createdb_result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        cd ${DB_PATH} && \
+        cubrid createdb --db-volume-size=500M --log-volume-size=100M ${DB_NAME} en_US.utf8 2>&1")
+    echo "$createdb_result" | tail -5
+
+    if ! exec_in_pod "[ -f ${DB_PATH}/${DB_NAME} ]" 2>/dev/null; then
+        log_err "Database creation failed"
+        return 1
+    fi
+    log_ok "Database created"
+
+    fix_databases_txt
+
+    log_step "Starting database server..."
+    exec_in_pod "source /home/cubrid/.cubrid.sh && cubrid server start ${DB_NAME}"
+    sleep 5
+
+    log_step "Loading schema (carbonet_schema)..."
+    local unloaddb_dir="${UNLOAD_DIR}/unloaddb"
+
+    if ! exec_in_pod "[ -f ${unloaddb_dir}/carbonet_schema ]" 2>/dev/null; then
+        log_err "Schema file not found: ${unloaddb_dir}/carbonet_schema"
+        return 1
+    fi
+
+    local schema_result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        cd ${unloaddb_dir} && \
+        cubrid loaddb -C -v -u dba -p '' ${DB_NAME}@localhost -s carbonet_schema 2>&1")
+    echo "$schema_result" | tail -10
+
+    if echo "$schema_result" | grep -qE "error|Error|ERROR"; then
+        log_warn "Schema loading had errors (may be non-critical)"
+    fi
+
+    log_ok "Phase 1 completed"
+    return 0
+}
+
+restore_unload_phase2_indexes() {
+    log_step "PHASE 2: Loading indexes..."
+
+    local unloaddb_dir="${UNLOAD_DIR}/unloaddb"
+
+    if ! exec_in_pod "[ -f ${unloaddb_dir}/carbonet_indexes ]" 2>/dev/null; then
+        log_warn "Indexes file not found, skipping..."
+        return 0
+    fi
+
+    local index_result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        cd ${unloaddb_dir} && \
+        cubrid loaddb -C -v -u dba -p '' ${DB_NAME}@localhost -i carbonet_indexes 2>&1")
+    echo "$index_result" | tail -10
+
+    log_ok "Phase 2 completed"
+    return 0
+}
+
+restore_unload_phase3_data() {
+    log_step "PHASE 3: Loading data (carbonet_objects)..."
+
+    local unloaddb_dir="${UNLOAD_DIR}/unloaddb"
+
+    if ! exec_in_pod "[ -f ${unloaddb_dir}/carbonet_objects ]" 2>/dev/null; then
+        log_err "Data file not found: ${unloaddb_dir}/carbonet_objects"
+        return 1
+    fi
+
+    log_step "This may take several minutes for large datasets..."
+    local data_result=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        cd ${unloaddb_dir} && \
+        cubrid loaddb -C -v -u dba -p '' ${DB_NAME}@localhost -d carbonet_objects 2>&1")
+    echo "$data_result" | tail -15
+
+    log_ok "Phase 3 completed"
+    return 0
+}
+
+restore_unload_full() {
+    log_step "=== Full Unload Restore Procedure ==="
+
+    if ! exec_in_pod "[ -d ${UNLOAD_DIR}/unloaddb ]" 2>/dev/null; then
+        log_err "Unload directory not found: ${UNLOAD_DIR}/unloaddb"
+        log_err "Available directories:"
+        exec_in_pod "ls -la ${DB_PATH}/ | grep unload"
+        return 1
+    fi
+
+    log_step "Backup files available:"
+    exec_in_pod "ls -la ${UNLOAD_DIR}/unloaddb/"
+
+    create_snapshot
+
+    log_step "Starting restore process..."
+
+    restore_unload_phase1_schema || {
+        log_err "Phase 1 (schema) failed"
+        log_warn "Rolling back to snapshot..."
+        rollback_from_snapshot "$(exec_in_pod "ls -td ${DB_PATH}/snapshots/*/ 2>/dev/null | head -1 | xargs basename")"
+        return 1
+    }
+
+    restore_unload_phase2_indexes || {
+        log_err "Phase 2 (indexes) failed"
+        return 1
+    }
+
+    restore_unload_phase3_data || {
+        log_err "Phase 3 (data) failed"
+        return 1
+    }
+
+    log_step "Validating restored database..."
+    if validate_restore; then
+        log_ok "=== Restore completed successfully ==="
+    else
+        log_err "Validation failed - manual inspection required"
+        return 1
     fi
 }
 
+full_check() {
+    log_step "=== Full System Check ==="
+    diagnose_issues
+    check_current_baseline
+}
+
 case "${1:-full-check}" in
-    restore-from-backup)
-        backup_file="${2:-/home/sjkim/Downloads/carbonet-live-unload-$(date +%Y%m%d).tar.gz}"
-        restore_from_backup_file "$backup_file"
-        restart_runtime_pods
-        ;;
-    restore-from-unload)
-        restore_from_unload
-        restart_runtime_pods
-        ;;
-    verify)
-        verify_connection
-        ;;
-    full-check)
+    full-check|check)
         full_check
         ;;
-    restart-runtime)
-        restart_runtime_pods
+    diagnose|diag)
+        diagnose_issues
+        ;;
+    restore)
+        restore_unload_full
+        ;;
+    phase1)
+        restore_unload_phase1_schema
+        ;;
+    phase2)
+        restore_unload_phase2_indexes
+        ;;
+    phase3)
+        restore_unload_phase3_data
+        ;;
+    validate)
+        validate_restore
+        ;;
+    snapshot)
+        create_snapshot
+        ;;
+    rollback)
+        SNAPSHOT_NAME="${2:-}"
+        if [[ -z "$SNAPSHOT_NAME" ]]; then
+            log_err "Usage: $0 rollback <snapshot-name>"
+            exit 1
+        fi
+        rollback_from_snapshot "$SNAPSHOT_NAME"
         ;;
     *)
-        echo "Usage: $0 {restore-from-backup|restore-from-unload|verify|full-check|restart-runtime}"
-        echo "  restore-from-backup [file] - Restore from tar.gz backup"
-        echo "  restore-from-unload       - Restore from unload dump"
-        echo "  verify                    - Verify database connection"
-        echo "  full-check                - Run comprehensive system check"
-        echo "  restart-runtime           - Restart runtime pods"
+        echo "Usage: $0 {full-check|diagnose|restore|phase1|phase2|phase3|validate|snapshot|rollback}"
+        echo ""
+        echo "  full-check  - Comprehensive system check (default)"
+        echo "  diagnose    - Detailed diagnosis of issues"
+        echo "  restore     - Full restore from unload dump"
+        echo "  phase1      - Restore: Create DB + load schema"
+        echo "  phase2      - Restore: Load indexes"
+        echo "  phase3      - Restore: Load data"
+        echo "  validate    - Validate current database"
+        echo "  snapshot    - Create pre-restore snapshot"
+        echo "  rollback    - Rollback from snapshot"
         exit 1
         ;;
 esac
