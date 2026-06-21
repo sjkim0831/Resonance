@@ -466,6 +466,92 @@ PYEOF"
     log_ok "CSV import completed"
 }
 
+verify_backup() {
+    local backup_file="${1:-}"
+
+    log_step "=== Verifying Backup Integrity ==="
+
+    if [[ -z "$backup_file" ]]; then
+        log_step "Available backups:"
+        ls -lh /opt/Resonance/data/cubrid/backups/*.tar.gz 2>/dev/null || log_warn "No backups found"
+        return
+    fi
+
+    if [[ ! -f "$backup_file" ]]; then
+        log_err "Backup file not found: $backup_file"
+        return 1
+    fi
+
+    log_step "Checking tarball integrity..."
+    if tar -tzf "$backup_file" >/dev/null 2>&1; then
+        log_ok "Tarball is valid"
+    else
+        log_err "Tarball is corrupted"
+        return 1
+    fi
+
+    local size=$(stat -c%s "$backup_file" 2>/dev/null || stat -f%z "$backup_file")
+    log "  Size: $(numfmt --to=iec $size 2>/dev/null || echo "${size} bytes")"
+
+    log_step "Checking contents..."
+    tar -tzf "$backup_file" | head -20 | while read line; do
+        log "  $line"
+    done
+
+    if [[ "$backup_file" == *"unload"* ]]; then
+        log_step "Verifying unload structure..."
+
+        local temp_dir=$(mktemp -d)
+        tar -xzf "$backup_file" -C "$temp_dir" 2>/dev/null
+
+        local unload_dir=$(find "$temp_dir" -maxdepth 3 -type d -name "*unload*" 2>/dev/null | head -1)
+
+        if [[ -n "$unload_dir" ]]; then
+            log_ok "Unload directory found: $(basename $unload_dir)"
+
+            for file in carbonet_schema carbonet_indexes carbonet_objects; do
+                if [[ -f "${unload_dir}/unloaddb/${file}" ]]; then
+                    local lines=$(wc -l < "${unload_dir}/unloaddb/${file}")
+                    log_ok "  ${file}: ${lines} lines"
+                else
+                    log_warn "  ${file}: NOT FOUND"
+                fi
+            done
+        else
+            log_warn "Unload directory not found in backup"
+        fi
+
+        rm -rf "$temp_dir"
+    fi
+
+    log_ok "Backup verification complete"
+}
+
+check_backup() {
+    log_step "=== Checking Backup Status ==="
+
+    log_step "Local backups:"
+    ls -lh /opt/Resonance/data/cubrid/backups/*.tar.gz 2>/dev/null || log_warn "No backups found"
+
+    log_step "Current database state:"
+    local tables=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c 'SELECT COUNT(*) FROM db_class;' ${DB_NAME}@localhost 2>&1" | \
+        grep -oE '[0-9]+' | head -1)
+    log "  Tables: ${tables}"
+
+    local translation_count=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c 'SELECT COUNT(*) FROM emission_material_translation;' ${DB_NAME}@localhost 2>&1" | \
+        grep -oE '[0-9]+' | head -1)
+    log "  emission_material_translation: ${translation_count} rows"
+
+    local korean_count=$(exec_in_pod "source /home/cubrid/.cubrid.sh && \
+        csql -C -u dba -p '' -c \"SELECT COUNT(*) FROM emission_material_translation WHERE korean_name IS NOT NULL AND mapping_status = 'PRODUCT_NAME_EXACT';\" ${DB_NAME}@localhost 2>&1" | \
+        grep -oE '[0-9]+' | head -1)
+    log "  Korean names (PRODUCT_NAME_EXACT): ${korean_count}"
+
+    log_ok "Check complete"
+}
+
 case "${1:-full-check}" in
     full-check|check)
         full_check
@@ -504,23 +590,32 @@ case "${1:-full-check}" in
         TABLE_NAME="${3:-emission_material_translation}"
         import_csv_data "$CSV_FILE" "$TABLE_NAME"
         ;;
+    verify-backup)
+        verify_backup "${2:-}"
+        ;;
+    check-backup|backup-status)
+        check_backup
+        ;;
     *)
-        echo "Usage: $0 {full-check|diagnose|restore|phase1|phase2|phase3|validate|snapshot|rollback|import-csv}"
+        echo "Usage: $0 {full-check|diagnose|restore|phase1|phase2|phase3|validate|snapshot|rollback|import-csv|verify-backup|check-backup}"
         echo ""
-        echo "  full-check  - Comprehensive system check (default)"
-        echo "  diagnose    - Detailed diagnosis of issues"
-        echo "  restore     - Full restore from unload dump"
-        echo "  phase1      - Restore: Create DB + load schema"
-        echo "  phase2      - Restore: Load indexes"
-        echo "  phase3      - Restore: Load data"
-        echo "  validate    - Validate current database"
-        echo "  snapshot    - Create pre-restore snapshot"
-        echo "  rollback    - Rollback from snapshot"
-        echo "  import-csv  - Import CSV data to table"
+        echo "  full-check   - Comprehensive system check (default)"
+        echo "  diagnose     - Detailed diagnosis of issues"
+        echo "  restore      - Full restore from unload dump"
+        echo "  phase1       - Restore: Create DB + load schema"
+        echo "  phase2       - Restore: Load indexes"
+        echo "  phase3       - Restore: Load data"
+        echo "  validate     - Validate current database"
+        echo "  snapshot     - Create pre-restore snapshot"
+        echo "  rollback     - Rollback from snapshot"
+        echo "  import-csv   - Import CSV data to table"
+        echo "  verify-backup - Verify backup file integrity"
+        echo "  check-backup - Check backup status"
         echo ""
         echo "  Examples:"
         echo "    $0 import-csv /path/to/file.csv emission_material_translation"
-        echo "    $0 import-csv  # uses default file and table"
+        echo "    $0 verify-backup /opt/Resonance/data/cubrid/backups/carbonet-fullbackup-*.tar.gz"
+        echo "    $0 check-backup"
         exit 1
         ;;
 esac
