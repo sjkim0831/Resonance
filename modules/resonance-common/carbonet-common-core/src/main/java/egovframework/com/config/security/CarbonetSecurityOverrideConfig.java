@@ -68,18 +68,28 @@ public class CarbonetSecurityOverrideConfig {
     @Order(Integer.MAX_VALUE)
     public SecurityFilterChain defaultPublicAccessSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-            .securityMatcher(
+.securityMatcher(
                 "/assets/react/**",
                 "/admin/assets/react/**",
                 "/en/admin/assets/react/**",
                 "/react-shell/**",
                 "/home/**",
                 "/en/home/**",
+                
+                
                 "/emission/**",
                 "/en/emission/**",
                 "/signin/**",
                 "/en/signin/**",
                 "/actuator/**",
+                "/api/monitoring/**",
+                "/en/api/monitoring/**",
+                "/api/menu/**",
+                "/en/api/menu/**",
+                "/api/platform/**",
+                "/en/api/platform/**",
+                "/admin/api/**",
+                "/en/admin/api/**",
                 "/error/**",
                 "/favicon.ico",
                 "/*.html",
