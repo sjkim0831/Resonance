@@ -2856,6 +2856,32 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "RepairWorkbenchLinkage", instanceKey: "repair-workbench-linkage", layoutZone: "content", propsSummary: ["builderId", "draftVersionId", "publishedVersionId", "selectedElementSet"] }
     ]
   },
+  "screen-builder-framework": {
+    pageId: "screen-builder-framework",
+    routePath: "/admin/system/screen-builder-framework",
+    menuCode: "A1900110",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "FrameworkHubStats", instanceKey: "framework-hub-stats", layoutZone: "actions", propsSummary: ["totalScreens", "publishedCount", "draftCount"] },
+      { componentId: "FrameworkHubActions", instanceKey: "framework-hub-actions", layoutZone: "actions", propsSummary: ["quickActions"] },
+      { componentId: "FrameworkHubPages", instanceKey: "framework-hub-pages", layoutZone: "content", propsSummary: ["builderPages", "categoryFilter"] }
+    ]
+  },
+  "page-inventory": {
+    pageId: "page-inventory",
+    routePath: "/admin/system/page-inventory",
+    menuCode: "A1900111",
+    domainCode: "platform",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "PageInventoryStats", instanceKey: "page-inventory-stats", layoutZone: "actions", propsSummary: ["totalPages", "existingCount", "newCount"] },
+      { componentId: "PageInventoryFilters", instanceKey: "page-inventory-filters", layoutZone: "actions", propsSummary: ["domainFilter", "userTypeFilter", "statusFilter"] },
+      { componentId: "PageInventoryList", instanceKey: "page-inventory-list", layoutZone: "content", propsSummary: ["pages", "viewMode"] }
+    ]
+  },
   "screen-flow-management": {
     pageId: "screen-flow-management",
     routePath: "/admin/system/screen-flow-management",
