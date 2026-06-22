@@ -81,11 +81,20 @@ git_commit_push() {
 
     if [[ -n "$GIT_TOKEN" ]]; then
         log "Pushing to remote with token..."
-        local remote_url=$(git remote get-url origin | sed 's|https://||')
-        git push "https://x-access-token:${GIT_TOKEN}@github.com/${remote_url}" "$branch" 2>&1 || {
-            error "Git push failed"
-            return 1
-        }
+        local remote_url=$(git remote get-url origin)
+        if [[ "$remote_url" == https://*@github.com* ]]; then
+            git push "$remote_url" "$branch" 2>&1 || {
+                error "Git push failed - token may be expired"
+                return 1
+            }
+        else
+            local git_host=$(echo "$remote_url" | sed -n 's|.*@\(.*\):.*|\1|p')
+            local git_path=$(echo "$remote_url" | sed -n 's|.*@.*:\(.*\)|\1|p')
+            git push "https://x-access-token:${GIT_TOKEN}@${git_host}/${git_path}" "$branch" 2>&1 || {
+                error "Git push failed - token may be expired"
+                return 1
+            }
+        fi
     else
         log "No GIT_TOKEN set, skipping push (commit only)"
     fi
@@ -238,23 +247,41 @@ EOF
 
 run_full_backup() {
     log "=== Starting Full Backup ==="
-
+    local start_time=$(date +%s)
+    
     git_commit_push "Full backup $(date '+%Y-%m-%d %H:%M')" || true
+    local git_time=$(($(date +%s) - start_time))
+    log "Git sync completed in ${git_time}s"
+    
+    local db_start=$(date +%s)
     local db_file=$(backup_database full) || true
+    local db_time=$(($(date +%s) - db_start))
+    log "Database backup completed in ${db_time}s"
+    
     backup_config
     generate_backup_manifest full "$db_file"
-
-    log "=== Full Backup Completed ==="
+    
+    local total_time=$(($(date +%s) - start_time))
+    log "=== Full Backup Completed in ${total_time}s ==="
 }
 
 run_quick_backup() {
     log "=== Starting Quick Backup ==="
-
+    local start_time=$(date +%s)
+    
     git_commit_push "Quick backup $(date '+%Y-%m-%d %H:%M')" || true
+    local git_time=$(($(date +%s) - start_time))
+    log "Git sync completed in ${git_time}s"
+    
+    local db_start=$(date +%s)
     local db_file=$(backup_database quick) || true
+    local db_time=$(($(date +%s) - db_start))
+    log "Database backup completed in ${db_time}s"
+    
     generate_backup_manifest quick "$db_file"
-
-    log "=== Quick Backup Completed ==="
+    
+    local total_time=$(($(date +%s) - start_time))
+    log "=== Quick Backup Completed in ${total_time}s ==="
 }
 
 run_unload_backup() {

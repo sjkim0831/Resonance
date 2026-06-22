@@ -1,0 +1,673 @@
+#!/usr/bin/env bash
+#===============================================================================
+# Carbonet Build-Deploy Script (Enhanced v2.1.0)
+# - Detailed error logging
+# - Parallel build support
+# - Incremental build support
+# - Better error recovery
+#===============================================================================
+set -euo pipefail
+export RESONANCE_SUDO_PASSWORD="${RESONANCE_SUDO_PASSWORD:-qwer1234}"
+
+SCRIPT_VERSION="2.1.0"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+NAMESPACE="${NAMESPACE:-carbonet-prod}"
+DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
+CONTAINER="${CONTAINER:-carbonet-runtime}"
+SERVICE="${SERVICE:-carbonet-runtime}"
+PROJECT_ID="${PROJECT_ID:-P003}"
+CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
+IMAGE_NAME="${IMAGE_NAME:-registry.local/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-kubeadm)}"
+SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
+DRY_RUN="${DRY_RUN:-false}"
+SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-false}"
+SKIP_NOTIFY="${SKIP_NOTIFY:-false}"
+SKIP_FRONTEND="${SKIP_FRONTEND:-false}"
+SKIP_MAVEN="${SKIP_MAVEN:-false}"
+SKIP_IMAGE_BUILD="${SKIP_IMAGE_BUILD:-false}"
+SKIP_OVERLAY_SYNC="${SKIP_OVERLAY_SYNC:-false}"
+INCREMENTAL="${INCREMENTAL:-false}"
+
+RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
+RUN_DIR="$ROOT_DIR/var/run"
+LOG_DIR="$ROOT_DIR/var/logs"
+BACKUP_DIR="$ROOT_DIR/var/backups/k8s"
+ERROR_LOG_DIR="$RUN_DIR/build-errors"
+EVENT_LOG="$ROOT_DIR/var/ai-runtime/k8s-build-deploy-events.jsonl"
+MANIFEST_LOG="$ROOT_DIR/var/ai-runtime/k8s-release-manifest.jsonl"
+LOCK_FILE="$RUN_DIR/resonance-k8s-build-deploy-80.lock"
+DIAGNOSTIC_LOG="$RUN_DIR/diagnostic-$(date +%Y%m%d-%H%M%S).log"
+
+OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
+FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
+MAVEN_DIR="$ROOT_DIR/apps/project-runtime"
+
+NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-4096}"
+MAVEN_OPTS="${MAVEN_OPTS:--Xmx2g -Xms512m}"
+MAX_RETRIES=3
+RETRY_DELAY=20
+BUILD_PARALLELISM="${BUILD_PARALLELISM:-1}"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; MAGENTA='\033[0;35m'; NC='\033[0m'
+
+log() { 
+  local ts=$(date '+%H:%M:%S')
+  echo -e "${BLUE}[$ts INFO]${NC} $*"
+  echo "[$ts] $*" >> "$DIAGNOSTIC_LOG"
+}
+log_step() { 
+  echo ""
+  echo -e "${CYAN}==== $* ====${NC}"
+  echo "==== $* ====" >> "$DIAGNOSTIC_LOG"
+}
+log_success() { 
+  local ts=$(date '+%H:%M:%S')
+  echo -e "${GREEN}[$ts OK]${NC} $*"
+  echo "[$ts] OK: $*" >> "$DIAGNOSTIC_LOG"
+}
+log_warning() { 
+  local ts=$(date '+%H:%M:%S')
+  echo -e "${YELLOW}[$ts WARN]${NC} $*"
+  echo "[$ts] WARN: $*" >> "$DIAGNOSTIC_LOG"
+}
+log_error() { 
+  local ts=$(date '+%H:%M:%S')
+  echo -e "${RED}[$ts ERROR]${NC} $*" >&2
+  echo "[$ts] ERROR: $*" >> "$DIAGNOSTIC_LOG"
+}
+log_detail() {
+  local ts=$(date '+%H:%M:%S')
+  echo -e "  ${MAGENTA}[$ts]${NC} $*"
+  echo "  [$ts] $*" >> "$DIAGNOSTIC_LOG"
+}
+log_cmd() {
+  local ts=$(date '+%H:%M:%S')
+  echo -e "  ${BLUE}[CMD]${NC} $*"
+  echo "  [CMD] $*" >> "$DIAGNOSTIC_LOG"
+}
+
+log_event() {
+  printf '{"ts":"%s","script":"resonance-k8s-build-deploy-80","version":"%s","status":"%s","code":"%s","image":"%s","message":"%s"}\n' \
+    "$(date -Iseconds)" "$SCRIPT_VERSION" "$1" "$2" "$IMAGE_NAME" "$3" >> "$EVENT_LOG"
+}
+
+init_error_logging() {
+  mkdir -p "$ERROR_LOG_DIR"
+  local timestamp=$(date +%Y%m%d-%H%M%S)
+  FRONTEND_ERROR_LOG="$ERROR_LOG_DIR/frontend-$timestamp.log"
+  MAVEN_ERROR_LOG="$ERROR_LOG_DIR/maven-$timestamp.log"
+  DOCKER_ERROR_LOG="$ERROR_LOG_DIR/docker-$timestamp.log"
+  KUBECTL_ERROR_LOG="$ERROR_LOG_DIR/kubectl-$timestamp.log"
+  log "Error logs: $ERROR_LOG_DIR/"
+}
+
+acquire_lock() {
+  if [[ -e "$LOCK_FILE" ]]; then
+    local pid="$(cat "$LOCK_FILE" 2>/dev/null)"
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      log_error "Another instance running (PID: $pid)"
+      exit 1
+    fi
+  fi
+  echo "$$" > "$LOCK_FILE"
+}
+release_lock() { rm -f "$LOCK_FILE"; }
+
+notify() {
+  local status="$1"; local msg="$2"; local code="${3:-}"
+  log_event "$status" "$code" "$msg"
+  if [[ -n "$SLACK_WEBHOOK_URL" && "$SLACK_WEBHOOK_URL" =~ ^http ]]; then
+    local emoji color
+    case "$status" in 
+      START) emoji="🚀"; color="#36a64f" ;; 
+      SUCCESS) emoji="✅"; color="#36a64f" ;; 
+      FAIL) emoji="❌"; color="#ff0000" ;;
+    esac
+    curl -s -X POST -H 'Content-Type: application/json' -d "{\"text\":\"$emoji $msg\"}" "$SLACK_WEBHOOK_URL" >/dev/null 2>&1 || true
+  fi
+}
+
+rollback_and_fail() {
+  local error_code="$1"
+  local error_msg="$2"
+  local suggestion="$3"
+  
+  log_error "FAIL $error_code: $error_msg"
+  notify "FAIL" "$error_msg" "$error_code"
+  
+  echo ""
+  echo -e "${RED}========================================${NC}"
+  echo -e "${RED}  BUILD-DEPLOY FAILED${NC}"
+  echo -e "${RED}========================================${NC}"
+  echo ""
+  echo -e "${RED}Error Code:${NC} $error_code"
+  echo -e "${RED}Message:${NC} $error_msg"
+  echo ""
+  
+  if [[ -n "$suggestion" ]]; then
+    echo -e "${YELLOW}Recovery Steps:${NC}"
+    echo "$suggestion"
+    echo ""
+  fi
+  
+  if [[ -f "$FRONTEND_ERROR_LOG" ]]; then
+    echo -e "${YELLOW}Frontend Build Log (last 50 lines):${NC}"
+    tail -50 "$FRONTEND_ERROR_LOG"
+    echo ""
+  fi
+  
+  if [[ -f "$MAVEN_ERROR_LOG" ]]; then
+    echo -e "${YELLOW}Maven Build Log (last 50 lines):${NC}"
+    tail -50 "$MAVEN_ERROR_LOG"
+    echo ""
+  fi
+  
+  echo -e "${YELLOW}Diagnostic Log:${NC} $DIAGNOSTIC_LOG"
+  echo -e "${YELLOW}Error Logs Dir:${NC} $ERROR_LOG_DIR/"
+  
+  kubectl -n "$NAMESPACE" rollout undo "deployment/$DEPLOYMENT" 2>/dev/null || true
+  release_lock
+  exit 1
+}
+
+root_cmd() { 
+  if [[ $EUID -eq 0 ]]; then
+    "$@"
+  else
+    echo "$RESONANCE_SUDO_PASSWORD" | sudo -S "$@"
+  fi
+}
+
+preflight_check() {
+  log_step "Pre-flight Checks"
+  
+  mkdir -p "$RUN_DIR" "$LOG_DIR" "$BACKUP_DIR" "$(dirname "$EVENT_LOG")"
+  
+  echo -n "  Disk (root): "
+  local root_d
+  root_d="$(df / | awk 'NR==2 {print $5}' | sed 's/%//')"
+  if [[ "$root_d" -lt 85 ]]; then
+    echo -e "${GREEN}OK${NC} (${root_d}%)"
+  else
+    echo -e "${RED}WARNING${NC} (${root_d}%)"
+  fi
+  
+  echo -n "  Disk (/opt): "
+  local opt_d
+  opt_d="$(df /opt | awk 'NR==2 {print $5}' | sed 's/%//')"
+  if [[ "$opt_d" -lt 85 ]]; then
+    echo -e "${GREEN}OK${NC} (${opt_d}%)"
+  else
+    echo -e "${RED}WARNING${NC} (${opt_d}%)"
+  fi
+  
+  echo -n "  Nodes: "
+  local nr
+  nr="$(kubectl get nodes --no-headers 2>/dev/null | grep -v Ready | wc -l)"
+  if [[ "$nr" -eq 0 ]]; then
+    echo -e "${GREEN}OK${NC}"
+  else
+    echo -e "${RED}NOT READY${NC} ($nr nodes)"
+    kubectl get nodes --no-headers 2>/dev/null | grep -v Ready
+  fi
+  
+  echo -n "  Memory: "
+  local mem
+  mem="$(free -m | awk 'NR==2 {print $7}')"
+  echo "${mem}MB available"
+  if [[ "$mem" -lt 1024 ]]; then
+    log_warning "Low memory, adjusting build settings"
+    NODE_HEAP_MB=2048
+    MAVEN_OPTS="-Xmx1g"
+  fi
+  
+  echo -n "  HostPath Overlay: "
+  if [[ -d "$OVERLAY_HOST_PATH" ]]; then
+    local file_count=$(find "$OVERLAY_HOST_PATH" -type f 2>/dev/null | wc -l)
+    echo -e "${GREEN}OK${NC} ($file_count files)"
+  else
+    echo -e "${YELLOW}CREATING${NC}"
+    mkdir -p "$OVERLAY_HOST_PATH"
+  fi
+  
+  echo -n "  Registry: "
+  if root_cmd ctr images list 2>/dev/null | grep -q "registry.local"; then
+    echo -e "${GREEN}Connected${NC}"
+  else
+    echo -e "${YELLOW}Check registry${NC}"
+  fi
+  
+  echo -n "  Docker: "
+  if root_cmd docker info >/dev/null 2>&1; then
+    echo -e "${GREEN}OK${NC}"
+  else
+    echo -e "${YELLOW}Limited${NC}"
+  fi
+  
+  log_success "Pre-flight checks completed"
+}
+
+validate_frontend() {
+  local d="$MAVEN_DIR/../projects/carbonet-frontend/target/classes/static/react-app"
+  [[ -d "$d" ]] || d="$FRONTEND_DIR/dist"
+  
+  if [[ ! -f "$d/index.html" ]]; then
+    rollback_and_fail "FRONTEND_BUILD_INCOMPLETE" \
+      "Missing index.html in build output" \
+      "cd $FRONTEND_DIR && npm run build 2>&1 | tail -50"
+  fi
+  
+  if [[ ! -d "$d/assets" ]]; then
+    rollback_and_fail "FRONTEND_BUILD_INCOMPLETE" \
+      "Missing assets directory in build output" \
+      "cd $FRONTEND_DIR && npm run build 2>&1 | tail -50"
+  fi
+  
+  log_success "Frontend validation passed"
+}
+
+validate_maven() {
+  local jar="$MAVEN_DIR/target/project-runtime.jar"
+  
+  if [[ ! -f "$jar" ]]; then
+    rollback_and_fail "MAVEN_BUILD_FAILED" \
+      "JAR file not found: $jar" \
+      "cd $MAVEN_DIR && mvn clean package -DskipTests 2>&1 | tail -50"
+  fi
+  
+  local jar_size
+  jar_size=$(stat -c%s "$jar" 2>/dev/null || echo 0)
+  
+  if [[ "$jar_size" -lt 1000000 ]]; then
+    rollback_and_fail "MAVEN_BUILD_CORRUPT" \
+      "JAR file too small: $jar_size bytes (expected >1MB)" \
+      "cd $MAVEN_DIR && mvn clean package -DskipTests 2>&1 | tail -50"
+  fi
+  
+  log_success "Maven validation passed (JAR size: $((jar_size/1024/1024))MB)"
+}
+
+validate_overlay() {
+  if [[ ! -f "$OVERLAY_HOST_PATH/index.html" ]]; then
+    rollback_and_fail "OVERLAY_SYNC_FAILED" \
+      "Overlay missing index.html" \
+      "ls -la $OVERLAY_HOST_PATH/ && kubectl -n $NAMESPACE delete pods -l app=$DEPLOYMENT --grace-period=0"
+  fi
+  
+  if [[ ! -d "$OVERLAY_HOST_PATH/assets" ]]; then
+    rollback_and_fail "OVERLAY_SYNC_FAILED" \
+      "Overlay missing assets directory" \
+      "ls -la $OVERLAY_HOST_PATH/ && kubectl -n $NAMESPACE delete pods -l app=$DEPLOYMENT --grace-period=0"
+  fi
+  
+  log_success "Overlay validation passed"
+}
+
+build_frontend() {
+  log_step "Build Frontend"
+  
+  if [[ "$SKIP_FRONTEND" == "true" ]]; then
+    log "Skipped (SKIP_FRONTEND=true)"
+    return
+  fi
+  
+  local start_time=$(date +%s)
+  
+  if [[ "$INCREMENTAL" == "true" && -d "$FRONTEND_DIR/node_modules" ]]; then
+    log "Using incremental build (node_modules exists)"
+    log_cmd "cd $FRONTEND_DIR && npm run build"
+    cd "$FRONTEND_DIR" && npm run build > >(tee "$FRONTEND_ERROR_LOG") 2>&1 || {
+      log_error "Frontend build failed"
+      rollback_and_fail "FRONTEND_BUILD_FAILED" \
+        "Frontend npm build failed" \
+        "cd $FRONTEND_DIR && npm run build 2>&1 | tail -50"
+    }
+  else
+    log "Using clean build"
+    mkdir -p "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static"
+    log_cmd "cd $FRONTEND_DIR && npm ci && npm run build"
+    cd "$FRONTEND_DIR" && npm ci > >(tee "$FRONTEND_ERROR_LOG") 2>&1 && \
+      npm run build > >(tee -a "$FRONTEND_ERROR_LOG") 2>&1 || {
+      log_error "Frontend build failed"
+      rollback_and_fail "FRONTEND_BUILD_FAILED" \
+        "Frontend npm ci/build failed" \
+        "cd $FRONTEND_DIR && npm run build 2>&1 | tail -100"
+    }
+  fi
+  
+  validate_frontend
+  
+  local elapsed=$(( $(date +%s) - start_time ))
+  log_success "Frontend built in ${elapsed}s"
+}
+
+sync_overlay() {
+  log_step "Sync Overlay"
+  
+  if [[ "$SKIP_OVERLAY_SYNC" == "true" ]]; then
+    log "Skipped (SKIP_OVERLAY_SYNC=true)"
+    return
+  fi
+  
+  local src="$MAVEN_DIR/../projects/carbonet-frontend/target/classes/static/react-app"
+  [[ -d "$src" ]] || src="$FRONTEND_DIR/dist"
+  
+  if [[ ! -d "$src" ]]; then
+    rollback_and_fail "OVERLAY_SYNC_FAILED" \
+      "Build source not found: $src" \
+      "Check build output directory"
+  fi
+  
+  log_cmd "rsync -av --delete '$src/' '$OVERLAY_HOST_PATH/'"
+  rsync -av --delete "$src/" "$OVERLAY_HOST_PATH/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
+    log_error "rsync failed, trying with root"
+    root_cmd rsync -av --delete "$src/" "$OVERLAY_HOST_PATH/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
+      rollback_and_fail "OVERLAY_SYNC_FAILED" \
+        "rsync to overlay failed" \
+        "rsync -av --delete '$src/' '$OVERLAY_HOST_PATH/'"
+    }
+  }
+  
+  validate_overlay
+  
+  local cnt
+  cnt="$(kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | wc -w)"
+  if [[ "$cnt" -eq 0 ]]; then
+    rollback_and_fail "NO_RUNNING_PODS" \
+      "No running pods found" \
+      "kubectl -n $NAMESPACE get pods"
+  fi
+  
+  log "Restarting pods to pick up overlay changes..."
+  kubectl -n "$NAMESPACE" rollout restart "deployment/$DEPLOYMENT" >/dev/null 2>&1
+  kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=120s || true
+  
+  log_success "Overlay synced"
+}
+
+build_maven() {
+  log_step "Build Maven"
+  
+  if [[ "$SKIP_MAVEN" == "true" ]]; then
+    log "Skipped (SKIP_MAVEN=true)"
+    return
+  fi
+  
+  local start_time=$(date +%s)
+  
+  if [[ "$INCREMENTAL" == "true" ]]; then
+    log "Using incremental Maven build"
+    log_cmd "cd $ROOT_DIR && mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T ${BUILD_PARALLELISM}C package"
+    cd "$ROOT_DIR" && \
+      MAVEN_OPTS="$MAVEN_OPTS" mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T "${BUILD_PARALLELISM}C" package \
+      > >(tee "$MAVEN_ERROR_LOG") 2>&1 || {
+      log_error "Maven build failed"
+      rollback_and_fail "MAVEN_BUILD_FAILED" \
+        "Maven build failed" \
+        "cd $ROOT_DIR && mvn -pl apps/project-runtime -am -Dmaven.test.skip=true package 2>&1 | tail -100"
+    }
+  else
+    log "Using clean Maven build"
+    log_cmd "root_cmd rm -rf $MAVEN_DIR/target/classes/static"
+    root_cmd rm -rf "$MAVEN_DIR/target/classes/static"
+    log_cmd "cd $ROOT_DIR && mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T ${BUILD_PARALLELISM}C package"
+    cd "$ROOT_DIR" && \
+      MAVEN_OPTS="$MAVEN_OPTS" mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T "${BUILD_PARALLELISM}C" package \
+      > >(tee "$MAVEN_ERROR_LOG") 2>&1 || {
+      log_error "Maven build failed"
+      rollback_and_fail "MAVEN_BUILD_FAILED" \
+        "Maven build failed" \
+        "cd $ROOT_DIR && mvn -pl apps/project-runtime -am -Dmaven.test.skip=true package 2>&1 | tail -100"
+    }
+  fi
+  
+  validate_maven
+  
+  local elapsed=$(( $(date +%s) - start_time ))
+  log_success "Maven built in ${elapsed}s"
+}
+
+build_image() {
+  log_step "Build Image"
+  
+  if [[ "$SKIP_IMAGE_BUILD" == "true" ]]; then
+    log "Skipped (SKIP_IMAGE_BUILD=true)"
+    return
+  fi
+  
+  local start_time=$(date +%s)
+  
+  rm -rf "$RELEASE_DIR" && mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config"
+  
+  log_detail "Copying JAR to release directory..."
+  cp "$MAVEN_DIR/target/project-runtime.jar" "$RELEASE_DIR/" || {
+    rollback_and_fail "RELEASE_PREP_FAILED" \
+      "Failed to copy JAR to release directory" \
+      "cp $MAVEN_DIR/target/project-runtime.jar $RELEASE_DIR/"
+  }
+  
+  if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
+    log_detail "Copying KISA library..."
+    cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
+  fi
+  
+  log_detail "Copying config files..."
+  mkdir -p "$RELEASE_DIR/ops/config"
+  cp -r "$ROOT_DIR/ops/config/"* "$RELEASE_DIR/ops/config/" 2>/dev/null || true
+  
+  log_cmd "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR"
+  
+  if root_cmd docker build --build-arg PROJECT_ID="$PROJECT_ID" --build-arg BUILDKIT_INLINE_CACHE=1 \
+    --cache-from "type=registry,ref=$IMAGE_NAME" --cache-from "type=registry,ref=${IMAGE_NAME%-*}:*" \
+    -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" \
+    -t "$IMAGE_NAME" "$RELEASE_DIR" > >(tee "$DOCKER_ERROR_LOG") 2>&1; then
+    log_success "Docker image built"
+  else
+    log_error "Docker build output:"
+    tail -30 "$DOCKER_ERROR_LOG"
+    rollback_and_fail "DOCKER_BUILD_FAILED" \
+      "Docker image build failed" \
+      "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR 2>&1 | tail -50"
+  fi
+  
+  log_detail "Importing to containerd..."
+  if root_cmd sh -c "docker save '$IMAGE_NAME' | ctr -n k8s.io images import -" >> "$DIAGNOSTIC_LOG" 2>&1; then
+    log_success "Image imported to containerd"
+  else
+    rollback_and_fail "CTR_IMPORT_FAILED" \
+      "Failed to import image to containerd" \
+      "docker save '$IMAGE_NAME' | ctr -n k8s.io images import -"
+  fi
+  
+  local elapsed=$(( $(date +%s) - start_time ))
+  log_success "Image built and imported in ${elapsed}s"
+}
+
+rollout_image() {
+  log_step "Rollout"
+  
+  log_cmd "ctr images list | grep $IMAGE_NAME"
+  if ! root_cmd ctr images list 2>/dev/null | grep -q "$IMAGE_NAME"; then
+    rollback_and_fail "IMAGE_NOT_FOUND" \
+      "Image not found in containerd: $IMAGE_NAME" \
+      "ctr images list | grep $IMAGE_NAME"
+  fi
+  
+  log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
+  if ! kubectl -n "$NAMESPACE" set image "deployment/$DEPLOYMENT" "$CONTAINER=$IMAGE_NAME" 2>"$KUBECTL_ERROR_LOG"; then
+    log_error "kubectl set image failed:"
+    tail -20 "$KUBECTL_ERROR_LOG"
+    rollback_and_fail "SET_IMAGE_FAILED" \
+      "Failed to set deployment image" \
+      "kubectl -n $NAMESPACE set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
+  fi
+  
+  kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
+    "resonance.ai/image=$IMAGE_NAME" "resonance.ai/released-at=$(date -Iseconds)" \
+    --overwrite >/dev/null 2>&1
+  
+  log_detail "Waiting for rollout (timeout: 600s)..."
+  if ! kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=600s 2>"$KUBECTL_ERROR_LOG"; then
+    log_error "Rollout status failed:"
+    tail -30 "$KUBECTL_ERROR_LOG"
+    rollback_and_fail "ROLLOUT_FAILED" \
+      "Rollout timeout or failed" \
+      "kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=120s"
+  fi
+  
+  log_success "Rolled out"
+}
+
+verify_runtime() {
+  log_step "Verify"
+  
+  local pod
+  pod="$(kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+  
+  if [[ -z "$pod" ]]; then
+    rollback_and_fail "VERIFICATION_FAILED" \
+      "No running pod found for verification" \
+      "kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT"
+  fi
+  
+  echo -n "  Health Check: "
+  local h
+  h="$(kubectl -n $NAMESPACE exec "$pod" -- curl -sf --max-time 15 "http://localhost:8080/actuator/health" 2>/dev/null || echo FAILED)"
+  
+  if [[ "$h" == "FAILED" ]]; then
+    log_error "Health check failed"
+    rollback_and_fail "HEALTH_FAILED" \
+      "Application health check failed" \
+      "kubectl -n $NAMESPACE exec $pod -- curl -sf http://localhost:8080/actuator/health"
+  fi
+  
+  echo -e "${GREEN}UP${NC}"
+  
+  echo -n "  Pod: "
+  echo -e "${GREEN}$pod${NC}"
+  
+  log_success "Verified"
+}
+
+ensure_pdb() {
+  if ! kubectl -n "$NAMESPACE" get pdb "$DEPLOYMENT-pdb" >/dev/null 2>&1; then
+    log_detail "Creating PodDisruptionBudget..."
+    kubectl apply -f - >/dev/null 2>&1 <<EOF
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: $DEPLOYMENT-pdb
+  namespace: $NAMESPACE
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: $DEPLOYMENT
+EOF
+    log_success "PDB created"
+  else
+    log "PDB already exists"
+  fi
+}
+
+print_summary() {
+  local total_time=${1:-0}
+  echo ""
+  echo -e "${GREEN}========================================${NC}"
+  echo -e "${GREEN}  BUILD-DEPLOY SUCCESS${NC}"
+  echo -e "${GREEN}========================================${NC}"
+  echo ""
+  echo -e "  ${CYAN}Total Time:${NC} ${total_time}s"
+  echo -e "  ${CYAN}Image:${NC} $IMAGE_NAME"
+  echo ""
+  echo "  Pods:"
+  kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT -o wide 2>/dev/null | grep -v NAME | awk '{print "    "$1" ("$3") "$4" "$5}'
+  echo ""
+  echo -e "${BLUE}Error Logs:${NC} $ERROR_LOG_DIR/"
+  echo -e "${BLUE}Diagnostic Log:${NC} $DIAGNOSTIC_LOG"
+}
+
+main() {
+  local start_time=$(date +%s)
+  
+  init_error_logging
+  
+  echo ""
+  echo -e "${CYAN}========================================${NC}"
+  echo -e "${CYAN}  Carbonet Build-Deploy v$SCRIPT_VERSION${NC}"
+  echo -e "${CYAN}========================================${NC}"
+  echo ""
+  
+  for arg in "$@"; do
+    case "$arg" in 
+      --dry-run) DRY_RUN=true; shift 
+        echo "  Mode: DRY-RUN"
+        ;;
+      --skip-preflight) SKIP_PREFLIGHT=true; shift 
+        echo "  Pre-flight: SKIPPED"
+        ;;
+      --skip-notify) SKIP_NOTIFY=true; shift 
+        echo "  Notifications: DISABLED"
+        ;;
+      --skip-frontend) SKIP_FRONTEND=true; shift 
+        echo "  Frontend: SKIPPED"
+        ;;
+      --skip-maven) SKIP_MAVEN=true; shift 
+        echo "  Maven: SKIPPED"
+        ;;
+      --skip-image) SKIP_IMAGE_BUILD=true; shift 
+        echo "  Image Build: SKIPPED"
+        ;;
+      --incremental) INCREMENTAL=true; shift 
+        echo "  Build Mode: INCREMENTAL"
+        ;;
+      --force) FORCE=true; shift 
+        echo "  Force: ENABLED"
+        ;;
+    esac
+  done
+  
+  echo "  Namespace: $NAMESPACE"
+  echo "  Deployment: $DEPLOYMENT"
+  echo "  Image: $IMAGE_NAME"
+  echo ""
+  
+  acquire_lock
+  
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "DRY-RUN - Would execute: preflight, build_frontend, sync_overlay, build_maven, build_image, rollout_image, verify"
+    echo ""
+    echo -e "${YELLOW}DRY-RUN complete (no changes made)${NC}"
+    release_lock
+    exit 0
+  fi
+  
+  notify "START" "Build deploy started" ""
+  
+  if [[ "$SKIP_PREFLIGHT" != "true" ]]; then
+    preflight_check
+  fi
+  
+  build_frontend
+  sync_overlay
+  build_maven
+  build_image
+  rollout_image
+  ensure_pdb
+  verify_runtime
+  
+  local total_time=$(( $(date +%s) - start_time ))
+  
+  printf '{"ts":"%s","projectId":"%s","gitSha":"%s","image":"%s","duration":%d}\n' \
+    "$(date -Iseconds)" "$PROJECT_ID" \
+    "$(git -C "$ROOT_DIR" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)" \
+    "$IMAGE_NAME" "$total_time" >> "$MANIFEST_LOG"
+  
+  notify "SUCCESS" "Build deploy completed in ${total_time}s" ""
+  
+  print_summary $total_time
+  
+  release_lock
+}
+
+main "$@"
