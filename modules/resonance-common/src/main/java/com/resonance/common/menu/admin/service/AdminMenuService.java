@@ -29,6 +29,8 @@ public class AdminMenuService {
         addMenuInfo(new ExtendedMenuInfo("GOV002201", "GOV0022", "Menu Registry", "메뉴 레지스트리", "/admin/system/menu-management", "/admin/system/menu-management", "menu", 1, "ADMIN", "Y", "Y"));
         addMenuInfo(new ExtendedMenuInfo("GOV002203", "GOV0022", "Layout Management", "레이아웃 관리", "/admin/system/layout-management", "/admin/system/layout-management", "dashboard_customize", 3, "ADMIN", "Y", "Y"));
         addMenuInfo(new ExtendedMenuInfo("GOV002202", "GOV0022", "Test Pages", "테스트 페이지", "/admin/system/test-pages", "/admin/system/test-pages", "bug_report", 4, "ADMIN", "Y", "N"));
+        addMenuInfo(new ExtendedMenuInfo("GOV002204", "GOV0022", "Environment", "환경", "/admin/system/environment", null, "eco", 5, "ADMIN", "Y", "Y"));
+        addMenuInfo(new ExtendedMenuInfo("GOV002205", "GOV002204", "Monitoring Dashboard", "모니터링 대시보드", "/admin/system/monitoring-dashboard", "/admin/system/monitoring-dashboard", "dashboard", 1, "ADMIN", "Y", "Y"));
         addMenuInfo(new ExtendedMenuInfo("GOV0023", "GOV002", "Security", "보안", "/admin/security", null, "security", 3, "ADMIN", "Y", "Y"));
         addMenuInfo(new ExtendedMenuInfo("GOV002301", "GOV0023", "Security Policy", "보안 정책", "/admin/security/policy", "/admin/security/policy", "policy", 1, "ADMIN", "Y", "Y"));
 
@@ -41,6 +43,8 @@ public class AdminMenuService {
         addCodeInfo(new CommonCodeInfo("GOV002201", "Menu Registry", "메뉴 레지스트리", "Menu Registry", "GOV"));
         addCodeInfo(new CommonCodeInfo("GOV002203", "Layout Management", "레이아웃 관리", "Layout Management", "GOV"));
         addCodeInfo(new CommonCodeInfo("GOV002202", "Test Pages", "테스트 페이지", "Test Pages", "GOV"));
+        addCodeInfo(new CommonCodeInfo("GOV002204", "Environment", "환경", "Environment", "GOV"));
+        addCodeInfo(new CommonCodeInfo("GOV002205", "Monitoring Dashboard", "모니터링 대시보드", "Monitoring Dashboard", "GOV"));
         addCodeInfo(new CommonCodeInfo("GOV0023", "Security", "보안", "Security", "GOV"));
         addCodeInfo(new CommonCodeInfo("GOV002301", "Security Policy", "보안 정책", "Security Policy", "GOV"));
     }
