@@ -1,84 +1,87 @@
 export type SystemMetrics = {
   timestamp: string;
-  hostname: {
+  hostname?: {
     name: string;
-    kernel: string;
-    os: string;
-    uptime_days: number;
-    uptime_hours: number;
-    uptime_mins: number;
+    kernel?: string;
+    os?: string;
+    uptime_days?: number;
+    uptime_hours?: number;
+    uptime_mins?: number;
   };
-  cpu: {
-    model: string;
-    cores: number;
-    usage_percent: number;
-    idle_percent: number;
-    user_percent: number;
-    system_percent: number;
-    iowait_percent: number;
+  cpu?: {
+    model?: string;
+    cores?: number;
+    usage_percent?: number;
+    idle_percent?: number;
+    user_percent?: number;
+    system_percent?: number;
+    iowait_percent?: number;
+    physical_processors?: number;
   };
-  memory: {
+  memory?: {
     total_bytes: number;
     used_bytes: number;
     free_bytes: number;
     available_bytes: number;
     usage_percent: number;
-    swap_total_bytes: number;
-    swap_used_bytes: number;
-    swap_usage_percent: number;
+    swap_total_bytes?: number;
+    swap_used_bytes?: number;
+    swap_usage_percent?: number;
   };
-  disks: Array<{
-    filesystem: string;
-    total: string;
-    used: string;
-    available: string;
-    usage_percent: number;
-    mounted: string;
+  disks?: Array<{
+    filesystem?: string;
+    total?: string;
+    used?: string;
+    available?: string;
+    usage_percent?: number;
+    mounted?: string;
   }>;
-  disk_io: {
+  disk_io?: {
     tps: number;
     read_kb_s: number;
     write_kb_s: number;
     await_ms: number;
     util_percent: number;
   };
-  network: Array<{
+  network?: Array<{
     name: string;
     rx_bytes: number;
     tx_bytes: number;
-    rx_human: string;
-    tx_human: string;
-    speed_mbps: number;
-    status: string;
+    rx_human?: string;
+    tx_human?: string;
+    speed_mbps?: number;
+    status?: string;
+    rx_packets?: number;
+    tx_packets?: number;
   }>;
-  load: {
+  load?: {
     load_1m: number;
     load_5m: number;
     load_15m: number;
-    running_processes: string;
-    total_threads: number;
+    running_processes?: string;
+    total_threads?: number;
   };
-  top_cpu_processes: Array<{
-    pid: number;
+  top_cpu_processes?: Array<{
+    pid: number | string;
     user: string;
     cpu: number;
     mem: number;
     cmd: string;
   }>;
-  top_mem_processes: Array<{
-    pid: number;
+  top_mem_processes?: Array<{
+    pid: number | string;
     user: string;
     cpu: number;
     mem: number;
     cmd: string;
   }>;
-  services: Record<string, { status: string; enabled: string }>;
-  tcp_udp: {
-    tcp_established: number;
-    tcp_timewait: number;
-    udp_sockets: number;
+  services?: Record<string, { status: string; enabled: string }>;
+  tcp_udp?: {
+    tcp_established?: number;
+    tcp_timewait?: number;
+    udp_sockets?: number;
   };
-  success: boolean;
+  success?: boolean;
   error?: string;
 };
 

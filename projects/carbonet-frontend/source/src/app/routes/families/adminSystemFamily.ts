@@ -75,7 +75,8 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "package-governance", label: "패키지 거버넌스", group: "admin", koPath: "/admin/system/package-governance", enPath: "/en/admin/system/package-governance" },
   { id: "builder-studio", label: "빌더 스튜디오", group: "admin", koPath: "/admin/system/builder-studio", enPath: "/en/admin/system/builder-studio" },
   { id: "component-management", label: "컴포넌트 관리", group: "admin", koPath: "/admin/system/component-management", enPath: "/en/admin/system/component-management" },
-  { id: "system-monitoring-dashboard", label: "시스템 모니터링", group: "admin", koPath: "/admin/system/monitoring-dashboard", enPath: "/en/admin/system/monitoring-dashboard" }
+  { id: "system-monitoring-dashboard", label: "시스템 모니터링", group: "admin", koPath: "/admin/system/monitoring-dashboard", enPath: "/en/admin/system/monitoring-dashboard" },
+  { id: "server-backup", label: "서버 백업", group: "admin", koPath: "/admin/system/server-backup", enPath: "/en/admin/system/server-backup" }
 ] as const satisfies RouteDefinitionsOf;
 
 const ADMIN_SYSTEM_PAGE_UNITS = [
@@ -152,7 +153,8 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "package-governance", exportName: "PackageGovernanceScreen", loader: () => import("../../../platform/operations/governance/PackageGovernanceScreen") },
   { id: "builder-studio", exportName: "BuilderStudioPage", loader: () => import("../../../features/builder-studio/BuilderStudioPage") },
   { id: "component-management", exportName: "ComponentManagementPage", loader: () => import("../../../features/builder-studio/ComponentManagementPage") },
-  { id: "system-monitoring-dashboard", exportName: "MonitoringDashboardPage", loader: () => import("../../../features/admin-monitoring/MonitoringDashboardPage") }
+  { id: "system-monitoring-dashboard", exportName: "MonitoringDashboardPage", loader: () => import("../../../features/admin-monitoring/MonitoringDashboardPage") },
+  { id: "server-backup", exportName: "ServerBackupPage", loader: () => import("../../../features/admin-server-backup/ServerBackupPage") }
 ] as const satisfies PageUnitsOf<typeof ADMIN_SYSTEM_ROUTE_DEFINITIONS>;
 
 export const ADMIN_SYSTEM_FAMILY = createRouteFamily(ADMIN_SYSTEM_ROUTE_DEFINITIONS, ADMIN_SYSTEM_PAGE_UNITS, {

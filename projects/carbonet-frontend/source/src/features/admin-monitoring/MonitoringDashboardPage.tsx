@@ -128,7 +128,7 @@ function ProcessTable({ processes, type }: { processes: SystemMetrics['top_cpu_p
           </tr>
         </thead>
         <tbody>
-          {processes.slice(0, 10).map((proc, idx) => (
+          {processes?.slice(0, 10).map((proc, idx) => (
             <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
               <td className="py-2 px-2 font-mono text-xs">{proc.pid}</td>
               <td className="py-2 px-2 text-gray-600">{proc.user}</td>
@@ -147,7 +147,7 @@ function ProcessTable({ processes, type }: { processes: SystemMetrics['top_cpu_p
 }
 
 function NetworkInterfaceTable({ interfaces }: { interfaces: SystemMetrics['network'] }) {
-  const activeIfaces = interfaces.filter(i => i.status === 'up' && !i.name.startsWith('veth') && !i.name.startsWith('docker') && !i.name.startsWith('cni') && !i.name.startsWith('flannel'));
+  const activeIfaces = interfaces?.filter(i => i.status === 'up' && !i.name.startsWith('veth') && !i.name.startsWith('docker') && !i.name.startsWith('cni') && !i.name.startsWith('flannel')) || [];
 
   return (
     <div className="overflow-x-auto">
@@ -167,8 +167,8 @@ function NetworkInterfaceTable({ interfaces }: { interfaces: SystemMetrics['netw
               <td className="py-2 px-2 font-mono font-medium">{iface.name}</td>
               <td className="py-2 px-2 text-right font-mono text-green-600">{iface.rx_human}</td>
               <td className="py-2 px-2 text-right font-mono text-blue-600">{iface.tx_human}</td>
-              <td className="py-2 px-2 text-center">{iface.speed_mbps > 0 ? `${iface.speed_mbps} Mbps` : '-'}</td>
-              <td className="py-2 px-2 text-center"><StatusBadge status={iface.status} /></td>
+              <td className="py-2 px-2 text-center">{(iface.speed_mbps ?? 0) > 0 ? `${iface.speed_mbps} Mbps` : '-'}</td>
+              <td className="py-2 px-2 text-center"><StatusBadge status={iface.status ?? 'unknown'} /></td>
             </tr>
           ))}
         </tbody>
@@ -359,7 +359,7 @@ export function MonitoringDashboardPage() {
               </div>
               {m.memory?.swap_total_bytes && m.memory.swap_total_bytes > 0 && (
                 <div className="pt-2 border-t">
-                  <p className="text-sm text-gray-500 mb-1">Swap: {formatBytes(m.memory.swap_used_bytes)} / {formatBytes(m.memory.swap_total_bytes)}</p>
+                  <p className="text-sm text-gray-500 mb-1">Swap: {formatBytes(m.memory?.swap_used_bytes ?? 0)} / {formatBytes(m.memory?.swap_total_bytes ?? 0)}</p>
                   <ProgressBar
                     percent={m.memory.swap_usage_percent || 0}
                     color={getColorForPercent(m.memory.swap_usage_percent || 0)}
@@ -380,8 +380,8 @@ export function MonitoringDashboardPage() {
                     <span className="text-gray-500">{disk.used} / {disk.total}</span>
                   </div>
                   <ProgressBar
-                    percent={disk.usage_percent}
-                    color={getColorForPercent(disk.usage_percent)}
+                    percent={disk.usage_percent ?? 0}
+                    color={getColorForPercent(disk.usage_percent ?? 0)}
                   />
                 </div>
               ))}
