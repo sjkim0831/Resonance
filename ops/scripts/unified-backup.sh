@@ -122,9 +122,12 @@ backup_database() {
             ;;
         quick)
             backup_file="$BACKUP_DIR/${DB_NAME}-quickbackup-${timestamp}.tar.gz"
-            kubectl exec -n "$NAMESPACE" "$POD_NAME" -- bash -c "mkdir -p /tmp/quickbackup_${timestamp} && source /home/cubrid/.cubrid.sh && cubrid backupdb -D /tmp/quickbackup_${timestamp} -l 2 ${DB_NAME}" || {
-                error "Quick backup failed"
-                return 1
+            kubectl exec -n "$NAMESPACE" "$POD_NAME" -- bash -c "mkdir -p /tmp/quickbackup_${timestamp} && source /home/cubrid/.cubrid.sh && cubrid backupdb -D /tmp/quickbackup_${timestamp} -l 1 ${DB_NAME}" || {
+                error "Quick backup failed, trying full backup..."
+                kubectl exec -n "$NAMESPACE" "$POD_NAME" -- bash -c "mkdir -p /tmp/quickbackup_${timestamp} && source /home/cubrid/.cubrid.sh && cubrid backupdb -D /tmp/quickbackup_${timestamp} ${DB_NAME}" || {
+                    error "Backup failed"
+                    return 1
+                }
             }
             kubectl exec -n "$NAMESPACE" "$POD_NAME" -- bash -c "cd /tmp && tar -czf /tmp/quickbackup_${timestamp}.tar.gz quickbackup_${timestamp}/" || {
                 error "Tar compression failed"
