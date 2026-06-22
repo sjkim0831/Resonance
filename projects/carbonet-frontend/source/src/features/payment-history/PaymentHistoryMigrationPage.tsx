@@ -1,81 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import {
-  UserGovernmentBar,
-  UserLanguageToggle,
-  UserPortalFooter,
-  UserPortalHeader
-} from "../../components/user-shell/UserPortalChrome";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import {
-  HomeButton,
-  HomeCheckbox,
-  HomeInput,
-  HomeLinkButton,
-  HomeSelect,
-  HomeTable
-} from "../home-ui/common";
-
-type PaymentStatus = "completed" | "pending" | "on-hold" | "cancelled";
-type PaymentCategory = "operations" | "labor" | "logistics" | "energy" | "equipment";
-
-type PaymentRow = {
-  id: string;
-  date: string;
-  vendor: string;
-  amount: number;
-  category: PaymentCategory;
-  categoryLabel: string;
-  method: string;
-  status: PaymentStatus;
-  proofIcon: "receipt_long" | "description" | "inventory_2";
-};
-
-type LocaleContent = {
-  skipToContent: string;
-  governmentText: string;
-  guidelineText: string;
-  brandTitle: string;
-  brandSubtitle: string;
-  pageEyebrow: string;
-  pageTitle: string;
-  pageDescription: string;
-  periodLabel: string;
-  navItems: Array<{ label: string; href: string; current?: boolean }>;
-  exportLabel: string;
-  createLabel: string;
-  searchPlaceholder: string;
-  categoryAll: string;
-  statusAll: string;
-  dateRangeLabel: string;
-  filterLabel: string;
-  selectedLabel: string;
-  totalCountLabel: string;
-  tableHeaders: {
-    date: string;
-    vendor: string;
-    amount: string;
-    category: string;
-    method: string;
-    status: string;
-    proof: string;
-  };
-  summaryCards: Array<{ key: string; title: string; caption: string }>;
-  statusLabels: Record<PaymentStatus, string>;
-  categoryLabels: Record<PaymentCategory, string>;
-  guidanceTitle: string;
-  guidanceItems: string[];
-  footerOrg: string;
-  footerAddress: string;
-  footerServiceLine: string;
-  footerLinks: string[];
-  footerCopyright: string;
-  footerLastModifiedLabel: string;
-  footerWaAlt: string;
-  login: string;
-  logout: string;
-};
+  PaymentHistorySkipLink,
+  PaymentHistoryGovernmentBar,
+  PaymentHistoryHeader,
+  PaymentHistoryNav,
+  PaymentHistoryHero,
+  PaymentHistoryFilters,
+  PaymentHistoryTable,
+  PaymentHistoryGuidance,
+  PaymentHistoryFooter
+} from "./components";
+import type { PaymentCategory, PaymentStatus, PaymentRow, LocaleContent } from "./types/PaymentHistoryTypes";
 
 const PAYMENT_ROWS: PaymentRow[] = [
   {
@@ -145,13 +82,6 @@ const PAYMENT_ROWS: PaymentRow[] = [
     proofIcon: "description"
   }
 ];
-
-const STATUS_CLASSNAME: Record<PaymentStatus, string> = {
-  completed: "bg-emerald-50 text-emerald-700 border border-emerald-100",
-  pending: "bg-amber-50 text-amber-700 border border-amber-100",
-  "on-hold": "bg-slate-100 text-slate-700 border border-slate-200",
-  cancelled: "bg-rose-50 text-rose-700 border border-rose-100"
-};
 
 const CONTENT: Record<"ko" | "en", LocaleContent> = {
   ko: {
@@ -294,18 +224,9 @@ const CONTENT: Record<"ko" | "en", LocaleContent> = {
   }
 };
 
-function formatCurrency(value: number, locale: "ko" | "en") {
-  return new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US", {
-    style: "currency",
-    currency: "KRW",
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
 export function PaymentHistoryMigrationPage() {
   const en = isEnglish();
   const content = CONTENT[en ? "en" : "ko"];
-  const sessionState = useFrontendSession();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<PaymentCategory | "all">("all");
   const [status, setStatus] = useState<PaymentStatus | "all">("all");
@@ -361,226 +282,53 @@ export function PaymentHistoryMigrationPage() {
     });
   }
 
+  function handleProofClick(id: string) {
+    console.log("Proof clicked:", id);
+  }
+
   return (
     <div className="min-h-screen bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)]">
-      <a className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-[var(--kr-gov-blue)] focus:px-4 focus:py-3 focus:text-white" href="#main-content">
-        {content.skipToContent}
-      </a>
-      <UserGovernmentBar governmentText={content.governmentText} guidelineText={content.guidelineText} />
-      <UserPortalHeader
-        brandTitle={content.brandTitle}
-        brandSubtitle={content.brandSubtitle}
-        homeHref={buildLocalizedPath("/home", "/en/home")}
-        rightContent={(
-          <>
-            <UserLanguageToggle
-              en={en}
-              onKo={() => navigate("/payment/history")}
-              onEn={() => navigate("/en/payment/history")}
-            />
-            {sessionState.value?.authenticated ? (
-              <HomeButton type="button" variant="primary" size="sm" onClick={() => void sessionState.logout()}>
-                {content.logout}
-              </HomeButton>
-            ) : (
-              <HomeLinkButton href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")} variant="primary" size="sm">
-                {content.login}
-              </HomeLinkButton>
-            )}
-          </>
-        )}
-      />
-      <div className="border-b border-[var(--kr-gov-border-light)] bg-white">
-        <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-4 lg:px-8">
-          {content.navItems.map((item) => (
-            <a
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${item.current ? "bg-[var(--kr-gov-blue)] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-              href={item.href}
-              key={item.href}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </div>
+      <PaymentHistorySkipLink content={content} />
+      <PaymentHistoryGovernmentBar content={content} />
+      <PaymentHistoryHeader content={content} en={en} />
+      <PaymentHistoryNav content={content} />
       <main id="main-content" className="pb-16">
-        <section className="border-b border-slate-800 bg-slate-950" data-help-id="payment-history-hero">
-          <div className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-300">{content.pageEyebrow}</p>
-                <h2 className="mt-3 text-4xl font-black tracking-tight text-white">{content.pageTitle}</h2>
-                <p className="mt-4 text-sm leading-6 text-slate-300">{content.pageDescription}</p>
-                <p className="mt-3 text-xs font-semibold text-slate-400">{content.periodLabel}</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <HomeButton type="button" variant="secondary" size="sm" icon="download">
-                  {content.exportLabel}
-                </HomeButton>
-                <HomeLinkButton href={buildLocalizedPath("/trade/buy_request", "/en/trade/buy_request")} variant="primary" size="sm" icon="add_circle">
-                  {content.createLabel}
-                </HomeLinkButton>
-              </div>
-            </div>
-            <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <article className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{content.summaryCards[0].title}</p>
-                <p className="mt-3 text-3xl font-black text-white">{formatCurrency(totalOutflow, en ? "en" : "ko")}</p>
-                <p className="mt-2 text-xs text-slate-400">{content.summaryCards[0].caption}</p>
-              </article>
-              <article className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{content.summaryCards[1].title}</p>
-                <p className="mt-3 text-3xl font-black text-emerald-300">{formatCurrency(refundAmount, en ? "en" : "ko")}</p>
-                <p className="mt-2 text-xs text-slate-400">{content.summaryCards[1].caption}</p>
-              </article>
-              <article className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{content.summaryCards[2].title}</p>
-                <p className="mt-3 text-3xl font-black text-amber-300">{formatCurrency(pendingAmount, en ? "en" : "ko")}</p>
-                <p className="mt-2 text-xs text-slate-400">{content.summaryCards[2].caption}</p>
-              </article>
-              <article className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{content.summaryCards[3].title}</p>
-                <p className="mt-3 text-3xl font-black text-sky-300">{budgetLeft}%</p>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full bg-sky-400" style={{ width: `${budgetLeft}%` }} />
-                </div>
-                <p className="mt-2 text-xs text-slate-400">{content.summaryCards[3].caption}</p>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-4 pt-8 lg:px-8" data-help-id="payment-history-filters">
-          <div className="rounded-[24px] border border-[var(--kr-gov-border-light)] bg-white p-5 shadow-sm">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
-              <HomeInput
-                aria-label={content.searchPlaceholder}
-                placeholder={content.searchPlaceholder}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              <HomeSelect value={category} onChange={(event) => setCategory(event.target.value as PaymentCategory | "all")}>
-                <option value="all">{content.categoryAll}</option>
-                {Object.entries(content.categoryLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </HomeSelect>
-              <HomeSelect value={status} onChange={(event) => setStatus(event.target.value as PaymentStatus | "all")}>
-                <option value="all">{content.statusAll}</option>
-                {Object.entries(content.statusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </HomeSelect>
-              <div className="flex items-center rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-slate-50 px-4 text-sm text-[var(--kr-gov-text-secondary)]">
-                <span className="material-symbols-outlined mr-2 text-[18px]">calendar_month</span>
-                {content.dateRangeLabel}
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2 text-sm text-[var(--kr-gov-text-secondary)]">
-                <span>{content.selectedLabel}: <strong className="text-[var(--kr-gov-text-primary)]">{selectedIds.length}</strong></span>
-                <span>{content.totalCountLabel}: <strong className="text-[var(--kr-gov-text-primary)]">{filteredRows.length}</strong></span>
-              </div>
-              <HomeButton type="button" variant="secondary" size="sm" icon="filter_alt">
-                {content.filterLabel}
-              </HomeButton>
-            </div>
-          </div>
-        </section>
-
+        <PaymentHistoryHero
+          content={content}
+          totalOutflow={totalOutflow}
+          refundAmount={refundAmount}
+          pendingAmount={pendingAmount}
+          budgetLeft={budgetLeft}
+          en={en}
+          onExport={() => console.log("Export clicked")}
+          onCreate={() => navigate(buildLocalizedPath("/trade/buy_request", "/en/trade/buy_request"))}
+        />
+        <PaymentHistoryFilters
+          content={content}
+          query={query}
+          category={category}
+          status={status}
+          selectedCount={selectedIds.length}
+          totalCount={filteredRows.length}
+          onQueryChange={setQuery}
+          onCategoryChange={setCategory}
+          onStatusChange={setStatus}
+          onFilter={() => console.log("Filter clicked")}
+        />
         <section className="mx-auto grid max-w-7xl gap-6 px-4 pt-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:px-8">
-          <div className="overflow-hidden rounded-[24px] border border-[var(--kr-gov-border-light)] bg-white shadow-sm" data-help-id="payment-history-table">
-            <div className="overflow-x-auto">
-              <HomeTable>
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-3 text-center">
-                      <HomeCheckbox
-                        checked={filteredRows.length > 0 && selectedIds.length === filteredRows.length}
-                        onChange={(event) => toggleAll(event.target.checked)}
-                      />
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.date}</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.vendor}</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.amount}</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.category}</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.method}</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.status}</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{content.tableHeaders.proof}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRows.map((row) => {
-                    const checked = selectedIds.includes(row.id);
-                    return (
-                      <tr className="border-t border-slate-100 hover:bg-sky-50/40" key={row.id}>
-                        <td className="px-4 py-4 text-center">
-                          <HomeCheckbox checked={checked} onChange={(event) => toggleRow(row.id, event.target.checked)} />
-                        </td>
-                        <td className="px-4 py-4 font-medium">{row.date}</td>
-                        <td className="px-4 py-4">
-                          <div className="font-bold text-[var(--kr-gov-blue)]">{row.vendor}</div>
-                          <div className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{row.id}</div>
-                        </td>
-                        <td className="px-4 py-4 text-right font-black">{formatCurrency(row.amount, en ? "en" : "ko")}</td>
-                        <td className="px-4 py-4">{row.categoryLabel}</td>
-                        <td className="px-4 py-4 text-sm text-[var(--kr-gov-text-secondary)]">{row.method}</td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${STATUS_CLASSNAME[row.status]}`}>
-                            {content.statusLabels[row.status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <button className="text-slate-400 transition-colors hover:text-[var(--kr-gov-blue)]" type="button">
-                            <span className="material-symbols-outlined">{row.proofIcon}</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </HomeTable>
-            </div>
-          </div>
-
-          <aside className="space-y-4" data-help-id="payment-history-guidance">
-            <section className="rounded-[24px] border border-[var(--kr-gov-border-light)] bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-black">{content.guidanceTitle}</h3>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                {content.guidanceItems.map((item) => (
-                  <li className="rounded-2xl bg-slate-50 px-4 py-3" key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-            <section className="rounded-[24px] bg-[var(--kr-gov-blue)] p-6 text-white shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-100">Connected Flow</p>
-              <h3 className="mt-3 text-2xl font-black">Refund / Settlement</h3>
-              <p className="mt-3 text-sm leading-6 text-sky-50">
-                {en
-                  ? "Cancelled or on-hold payments are best reviewed together with the refund process and settlement report in the current app structure."
-                  : "결제 취소 또는 보류 건은 환불 처리, 정산 리포트와 함께 검토하는 흐름이 현재 앱 구조와 가장 잘 맞습니다."}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <HomeLinkButton href={buildLocalizedPath("/trade/report", "/en/trade/report")} variant="secondary" size="sm">
-                  {en ? "Open Report" : "리포트 열기"}
-                </HomeLinkButton>
-                <HomeLinkButton href={buildLocalizedPath("/payment/refund", "/en/payment/refund")} variant="secondary" size="sm">
-                  {en ? "Payment Refund" : "결제 환불"}
-                </HomeLinkButton>
-              </div>
-            </section>
-          </aside>
+          <PaymentHistoryTable
+            rows={filteredRows}
+            content={content}
+            en={en}
+            selectedIds={selectedIds}
+            onToggleAll={toggleAll}
+            onToggleRow={toggleRow}
+            onProofClick={handleProofClick}
+          />
+          <PaymentHistoryGuidance content={content} en={en} />
         </section>
       </main>
-      <UserPortalFooter
-        orgName={content.footerOrg}
-        addressLine={content.footerAddress}
-        serviceLine={content.footerServiceLine}
-        footerLinks={content.footerLinks}
-        copyright={content.footerCopyright}
-        lastModifiedLabel={content.footerLastModifiedLabel}
-        waAlt={content.footerWaAlt}
-      />
+      <PaymentHistoryFooter content={content} />
     </div>
   );
 }

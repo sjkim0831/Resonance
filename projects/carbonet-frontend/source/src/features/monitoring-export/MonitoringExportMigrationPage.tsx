@@ -6,11 +6,19 @@ import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomePayload } from "../home-entry/homeEntryTypes";
-import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { AdminSelect, MemberButton, PageStatusNotice } from "../member/common";
+import { UserGovernmentBar } from "../../components/user-shell/UserPortalChrome";
 
-type ReportTypeKey = "overview" | "board" | "verification";
-type ExportFormatKey = "pdf" | "ppt" | "xlsx";
+import { MonitoringExportHeader } from "./components/MonitoringExportHeader";
+import { MonitoringExportMobileMenu } from "./components/MonitoringExportMobileMenu";
+import { MonitoringExportHero } from "./components/MonitoringExportHero";
+import { MonitoringExportSummaryCards } from "./components/MonitoringExportSummaryCards";
+import { MonitoringExportControls } from "./components/MonitoringExportControls";
+import { MonitoringExportTrend } from "./components/MonitoringExportTrend";
+import { MonitoringExportMix } from "./components/MonitoringExportMix";
+import { MonitoringExportSites } from "./components/MonitoringExportSites";
+import { MonitoringExportFooter } from "./components/MonitoringExportFooter";
+
+import type { ReportTypeKey, ExportFormatKey } from "./types/MonitoringExportTypes";
 
 type NavItem = {
   label: string;
@@ -571,11 +579,6 @@ export function MonitoringExportMigrationPage() {
   const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
   const homeMenu = payload.homeMenu || [];
 
-  const mobileMenuItems = useMemo(() => content.navItems.map((item) => ({
-    label: item.label,
-    href: buildLocalizedPath(item.href, `/en${item.href}`)
-  })), [content.navItems]);
-
   useEffect(() => {
     logGovernanceScope("PAGE", "monitoring-export", {
       language: en ? "en" : "ko",
@@ -588,6 +591,10 @@ export function MonitoringExportMigrationPage() {
     });
   }, [en, format, reportType, session.value?.authorCode, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
 
+  const handleLogout = () => {
+    navigate(buildLocalizedPath("/signin/loginView", "/en/signin/loginView"));
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[var(--kr-gov-text-primary)]">
       <a className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--kr-gov-blue)] focus:px-3 focus:py-2 focus:text-white" href="#main-content">
@@ -595,334 +602,32 @@ export function MonitoringExportMigrationPage() {
       </a>
       <UserGovernmentBar governmentText={content.governmentText} guidelineText={content.governmentStatus} />
 
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-5 lg:px-8">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--kr-gov-blue)] text-white">
-                <span className="material-symbols-outlined text-[24px]">file_export</span>
-              </span>
-              <div>
-                <h1 className="text-xl font-black tracking-tight text-slate-900">{content.pageTitle}</h1>
-                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-400">{content.pageSubtitle}</p>
-              </div>
-            </div>
-            <nav className="mt-5 hidden flex-wrap items-center gap-1 xl:flex">
-              {content.navItems.map((item) => (
-                <button
-                  className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                    item.active ? "bg-slate-100 text-[var(--kr-gov-blue)]" : "text-slate-500 hover:bg-slate-50 hover:text-[var(--kr-gov-blue)]"
-                  }`}
-                  key={item.href}
-                  onClick={() => navigate(buildLocalizedPath(item.href, `/en${item.href}`))}
-                  type="button"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <button
-              className="xl:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              type="button"
-              aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
-            >
-              <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-            </button>
-            <UserLanguageToggle en={en} onKo={() => navigate("/monitoring/export")} onEn={() => navigate("/en/monitoring/export")} />
-            <div className="hidden text-right md:block">
-              <p className="text-xs font-bold text-slate-500">{content.roleLabel}</p>
-              <p className="text-sm font-black text-slate-900">{content.roleName}</p>
-            </div>
-            <MemberButton className="!bg-slate-900 !px-4 !py-2.5 !text-sm !text-white hover:!bg-black">{en ? "Log out" : "로그아웃"}</MemberButton>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="absolute top-[81px] left-0 right-0 border-b border-gray-200 bg-white shadow-lg xl:hidden z-50">
-          <nav className="flex flex-col p-4 gap-2">
-            {mobileMenuItems.map((item) => (
-              <button
-                className="!rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left hover:!bg-slate-50"
-                key={item.label}
-                onClick={() => {
-                  navigate(item.href);
-                  setMobileMenuOpen(false);
-                }}
-                type="button"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">circle</span>
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
+      <MonitoringExportHeader content={content} en={en} onLogout={handleLogout} />
+      <MonitoringExportMobileMenu content={content} mobileMenuOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
       <main className="mx-auto max-w-[1440px] px-4 py-8 lg:px-8" id="main-content">
-        <section className="overflow-hidden rounded-[28px] bg-slate-900 px-6 py-8 text-white shadow-[0_24px_80px_rgba(15,23,42,0.16)] lg:px-8" data-help-id="monitoring-export-hero">
-          <div className="mb-6 max-w-3xl">
-            <PageStatusNotice tone="warning">{content.pageStatusMessage}</PageStatusNotice>
-          </div>
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.5fr]">
-            <article className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <div className="mb-6 flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/80 shadow-lg shadow-indigo-500/20">
-                  <span className="material-symbols-outlined text-[26px]">auto_awesome</span>
-                </span>
-                <div>
-                  <h2 className="text-xl font-black">{content.heroTitle}</h2>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-sky-300">{content.heroLabel}</p>
-                </div>
-              </div>
-              <p className="text-sm leading-7 text-slate-300">{content.heroBody}</p>
-              <button
-                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold transition hover:bg-white/15"
-                onClick={() => navigate(buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"))}
-                type="button"
-              >
-                {content.heroButton}
-                <span className="material-symbols-outlined text-[18px]">arrow_outward</span>
-              </button>
-            </article>
-
-            <article className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h3 className="text-xs font-bold uppercase tracking-[0.28em] text-slate-400">{content.queueTitle}</h3>
-                <span className="rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold text-indigo-300">{content.queueStatus}</span>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {content.queueItems.map((item) => (
-                  <button
-                    className="group rounded-[22px] border border-white/10 bg-white/5 p-5 text-left transition hover:bg-white/10"
-                    key={item.key}
-                    onClick={() => navigate(buildLocalizedPath(item.href, `/en${item.href}`))}
-                    type="button"
-                  >
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <span className={`rounded px-2 py-1 text-[10px] font-black ${item.badgeClassName}`}>{item.badge}</span>
-                      <span className="text-[10px] font-bold text-slate-500">{item.due}</span>
-                    </div>
-                    <h4 className="text-sm font-black leading-5">{item.title}</h4>
-                    <p className="mt-2 min-h-[54px] text-[12px] leading-5 text-slate-400">{item.body}</p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-[11px] font-black text-sky-300 transition group-hover:gap-2">
-                      {item.actionLabel}
-                      <span className="material-symbols-outlined text-[14px]">{item.icon}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </article>
-          </div>
-        </section>
+        <MonitoringExportHero content={content} />
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[1.45fr_0.95fr]" data-help-id="monitoring-export-controls">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4" data-help-id="monitoring-export-summary-cards">
-            {content.metrics.map((metric) => (
-              <article
-                className={`rounded-3xl border border-gray-200 border-t-4 ${metric.accentClassName} bg-white p-6 shadow-sm ${metric.key === "sites" ? "bg-slate-900 text-white" : ""}`}
-                key={metric.key}
-              >
-                <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${metric.key === "sites" ? "text-slate-500" : "text-slate-400"}`}>{metric.label}</p>
-                <div className="mt-5 flex items-end gap-2">
-                  <span className={`text-4xl font-black tracking-tight ${metric.key === "sites" ? "text-white" : "text-slate-900"}`}>{metric.value}</span>
-                  {metric.unit ? <span className="text-sm font-bold text-slate-400">{metric.unit}</span> : null}
-                </div>
-                <p className={`mt-5 text-xs font-bold ${metric.statusClassName}`}>{metric.status}</p>
-              </article>
-            ))}
-          </div>
-
-          <article className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-black text-slate-900">{content.exportPanelTitle}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{content.exportPanelBody}</p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400" htmlFor="monitoring-export-type">
-                  {content.reportTypeLabel}
-                </label>
-                <AdminSelect id="monitoring-export-type" value={reportType} onChange={(event) => setReportType(event.target.value as ReportTypeKey)}>
-                  {content.reportTypeOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </AdminSelect>
-              </div>
-              <div>
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400" htmlFor="monitoring-export-period">
-                  {content.periodLabel}
-                </label>
-                <div className="flex h-[50px] items-center rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-slate-50 px-4 text-sm font-bold text-slate-700">
-                  {content.periodValue}
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400" htmlFor="monitoring-export-format">
-                  {content.formatLabel}
-                </label>
-                <AdminSelect id="monitoring-export-format" value={format} onChange={(event) => setFormat(event.target.value as ExportFormatKey)}>
-                  {content.formatOptions.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </AdminSelect>
-              </div>
-            </div>
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">{content.readyMessage}</div>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <MemberButton className="!justify-center !gap-2 !bg-[var(--kr-gov-blue)] !px-4 !py-3 !text-white hover:!bg-[#002d72]">
-                <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-                {content.primaryExportLabel}
-              </MemberButton>
-              <MemberButton className="!justify-center !gap-2 !border !border-slate-200 !bg-white !px-4 !py-3 !text-slate-700 hover:!bg-slate-50">
-                <span className="material-symbols-outlined text-[18px]">slideshow</span>
-                {content.secondaryExportLabel}
-              </MemberButton>
-            </div>
-          </article>
+          <MonitoringExportSummaryCards metrics={content.metrics} />
+          <MonitoringExportControls
+            content={content}
+            reportType={reportType}
+            format={format}
+            onReportTypeChange={setReportType}
+            onFormatChange={setFormat}
+          />
         </section>
 
         <section className="mt-8 grid gap-8 lg:grid-cols-[1.45fr_0.95fr]">
-          <article className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm" data-help-id="monitoring-export-trend">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">{content.trendTitle}</h2>
-                <p className="mt-1 text-sm text-slate-400">{content.trendBody}</p>
-              </div>
-              <button
-                className="inline-flex items-center gap-1 text-xs font-bold text-[var(--kr-gov-blue)] hover:underline"
-                onClick={() => navigate(buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"))}
-                type="button"
-              >
-                {content.trendAction}
-                <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-              </button>
-            </div>
-            <div className="p-8">
-              <div className="relative flex h-[300px] items-end gap-4">
-                <div className="absolute inset-0 flex flex-col justify-between">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div className="border-t border-gray-100" key={`grid-${index}`} />
-                  ))}
-                </div>
-                {content.trendBars.map((bar) => (
-                  <div className="relative z-10 flex flex-1 flex-col items-center gap-2" key={bar.month}>
-                    <div className={`group relative w-full rounded-t-md ${bar.accent ? "bg-blue-500" : "bg-[var(--kr-gov-blue)]"} ${!bar.accent ? "opacity-90" : ""}`} style={{ height: bar.height }}>
-                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-slate-900 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition group-hover:opacity-100">
-                        {bar.value}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase text-slate-400">{bar.month}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-6 max-w-3xl text-sm leading-6 text-slate-500">{content.trendCaption}</p>
-            </div>
-          </article>
-
-          <article className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm" data-help-id="monitoring-export-mix">
-            <div className="border-b border-gray-100 px-6 py-5">
-              <h2 className="text-xl font-black text-slate-900">{content.mixTitle}</h2>
-              <p className="mt-1 text-sm text-slate-400">{content.mixBody}</p>
-            </div>
-            <div className="space-y-6 p-6">
-              {content.processRows.map((row) => (
-                <div className="space-y-2" key={row.label}>
-                  <div className="flex items-center justify-between gap-3 text-sm font-bold">
-                    <span className="text-slate-700">{row.label}</span>
-                    <span className="text-[var(--kr-gov-blue)]">{row.value}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className={`h-full rounded-full ${row.toneClassName}`} style={{ width: row.value }} />
-                  </div>
-                </div>
-              ))}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-500">
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-slate-400">tips_and_updates</span>
-                  <p>{content.mixInsight}</p>
-                </div>
-              </div>
-            </div>
-          </article>
+          <MonitoringExportTrend content={content} trendBars={content.trendBars} />
+          <MonitoringExportMix content={content} processRows={content.processRows} />
         </section>
 
-        <section className="mt-8 pb-8" data-help-id="monitoring-export-sites">
-          <div className="mb-6">
-            <h2 className="text-2xl font-black text-slate-900">{content.sitesTitle}</h2>
-            <p className="mt-1 text-sm text-slate-500">{content.sitesBody}</p>
-          </div>
-          <div className="grid gap-6 lg:grid-cols-3">
-            {content.siteCards.map((card) => (
-              <article className={`overflow-hidden rounded-3xl border bg-white shadow-sm ${card.key === "ulsan" ? "border-red-200 ring-2 ring-red-500/5" : "border-gray-200"}`} key={card.key}>
-                <div className={`border-b border-gray-100 px-6 py-5 ${card.key === "ulsan" ? "bg-red-50/40" : "bg-blue-50/20"}`}>
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <span className={`rounded border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${card.badgeClassName}`}>{card.badge}</span>
-                    <span className="material-symbols-outlined text-slate-300" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      push_pin
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900">{card.title}</h3>
-                  <p className="mt-1 text-[11px] font-bold text-slate-400">{card.subtitle}</p>
-                </div>
-                <div className="p-6">
-                  <div className="mb-6 flex items-end justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{card.metricLabel}</p>
-                      <div className="mt-2 flex items-end gap-2">
-                        <span className={`text-3xl font-black tracking-tight ${card.key === "ulsan" ? "text-red-600" : "text-slate-900"}`}>{card.metricValue}</span>
-                        <span className="text-xs font-bold text-slate-400">{card.metricUnit}</span>
-                      </div>
-                    </div>
-                    <p className={`text-sm font-black ${card.deltaClassName}`}>{card.delta}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-gray-100 bg-slate-50 p-3 text-sm font-bold text-slate-700">{card.insightA}</div>
-                    <div className="rounded-2xl border border-gray-100 bg-slate-50 p-3 text-sm font-bold text-slate-700">{card.insightB}</div>
-                  </div>
-                  <div className="mt-5 flex flex-col gap-2">
-                    <button
-                      className={`w-full rounded-2xl px-4 py-3 text-sm font-black transition ${card.key === "ulsan" ? "bg-red-600 text-white hover:bg-red-700" : "bg-slate-900 text-white hover:bg-black"}`}
-                      onClick={() => navigate(buildLocalizedPath(card.primaryHref, `/en${card.primaryHref}`))}
-                      type="button"
-                    >
-                      {card.primaryAction}
-                    </button>
-                    {card.secondaryAction && card.secondaryHref ? (
-                      <button
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-                        onClick={() => navigate(buildLocalizedPath(card.secondaryHref!, `/en${card.secondaryHref!}`))}
-                        type="button"
-                      >
-                        {card.secondaryAction}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        <MonitoringExportSites content={content} siteCards={content.siteCards} />
       </main>
 
-      <UserPortalFooter
-        addressLine={content.footerAddress}
-        copyright={content.footerCopyright}
-        lastModifiedLabel={content.footerLastModified}
-        orgName={content.footerOrg}
-        serviceLine={content.footerServiceLine}
-        waAlt={content.footerWaAlt}
-      />
+      <MonitoringExportFooter content={content} />
     </div>
   );
 }

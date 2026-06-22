@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="/opt/Resonance"
 EXPORT_SCRIPT="$SCRIPT_DIR/export-cubrid-to-git.py"
 DATA_DIR="$ROOT_DIR/db/data"
+EXPORT_TARGET="$DATA_DIR/$(date +%Y%m%dT%H%M%S)"
 
 # Configuration
 MAX_BACKUP_SIZE_MB=100
@@ -68,17 +69,27 @@ cleanup_old_exports() {
 export_db() {
     log "Exporting database to Git..."
 
-    # Check CUBRID connection
     if ! kubectl exec cubrid-carbonet-0 -n carbonet-prod -- \
         csql -u dba carbonet -c "SELECT 1;" >/dev/null 2>&1; then
         log "WARNING: CUBRID not accessible, skipping export"
         return 1
     fi
 
-    # Run export
-    python3 "$EXPORT_SCRIPT" 2>&1 | grep -v DeprecationWarning
+    mkdir -p "$EXPORT_TARGET"
 
-    log "Export complete"
+    CUBRID_POD="cubrid-carbonet-0" \
+    NAMESPACE="carbonet-prod" \
+    DB_NAME="carbonet" \
+    EXPORT_DIR="$EXPORT_TARGET" \
+    python3 "$EXPORT_SCRIPT" 2>&1 | grep -v DeprecationWarning || true
+
+    if [[ -d "$EXPORT_TARGET" ]] && [[ -n "$(ls -A "$EXPORT_TARGET" 2>/dev/null)" ]]; then
+        rm -rf "$DATA_DIR/latest" 2>/dev/null || true
+        ln -s "$(basename "$EXPORT_TARGET")" "$DATA_DIR/latest"
+        log "Updated latest symlink to $EXPORT_TARGET"
+    fi
+
+    log "Export complete: $EXPORT_TARGET"
 }
 
 #===========================================
@@ -95,7 +106,7 @@ commit_to_git() {
 
     # Get export timestamp
     local export_id
-    export_id=$(ls -dt "$DATA_DIR"/*/ 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "unknown")
+    export_id=$(basename "$EXPORT_TARGET" 2>/dev/null || echo "unknown")
 
     git add db/
 
@@ -159,6 +170,10 @@ run_backup() {
 
     # Cleanup
     cleanup_old_exports
+
+    # Update baseline after successful backup
+    log "Baseline 업데이트..."
+    /opt/Resonance/ops/scripts/cubrid-verify.sh update-baseline >/dev/null 2>&1 || log "Baseline 업데이트 실패"
 
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
