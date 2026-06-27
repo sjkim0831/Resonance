@@ -1,110 +1,422 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { logGovernanceScope } from "../../app/policy/debug";
 import { refreshAdminMenuTree } from "../../lib/api/adminShell";
 import { postFormUrlEncoded } from "../../lib/api/core";
 import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
-import { numberOf, stringOf } from "../admin-system/adminSystemShared";
-import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
-import { CollectionResultPanel, GridToolbar, PageStatusNotice, SummaryMetricCard, WarningPanel } from "../admin-ui/common";
+import { stringOf } from "../admin-system/adminSystemShared";
+import { GridToolbar, PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
-import {
-  BUILDER_INSTALL_ARTIFACTS,
-  BUILDER_INSTALL_REQUIRED_BINDINGS,
-  BUILDER_INSTALL_VALIDATOR_CHECKS,
-  type BuilderInstallBindingKey,
-  type BuilderInstallValidatorCheckKey,
-  describeBuilderInstallBinding,
-  describeBuilderValidatorCheck
-} from "../screen-builder/shared/installableBuilderContract";
 import { buildMenuTree, buildSuggestedPageCode, flattenMenuOrderPayload, type MenuTreeNode, updateMenuSortOrders } from "./menuTreeShared";
-import { toDisplayMenuUrl } from "./menuUrlDisplay";
 
 type MenuNode = MenuTreeNode;
 
-type MenuSnapshot = {
-  sortOrdr: number;
-  expsrAt: string;
-};
+const ICON_LIST = [
+  "home", "menu", "web", "dashboard", "settings", "person", "group", "build",
+  "search", "add", "edit", "delete", "visibility", "lock", "mail", "phone",
+  "notifications", "calendar_today", "event", "description", "folder", "file_copy",
+  "image", "video_library", "music_note", "article", "book", "school", "science",
+  "psychology", "language", "code", "terminal", "api", "cloud", "storage", "database",
+  "dns", "router", "wifi", "bluetooth", "security", "verified_user", "shield",
+  "policy", "fact_check", "gavel", "account_tree", "hub", "link", "share",
+  "download", "upload", "print", "send", "inbox", "star", "favorite", "bookmark",
+  "label", "local_offer", "category", "inventory_2", "shopping_cart", "payment",
+  "credit_card", "attach_money", "trending_up", "analytics", "bar_chart", "pie_chart",
+  "timeline", "map", "location_on", "directions", "flight", "train", "local_shipping",
+  "two_wheeler", "directions_car", "directions_bus", "parking", "local_gas_station",
+  "electric_car", "health_and_safety", "medical_services", "vaccines", "coronavirus",
+  "favorite_border", "thumb_up", "thumb_down", "chat", "forum", "support", "help",
+  "info", "warning", "error", "check_circle", "cancel", "refresh", "sync", "loop",
+  "filter_list", "sort", "drag_indicator", "drag_handle", "vertical_align_top",
+  "vertical_align_center", "vertical_align_bottom", "expand_more", "expand_less",
+  "unfold_more", "unfold_less", "first_page", "last_page", "chevron_left",
+  "chevron_right", "arrow_back", "arrow_forward", "arrow_upward", "arrow_downward",
+  "swap_vert", "swap_horiz", "compare_arrows", "assistant", "smart_toy",
+  "memory", "flash_on", "bolt", "extension", "widget", "view_module", "grid_view",
+  "view_list", "view_agenda", "view_day", "view_week", "crop_landscape", "crop_portrait",
+  "palette", "color_lens", "brush", "format_paint", "texture", "layers", "linear_scale",
+  "date_range", "schedule", "timer", "hourglass_empty", "speed",
+  "auto_fix_high", "auto_fix_normal", "auto_awesome", "auto_graph", "campaign",
+  "ads_click", "storefront", "point_of_sale", "inventory", "add_shopping_cart",
+  "remove_shopping_cart", "shopping_bag", "local_mall", "store", "account_balance",
+  "savings", "workspace_premium", "card_giftcard", "redeem", "spa", "eco", "nature",
+  "wb_sunny", "wb_cloudy", "cloud_queue", "grain", "blur_on", "blur_off", "transform",
+  "rotate_90_degrees_ccw", "rotate_left", "rotate_right", "flip", "flip_camera_android",
+  "flip_camera_ios", "movie", "music_video", "subscriptions", "play_circle", "stop_circle",
+  "pause_circle", "skip_next", "skip_previous", "play_arrow", "pause", "stop",
+  "replay", "shuffle", "repeat", "repeat_one", "volume_up", "volume_down", "volume_mute",
+  "keyboard_voice", "videocam", "videocam_off", "camera_alt", "photo_camera", "photo_library",
+  "batch_prediction", "smart_button", "device_hub", "developer_board",
+  "device_unknown", "devices", "laptop", "desktop_windows", "tablet", "phone_android",
+  "phone_iphone", "watch", "keyboard", "mouse", "gamepad", "headphones", "speaker",
+  "keyboard_alt", "laptop_chromebook", "stay_current_portrait", "stay_current_landscape",
+  "stay_primary_portrait", "stay_primary_landscape", "merge_type", "format_align_left",
+  "format_align_center", "format_align_right", "format_align_justify", "format_bold",
+  "format_italic", "format_underlined", "format_strikethrough", "format_color_text",
+  "format_color_fill", "format_size", "format_list_bulleted", "format_list_numbered",
+  "format_indent_increase", "format_indent_decrease", "format_quote", "functions"
+];
 
 function readMenuTypeFromLocation() {
   return new URLSearchParams(window.location.search).get("menuType") || "ADMIN";
 }
 
-function flattenNodes(items: MenuNode[], output: MenuNode[] = []) {
-  items.forEach((item) => {
-    output.push(item);
-    flattenNodes(item.children, output);
-  });
-  return output;
+function IconPicker({ value, onChange }: { value: string; onChange: (icon: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return ICON_LIST;
+    return ICON_LIST.filter(i => i.toLowerCase().includes(search.toLowerCase()));
+  }, [search]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border)] px-3 py-2 hover:bg-gray-50"
+      >
+        <span className="material-symbols-outlined text-[20px]">{value}</span>
+        <span className="text-sm">{value}</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-72 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border)] bg-white shadow-lg">
+          <div className="p-2 border-b border-[var(--kr-gov-border)]">
+            <input
+              className="gov-input w-full"
+              placeholder="Search icon..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto p-2">
+            <div className="grid grid-cols-6 gap-1">
+              {filtered.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  onClick={() => { onChange(icon); setOpen(false); }}
+                  className={`flex items-center justify-center rounded p-1 hover:bg-blue-50 ${value === icon ? "bg-blue-100 text-blue-600" : ""}`}
+                >
+                  <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function filterTree(nodes: MenuNode[], keyword: string): MenuNode[] {
-  if (!keyword) {
-    return nodes;
-  }
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  return nodes.flatMap((node): MenuNode[] => {
-    const filteredChildren: MenuNode[] = filterTree(node.children, keyword);
-    const matches = [
-      node.code,
-      node.label,
-      node.url,
-      node.icon,
-      node.useAt,
-      node.expsrAt
-    ].join(" ").toLowerCase().includes(normalizedKeyword);
-    if (!matches && filteredChildren.length === 0) {
-      return [];
-    }
-    return [{ ...node, children: filteredChildren }];
-  });
-}
-
-function buildSnapshot(rows: Array<Record<string, unknown>>) {
-  return rows.reduce<Record<string, MenuSnapshot>>((result, row) => {
-    const code = stringOf(row, "code").toUpperCase();
-    if (!code) {
-      return result;
-    }
-    result[code] = {
-      sortOrdr: numberOf(row, "sortOrdr"),
-      expsrAt: stringOf(row, "expsrAt") || "Y"
-    };
-    return result;
-  }, {});
-}
-
-function validateCreateForm(params: {
-  en: boolean;
-  parentCodeValue: string;
-  codeNm: string;
-  menuUrl: string;
-  menuType: string;
+function EditableMenuItem({
+  node,
+  depth,
+  isExpanded,
+  onToggle,
+  onUpdate,
+  onDelete,
+  onDragStart,
+  onDrop,
+  mobileDragCode,
+  onMobileDragStart,
+  onMobileDrop,
+  children
+}: {
+  node: MenuNode;
+  depth: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdate: (code: string, label: string, url: string) => void;
+  onDelete: (code: string) => void;
+  onDragStart: (e: React.DragEvent, code: string) => void;
+  onDrop: (e: React.DragEvent, code: string) => void;
+  mobileDragCode: string | null;
+  onMobileDragStart: (code: string) => void;
+  onMobileDrop: (code: string) => void;
+  children: React.ReactNode;
 }) {
-  const { en, parentCodeValue, codeNm, menuUrl, menuType } = params;
-  if (!parentCodeValue) {
-    return en ? "Select a group menu first." : "그룹 메뉴를 먼저 선택하세요.";
-  }
-  if (!codeNm.trim()) {
-    return en ? "Enter a page name." : "페이지명을 입력하세요.";
-  }
-  if (!menuUrl.trim()) {
-    return en ? "Enter a page URL." : "페이지 URL을 입력하세요.";
-  }
-  if (!menuUrl.startsWith("/")) {
-    return en ? "Page URL must start with /." : "페이지 URL은 / 로 시작해야 합니다.";
-  }
-  if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) {
-    return en ? "Admin menu URL must start with /admin/." : "관리자 메뉴 URL은 /admin/으로 시작해야 합니다.";
-  }
-  if (menuType === "USER" && !menuUrl.startsWith("/home/")) {
-    return en ? "Home menu URL must start with /home/." : "홈 메뉴 URL은 /home/으로 시작해야 합니다.";
-  }
-  return "";
+  const [editing, setEditing] = useState(false);
+  const [editLabel, setEditLabel] = useState(node.label);
+  const [editUrl, setEditUrl] = useState(node.url || "");
+  const en = isEnglish();
+
+  const chipClass = node.code.length === 4
+    ? "bg-blue-50 text-[var(--kr-gov-blue)]"
+    : node.code.length === 6
+    ? "bg-amber-50 text-[#8a5a00]"
+    : "bg-green-50 text-[#196c2e]";
+
+  const handleSave = () => {
+    onUpdate(node.code, editLabel, editUrl);
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditLabel(node.label);
+    setEditUrl(node.url || "");
+    setEditing(false);
+  };
+
+  return (
+    <div className="border-b border-gray-100 last:border-b-0">
+      <div
+        className={`flex items-center gap-2 p-2 hover:bg-gray-50 ${mobileDragCode && mobileDragCode !== node.code ? "cursor-pointer ring-2 ring-blue-400 ring-inset" : ""}`}
+        style={{ paddingLeft: `${depth * 20 + 8}px` }}
+        draggable={depth > 0}
+        onDragStart={(e) => depth > 0 && onDragStart(e, node.code)}
+        onDrop={(e) => depth > 0 && onDrop(e, node.code)}
+        onDragOver={(e) => depth > 0 && e.preventDefault()}
+        onClick={() => {
+          if (mobileDragCode && mobileDragCode !== node.code && depth > 0) {
+            onMobileDrop(node.code);
+          }
+        }}
+      >
+        {node.children.length > 0 && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700"
+          >
+            <span className="material-symbols-outlined text-[16px]">
+              {isExpanded ? "expand_more" : "chevron_right"}
+            </span>
+          </button>
+        )}
+        {node.children.length === 0 && depth === 0 && <div className="w-5 h-5" />}
+        {node.children.length === 0 && depth > 0 && <div className="w-5" />}
+
+        <span className="material-symbols-outlined text-[20px] text-[var(--kr-gov-blue)]">{node.icon}</span>
+
+        {editing ? (
+          <div className="flex-1 flex items-center gap-2">
+            <input
+              className="gov-input flex-1"
+              value={editLabel}
+              onChange={(e) => setEditLabel(e.target.value)}
+              placeholder={en ? "Menu name" : "메뉴명"}
+            />
+            <input
+              className="gov-input flex-1"
+              value={editUrl}
+              onChange={(e) => setEditUrl(e.target.value)}
+              placeholder={en ? "URL" : "URL"}
+            />
+            <button type="button" onClick={handleSave} className="gov-btn gov-btn-primary">
+              <span className="material-symbols-outlined text-[16px]">check</span>
+            </button>
+            <button type="button" onClick={handleCancel} className="gov-btn gov-btn-outline">
+              <span className="material-symbols-outlined text-[16px]">close</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium truncate">{node.label}</span>
+                <span className={`gov-chip ${chipClass}`}>{node.code}</span>
+                <span className={`gov-chip ${node.useAt === "Y" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                  {node.useAt === "Y" ? (en ? "Active" : "활성") : (en ? "Inactive" : "비활성")}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 truncate">{node.url || (en ? "No URL" : "URL 없음")}</p>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="p-1 text-gray-500 hover:text-blue-600"
+                title={en ? "Edit" : "수정"}
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(node.code)}
+                className="p-1 text-gray-500 hover:text-red-600"
+                title={en ? "Delete" : "삭제"}
+              >
+                <span className="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+              {depth > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onMobileDragStart(node.code)}
+                  className={`p-1 ${mobileDragCode === node.code ? "text-blue-600 bg-blue-50 rounded" : "text-gray-400 hover:text-blue-600"}`}
+                  title={en ? "Drag to move" : "드래그하여 이동"}
+                >
+                  <span className="material-symbols-outlined text-[18px]">drag_handle</span>
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MenuTree({
+  nodes,
+  expandedCodes,
+  onToggle,
+  onUpdate,
+  onDelete,
+  onDragStart,
+  onDrop,
+  mobileDragCode,
+  onMobileDragStart,
+  onMobileDrop,
+  depth = 0
+}: {
+  nodes: MenuNode[];
+  expandedCodes: Set<string>;
+  onToggle: (code: string) => void;
+  onUpdate: (code: string, label: string, url: string) => void;
+  onDelete: (code: string) => void;
+  onDragStart: (e: React.DragEvent, code: string) => void;
+  onDrop: (e: React.DragEvent, code: string) => void;
+  mobileDragCode: string | null;
+  onMobileDragStart: (code: string) => void;
+  onMobileDrop: (targetCode: string) => void;
+  depth?: number;
+}) {
+  return (
+    <div className="divide-y divide-gray-100">
+      {nodes.map((node) => (
+        <EditableMenuItem
+          key={node.code}
+          node={node}
+          depth={depth}
+          isExpanded={expandedCodes.has(node.code)}
+          onToggle={() => onToggle(node.code)}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          onDragStart={onDragStart}
+          onDrop={onDrop}
+          mobileDragCode={mobileDragCode}
+          onMobileDragStart={onMobileDragStart}
+          onMobileDrop={onMobileDrop}
+        >
+          {node.children.length > 0 && expandedCodes.has(node.code) && (
+            <MenuTree
+              nodes={node.children}
+              expandedCodes={expandedCodes}
+              onToggle={onToggle}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onDragStart={onDragStart}
+              onDrop={onDrop}
+              mobileDragCode={mobileDragCode}
+              onMobileDragStart={onMobileDragStart}
+              onMobileDrop={onMobileDrop}
+              depth={depth + 1}
+            />
+          )}
+        </EditableMenuItem>
+      ))}
+    </div>
+  );
+}
+
+function ParentSelector({
+  treeData,
+  value,
+  onChange
+}: {
+  treeData: MenuNode[];
+  value: string;
+  onChange: (code: string) => void;
+}) {
+  const en = isEnglish();
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const selectedLabel = useMemo(() => {
+    const findLabel = (nodes: MenuNode[], code: string): string | null => {
+      for (const node of nodes) {
+        if (node.code === code) return node.label;
+        const found = findLabel(node.children, code);
+        if (found) return found;
+      }
+      return null;
+    };
+    return findLabel(treeData, value) || value;
+  }, [treeData, value]);
+
+  const toggle = (code: string) => {
+    const next = new Set(expanded);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    setExpanded(next);
+  };
+
+  const renderNodes = (nodes: MenuNode[], depth: number = 0): React.ReactNode => {
+    return nodes
+      .filter(node => node.code.length !== 8)
+      .map((node) => (
+      <div key={node.code}>
+        <button
+          type="button"
+          onClick={() => { onChange(node.code); setOpen(false); }}
+          className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 text-left ${value === node.code ? "bg-blue-100" : ""}`}
+          style={{ paddingLeft: `${depth * 20 + 12}px` }}
+        >
+          {depth === 0 && node.children.length > 0 ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggle(node.code); }}
+              className="w-4 h-4 flex items-center justify-center"
+            >
+              <span className="material-symbols-outlined text-[14px]">
+                {expanded.has(node.code) ? "expand_more" : "chevron_right"}
+              </span>
+            </button>
+          ) : (
+            <div className="w-4" />
+          )}
+          <span className="material-symbols-outlined text-[16px]">{node.icon}</span>
+          <span className="text-sm truncate">{node.label}</span>
+          <span className="text-xs text-gray-400">{node.code}</span>
+        </button>
+        {depth === 0 && node.children.length > 0 && expanded.has(node.code) && renderNodes(node.children, depth + 1)}
+      </div>
+    ));
+  };
+
+  const rootNodes = treeData.filter(n => n.code.length === 4 || n.code.length === 6);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="gov-select w-full flex items-center justify-between"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-sm truncate">{selectedLabel}</span>
+        </span>
+        <span className="material-symbols-outlined text-[18px]">arrow_drop_down</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full min-w-[20rem] max-h-80 overflow-y-auto rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border)] bg-white shadow-lg">
+          <div className="p-2 border-b border-[var(--kr-gov-border)] bg-gray-50">
+            <p className="text-xs font-bold text-gray-500">{en ? "Select Parent Menu" : "상위 메뉴 선택"}</p>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {renderNodes(rootNodes)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function MenuManagementMigrationPage() {
@@ -120,96 +432,63 @@ export function MenuManagementMigrationPage() {
   const [menuIcon, setMenuIcon] = useState("web");
   const [useAt, setUseAt] = useState("Y");
   const [treeData, setTreeData] = useState<MenuNode[]>([]);
+  const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
+  const [mobileDragCode, setMobileDragCode] = useState<string | null>(null);
 
   const deferredSearchKeyword = useDeferredValue(searchKeyword);
   const pageState = useAsyncValue<MenuManagementPagePayload>(() => fetchMenuManagementPage(menuType), [menuType]);
   const page = pageState.value;
 
   const rows = useMemo(() => (page?.menuRows || []) as Array<Record<string, unknown>>, [page?.menuRows]);
+
   const menuTypes = ((page?.menuTypes || []) as Array<Record<string, unknown>>);
-  const groupMenuOptions = ((page?.groupMenuOptions || []) as Array<Record<string, string>>);
-  const iconOptions = ((page?.iconOptions || []) as string[]);
-  const useAtOptions = ((page?.useAtOptions || []) as string[]);
-  const menuCodeRows = useMemo(() => rows.map((row) => ({ code: stringOf(row, "code").toUpperCase() })), [rows]);
+  const allGroupMenuOptions = ((page?.groupMenuOptions || []) as Array<Record<string, string>>);
+  const groupMenuOptions = useMemo(() => {
+    return allGroupMenuOptions.filter((opt) => {
+      const code = stringOf(opt, "value");
+      return code.length === 4 || code.length === 6;
+    });
+  }, [allGroupMenuOptions]);
+  const menuCodeRows = useMemo(() => rows.map((row: Record<string, unknown>) => ({ code: stringOf(row, "code").toUpperCase() })), [rows]);
 
-  const originalSnapshot = useMemo(() => buildSnapshot(rows), [rows]);
-  const filteredTreeData = useMemo(() => filterTree(treeData, deferredSearchKeyword), [deferredSearchKeyword, treeData]);
-  const visibleNodes = useMemo(() => flattenNodes(filteredTreeData), [filteredTreeData]);
-  const allNodes = useMemo(() => flattenNodes(treeData), [treeData]);
+  const filteredTreeData = useMemo(() => {
+    if (!deferredSearchKeyword.trim()) return treeData;
+    const keyword = deferredSearchKeyword.toLowerCase();
+    const filter = (nodes: MenuNode[]): MenuNode[] => {
+      return nodes.reduce<MenuNode[]>((acc, node) => {
+        const filteredChildren = filter(node.children);
+        const matches = [node.code, node.label, node.url, node.icon].join(" ").toLowerCase().includes(keyword);
+        if (matches || filteredChildren.length > 0) {
+          acc.push({ ...node, children: filteredChildren });
+        }
+        return acc;
+      }, []);
+    };
+    return filter(treeData);
+  }, [treeData, deferredSearchKeyword]);
 
-  const dirtyOrderRows = useMemo(() => (
-    allNodes.filter((node) => {
-      const snapshot = originalSnapshot[node.code];
-      return snapshot && snapshot.sortOrdr !== node.sortOrdr;
-    })
-  ), [allNodes, originalSnapshot]);
-  const intakeValidationMessage = useMemo(() => validateCreateForm({
-    en,
-    parentCodeValue,
-    codeNm,
-    menuUrl,
-    menuType
-  }), [codeNm, en, menuType, menuUrl, parentCodeValue]);
-  const intakeReady = intakeValidationMessage.length === 0;
-  const intakeBindingStatuses = useMemo(() => ([
-    {
-      key: "projectId" as BuilderInstallBindingKey,
-      ready: true,
-      detail: en ? `Lane ${menuType} selected` : `${menuType} 레인 선택`
-    },
-    {
-      key: "menuRoot" as BuilderInstallBindingKey,
-      ready: menuType === "ADMIN" ? menuUrl.startsWith("/admin/") : menuUrl.startsWith("/home/"),
-      detail: menuUrl || "-"
-    },
-    {
-      key: "runtimeClass" as BuilderInstallBindingKey,
-      ready: Boolean(parentCodeValue),
-      detail: parentCodeValue || "-"
-    },
-    {
-      key: "menuScope" as BuilderInstallBindingKey,
-      ready: Boolean(parentCodeValue),
-      detail: menuType
-    },
-    {
-      key: "releaseUnitPrefix" as BuilderInstallBindingKey,
-      ready: Boolean(codeNm.trim()),
-      detail: codeNm.trim() || "-"
-    },
-    {
-      key: "runtimePackagePrefix" as BuilderInstallBindingKey,
-      ready: Boolean(findSuggestedPageCode()),
-      detail: findSuggestedPageCode() || "-"
+  useEffect(() => {
+    if (!parentCodeValue && groupMenuOptions.length > 0) {
+      setParentCodeValue(stringOf(groupMenuOptions[0], "value"));
     }
-  ]), [codeNm, menuType, menuUrl, parentCodeValue, en, menuCodeRows]);
-  const intakeValidatorStatuses = useMemo(() => ([
-    {
-      key: "required-beans-present" as BuilderInstallValidatorCheckKey,
-      ready: true,
-      detail: en ? "Handled in install-bind console after registry creation." : "레지스트리 생성 후 install-bind 콘솔에서 확인"
-    },
-    {
-      key: "required-properties-present" as BuilderInstallValidatorCheckKey,
-      ready: Boolean(codeNm.trim() && menuUrl.trim()),
-      detail: intakeValidationMessage || (en ? "Registry intake fields are present." : "레지스트리 인테이크 필드가 준비됨")
-    },
-    {
-      key: "menu-root-resolvable" as BuilderInstallValidatorCheckKey,
-      ready: menuType === "ADMIN" ? menuUrl.startsWith("/admin/") : menuUrl.startsWith("/home/"),
-      detail: menuUrl || "-"
-    },
-    {
-      key: "storage-writable" as BuilderInstallValidatorCheckKey,
-      ready: true,
-      detail: en ? "Validated when the builder package is attached." : "빌더 패키지 연결 시 검증"
-    },
-    {
-      key: "builder-routes-exposed" as BuilderInstallValidatorCheckKey,
-      ready: Boolean(menuUrl.trim()),
-      detail: menuUrl || "-"
+  }, [groupMenuOptions, parentCodeValue]);
+
+  useEffect(() => {
+    setTreeData(buildMenuTree(rows, { includeExposure: true, includeUseAt: true, mapUrl: (v) => v }));
+  }, [rows]);
+
+  useEffect(() => {
+    setActionError("");
+    setActionMessage("");
+    setCodeNm("");
+    setCodeDc("");
+    setMenuUrl("");
+    setMenuIcon("web");
+    setUseAt("Y");
+    if (groupMenuOptions.length > 0) {
+      setParentCodeValue(stringOf(groupMenuOptions[0], "value"));
     }
-  ]), [codeNm, en, intakeValidationMessage, menuType, menuUrl]);
+  }, [menuType]);
 
   useEffect(() => {
     function syncMenuTypeFromLocation() {
@@ -225,140 +504,103 @@ export function MenuManagementMigrationPage() {
   }, []);
 
   useEffect(() => {
-    const nextSearch = new URLSearchParams(window.location.search);
-    if (menuType) {
-      nextSearch.set("menuType", menuType);
-    } else {
-      nextSearch.delete("menuType");
-    }
-    const nextQuery = nextSearch.toString();
-    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}${window.location.hash || ""}`;
-    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash || ""}`;
-    if (nextUrl !== currentUrl) {
-      window.history.replaceState({}, "", nextUrl);
-    }
-  }, [menuType]);
-
-  useEffect(() => {
-    if (!page) {
-      return;
-    }
-    logGovernanceScope("PAGE", "menu-management", {
-      route: window.location.pathname,
-      menuType,
-      rowCount: rows.length,
-      rootNodeCount: treeData.length,
-      visibleNodeCount: visibleNodes.length,
-      groupMenuOptionCount: groupMenuOptions.length,
-      searchKeyword: deferredSearchKeyword,
-      dirtyOrderCount: dirtyOrderRows.length
-    });
-    logGovernanceScope("COMPONENT", "menu-management-tree", {
-      component: "menu-management-tree",
-      rootNodeCount: treeData.length,
-      visibleNodeCount: visibleNodes.length,
-      menuType
-    });
-  }, [
-    deferredSearchKeyword,
-    dirtyOrderRows.length,
-    groupMenuOptions.length,
-    menuType,
-    page,
-    rows.length,
-    treeData.length,
-    visibleNodes.length
-  ]);
-
-  useEffect(() => {
-    setTreeData(buildMenuTree(rows, { includeExposure: true, includeUseAt: true, mapUrl: toDisplayMenuUrl }));
-  }, [rows]);
-
-  useEffect(() => {
-    if (!parentCodeValue && groupMenuOptions.length > 0) {
-      setParentCodeValue(stringOf(groupMenuOptions[0], "value"));
-    }
-  }, [groupMenuOptions, parentCodeValue]);
-
-  useEffect(() => {
-    setActionError("");
-    setActionMessage("");
-    setSearchKeyword("");
-    setCodeNm("");
-    setCodeDc("");
-    setMenuUrl("");
-    setMenuIcon(iconOptions[0] || "web");
-    setUseAt(useAtOptions[0] || "Y");
-    setParentCodeValue(stringOf(groupMenuOptions[0], "value"));
-  }, [menuType]);
-
-  function moveNode(nodes: MenuNode[], index: number, direction: number) {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= nodes.length) {
-      return;
-    }
-    const nextNodes = [...nodes];
-      const moved = nextNodes[index];
-      nextNodes[index] = nextNodes[nextIndex];
-      nextNodes[nextIndex] = moved;
-      updateMenuSortOrders(nextNodes);
-      return nextNodes;
-    }
-
-  function updateLevel(path: number[], direction: number) {
-    setTreeData((current) => {
-      const clone = JSON.parse(JSON.stringify(current)) as MenuNode[];
-      let level = clone;
-      for (let i = 0; i < path.length - 1; i += 1) {
-        level = level[path[i]].children;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && mobileDragCode) {
+        setMobileDragCode(null);
       }
-      const next = moveNode(level, path[path.length - 1], direction);
-      if (next) {
-        if (path.length === 1) {
-          return next;
-        }
-        let target = clone;
-        for (let i = 0; i < path.length - 2; i += 1) {
-          target = target[path[i]].children;
-        }
-        target[path[path.length - 2]].children = next;
-      }
-      return clone;
-    });
-  }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileDragCode]);
 
-  async function saveOrder() {
-    logGovernanceScope("ACTION", "menu-management-save-order", {
-      menuType,
-      payloadCount: flattenMenuOrderPayload(treeData).length,
-      dirtyOrderCount: dirtyOrderRows.length
+  const handleToggle = useCallback((code: string) => {
+    setExpandedCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
     });
+  }, []);
+
+  const handleExpandAll = () => {
+    const allCodes = new Set<string>();
+    const collect = (nodes: MenuNode[]) => {
+      nodes.forEach((n) => {
+        if (n.children.length > 0) {
+          allCodes.add(n.code);
+          collect(n.children);
+        }
+      });
+    };
+    collect(treeData);
+    setExpandedCodes(allCodes);
+  };
+
+  const handleCollapseAll = () => {
+    setExpandedCodes(new Set());
+  };
+
+  const handleUpdateMenu = async (code: string, label: string, url: string) => {
     setActionError("");
     setActionMessage("");
     const body = new URLSearchParams();
     body.set("menuType", menuType);
-    body.set("orderPayload", flattenMenuOrderPayload(treeData).join(","));
-    await postFormUrlEncoded(
-      buildLocalizedPath("/admin/system/menu/order", "/en/admin/system/menu/order"),
-      body
-    );
-    refreshAdminMenuTree();
-    await pageState.reload();
-    setActionMessage(en ? "Menu order has been saved." : "메뉴 순서를 저장했습니다.");
-  }
+    body.set("code", code);
+    body.set("codeNm", label);
+    body.set("menuUrl", url);
+    try {
+      await postFormUrlEncoded(
+        buildLocalizedPath("/admin/system/menu/update-page", "/en/admin/system/menu/update-page"),
+        body
+      );
+      refreshAdminMenuTree();
+      setActionMessage(en ? "Menu updated successfully." : "메뉴가 수정되었습니다.");
+      window.location.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to update menu.");
+    }
+  };
 
-  function findSuggestedPageCode() {
-    return buildSuggestedPageCode(parentCodeValue, menuCodeRows);
-  }
-
-  async function createPageMenu() {
+  const handleDeleteMenu = async (code: string) => {
+    if (!confirm(en ? "Delete this menu?" : "이 메뉴를 삭제하시겠습니까?")) return;
     setActionError("");
     setActionMessage("");
-    const validationError = validateCreateForm({ en, parentCodeValue, codeNm, menuUrl, menuType });
-    if (validationError) {
-      setActionError(validationError);
+    const body = new URLSearchParams();
+    body.set("menuType", menuType);
+    body.set("code", code);
+    try {
+      await postFormUrlEncoded(
+        buildLocalizedPath("/admin/system/menu/delete-page", "/en/admin/system/menu/delete-page"),
+        body
+      );
+      refreshAdminMenuTree();
+      setActionMessage(en ? "Menu deleted." : "메뉴가 삭제되었습니다.");
+      window.location.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to delete menu.");
+    }
+  };
+
+  const findSuggestedPageCode = () => buildSuggestedPageCode(parentCodeValue, menuCodeRows);
+
+  const validateCreateForm = () => {
+    if (!parentCodeValue) return en ? "Select a parent menu." : "상위 메뉴를 선택하세요.";
+    if (!codeNm.trim()) return en ? "Enter menu name." : "메뉴명을 입력하세요.";
+    if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
+    if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
+    if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) return en ? "Admin URL must start with /admin/." : "관리자 URL은 /admin/으로 시작해야 합니다.";
+    if (menuType === "USER" && !menuUrl.startsWith("/home/")) return en ? "Home URL must start with /home/." : "홈 URL은 /home/으로 시작해야 합니다.";
+    return "";
+  };
+
+  const handleCreatePage = async () => {
+    const error = validateCreateForm();
+    if (error) {
+      setActionError(error);
       return;
     }
+    setActionError("");
+    setActionMessage("");
     const body = new URLSearchParams();
     body.set("menuType", menuType);
     body.set("parentCode", parentCodeValue);
@@ -367,284 +609,323 @@ export function MenuManagementMigrationPage() {
     body.set("menuUrl", menuUrl.trim());
     body.set("menuIcon", menuIcon);
     body.set("useAt", useAt);
-    const responseBody = await postFormUrlEncoded<{ success?: boolean; message?: string; createdCode?: string }>(
-      buildLocalizedPath("/admin/system/menu/create-page", "/en/admin/system/menu/create-page"),
-      body
-    );
-    if (!responseBody.success) {
-      throw new Error(responseBody.message || "Failed to create page menu.");
+    try {
+      const result = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
+        buildLocalizedPath("/admin/system/menu/create-page", "/en/admin/system/menu/create-page"),
+        body
+      );
+      if (!result.success) {
+        throw new Error(result.message || "Failed");
+      }
+      refreshAdminMenuTree();
+      setActionMessage(result.message || (en ? "Menu created." : "메뉴가 생성되었습니다."));
+      setCodeNm("");
+      setCodeDc("");
+      setMenuUrl("");
+      window.location.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to create menu.");
     }
-    refreshAdminMenuTree();
-    await pageState.reload();
-    setActionMessage(responseBody.message || (en ? "The page has been created." : "페이지를 생성했습니다."));
-    setCodeNm("");
-    setCodeDc("");
-    setMenuUrl("");
-  }
+  };
 
-  function renderNodes(nodes: MenuNode[], path: number[] = []) {
-    return (
-      <ol className="gov-tree-list">
-        {nodes.map((node, index) => {
-          const depth = node.code.length;
-          const chipClass = depth === 4 ? "bg-blue-50 text-[var(--kr-gov-blue)]" : depth === 6 ? "bg-amber-50 text-[#8a5a00]" : "bg-green-50 text-[#196c2e]";
-          const currentPath = [...path, index];
-          const snapshot = originalSnapshot[node.code];
-          const orderChanged = Boolean(snapshot && snapshot.sortOrdr !== node.sortOrdr);
-          return (
-            <li key={node.code}>
-              <div className={`gov-tree-node ${orderChanged ? "ring-1 ring-[var(--kr-gov-blue)] ring-offset-1" : ""}`}>
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="material-symbols-outlined text-[20px] text-[var(--kr-gov-blue)]">{node.icon}</span>
-                      <strong className="text-base">{node.label}</strong>
-                      <span className={`gov-chip ${chipClass}`}>{node.code}</span>
-                      <span className={`gov-chip ${node.useAt === "Y" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{node.useAt === "Y" ? (en ? "Use" : "사용") : (en ? "Unused" : "미사용")}</span>
-                      {orderChanged ? <span className="gov-chip bg-indigo-100 text-indigo-700">{en ? "Order changed" : "순서 변경"}</span> : null}
-                    </div>
-                    <p className="mt-2 text-sm text-[var(--kr-gov-text-secondary)] break-all">{node.url || (en ? "No linked URL" : "연결 URL 없음")}</p>
-                    <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">
-                      {en ? "Sort order" : "정렬순서"}: {node.sortOrdr || "-"}
-                      {snapshot ? ` / ${en ? "Original" : "기준"}: ${snapshot.sortOrdr || "-"}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button className="gov-btn gov-btn-outline" disabled={index === 0 || Boolean(deferredSearchKeyword)} onClick={() => updateLevel(currentPath, -1)} type="button">{en ? "Up" : "위로"}</button>
-                    <button className="gov-btn gov-btn-outline" disabled={index === nodes.length - 1 || Boolean(deferredSearchKeyword)} onClick={() => updateLevel(currentPath, 1)} type="button">{en ? "Down" : "아래로"}</button>
-                  </div>
-                </div>
-              </div>
-              {node.children.length > 0 ? <div className="gov-tree-children">{renderNodes(node.children, currentPath)}</div> : null}
-            </li>
-          );
-        })}
-      </ol>
-    );
-  }
+  const handleDragStart = (e: React.DragEvent, code: string) => {
+    e.dataTransfer.setData("text/plain", code);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetCode: string) => {
+    e.preventDefault();
+    const draggedCode = e.dataTransfer.getData("text/plain");
+    if (draggedCode === targetCode) return;
+
+    console.log("[MenuManagement] Drop: dragged=", draggedCode, "target=", targetCode);
+
+    setTreeData((prev) => {
+      const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
+      let draggedNode: MenuNode | null = null;
+
+      const findAndRemove = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === draggedCode) {
+            draggedNode = nodes[i];
+            nodes.splice(i, 1);
+            return true;
+          }
+          if (findAndRemove(nodes[i].children)) return true;
+        }
+        return false;
+      };
+
+      const findAndInsertAt = (nodes: MenuNode[], parentArr: MenuNode[], startIndex: number): boolean => {
+        for (let i = startIndex; i < nodes.length; i++) {
+          if (nodes[i].code === targetCode) {
+            parentArr.splice(i, 0, draggedNode!);
+            return true;
+          }
+          if (findAndInsertAt(nodes[i].children, nodes[i].children, 0)) return true;
+        }
+        return false;
+      };
+
+      const removed = findAndRemove(clone);
+      if (!removed || !draggedNode) {
+        console.log("[MenuManagement] Drop: could not find/remove dragged node");
+        return prev;
+      }
+
+      const found = findAndInsertAt(clone, clone, 0);
+      if (!found) {
+        console.log("[MenuManagement] Drop: could not find target position");
+        return prev;
+      }
+
+      updateMenuSortOrders(clone);
+      console.log("[MenuManagement] Drop: new treeData ready, payload=", flattenMenuOrderPayload(clone).join(","));
+      return clone;
+    });
+  };
+
+  const handleMobileDragStart = useCallback((code: string) => {
+    console.log("[MenuManagement] Mobile drag start:", code);
+    setMobileDragCode((prev) => prev === code ? null : code);
+  }, []);
+
+  const handleMobileDrop = useCallback((targetCode: string) => {
+    if (!mobileDragCode || mobileDragCode === targetCode) {
+      setMobileDragCode(null);
+      return;
+    }
+    console.log("[MenuManagement] Mobile drop:", mobileDragCode, "->", targetCode);
+    setTreeData((prev) => {
+      const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
+      let draggedNode: MenuNode | null = null;
+
+      const findAndRemove = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === mobileDragCode) {
+            draggedNode = nodes[i];
+            nodes.splice(i, 1);
+            return true;
+          }
+          if (findAndRemove(nodes[i].children)) return true;
+        }
+        return false;
+      };
+
+      const findAndInsertAt = (nodes: MenuNode[], parentArr: MenuNode[], startIndex: number): boolean => {
+        for (let i = startIndex; i < nodes.length; i++) {
+          if (nodes[i].code === targetCode) {
+            parentArr.splice(i, 0, draggedNode!);
+            return true;
+          }
+          if (findAndInsertAt(nodes[i].children, nodes[i].children, 0)) return true;
+        }
+        return false;
+      };
+
+      const removed = findAndRemove(clone);
+      if (!removed || !draggedNode) return prev;
+
+      const found = findAndInsertAt(clone, clone, 0);
+      if (!found) return prev;
+
+      updateMenuSortOrders(clone);
+      console.log("[MenuManagement] Mobile drop complete, payload=", flattenMenuOrderPayload(clone).join(","));
+      return clone;
+    });
+    setMobileDragCode(null);
+  }, [mobileDragCode]);
+
+const handleSaveOrder = async () => {
+    if (pageState.loading) {
+      setActionError(en ? "Page is still loading. Please wait." : "페이지 로딩 중입니다. 잠시만 기다려주세요.");
+      return;
+    }
+    setActionError("");
+    setActionMessage("");
+    const prefix = menuType === "ADMIN" ? "A" : menuType === "USER" ? "H" : "";
+    const allCodes = flattenMenuOrderPayload(treeData);
+    const filteredCodes = prefix ? flattenMenuOrderPayload(treeData, [], prefix) : allCodes;
+    const payload = filteredCodes.join(",");
+    const codesOnly = payload.split(",").map(c => c.split(":")[0]);
+    console.log("[MenuManagement] Saving order, menuType=", menuType, "prefix=", prefix, "total:", allCodes.length, "filtered:", codesOnly.length);
+    console.log("[MenuManagement] Filtered codes:", codesOnly.join(","));
+    if (codesOnly.length === 0) {
+      setActionError(en ? "No menu to save." : "저장할 메뉴가 없습니다.");
+      return;
+    }
+    const body = new URLSearchParams();
+    body.set("menuType", menuType);
+    body.set("orderPayload", payload);
+    try {
+      const result = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
+        buildLocalizedPath("/admin/system/menu/order", "/en/admin/system/menu/order"),
+        body
+      );
+      console.log("[MenuManagement] Save order response:", result);
+      if (result.success !== true) {
+        setActionError(result.message || (en ? "Failed to save order." : "순서 저장에 실패했습니다."));
+        return;
+      }
+      refreshAdminMenuTree();
+      setActionMessage(result.message || (en ? "Order saved." : "순서가 저장되었습니다."));
+    } catch (err) {
+      console.error("[MenuManagement] Save order error:", err);
+      setActionError(err instanceof Error ? err.message : "Failed to save order.");
+    }
+  };
 
   return (
     <AdminPageShell
       breadcrumbs={[
         { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
         { label: en ? "System" : "시스템" },
-        { label: en ? "Builder Install / Bind Console" : "빌더 설치 / 바인딩 콘솔" },
-        { label: en ? "Menu Registry Console" : "메뉴 레지스트리 콘솔" }
+        { label: en ? "Menu Management" : "메뉴 관리" }
       ]}
-      title={en ? "Menu Registry Console" : "메뉴 레지스트리 콘솔"}
+      title={en ? "Menu Management" : "메뉴 관리"}
     >
-      <GovernanceCompressionNav activeId="menu" en={en} />
       <AdminWorkspacePageFrame>
-        {page?.menuMgmtMessage || actionMessage ? <PageStatusNotice tone="success">{actionMessage || String(page?.menuMgmtMessage)}</PageStatusNotice> : null}
-        {pageState.error || actionError || page?.menuMgmtError ? <PageStatusNotice tone="error">{actionError || page?.menuMgmtError || pageState.error}</PageStatusNotice> : null}
-
-        <section className="grid grid-cols-1 gap-3 xl:grid-cols-4">
-          <SummaryMetricCard title={en ? "Registry Nodes" : "레지스트리 노드"} value={`${visibleNodes.length} / ${allNodes.length}`} />
-          <SummaryMetricCard title={en ? "Binding Order Changes" : "바인딩 순서 변경"} value={String(dirtyOrderRows.length)} />
-          <SummaryMetricCard title={en ? "Registry Parents" : "레지스트리 부모"} value={String(groupMenuOptions.length)} />
-          <SummaryMetricCard title={en ? "Current Lane" : "현재 레인"} value={menuType} />
-        </section>
-
-        <CollectionResultPanel
-          data-help-id="menu-management-install-contract"
-          icon="inventory_2"
-          title={en ? "Install Package Contract" : "설치 패키지 계약"}
-        >
-          <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className={`rounded-[var(--kr-gov-radius)] border px-4 py-3 ${intakeReady ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
-                <p className="text-xs font-black uppercase tracking-[0.08em] text-[var(--kr-gov-text-secondary)]">{en ? "Registry Intake Readiness" : "레지스트리 인테이크 준비도"}</p>
-                <p className="mt-2 text-sm font-black text-[var(--kr-gov-text-primary)]">{intakeReady ? (en ? "Ready to hand off" : "인계 가능") : (en ? "Needs more intake fields" : "추가 인테이크 필요")}</p>
-                <p className="mt-1 text-[12px] text-[var(--kr-gov-text-secondary)]">{intakeValidationMessage || (en ? "Bindings and URL shape are aligned with installable-builder intake." : "바인딩과 URL 형태가 설치형 빌더 인테이크 기준과 정렬됨")}</p>
-              </div>
-              <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-[0.08em] text-[var(--kr-gov-text-secondary)]">{en ? "Artifacts" : "산출물"}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {BUILDER_INSTALL_ARTIFACTS.map((artifact) => (
-                    <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-[12px] font-mono text-[var(--kr-gov-text-primary)]" key={artifact}>{artifact}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-white px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-[0.08em] text-[var(--kr-gov-text-secondary)]">{en ? "Required Bindings" : "필수 바인딩"}</p>
-                <div className="mt-2 space-y-2">
-                  {intakeBindingStatuses.map((item) => (
-                    <div className="flex items-start justify-between gap-3 text-sm" key={item.key}>
-                      <div>
-                        <p className="font-bold text-[var(--kr-gov-text-primary)]">{describeBuilderInstallBinding(item.key, en)}</p>
-                        <p className="text-[12px] text-[var(--kr-gov-text-secondary)]">{item.detail}</p>
-                      </div>
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-black ${item.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        {item.ready ? (en ? "READY" : "준비") : (en ? "PENDING" : "대기")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-white px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-[0.08em] text-[var(--kr-gov-text-secondary)]">{en ? "Validator Checks" : "검증 체크"}</p>
-                <div className="mt-2 space-y-2">
-                  {intakeValidatorStatuses.map((item) => (
-                    <div className="flex items-start justify-between gap-3 text-sm" key={item.key}>
-                      <div>
-                        <p className="font-bold text-[var(--kr-gov-text-primary)]">{describeBuilderValidatorCheck(item.key, en)}</p>
-                        <p className="text-[12px] text-[var(--kr-gov-text-secondary)]">{item.detail}</p>
-                      </div>
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-black ${item.ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                        {item.ready ? (en ? "PASS" : "통과") : (en ? "WAIT" : "대기")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 px-5 py-4">
-              <h4 className="font-bold text-[var(--kr-gov-text-primary)]">{en ? "Registry-to-Install Handoff" : "레지스트리에서 설치로 인계"}</h4>
-              <ul className="mt-3 space-y-2 text-sm text-[var(--kr-gov-text-secondary)]">
-                <li>{en ? `Bindings tracked: ${BUILDER_INSTALL_REQUIRED_BINDINGS.length}` : `추적 바인딩: ${BUILDER_INSTALL_REQUIRED_BINDINGS.length}`}</li>
-                <li>{en ? `Validator checks tracked: ${BUILDER_INSTALL_VALIDATOR_CHECKS.length}` : `추적 검증 체크: ${BUILDER_INSTALL_VALIDATOR_CHECKS.length}`}</li>
-                <li>{en ? "Once the registry entry is created, the install-bind console should inherit the same menu code and binding URL without remapping." : "레지스트리 엔트리가 생성되면 install-bind 콘솔은 같은 메뉴 코드와 바인딩 URL을 재매핑 없이 이어받아야 합니다."}</li>
-                <li>{en ? "Do not create a page registry entry unless the binding URL already matches the intended install lane." : "바인딩 URL이 목표 설치 레인과 맞지 않으면 페이지 레지스트리 엔트리를 만들지 않습니다."}</li>
-              </ul>
-            </div>
-          </div>
-        </CollectionResultPanel>
-
-        <CollectionResultPanel
-          data-help-id="menu-management-scope"
-          icon="tune"
-          title={en ? "Registry Scope and Search" : "레지스트리 범위와 검색"}
-        >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr] xl:grid-cols-[16rem_1fr_1.2fr] items-end">
-          <div>
-            <label className="gov-label" htmlFor="menuType">{en ? "Registry Lane" : "레지스트리 레인"}</label>
-            <select className="gov-select" id="menuType" value={menuType} onChange={(event) => setMenuType(event.target.value)}>
-              {menuTypes.map((type) => (
-                <option key={stringOf(type, "value")} value={stringOf(type, "value")}>{stringOf(type, "label")}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="gov-label" htmlFor="menuSearchKeyword">{en ? "Search registry tree" : "레지스트리 트리 검색"}</label>
-            <input className="gov-input" id="menuSearchKeyword" onChange={(event) => setSearchKeyword(event.target.value)} placeholder={en ? "Menu code, name, URL" : "메뉴 코드, 메뉴명, URL"} value={searchKeyword} />
-          </div>
-        </div>
-        </CollectionResultPanel>
-
-        <section className="gov-card overflow-hidden p-0" data-help-id="menu-management-register">
-          <GridToolbar
-            title={en ? "Registry Intake" : "레지스트리 인테이크"}
-          />
-          <div className="p-6">
+        {actionMessage && <PageStatusNotice tone="success">{actionMessage}</PageStatusNotice>}
+        {actionError && <PageStatusNotice tone="error">{actionError}</PageStatusNotice>}
+        {pageState.error && <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice>}
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="gov-label" htmlFor="parentCode">{en ? "Registry Parent" : "레지스트리 부모"}</label>
-              <select className="gov-select" id="parentCode" value={parentCodeValue} onChange={(event) => setParentCodeValue(event.target.value)}>
-                {groupMenuOptions.map((option) => (
-                  <option key={stringOf(option, "value")} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
-                ))}
-              </select>
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
+              <div className="flex-1">
+                <label className="gov-label" htmlFor="menuType">{en ? "Menu Type" : "메뉴 유형"}</label>
+                <select className="gov-select" id="menuType" value={menuType} onChange={(e) => setMenuType(e.target.value)}>
+                  {menuTypes.map((t) => (
+                    <option key={stringOf(t, "value")} value={stringOf(t, "value")}>{stringOf(t, "label")}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="gov-label" htmlFor="menuSearch">{en ? "Search" : "검색"}</label>
+                <input
+                  className="gov-input"
+                  id="menuSearch"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  placeholder={en ? "Code, name, URL..." : "코드, 메뉴명, URL..."}
+                />
+              </div>
+              <div className="flex items-end gap-2 self-stretch">
+                <button type="button" onClick={handleExpandAll} className="gov-btn gov-btn-outline h-full">
+                  <span className="material-symbols-outlined text-[16px]">unfold_more</span>
+                  <span className="hidden sm:inline">{en ? "Expand" : "펼치기"}</span>
+                </button>
+                <button type="button" onClick={handleCollapseAll} className="gov-btn gov-btn-outline h-full">
+                  <span className="material-symbols-outlined text-[16px]">unfold_less</span>
+                  <span className="hidden sm:inline">{en ? "Collapse" : "접기"}</span>
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="gov-label" htmlFor="suggestedCode">{en ? "Generated Registry Code" : "생성 예정 레지스트리 코드"}</label>
-              <input className="gov-input bg-gray-50" id="suggestedCode" readOnly value={findSuggestedPageCode()} />
-            </div>
-            <div>
-              <label className="gov-label" htmlFor="codeNm">{en ? "Registry Name" : "레지스트리명"}</label>
-              <input className="gov-input" id="codeNm" value={codeNm} onChange={(event) => setCodeNm(event.target.value)} />
-            </div>
-            <div>
-              <label className="gov-label" htmlFor="codeDc">{en ? "English Registry Name" : "영문 레지스트리명"}</label>
-              <input className="gov-input" id="codeDc" value={codeDc} onChange={(event) => setCodeDc(event.target.value)} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="gov-label" htmlFor="menuUrl">{en ? "Binding URL" : "바인딩 URL"}</label>
-              <input className="gov-input" id="menuUrl" placeholder={menuType === "USER" ? "/home/..." : "/admin/..."} value={menuUrl} onChange={(event) => setMenuUrl(event.target.value)} />
-            </div>
-            <div>
-              <label className="gov-label" htmlFor="menuIcon">{en ? "Icon" : "아이콘"}</label>
-              <select className="gov-select" id="menuIcon" value={menuIcon} onChange={(event) => setMenuIcon(event.target.value)}>
-                {iconOptions.map((icon) => (
-                  <option key={icon} value={icon}>{icon}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="gov-label" htmlFor="quickUseAt">{en ? "Use" : "사용 여부"}</label>
-              <select className="gov-select" id="quickUseAt" value={useAt} onChange={(event) => setUseAt(event.target.value)}>
-                {useAtOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
+
+            <div className="gov-card overflow-hidden">
+              <GridToolbar
+                title={en ? "Menu Tree" : "메뉴 트리"}
+                actions={
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={handleSaveOrder} className="gov-btn gov-btn-primary">
+                      <span className="material-symbols-outlined text-[16px]">save</span>
+                      <span>{en ? "Save Order" : "순서 저장"}</span>
+                    </button>
+                  </div>
+                }
+              />
+              <div className="max-h-[60vh] overflow-y-auto" onDragOver={(e) => e.preventDefault()}>
+                {filteredTreeData.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    {en ? "No menus found." : "메뉴가 없습니다."}
+                  </div>
+                ) : (
+                  <MenuTree
+                    nodes={filteredTreeData}
+                    expandedCodes={expandedCodes}
+                    onToggle={handleToggle}
+                    onUpdate={handleUpdateMenu}
+                    onDelete={handleDeleteMenu}
+                    onDragStart={handleDragStart}
+                    onDrop={handleDrop}
+                    mobileDragCode={mobileDragCode}
+                    onMobileDragStart={handleMobileDragStart}
+                    onMobileDrop={handleMobileDrop}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[#f8fbff] px-5 py-4">
-            <h4 className="font-bold text-[var(--kr-gov-blue)]">{en ? "Registry Output" : "레지스트리 생성 항목"}</h4>
-            <ul className="mt-3 space-y-2 text-sm text-[var(--kr-gov-text-secondary)] list-disc pl-5">
-              <li>{en ? "Registry code and binding URL metadata" : "레지스트리 코드와 바인딩 URL 메타데이터"}</li>
-              <li>{en ? "Default PAGE_CODE_VIEW feature seed" : "기본 PAGE_CODE_VIEW 기능 시드"}</li>
-              <li>{en ? "Initial sibling registry order under the selected parent" : "선택 부모 하위의 초기 레지스트리 정렬"}</li>
-              <li>{en ? "A menu entry that can hand off to install-bind and package-builder flows" : "설치-바인딩과 패키지 빌더 흐름으로 넘길 수 있는 메뉴 엔트리"}</li>
-            </ul>
-            <div className="mt-4">
-              <button className="gov-btn gov-btn-primary w-full" onClick={() => { void createPageMenu().catch((error: Error) => setActionError(error.message)); }} type="button">
-                {en ? "Create Registry Entry" : "레지스트리 엔트리 생성"}
-              </button>
+          <div className="space-y-4">
+            <div className="gov-card overflow-hidden">
+              <GridToolbar title={en ? "Add New Menu" : "새 메뉴 등록"} />
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="gov-label">{en ? "Parent Menu" : "상위 메뉴"}</label>
+                  <ParentSelector treeData={treeData} value={parentCodeValue} onChange={setParentCodeValue} />
+                </div>
+
+                <div>
+                  <label className="gov-label">{en ? "New Code" : "생성 코드"}</label>
+                  <input className="gov-input bg-gray-50" readOnly value={findSuggestedPageCode()} />
+                </div>
+
+                <div>
+                  <label className="gov-label" htmlFor="codeNm">{en ? "Menu Name" : "메뉴명"}</label>
+                  <input
+                    className="gov-input"
+                    id="codeNm"
+                    value={codeNm}
+                    onChange={(e) => setCodeNm(e.target.value)}
+                    placeholder={en ? "Enter menu name" : "메뉴명을 입력하세요"}
+                  />
+                </div>
+
+                <div>
+                  <label className="gov-label" htmlFor="codeDc">{en ? "English Name" : "영문 메뉴명"}</label>
+                  <input
+                    className="gov-input"
+                    id="codeDc"
+                    value={codeDc}
+                    onChange={(e) => setCodeDc(e.target.value)}
+                    placeholder={en ? "English name" : "영문 메뉴명"}
+                  />
+                </div>
+
+                <div>
+                  <label className="gov-label" htmlFor="menuUrl">{en ? "URL" : "URL"}</label>
+                  <input
+                    className="gov-input"
+                    id="menuUrl"
+                    value={menuUrl}
+                    onChange={(e) => setMenuUrl(e.target.value)}
+                    placeholder={menuType === "USER" ? "/home/..." : "/admin/..."}
+                  />
+                </div>
+
+                <div>
+                  <label className="gov-label">{en ? "Icon" : "아이콘"}</label>
+                  <IconPicker value={menuIcon} onChange={setMenuIcon} />
+                </div>
+
+                <div>
+                  <label className="gov-label" htmlFor="useAt">{en ? "Status" : "상태"}</label>
+                  <select className="gov-select" id="useAt" value={useAt} onChange={(e) => setUseAt(e.target.value)}>
+                    <option value="Y">{en ? "Active" : "사용"}</option>
+                    <option value="N">{en ? "Inactive" : "미사용"}</option>
+                  </select>
+                </div>
+
+                <button type="button" onClick={handleCreatePage} className="gov-btn gov-btn-primary w-full">
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  <span>{en ? "Create Menu" : "메뉴 생성"}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-          </div>
-        </section>
-
-        <section className="gov-card overflow-hidden p-0" data-help-id="menu-management-tree">
-          <GridToolbar
-            actions={<div className="flex flex-wrap items-center gap-2"><button className="gov-btn gov-btn-primary" onClick={() => { void saveOrder().catch((error: Error) => setActionError(error.message)); }} type="button">{en ? "Save Registry Order" : "레지스트리 순서 저장"}</button></div>}
-            title={en ? "Registry Tree" : "레지스트리 트리"}
-          />
-          <div className="p-6">
-
-        <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-          <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[#f8fbff] px-4 py-3">
-            <p className="font-bold text-[var(--kr-gov-blue)]">{en ? "Top Registry" : "상위 레지스트리"}</p>
-            <p className="text-[var(--kr-gov-text-secondary)]">{en ? "4-digit code" : "4자리 코드"}</p>
-          </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[#fcfbf7] px-4 py-3">
-            <p className="font-bold text-[#8a5a00]">{en ? "Group Registry" : "그룹 레지스트리"}</p>
-            <p className="text-[var(--kr-gov-text-secondary)]">{en ? "6-digit code" : "6자리 코드"}</p>
-          </div>
-          <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[#f7fbf8] px-4 py-3">
-            <p className="font-bold text-[#196c2e]">{en ? "Page Registry" : "페이지 레지스트리"}</p>
-            <p className="text-[var(--kr-gov-text-secondary)]">{en ? "8-digit code" : "8자리 코드"}</p>
-          </div>
-        </div>
-
-        {dirtyOrderRows.length > 0 ? (
-          <CollectionResultPanel className="mb-4" icon="pending_actions" title={en ? "Pending registry changes" : "저장 대기 레지스트리 변경"}>
-            <div className="mt-2 flex flex-wrap gap-2">
-                {dirtyOrderRows.slice(0, 8).map((node) => <span className="gov-chip bg-indigo-100 text-indigo-700" key={`order-${node.code}`}>{`${node.code} ${en ? "registry order" : "레지스트리 순서"}`}</span>)}
-                {dirtyOrderRows.length > 8 ? <span className="gov-chip bg-slate-100 text-slate-700">+{dirtyOrderRows.length - 8}</span> : null}
-            </div>
-          </CollectionResultPanel>
-        ) : null}
-
-        <WarningPanel className="mb-4" title={en ? "Registry visibility rule" : "레지스트리 노출 규칙"}>
-          {en
-            ? "Sidebar or sitemap exposure is governed separately. This console focuses on registry intake and sibling binding order."
-            : "사이드바나 사이트맵 노출 정책은 별도 관리 대상으로 분리합니다. 이 콘솔은 레지스트리 인테이크와 같은 부모 기준 바인딩 순서에 집중합니다."}
-        </WarningPanel>
-
-        {visibleNodes.length === 0 ? (
-          <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] px-4 py-8 text-center text-sm text-[var(--kr-gov-text-secondary)]">
-            {en ? "No menus matched the current search." : "현재 검색 조건에 맞는 메뉴가 없습니다."}
-          </div>
-        ) : renderNodes(filteredTreeData)}
-          </div>
-        </section>
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );
 }
-// agent note: updated by FreeAgent Ultra

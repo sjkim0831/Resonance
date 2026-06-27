@@ -263,11 +263,14 @@ public class AdminMenuManagementCommandService {
         if (safeString(orderPayload).isEmpty()) {
             return isEn ? "Menu order payload is empty." : "메뉴 순서 정보가 없습니다.";
         }
+        String prefixFilter = "ADMIN".equals(menuType) ? "A" : "USER".equals(menuType) ? "H" : "";
         java.util.Set<String> knownCodes = new java.util.LinkedHashSet<>();
         for (MenuInfoDTO row : menuRows) {
             String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
             if (!code.isEmpty()) {
-                knownCodes.add(code);
+                if (prefixFilter.isEmpty() || code.startsWith(prefixFilter)) {
+                    knownCodes.add(code);
+                }
             }
         }
         java.util.Set<String> submittedCodes = new java.util.LinkedHashSet<>();
