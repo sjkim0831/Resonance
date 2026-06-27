@@ -19,8 +19,11 @@ type BuildMenuTreeOptions = {
 };
 
 export function parentMenuCode(code: string) {
-  if (code.length === 8) return code.slice(0, 6);
-  if (code.length === 6) return code.slice(0, 4);
+  const len = code.length;
+  if (len === 8) return code.slice(0, 6);
+  if (len === 7) return code.slice(0, 5);
+  if (len === 6) return code.slice(0, 4);
+  if (len === 5) return code.slice(0, 3);
   return "";
 }
 
@@ -83,30 +86,54 @@ export function updateMenuSortOrders(items: MenuTreeNode[]) {
   });
 }
 
-export function flattenMenuOrderPayload(items: MenuTreeNode[], output: string[] = []) {
+export function flattenMenuOrderPayload(items: MenuTreeNode[], output: string[] = [], allowedPrefix?: string) {
   items.forEach((item, index) => {
-    output.push(`${item.code}:${index + 1}`);
-    flattenMenuOrderPayload(item.children, output);
+    if (!allowedPrefix || item.code.startsWith(allowedPrefix)) {
+      output.push(`${item.code}:${index + 1}`);
+    }
+    flattenMenuOrderPayload(item.children, output, allowedPrefix);
   });
   return output;
 }
 
 export function buildSuggestedPageCode(parentCode: string, rows: Array<{ code: string }>) {
-  if (parentCode.length !== 6) {
-    return "";
-  }
-  let maxSuffix = 0;
-  rows.forEach((row) => {
-    if (!row.code.startsWith(parentCode) || row.code.length !== 8) {
-      return;
+  const len = parentCode.length;
+  
+  // 대메뉴 (4글자) 선택 → 중메뉴 (6글자) 코드 생성
+  if (len === 4) {
+    let maxSuffix = 0;
+    rows.forEach((row) => {
+      if (!row.code.startsWith(parentCode) || row.code.length !== 6) {
+        return;
+      }
+      const suffix = Number(row.code.slice(4));
+      if (Number.isFinite(suffix) && suffix > maxSuffix) {
+        maxSuffix = suffix;
+      }
+    });
+    if (maxSuffix >= 99) {
+      return "";
     }
-    const suffix = Number(row.code.slice(6));
-    if (Number.isFinite(suffix) && suffix > maxSuffix) {
-      maxSuffix = suffix;
-    }
-  });
-  if (maxSuffix >= 99) {
-    return "";
+    return `${parentCode}${String(maxSuffix + 1).padStart(2, "0")}`;
   }
-  return `${parentCode}${String(maxSuffix + 1).padStart(2, "0")}`;
+  
+  // 중메뉴 (6글자) 선택 → 소메뉴 (8글자) 코드 생성
+  if (len === 6) {
+    let maxSuffix = 0;
+    rows.forEach((row) => {
+      if (!row.code.startsWith(parentCode) || row.code.length !== 8) {
+        return;
+      }
+      const suffix = Number(row.code.slice(6));
+      if (Number.isFinite(suffix) && suffix > maxSuffix) {
+        maxSuffix = suffix;
+      }
+    });
+    if (maxSuffix >= 99) {
+      return "";
+    }
+    return `${parentCode}${String(maxSuffix + 1).padStart(2, "0")}`;
+  }
+  
+  return "";
 }
