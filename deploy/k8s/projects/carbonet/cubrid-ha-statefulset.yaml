@@ -1,0 +1,328 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cubrid-ha-internal
+  namespace: carbonet-prod
+spec:
+  selector:
+    app: cubrid-carbonet
+  clusterIP: None
+  ports:
+    - name: broker1
+      port: 30000
+    - name: broker2
+      port: 33000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cubrid-ha
+  namespace: carbonet-prod
+spec:
+  selector:
+    app: cubrid-carbonet
+  ports:
+    - name: broker1
+      port: 30000
+      targetPort: 30000
+    - name: broker2
+      port: 33000
+      targetPort: 33000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cubrid-ha-init
+  namespace: carbonet-prod
+data:
+  init.sh: |
+    #!/bin/bash
+    set -e
+
+    CUBRID=/var/lib/cubrid/CUBRID
+    DB_DIR=/var/lib/cubrid/databases
+    DB_NAME=carbonet
+    POD_NAME="${POD_NAME:-$(hostname)}"
+    POD_ORDINAL="${POD_NAME##*-}"
+
+    echo "[INIT] Starting initialization for $POD_NAME (ordinal: $POD_ORDINAL)..."
+
+    case $POD_ORDINAL in
+      0)
+        HA_PORT=59901
+        CUBRID_PORT=1523
+        BROKER1_PORT=30000
+        BROKER2_PORT=33000
+        ;;
+      1)
+        HA_PORT=59911
+        CUBRID_PORT=1533
+        BROKER1_PORT=30010
+        BROKER2_PORT=33010
+        ;;
+      2)
+        HA_PORT=59921
+        CUBRID_PORT=1543
+        BROKER1_PORT=30020
+        BROKER2_PORT=33020
+        ;;
+      *)
+        echo "[INIT] ERROR: Unknown ordinal $POD_ORDINAL"
+        exit 1
+        ;;
+    esac
+
+    echo "[INIT] Ports - HA:$HA_PORT, CUBRID:$CUBRID_PORT, Broker1:$BROKER1_PORT, Broker2:$BROKER2_PORT"
+
+    mkdir -p $DB_DIR
+    mkdir -p $CUBRID/conf
+    mkdir -p $CUBRID/databases
+    mkdir -p $CUBRID/log
+
+    echo "carbonet /var/lib/cubrid/databases localhost:cubrid-ha-0:cubrid-ha-1:cubrid-ha-2 /var/lib/cubrid/databases file:/var/lib/cubrid/databases/lob" > $DB_DIR/databases.txt
+    cp $DB_DIR/databases.txt $CUBRID/databases/
+    cp $DB_DIR/databases.txt $CUBRID/conf/
+
+    printf '[service]\nservice=server,broker,manager\n\n[common]\ncubrid_port_id=%s\n\n' \
+      "${CUBRID_PORT}" \
+      > $CUBRID/conf/cubrid.conf
+
+    printf '' > $CUBRID/conf/cubrid_ha.conf
+
+    printf '%s\n' \
+      "[broker]" \
+      "MASTER_SHM_ID=30001" \
+      "BROKER_PORT=${BROKER1_PORT}" \
+      "SERVICE=ON" \
+      > $CUBRID/conf/cubrid_broker.conf
+
+    echo "[INIT] Config files created"
+
+    echo "[INIT] Initialization complete"
+  start.sh: |
+    #!/bin/bash
+
+    export CUBRID=/home/cubrid/CUBRID
+    export CUBRID_DATA=/var/lib/cubrid/CUBRID
+    export CUBRID_CONF=/var/lib/cubrid/CUBRID/conf
+    export PATH=$CUBRID/bin:$PATH
+    POD_NAME="${POD_NAME:-$(hostname)}"
+    POD_ORDINAL="${POD_NAME##*-}"
+
+    echo "[START] Starting CUBRID for $POD_NAME (ordinal: $POD_ORDINAL)..."
+
+    mkdir -p $CUBRID/conf
+    mkdir -p $CUBRID/databases
+    cp -f $CUBRID_DATA/conf/cubrid.conf $CUBRID/conf/ 2>/dev/null || true
+    cp -f $CUBRID_DATA/conf/cubrid_ha.conf $CUBRID/conf/ 2>/dev/null || true
+    cp -f $CUBRID_DATA/conf/cubrid_broker.conf $CUBRID/conf/ 2>/dev/null || true
+    cp -f $CUBRID_DATA/databases.txt $CUBRID/databases/ 2>/dev/null || true
+    ls -la $CUBRID/conf/
+
+    echo "[START] Starting CUBRID service..."
+    $CUBRID/bin/cubrid service start || true
+    sleep 5
+
+    echo "[START] CUBRID Status:"
+    $CUBRID/bin/cubrid_rel || true
+
+    echo "[START] Done - keeping alive"
+    tail -f /dev/null
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cubrid-ha-pv-0
+  labels:
+    app: cubrid-ha
+    ordinal: "0"
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /opt/Resonance/data/cubrid
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - ccus
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cubrid-ha-pv-1
+  labels:
+    app: cubrid-ha
+    ordinal: "1"
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /opt/Resonance/data/cubrid1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - ccus
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cubrid-ha-pv-2
+  labels:
+    app: cubrid-ha
+    ordinal: "2"
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /opt/Resonance/data/cubrid2
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - ccus
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cubrid-ha
+  namespace: carbonet-prod
+spec:
+  serviceName: cubrid-ha-internal
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: cubrid-carbonet
+  template:
+    metadata:
+      labels:
+        app: cubrid-carbonet
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      dnsPolicy: ClusterFirst
+      dnsConfig:
+        searches:
+          - cubrid-ha-internal.carbonet-prod.svc.cluster.local
+          - carbonet-prod.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+      initContainers:
+        - name: init
+          image: docker.io/cubrid/cubrid:11.4
+          command: ["bash", "/scripts/init.sh"]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CUBRID_LANG
+              value: en_US.utf8
+            - name: CUBRID_CHARSET
+              value: en_US.utf8
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/cubrid
+            - name: scripts
+              mountPath: /scripts
+          securityContext:
+            capabilities:
+              add:
+                - NET_RAW
+      containers:
+        - name: cubrid
+          image: docker.io/cubrid/cubrid:11.4
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "/scripts/start.sh"]
+          ports:
+            - name: broker1
+              containerPort: 30000
+            - name: broker2
+              containerPort: 33000
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CUBRID_LANG
+              value: en_US.utf8
+            - name: CUBRID_CHARSET
+              value: en_US.utf8
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/cubrid
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            limits:
+              cpu: "1"
+              memory: 4Gi
+            requests:
+              cpu: 250m
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  source /var/lib/cubrid/CUBRID/.cubrid.sh 2>/dev/null || true
+                  csql -C -u dba -p '' -c "SELECT 1;" carbonet@localhost 2>/dev/null | grep -q "1"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket:
+              port: 33000
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+          startupProbe:
+            tcpSocket:
+              port: 33000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 180
+      volumes:
+        - name: scripts
+          configMap:
+            name: cubrid-ha-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-storage
+        resources:
+          requests:
+            storage: 20Gi
