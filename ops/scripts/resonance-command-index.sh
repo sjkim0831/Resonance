@@ -40,8 +40,8 @@ show_menu() {
     echo "   15  | health     - resonance-health-check.sh"
     echo ""
     echo "  [자동화]"
-    echo "   15  | watch      - 파일 감시 자동 배포 (start/stop/status)"
-    echo "   16  | ci         - PR 검증 (validate/build/test/all)"
+    echo "   17  | watch      - 파일 감시 자동 배포 (start/stop/status)"
+    echo "   18  | ci         - PR 검증 (validate/build/test/all)"
     echo ""
     echo "  [기타]"
     echo "    h  | help       - 이 메뉴 표시"
@@ -109,15 +109,12 @@ case "$cmd" in
   logs|log-db|7)
     exec "$ROOT_DIR/ops/scripts/resonance-log-db-register.sh" "${@:2}"
     ;;
-  watch|file-watch|15)
+  watch|file-watch|17)
     exec "$ROOT_DIR/ops/scripts/resonance-file-watch.sh" "${@:2}"
     ;;
-  ci|pr-ci|16)
+  ci|pr-ci|18)
     shift
     bash "$ROOT_DIR/ops/scripts/resonance-pr-ci.sh" "${@:2}"
-    ;;
-  review|검토)
-    exec "$ROOT_DIR/ops/scripts/resonance-log-db-register.sh" "${@:2}"
     ;;
   review|검토)
     exec "$ROOT_DIR/ops/scripts/resonance-review.sh" "${@:2}"
