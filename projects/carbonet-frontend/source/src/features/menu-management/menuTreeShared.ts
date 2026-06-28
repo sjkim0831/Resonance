@@ -21,9 +21,8 @@ type BuildMenuTreeOptions = {
 export function parentMenuCode(code: string) {
   const len = code.length;
   if (len === 8) return code.slice(0, 6);
-  if (len === 7) return code.slice(0, 5);
   if (len === 6) return code.slice(0, 4);
-  if (len === 5) return code.slice(0, 3);
+  if (len === 4) return "";
   return "";
 }
 
@@ -98,7 +97,7 @@ export function flattenMenuOrderPayload(items: MenuTreeNode[], output: string[] 
 
 export function buildSuggestedPageCode(parentCode: string, rows: Array<{ code: string }>) {
   const len = parentCode.length;
-  
+
   // 대메뉴 (4글자) 선택 → 중메뉴 (6글자) 코드 생성
   if (len === 4) {
     let maxSuffix = 0;
@@ -116,7 +115,7 @@ export function buildSuggestedPageCode(parentCode: string, rows: Array<{ code: s
     }
     return `${parentCode}${String(maxSuffix + 1).padStart(2, "0")}`;
   }
-  
+
   // 중메뉴 (6글자) 선택 → 소메뉴 (8글자) 코드 생성
   if (len === 6) {
     let maxSuffix = 0;
@@ -134,6 +133,6 @@ export function buildSuggestedPageCode(parentCode: string, rows: Array<{ code: s
     }
     return `${parentCode}${String(maxSuffix + 1).padStart(2, "0")}`;
   }
-  
+
   return "";
 }

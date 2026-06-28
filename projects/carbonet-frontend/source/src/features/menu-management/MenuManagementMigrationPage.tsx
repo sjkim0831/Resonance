@@ -167,12 +167,12 @@ function EditableMenuItem({
       <div
         className={`flex items-center gap-2 p-2 hover:bg-gray-50 ${mobileDragCode && mobileDragCode !== node.code ? "cursor-pointer ring-2 ring-blue-400 ring-inset" : ""}`}
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
-        draggable={depth > 0}
-        onDragStart={(e) => depth > 0 && onDragStart(e, node.code)}
-        onDrop={(e) => depth > 0 && onDrop(e, node.code)}
-        onDragOver={(e) => depth > 0 && e.preventDefault()}
+        draggable={depth >= 0}
+        onDragStart={(e) => depth >= 0 && onDragStart(e, node.code)}
+        onDrop={(e) => depth >= 0 && onDrop(e, node.code)}
+        onDragOver={(e) => depth >= 0 && e.preventDefault()}
         onClick={() => {
-          if (mobileDragCode && mobileDragCode !== node.code && depth > 0) {
+          if (mobileDragCode && mobileDragCode !== node.code && depth >= 0) {
             onMobileDrop(node.code);
           }
         }}
@@ -244,16 +244,14 @@ function EditableMenuItem({
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
               </button>
-              {depth > 0 && (
-                <button
-                  type="button"
-                  onClick={() => onMobileDragStart(node.code)}
-                  className={`p-1 ${mobileDragCode === node.code ? "text-blue-600 bg-blue-50 rounded" : "text-gray-400 hover:text-blue-600"}`}
-                  title={en ? "Drag to move" : "드래그하여 이동"}
-                >
-                  <span className="material-symbols-outlined text-[18px]">drag_handle</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => onMobileDragStart(node.code)}
+                className={`p-1 ${mobileDragCode === node.code ? "text-blue-600 bg-blue-50 rounded" : "text-gray-400 hover:text-blue-600"}`}
+                title={en ? "Drag to reorder" : "드래그하여 순서 변경"}
+              >
+                <span className="material-symbols-outlined text-[18px]">drag_handle</span>
+              </button>
             </div>
           </>
         )}
@@ -431,6 +429,7 @@ export function MenuManagementMigrationPage() {
   const [menuUrl, setMenuUrl] = useState("");
   const [menuIcon, setMenuIcon] = useState("web");
   const [useAt, setUseAt] = useState("Y");
+  const [isTopMenu, setIsTopMenu] = useState(false);
   const [treeData, setTreeData] = useState<MenuNode[]>([]);
   const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
   const [mobileDragCode, setMobileDragCode] = useState<string | null>(null);
@@ -584,7 +583,14 @@ export function MenuManagementMigrationPage() {
   const findSuggestedPageCode = () => buildSuggestedPageCode(parentCodeValue, menuCodeRows);
 
   const validateCreateForm = () => {
-    if (!parentCodeValue) return en ? "Select a parent menu." : "상위 메뉴를 선택하세요.";
+    if (!isTopMenu && !parentCodeValue) return en ? "Select a parent menu." : "상위 메뉴를 선택하세요.";
+    if (isTopMenu && parentCodeValue.length !== 4) return en ? "Enter 4-character code for top menu." : "대메뉴는 4자리 코드를 입력하세요.";
+    if (!codeNm.trim()) return en ? "Enter menu name." : "메뉴명을 입력하세요.";
+    if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
+    if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
+    if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) return en ? "Admin URL must start with /admin/." : "관리자 URL은 /admin/으로 시작해야 합니다.";
+    if (menuType === "USER" && !menuUrl.startsWith("/home/")) return en ? "Home URL must start with /home/." : "홈 URL은 /home/으로 시작해야 합니다.";
+    return "";
     if (!codeNm.trim()) return en ? "Enter menu name." : "메뉴명을 입력하세요.";
     if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
     if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
@@ -603,7 +609,12 @@ export function MenuManagementMigrationPage() {
     setActionMessage("");
     const body = new URLSearchParams();
     body.set("menuType", menuType);
-    body.set("parentCode", parentCodeValue);
+    if (isTopMenu) {
+      body.set("isTopMenu", "true");
+      body.set("directCode", parentCodeValue);  // User-inputted 4-char code
+    } else {
+      body.set("parentCode", parentCodeValue);
+    }
     body.set("codeNm", codeNm.trim());
     body.set("codeDc", codeDc.trim());
     body.set("menuUrl", menuUrl.trim());
@@ -643,11 +654,36 @@ export function MenuManagementMigrationPage() {
     setTreeData((prev) => {
       const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
       let draggedNode: MenuNode | null = null;
+      let draggedOriginalIndex = -1;
+      let targetOriginalIndex = -1;
 
+      // Find and track both indices BEFORE making changes
+      const findIndices = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === draggedCode) {
+            draggedOriginalIndex = i;
+            draggedNode = nodes[i];
+          }
+          if (nodes[i].code === targetCode) {
+            targetOriginalIndex = i;
+          }
+          if (draggedOriginalIndex >= 0 && targetOriginalIndex >= 0) {
+            return true;  // Found both
+          }
+          if (findIndices(nodes[i].children)) return true;
+        }
+        return false;
+      };
+
+      if (!findIndices(clone) || !draggedNode) {
+        console.log("[MenuManagement] Drop: could not find nodes");
+        return prev;
+      }
+
+      // Now remove and insert using the tracked indices
       const findAndRemove = (nodes: MenuNode[]): boolean => {
         for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].code === draggedCode) {
-            draggedNode = nodes[i];
             nodes.splice(i, 1);
             return true;
           }
@@ -656,26 +692,27 @@ export function MenuManagementMigrationPage() {
         return false;
       };
 
-      const findAndInsertAt = (nodes: MenuNode[], parentArr: MenuNode[], startIndex: number): boolean => {
-        for (let i = startIndex; i < nodes.length; i++) {
+      const findAndInsert = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].code === targetCode) {
-            parentArr.splice(i, 0, draggedNode!);
+            // Insert draggedNode AFTER target if dragged was BEFORE target
+            // Insert draggedNode BEFORE target if dragged was AFTER target
+            const insertIdx = draggedOriginalIndex < targetOriginalIndex ? i + 1 : i;
+            nodes.splice(insertIdx, 0, draggedNode!);
             return true;
           }
-          if (findAndInsertAt(nodes[i].children, nodes[i].children, 0)) return true;
+          if (findAndInsert(nodes[i].children)) return true;
         }
         return false;
       };
 
-      const removed = findAndRemove(clone);
-      if (!removed || !draggedNode) {
-        console.log("[MenuManagement] Drop: could not find/remove dragged node");
+      if (!findAndRemove(clone)) {
+        console.log("[MenuManagement] Drop: could not remove dragged node");
         return prev;
       }
 
-      const found = findAndInsertAt(clone, clone, 0);
-      if (!found) {
-        console.log("[MenuManagement] Drop: could not find target position");
+      if (!findAndInsert(clone)) {
+        console.log("[MenuManagement] Drop: could not insert at target");
         return prev;
       }
 
@@ -699,11 +736,31 @@ export function MenuManagementMigrationPage() {
     setTreeData((prev) => {
       const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
       let draggedNode: MenuNode | null = null;
+      let draggedOriginalIndex = -1;
+      let targetOriginalIndex = -1;
+
+      const findIndices = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === mobileDragCode) {
+            draggedOriginalIndex = i;
+            draggedNode = nodes[i];
+          }
+          if (nodes[i].code === targetCode) {
+            targetOriginalIndex = i;
+          }
+          if (draggedOriginalIndex >= 0 && targetOriginalIndex >= 0) {
+            return true;
+          }
+          if (findIndices(nodes[i].children)) return true;
+        }
+        return false;
+      };
+
+      if (!findIndices(clone) || !draggedNode) return prev;
 
       const findAndRemove = (nodes: MenuNode[]): boolean => {
         for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].code === mobileDragCode) {
-            draggedNode = nodes[i];
             nodes.splice(i, 1);
             return true;
           }
@@ -712,22 +769,20 @@ export function MenuManagementMigrationPage() {
         return false;
       };
 
-      const findAndInsertAt = (nodes: MenuNode[], parentArr: MenuNode[], startIndex: number): boolean => {
-        for (let i = startIndex; i < nodes.length; i++) {
+      const findAndInsert = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].code === targetCode) {
-            parentArr.splice(i, 0, draggedNode!);
+            const insertIdx = draggedOriginalIndex < targetOriginalIndex ? i + 1 : i;
+            nodes.splice(insertIdx, 0, draggedNode!);
             return true;
           }
-          if (findAndInsertAt(nodes[i].children, nodes[i].children, 0)) return true;
+          if (findAndInsert(nodes[i].children)) return true;
         }
         return false;
       };
 
-      const removed = findAndRemove(clone);
-      if (!removed || !draggedNode) return prev;
-
-      const found = findAndInsertAt(clone, clone, 0);
-      if (!found) return prev;
+      if (!findAndRemove(clone)) return prev;
+      if (!findAndInsert(clone)) return prev;
 
       updateMenuSortOrders(clone);
       console.log("[MenuManagement] Mobile drop complete, payload=", flattenMenuOrderPayload(clone).join(","));
@@ -810,15 +865,17 @@ const handleSaveOrder = async () => {
                   placeholder={en ? "Code, name, URL..." : "코드, 메뉴명, URL..."}
                 />
               </div>
-              <div className="flex items-end gap-2 self-stretch">
-                <button type="button" onClick={handleExpandAll} className="gov-btn gov-btn-outline h-full">
-                  <span className="material-symbols-outlined text-[16px]">unfold_more</span>
-                  <span className="hidden sm:inline">{en ? "Expand" : "펼치기"}</span>
-                </button>
-                <button type="button" onClick={handleCollapseAll} className="gov-btn gov-btn-outline h-full">
-                  <span className="material-symbols-outlined text-[16px]">unfold_less</span>
-                  <span className="hidden sm:inline">{en ? "Collapse" : "접기"}</span>
-                </button>
+              <div className="flex-1 flex flex-col justify-end">
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={handleExpandAll} className="gov-btn gov-btn-outline">
+                    <span className="material-symbols-outlined text-[16px]">unfold_more</span>
+                    <span className="hidden sm:inline">{en ? "Expand" : "펼치기"}</span>
+                  </button>
+                  <button type="button" onClick={handleCollapseAll} className="gov-btn gov-btn-outline">
+                    <span className="material-symbols-outlined text-[16px]">unfold_less</span>
+                    <span className="hidden sm:inline">{en ? "Collapse" : "접기"}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -861,14 +918,70 @@ const handleSaveOrder = async () => {
             <div className="gov-card overflow-hidden">
               <GridToolbar title={en ? "Add New Menu" : "새 메뉴 등록"} />
               <div className="p-4 space-y-4">
-                <div>
-                  <label className="gov-label">{en ? "Parent Menu" : "상위 메뉴"}</label>
-                  <ParentSelector treeData={treeData} value={parentCodeValue} onChange={setParentCodeValue} />
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isTopMenu}
+                      onChange={(e) => {
+                        setIsTopMenu(e.target.checked);
+                        if (e.target.checked) {
+                          // Auto-generate 4-char top menu code
+                          let maxSuffix = 0;
+                          const prefix = "A";
+                          menuCodeRows.forEach((row) => {
+                            if (row.code.length === 4 && row.code.startsWith(prefix)) {
+                              const suffix = Number(row.code.slice(1));
+                              if (Number.isFinite(suffix) && suffix > maxSuffix) {
+                                maxSuffix = suffix;
+                              }
+                            }
+                          });
+                          const newCode = `${prefix}${String(maxSuffix + 1).padStart(3, "0")}`;
+                          setParentCodeValue(newCode);
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-medium">{en ? "Create as Top Menu (4-char)" : "대메뉴로 등록 (4자리)"}</span>
+                  </label>
                 </div>
+
+                {isTopMenu ? (
+                  <div>
+                    <label className="gov-label">{en ? "Top Menu Code (4 chars)" : "대메뉴 코드 (4자리)"}</label>
+                    <input
+                      className="gov-input"
+                      maxLength={4}
+                      value={parentCodeValue}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+                        setParentCodeValue(val);
+                      }}
+                      placeholder={en ? "e.g. A009" : "예: A009"}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="gov-label">{en ? "Parent Menu" : "상위 메뉴"}</label>
+                    <ParentSelector
+                      treeData={treeData}
+                      value={parentCodeValue}
+                      onChange={(code) => {
+                        setParentCodeValue(code);
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="gov-label">{en ? "New Code" : "생성 코드"}</label>
-                  <input className="gov-input bg-gray-50" readOnly value={findSuggestedPageCode()} />
+                  <input
+                    className="gov-input bg-gray-50"
+                    readOnly
+                    value={isTopMenu ? parentCodeValue.toUpperCase() : findSuggestedPageCode()}
+                    placeholder={isTopMenu ? "" : (en ? "Select a parent menu first" : "상위 메뉴를 먼저 선택하세요")}
+                  />
                 </div>
 
                 <div>
