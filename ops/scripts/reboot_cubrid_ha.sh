@@ -88,7 +88,7 @@ echo "=== [2/6] Scaling down CUBRID HA cluster to 0 replicas (Clean Stop) ==="
 kubectl scale statefulset ${STS_NAME} -n ${NAMESPACE} --replicas=0
 
 echo "Waiting for pods to terminate..."
-while kubectl get pods -n ${NAMESPACE} -l app=${STS_NAME} 2>/dev/null | grep -q -E "Running|Terminating|Pending"; do
+while kubectl get pods -n ${NAMESPACE} -l app=cubrid-carbonet 2>/dev/null | grep -q -E "Running|Terminating|Pending"; do
   sleep 2
 done
 echo "All pods terminated."

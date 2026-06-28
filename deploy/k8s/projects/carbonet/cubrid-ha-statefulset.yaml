@@ -11,7 +11,7 @@ spec:
     - name: broker1
       port: 30000
     - name: broker2
-      port: 33000
+      port: 33001
 ---
 apiVersion: v1
 kind: Service
@@ -26,8 +26,8 @@ spec:
       port: 30000
       targetPort: 30000
     - name: broker2
-      port: 33000
-      targetPort: 33000
+      port: 33001
+      targetPort: 33001
   type: ClusterIP
 ---
 apiVersion: v1
@@ -93,9 +93,42 @@ data:
     printf '%s\n' \
       "[broker]" \
       "MASTER_SHM_ID=30001" \
-      "BROKER_PORT=${BROKER1_PORT}" \
-      "SERVICE=ON" \
+      "ADMIN_LOG_FILE=/var/lib/cubrid/CUBRID/log/admin.log" \
       > $CUBRID/conf/cubrid_broker.conf
+
+    printf '%s\n' \
+      "[%query_editor]" \
+      "SERVICE=ON" \
+      "SSL=OFF" \
+      "BROKER_PORT=30000" \
+      "MIN_NUM_APPL_SERVER=4" \
+      "MAX_NUM_APPL_SERVER=10" \
+      "APPL_SERVER_SHM_ID=30000" \
+      "LOG_DIR=/var/lib/cubrid/CUBRID/log/broker/sql_log" \
+      "ERROR_LOG_DIR=/var/lib/cubrid/CUBRID/log/broker/error_log" \
+      "SQL_LOG=OFF" \
+      "TIME_TO_KILL=60" \
+      "SESSION_TIMEOUT=600" \
+      "KEEP_CONNECTION=ON" \
+      "CCI_DEFAULT_AUTOCOMMIT=ON" \
+      >> $CUBRID/conf/cubrid_broker.conf
+
+    printf '%s\n' \
+      "[%BROKER2]" \
+      "SERVICE=ON" \
+      "SSL=OFF" \
+      "BROKER_PORT=33001" \
+      "MIN_NUM_APPL_SERVER=4" \
+      "MAX_NUM_APPL_SERVER=10" \
+      "APPL_SERVER_SHM_ID=33001" \
+      "LOG_DIR=/var/lib/cubrid/CUBRID/log/broker/sql_log_broker2" \
+      "ERROR_LOG_DIR=/var/lib/cubrid/CUBRID/log/broker/error_log_broker2" \
+      "SQL_LOG=OFF" \
+      "TIME_TO_KILL=60" \
+      "SESSION_TIMEOUT=600" \
+      "KEEP_CONNECTION=ON" \
+      "CCI_DEFAULT_AUTOCOMMIT=ON" \
+      >> $CUBRID/conf/cubrid_broker.conf
 
     echo "[INIT] Config files created"
 
@@ -117,15 +150,23 @@ data:
     cp -f $CUBRID_DATA/conf/cubrid.conf $CUBRID/conf/ 2>/dev/null || true
     cp -f $CUBRID_DATA/conf/cubrid_ha.conf $CUBRID/conf/ 2>/dev/null || true
     cp -f $CUBRID_DATA/conf/cubrid_broker.conf $CUBRID/conf/ 2>/dev/null || true
-    cp -f $CUBRID_DATA/databases.txt $CUBRID/databases/ 2>/dev/null || true
-    ls -la $CUBRID/conf/
+
+    if [ -f $CUBRID_DATA/databases/databases.txt ]; then
+        cp -f $CUBRID_DATA/databases/databases.txt $CUBRID/databases/
+    elif [ -f /var/lib/cubrid/databases/databases.txt ]; then
+        cp -f /var/lib/cubrid/databases/databases.txt $CUBRID/databases/
+    fi
 
     echo "[START] Starting CUBRID service..."
     $CUBRID/bin/cubrid service start || true
+    sleep 3
+
+    echo "[START] Starting database server..."
+    $CUBRID/bin/cubrid server start carbonet || true
     sleep 5
 
     echo "[START] CUBRID Status:"
-    $CUBRID/bin/cubrid_rel || true
+    $CUBRID/bin/cubrid server status all || true
 
     echo "[START] Done - keeping alive"
     tail -f /dev/null
@@ -265,7 +306,7 @@ spec:
             - name: broker1
               containerPort: 30000
             - name: broker2
-              containerPort: 33000
+              containerPort: 33001
           env:
             - name: POD_NAME
               valueFrom:
@@ -301,14 +342,14 @@ spec:
             failureThreshold: 60
           livenessProbe:
             tcpSocket:
-              port: 33000
+              port: 33001
             initialDelaySeconds: 120
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 6
           startupProbe:
             tcpSocket:
-              port: 33000
+              port: 33001
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
