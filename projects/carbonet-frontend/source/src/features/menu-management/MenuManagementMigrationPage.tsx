@@ -6,6 +6,7 @@ import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { MemberButton } from "../admin-ui/common";
 import { stringOf } from "../admin-system/adminSystemShared";
 import { GridToolbar, PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -417,12 +418,65 @@ function ParentSelector({
   );
 }
 
+type UseAtFilter = "" | "Y" | "N";
+
+type FilterChip = {
+  key: string;
+  label: string;
+  clear: () => void;
+};
+
+function UseAtFilterBar({
+  en,
+  useAtFilter,
+  onChange
+}: {
+  en: boolean;
+  useAtFilter: UseAtFilter;
+  onChange: (value: UseAtFilter) => void;
+}) {
+  return (
+    <section className="mb-4 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Use Filter" : "사용 필터"}</span>
+      <MemberButton onClick={() => onChange("")} type="button" variant={useAtFilter === "" ? "primary" : "secondary"}>{en ? "All" : "전체"}</MemberButton>
+      <MemberButton onClick={() => onChange("Y")} type="button" variant={useAtFilter === "Y" ? "primary" : "secondary"}>{en ? "Active" : "사용중"}</MemberButton>
+      <MemberButton onClick={() => onChange("N")} type="button" variant={useAtFilter === "N" ? "primary" : "secondary"}>{en ? "Inactive" : "미사용"}</MemberButton>
+    </section>
+  );
+}
+
+function ActiveFilterChipBar({
+  chips
+}: {
+  chips: FilterChip[];
+}) {
+  if (chips.length === 0) {
+    return null;
+  }
+  return (
+    <section className="mb-4 flex flex-wrap items-center gap-2">
+      {chips.map((chip) => (
+        <button
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--kr-gov-border-light)] bg-white px-3 py-1.5 text-sm text-[var(--kr-gov-text-primary)]"
+          key={chip.key}
+          onClick={chip.clear}
+          type="button"
+        >
+          <span>{chip.label}</span>
+          <span className="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      ))}
+    </section>
+  );
+}
+
 export function MenuManagementMigrationPage() {
   const en = isEnglish();
   const [menuType, setMenuType] = useState(readMenuTypeFromLocation());
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [useAtFilter, setUseAtFilter] = useState<UseAtFilter>("");
   const [parentCodeValue, setParentCodeValue] = useState("");
   const [codeNm, setCodeNm] = useState("");
   const [codeDc, setCodeDc] = useState("");
@@ -451,20 +505,25 @@ export function MenuManagementMigrationPage() {
   const menuCodeRows = useMemo(() => rows.map((row: Record<string, unknown>) => ({ code: stringOf(row, "code").toUpperCase() })), [rows]);
 
   const filteredTreeData = useMemo(() => {
-    if (!deferredSearchKeyword.trim()) return treeData;
-    const keyword = deferredSearchKeyword.toLowerCase();
     const filter = (nodes: MenuNode[]): MenuNode[] => {
       return nodes.reduce<MenuNode[]>((acc, node) => {
         const filteredChildren = filter(node.children);
-        const matches = [node.code, node.label, node.url, node.icon].join(" ").toLowerCase().includes(keyword);
-        if (matches || filteredChildren.length > 0) {
+        const matchesKeyword = !deferredSearchKeyword.trim() || [node.code, node.label, node.url, node.icon].join(" ").toLowerCase().includes(deferredSearchKeyword.toLowerCase());
+        const matchesUseAt = !useAtFilter || node.useAt === useAtFilter;
+        if (!matchesKeyword && filteredChildren.length === 0) {
+          return acc;
+        }
+        if (!matchesUseAt) {
+          return filteredChildren.length > 0 ? acc.concat({ ...node, children: filteredChildren }) : acc;
+        }
+        if (matchesKeyword) {
           acc.push({ ...node, children: filteredChildren });
         }
         return acc;
       }, []);
     };
     return filter(treeData);
-  }, [treeData, deferredSearchKeyword]);
+  }, [treeData, deferredSearchKeyword, useAtFilter]);
 
   useEffect(() => {
     if (!parentCodeValue && groupMenuOptions.length > 0) {
@@ -845,6 +904,24 @@ const handleSaveOrder = async () => {
         {pageState.error && <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice>}
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+          <UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
+            <ActiveFilterChipBar
+              chips={(
+                [
+                  searchKeyword ? {
+                    key: "search",
+                    label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
+                    clear: () => setSearchKeyword("")
+                  } : null,
+                  useAtFilter ? {
+                    key: "useAt",
+                    label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
+                    clear: () => setUseAtFilter("")
+                  } : null
+                ].filter((c): c is FilterChip => c !== null)
+              )}
+            />
+
           <div className="space-y-4">
             <div className="flex items-end gap-4">
               <div className="flex-1">
