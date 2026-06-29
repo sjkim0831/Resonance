@@ -8,6 +8,7 @@ import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { MemberButton } from "../admin-ui/common";
 import { numberOf, stringOf } from "./adminSystemShared";
 import { GovernanceCompressionNav } from "./GovernanceCompressionNav";
 import { CollectionResultPanel, GridToolbar, PageStatusNotice, SummaryMetricCard, WarningPanel } from "../admin-ui/common";
@@ -35,6 +36,58 @@ function readMenuTypeFromLocation() {
   return new URLSearchParams(window.location.search).get("menuType") || "ADMIN";
 }
 
+type UseAtFilter = "" | "Y" | "N";
+
+type FilterChip = {
+  key: string;
+  label: string;
+  clear: () => void;
+};
+
+function UseAtFilterBar({
+  en,
+  useAtFilter,
+  onChange
+}: {
+  en: boolean;
+  useAtFilter: UseAtFilter;
+  onChange: (value: UseAtFilter) => void;
+}) {
+  return (
+    <section className="mb-4 flex flex-wrap items-center gap-2">
+      <span className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Use Filter" : "사용 필터"}</span>
+      <MemberButton onClick={() => onChange("")} type="button" variant={useAtFilter === "" ? "primary" : "secondary"}>{en ? "All" : "전체"}</MemberButton>
+      <MemberButton onClick={() => onChange("Y")} type="button" variant={useAtFilter === "Y" ? "primary" : "secondary"}>{en ? "Active" : "사용중"}</MemberButton>
+      <MemberButton onClick={() => onChange("N")} type="button" variant={useAtFilter === "N" ? "primary" : "secondary"}>{en ? "Inactive" : "미사용"}</MemberButton>
+    </section>
+  );
+}
+
+function ActiveFilterChipBar({
+  chips
+}: {
+  chips: FilterChip[];
+}) {
+  if (chips.length === 0) {
+    return null;
+  }
+  return (
+    <section className="mb-4 flex flex-wrap items-center gap-2">
+      {chips.map((chip) => (
+        <button
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--kr-gov-border-light)] bg-white px-3 py-1.5 text-sm text-[var(--kr-gov-text-primary)]"
+          key={chip.key}
+          onClick={chip.clear}
+          type="button"
+        >
+          <span>{chip.label}</span>
+          <span className="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      ))}
+    </section>
+  );
+}
+
 function flattenNodes(items: MenuNode[], output: MenuNode[] = []) {
   items.forEach((item) => {
     output.push(item);
@@ -43,23 +96,23 @@ function flattenNodes(items: MenuNode[], output: MenuNode[] = []) {
   return output;
 }
 
-function filterTree(nodes: MenuNode[], keyword: string): MenuNode[] {
-  if (!keyword) {
-    return nodes;
-  }
-  const normalizedKeyword = keyword.trim().toLowerCase();
+function filterTree(nodes: MenuNode[], keyword: string, useAtFilter: UseAtFilter = ""): MenuNode[] {
   return nodes.flatMap((node): MenuNode[] => {
-    const filteredChildren: MenuNode[] = filterTree(node.children, keyword);
-    const matches = [
+    const filteredChildren: MenuNode[] = filterTree(node.children, keyword, useAtFilter);
+    const matchesKeyword = !keyword || [
       node.code,
       node.label,
       node.url,
       node.icon,
       node.useAt,
       node.expsrAt
-    ].join(" ").toLowerCase().includes(normalizedKeyword);
-    if (!matches && filteredChildren.length === 0) {
+    ].join(" ").toLowerCase().includes(keyword.trim().toLowerCase());
+    const matchesUseAt = !useAtFilter || node.useAt === useAtFilter;
+    if (!matchesKeyword && filteredChildren.length === 0) {
       return [];
+    }
+    if (!matchesUseAt) {
+      return filteredChildren.length > 0 ? [{ ...node, children: filteredChildren }] : [];
     }
     return [{ ...node, children: filteredChildren }];
   });
@@ -115,6 +168,7 @@ export function MenuManagementMigrationPage() {
   const [actionError, setActionError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [useAtFilter, setUseAtFilter] = useState<UseAtFilter>("");
   const [parentCodeValue, setParentCodeValue] = useState("");
   const [codeNm, setCodeNm] = useState("");
   const [codeDc, setCodeDc] = useState("");
@@ -135,7 +189,7 @@ export function MenuManagementMigrationPage() {
   const menuCodeRows = useMemo(() => rows.map((row) => ({ code: stringOf(row, "code").toUpperCase() })), [rows]);
 
   const originalSnapshot = useMemo(() => buildSnapshot(rows), [rows]);
-  const filteredTreeData = useMemo(() => filterTree(treeData, deferredSearchKeyword), [deferredSearchKeyword, treeData]);
+  const filteredTreeData = useMemo(() => filterTree(treeData, deferredSearchKeyword, useAtFilter), [deferredSearchKeyword, treeData, useAtFilter]);
   const visibleNodes = useMemo(() => flattenNodes(filteredTreeData), [filteredTreeData]);
   const allNodes = useMemo(() => flattenNodes(treeData), [treeData]);
 
@@ -509,7 +563,24 @@ export function MenuManagementMigrationPage() {
                 <li>{en ? "Do not create a page registry entry unless the binding URL already matches the intended install lane." : "바인딩 URL이 목표 설치 레인과 맞지 않으면 페이지 레지스트리 엔트리를 만들지 않습니다."}</li>
               </ul>
             </div>
-          </div>
+<UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
+          <ActiveFilterChipBar
+            chips={(
+              [
+                searchKeyword ? {
+                  key: "search",
+                  label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
+                  clear: () => setSearchKeyword("")
+                } : null,
+                useAtFilter ? {
+                  key: "useAt",
+                  label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
+                  clear: () => setUseAtFilter("")
+                } : null
+              ].filter((c): c is FilterChip => c !== null)
+            )}
+          />
+        </div>
         </CollectionResultPanel>
 
         <CollectionResultPanel
