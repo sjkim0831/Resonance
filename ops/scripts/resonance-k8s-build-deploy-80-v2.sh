@@ -16,7 +16,7 @@ DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 PROJECT_ID="${PROJECT_ID:-P003}"
-CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
+CUBRID_HOST="${CUBRID_HOST:-cubrid-ha-0.cubrid-ha-internal.${NAMESPACE}.svc.cluster.local}"
 IMAGE_NAME="${IMAGE_NAME:-registry.local/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-kubeadm)}"
 SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
 DRY_RUN="${DRY_RUN:-false}"
@@ -203,7 +203,7 @@ preflight_check() {
   
   echo -n "  Nodes: "
   local nr
-  nr="$(kubectl get nodes --no-headers 2>/dev/null | grep -v Ready | wc -l)"
+  nr="$(kubectl get nodes --no-headers 2>/dev/null | grep -v Ready | wc -l)" || true
   if [[ "$nr" -eq 0 ]]; then
     echo -e "${GREEN}OK${NC}"
   else
@@ -249,20 +249,25 @@ preflight_check() {
 
 validate_frontend() {
   local d="$MAVEN_DIR/../projects/carbonet-frontend/target/classes/static/react-app"
-  [[ -d "$d" ]] || d="$FRONTEND_DIR/dist"
-  
+  if [[ ! -d "$d" || ! -f "$d/index.html" ]]; then
+    d="$OVERLAY_HOST_PATH"
+  fi
+  if [[ ! -d "$d" || ! -f "$d/index.html" ]]; then
+    d="$FRONTEND_DIR/dist"
+  fi
+
   if [[ ! -f "$d/index.html" ]]; then
     rollback_and_fail "FRONTEND_BUILD_INCOMPLETE" \
       "Missing index.html in build output" \
       "cd $FRONTEND_DIR && npm run build 2>&1 | tail -50"
   fi
-  
+
   if [[ ! -d "$d/assets" ]]; then
     rollback_and_fail "FRONTEND_BUILD_INCOMPLETE" \
       "Missing assets directory in build output" \
       "cd $FRONTEND_DIR && npm run build 2>&1 | tail -50"
   fi
-  
+
   log_success "Frontend validation passed"
 }
 
@@ -313,8 +318,8 @@ build_frontend() {
   
   local start_time=$(date +%s)
   
-  if [[ "$INCREMENTAL" == "true" && -d "$FRONTEND_DIR/node_modules" ]]; then
-    log "Using incremental build (node_modules exists)"
+  if [[ -d "$FRONTEND_DIR/node_modules" ]]; then
+    log "Using incremental build (node_modules exists, skipping npm ci)"
     log_cmd "cd $FRONTEND_DIR && npm run build"
     cd "$FRONTEND_DIR" && npm run build > >(tee "$FRONTEND_ERROR_LOG") 2>&1 || {
       log_error "Frontend build failed"
@@ -349,25 +354,42 @@ sync_overlay() {
     return
   fi
   
-  local src="$MAVEN_DIR/../projects/carbonet-frontend/target/classes/static/react-app"
-  [[ -d "$src" ]] || src="$FRONTEND_DIR/dist"
-  
-  if [[ ! -d "$src" ]]; then
+  local src="$FRONTEND_DIR/dist"
+  if [[ ! -d "$src" || ! -f "$src/index.html" ]]; then
+    src="$OVERLAY_HOST_PATH"
+  fi
+
+  if [[ ! -d "$src" || ! -f "$src/index.html" ]]; then
     rollback_and_fail "OVERLAY_SYNC_FAILED" \
       "Build source not found: $src" \
       "Check build output directory"
   fi
   
-  log_cmd "rsync -av --delete '$src/' '$OVERLAY_HOST_PATH/'"
-  rsync -av --delete "$src/" "$OVERLAY_HOST_PATH/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
-    log_error "rsync failed, trying with root"
-    root_cmd rsync -av --delete "$src/" "$OVERLAY_HOST_PATH/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
-      rollback_and_fail "OVERLAY_SYNC_FAILED" \
-        "rsync to overlay failed" \
-        "rsync -av --delete '$src/' '$OVERLAY_HOST_PATH/'"
+  if [[ "$src" != "$OVERLAY_HOST_PATH" ]]; then
+    log_cmd "rsync -av --delete '$src/' '$OVERLAY_HOST_PATH/'"
+    rsync -av --delete "$src/" "$OVERLAY_HOST_PATH/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
+      log_error "rsync failed, trying with root"
+      root_cmd rsync -av --delete "$src/" "$OVERLAY_HOST_PATH/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
+        rollback_and_fail "OVERLAY_SYNC_FAILED" \
+          "rsync to overlay failed" \
+          "rsync -av --delete '$src/' '$OVERLAY_HOST_PATH/'"
+      }
     }
-  }
-  
+  else
+    log "Build output already at overlay path, skipping rsync"
+  fi
+
+  local runtime_path="/opt/Resonance/data/carbonet-app/react-app"
+  if [[ -d "$runtime_path" ]]; then
+    log_cmd "rsync -av --delete '$OVERLAY_HOST_PATH/' '$runtime_path/'"
+    rsync -av --delete "$OVERLAY_HOST_PATH/" "$runtime_path/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
+      log_error "rsync to runtime path failed, trying with root"
+      root_cmd rsync -av --delete "$OVERLAY_HOST_PATH/" "$runtime_path/" >> "$DIAGNOSTIC_LOG" 2>&1 || {
+        log_warning "rsync to runtime path failed but continuing"
+      }
+    }
+  fi
+
   validate_overlay
   
   local cnt
@@ -470,14 +492,40 @@ build_image() {
       "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR 2>&1 | tail -50"
   fi
   
-  log_detail "Importing to containerd..."
-  if root_cmd sh -c "docker save '$IMAGE_NAME' | ctr -n k8s.io images import -" >> "$DIAGNOSTIC_LOG" 2>&1; then
-    log_success "Image imported to containerd"
-  else
-    rollback_and_fail "CTR_IMPORT_FAILED" \
-      "Failed to import image to containerd" \
-      "docker save '$IMAGE_NAME' | ctr -n k8s.io images import -"
+log_detail "Importing to containerd..."
+  local import_success=false
+  local import_err="/opt/Resonance/var/run/ctr-import-$$.log"
+  local tmp_tar="/opt/Resonance/var/run/docker-save-$$.tar"
+  
+  for ((i=1; i<=3; i++)); do
+    rm -f "$import_err" "$tmp_tar" 2>/dev/null || true
+    if sudo docker save "$IMAGE_NAME" > "$tmp_tar" 2>/dev/null && \
+       sudo ctr -n k8s.io images import "$tmp_tar" > "$import_err" 2>&1; then
+      sudo rm -f "$tmp_tar" 2>/dev/null || true
+      import_success=true
+      break
+    fi
+    log_warning "Import attempt $i failed, retrying in ${i}0s..."
+    cat "$import_err" >> "$DIAGNOSTIC_LOG" 2>/dev/null
+    sleep ${i}0
+  done
+  
+  if ! "$import_success"; then
+    log_error "Image import failed after 3 attempts, trying pipe method..."
+    if sudo docker save "$IMAGE_NAME" | sudo ctr -n k8s.io images import - > "$import_err" 2>&1; then
+      import_success=true
+    fi
   fi
+  
+  sudo rm -f "$tmp_tar" 2>/dev/null || true
+  rm -f "$import_err"
+  
+  if ! "$import_success"; then
+    rollback_and_fail "CTR_IMPORT_FAILED" \
+      "Failed to import image to containerd after retries" \
+      "sudo docker save '$IMAGE_NAME' | sudo ctr -n k8s.io images import -"
+  fi
+  log_success "Image imported to containerd"
   
   local elapsed=$(( $(date +%s) - start_time ))
   log_success "Image built and imported in ${elapsed}s"
@@ -486,11 +534,38 @@ build_image() {
 rollout_image() {
   log_step "Rollout"
   
+  local image_sha
+  image_sha="$(root_cmd sh -c "docker inspect '$IMAGE_NAME' --format='{{.Id}}' 2>/dev/null" | sed 's/sha256://' | cut -c1-12)" || image_sha=""
+  
   log_cmd "ctr images list | grep $IMAGE_NAME"
-  if ! root_cmd ctr images list 2>/dev/null | grep -q "$IMAGE_NAME"; then
+  local ctr_found=false
+  
+  if [[ -n "$image_sha" ]]; then
+    if root_cmd ctr images list 2>/dev/null | grep -q "$image_sha"; then
+      ctr_found=true
+      log_success "Image verified in containerd (SHA: ${image_sha:0:12})"
+    fi
+  fi
+  
+  if ! "$ctr_found"; then
+    if root_cmd ctr images list 2>/dev/null | grep -q "$IMAGE_NAME"; then
+      ctr_found=true
+      log_success "Image verified in containerd"
+    fi
+  fi
+  
+  if ! "$ctr_found"; then
+    log_warning "Image not immediately visible in containerd, attempting pull..."
+    if root_cmd ctr images pull "$IMAGE_NAME" 2>/dev/null; then
+      ctr_found=true
+      log_success "Image pulled to containerd"
+    fi
+  fi
+  
+  if ! "$ctr_found"; then
     rollback_and_fail "IMAGE_NOT_FOUND" \
       "Image not found in containerd: $IMAGE_NAME" \
-      "ctr images list | grep $IMAGE_NAME"
+      "ctr images list | grep $IMAGE_NAME; docker images | grep $IMAGE_NAME"
   fi
   
   log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
@@ -648,9 +723,34 @@ main() {
     preflight_check
   fi
   
-  build_frontend
+  log_step "Parallel Build (Frontend + Maven)"
+  local build_start=$(date +%s)
+  
+  local frontend_pid="" maven_pid="" frontend_exit=0 maven_exit=0
+  
+  build_frontend &
+  frontend_pid=$!
+  
+  build_maven &
+  maven_pid=$!
+  
+  log "Waiting for frontend (PID: $frontend_pid) and maven (PID: $maven_pid)..."
+  
+  wait $frontend_pid || frontend_exit=$?
+  wait $maven_pid || maven_exit=$?
+  
+  local build_elapsed=$(( $(date +%s) - build_start ))
+  log_success "Parallel build completed in ${build_elapsed}s (frontend: exit=$frontend_exit, maven: exit=$maven_exit)"
+  
+  if [[ "$frontend_exit" -ne 0 ]]; then
+    rollback_and_fail "FRONTEND_BUILD_FAILED" "Frontend build failed (exit: $frontend_exit)" "Check $FRONTEND_ERROR_LOG"
+  fi
+  
+  if [[ "$maven_exit" -ne 0 ]]; then
+    rollback_and_fail "MAVEN_BUILD_FAILED" "Maven build failed (exit: $maven_exit)" "Check $MAVEN_ERROR_LOG"
+  fi
+  
   sync_overlay
-  build_maven
   build_image
   rollout_image
   ensure_pdb

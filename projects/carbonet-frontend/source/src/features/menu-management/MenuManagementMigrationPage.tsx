@@ -6,10 +6,8 @@ import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
-import { MemberButton } from "../admin-ui/common";
+import { AdminInput, AdminSelect, GridToolbar } from "../admin-ui/common";
 import { stringOf } from "../admin-system/adminSystemShared";
-import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
-import { GridToolbar, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { buildMenuTree, buildSuggestedPageCode, flattenMenuOrderPayload, type MenuTreeNode, updateMenuSortOrders } from "./menuTreeShared";
 
@@ -419,65 +417,11 @@ function ParentSelector({
   );
 }
 
-type UseAtFilter = "" | "Y" | "N";
-
-type FilterChip = {
-  key: string;
-  label: string;
-  clear: () => void;
-};
-
-function UseAtFilterBar({
-  en,
-  useAtFilter,
-  onChange
-}: {
-  en: boolean;
-  useAtFilter: UseAtFilter;
-  onChange: (value: UseAtFilter) => void;
-}) {
-  return (
-    <section className="mb-4 flex flex-wrap items-center gap-2">
-      <span className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Use Filter" : "사용 필터"}</span>
-      <MemberButton onClick={() => onChange("")} type="button" variant={useAtFilter === "" ? "primary" : "secondary"}>{en ? "All" : "전체"}</MemberButton>
-      <MemberButton onClick={() => onChange("Y")} type="button" variant={useAtFilter === "Y" ? "primary" : "secondary"}>{en ? "Active" : "사용중"}</MemberButton>
-      <MemberButton onClick={() => onChange("N")} type="button" variant={useAtFilter === "N" ? "primary" : "secondary"}>{en ? "Inactive" : "미사용"}</MemberButton>
-    </section>
-  );
-}
-
-function ActiveFilterChipBar({
-  chips
-}: {
-  chips: FilterChip[];
-}) {
-  if (chips.length === 0) {
-    return null;
-  }
-  return (
-    <section className="mb-4 flex flex-wrap items-center gap-2">
-      {chips.map((chip) => (
-        <button
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--kr-gov-border-light)] bg-white px-3 py-1.5 text-sm text-[var(--kr-gov-text-primary)]"
-          key={chip.key}
-          onClick={chip.clear}
-          type="button"
-        >
-          <span>{chip.label}</span>
-          <span className="material-symbols-outlined text-[16px]">close</span>
-        </button>
-      ))}
-    </section>
-  );
-}
-
 export function MenuManagementMigrationPage() {
   const en = isEnglish();
   const [menuType, setMenuType] = useState(readMenuTypeFromLocation());
-  const [actionError, setActionError] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [useAtFilter, setUseAtFilter] = useState<UseAtFilter>("");
+  const [useAtFilter] = useState("");
   const [parentCodeValue, setParentCodeValue] = useState("");
   const [codeNm, setCodeNm] = useState("");
   const [codeDc, setCodeDc] = useState("");
@@ -537,8 +481,6 @@ export function MenuManagementMigrationPage() {
   }, [rows]);
 
   useEffect(() => {
-    setActionError("");
-    setActionMessage("");
     setCodeNm("");
     setCodeDc("");
     setMenuUrl("");
@@ -582,8 +524,6 @@ export function MenuManagementMigrationPage() {
   }, []);
 
   const handleUpdateMenu = async (code: string, label: string, url: string) => {
-    setActionError("");
-    setActionMessage("");
     const body = new URLSearchParams();
     body.set("menuType", menuType);
     body.set("code", code);
@@ -595,17 +535,14 @@ export function MenuManagementMigrationPage() {
         body
       );
       refreshAdminMenuTree();
-      setActionMessage(en ? "Menu updated successfully." : "메뉴가 수정되었습니다.");
       window.location.reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to update menu.");
+      console.error("Failed to update menu:", err);
     }
   };
 
   const handleDeleteMenu = async (code: string) => {
     if (!confirm(en ? "Delete this menu?" : "이 메뉴를 삭제하시겠습니까?")) return;
-    setActionError("");
-    setActionMessage("");
     const body = new URLSearchParams();
     body.set("menuType", menuType);
     body.set("code", code);
@@ -615,10 +552,9 @@ export function MenuManagementMigrationPage() {
         body
       );
       refreshAdminMenuTree();
-      setActionMessage(en ? "Menu deleted." : "메뉴가 삭제되었습니다.");
       window.location.reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to delete menu.");
+      console.error("Failed to delete menu:", err);
     }
   };
 
@@ -644,16 +580,14 @@ export function MenuManagementMigrationPage() {
   const handleCreatePage = async () => {
     const error = validateCreateForm();
     if (error) {
-      setActionError(error);
+      alert(error);
       return;
     }
-    setActionError("");
-    setActionMessage("");
     const body = new URLSearchParams();
     body.set("menuType", menuType);
     if (isTopMenu) {
       body.set("isTopMenu", "true");
-      body.set("directCode", parentCodeValue);  // User-inputted 4-char code
+      body.set("directCode", parentCodeValue);
     } else {
       body.set("parentCode", parentCodeValue);
     }
@@ -671,13 +605,12 @@ export function MenuManagementMigrationPage() {
         throw new Error(result.message || "Failed");
       }
       refreshAdminMenuTree();
-      setActionMessage(result.message || (en ? "Menu created." : "메뉴가 생성되었습니다."));
       setCodeNm("");
       setCodeDc("");
       setMenuUrl("");
       window.location.reload();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to create menu.");
+      console.error("Failed to create menu:", err);
     }
   };
 
@@ -835,11 +768,9 @@ export function MenuManagementMigrationPage() {
 
 const handleSaveOrder = async () => {
     if (pageState.loading) {
-      setActionError(en ? "Page is still loading. Please wait." : "페이지 로딩 중입니다. 잠시만 기다려주세요.");
+      alert(en ? "Page is still loading. Please wait." : "페이지 로딩 중입니다. 잠시만 기다려주세요.");
       return;
     }
-    setActionError("");
-    setActionMessage("");
     const prefix = menuType === "ADMIN" ? "A" : menuType === "USER" ? "H" : "";
     const allCodes = flattenMenuOrderPayload(treeData);
     const filteredCodes = prefix ? flattenMenuOrderPayload(treeData, [], prefix) : allCodes;
@@ -848,7 +779,7 @@ const handleSaveOrder = async () => {
     console.log("[MenuManagement] Saving order, menuType=", menuType, "prefix=", prefix, "total:", allCodes.length, "filtered:", codesOnly.length);
     console.log("[MenuManagement] Filtered codes:", codesOnly.join(","));
     if (codesOnly.length === 0) {
-      setActionError(en ? "No menu to save." : "저장할 메뉴가 없습니다.");
+      alert(en ? "No menu to save." : "저장할 메뉴가 없습니다.");
       return;
     }
     const body = new URLSearchParams();
@@ -861,14 +792,12 @@ const handleSaveOrder = async () => {
       );
       console.log("[MenuManagement] Save order response:", result);
       if (result.success !== true) {
-        setActionError(result.message || (en ? "Failed to save order." : "순서 저장에 실패했습니다."));
+        alert(result.message || (en ? "Failed to save order." : "순서 저장에 실패했습니다."));
         return;
       }
       refreshAdminMenuTree();
-      setActionMessage(result.message || (en ? "Order saved." : "순서가 저장되었습니다."));
     } catch (err) {
       console.error("[MenuManagement] Save order error:", err);
-      setActionError(err instanceof Error ? err.message : "Failed to save order.");
     }
   };
 
@@ -881,40 +810,26 @@ const handleSaveOrder = async () => {
       ]}
       title={en ? "Menu Management" : "메뉴 관리"}
     >
-      <GovernanceCompressionNav activeId="menu" en={en} />
-
-      {actionMessage && <PageStatusNotice tone="success">{actionMessage}</PageStatusNotice>}
-      {actionError && <PageStatusNotice tone="error">{actionError}</PageStatusNotice>}
-      {pageState.error && <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice>}
-
-      <UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
-
-      <ActiveFilterChipBar
-        chips={(
-          [
-            searchKeyword ? {
-              key: "search",
-              label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
-              clear: () => setSearchKeyword("")
-            } : null,
-            useAtFilter ? {
-              key: "useAt",
-              label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
-              clear: () => setUseAtFilter("")
-            } : null
-          ].filter((c): c is FilterChip => c !== null)
-        )}
-      />
-
-      <section className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
-        <SummaryMetricCard title={en ? "Menu Nodes" : "메뉴 노드"} value={`${filteredTreeData.length} / ${treeData.length}`} />
-        <SummaryMetricCard title={en ? "Current Lane" : "현재 레인"} value={menuType} />
-        <SummaryMetricCard title={en ? "Filter Active" : "필터 활성"} value={useAtFilter ? (useAtFilter === "Y" ? (en ? "Yes" : "사용") : (en ? "No" : "미사용")) : (en ? "All" : "전체")} />
-        <SummaryMetricCard title={en ? "Selected Type" : "선택 유형"} value={menuType} />
-      </section>
-
       <AdminWorkspacePageFrame>
-<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <section className="gov-card mb-4" data-help-id="menu-management-search">
+          <GridToolbar className="mb-4" title={en ? "Search" : "검색"} />
+          <div className="grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <label className="gov-label" htmlFor="menuSearch">{en ? "Search menus" : "메뉴 검색"}</label>
+              <AdminInput id="menuSearch" onChange={(event) => setSearchKeyword(event.target.value)} placeholder={en ? "Code, name, URL..." : "코드, 메뉴명, URL..."} value={searchKeyword} />
+            </div>
+            <div>
+              <label className="gov-label" htmlFor="menuType">{en ? "Menu Type" : "메뉴 유형"}</label>
+              <AdminSelect id="menuType" onChange={(event) => setMenuType(event.target.value)} value={menuType}>
+                {menuTypes.map((t) => (
+                  <option key={stringOf(t, "value")} value={stringOf(t, "value")}>{stringOf(t, "label")}</option>
+                ))}
+              </AdminSelect>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <section className="gov-card" data-help-id="menu-management-tree">
             <GridToolbar
               actions={
@@ -928,27 +843,6 @@ const handleSaveOrder = async () => {
               className="mb-4"
               title={en ? "Menu Tree" : "메뉴 트리"}
             />
-
-            <div className="mb-4 grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <label className="gov-label" htmlFor="menuType">{en ? "Menu Type" : "메뉴 유형"}</label>
-                <select className="gov-select" id="menuType" value={menuType} onChange={(e) => setMenuType(e.target.value)}>
-                  {menuTypes.map((t) => (
-                    <option key={stringOf(t, "value")} value={stringOf(t, "value")}>{stringOf(t, "label")}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="gov-label" htmlFor="menuSearch">{en ? "Search" : "검색"}</label>
-                <input
-                  className="gov-input"
-                  id="menuSearch"
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder={en ? "Code, name, URL..." : "코드, 메뉴명, URL..."}
-                />
-              </div>
-            </div>
 
             <div className="max-h-[60vh] overflow-y-auto" onDragOver={(e) => e.preventDefault()}>
               {filteredTreeData.length === 0 ? (
@@ -965,7 +859,7 @@ const handleSaveOrder = async () => {
                   onDragStart={handleDragStart}
                   onDrop={handleDrop}
                   mobileDragCode={mobileDragCode}
-                  onMobileDragStart={handleMobileDragStart}
+onMobileDragStart={handleMobileDragStart}
                   onMobileDrop={handleMobileDrop}
                 />
               )}
