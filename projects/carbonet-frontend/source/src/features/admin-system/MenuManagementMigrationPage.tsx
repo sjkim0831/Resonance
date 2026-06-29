@@ -566,11 +566,6 @@ export function MenuManagementMigrationPage() {
 </div>
         </CollectionResultPanel>
 
-        <CollectionResultPanel
-          data-help-id="menu-management-scope"
-          icon="tune"
-          title={en ? "Registry Scope and Search" : "레지스트리 범위와 검색"}
-        >
         <UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
         <ActiveFilterChipBar
           chips={(
@@ -588,23 +583,23 @@ export function MenuManagementMigrationPage() {
             ].filter((c): c is FilterChip => c !== null)
           )}
         />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr] xl:grid-cols-[16rem_1fr_1.2fr] items-end">
-          <div>
-            <label className="gov-label" htmlFor="menuType">{en ? "Registry Lane" : "레지스트리 레인"}</label>
-            <select className="gov-select" id="menuType" value={menuType} onChange={(event) => setMenuType(event.target.value)}>
-              {menuTypes.map((type) => (
-                <option key={stringOf(type, "value")} value={stringOf(type, "value")}>{stringOf(type, "label")}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="gov-label" htmlFor="menuSearchKeyword">{en ? "Search registry tree" : "레지스트리 트리 검색"}</label>
-            <input className="gov-input" id="menuSearchKeyword" onChange={(event) => setSearchKeyword(event.target.value)} placeholder={en ? "Menu code, name, URL" : "메뉴 코드, 메뉴명, URL"} value={searchKeyword} />
-          </div>
-        </div>
-        </CollectionResultPanel>
 
-        <section className="gov-card overflow-hidden p-0" data-help-id="menu-management-register">
+          <section className="mb-4 grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 md:grid-cols-[16rem_1fr] xl:grid-cols-[16rem_1fr_1.2fr]">
+            <div>
+              <label className="gov-label" htmlFor="menuType">{en ? "Registry Lane" : "레지스트리 레인"}</label>
+              <select className="gov-select" id="menuType" value={menuType} onChange={(event) => setMenuType(event.target.value)}>
+                {menuTypes.map((type) => (
+                  <option key={stringOf(type, "value")} value={stringOf(type, "value")}>{stringOf(type, "label")}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="gov-label" htmlFor="menuSearchKeyword">{en ? "Search registry tree" : "레지스트리 트리 검색"}</label>
+              <input className="gov-input" id="menuSearchKeyword" onChange={(event) => setSearchKeyword(event.target.value)} placeholder={en ? "Menu code, name, URL" : "메뉴 코드, 메뉴명, URL"} value={searchKeyword} />
+            </div>
+          </section>
+
+          <section className="gov-card overflow-hidden p-0" data-help-id="menu-management-register">
           <GridToolbar
             title={en ? "Registry Intake" : "레지스트리 인테이크"}
           />
