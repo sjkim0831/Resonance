@@ -9,6 +9,7 @@ export type MenuTreeNode = {
   children: MenuTreeNode[];
   useAt?: string;
   expsrAt?: string;
+  dependentScreenCode?: string;
 };
 
 type BuildMenuTreeOptions = {
@@ -16,6 +17,7 @@ type BuildMenuTreeOptions = {
   mapUrl?: (value: string) => string;
   includeUseAt?: boolean;
   includeExposure?: boolean;
+  includeDependentScreen?: boolean;
 };
 
 export function parentMenuCode(code: string) {
@@ -31,7 +33,8 @@ export function buildMenuTree(rows: Array<Record<string, unknown>>, options: Bui
     labelKeys = ["codeNm", "codeDc", "code"],
     mapUrl = (value) => value,
     includeUseAt = false,
-    includeExposure = false
+    includeExposure = false,
+    includeDependentScreen = false
   } = options;
   const nodes = new Map<string, MenuTreeNode>();
   rows.forEach((row) => {
@@ -48,7 +51,8 @@ export function buildMenuTree(rows: Array<Record<string, unknown>>, options: Bui
       sortOrdr: numberOf(row, "sortOrdr"),
       children: [],
       ...(includeUseAt ? { useAt: stringOf(row, "useAt") || "Y" } : {}),
-      ...(includeExposure ? { expsrAt: stringOf(row, "expsrAt") || "Y" } : {})
+      ...(includeExposure ? { expsrAt: stringOf(row, "expsrAt") || "Y" } : {}),
+      ...(includeDependentScreen ? { dependentScreenCode: stringOf(row, "dependentScreenCode") || undefined } : {})
     });
   });
 

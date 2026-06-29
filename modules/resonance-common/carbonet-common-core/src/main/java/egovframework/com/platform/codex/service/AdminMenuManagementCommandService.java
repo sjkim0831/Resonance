@@ -801,7 +801,10 @@ public class AdminMenuManagementCommandService {
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
-            menuInfoMapper.updateMenuExposure(safeString(menuCode).toUpperCase(Locale.ROOT), safeString(expsrAt).toUpperCase(Locale.ROOT));
+            String normalizedMenuCode = safeString(menuCode).toUpperCase(Locale.ROOT);
+            String normalizedExpsrAt = safeString(expsrAt).toUpperCase(Locale.ROOT);
+            log.info("[MenuExposure] Toggle: menuCode={}, expsrAt={}", normalizedMenuCode, normalizedExpsrAt);
+            menuInfoMapper.updateMenuExposure(normalizedMenuCode, normalizedExpsrAt);
             menuInfoCommandService.invalidateCache();
             response.put("success", true);
             response.put("message", isEn ? "Menu exposure toggled" : "메뉴 표시 여부가 변경되었습니다.");
@@ -823,7 +826,10 @@ public class AdminMenuManagementCommandService {
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
-            menuInfoMapper.updateDependentScreenCode(safeString(menuCode).toUpperCase(Locale.ROOT), safeString(dependentScreenCode));
+            String normalizedMenuCode = safeString(menuCode).toUpperCase(Locale.ROOT);
+            String normalizedDependentCode = safeString(dependentScreenCode);
+            log.info("[DependentScreen] Update: menuCode={}, dependentScreenCode={}", normalizedMenuCode, normalizedDependentCode);
+            menuInfoMapper.updateDependentScreenCode(normalizedMenuCode, normalizedDependentCode);
             menuInfoCommandService.invalidateCache();
             response.put("success", true);
             response.put("message", isEn ? "Dependent screen updated" : "종속 화면이 설정되었습니다.");

@@ -260,6 +260,15 @@ function EditableMenuItem({
                     {en ? "Map Screen" : "화면매핑"}
                   </button>
                 )}
+                {node.dependentScreenCode && (
+                  <span
+                    className="gov-chip bg-blue-100 text-blue-700 border border-blue-300"
+                    title={en ? `Dependent screen: ${node.dependentScreenCode}` : `종속 화면: ${node.dependentScreenCode}`}
+                  >
+                    <span className="material-symbols-outlined text-[14px] mr-1">link</span>
+                    {node.dependentScreenCode}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 truncate">{node.url || (en ? "No URL" : "URL 없음")}</p>
             </div>
@@ -528,7 +537,7 @@ export function MenuManagementMigrationPage() {
   }, [groupMenuOptions, parentCodeValue]);
 
   useEffect(() => {
-    setTreeData(buildMenuTree(rows, { includeExposure: true, includeUseAt: true, mapUrl: (v) => v }));
+    setTreeData(buildMenuTree(rows, { includeExposure: true, includeUseAt: true, includeDependentScreen: true, mapUrl: (v) => v }));
   }, [rows]);
 
   useEffect(() => {
@@ -674,6 +683,24 @@ export function MenuManagementMigrationPage() {
   const handleOpenDependentScreenPopup = (code: string, label: string) => {
     setSelectedMenuForDependent({ code, label });
     setIsDependentPopupOpen(true);
+  };
+
+  // Handle dependent screen set - update tree data immediately
+  const handleDependentScreenSet = (menuCode: string, dependentScreenCode: string) => {
+    setTreeData(prev => {
+      const updateNode = (nodes: MenuNode[]): MenuNode[] => {
+        return nodes.map(node => {
+          if (node.code === menuCode) {
+            return { ...node, dependentScreenCode: dependentScreenCode || undefined };
+          }
+          if (node.children.length > 0) {
+            return { ...node, children: updateNode(node.children) };
+          }
+          return node;
+        });
+      };
+      return updateNode(prev);
+    });
   };
 
   const findSuggestedPageCode = () => buildSuggestedPageCode(parentCodeValue, menuCodeRows);
@@ -1128,7 +1155,7 @@ export function MenuManagementMigrationPage() {
         menuCode={selectedMenuForDependent?.code || ""}
         menuLabel={selectedMenuForDependent?.label || ""}
         treeData={treeData}
-        onSuccess={() => pageState.reload()}
+        onDependentScreenSet={handleDependentScreenSet}
       />
     </AdminPageShell>
   );

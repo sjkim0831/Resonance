@@ -12,6 +12,18 @@ interface DependentScreenSelectPopupProps {
   treeData: MenuTreeNode[];
   currentDependentCode?: string;
   onSuccess?: () => void;
+  onDependentScreenSet?: (menuCode: string, dependentScreenCode: string) => void;
+}
+
+function findNodeByCode(nodes: MenuTreeNode[], code: string): MenuTreeNode | null {
+  for (const node of nodes) {
+    if (node.code === code) return node;
+    if (node.children.length > 0) {
+      const found = findNodeByCode(node.children, code);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 export function DependentScreenSelectPopup({
@@ -21,16 +33,24 @@ export function DependentScreenSelectPopup({
   menuLabel,
   treeData,
   currentDependentCode,
-  onSuccess
+  onSuccess,
+  onDependentScreenSet
 }: DependentScreenSelectPopupProps) {
   const en = isEnglish();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [dependentCode, setDependentCode] = useState(currentDependentCode || '');
+
+  const resolvedDependentCode = useMemo(() => {
+    if (currentDependentCode) return currentDependentCode;
+    const node = findNodeByCode(treeData, menuCode);
+    return node?.dependentScreenCode || '';
+  }, [treeData, menuCode, currentDependentCode]);
+
+  const [dependentCode, setDependentCode] = useState(resolvedDependentCode);
 
   useEffect(() => {
-    setDependentCode(currentDependentCode || '');
-  }, [currentDependentCode, isOpen]);
+    setDependentCode(resolvedDependentCode);
+  }, [resolvedDependentCode, isOpen]);
 
   const flatMenuList = useMemo(() => {
     const result: Array<{ code: string; label: string; url: string; depth: number }> = [];
@@ -75,6 +95,7 @@ export function DependentScreenSelectPopup({
       
       if (result.success) {
         refreshAdminMenuTree();
+        onDependentScreenSet?.(menuCode, dependentCode);
         onSuccess?.();
         onClose();
       } else {

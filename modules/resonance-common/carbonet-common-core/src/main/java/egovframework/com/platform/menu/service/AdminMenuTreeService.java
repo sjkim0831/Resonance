@@ -63,6 +63,9 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
             if (code.isEmpty() || !"Y".equalsIgnoreCase(safeString(row.getUseAt()))) {
                 continue;
             }
+            if ("N".equalsIgnoreCase(safeString(row.getExpsrAt()))) {
+                continue;
+            }
             sortOrderMap.put(code, row.getSortOrdr());
             String labelKo = resolveMenuLabelKo(row);
             String labelEn = resolveMenuLabelEn(row);
@@ -240,7 +243,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
         }
         String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
         String override = MENU_LABEL_OVERRIDES_KO.get(code);
-        if (!override.isEmpty()) {
+        if (override != null && !override.isEmpty()) {
             return override;
         }
         return label;
@@ -253,7 +256,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
         }
         String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
         String override = MENU_LABEL_OVERRIDES_EN.get(code);
-        if (!override.isEmpty()) {
+        if (override != null && !override.isEmpty()) {
             return override;
         }
         return label;

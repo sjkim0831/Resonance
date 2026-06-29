@@ -42,6 +42,7 @@
             M.MENU_URL,
             M.MENU_ICON,
             M.EXPSR_AT,
+            M.DEPENDENT_SCREEN_CODE AS dependentScreenCode,
             O.SORT_ORDR
         FROM COMTCCMMNDETAILCODE D
         LEFT JOIN COMTNMENUINFO M ON D.CODE = M.MENU_CODE
@@ -183,6 +184,11 @@
             LAST_UPDT_PNTTM = CURRENT_DATETIME
         WHERE MENU_CODE = #{menuCode}
     </update>
+
+    <insert id="insertDependentScreenCode" parameterType="map">
+        INSERT INTO COMTNMENUINFO (MENU_CODE, DEPENDENT_SCREEN_CODE, FRST_REGIST_PNTTM, LAST_UPDT_PNTTM)
+        VALUES (#{menuCode}, #{dependentScreenCode}, CURRENT_DATETIME, CURRENT_DATETIME)
+    </insert>
 
     <delete id="deleteMenu" parameterType="string">
         DELETE FROM COMTNMENUINFO

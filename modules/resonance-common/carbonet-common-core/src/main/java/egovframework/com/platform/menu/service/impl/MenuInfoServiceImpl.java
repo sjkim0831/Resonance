@@ -184,6 +184,7 @@ public class MenuInfoServiceImpl extends EgovAbstractServiceImpl implements Menu
         clone.setSortOrdr(row.getSortOrdr());
         clone.setCodeId(row.getCodeId());
         clone.setExpsrAt(row.getExpsrAt());
+        clone.setDependentScreenCode(row.getDependentScreenCode());
         return clone;
     }
 
