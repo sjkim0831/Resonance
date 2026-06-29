@@ -15,13 +15,11 @@ show_menu() {
     echo ""
     echo "  [실행/개발]"
     echo "    1  | up         - resonance-up.sh"
-    echo "    2  | deploy     - resonance-k8s-build-deploy-80.sh"
+    echo "    2  | deploy     - resonance-v3-deploy.sh (변경 감지 선별 배포)"
     echo "    3  | deploy-safe - git-backup + deploy"
-    echo "    4  | hot-reload - resonance-k8s-build-deploy-80.sh --hot-reload"
-    echo "    8  | deploy-v2  - resonance-k8s-build-deploy-80-v2.sh"
+    echo "    8  | deploy-v2  - resonance-k8s-build-deploy-80-v2.sh (병렬 빌드)"
     echo ""
-    echo "  [v3 초고속 배포 (~30초~3분)]"
-    echo "   12  | v3-prebuild - Jar + Frontend 사전 빌드"
+    echo "  [v3 초고속 배포 (~20초~3분)]"
     echo "   13  | v3-deploy  - 변경 감지 후 선별 배포"
     echo "   14  | auto-deploy - 감시后台 자동 배포 on/off"
     echo ""
@@ -61,20 +59,14 @@ case "$cmd" in
     exec "$ROOT_DIR/ops/scripts/resonance-up.sh" "${@:2}"
     ;;
   deploy|redeploy|배포|2)
-    exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" "${@:2}"
+    exec "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" "${@:2}"
     ;;
   deploy-safe|배포안전|3)
     echo "=== Pre-Deploy Git Backup ===" && \
     bash "$ROOT_DIR/ops/scripts/git-pre-deploy-backup.sh" && \
     echo "" && \
-    echo "=== Starting Deployment ===" && \
-    bash "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh"
-    ;;
-  hot-reload|hl|빠른재배포|4)
-    exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" --hot-reload
-    ;;
-  deploy-v2|8)
-    exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh" "${@:2}"
+    echo "=== Starting v3 Deployment ===" && \
+    bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh"
     ;;
   deploy-fe|10)
     SKIP_IMAGE_BUILD=true exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
