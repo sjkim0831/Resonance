@@ -563,24 +563,7 @@ export function MenuManagementMigrationPage() {
                 <li>{en ? "Do not create a page registry entry unless the binding URL already matches the intended install lane." : "바인딩 URL이 목표 설치 레인과 맞지 않으면 페이지 레지스트리 엔트리를 만들지 않습니다."}</li>
               </ul>
             </div>
-<UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
-          <ActiveFilterChipBar
-            chips={(
-              [
-                searchKeyword ? {
-                  key: "search",
-                  label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
-                  clear: () => setSearchKeyword("")
-                } : null,
-                useAtFilter ? {
-                  key: "useAt",
-                  label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
-                  clear: () => setUseAtFilter("")
-                } : null
-              ].filter((c): c is FilterChip => c !== null)
-            )}
-          />
-        </div>
+</div>
         </CollectionResultPanel>
 
         <CollectionResultPanel
@@ -588,6 +571,23 @@ export function MenuManagementMigrationPage() {
           icon="tune"
           title={en ? "Registry Scope and Search" : "레지스트리 범위와 검색"}
         >
+        <UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
+        <ActiveFilterChipBar
+          chips={(
+            [
+              searchKeyword ? {
+                key: "search",
+                label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
+                clear: () => setSearchKeyword("")
+              } : null,
+              useAtFilter ? {
+                key: "useAt",
+                label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
+                clear: () => setUseAtFilter("")
+              } : null
+            ].filter((c): c is FilterChip => c !== null)
+          )}
+        />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr] xl:grid-cols-[16rem_1fr_1.2fr] items-end">
           <div>
             <label className="gov-label" htmlFor="menuType">{en ? "Registry Lane" : "레지스트리 레인"}</label>
