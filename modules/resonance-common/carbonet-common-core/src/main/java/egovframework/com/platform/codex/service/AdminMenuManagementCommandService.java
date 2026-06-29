@@ -8,6 +8,7 @@ import egovframework.com.platform.governance.model.vo.PageManagementVO;
 import egovframework.com.platform.governance.service.AdminCodeManageService;
 import egovframework.com.platform.codex.service.MenuFeatureManageService;
 import egovframework.com.platform.menu.service.MenuInfoCommandService;
+import egovframework.com.platform.menu.mapper.MenuInfoMapper;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.platform.dbchange.model.DbChangeCaptureRequest;
 import egovframework.com.platform.dbchange.service.DbChangeCaptureService;
@@ -42,6 +43,7 @@ public class AdminMenuManagementCommandService {
     private final CurrentUserContextService currentUserContextService;
     private final DbChangeCaptureService dbChangeCaptureService;
     private final ObjectMapper objectMapper;
+    private final MenuInfoMapper menuInfoMapper;
 
     public ResponseEntity<Map<String, Object>> saveMenuManagementOrder(
             String menuType,
@@ -96,6 +98,8 @@ public class AdminMenuManagementCommandService {
             String menuUrl,
             String menuIcon,
             String useAt,
+            boolean isTopMenu,
+            String directCode,
             HttpServletRequest request,
             Locale locale) {
         boolean isEn = isEnglishRequest(request, locale);
@@ -109,6 +113,34 @@ public class AdminMenuManagementCommandService {
         String normalizedUseAt = normalizeUseAt(useAt);
 
         Map<String, Object> response = new LinkedHashMap<>();
+        
+        // Handle top menu creation (4-char code)
+        if (isTopMenu && directCode != null && !directCode.isEmpty()) {
+            String topMenuCode = directCode.toUpperCase(Locale.ROOT);
+            // For top menu, we just create it directly without parent validation
+            try {
+                String actorId = resolveActorId(request);
+                adminCodeManageService.insertPageManagement(
+                        codeId,
+                        topMenuCode,
+                        normalizedName,
+                        normalizedNameEn,
+                        normalizedUrl,
+                        normalizedIcon,
+                        normalizedUseAt,
+                        actorId.isEmpty() ? "admin" : actorId);
+                menuInfoCommandService.saveMenuOrder(topMenuCode, resolveNextSiblingSortOrderForTopMenu(normalizedMenuType));
+                response.put("success", true);
+                response.put("message", "Top menu created successfully");
+                response.put("createdCode", topMenuCode);
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                response.put("success", false);
+                response.put("message", "Failed to create top menu: " + e.getMessage());
+                return ResponseEntity.internalServerError().body(response);
+            }
+        }
+        
         String validationError = validateMenuManagedPageInput(
                 normalizedMenuType,
                 codeId,
@@ -301,7 +333,15 @@ public class AdminMenuManagementCommandService {
             submittedCodes.add(code);
         }
         if (!submittedCodes.containsAll(knownCodes) || submittedCodes.size() != knownCodes.size()) {
-            return isEn ? "Some menu nodes are missing from the order payload." : "일부 메뉴 노드가 순서 저장 대상에서 누락되었습니다.";
+            java.util.Set<String> missingFromPayload = new java.util.LinkedHashSet<>(knownCodes);
+            missingFromPayload.removeAll(submittedCodes);
+            java.util.Set<String> extraInPayload = new java.util.LinkedHashSet<>(submittedCodes);
+            extraInPayload.removeAll(knownCodes);
+            String detail = (isEn ? "Missing from payload: " : " payload 누락: ") + missingFromPayload 
+                + (isEn ? " | Extra in payload: " : " | payload 초과: ") + extraInPayload;
+            log.warn("Menu order validation failed. menuType={}, knownCodes={}, submittedCodes={}, missing={}, extra={}",
+                    menuType, knownCodes, submittedCodes, missingFromPayload, extraInPayload);
+            return (isEn ? "Some menu nodes are missing from the order payload. " : "일부 메뉴 노드가 순서 저장 대상에서 누락되었습니다. ") + detail;
         }
         return "";
     }
@@ -415,6 +455,19 @@ public class AdminMenuManagementCommandService {
         return parentCode + String.format(Locale.ROOT, "%02d", maxSuffix + 1);
     }
 
+    private int resolveNextSiblingSortOrderForTopMenu(String menuType) {
+        List<MenuInfoDTO> rows = adminMenuManagementPageService.loadMenuTreeRowsByMenuType(menuType);
+        int maxOrder = 0;
+        for (MenuInfoDTO row : rows) {
+            String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
+            if (code.length() == 4) {  // Top menu codes are 4 chars
+                int order = row.getSortOrdr() != null ? row.getSortOrdr() : 0;
+                if (order > maxOrder) maxOrder = order;
+            }
+        }
+        return maxOrder + 1;
+    }
+    
     private int resolveNextSiblingSortOrder(String menuType, String parentCode) {
         int maxSortOrdr = 0;
         int siblingCount = 0;
@@ -736,5 +789,124 @@ public class AdminMenuManagementCommandService {
 
     private String safeString(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    public ResponseEntity<Map<String, Object>> toggleMenuExposure(
+            String menuType,
+            String menuCode,
+            String expsrAt,
+            HttpServletRequest request,
+            Locale locale) {
+        boolean isEn = isEnglishRequest(request, locale);
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        try {
+            menuInfoMapper.updateMenuExposure(safeString(menuCode).toUpperCase(Locale.ROOT), safeString(expsrAt).toUpperCase(Locale.ROOT));
+            menuInfoCommandService.invalidateCache();
+            response.put("success", true);
+            response.put("message", isEn ? "Menu exposure toggled" : "메뉴 표시 여부가 변경되었습니다.");
+        } catch (Exception e) {
+            log.error("Failed to toggle menu exposure. menuCode={}, expsrAt={}", menuCode, expsrAt, e);
+            response.put("success", false);
+            response.put("message", isEn ? "Failed to toggle menu exposure" : "메뉴 표시 여부 변경에 실패했습니다.");
+            return ResponseEntity.internalServerError().body(response);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    public ResponseEntity<Map<String, Object>> updateDependentScreen(
+            String menuCode,
+            String dependentScreenCode,
+            HttpServletRequest request,
+            Locale locale) {
+        boolean isEn = isEnglishRequest(request, locale);
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        try {
+            menuInfoMapper.updateDependentScreenCode(safeString(menuCode).toUpperCase(Locale.ROOT), safeString(dependentScreenCode));
+            menuInfoCommandService.invalidateCache();
+            response.put("success", true);
+            response.put("message", isEn ? "Dependent screen updated" : "종속 화면이 설정되었습니다.");
+        } catch (Exception e) {
+            log.error("Failed to update dependent screen. menuCode={}, dependentScreenCode={}", menuCode, dependentScreenCode, e);
+            response.put("success", false);
+            response.put("message", isEn ? "Failed to update dependent screen" : "종속 화면 설정에 실패했습니다.");
+            return ResponseEntity.internalServerError().body(response);
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    public ResponseEntity<Map<String, Object>> deleteMenu(
+            String menuCode,
+            HttpServletRequest request,
+            Locale locale) {
+        boolean isEn = isEnglishRequest(request, locale);
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        try {
+            String normalizedCode = safeString(menuCode).toUpperCase(Locale.ROOT);
+            
+            log.info("[MenuDelete] Attempting to delete menu. menuCode={}", normalizedCode);
+
+            // Find the menu and get its actual CODE_ID first
+            List<MenuInfoDTO> allMenus = adminMenuManagementPageService.loadMenuTreeRowsByMenuType("ADMIN");
+            MenuInfoDTO targetMenu = null;
+            String actualCodeId = null;
+            
+            for (MenuInfoDTO menu : allMenus) {
+                String menuCodeFromRow = safeString(menu.getCode()).toUpperCase(Locale.ROOT);
+                if (menuCodeFromRow.equals(normalizedCode)) {
+                    targetMenu = menu;
+                    actualCodeId = safeString(menu.getCodeId());
+                    log.info("[MenuDelete] Found menu. CODE_ID={}, CODE={}, codeNm={}", actualCodeId, normalizedCode, menu.getCodeNm());
+                    break;
+                }
+            }
+            
+            if (targetMenu == null) {
+                log.warn("[MenuDelete] Menu not found in DB, nothing to delete. menuCode={}", normalizedCode);
+                response.put("success", false);
+                response.put("message", isEn ? "Menu not found" : "메뉴를 찾을 수 없습니다.");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Delete from COMTCCMMNDETAILCODE using the actual CODE_ID
+            adminCodeManageService.deleteDetailCode(actualCodeId, normalizedCode);
+            log.info("[MenuDelete] Deleted from COMTCCMMNDETAILCODE. CODE_ID={}, menuCode={}", actualCodeId, normalizedCode);
+            
+            // Delete from COMTNMENUINFO
+            menuInfoMapper.deleteMenu(normalizedCode);
+            log.info("[MenuDelete] Deleted from COMTNMENUINFO. menuCode={}", normalizedCode);
+            
+            // Delete from COMTNMENUORDER
+            menuInfoMapper.deleteMenuOrder(normalizedCode);
+            log.info("[MenuDelete] Deleted from COMTNMENUORDER. menuCode={}", normalizedCode);
+
+            // Invalidate cache so subsequent reads get fresh data
+            menuInfoCommandService.invalidateCache();
+            log.info("[MenuDelete] Cache invalidated");
+
+            // Verify deletion was successful - check directly from DB tables without caching
+            int countInMenuInfo = menuInfoMapper.countMenuInfoByCode(normalizedCode);
+            int countInDetailCode = adminCodeManageService.countPageManagementByCode(actualCodeId, normalizedCode);
+            
+            if (countInMenuInfo > 0 || countInDetailCode > 0) {
+                log.error("[MenuDelete] Menu still exists after deletion attempt! menuCode={}, menuInfoCount={}, detailCodeCount={}", 
+                    normalizedCode, countInMenuInfo, countInDetailCode);
+                response.put("success", false);
+                response.put("message", isEn ? "Deletion failed - menu still exists" : "삭제에 실패했습니다. 메뉴가 여전히 존재합니다.");
+                return ResponseEntity.internalServerError().body(response);
+            }
+
+            response.put("success", true);
+            response.put("message", isEn ? "Menu deleted" : "메뉴가 삭제되었습니다.");
+            log.info("[MenuDelete] Successfully deleted menu. menuCode={}", normalizedCode);
+        } catch (Exception e) {
+            log.error("[MenuDelete] Failed to delete menu. menuCode={}", menuCode, e);
+            response.put("success", false);
+            response.put("message", isEn ? "Failed to delete menu" : "메뉴 삭제에 실패했습니다.");
+            return ResponseEntity.internalServerError().body(response);
+        }
+        return ResponseEntity.ok(response);
     }
 }

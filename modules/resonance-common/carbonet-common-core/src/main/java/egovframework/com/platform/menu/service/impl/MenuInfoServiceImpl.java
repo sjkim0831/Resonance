@@ -70,6 +70,11 @@ public class MenuInfoServiceImpl extends EgovAbstractServiceImpl implements Menu
     }
 
     @Override
+    public void invalidateCache() {
+        invalidateMenuTreeCache();
+    }
+
+    @Override
     public long getMenuTreeVersion() {
         return menuTreeVersion.get();
     }
@@ -177,6 +182,8 @@ public class MenuInfoServiceImpl extends EgovAbstractServiceImpl implements Menu
         clone.setMenuIcon(row.getMenuIcon());
         clone.setUseAt(row.getUseAt());
         clone.setSortOrdr(row.getSortOrdr());
+        clone.setCodeId(row.getCodeId());
+        clone.setExpsrAt(row.getExpsrAt());
         return clone;
     }
 

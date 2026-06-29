@@ -10,12 +10,13 @@ import { AdminInput, AdminSelect, GridToolbar } from "../admin-ui/common";
 import { stringOf } from "../admin-system/adminSystemShared";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { buildMenuTree, buildSuggestedPageCode, flattenMenuOrderPayload, type MenuTreeNode, updateMenuSortOrders } from "./menuTreeShared";
+import { DependentScreenSelectPopup } from "./DependentScreenSelectPopup";
 
 type MenuNode = MenuTreeNode;
 
 const ICON_LIST = [
   "home", "menu", "web", "dashboard", "settings", "person", "group", "build",
-  "search", "add", "edit", "delete", "visibility", "lock", "mail", "phone",
+  "search", "add", "edit", "delete", "visibility", "visibility_off", "lock", "mail", "phone",
   "notifications", "calendar_today", "event", "description", "folder", "file_copy",
   "image", "video_library", "music_note", "article", "book", "school", "science",
   "psychology", "language", "code", "terminal", "api", "cloud", "storage", "database",
@@ -113,6 +114,23 @@ function IconPicker({ value, onChange }: { value: string; onChange: (icon: strin
   );
 }
 
+interface EditableMenuItemProps {
+  node: MenuNode;
+  depth: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onUpdate: (code: string, label: string, url: string) => void;
+  onDelete: (code: string) => void;
+  onDragStart: (e: React.DragEvent, code: string) => void;
+  onDrop: (e: React.DragEvent, code: string) => void;
+  mobileDragCode: string | null;
+  onMobileDragStart: (code: string) => void;
+  onMobileDrop: (code: string) => void;
+  onToggleExposure: (code: string, expsrAt: string) => void;
+  onOpenDependentScreenPopup: (code: string, label: string) => void;
+  children: React.ReactNode;
+}
+
 function EditableMenuItem({
   node,
   depth,
@@ -125,21 +143,10 @@ function EditableMenuItem({
   mobileDragCode,
   onMobileDragStart,
   onMobileDrop,
+  onToggleExposure,
+  onOpenDependentScreenPopup,
   children
-}: {
-  node: MenuNode;
-  depth: number;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onUpdate: (code: string, label: string, url: string) => void;
-  onDelete: (code: string) => void;
-  onDragStart: (e: React.DragEvent, code: string) => void;
-  onDrop: (e: React.DragEvent, code: string) => void;
-  mobileDragCode: string | null;
-  onMobileDragStart: (code: string) => void;
-  onMobileDrop: (code: string) => void;
-  children: React.ReactNode;
-}) {
+}: EditableMenuItemProps) {
   const [editing, setEditing] = useState(false);
   const [editLabel, setEditLabel] = useState(node.label);
   const [editUrl, setEditUrl] = useState(node.url || "");
@@ -161,6 +168,13 @@ function EditableMenuItem({
     setEditUrl(node.url || "");
     setEditing(false);
   };
+
+  const handleToggleExposure = () => {
+    const newExpsrAt = (node.expsrAt || "Y") === "Y" ? "N" : "Y";
+    onToggleExposure(node.code, newExpsrAt);
+  };
+
+  const isHidden = (node.expsrAt || "Y") === "N";
 
   return (
     <div className="border-b border-gray-100 last:border-b-0">
@@ -220,9 +234,32 @@ function EditableMenuItem({
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-medium truncate">{node.label}</span>
                 <span className={`gov-chip ${chipClass}`}>{node.code}</span>
-                <span className={`gov-chip ${node.useAt === "Y" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                  {node.useAt === "Y" ? (en ? "Active" : "활성") : (en ? "Inactive" : "비활성")}
-                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleExposure}
+                  className={`gov-chip cursor-pointer hover:opacity-80 transition-opacity ${
+                    isHidden 
+                      ? "bg-gray-100 text-gray-500 border border-gray-300" 
+                      : "bg-green-100 text-green-700 border border-green-300"
+                  }`}
+                  title={en ? "Click to toggle visibility" : "클릭하여 표시 여부 전환"}
+                >
+                  <span className="material-symbols-outlined text-[14px] mr-1">
+                    {isHidden ? "visibility_off" : "visibility"}
+                  </span>
+                  {isHidden ? (en ? "Hidden" : "숨김") : (en ? "Visible" : "보임")}
+                </button>
+                {isHidden && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDependentScreenPopup(node.code, node.label)}
+                    className="gov-chip bg-amber-100 text-amber-700 border border-amber-300 cursor-pointer hover:bg-amber-200 transition-colors"
+                    title={en ? "Set dependent screen for hidden menu" : "숨김 메뉴의 종속 화면 설정"}
+                  >
+                    <span className="material-symbols-outlined text-[14px] mr-1">link</span>
+                    {en ? "Map Screen" : "화면매핑"}
+                  </button>
+                )}
               </div>
               <p className="text-xs text-gray-500 truncate">{node.url || (en ? "No URL" : "URL 없음")}</p>
             </div>
@@ -261,6 +298,22 @@ function EditableMenuItem({
   );
 }
 
+interface MenuTreeProps {
+  nodes: MenuNode[];
+  expandedCodes: Set<string>;
+  onToggle: (code: string) => void;
+  onUpdate: (code: string, label: string, url: string) => void;
+  onDelete: (code: string) => void;
+  onDragStart: (e: React.DragEvent, code: string) => void;
+  onDrop: (e: React.DragEvent, code: string) => void;
+  mobileDragCode: string | null;
+  onMobileDragStart: (code: string) => void;
+  onMobileDrop: (targetCode: string) => void;
+  onToggleExposure: (code: string, expsrAt: string) => void;
+  onOpenDependentScreenPopup: (code: string, label: string) => void;
+  depth?: number;
+}
+
 function MenuTree({
   nodes,
   expandedCodes,
@@ -272,20 +325,10 @@ function MenuTree({
   mobileDragCode,
   onMobileDragStart,
   onMobileDrop,
+  onToggleExposure,
+  onOpenDependentScreenPopup,
   depth = 0
-}: {
-  nodes: MenuNode[];
-  expandedCodes: Set<string>;
-  onToggle: (code: string) => void;
-  onUpdate: (code: string, label: string, url: string) => void;
-  onDelete: (code: string) => void;
-  onDragStart: (e: React.DragEvent, code: string) => void;
-  onDrop: (e: React.DragEvent, code: string) => void;
-  mobileDragCode: string | null;
-  onMobileDragStart: (code: string) => void;
-  onMobileDrop: (targetCode: string) => void;
-  depth?: number;
-}) {
+}: MenuTreeProps) {
   return (
     <div className="divide-y divide-gray-100">
       {nodes.map((node) => (
@@ -302,6 +345,8 @@ function MenuTree({
           mobileDragCode={mobileDragCode}
           onMobileDragStart={onMobileDragStart}
           onMobileDrop={onMobileDrop}
+          onToggleExposure={onToggleExposure}
+          onOpenDependentScreenPopup={onOpenDependentScreenPopup}
         >
           {node.children.length > 0 && expandedCodes.has(node.code) && (
             <MenuTree
@@ -315,6 +360,8 @@ function MenuTree({
               mobileDragCode={mobileDragCode}
               onMobileDragStart={onMobileDragStart}
               onMobileDrop={onMobileDrop}
+              onToggleExposure={onToggleExposure}
+              onOpenDependentScreenPopup={onOpenDependentScreenPopup}
               depth={depth + 1}
             />
           )}
@@ -433,6 +480,10 @@ export function MenuManagementMigrationPage() {
   const [expandedCodes, setExpandedCodes] = useState<Set<string>>(new Set());
   const [mobileDragCode, setMobileDragCode] = useState<string | null>(null);
 
+  // Dependent Screen Popup State
+  const [isDependentPopupOpen, setIsDependentPopupOpen] = useState(false);
+  const [selectedMenuForDependent, setSelectedMenuForDependent] = useState<{ code: string; label: string } | null>(null);
+
   const deferredSearchKeyword = useDeferredValue(searchKeyword);
   const pageState = useAsyncValue<MenuManagementPagePayload>(() => fetchMenuManagementPage(menuType), [menuType]);
   const page = pageState.value;
@@ -543,19 +594,86 @@ export function MenuManagementMigrationPage() {
 
   const handleDeleteMenu = async (code: string) => {
     if (!confirm(en ? "Delete this menu?" : "이 메뉴를 삭제하시겠습니까?")) return;
+    
     const body = new URLSearchParams();
     body.set("menuType", menuType);
     body.set("code", code);
+    
+    console.log("[MenuManagement] Delete request:", { code, menuType, url: "/admin/system/menu/delete-page" });
+    
     try {
-      await postFormUrlEncoded(
+      const result = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
         buildLocalizedPath("/admin/system/menu/delete-page", "/en/admin/system/menu/delete-page"),
         body
       );
-      refreshAdminMenuTree();
-      window.location.reload();
+      
+      console.log("[MenuManagement] Delete response:", result);
+      
+      if (result.success) {
+        // Remove from tree state including all children
+        setTreeData(prev => {
+          const removeNode = (nodes: MenuNode[]): MenuNode[] => {
+            return nodes
+              .filter(node => node.code !== code)
+              .map(node => ({ ...node, children: removeNode(node.children) }));
+          };
+          return removeNode(prev);
+        });
+        pageState.reload();
+        alert(en ? "Menu deleted successfully" : "메뉴가 삭제되었습니다.");
+      } else {
+        console.error("[MenuManagement] Delete failed:", result.message);
+        alert(result.message || (en ? "Failed to delete menu" : "메뉴 삭제에 실패했습니다."));
+      }
     } catch (err) {
-      console.error("Failed to delete menu:", err);
+      console.error("[MenuManagement] Delete error:", err);
+      alert(en ? "Failed to delete menu" : "메뉴 삭제에 실패했습니다.");
     }
+  };
+
+  // Toggle Exposure (Show/Hide menu) - uses existing toggle-exposure API
+  const handleToggleExposure = async (code: string, expsrAt: string) => {
+    try {
+      const body = new URLSearchParams();
+      body.set("menuType", menuType);
+      body.set("menuCode", code);
+      body.set("expsrAt", expsrAt);
+      
+      const result = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
+        buildLocalizedPath("/admin/system/menu/toggle-exposure", "/en/admin/system/menu/toggle-exposure"),
+        body
+      );
+      
+      if (result.success) {
+        refreshAdminMenuTree();
+        pageState.reload();
+        setTreeData(prev => {
+          const updateNode = (nodes: MenuNode[]): MenuNode[] => {
+            return nodes.map(node => {
+              if (node.code === code) {
+                return { ...node, expsrAt };
+              }
+              if (node.children.length > 0) {
+                return { ...node, children: updateNode(node.children) };
+              }
+              return node;
+            });
+          };
+          return updateNode(prev);
+        });
+      } else {
+        alert(result.message || (en ? "Failed to toggle visibility" : "표시 여부 변경 실패"));
+      }
+    } catch (err) {
+      console.error("Failed to toggle exposure:", err);
+      alert(en ? "Failed to toggle visibility" : "표시 여부 변경 실패");
+    }
+  };
+
+  // Open Dependent Screen Popup
+  const handleOpenDependentScreenPopup = (code: string, label: string) => {
+    setSelectedMenuForDependent({ code, label });
+    setIsDependentPopupOpen(true);
   };
 
   const findSuggestedPageCode = () => buildSuggestedPageCode(parentCodeValue, menuCodeRows);
@@ -563,12 +681,6 @@ export function MenuManagementMigrationPage() {
   const validateCreateForm = () => {
     if (!isTopMenu && !parentCodeValue) return en ? "Select a parent menu." : "상위 메뉴를 선택하세요.";
     if (isTopMenu && parentCodeValue.length !== 4) return en ? "Enter 4-character code for top menu." : "대메뉴는 4자리 코드를 입력하세요.";
-    if (!codeNm.trim()) return en ? "Enter menu name." : "메뉴명을 입력하세요.";
-    if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
-    if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
-    if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) return en ? "Admin URL must start with /admin/." : "관리자 URL은 /admin/으로 시작해야 합니다.";
-    if (menuType === "USER" && !menuUrl.startsWith("/home/")) return en ? "Home URL must start with /home/." : "홈 URL은 /home/으로 시작해야 합니다.";
-    return "";
     if (!codeNm.trim()) return en ? "Enter menu name." : "메뉴명을 입력하세요.";
     if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
     if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
@@ -605,10 +717,11 @@ export function MenuManagementMigrationPage() {
         throw new Error(result.message || "Failed");
       }
       refreshAdminMenuTree();
+      pageState.reload();
       setCodeNm("");
       setCodeDc("");
       setMenuUrl("");
-      window.location.reload();
+      alert(en ? "Menu created successfully" : "메뉴가 생성되었습니다.");
     } catch (err) {
       console.error("Failed to create menu:", err);
     }
@@ -624,118 +737,46 @@ export function MenuManagementMigrationPage() {
     const draggedCode = e.dataTransfer.getData("text/plain");
     if (draggedCode === targetCode) return;
 
-    console.log("[MenuManagement] Drop: dragged=", draggedCode, "target=", targetCode);
-
     setTreeData((prev) => {
       const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
       let draggedNode: MenuNode | null = null;
       let draggedOriginalIndex = -1;
       let targetOriginalIndex = -1;
+      let draggedDepth = -1;
+      let targetDepth = -1;
 
-      // Find and track both indices BEFORE making changes
-      const findIndices = (nodes: MenuNode[]): boolean => {
+      const findIndicesAndDepth = (nodes: MenuNode[], currentDepth: number): boolean => {
         for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].code === draggedCode) {
             draggedOriginalIndex = i;
             draggedNode = nodes[i];
+            draggedDepth = currentDepth;
           }
           if (nodes[i].code === targetCode) {
             targetOriginalIndex = i;
+            targetDepth = currentDepth;
           }
           if (draggedOriginalIndex >= 0 && targetOriginalIndex >= 0) {
-            return true;  // Found both
+            return true;
           }
-          if (findIndices(nodes[i].children)) return true;
+          if (findIndicesAndDepth(nodes[i].children, currentDepth + 1)) return true;
         }
         return false;
       };
 
-      if (!findIndices(clone) || !draggedNode) {
-        console.log("[MenuManagement] Drop: could not find nodes");
+      if (!findIndicesAndDepth(clone, 0) || !draggedNode) {
         return prev;
       }
 
-      // Now remove and insert using the tracked indices
+      // Depth check - only allow reorder within same level
+      if (draggedDepth !== targetDepth) {
+        alert(en ? "Cannot move menus between different levels" : "서로 다른 깊이의 메뉴는 교환할 수 없습니다.");
+        return prev;
+      }
+
       const findAndRemove = (nodes: MenuNode[]): boolean => {
         for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].code === draggedCode) {
-            nodes.splice(i, 1);
-            return true;
-          }
-          if (findAndRemove(nodes[i].children)) return true;
-        }
-        return false;
-      };
-
-      const findAndInsert = (nodes: MenuNode[]): boolean => {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].code === targetCode) {
-            // Insert draggedNode AFTER target if dragged was BEFORE target
-            // Insert draggedNode BEFORE target if dragged was AFTER target
-            const insertIdx = draggedOriginalIndex < targetOriginalIndex ? i + 1 : i;
-            nodes.splice(insertIdx, 0, draggedNode!);
-            return true;
-          }
-          if (findAndInsert(nodes[i].children)) return true;
-        }
-        return false;
-      };
-
-      if (!findAndRemove(clone)) {
-        console.log("[MenuManagement] Drop: could not remove dragged node");
-        return prev;
-      }
-
-      if (!findAndInsert(clone)) {
-        console.log("[MenuManagement] Drop: could not insert at target");
-        return prev;
-      }
-
-      updateMenuSortOrders(clone);
-      console.log("[MenuManagement] Drop: new treeData ready, payload=", flattenMenuOrderPayload(clone).join(","));
-      return clone;
-    });
-  };
-
-  const handleMobileDragStart = useCallback((code: string) => {
-    console.log("[MenuManagement] Mobile drag start:", code);
-    setMobileDragCode((prev) => prev === code ? null : code);
-  }, []);
-
-  const handleMobileDrop = useCallback((targetCode: string) => {
-    if (!mobileDragCode || mobileDragCode === targetCode) {
-      setMobileDragCode(null);
-      return;
-    }
-    console.log("[MenuManagement] Mobile drop:", mobileDragCode, "->", targetCode);
-    setTreeData((prev) => {
-      const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
-      let draggedNode: MenuNode | null = null;
-      let draggedOriginalIndex = -1;
-      let targetOriginalIndex = -1;
-
-      const findIndices = (nodes: MenuNode[]): boolean => {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].code === mobileDragCode) {
-            draggedOriginalIndex = i;
-            draggedNode = nodes[i];
-          }
-          if (nodes[i].code === targetCode) {
-            targetOriginalIndex = i;
-          }
-          if (draggedOriginalIndex >= 0 && targetOriginalIndex >= 0) {
-            return true;
-          }
-          if (findIndices(nodes[i].children)) return true;
-        }
-        return false;
-      };
-
-      if (!findIndices(clone) || !draggedNode) return prev;
-
-      const findAndRemove = (nodes: MenuNode[]): boolean => {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].code === mobileDragCode) {
             nodes.splice(i, 1);
             return true;
           }
@@ -760,13 +801,97 @@ export function MenuManagementMigrationPage() {
       if (!findAndInsert(clone)) return prev;
 
       updateMenuSortOrders(clone);
-      console.log("[MenuManagement] Mobile drop complete, payload=", flattenMenuOrderPayload(clone).join(","));
       return clone;
     });
-    setMobileDragCode(null);
+  };
+
+  const handleMobileDragStart = useCallback((code: string) => {
+    setMobileDragCode((prev) => prev === code ? null : code);
+  }, []);
+
+  const handleMobileDrop = useCallback((targetCode: string) => {
+    if (!mobileDragCode || mobileDragCode === targetCode) {
+      setMobileDragCode(null);
+      return;
+    }
+    setTreeData((prev) => {
+      const clone = JSON.parse(JSON.stringify(prev)) as MenuNode[];
+      let draggedNode: MenuNode | null = null;
+      let draggedOriginalIndex = -1;
+      let targetOriginalIndex = -1;
+      let draggedDepth = -1;
+      let targetDepth = -1;
+
+      const findIndicesAndDepth = (nodes: MenuNode[], currentDepth: number): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === mobileDragCode) {
+            draggedOriginalIndex = i;
+            draggedNode = nodes[i];
+            draggedDepth = currentDepth;
+          }
+          if (nodes[i].code === targetCode) {
+            targetOriginalIndex = i;
+            targetDepth = currentDepth;
+          }
+          if (draggedOriginalIndex >= 0 && targetOriginalIndex >= 0) {
+            return true;
+          }
+          if (findIndicesAndDepth(nodes[i].children, currentDepth + 1)) return true;
+        }
+        return false;
+      };
+
+      if (!findIndicesAndDepth(clone, 0) || !draggedNode) {
+        setMobileDragCode(null);
+        return prev;
+      }
+
+      // Depth check - only allow reorder within same level
+      if (draggedDepth !== targetDepth) {
+        alert(en ? "Cannot move menus between different levels" : "서로 다른 깊이의 메뉴는 교환할 수 없습니다.");
+        setMobileDragCode(null);
+        return prev;
+      }
+
+      const findAndRemove = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === mobileDragCode) {
+            nodes.splice(i, 1);
+            return true;
+          }
+          if (findAndRemove(nodes[i].children)) return true;
+        }
+        return false;
+      };
+
+      const findAndInsert = (nodes: MenuNode[]): boolean => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].code === targetCode) {
+            const insertIdx = draggedOriginalIndex < targetOriginalIndex ? i + 1 : i;
+            nodes.splice(insertIdx, 0, draggedNode!);
+            return true;
+          }
+          if (findAndInsert(nodes[i].children)) return true;
+        }
+        return false;
+      };
+
+      if (!findAndRemove(clone)) {
+        setMobileDragCode(null);
+        return prev;
+      }
+      if (!findAndInsert(clone)) {
+        setMobileDragCode(null);
+        return prev;
+      }
+
+      updateMenuSortOrders(clone);
+      setMobileDragCode(null);
+      return clone;
+    });
   }, [mobileDragCode]);
 
-const handleSaveOrder = async () => {
+  const handleSaveOrder = async () => {
     if (pageState.loading) {
       alert(en ? "Page is still loading. Please wait." : "페이지 로딩 중입니다. 잠시만 기다려주세요.");
       return;
@@ -776,8 +901,6 @@ const handleSaveOrder = async () => {
     const filteredCodes = prefix ? flattenMenuOrderPayload(treeData, [], prefix) : allCodes;
     const payload = filteredCodes.join(",");
     const codesOnly = payload.split(",").map(c => c.split(":")[0]);
-    console.log("[MenuManagement] Saving order, menuType=", menuType, "prefix=", prefix, "total:", allCodes.length, "filtered:", codesOnly.length);
-    console.log("[MenuManagement] Filtered codes:", codesOnly.join(","));
     if (codesOnly.length === 0) {
       alert(en ? "No menu to save." : "저장할 메뉴가 없습니다.");
       return;
@@ -790,12 +913,16 @@ const handleSaveOrder = async () => {
         buildLocalizedPath("/admin/system/menu/order", "/en/admin/system/menu/order"),
         body
       );
-      console.log("[MenuManagement] Save order response:", result);
       if (result.success !== true) {
         alert(result.message || (en ? "Failed to save order." : "순서 저장에 실패했습니다."));
         return;
       }
+      // Success feedback
+      const successMsg = result.message || (en ? "Menu order saved successfully" : "메뉴 순서가 저장되었습니다.");
+      console.log("[MenuManagement] Order saved successfully:", successMsg);
+      alert(successMsg);
       refreshAdminMenuTree();
+      pageState.reload();
     } catch (err) {
       console.error("[MenuManagement] Save order error:", err);
     }
@@ -859,8 +986,10 @@ const handleSaveOrder = async () => {
                   onDragStart={handleDragStart}
                   onDrop={handleDrop}
                   mobileDragCode={mobileDragCode}
-onMobileDragStart={handleMobileDragStart}
+                  onMobileDragStart={handleMobileDragStart}
                   onMobileDrop={handleMobileDrop}
+                  onToggleExposure={handleToggleExposure}
+                  onOpenDependentScreenPopup={handleOpenDependentScreenPopup}
                 />
               )}
             </div>
@@ -988,6 +1117,19 @@ onMobileDragStart={handleMobileDragStart}
           </section>
         </div>
       </AdminWorkspacePageFrame>
+
+      {/* Dependent Screen Select Popup */}
+      <DependentScreenSelectPopup
+        isOpen={isDependentPopupOpen}
+        onClose={() => {
+          setIsDependentPopupOpen(false);
+          setSelectedMenuForDependent(null);
+        }}
+        menuCode={selectedMenuForDependent?.code || ""}
+        menuLabel={selectedMenuForDependent?.label || ""}
+        treeData={treeData}
+        onSuccess={() => pageState.reload()}
+      />
     </AdminPageShell>
   );
 }
