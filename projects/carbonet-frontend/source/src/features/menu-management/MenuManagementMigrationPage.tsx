@@ -8,7 +8,8 @@ import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { MemberButton } from "../admin-ui/common";
 import { stringOf } from "../admin-system/adminSystemShared";
-import { GridToolbar, PageStatusNotice } from "../admin-ui/common";
+import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
+import { GridToolbar, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { buildMenuTree, buildSuggestedPageCode, flattenMenuOrderPayload, type MenuTreeNode, updateMenuSortOrders } from "./menuTreeShared";
 
@@ -580,24 +581,6 @@ export function MenuManagementMigrationPage() {
     });
   }, []);
 
-  const handleExpandAll = () => {
-    const allCodes = new Set<string>();
-    const collect = (nodes: MenuNode[]) => {
-      nodes.forEach((n) => {
-        if (n.children.length > 0) {
-          allCodes.add(n.code);
-          collect(n.children);
-        }
-      });
-    };
-    collect(treeData);
-    setExpandedCodes(allCodes);
-  };
-
-  const handleCollapseAll = () => {
-    setExpandedCodes(new Set());
-  };
-
   const handleUpdateMenu = async (code: string, label: string, url: string) => {
     setActionError("");
     setActionMessage("");
@@ -898,223 +881,216 @@ const handleSaveOrder = async () => {
       ]}
       title={en ? "Menu Management" : "메뉴 관리"}
     >
+      <GovernanceCompressionNav activeId="menu" en={en} />
+
+      {actionMessage && <PageStatusNotice tone="success">{actionMessage}</PageStatusNotice>}
+      {actionError && <PageStatusNotice tone="error">{actionError}</PageStatusNotice>}
+      {pageState.error && <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice>}
+
+      <UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
+
+      <ActiveFilterChipBar
+        chips={(
+          [
+            searchKeyword ? {
+              key: "search",
+              label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
+              clear: () => setSearchKeyword("")
+            } : null,
+            useAtFilter ? {
+              key: "useAt",
+              label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
+              clear: () => setUseAtFilter("")
+            } : null
+          ].filter((c): c is FilterChip => c !== null)
+        )}
+      />
+
+      <section className="mb-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
+        <SummaryMetricCard title={en ? "Menu Nodes" : "메뉴 노드"} value={`${filteredTreeData.length} / ${treeData.length}`} />
+        <SummaryMetricCard title={en ? "Current Lane" : "현재 레인"} value={menuType} />
+        <SummaryMetricCard title={en ? "Filter Active" : "필터 활성"} value={useAtFilter ? (useAtFilter === "Y" ? (en ? "Yes" : "사용") : (en ? "No" : "미사용")) : (en ? "All" : "전체")} />
+        <SummaryMetricCard title={en ? "Selected Type" : "선택 유형"} value={menuType} />
+      </section>
+
       <AdminWorkspacePageFrame>
-        {actionMessage && <PageStatusNotice tone="success">{actionMessage}</PageStatusNotice>}
-        {actionError && <PageStatusNotice tone="error">{actionError}</PageStatusNotice>}
-        {pageState.error && <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice>}
-
-        <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
-          <UseAtFilterBar en={en} onChange={setUseAtFilter} useAtFilter={useAtFilter} />
-            <ActiveFilterChipBar
-              chips={(
-                [
-                  searchKeyword ? {
-                    key: "search",
-                    label: en ? `Search: ${searchKeyword}` : `검색: ${searchKeyword}`,
-                    clear: () => setSearchKeyword("")
-                  } : null,
-                  useAtFilter ? {
-                    key: "useAt",
-                    label: en ? `Use: ${useAtFilter === "Y" ? "Active" : "Inactive"}` : `사용: ${useAtFilter === "Y" ? "사용중" : "미사용"}`,
-                    clear: () => setUseAtFilter("")
-                  } : null
-                ].filter((c): c is FilterChip => c !== null)
-              )}
-            />
-
-          <div className="space-y-4">
-            <div className="flex items-end gap-4">
-              <div className="flex-1">
-                <label className="gov-label" htmlFor="menuType">{en ? "Menu Type" : "메뉴 유형"}</label>
-                <select className="gov-select" id="menuType" value={menuType} onChange={(e) => setMenuType(e.target.value)}>
-                  {menuTypes.map((t) => (
-                    <option key={stringOf(t, "value")} value={stringOf(t, "value")}>{stringOf(t, "label")}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="gov-label" htmlFor="menuSearch">{en ? "Search" : "검색"}</label>
-                <input
-                  className="gov-input"
-                  id="menuSearch"
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
-                  placeholder={en ? "Code, name, URL..." : "코드, 메뉴명, URL..."}
-                />
-              </div>
-              <div className="flex-1 flex flex-col justify-end">
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={handleExpandAll} className="gov-btn gov-btn-outline">
-                    <span className="material-symbols-outlined text-[16px]">unfold_more</span>
-                    <span className="hidden sm:inline">{en ? "Expand" : "펼치기"}</span>
-                  </button>
-                  <button type="button" onClick={handleCollapseAll} className="gov-btn gov-btn-outline">
-                    <span className="material-symbols-outlined text-[16px]">unfold_less</span>
-                    <span className="hidden sm:inline">{en ? "Collapse" : "접기"}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="gov-card overflow-hidden">
-              <GridToolbar
-                title={en ? "Menu Tree" : "메뉴 트리"}
-                actions={
-                  <div className="flex items-center gap-2">
-                    <button type="button" onClick={handleSaveOrder} className="gov-btn gov-btn-primary">
-                      <span className="material-symbols-outlined text-[16px]">save</span>
-                      <span>{en ? "Save Order" : "순서 저장"}</span>
-                    </button>
-                  </div>
-                }
-              />
-              <div className="max-h-[60vh] overflow-y-auto" onDragOver={(e) => e.preventDefault()}>
-                {filteredTreeData.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    {en ? "No menus found." : "메뉴가 없습니다."}
-                  </div>
-                ) : (
-                  <MenuTree
-                    nodes={filteredTreeData}
-                    expandedCodes={expandedCodes}
-                    onToggle={handleToggle}
-                    onUpdate={handleUpdateMenu}
-                    onDelete={handleDeleteMenu}
-                    onDragStart={handleDragStart}
-                    onDrop={handleDrop}
-                    mobileDragCode={mobileDragCode}
-                    onMobileDragStart={handleMobileDragStart}
-                    onMobileDrop={handleMobileDrop}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="gov-card overflow-hidden">
-              <GridToolbar title={en ? "Add New Menu" : "새 메뉴 등록"} />
-              <div className="p-4 space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isTopMenu}
-                      onChange={(e) => {
-                        setIsTopMenu(e.target.checked);
-                        if (e.target.checked) {
-                          // Auto-generate 4-char top menu code
-                          let maxSuffix = 0;
-                          const prefix = "A";
-                          menuCodeRows.forEach((row) => {
-                            if (row.code.length === 4 && row.code.startsWith(prefix)) {
-                              const suffix = Number(row.code.slice(1));
-                              if (Number.isFinite(suffix) && suffix > maxSuffix) {
-                                maxSuffix = suffix;
-                              }
-                            }
-                          });
-                          const newCode = `${prefix}${String(maxSuffix + 1).padStart(3, "0")}`;
-                          setParentCodeValue(newCode);
-                        }
-                      }}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-medium">{en ? "Create as Top Menu (4-char)" : "대메뉴로 등록 (4자리)"}</span>
-                  </label>
-                </div>
-
-                {isTopMenu ? (
-                  <div>
-                    <label className="gov-label">{en ? "Top Menu Code (4 chars)" : "대메뉴 코드 (4자리)"}</label>
-                    <input
-                      className="gov-input"
-                      maxLength={4}
-                      value={parentCodeValue}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
-                        setParentCodeValue(val);
-                      }}
-                      placeholder={en ? "e.g. A009" : "예: A009"}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="gov-label">{en ? "Parent Menu" : "상위 메뉴"}</label>
-                    <ParentSelector
-                      treeData={treeData}
-                      value={parentCodeValue}
-                      onChange={(code) => {
-                        setParentCodeValue(code);
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="gov-label">{en ? "New Code" : "생성 코드"}</label>
-                  <input
-                    className="gov-input bg-gray-50"
-                    readOnly
-                    value={isTopMenu ? parentCodeValue.toUpperCase() : findSuggestedPageCode()}
-                    placeholder={isTopMenu ? "" : (en ? "Select a parent menu first" : "상위 메뉴를 먼저 선택하세요")}
-                  />
-                </div>
-
-                <div>
-                  <label className="gov-label" htmlFor="codeNm">{en ? "Menu Name" : "메뉴명"}</label>
-                  <input
-                    className="gov-input"
-                    id="codeNm"
-                    value={codeNm}
-                    onChange={(e) => setCodeNm(e.target.value)}
-                    placeholder={en ? "Enter menu name" : "메뉴명을 입력하세요"}
-                  />
-                </div>
-
-                <div>
-                  <label className="gov-label" htmlFor="codeDc">{en ? "English Name" : "영문 메뉴명"}</label>
-                  <input
-                    className="gov-input"
-                    id="codeDc"
-                    value={codeDc}
-                    onChange={(e) => setCodeDc(e.target.value)}
-                    placeholder={en ? "English name" : "영문 메뉴명"}
-                  />
-                </div>
-
-                <div>
-                  <label className="gov-label" htmlFor="menuUrl">{en ? "URL" : "URL"}</label>
-                  <input
-                    className="gov-input"
-                    id="menuUrl"
-                    value={menuUrl}
-                    onChange={(e) => setMenuUrl(e.target.value)}
-                    placeholder={menuType === "USER" ? "/home/..." : "/admin/..."}
-                  />
-                </div>
-
-                <div>
-                  <label className="gov-label">{en ? "Icon" : "아이콘"}</label>
-                  <IconPicker value={menuIcon} onChange={setMenuIcon} />
-                </div>
-
-                <div>
-                  <label className="gov-label" htmlFor="useAt">{en ? "Status" : "상태"}</label>
-                  <select className="gov-select" id="useAt" value={useAt} onChange={(e) => setUseAt(e.target.value)}>
-                    <option value="Y">{en ? "Active" : "사용"}</option>
-                    <option value="N">{en ? "Inactive" : "미사용"}</option>
-                  </select>
-                </div>
-
-                <button type="button" onClick={handleCreatePage} className="gov-btn gov-btn-primary w-full">
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                  <span>{en ? "Create Menu" : "메뉴 생성"}</span>
+        <section className="gov-card" data-help-id="menu-management-tree">
+          <GridToolbar
+            actions={
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleSaveOrder} className="gov-btn gov-btn-primary">
+                  <span className="material-symbols-outlined text-[16px]">save</span>
+                  <span>{en ? "Save Order" : "순서 저장"}</span>
                 </button>
               </div>
+            }
+            className="mb-4"
+            title={en ? "Menu Tree" : "메뉴 트리"}
+          />
+
+          <div className="mb-4 grid grid-cols-1 gap-4 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <label className="gov-label" htmlFor="menuType">{en ? "Menu Type" : "메뉴 유형"}</label>
+              <select className="gov-select" id="menuType" value={menuType} onChange={(e) => setMenuType(e.target.value)}>
+                {menuTypes.map((t) => (
+                  <option key={stringOf(t, "value")} value={stringOf(t, "value")}>{stringOf(t, "label")}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="gov-label" htmlFor="menuSearch">{en ? "Search" : "검색"}</label>
+              <input
+                className="gov-input"
+                id="menuSearch"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                placeholder={en ? "Code, name, URL..." : "코드, 메뉴명, URL..."}
+              />
             </div>
           </div>
-        </div>
+
+          <div className="max-h-[60vh] overflow-y-auto" onDragOver={(e) => e.preventDefault()}>
+            {filteredTreeData.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                {en ? "No menus found." : "메뉴가 없습니다."}
+              </div>
+            ) : (
+              <MenuTree
+                nodes={filteredTreeData}
+                expandedCodes={expandedCodes}
+                onToggle={handleToggle}
+                onUpdate={handleUpdateMenu}
+                onDelete={handleDeleteMenu}
+                onDragStart={handleDragStart}
+                onDrop={handleDrop}
+                mobileDragCode={mobileDragCode}
+                onMobileDragStart={handleMobileDragStart}
+                onMobileDrop={handleMobileDrop}
+              />
+            )}
+          </div>
+        </section>
+
+        <section className="gov-card overflow-hidden" data-help-id="menu-management-register">
+          <GridToolbar title={en ? "Add New Menu" : "새 메뉴 등록"} />
+          <div className="p-4 space-y-4">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isTopMenu}
+                  onChange={(e) => {
+                    setIsTopMenu(e.target.checked);
+                    if (e.target.checked) {
+                      let maxSuffix = 0;
+                      const prefix = "A";
+                      menuCodeRows.forEach((row) => {
+                        if (row.code.length === 4 && row.code.startsWith(prefix)) {
+                          const suffix = Number(row.code.slice(1));
+                          if (Number.isFinite(suffix) && suffix > maxSuffix) {
+                            maxSuffix = suffix;
+                          }
+                        }
+                      });
+                      const newCode = `${prefix}${String(maxSuffix + 1).padStart(3, "0")}`;
+                      setParentCodeValue(newCode);
+                    }
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium">{en ? "Create as Top Menu (4-char)" : "대메뉴로 등록 (4자리)"}</span>
+              </label>
+            </div>
+
+            {isTopMenu ? (
+              <div>
+                <label className="gov-label">{en ? "Top Menu Code (4 chars)" : "대메뉴 코드 (4자리)"}</label>
+                <input
+                  className="gov-input"
+                  maxLength={4}
+                  value={parentCodeValue}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+                    setParentCodeValue(val);
+                  }}
+                  placeholder={en ? "e.g. A009" : "예: A009"}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="gov-label">{en ? "Parent Menu" : "상위 메뉴"}</label>
+                <ParentSelector
+                  treeData={treeData}
+                  value={parentCodeValue}
+                  onChange={(code) => {
+                    setParentCodeValue(code);
+                  }}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="gov-label">{en ? "New Code" : "생성 코드"}</label>
+              <input
+                className="gov-input bg-gray-50"
+                readOnly
+                value={isTopMenu ? parentCodeValue.toUpperCase() : findSuggestedPageCode()}
+                placeholder={isTopMenu ? "" : (en ? "Select a parent menu first" : "상위 메뉴를 먼저 선택하세요")}
+              />
+            </div>
+
+            <div>
+              <label className="gov-label" htmlFor="codeNm">{en ? "Menu Name" : "메뉴명"}</label>
+              <input
+                className="gov-input"
+                id="codeNm"
+                value={codeNm}
+                onChange={(e) => setCodeNm(e.target.value)}
+                placeholder={en ? "Enter menu name" : "메뉴명을 입력하세요"}
+              />
+            </div>
+
+            <div>
+              <label className="gov-label" htmlFor="codeDc">{en ? "English Name" : "영문 메뉴명"}</label>
+              <input
+                className="gov-input"
+                id="codeDc"
+                value={codeDc}
+                onChange={(e) => setCodeDc(e.target.value)}
+                placeholder={en ? "English name" : "영문 메뉴명"}
+              />
+            </div>
+
+            <div>
+              <label className="gov-label" htmlFor="menuUrl">{en ? "URL" : "URL"}</label>
+              <input
+                className="gov-input"
+                id="menuUrl"
+                value={menuUrl}
+                onChange={(e) => setMenuUrl(e.target.value)}
+                placeholder={menuType === "USER" ? "/home/..." : "/admin/..."}
+              />
+            </div>
+
+            <div>
+              <label className="gov-label">{en ? "Icon" : "아이콘"}</label>
+              <IconPicker value={menuIcon} onChange={setMenuIcon} />
+            </div>
+
+            <div>
+              <label className="gov-label" htmlFor="useAt">{en ? "Status" : "상태"}</label>
+              <select className="gov-select" id="useAt" value={useAt} onChange={(e) => setUseAt(e.target.value)}>
+                <option value="Y">{en ? "Active" : "사용"}</option>
+                <option value="N">{en ? "Inactive" : "미사용"}</option>
+              </select>
+            </div>
+
+            <button type="button" onClick={handleCreatePage} className="gov-btn gov-btn-primary w-full">
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              <span>{en ? "Create Menu" : "메뉴 생성"}</span>
+            </button>
+          </div>
+        </section>
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );
