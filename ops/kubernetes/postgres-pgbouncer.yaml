@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-pgbouncer-config
+  namespace: carbonet-prod
+  labels:
+    app: postgres-pgbouncer
+data:
+  pgbouncer.ini: |
+    [databases]
+    carbonet = host=postgres-haproxy port=5432 dbname=carbonet
+
+    [pgbouncer]
+    listen_addr = *
+    listen_port = 5432
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = transaction
+    max_client_conn = 500
+    default_pool_size = 20
+    min_pool_size = 5
+    reserve_pool_size = 5
+    reserve_pool_timeout = 5
+    max_db_connections = 100
+    server_idle_timeout = 600
+    server_connect_timeout = 15
+    server_login_retry = 3
+    query_timeout = 0
+    query_wait_timeout = 0
+    server_reset_query = DISCARD ALL
+    server_check_delay = 30
+    server_lifetime = 3600
+    log_connections = 0
+    log_disconnections = 0
+    log_pooler_errors = 1
+    stats_period = 60
+    admin_users = postgres
+    stats_users = postgres,pgbouncer
+  userlist.txt: |
+    "postgres" "postgres_password_2026"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-pgbouncer
+  namespace: carbonet-prod
+  labels:
+    app: postgres-pgbouncer
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres-pgbouncer
+  template:
+    metadata:
+      labels:
+        app: postgres-pgbouncer
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      containers:
+      - name: pgbouncer
+        image: docker.io/dockette/pgbouncer:latest
+        ports:
+        - name: pgbouncer
+          containerPort: 5432
+          protocol: TCP
+        - name: admin
+          containerPort: 5433
+          protocol: TCP
+        env:
+        - name: DATABASE_URL
+          value: "postgres://postgres:postgres_password_2026@postgres-haproxy:5432/carbonet"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+        volumeMounts:
+        - name: config
+          mountPath: /etc/pgbouncer
+          readOnly: true
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: postgres-pgbouncer-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-pgbouncer
+  namespace: carbonet-prod
+  labels:
+    app: postgres-pgbouncer
+spec:
+  type: ClusterIP
+  ports:
+  - name: pgbouncer
+    port: 5432
+    targetPort: 5432
+    protocol: TCP
+  - name: admin
+    port: 5433
+    targetPort: 5433
+    protocol: TCP
+  selector:
+    app: postgres-pgbouncer

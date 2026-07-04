@@ -87,3 +87,56 @@ case "$cmd" in
   ops-doctor)
     exec "$ROOT_DIR/ops/scripts/resonance-k8s-ops-doctor.sh" "${@:2}"
     ;;
+  health|15)
+    exec "$ROOT_DIR/ops/scripts/resonance-health-check.sh" "${@:2}"
+    ;;
+  logs|log-db|7)
+    exec "$ROOT_DIR/ops/scripts/resonance-log-db-register.sh" "${@:2}"
+    ;;
+  watch|file-watch|17)
+    exec "$ROOT_DIR/ops/scripts/resonance-file-watch.sh" "${@:2}"
+    ;;
+  ci|pr-ci|18)
+    shift
+    bash "$ROOT_DIR/ops/scripts/resonance-pr-ci.sh" "${@:2}"
+    ;;
+  review|검토)
+    exec "$ROOT_DIR/ops/scripts/resonance-review.sh" "${@:2}"
+    ;;
+  review-deploy|검토배포)
+    exec "$ROOT_DIR/ops/scripts/resonance-review.sh" deploy "${@:2}"
+    ;;
+  housekeep|cleanup)
+    exec "$ROOT_DIR/ops/scripts/resonance-k8s-housekeeper.sh" "${@:2}"
+    ;;
+  inventory|list)
+    sed -n '1,220p' "$ROOT_DIR/docs/operations/resonance-command-inventory.md"
+    ;;
+  g|git-status)
+    cd "$ROOT_DIR" && git status && git log --oneline -5
+    ;;
+  gc|git-commit)
+    shift
+    bash "$ROOT_DIR/ops/scripts/git-auto-commit.sh" "$*"
+    ;;
+  gp|git-push)
+    cd "$ROOT_DIR" && git push
+    ;;
+  gr|git-rollback)
+    bash "$ROOT_DIR/ops/scripts/git-rollback.sh" "${@:2}"
+    ;;
+  gw|git-watch)
+    bash "$ROOT_DIR/ops/scripts/git-watch-push.sh" "${@:2}"
+    ;;
+  h|help|-h|--help)
+    show_menu
+    ;;
+  q|quit|exit)
+    echo "Exit"
+    ;;
+  *)
+    echo "Unknown: $cmd"
+    echo ""
+    exec "$0" help
+    ;;
+esac
