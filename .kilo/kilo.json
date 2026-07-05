@@ -26,6 +26,16 @@
       "Before changing DB, Docker, systemd, or production files, inspect current state and preserve backups.",
       "After DB work, verify ecoinvent_master and emission_material_translation row counts and port 33000 connectivity.",
       "Prefer focused edits. Do not delete data folders unless the user explicitly asks and a current backup exists."
+    ],
+    "noBuildPageDevelopment": [
+      "For page development, edit project overlay metadata/assets only: projects/carbonet-frontend/src/main/resources/static/react-app/**, projects/carbonet-assets/static/**, projects/carbonet-backend-metadata/**.",
+      "Use /admin/system/build-studio as the SDUI control plane for all screens and assets.",
+      "Do not edit frontend/src/**, apps/**, modules/**, release/**, templates/**, deploy/**, or scripts/runtime-configs/** for ordinary page work unless the user explicitly requests runtime/core changes.",
+      "Do not run npm build, Maven package, Docker build, image push, or Kubernetes rollout for page-only changes.",
+      "Represent screen structure, UI behavior, and menu-page mapping as SDUI/metadata; avoid adding Java controllers or compiled frontend source for page work.",
+      "Use ops/scripts/resonance-no-build-apply.sh for overlay/metadata diffs and verify served overlay assets with curl before finishing.",
+      "If a requested page feature seems to require code, first redesign it as SDUI metadata or an existing generic runtime API.",
+      "Only mark a task build/redeploy-required when it changes runtime engine behavior, security/auth, DB schema, or shared Java contracts."
     ]
   }
 }

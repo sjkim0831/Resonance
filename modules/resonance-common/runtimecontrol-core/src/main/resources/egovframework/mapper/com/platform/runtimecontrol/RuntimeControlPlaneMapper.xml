@@ -46,18 +46,18 @@
             #{parityScore},
             #{uniformityScore},
             #{result},
-            #{compareTargetSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{blockerSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{repairCandidateSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{compareTargetSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{blockerSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{repairCandidateSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{requestedBy},
             #{requestedByType},
-            #{resultPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{resultPayloadJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{occurredAt},
             0,
             #{requestedBy},
             #{requestedBy},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -110,20 +110,20 @@
             #{requestedBy},
             #{requestedByType},
             #{requestNote},
-            #{selectedElementSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{existingAssetReuseSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{blockingGapSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{reuseRecommendationSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{requiredContractSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{selectedElementSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{existingAssetReuseSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{blockingGapSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{reuseRecommendationSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{requiredContractSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{status},
             #{blockingGapCount},
-            #{sessionPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{sessionPayloadJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{occurredAt},
             0,
             #{requestedBy},
             #{requestedBy},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -175,7 +175,7 @@
             #{screenFamilyRuleId},
             #{ownerLane},
             #{selectedScreenId},
-            #{selectedElementSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{selectedElementSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{compareBaseline},
             #{updatedReleaseCandidateId},
             #{publishMode},
@@ -187,17 +187,17 @@
             #{status},
             #{rollbackAnchorYn},
             #{changeSummary},
-            #{updatedAssetTraceSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{updatedBindingSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{updatedThemeLayoutSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{sqlDraftSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{applyPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{updatedAssetTraceSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{updatedBindingSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{updatedThemeLayoutSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{sqlDraftSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{applyPayloadJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{occurredAt},
             0,
             #{requestedBy},
             #{requestedBy},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -255,7 +255,7 @@
             #{releaseUnitId},
             #{screenFamilyRuleId},
             #{selectedScreenId},
-            #{selectedElementSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{selectedElementSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{compareBaseline},
             #{pageId},
             #{routeId},
@@ -274,14 +274,14 @@
             #{verifyHelpSecurityYn},
             #{requestedBy},
             #{requestedByType},
-            #{blockerSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{resultPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{blockerSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{resultPayloadJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{occurredAt},
             0,
             #{requestedBy},
             #{requestedBy},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -337,17 +337,17 @@
             #{backendImpactSummary},
             #{dbImpactSummary},
             #{cssImpactSummary},
-            #{runtimePackageAttachPreview, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{runtimePackageAttachPreview, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{rollbackPlanSummary},
             #{blockingIssueCount},
-            #{blockingIssueSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{blockingIssueSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{readyForApplyYn},
-            #{previewPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{previewPayloadJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             0,
             #{operatorId},
             #{operatorId},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -406,30 +406,30 @@
             #{releaseUnitId},
             #{runtimePackageId},
             #{generationRunId},
-            #{jsonRevisionSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{jsonRevisionSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{selectionAppliedYn},
-            #{appliedModuleSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{attachedPageAssetSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{attachedComponentAssetSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{attachedBackendAssetSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{attachedDbAssetSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{appliedModuleSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{attachedPageAssetSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{attachedComponentAssetSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{attachedBackendAssetSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{attachedDbAssetSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{runtimePackageImpactSummary},
-            #{releaseBlockerDeltaJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{releaseBlockerDeltaJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{followUpChecklistSummary},
             #{repairNeededYn},
             #{repairQueueCount},
             #{repairSessionCandidateId},
             #{compareContextId},
-            #{publishedAssetTraceSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{traceLinkSetJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{publishedAssetTraceSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{traceLinkSetJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{nextRecommendedAction},
             #{rollbackAnchorYn},
-            #{resultPayloadJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{resultPayloadJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             0,
             #{operatorId},
             #{operatorId},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 

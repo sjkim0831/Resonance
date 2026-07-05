@@ -21,10 +21,14 @@ import egovframework.com.platform.screenbuilder.service.impl.BuilderComponentSer
 import egovframework.com.platform.screenbuilder.service.impl.BuilderScreenServiceImpl;
 import egovframework.com.platform.screenbuilder.web.BuilderApiController;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import javax.sql.DataSource;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -57,8 +61,10 @@ public class ProjectRuntimeApplication {
     }
 
     @Bean
-    public ScreenBuilderMockController screenBuilderMockController(ObjectMapper objectMapper) {
-        return new ScreenBuilderMockController(objectMapper);
+    public ScreenBuilderMockController screenBuilderMockController(
+            ObjectMapper objectMapper,
+            @Value("${CARBONET_BACKEND_METADATA_FS_OVERRIDE_PATH:/app/backend-metadata}") String backendMetadataPath) {
+        return new ScreenBuilderMockController(objectMapper, backendMetadataPath);
     }
 
     @Bean
@@ -95,13 +101,21 @@ public class ProjectRuntimeApplication {
              "/admin/api/platform/screen-builder", "/en/admin/api/platform/screen-builder"})
     public static class ScreenBuilderMockController {
         private final ObjectMapper objectMapper;
+        private final Path metadataRoot;
 
-        public ScreenBuilderMockController(ObjectMapper objectMapper) {
+        public ScreenBuilderMockController(ObjectMapper objectMapper, String backendMetadataPath) {
             this.objectMapper = objectMapper;
+            this.metadataRoot = Path.of(backendMetadataPath == null || backendMetadataPath.isBlank()
+                    ? "/app/backend-metadata"
+                    : backendMetadataPath.trim());
         }
 
         @GetMapping("/page")
         public Map<String, Object> getScreenBuilderPage() {
+            Map<String, Object> override = readMetadataResponse("screen-builder/page.json");
+            if (override != null) {
+                return override;
+            }
             ObjectNode page = objectMapper.createObjectNode();
             page.put("status", "ok");
             page.put("message", "Screen Builder API ready");
@@ -113,6 +127,10 @@ public class ProjectRuntimeApplication {
 
         @GetMapping("/components")
         public Map<String, Object> getComponents() {
+            Map<String, Object> override = readMetadataResponse("screen-builder/components.json");
+            if (override != null) {
+                return override;
+            }
             ArrayNode components = objectMapper.createArrayNode();
             ObjectNode btn = objectMapper.createObjectNode();
             btn.put("id", "btn-001");
@@ -149,17 +167,42 @@ public class ProjectRuntimeApplication {
 
         @GetMapping("/drafts")
         public Map<String, Object> getDrafts() {
+            Map<String, Object> override = readMetadataResponse("screen-builder/drafts.json");
+            if (override != null) {
+                return override;
+            }
             return Map.of("data", objectMapper.createArrayNode(), "status", "success");
         }
 
         @GetMapping("/versions")
         public Map<String, Object> getVersions() {
+            Map<String, Object> override = readMetadataResponse("screen-builder/versions.json");
+            if (override != null) {
+                return override;
+            }
             return Map.of("data", objectMapper.createArrayNode(), "status", "success");
         }
 
         @GetMapping("/themes")
         public Map<String, Object> getThemes() {
+            Map<String, Object> override = readMetadataResponse("screen-builder/themes.json");
+            if (override != null) {
+                return override;
+            }
             return Map.of("data", objectMapper.createArrayNode(), "status", "success");
+        }
+
+        @SuppressWarnings("unchecked")
+        private Map<String, Object> readMetadataResponse(String relativePath) {
+            Path metadataFile = metadataRoot.resolve(relativePath).normalize();
+            if (!metadataFile.startsWith(metadataRoot.normalize()) || !Files.isRegularFile(metadataFile)) {
+                return null;
+            }
+            try {
+                return objectMapper.readValue(metadataFile.toFile(), Map.class);
+            } catch (IOException e) {
+                throw new IllegalStateException("Invalid backend metadata file: " + metadataFile, e);
+            }
         }
     }
 

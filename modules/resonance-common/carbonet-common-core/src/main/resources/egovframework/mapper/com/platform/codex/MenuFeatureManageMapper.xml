@@ -102,8 +102,8 @@
             #{featureNmEn},
             #{featureDc},
             #{useAt},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -113,7 +113,7 @@
             FEATURE_NM_EN = #{featureNmEn},
             FEATURE_DC = #{featureDc},
             USE_AT = #{useAt},
-            LAST_UPDT_PNTTM = CURRENT_DATETIME
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE FEATURE_CODE = #{featureCode}
     </update>
 

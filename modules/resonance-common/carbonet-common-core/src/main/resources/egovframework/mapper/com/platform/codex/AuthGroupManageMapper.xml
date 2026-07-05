@@ -297,7 +297,7 @@
     <update id="deactivateUserFeatureOverride" parameterType="map">
         UPDATE COMTNUSERFEATUREOVERRIDE
         SET USE_AT = 'N',
-            LAST_UPDT_DT = CURRENT_DATETIME
+            LAST_UPDT_DT = CURRENT_TIMESTAMP
         WHERE SCRTY_DTRMN_TRGET_ID = #{targetId}
           AND FEATURE_CODE = #{featureCode}
           AND COALESCE(USE_AT, 'Y') = 'Y'
@@ -306,7 +306,7 @@
     <update id="reactivateUserFeatureOverride" parameterType="map">
         UPDATE COMTNUSERFEATUREOVERRIDE
         SET USE_AT = 'Y',
-            LAST_UPDT_DT = CURRENT_DATETIME
+            LAST_UPDT_DT = CURRENT_TIMESTAMP
         WHERE SCRTY_DTRMN_TRGET_ID = #{targetId}
           AND FEATURE_CODE = #{featureCode}
           AND COALESCE(USE_AT, 'N') != 'Y'
@@ -373,7 +373,7 @@
             #{authorCode},
             #{featureCode},
             'N',
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -870,9 +870,9 @@
             #{overrideType},
             'Y',
             #{actorId},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{actorId},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -889,7 +889,7 @@
             AUTHOR_CODE = #{authorCode},
             USE_AT = 'Y',
             LAST_UPDUSR_ID = #{actorId},
-            LAST_UPDT_DT = CURRENT_DATETIME
+            LAST_UPDT_DT = CURRENT_TIMESTAMP
         WHERE INSTT_ID = #{insttId}
           AND DEPT_NM = #{deptNm}
     </update>
@@ -912,9 +912,9 @@
             #{authorCode},
             'Y',
             #{actorId},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{actorId},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 </mapper>

@@ -35,7 +35,7 @@ LOADER_PATH="lib/"
 if [[ -d "$COMMON_LIB_DIR" ]]; then
   LOADER_PATH="lib/,$COMMON_LIB_DIR/"
 fi
-DB_URL="jdbc:cubrid:${CUBRID_HOST:-127.0.0.1}:${CUBRID_PORT:-33000}:${CUBRID_DB:-carbonet}:::?charset=UTF-8"
+DB_URL="jdbc:postgresql://${CUBRID_HOST:-127.0.0.1}:5432/${CUBRID_DB:-carbonet}?charset=UTF-8"
 
 exec java -Dloader.path="$LOADER_PATH" -jar project-runtime.jar \
   --spring.profiles.active=prod \

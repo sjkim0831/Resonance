@@ -59,6 +59,7 @@ public final class ReactPageUrlMapper {
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-lci-classification", "/admin/emission/lci-classification", "/admin/emission/lci-classification");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin", "/admin/emission/survey-admin", "/admin/emission/survey-admin");
 registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", "/admin/emission/survey-admin-data", "/admin/emission/survey-admin-data");
+        registerAdmin(adminPathToRoute, adminRouteToPath, "builder-studio", "/admin/system/builder-studio", "/admin/system/builder-studio");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_list", "/emission/project_list", "/en/emission/project_list", "/emission/project_list");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_dashboard", "/emission/dashboard", "/en/emission/dashboard", "/emission/dashboard");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_lci", "/emission/lci", "/en/emission/lci", "/emission/lci");

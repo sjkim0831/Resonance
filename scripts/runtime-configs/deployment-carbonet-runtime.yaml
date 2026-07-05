@@ -67,7 +67,7 @@ spec:
           value: -XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50
             -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8
         - name: SPRING_DATASOURCE_URL
-          value: jdbc:cubrid:cubrid-carbonet.carbonet-prod.svc.cluster.local:33000:carbonet:::?charset=UTF-8&connectTimeout=5&queryTimeout=30
+          value: jdbc:postgresql://postgresql.carbonet-prod.svc.cluster.local:5432/carbonet?charset=UTF-8&connectTimeout=5&queryTimeout=30
         - name: CARBONET_REACT_APP_FS_OVERRIDE_ENABLED
           value: "true"
         - name: CARBONET_REACT_APP_FS_OVERRIDE_PATH

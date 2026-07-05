@@ -112,7 +112,7 @@ DB_PORT="${CUBRID_PORT:-33000}"
 DB_NAME="${CUBRID_DB:-carbonet}"
 DB_USER="${CUBRID_USER:-dba}"
 DB_PASSWORD="${CUBRID_PASSWORD:-}"
-DB_URL="jdbc:cubrid:${DB_HOST}:${DB_PORT}:${DB_NAME}:::?charset=UTF-8"
+DB_URL="jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}?charset=UTF-8"
 
 require_env "TOKEN_ACCESS_SECRET"
 require_env "TOKEN_REFRESH_SECRET"

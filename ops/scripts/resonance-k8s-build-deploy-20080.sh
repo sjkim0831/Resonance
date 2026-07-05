@@ -8,10 +8,10 @@ DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime-review}"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 PROJECT_ID="${PROJECT_ID:-P003}"
-CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
+CUBRID_HOST="${CUBRID_HOST:-postgresql.${NAMESPACE}.svc.cluster.local}"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_USER="${DB_USER:-dba}"
-DB_URL="${DB_URL:-jdbc:cubrid:${CUBRID_HOST}:33000:${DB_NAME}:::?charset=UTF-8&connectTimeout=5&queryTimeout=30}"
+DB_URL="${DB_URL:-jdbc:postgresql://${CUBRID_HOST}:5432/${DB_NAME}?charset=UTF-8&connectTimeout=5&queryTimeout=30}"
 IMAGE_NAME="${IMAGE_NAME:-registry.local/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-kubeadm)}"
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 RUN_DIR="$ROOT_DIR/var/run"
@@ -409,9 +409,9 @@ ensure_runtime_config() {
   kubectl -n "$NAMESPACE" create configmap carbonet-runtime-config \
     --from-literal=PROJECT_ID="$PROJECT_ID" \
     --from-literal=SERVER_PORT=8080 \
-    --from-literal=CUBRID_HOST="$CUBRID_HOST" \
+    --from-literal=POSTGRES_HOST="$CUBRID_HOST" \
     --from-literal=LOG_DIR=/tmp \
-    --from-literal=SPRING_DATASOURCE_DRIVER_CLASS_NAME=cubrid.jdbc.driver.CUBRIDDriver \
+    --from-literal=SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
     --from-literal=SPRING_DATASOURCE_URL="$DB_URL" \
     --from-literal=SPRING_PROFILES_ACTIVE=prod \
     --from-literal=APP_PROJECT_ID="$PROJECT_ID" \

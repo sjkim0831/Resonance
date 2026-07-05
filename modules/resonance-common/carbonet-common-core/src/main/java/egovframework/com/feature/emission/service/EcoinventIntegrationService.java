@@ -1102,7 +1102,7 @@ public class EcoinventIntegrationService {
             return;
         }
         Number tableCount = (Number) entityManager.createNativeQuery(
-                        "SELECT COUNT(*) FROM db_class WHERE LOWER(class_name) = LOWER(?)")
+                        "SELECT COUNT(*) FROM information_schema.tables WHERE LOWER(table_name) = LOWER(?) AND table_schema = 'public'")
                 .setParameter(1, MATERIAL_TRANSLATION_TABLE)
                 .getSingleResult();
         if (tableCount == null || tableCount.longValue() == 0L) {
@@ -1115,8 +1115,8 @@ public class EcoinventIntegrationService {
                     + "SOURCE_TYPE VARCHAR(40),"
                     + "MAPPING_STATUS VARCHAR(40),"
                     + "MAPPING_NOTE VARCHAR(1000),"
-                    + "FRST_REGIST_PNTTM DATETIME DEFAULT CURRENT_DATETIME NOT NULL,"
-                    + "LAST_UPDT_PNTTM DATETIME DEFAULT CURRENT_DATETIME NOT NULL,"
+                    + "FRST_REGIST_PNTTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,"
+                    + "LAST_UPDT_PNTTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,"
                     + "PRIMARY KEY (RAW_NAME)"
                     + ")").executeUpdate();
         }
@@ -1138,9 +1138,9 @@ public class EcoinventIntegrationService {
     private boolean columnExists(String tableName, String columnName) {
         Number columnCount = (Number) entityManager.createNativeQuery("""
                         SELECT COUNT(*)
-                        FROM db_attribute
-                        WHERE LOWER(class_name) = LOWER(?)
-                          AND LOWER(attr_name) = LOWER(?)
+                        FROM information_schema.columns
+                        WHERE LOWER(table_name) = LOWER(?)
+                          AND LOWER(column_name) = LOWER(?)
                         """)
                 .setParameter(1, tableName)
                 .setParameter(2, columnName)
@@ -1162,8 +1162,8 @@ public class EcoinventIntegrationService {
                       synonyms VARCHAR(4000),
                       source_type VARCHAR(80),
                       source_url VARCHAR(1000),
-                      frst_regist_pnttm DATETIME DEFAULT CURRENT_DATETIME NOT NULL,
-                      last_updt_pnttm DATETIME DEFAULT CURRENT_DATETIME NOT NULL,
+                      frst_regist_pnttm TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                      last_updt_pnttm TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                       PRIMARY KEY (id)
                     )
                     """).executeUpdate();
@@ -1196,7 +1196,7 @@ public class EcoinventIntegrationService {
         }
         entityManager.createNativeQuery("UPDATE " + MATERIAL_TRANSLATION_TABLE
                         + " SET KOREAN_NAME = ?, ENGLISH_NAME = ?, ENGLISH_EXACT_NAME = ?, SOURCE_TYPE = ?,"
-                        + " MAPPING_STATUS = ?, LAST_UPDT_PNTTM = CURRENT_DATETIME WHERE RAW_NAME = ?")
+                        + " MAPPING_STATUS = ?, LAST_UPDT_PNTTM = CURRENT_TIMESTAMP WHERE RAW_NAME = ?")
                 .setParameter(1, rawName)
                 .setParameter(2, englishName)
                 .setParameter(3, englishName)
@@ -1220,7 +1220,7 @@ public class EcoinventIntegrationService {
 
         int updated = entityManager.createNativeQuery("UPDATE " + MATERIAL_TRANSLATION_TABLE
                         + " SET ECOINVENT_MASTER_ID = ?, KOREAN_NAME = ?, ENGLISH_NAME = ?, ENGLISH_EXACT_NAME = ?,"
-                        + " SOURCE_TYPE = ?, MAPPING_STATUS = ?, MAPPING_NOTE = ?, LAST_UPDT_PNTTM = CURRENT_DATETIME"
+                        + " SOURCE_TYPE = ?, MAPPING_STATUS = ?, MAPPING_NOTE = ?, LAST_UPDT_PNTTM = CURRENT_TIMESTAMP"
                         + " WHERE RAW_NAME = ?")
                 .setParameter(1, master.getId())
                 .setParameter(2, storedKoreanName)
@@ -1336,11 +1336,11 @@ public class EcoinventIntegrationService {
                       time_period VARCHAR(255),
                       indicator_id BIGINT,
                       indicator_name VARCHAR(1000),
-                      impact_score DOUBLE NOT NULL,
+                      impact_score DOUBLE PRECISION NOT NULL,
                       unit VARCHAR(255) NOT NULL,
                       score_unit VARCHAR(120),
                       version VARCHAR(255),
-                      last_sync_date DATETIME,
+                      last_sync_date TIMESTAMP,
                       PRIMARY KEY (id)
                     )
                     """).executeUpdate();
@@ -1361,7 +1361,7 @@ public class EcoinventIntegrationService {
 
     private boolean tableExists(String tableName) {
         Number tableCount = (Number) entityManager.createNativeQuery(
-                        "SELECT COUNT(*) FROM db_class WHERE LOWER(class_name) = LOWER(?)")
+                        "SELECT COUNT(*) FROM information_schema.tables WHERE LOWER(table_name) = LOWER(?) AND table_schema = 'public'")
                 .setParameter(1, tableName)
                 .getSingleResult();
         return tableCount != null && tableCount.longValue() > 0L;

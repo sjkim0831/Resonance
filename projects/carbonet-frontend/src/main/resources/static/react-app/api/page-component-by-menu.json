@@ -1,0 +1,3146 @@
+{
+  "HMENU_HOME": {
+    "pageId": "home",
+    "menuCode": "HMENU_HOME",
+    "routePath": "/home",
+    "components": [
+      {
+        "componentId": "HomeHeroSection",
+        "instanceKey": "home-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      },
+      {
+        "componentId": "HomeSearchSection",
+        "instanceKey": "home-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 2
+  },
+  "AMENU_ADMIN_HOME": {
+    "pageId": "admin-home",
+    "menuCode": "AMENU_ADMIN_HOME",
+    "routePath": "/admin/",
+    "components": [
+      {
+        "componentId": "AdminHomeCards",
+        "instanceKey": "admin-home-cards",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040204": {
+    "pageId": "popup-edit",
+    "menuCode": "A0040204",
+    "routePath": "/admin/content/popup_edit",
+    "components": [
+      {
+        "componentId": "PopupEditSummary",
+        "instanceKey": "popup-edit-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040203": {
+    "pageId": "popup-list",
+    "menuCode": "A0040203",
+    "routePath": "/admin/content/popup_list",
+    "components": [
+      {
+        "componentId": "PopupListSummary",
+        "instanceKey": "popup-list-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_ADMIN_LOGIN": {
+    "pageId": "admin-login",
+    "menuCode": "AMENU_ADMIN_LOGIN",
+    "routePath": "/admin/login/loginView",
+    "components": [
+      {
+        "componentId": "AdminLoginWarning",
+        "instanceKey": "admin-login-warning",
+        "layoutZone": "header",
+        "propsSummary": []
+      },
+      {
+        "componentId": "AdminLoginForm",
+        "instanceKey": "admin-login-form",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 2
+  },
+  "AMENU_AUTH_GROUP": {
+    "pageId": "auth-group",
+    "menuCode": "AMENU_AUTH_GROUP",
+    "routePath": "/admin/auth/group",
+    "components": [
+      {
+        "componentId": "AuthGroupFilters",
+        "instanceKey": "auth-group-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_AUTH_CHANGE": {
+    "pageId": "auth-change",
+    "menuCode": "AMENU_AUTH_CHANGE",
+    "routePath": "/admin/member/auth-change",
+    "components": [
+      {
+        "componentId": "AuthChangeSummary",
+        "instanceKey": "auth-change-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_DEPT_ROLE": {
+    "pageId": "dept-role",
+    "menuCode": "AMENU_DEPT_ROLE",
+    "routePath": "/admin/member/dept-role-mapping",
+    "components": [
+      {
+        "componentId": "DeptRoleCompanySelector",
+        "instanceKey": "dept-role-company",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_ADMIN_LIST": {
+    "pageId": "admin-list",
+    "menuCode": "AMENU_ADMIN_LIST",
+    "routePath": "/admin/member/admin_list",
+    "components": [
+      {
+        "componentId": "AdminListSearchForm",
+        "instanceKey": "admin-list-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SIGNIN_LOGIN": {
+    "pageId": "signin-login",
+    "menuCode": "HMENU_SIGNIN_LOGIN",
+    "routePath": "/signin/loginView",
+    "components": [
+      {
+        "componentId": "SigninLoginNotice",
+        "instanceKey": "signin-login-notice",
+        "layoutZone": "header",
+        "propsSummary": []
+      },
+      {
+        "componentId": "SigninLoginTabs",
+        "instanceKey": "signin-login-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 2
+  },
+  "HMENU_SIGNIN_AUTH_CHOICE": {
+    "pageId": "signin-auth-choice",
+    "menuCode": "HMENU_SIGNIN_AUTH_CHOICE",
+    "routePath": "/signin/authChoice",
+    "components": [
+      {
+        "componentId": "SigninAuthChoiceOptions",
+        "instanceKey": "signin-auth-choice-options",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SIGNIN_FIND_ID": {
+    "pageId": "signin-find-id",
+    "menuCode": "HMENU_SIGNIN_FIND_ID",
+    "routePath": "/signin/findId",
+    "components": [
+      {
+        "componentId": "SigninFindIdForm",
+        "instanceKey": "signin-find-id-form",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SIGNIN_FIND_ID_RESULT": {
+    "pageId": "signin-find-id-result",
+    "menuCode": "HMENU_SIGNIN_FIND_ID_RESULT",
+    "routePath": "/signin/findId/result",
+    "components": [
+      {
+        "componentId": "SigninFindIdResultCard",
+        "instanceKey": "signin-find-id-result-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SIGNIN_FIND_PASSWORD": {
+    "pageId": "signin-find-password",
+    "menuCode": "HMENU_SIGNIN_FIND_PASSWORD",
+    "routePath": "/signin/findPassword",
+    "components": [
+      {
+        "componentId": "SigninFindPasswordVerify",
+        "instanceKey": "signin-find-password-verify",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SIGNIN_FINDPW_RESULT": {
+    "pageId": "signin-find-password-result",
+    "menuCode": "HMENU_SIGNIN_FINDPW_RESULT",
+    "routePath": "/signin/findPassword/result",
+    "components": [
+      {
+        "componentId": "SigninFindPasswordResultCard",
+        "instanceKey": "signin-find-password-result-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SIGNIN_FORBIDDEN": {
+    "pageId": "signin-forbidden",
+    "menuCode": "HMENU_SIGNIN_FORBIDDEN",
+    "routePath": "/signin/loginForbidden",
+    "components": [
+      {
+        "componentId": "SigninForbiddenCard",
+        "instanceKey": "signin-forbidden-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_MEMBER_LIST": {
+    "pageId": "member-list",
+    "menuCode": "AMENU_MEMBER_LIST",
+    "routePath": "/admin/member/list",
+    "components": [
+      {
+        "componentId": "MemberSearchForm",
+        "instanceKey": "member-list-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0010106": {
+    "pageId": "member-withdrawn",
+    "menuCode": "A0010106",
+    "routePath": "/admin/member/withdrawn",
+    "components": [
+      {
+        "componentId": "MemberSearchForm",
+        "instanceKey": "member-withdrawn-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0010107": {
+    "pageId": "member-activate",
+    "menuCode": "A0010107",
+    "routePath": "/admin/member/activate",
+    "components": [
+      {
+        "componentId": "MemberSearchForm",
+        "instanceKey": "member-activate-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_MEMBER_DETAIL": {
+    "pageId": "member-detail",
+    "menuCode": "AMENU_MEMBER_DETAIL",
+    "routePath": "/admin/member/detail",
+    "components": [
+      {
+        "componentId": "MemberLookup",
+        "instanceKey": "member-detail-lookup",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_MEMBER_EDIT": {
+    "pageId": "member-edit",
+    "menuCode": "AMENU_MEMBER_EDIT",
+    "routePath": "/admin/member/edit",
+    "components": [
+      {
+        "componentId": "MemberEditSummaryCard",
+        "instanceKey": "member-edit-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050201": {
+    "pageId": "external-keys",
+    "menuCode": "A0050201",
+    "routePath": "/admin/external/keys",
+    "components": [
+      {
+        "componentId": "ExternalKeyCloseoutGate",
+        "instanceKey": "external-keys-closeout-gate",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020201": {
+    "pageId": "certificate-review",
+    "menuCode": "A0020201",
+    "routePath": "/admin/certificate/review",
+    "components": [
+      {
+        "componentId": "CertificateReviewSummary",
+        "instanceKey": "certificate-review-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050101": {
+    "pageId": "external-connection-list",
+    "menuCode": "A0050101",
+    "routePath": "/admin/external/connection_list",
+    "components": [
+      {
+        "componentId": "ExternalConnectionListSummaryCards",
+        "instanceKey": "external-connection-list-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050102": {
+    "pageId": "external-connection-add",
+    "menuCode": "A0050102",
+    "routePath": "/admin/external/connection_add",
+    "components": [
+      {
+        "componentId": "ExternalConnectionAddSummaryCards",
+        "instanceKey": "external-connection-add-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050103": {
+    "pageId": "external-connection-edit",
+    "menuCode": "A0050103",
+    "routePath": "/admin/external/connection_edit",
+    "components": [
+      {
+        "componentId": "ExternalConnectionEditSummaryCards",
+        "instanceKey": "external-connection-edit-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050108": {
+    "pageId": "external-usage",
+    "menuCode": "A0050108",
+    "routePath": "/admin/external/usage",
+    "components": [
+      {
+        "componentId": "ExternalUsageFilters",
+        "instanceKey": "external-usage-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050203": {
+    "pageId": "external-webhooks",
+    "menuCode": "A0050203",
+    "routePath": "/admin/external/webhooks",
+    "components": [
+      {
+        "componentId": "ExternalWebhookSummaryCards",
+        "instanceKey": "external-webhooks-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050104": {
+    "pageId": "external-sync",
+    "menuCode": "A0050104",
+    "routePath": "/admin/external/sync",
+    "components": [
+      {
+        "componentId": "ExternalSyncFilters",
+        "instanceKey": "external-sync-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050303": {
+    "pageId": "external-logs",
+    "menuCode": "A0050303",
+    "routePath": "/admin/external/logs",
+    "components": [
+      {
+        "componentId": "ExternalLogsFilters",
+        "instanceKey": "external-logs-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050107": {
+    "pageId": "external-maintenance",
+    "menuCode": "A0050107",
+    "routePath": "/admin/external/maintenance",
+    "components": [
+      {
+        "componentId": "ExternalMaintenanceSummaryCards",
+        "instanceKey": "external-maintenance-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050202": {
+    "pageId": "external-schema",
+    "menuCode": "A0050202",
+    "routePath": "/admin/external/schema",
+    "components": [
+      {
+        "componentId": "ExternalSchemaSummaryCards",
+        "instanceKey": "external-schema-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050106": {
+    "pageId": "external-monitoring",
+    "menuCode": "A0050106",
+    "routePath": "/admin/external/monitoring",
+    "components": [
+      {
+        "componentId": "ExternalMonitoringFilters",
+        "instanceKey": "external-monitoring-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_COMPANY_DETAIL": {
+    "pageId": "company-detail",
+    "menuCode": "AMENU_COMPANY_DETAIL",
+    "routePath": "/admin/member/company_detail",
+    "components": [
+      {
+        "componentId": "CompanyLookup",
+        "instanceKey": "company-detail-lookup",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0010103": {
+    "pageId": "member-approve",
+    "menuCode": "A0010103",
+    "routePath": "/admin/member/approve",
+    "components": [
+      {
+        "componentId": "MemberApprovalFilter",
+        "instanceKey": "member-approve-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0010202": {
+    "pageId": "company-approve",
+    "menuCode": "A0010202",
+    "routePath": "/admin/member/company-approve",
+    "components": [
+      {
+        "componentId": "CompanyApprovalFilter",
+        "instanceKey": "company-approve-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_CERTIFICATE_PENDING": {
+    "pageId": "certificate-pending",
+    "menuCode": "AMENU_CERTIFICATE_PENDING",
+    "routePath": "/admin/certificate/pending_list",
+    "components": [
+      {
+        "componentId": "CertificatePendingSummary",
+        "instanceKey": "certificate-pending-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030303": {
+    "pageId": "virtual-issue",
+    "menuCode": "A0030303",
+    "routePath": "/admin/payment/virtual_issue",
+    "components": [
+      {
+        "componentId": "RefundAccountReviewSummary",
+        "instanceKey": "virtual-issue-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020204": {
+    "pageId": "certificate-rec-check",
+    "menuCode": "A0020204",
+    "routePath": "/admin/certificate/rec_check",
+    "components": [
+      {
+        "componentId": "CertificateRecCheckSummary",
+        "instanceKey": "certificate-rec-check-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020202": {
+    "pageId": "certificate-objection-list",
+    "menuCode": "A0020202",
+    "routePath": "/admin/certificate/objection_list",
+    "components": [
+      {
+        "componentId": "CertificateObjectionSummary",
+        "instanceKey": "certificate-objection-list-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020203": {
+    "pageId": "certificate-statistics",
+    "menuCode": "A0020203",
+    "routePath": "/admin/certificate/statistics",
+    "components": [
+      {
+        "componentId": "CertificateStatisticsSummary",
+        "instanceKey": "certificate-statistics-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_COMPANY_LIST": {
+    "pageId": "company-list",
+    "menuCode": "AMENU_COMPANY_LIST",
+    "routePath": "/admin/member/company_list",
+    "components": [
+      {
+        "componentId": "CompanyListSearchForm",
+        "instanceKey": "company-list-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_COMPANY_ACCOUNT": {
+    "pageId": "company-account",
+    "menuCode": "AMENU_COMPANY_ACCOUNT",
+    "routePath": "/admin/member/company_account",
+    "components": [
+      {
+        "componentId": "CompanyAccountLookup",
+        "instanceKey": "company-account-lookup",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_STEP1": {
+    "pageId": "join-wizard",
+    "menuCode": "HMENU_JOIN_STEP1",
+    "routePath": "/join/step1",
+    "components": [
+      {
+        "componentId": "JoinHero",
+        "instanceKey": "join-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      },
+      {
+        "componentId": "MembershipTypeCardGroup",
+        "instanceKey": "membership-type-card-group",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 2
+  },
+  "HMENU_JOIN_COMPANY_REGISTER": {
+    "pageId": "join-company-register",
+    "menuCode": "HMENU_JOIN_COMPANY_REGISTER",
+    "routePath": "/join/companyRegister",
+    "components": [
+      {
+        "componentId": "JoinCompanyContactForm",
+        "instanceKey": "join-company-register-contact",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_COMP_REG_DONE": {
+    "pageId": "join-company-register-complete",
+    "menuCode": "HMENU_JOIN_COMP_REG_DONE",
+    "routePath": "/join/companyRegisterComplete",
+    "components": [
+      {
+        "componentId": "JoinCompanyRegisterCompleteSummary",
+        "instanceKey": "join-company-register-complete-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_COMPANY_STATUS": {
+    "pageId": "join-company-status",
+    "menuCode": "HMENU_JOIN_COMPANY_STATUS",
+    "routePath": "/join/companyJoinStatusSearch",
+    "components": [
+      {
+        "componentId": "JoinCompanyStatusSearchForm",
+        "instanceKey": "join-company-status-search",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_COMP_STAT_GUIDE": {
+    "pageId": "join-company-status-guide",
+    "menuCode": "HMENU_JOIN_COMP_STAT_GUIDE",
+    "routePath": "/join/companyJoinStatusGuide",
+    "components": [
+      {
+        "componentId": "JoinCompanyStatusGuide",
+        "instanceKey": "join-company-status-guide",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_COMP_STAT_DETAIL": {
+    "pageId": "join-company-status-detail",
+    "menuCode": "HMENU_JOIN_COMP_STAT_DETAIL",
+    "routePath": "/join/companyJoinStatusDetail",
+    "components": [
+      {
+        "componentId": "JoinCompanyStatusDetailSummary",
+        "instanceKey": "join-company-status-detail-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_COMPANY_REAPPLY": {
+    "pageId": "join-company-reapply",
+    "menuCode": "HMENU_JOIN_COMPANY_REAPPLY",
+    "routePath": "/join/companyReapply",
+    "components": [
+      {
+        "componentId": "JoinCompanyReapplyLookup",
+        "instanceKey": "join-company-reapply-lookup",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MY_INQUIRY": {
+    "pageId": "my-inquiry",
+    "menuCode": "HMENU_MY_INQUIRY",
+    "routePath": "/mtn/my_inquiry",
+    "components": [
+      {
+        "componentId": "MyInquiryHero",
+        "instanceKey": "my-inquiry-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MTN_STATUS": {
+    "pageId": "mtn-status",
+    "menuCode": "HMENU_MTN_STATUS",
+    "routePath": "/mtn/status",
+    "components": [
+      {
+        "componentId": "MtnStatusHero",
+        "instanceKey": "mtn-status-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0090204": {
+    "pageId": "mtn-version",
+    "menuCode": "H0090204",
+    "routePath": "/mtn/version",
+    "components": [
+      {
+        "componentId": "MtnVersionHero",
+        "instanceKey": "mtn-version-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0050101": {
+    "pageId": "monitoring-dashboard",
+    "menuCode": "H0050101",
+    "routePath": "/monitoring/dashboard",
+    "components": [
+      {
+        "componentId": "MonitoringDashboardHero",
+        "instanceKey": "monitoring-dashboard-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0050102": {
+    "pageId": "monitoring-realtime",
+    "menuCode": "H0050102",
+    "routePath": "/monitoring/realtime",
+    "components": [
+      {
+        "componentId": "MonitoringRealtimeHero",
+        "instanceKey": "monitoring-dashboard-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0050103": {
+    "pageId": "monitoring-reduction-trend",
+    "menuCode": "H0050103",
+    "routePath": "/monitoring/reduction_trend",
+    "components": [
+      {
+        "componentId": "MonitoringReductionTrendHero",
+        "instanceKey": "monitoring-reduction-trend-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_STEP2": {
+    "pageId": "join-terms",
+    "menuCode": "HMENU_JOIN_STEP2",
+    "routePath": "/join/step2",
+    "components": [
+      {
+        "componentId": "JoinTermsAllAgree",
+        "instanceKey": "join-step2-all-agree",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_STEP3": {
+    "pageId": "join-auth",
+    "menuCode": "HMENU_JOIN_STEP3",
+    "routePath": "/join/step3",
+    "components": [
+      {
+        "componentId": "JoinAuthMethodGrid",
+        "instanceKey": "join-step3-methods",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_STEP4": {
+    "pageId": "join-info",
+    "menuCode": "HMENU_JOIN_STEP4",
+    "routePath": "/join/step4",
+    "components": [
+      {
+        "componentId": "JoinUserInfoForm",
+        "instanceKey": "join-step4-user",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_JOIN_STEP5": {
+    "pageId": "join-complete",
+    "menuCode": "HMENU_JOIN_STEP5",
+    "routePath": "/join/step5",
+    "components": [
+      {
+        "componentId": "JoinCompleteSummary",
+        "instanceKey": "join-step5-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MYPAGE": {
+    "pageId": "mypage",
+    "menuCode": "HMENU_MYPAGE",
+    "routePath": "/mypage/profile",
+    "components": [
+      {
+        "componentId": "MypageBasicInfoForm",
+        "instanceKey": "mypage-basic-info",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0080104": {
+    "pageId": "mypage-notification",
+    "menuCode": "H0080104",
+    "routePath": "/mypage/notification",
+    "components": [
+      {
+        "componentId": "MypageNotificationHero",
+        "instanceKey": "mypage-notification-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0080204": {
+    "pageId": "mypage-marketing",
+    "menuCode": "H0080204",
+    "routePath": "/mypage/marketing",
+    "components": [
+      {
+        "componentId": "MypageMarketingHero",
+        "instanceKey": "mypage-marketing-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MYPAGE_COMPANY": {
+    "pageId": "mypage-company",
+    "menuCode": "HMENU_MYPAGE_COMPANY",
+    "routePath": "/mypage/company",
+    "components": [
+      {
+        "componentId": "MypageCompanyHero",
+        "instanceKey": "mypage-company-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MYPAGE_PASSWORD": {
+    "pageId": "mypage-password",
+    "menuCode": "HMENU_MYPAGE_PASSWORD",
+    "routePath": "/mypage/password",
+    "components": [
+      {
+        "componentId": "MypagePasswordHero",
+        "instanceKey": "mypage-password-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0070104": {
+    "pageId": "edu-my-course",
+    "menuCode": "H0070104",
+    "routePath": "/edu/my_course",
+    "components": [
+      {
+        "componentId": "EduMyCourseHero",
+        "instanceKey": "edu-my-course-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0070105": {
+    "pageId": "edu-progress",
+    "menuCode": "H0070105",
+    "routePath": "/edu/progress",
+    "components": [
+      {
+        "componentId": "EduProgressHero",
+        "instanceKey": "edu-progress-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_EDU_CONTENT": {
+    "pageId": "edu-content",
+    "menuCode": "HMENU_EDU_CONTENT",
+    "routePath": "/edu/content",
+    "components": [
+      {
+        "componentId": "EduContentHero",
+        "instanceKey": "edu-content-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010101": {
+    "pageId": "emission-project-list",
+    "menuCode": "H0010101",
+    "routePath": "/emission/project_list",
+    "components": [
+      {
+        "componentId": "EmissionProjectHero",
+        "instanceKey": "emission-project-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010107": {
+    "pageId": "emission-dashboard",
+    "menuCode": "H0010107",
+    "routePath": "/emission/dashboard",
+    "components": [
+      {
+        "componentId": "EmissionDashboardHero",
+        "instanceKey": "emission-dashboard-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010106": {
+    "pageId": "emission-reduction",
+    "menuCode": "H0010106",
+    "routePath": "/emission/reduction",
+    "components": [
+      {
+        "componentId": "EmissionReductionHero",
+        "instanceKey": "emission-reduction-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010202": {
+    "pageId": "emission-lci",
+    "menuCode": "H0010202",
+    "routePath": "/emission/lci",
+    "components": [
+      {
+        "componentId": "EmissionLciHero",
+        "instanceKey": "emission-lci-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010102": {
+    "pageId": "emission-data-input",
+    "menuCode": "H0010102",
+    "routePath": "/emission/data_input",
+    "components": [
+      {
+        "componentId": "EmissionDataInputHero",
+        "instanceKey": "emission-data-input-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010104": {
+    "pageId": "emission-report-submit",
+    "menuCode": "H0010104",
+    "routePath": "/emission/report_submit",
+    "components": [
+      {
+        "componentId": "EmissionReportSubmitHero",
+        "instanceKey": "emission-report-submit-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010201": {
+    "pageId": "emission-lca",
+    "menuCode": "H0010201",
+    "routePath": "/emission/lca",
+    "components": [
+      {
+        "componentId": "EmissionLcaQueue",
+        "instanceKey": "emission-lca-queue",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010204": {
+    "pageId": "emission-simulate",
+    "menuCode": "H0010204",
+    "routePath": "/emission/simulate",
+    "components": [
+      {
+        "componentId": "EmissionSimulateHero",
+        "instanceKey": "emission-simulate-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0010103": {
+    "pageId": "emission-home-validate",
+    "menuCode": "H0010103",
+    "routePath": "/emission/validate",
+    "components": [
+      {
+        "componentId": "EmissionHomeValidateHero",
+        "instanceKey": "emission-home-validate-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0020202": {
+    "pageId": "certificate-list",
+    "menuCode": "H0020202",
+    "routePath": "/certificate/list",
+    "components": [
+      {
+        "componentId": "CertificateListSummary",
+        "instanceKey": "certificate-list-summary",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0020201": {
+    "pageId": "certificate-apply",
+    "menuCode": "H0020201",
+    "routePath": "/certificate/apply",
+    "components": [
+      {
+        "componentId": "CertificateApplyHero",
+        "instanceKey": "certificate-apply-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0020101": {
+    "pageId": "certificate-report-list",
+    "menuCode": "H0020101",
+    "routePath": "/certificate/report_list",
+    "components": [
+      {
+        "componentId": "CertificateReportHero",
+        "instanceKey": "certificate-report-list-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0020102": {
+    "pageId": "certificate-report-form",
+    "menuCode": "H0020102",
+    "routePath": "/certificate/report_form",
+    "components": [
+      {
+        "componentId": "CertificateReportFormHero",
+        "instanceKey": "certificate-report-form-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0020103": {
+    "pageId": "certificate-report-edit",
+    "menuCode": "H0020103",
+    "routePath": "/certificate/report_edit",
+    "components": [
+      {
+        "componentId": "CertificateReportEditHero",
+        "instanceKey": "certificate-report-edit-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030101": {
+    "pageId": "co2-production-list",
+    "menuCode": "H0030101",
+    "routePath": "/co2/production_list",
+    "components": [
+      {
+        "componentId": "Co2ProductionHero",
+        "instanceKey": "co2-production-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0050104": {
+    "pageId": "monitoring-alerts",
+    "menuCode": "H0050104",
+    "routePath": "/monitoring/alerts",
+    "components": [
+      {
+        "componentId": "MonitoringAlertsHero",
+        "instanceKey": "monitoring-alerts-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_PAYMENT_HISTORY": {
+    "pageId": "payment-history",
+    "menuCode": "HMENU_PAYMENT_HISTORY",
+    "routePath": "/payment/history",
+    "components": [
+      {
+        "componentId": "PaymentHistoryHero",
+        "instanceKey": "payment-history-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0070102": {
+    "pageId": "edu-course-detail",
+    "menuCode": "H0070102",
+    "routePath": "/edu/course_detail",
+    "components": [
+      {
+        "componentId": "EduCourseDetailPrimaryNav",
+        "instanceKey": "edu-course-detail-primary-nav",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_EDU_APPLY": {
+    "pageId": "edu-apply",
+    "menuCode": "HMENU_EDU_APPLY",
+    "routePath": "/edu/apply",
+    "components": [
+      {
+        "componentId": "EduApplyHero",
+        "instanceKey": "edu-apply-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0050105": {
+    "pageId": "monitoring-statistics",
+    "menuCode": "H0050105",
+    "routePath": "/monitoring/statistics",
+    "components": [
+      {
+        "componentId": "MonitoringStatisticsHero",
+        "instanceKey": "monitoring-statistics-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0050106": {
+    "pageId": "monitoring-export",
+    "menuCode": "H0050106",
+    "routePath": "/monitoring/export",
+    "components": [
+      {
+        "componentId": "MonitoringExportHero",
+        "instanceKey": "monitoring-export-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030204": {
+    "pageId": "monitoring-track",
+    "menuCode": "H0030204",
+    "routePath": "/monitoring/track",
+    "components": [
+      {
+        "componentId": "MonitoringTrackHero",
+        "instanceKey": "monitoring-track-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030201": {
+    "pageId": "co2-demand-list",
+    "menuCode": "H0030201",
+    "routePath": "/co2/demand_list",
+    "components": [
+      {
+        "componentId": "Co2DemandAssistantHero",
+        "instanceKey": "co2-demand-assistant-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030302": {
+    "pageId": "co2-search",
+    "menuCode": "H0030302",
+    "routePath": "/co2/search",
+    "components": [
+      {
+        "componentId": "Co2SearchFilterPanel",
+        "instanceKey": "co2-search-filter",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0040102": {
+    "pageId": "trade-buy-request",
+    "menuCode": "H0040102",
+    "routePath": "/trade/buy_request",
+    "components": [
+      {
+        "componentId": "TradeBuyRequestHero",
+        "instanceKey": "trade-buy-request-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0040104": {
+    "pageId": "trade-complete",
+    "menuCode": "H0040104",
+    "routePath": "/trade/complete",
+    "components": [
+      {
+        "componentId": "TradeCompleteHero",
+        "instanceKey": "trade-complete-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0040105": {
+    "pageId": "trade-auto-order",
+    "menuCode": "H0040105",
+    "routePath": "/trade/auto_order",
+    "components": [
+      {
+        "componentId": "TradeAutoOrderHero",
+        "instanceKey": "trade-auto-order-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0060102": {
+    "pageId": "payment-pay",
+    "menuCode": "H0060102",
+    "routePath": "/payment/pay",
+    "components": [
+      {
+        "componentId": "PaymentPayHero",
+        "instanceKey": "payment-pay-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0060105": {
+    "pageId": "payment-virtual-account",
+    "menuCode": "H0060105",
+    "routePath": "/payment/virtual_account",
+    "components": [
+      {
+        "componentId": "PaymentVirtualAccountHero",
+        "instanceKey": "payment-virtual-account-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0060103": {
+    "pageId": "payment-refund",
+    "menuCode": "H0060103",
+    "routePath": "/payment/refund",
+    "components": [
+      {
+        "componentId": "PaymentRefundPriorityQueue",
+        "instanceKey": "payment-refund-priority",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0060104": {
+    "pageId": "payment-refund-account",
+    "menuCode": "H0060104",
+    "routePath": "/payment/refund_account",
+    "components": [
+      {
+        "componentId": "PaymentRefundAccountHero",
+        "instanceKey": "payment-refund-account-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_PAYMENT_NOTIFY": {
+    "pageId": "payment-notify",
+    "menuCode": "HMENU_PAYMENT_NOTIFY",
+    "routePath": "/payment/notify",
+    "components": [
+      {
+        "componentId": "PaymentNotifyHero",
+        "instanceKey": "payment-notify-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0040103": {
+    "pageId": "trade-sell",
+    "menuCode": "H0040103",
+    "routePath": "/trade/sell",
+    "components": [
+      {
+        "componentId": "TradeSellHero",
+        "instanceKey": "trade-sell-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0040202": {
+    "pageId": "trade-price-alert",
+    "menuCode": "H0040202",
+    "routePath": "/trade/price_alert",
+    "components": [
+      {
+        "componentId": "TradePriceAlertHero",
+        "instanceKey": "trade-price-alert-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060303": {
+    "pageId": "observability",
+    "menuCode": "A0060303",
+    "routePath": "/admin/system/observability",
+    "components": [
+      {
+        "componentId": "ObservabilitySearchPanel",
+        "instanceKey": "observability-search-panel",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900101": {
+    "pageId": "help-management",
+    "menuCode": "A1900101",
+    "routePath": "/admin/system/help-management",
+    "components": [
+      {
+        "componentId": "HelpPageSelector",
+        "instanceKey": "help-management-select",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900103": {
+    "pageId": "codex-request",
+    "menuCode": "A1900103",
+    "routePath": "/admin/system/codex-request",
+    "components": [
+      {
+        "componentId": "CodexRuntimeConfigPanel",
+        "instanceKey": "codex-request-runtime",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060108": {
+    "pageId": "full-stack-management",
+    "menuCode": "A0060108",
+    "routePath": "/admin/system/full-stack-management",
+    "components": [
+      {
+        "componentId": "FullStackMenuScope",
+        "instanceKey": "full-stack-management-scope",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060130": {
+    "pageId": "theme",
+    "menuCode": "A0060130",
+    "routePath": "/admin/system/theme",
+    "components": [
+      {
+        "componentId": "ThemeTokenEditor",
+        "instanceKey": "theme-token-editor",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060131": {
+    "pageId": "module",
+    "menuCode": "A0060131",
+    "routePath": "/admin/system/module",
+    "components": [
+      {
+        "componentId": "StandardFrameworkModuleTable",
+        "instanceKey": "module-standard-framework",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060109": {
+    "pageId": "platform-studio",
+    "menuCode": "A0060109",
+    "routePath": "/admin/system/platform-studio",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060110": {
+    "pageId": "screen-elements-management",
+    "menuCode": "A0060110",
+    "routePath": "/admin/system/screen-elements-management",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060111": {
+    "pageId": "event-management",
+    "menuCode": "A0060111",
+    "routePath": "/admin/system/event-management",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060112": {
+    "pageId": "function-console",
+    "menuCode": "A0060112",
+    "routePath": "/admin/system/function-console",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060113": {
+    "pageId": "api-management",
+    "menuCode": "A0060113",
+    "routePath": "/admin/system/api-management",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060114": {
+    "pageId": "controller-management",
+    "menuCode": "A0060114",
+    "routePath": "/admin/system/controller-management",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060115": {
+    "pageId": "db-table-management",
+    "menuCode": "A0060115",
+    "routePath": "/admin/system/db-table-management",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060116": {
+    "pageId": "column-management",
+    "menuCode": "A0060116",
+    "routePath": "/admin/system/column-management",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060117": {
+    "pageId": "automation-studio",
+    "menuCode": "A0060117",
+    "routePath": "/admin/system/automation-studio",
+    "components": [
+      {
+        "componentId": "PlatformStudioTabs",
+        "instanceKey": "platform-studio-tabs",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_PASSWORD_RESET": {
+    "pageId": "password-reset",
+    "menuCode": "AMENU_PASSWORD_RESET",
+    "routePath": "/admin/member/reset_password",
+    "components": [
+      {
+        "componentId": "PasswordResetSearch",
+        "instanceKey": "password-reset-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_ADMIN_PERMISSION": {
+    "pageId": "admin-permission",
+    "menuCode": "AMENU_ADMIN_PERMISSION",
+    "routePath": "/admin/member/admin_account/permissions",
+    "components": [
+      {
+        "componentId": "AdminPermissionSummary",
+        "instanceKey": "admin-permission-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_ADMIN_CREATE": {
+    "pageId": "admin-create",
+    "menuCode": "AMENU_ADMIN_CREATE",
+    "routePath": "/admin/member/admin_account",
+    "components": [
+      {
+        "componentId": "AdminCreateRolePreset",
+        "instanceKey": "admin-create-role",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_MEMBER_STATS": {
+    "pageId": "member-stats",
+    "menuCode": "AMENU_MEMBER_STATS",
+    "routePath": "/admin/member/stats",
+    "components": [
+      {
+        "componentId": "MemberStatsSummary",
+        "instanceKey": "member-stats-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_MEMBER_REGISTER": {
+    "pageId": "member-register",
+    "menuCode": "AMENU_MEMBER_REGISTER",
+    "routePath": "/admin/member/register",
+    "components": [
+      {
+        "componentId": "MemberRegisterBasic",
+        "instanceKey": "member-register-basic",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_TRADE_LIST": {
+    "pageId": "trade-list",
+    "menuCode": "AMENU_TRADE_LIST",
+    "routePath": "/trade/list",
+    "components": [
+      {
+        "componentId": "TradeListPendingQueue",
+        "instanceKey": "trade-list-pending-queue",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_TRADE_MARKET": {
+    "pageId": "trade-market",
+    "menuCode": "HMENU_TRADE_MARKET",
+    "routePath": "/trade/market",
+    "components": [
+      {
+        "componentId": "TradeMarketHero",
+        "instanceKey": "trade-market-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0040204": {
+    "pageId": "trade-report",
+    "menuCode": "H0040204",
+    "routePath": "/trade/report",
+    "components": [
+      {
+        "componentId": "TradeReportHero",
+        "instanceKey": "trade-report-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030202": {
+    "pageId": "trade-statistics",
+    "menuCode": "A0030202",
+    "routePath": "/admin/trade/statistics",
+    "components": [
+      {
+        "componentId": "TradeStatisticsSummary",
+        "instanceKey": "trade-statistics-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030301": {
+    "pageId": "refund-list",
+    "menuCode": "A0030301",
+    "routePath": "/admin/payment/refund_list",
+    "components": [
+      {
+        "componentId": "RefundListSummary",
+        "instanceKey": "refund-list-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030302": {
+    "pageId": "refund-process",
+    "menuCode": "A0030302",
+    "routePath": "/admin/payment/refund_process",
+    "components": [
+      {
+        "componentId": "RefundProcessSummary",
+        "instanceKey": "refund-process-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030203": {
+    "pageId": "settlement-calendar",
+    "menuCode": "A0030203",
+    "routePath": "/admin/payment/settlement",
+    "components": [
+      {
+        "componentId": "SettlementCalendarSummary",
+        "instanceKey": "settlement-calendar-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030104": {
+    "pageId": "trade-duplicate",
+    "menuCode": "A0030104",
+    "routePath": "/admin/trade/duplicate",
+    "components": [
+      {
+        "componentId": "TradeDuplicateSummary",
+        "instanceKey": "trade-duplicate-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0030102": {
+    "pageId": "trade-approve",
+    "menuCode": "A0030102",
+    "routePath": "/admin/trade/approve",
+    "components": [
+      {
+        "componentId": "TradeApproveSummary",
+        "instanceKey": "trade-approve-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_TRADE_REJECT": {
+    "pageId": "trade-reject",
+    "menuCode": "AMENU_TRADE_REJECT",
+    "routePath": "/admin/trade/reject",
+    "components": [
+      {
+        "componentId": "TradeRejectSummary",
+        "instanceKey": "trade-reject-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_EMISSION_RESULT_LIST": {
+    "pageId": "emission-result-list",
+    "menuCode": "AMENU_EMISSION_RESULT_LIST",
+    "routePath": "/admin/emission/result_list",
+    "components": [
+      {
+        "componentId": "EmissionResultSummary",
+        "instanceKey": "emission-result-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_EMISSION_RESULT_DETAIL": {
+    "pageId": "emission-result-detail",
+    "menuCode": "AMENU_EMISSION_RESULT_DETAIL",
+    "routePath": "/admin/emission/result_detail",
+    "components": [
+      {
+        "componentId": "EmissionResultDetailSummary",
+        "instanceKey": "emission-result-detail-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020104": {
+    "pageId": "emission-validate",
+    "menuCode": "A0020104",
+    "routePath": "/admin/emission/validate",
+    "components": [
+      {
+        "componentId": "EmissionValidateContext",
+        "instanceKey": "emission-validate-context",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020106": {
+    "pageId": "emission-data-history",
+    "menuCode": "A0020106",
+    "routePath": "/admin/emission/data_history",
+    "components": [
+      {
+        "componentId": "EmissionDataHistorySummary",
+        "instanceKey": "emission-data-history-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020105": {
+    "pageId": "emission-site-management",
+    "menuCode": "A0020105",
+    "routePath": "/admin/emission/site-management",
+    "components": [
+      {
+        "componentId": "EmissionSiteSummary",
+        "instanceKey": "emission-site-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020108": {
+    "pageId": "emission-definition-studio",
+    "menuCode": "A0020108",
+    "routePath": "/admin/emission/definition-studio",
+    "components": [
+      {
+        "componentId": "EmissionDefinitionSummary",
+        "instanceKey": "emission-definition-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020109": {
+    "pageId": "emission-gwp-values",
+    "menuCode": "A0020109",
+    "routePath": "/admin/emission/gwp-values",
+    "components": [
+      {
+        "componentId": "EmissionGwpSummary",
+        "instanceKey": "emission-gwp-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0020113": {
+    "pageId": "emission-ecoinvent-admin",
+    "menuCode": "A0020113",
+    "routePath": "/admin/emission/ecoinvent",
+    "components": [
+      {
+        "componentId": "EmissionEcoinventImportToolbar",
+        "instanceKey": "emission-ecoinvent-import-toolbar",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SYSTEM_CODE": {
+    "pageId": "system-code",
+    "menuCode": "AMENU_SYSTEM_CODE",
+    "routePath": "/admin/system/code",
+    "components": [
+      {
+        "componentId": "SystemCodeClass",
+        "instanceKey": "system-code-class",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_PAGE_MANAGEMENT": {
+    "pageId": "page-management",
+    "menuCode": "AMENU_PAGE_MANAGEMENT",
+    "routePath": "/admin/system/page-management",
+    "components": [
+      {
+        "componentId": "PageManagementRegister",
+        "instanceKey": "page-management-register",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_FUNCTION_MANAGEMENT": {
+    "pageId": "function-management",
+    "menuCode": "AMENU_FUNCTION_MANAGEMENT",
+    "routePath": "/admin/system/feature-management",
+    "components": [
+      {
+        "componentId": "FunctionManagementRegister",
+        "instanceKey": "function-management-register",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_MENU_MANAGEMENT": {
+    "pageId": "menu-management",
+    "menuCode": "AMENU_MENU_MANAGEMENT",
+    "routePath": "/admin/system/menu",
+    "components": [
+      {
+        "componentId": "MenuManagementScope",
+        "instanceKey": "menu-management-scope",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_IP_WHITELIST": {
+    "pageId": "ip-whitelist",
+    "menuCode": "AMENU_IP_WHITELIST",
+    "routePath": "/admin/system/ip_whitelist",
+    "components": [
+      {
+        "componentId": "IpWhitelistSummary",
+        "instanceKey": "ip-whitelist-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060301": {
+    "pageId": "access-history",
+    "menuCode": "A0060301",
+    "routePath": "/admin/system/access_history",
+    "components": [
+      {
+        "componentId": "AccessHistorySearch",
+        "instanceKey": "access-history-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060302": {
+    "pageId": "error-log",
+    "menuCode": "A0060302",
+    "routePath": "/admin/system/error-log",
+    "components": [
+      {
+        "componentId": "ErrorLogSearch",
+        "instanceKey": "error-log-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_LOGIN_HISTORY": {
+    "pageId": "login-history",
+    "menuCode": "AMENU_LOGIN_HISTORY",
+    "routePath": "/admin/member/login_history",
+    "components": [
+      {
+        "componentId": "LoginHistorySearch",
+        "instanceKey": "login-history-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0010502": {
+    "pageId": "member-security-history",
+    "menuCode": "A0010502",
+    "routePath": "/admin/member/security",
+    "components": [
+      {
+        "componentId": "SecurityHistorySearch",
+        "instanceKey": "login-history-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060205": {
+    "pageId": "security-history",
+    "menuCode": "A0060205",
+    "routePath": "/admin/system/security",
+    "components": [
+      {
+        "componentId": "SecurityHistoryGuidance",
+        "instanceKey": "member-security-guidance",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SECURITY_POLICY": {
+    "pageId": "security-policy",
+    "menuCode": "AMENU_SECURITY_POLICY",
+    "routePath": "/admin/system/security-policy",
+    "components": [
+      {
+        "componentId": "SecurityPolicySummary",
+        "instanceKey": "security-policy-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SECURITY_MONITORING": {
+    "pageId": "security-monitoring",
+    "menuCode": "AMENU_SECURITY_MONITORING",
+    "routePath": "/admin/system/security-monitoring",
+    "components": [
+      {
+        "componentId": "SecurityMonitoringSummary",
+        "instanceKey": "security-monitoring-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_BLOCKLIST": {
+    "pageId": "blocklist",
+    "menuCode": "AMENU_BLOCKLIST",
+    "routePath": "/admin/system/blocklist",
+    "components": [
+      {
+        "componentId": "BlocklistSearch",
+        "instanceKey": "blocklist-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060206": {
+    "pageId": "security-audit",
+    "menuCode": "A0060206",
+    "routePath": "/admin/system/security-audit",
+    "components": [
+      {
+        "componentId": "SecurityAuditSummary",
+        "instanceKey": "security-audit-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_CERTIFICATE_AUDIT_LOG": {
+    "pageId": "certificate-audit-log",
+    "menuCode": "AMENU_CERTIFICATE_AUDIT_LOG",
+    "routePath": "/admin/certificate/audit-log",
+    "components": [
+      {
+        "componentId": "CertificateAuditFilters",
+        "instanceKey": "certificate-audit-log-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SCHEDULER_MANAGEMENT": {
+    "pageId": "scheduler-management",
+    "menuCode": "AMENU_SCHEDULER_MANAGEMENT",
+    "routePath": "/admin/system/scheduler",
+    "components": [
+      {
+        "componentId": "SchedulerManagementSearch",
+        "instanceKey": "scheduler-management-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060304": {
+    "pageId": "batch-management",
+    "menuCode": "A0060304",
+    "routePath": "/admin/system/batch",
+    "components": [
+      {
+        "componentId": "BatchCloseoutGate",
+        "instanceKey": "batch-management-closeout-gate",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "ADMIN_MONITORING_CENTER": {
+    "pageId": "monitoring-center",
+    "menuCode": "ADMIN_MONITORING_CENTER",
+    "routePath": "/admin/monitoring/center",
+    "components": [
+      {
+        "componentId": "OperationsCenterStatus",
+        "instanceKey": "operations-center-status",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0070201": {
+    "pageId": "sensor-list",
+    "menuCode": "A0070201",
+    "routePath": "/admin/monitoring/sensor_list",
+    "components": [
+      {
+        "componentId": "SensorListSummaryCards",
+        "instanceKey": "sensor-list-summary",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "ADMIN_SYSTEM_INFRA": {
+    "pageId": "infra",
+    "menuCode": "ADMIN_SYSTEM_INFRA",
+    "routePath": "/admin/system/infra",
+    "components": [
+      {
+        "componentId": "InfraCloseoutGate",
+        "instanceKey": "infra-closeout-gate",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "ADMIN_SYSTEM_PERFORMANCE": {
+    "pageId": "performance",
+    "menuCode": "ADMIN_SYSTEM_PERFORMANCE",
+    "routePath": "/admin/system/performance",
+    "components": [
+      {
+        "componentId": "PerformanceStatus",
+        "instanceKey": "performance-status",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "ADMIN_SYSTEM_NOTIFICATION": {
+    "pageId": "notification",
+    "menuCode": "ADMIN_SYSTEM_NOTIFICATION",
+    "routePath": "/admin/system/notification",
+    "components": [
+      {
+        "componentId": "NotificationSnapshot",
+        "instanceKey": "notification-snapshot",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060406": {
+    "pageId": "db-sync-deploy",
+    "menuCode": "A0060406",
+    "routePath": "/admin/system/db-sync-deploy",
+    "components": [
+      {
+        "componentId": "DbSyncDeployScopeSummary",
+        "instanceKey": "db-sync-deploy-scope",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040101": {
+    "pageId": "board-list",
+    "menuCode": "A0040101",
+    "routePath": "/admin/content/board_list",
+    "components": [
+      {
+        "componentId": "AdminMenuPlaceholderCard",
+        "instanceKey": "admin-menu-placeholder-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040103": {
+    "pageId": "board-add",
+    "menuCode": "A0040103",
+    "routePath": "/admin/content/board_add",
+    "components": [
+      {
+        "componentId": "BoardAddScope",
+        "instanceKey": "board-add-scope",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040102": {
+    "pageId": "post-list",
+    "menuCode": "A0040102",
+    "routePath": "/admin/content/post_list",
+    "components": [
+      {
+        "componentId": "PostListSummary",
+        "instanceKey": "post-list-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040201": {
+    "pageId": "banner-list",
+    "menuCode": "A0040201",
+    "routePath": "/admin/content/banner_list",
+    "components": [
+      {
+        "componentId": "BannerListFilters",
+        "instanceKey": "banner-list-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040202": {
+    "pageId": "banner-edit",
+    "menuCode": "A0040202",
+    "routePath": "/admin/content/banner_edit",
+    "components": [
+      {
+        "componentId": "BannerEditScopeNotice",
+        "instanceKey": "banner-edit-scope",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040302": {
+    "pageId": "qna-category",
+    "menuCode": "A0040302",
+    "routePath": "/admin/content/qna",
+    "components": [
+      {
+        "componentId": "QnaCategorySummary",
+        "instanceKey": "qna-category-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040304": {
+    "pageId": "faq-menu-management",
+    "menuCode": "A0040304",
+    "routePath": "/admin/content/menu",
+    "components": [
+      {
+        "componentId": "AdminMenuPlaceholderCard",
+        "instanceKey": "admin-menu-placeholder-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040301": {
+    "pageId": "faq-management",
+    "menuCode": "A0040301",
+    "routePath": "/admin/content/faq_list",
+    "components": [
+      {
+        "componentId": "FaqManagementSummary",
+        "instanceKey": "faq-management-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040104": {
+    "pageId": "file-management",
+    "menuCode": "A0040104",
+    "routePath": "/admin/content/file",
+    "components": [
+      {
+        "componentId": "FileManagementSummary",
+        "instanceKey": "file-management-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_ADMIN_SITEMAP": {
+    "pageId": "admin-sitemap",
+    "menuCode": "AMENU_ADMIN_SITEMAP",
+    "routePath": "/admin/content/sitemap",
+    "components": [
+      {
+        "componentId": "AdminSitemapHero",
+        "instanceKey": "admin-sitemap-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      },
+      {
+        "componentId": "AdminSitemapTree",
+        "instanceKey": "admin-sitemap-tree",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 2
+  },
+  "A0050199": {
+    "pageId": "test-page-management",
+    "menuCode": "A0050199",
+    "routePath": "/admin/system/test-page",
+    "components": [
+      {
+        "componentId": "TestPageManagementFilters",
+        "instanceKey": "test-page-management-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0040303": {
+    "pageId": "tag-management",
+    "menuCode": "A0040303",
+    "routePath": "/admin/content/tag",
+    "components": [
+      {
+        "componentId": "TagManagementFilters",
+        "instanceKey": "tag-management-filters",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_ADMIN_PLACEHOLDER": {
+    "pageId": "admin-menu-placeholder",
+    "menuCode": "AMENU_ADMIN_PLACEHOLDER",
+    "routePath": "/admin/placeholder",
+    "components": [
+      {
+        "componentId": "AdminMenuPlaceholderCard",
+        "instanceKey": "admin-menu-placeholder-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_SITEMAP": {
+    "pageId": "sitemap",
+    "menuCode": "HMENU_SITEMAP",
+    "routePath": "/sitemap",
+    "components": [
+      {
+        "componentId": "SitemapHero",
+        "instanceKey": "sitemap-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      },
+      {
+        "componentId": "SitemapTree",
+        "instanceKey": "sitemap-tree",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 2
+  },
+  "HMENU_PLACEHOLDER": {
+    "pageId": "home-menu-placeholder",
+    "menuCode": "HMENU_PLACEHOLDER",
+    "routePath": "/placeholder",
+    "components": [
+      {
+        "componentId": "HomeMenuPlaceholderCard",
+        "instanceKey": "home-menu-placeholder-card",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060118": {
+    "pageId": "environment-management",
+    "menuCode": "A0060118",
+    "routePath": "/admin/system/environment-management",
+    "components": [
+      {
+        "componentId": "EnvironmentManagementSummary",
+        "instanceKey": "environment-management-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060123": {
+    "pageId": "asset-inventory",
+    "menuCode": "A0060123",
+    "routePath": "/admin/system/asset-inventory",
+    "components": [
+      {
+        "componentId": "AssetInventorySummary",
+        "instanceKey": "asset-inventory-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060124": {
+    "pageId": "asset-detail",
+    "menuCode": "A0060124",
+    "routePath": "/admin/system/asset-detail",
+    "components": [
+      {
+        "componentId": "AssetDetailSummary",
+        "instanceKey": "asset-detail-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060125": {
+    "pageId": "asset-impact",
+    "menuCode": "A0060125",
+    "routePath": "/admin/system/asset-impact",
+    "components": [
+      {
+        "componentId": "AssetImpactSummary",
+        "instanceKey": "asset-impact-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060126": {
+    "pageId": "asset-lifecycle",
+    "menuCode": "A0060126",
+    "routePath": "/admin/system/asset-lifecycle",
+    "components": [
+      {
+        "componentId": "AssetLifecycleSummary",
+        "instanceKey": "asset-lifecycle-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060127": {
+    "pageId": "asset-deficiency-queue",
+    "menuCode": "A0060127",
+    "routePath": "/admin/system/asset-deficiency-queue",
+    "components": [
+      {
+        "componentId": "AssetGapSummary",
+        "instanceKey": "asset-deficiency-queue-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060128": {
+    "pageId": "verification-center",
+    "menuCode": "A0060128",
+    "routePath": "/admin/system/verification-center",
+    "components": [
+      {
+        "componentId": "VerificationCenterSummary",
+        "instanceKey": "verification-center-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0060129": {
+    "pageId": "verification-asset-management",
+    "menuCode": "A0060129",
+    "routePath": "/admin/system/verification-asset-management",
+    "components": [
+      {
+        "componentId": "VerificationAssetBaselineForm",
+        "instanceKey": "verification-asset-management-baseline-form",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900106": {
+    "pageId": "screen-builder",
+    "menuCode": "A1900106",
+    "routePath": "/admin/system/screen-builder",
+    "components": [
+      {
+        "componentId": "ScreenBuilderSummaryCard",
+        "instanceKey": "screen-builder-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900107": {
+    "pageId": "screen-runtime",
+    "menuCode": "A1900107",
+    "routePath": "/admin/system/screen-runtime",
+    "components": [
+      {
+        "componentId": "ScreenRuntimeSummaryCard",
+        "instanceKey": "screen-runtime-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900108": {
+    "pageId": "current-runtime-compare",
+    "menuCode": "A1900108",
+    "routePath": "/admin/system/current-runtime-compare",
+    "components": [
+      {
+        "componentId": "RuntimeCompareSummaryMetrics",
+        "instanceKey": "runtime-compare-metrics",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900110": {
+    "pageId": "screen-menu-assignment-management",
+    "menuCode": "A1900110",
+    "routePath": "/admin/system/screen-menu-assignment-management",
+    "components": [
+      {
+        "componentId": "ScreenMenuAssignmentSummaryCards",
+        "instanceKey": "screen-menu-assignment-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900111": {
+    "pageId": "page-inventory",
+    "menuCode": "A1900111",
+    "routePath": "/admin/system/page-inventory",
+    "components": [
+      {
+        "componentId": "PageInventoryStats",
+        "instanceKey": "page-inventory-stats",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900109": {
+    "pageId": "screen-flow-management",
+    "menuCode": "A1900109",
+    "routePath": "/admin/system/screen-flow-management",
+    "components": [
+      {
+        "componentId": "ScreenFlowSummaryCards",
+        "instanceKey": "screen-flow-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900104": {
+    "pageId": "wbs-management",
+    "menuCode": "A1900104",
+    "routePath": "/admin/system/wbs-management",
+    "components": [
+      {
+        "componentId": "WbsSummaryCards",
+        "instanceKey": "wbs-summary-cards",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SYSTEM_NEW_PAGE": {
+    "pageId": "new-page",
+    "menuCode": "AMENU_SYSTEM_NEW_PAGE",
+    "routePath": "/admin/system/new-page",
+    "components": [
+      {
+        "componentId": "NewPageStatusNotice",
+        "instanceKey": "new-page-status",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A0050105": {
+    "pageId": "external-retry",
+    "menuCode": "A0050105",
+    "routePath": "/admin/external/retry",
+    "components": [
+      {
+        "componentId": "ExternalRetrySummaryCards",
+        "instanceKey": "external-retry-summary",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "A1900102": {
+    "pageId": "sr-workbench",
+    "menuCode": "A1900102",
+    "routePath": "/admin/system/sr-workbench",
+    "components": [
+      {
+        "componentId": "SrTicketDraftForm",
+        "instanceKey": "sr-ticket-draft",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_CERTIFICATE_APPROVE": {
+    "pageId": "certificate-approve",
+    "menuCode": "AMENU_CERTIFICATE_APPROVE",
+    "routePath": "/admin/certificate/approve",
+    "components": [
+      {
+        "componentId": "CertificateApproveSearch",
+        "instanceKey": "certificate-approve-search",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SENSOR_ADD": {
+    "pageId": "sensor-add",
+    "menuCode": "AMENU_SENSOR_ADD",
+    "routePath": "/admin/monitoring/sensor_add",
+    "components": [
+      {
+        "componentId": "SensorAddBasicProfile",
+        "instanceKey": "sensor-add-basic-profile",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_SENSOR_EDIT": {
+    "pageId": "sensor-edit",
+    "menuCode": "AMENU_SENSOR_EDIT",
+    "routePath": "/admin/monitoring/sensor_edit",
+    "components": [
+      {
+        "componentId": "SensorEditContext",
+        "instanceKey": "sensor-edit-context",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_DB_PROMOTION_POLICY": {
+    "pageId": "db-promotion-policy",
+    "menuCode": "AMENU_DB_PROMOTION_POLICY",
+    "routePath": "/admin/system/db-promotion-policy",
+    "components": [
+      {
+        "componentId": "DbPromotionPolicyTable",
+        "instanceKey": "db-promotion-policy-table-list",
+        "layoutZone": "content",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_BACKUP_CONFIG": {
+    "pageId": "backup-config",
+    "menuCode": "AMENU_BACKUP_CONFIG",
+    "routePath": "/admin/system/backup_config",
+    "components": [
+      {
+        "componentId": "BackupConfigSummary",
+        "instanceKey": "backup-config-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_BACKUP_EXECUTION": {
+    "pageId": "backup-execution",
+    "menuCode": "AMENU_BACKUP_EXECUTION",
+    "routePath": "/admin/system/backup",
+    "components": [
+      {
+        "componentId": "BackupExecutionSummary",
+        "instanceKey": "backup-config-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_RESTORE_EXECUTION": {
+    "pageId": "restore-execution",
+    "menuCode": "AMENU_RESTORE_EXECUTION",
+    "routePath": "/admin/system/restore",
+    "components": [
+      {
+        "componentId": "RestoreExecutionSummary",
+        "instanceKey": "backup-config-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_NOTICE_LIST": {
+    "pageId": "notice-list",
+    "menuCode": "HMENU_NOTICE_LIST",
+    "routePath": "/support/notice_list",
+    "components": [
+      {
+        "componentId": "NoticeListHero",
+        "instanceKey": "notice-list-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_EMISSION_MANAGEMENT": {
+    "pageId": "emission-management",
+    "menuCode": "AMENU_EMISSION_MANAGEMENT",
+    "routePath": "/admin/emission/management",
+    "components": [
+      {
+        "componentId": "EmissionManagementSummary",
+        "instanceKey": "emission-management-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_EMISSION_LCI_CLASSIFICATION": {
+    "pageId": "emission-lci-classification",
+    "menuCode": "AMENU_EMISSION_LCI_CLASSIFICATION",
+    "routePath": "/admin/emission/lci-classification",
+    "components": [
+      {
+        "componentId": "EmissionLciClassificationSummary",
+        "instanceKey": "emission-lci-classification-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_EMISSION_SURVEY_ADMIN": {
+    "pageId": "emission-survey-report",
+    "menuCode": "AMENU_EMISSION_SURVEY_ADMIN",
+    "routePath": "/admin/emission/survey-report",
+    "components": [
+      {
+        "componentId": "EmissionSurveyReportHero",
+        "instanceKey": "emission-survey-report-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_EMISSION_SURVEY_ADMIN_DATA": {
+    "pageId": "emission-survey-admin-data",
+    "menuCode": "AMENU_EMISSION_SURVEY_ADMIN_DATA",
+    "routePath": "/admin/emission/survey-admin-data",
+    "components": [
+      {
+        "componentId": "EmissionSurveyAdminDataUpload",
+        "instanceKey": "emission-survey-admin-data-upload",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030102": {
+    "pageId": "co2-integrity",
+    "menuCode": "H0030102",
+    "routePath": "/co2/integrity",
+    "components": [
+      {
+        "componentId": "Co2IntegrityHero",
+        "instanceKey": "co2-integrity-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030301": {
+    "pageId": "co2-credit",
+    "menuCode": "H0030301",
+    "routePath": "/co2/credit",
+    "components": [
+      {
+        "componentId": "Co2CreditHero",
+        "instanceKey": "co2-credit-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "H0030103": {
+    "pageId": "co2-analysis",
+    "menuCode": "H0030103",
+    "routePath": "/co2/analysis",
+    "components": [
+      {
+        "componentId": "Co2AnalysisHero",
+        "instanceKey": "co2-analysis-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_EDU_COURSE_LIST": {
+    "pageId": "edu-course-list",
+    "menuCode": "HMENU_EDU_COURSE_LIST",
+    "routePath": "/edu/course_list",
+    "components": [
+      {
+        "componentId": "EduCourseListHero",
+        "instanceKey": "edu-course-list-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_EDU_SURVEY": {
+    "pageId": "edu-survey",
+    "menuCode": "HMENU_EDU_SURVEY",
+    "routePath": "/edu/survey",
+    "components": [
+      {
+        "componentId": "EduSurveyHero",
+        "instanceKey": "edu-survey-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_EDU_CERTIFICATE": {
+    "pageId": "edu-certificate",
+    "menuCode": "HMENU_EDU_CERTIFICATE",
+    "routePath": "/edu/certificate",
+    "components": [
+      {
+        "componentId": "EduCertificateHero",
+        "instanceKey": "edu-certificate-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MYPAGE_EMAIL": {
+    "pageId": "mypage-email",
+    "menuCode": "HMENU_MYPAGE_EMAIL",
+    "routePath": "/mypage/email",
+    "components": [
+      {
+        "componentId": "MypageEmailHero",
+        "instanceKey": "mypage-email-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_MYPAGE_STAFF": {
+    "pageId": "mypage-staff",
+    "menuCode": "HMENU_MYPAGE_STAFF",
+    "routePath": "/mypage/staff",
+    "components": [
+      {
+        "componentId": "MypageStaffHero",
+        "instanceKey": "mypage-staff-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "HMENU_PAYMENT_RECEIPT": {
+    "pageId": "payment-receipt",
+    "menuCode": "HMENU_PAYMENT_RECEIPT",
+    "routePath": "/payment/receipt",
+    "components": [
+      {
+        "componentId": "PaymentReceiptHero",
+        "instanceKey": "payment-receipt-hero",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_VERSION_MANAGEMENT": {
+    "pageId": "version-management",
+    "menuCode": "AMENU_VERSION_MANAGEMENT",
+    "routePath": "/admin/system/version",
+    "components": [
+      {
+        "componentId": "VersionManagementSummary",
+        "instanceKey": "version-management-summary",
+        "layoutZone": "header",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_UNIFIED_LOG": {
+    "pageId": "unified-log",
+    "menuCode": "AMENU_UNIFIED_LOG",
+    "routePath": "/admin/system/unified_log",
+    "components": [
+      {
+        "componentId": "UnifiedLogSummary",
+        "instanceKey": "unified-trace-summary",
+        "layoutZone": "actions",
+        "propsSummary": []
+      }
+    ],
+    "componentCount": 1
+  },
+  "builder-studio": {
+    "pageId": "builder-studio",
+    "pageKey": "builder-studio",
+    "menuCode": "AMENU_BUILDER_STUDIO",
+    "routePath": "/admin/system/builder-studio",
+    "components": [
+      {
+        "componentId": "BuilderStudioPage",
+        "instanceKey": "builder-studio-sdui-editor",
+        "layoutZone": "content",
+        "propsSummary": [
+          "screenSelector",
+          "componentTree",
+          "assetInventory",
+          "aiOperations",
+          "runtimeMetadata"
+        ]
+      }
+    ],
+    "componentCount": 1
+  },
+  "AMENU_BUILDER_STUDIO": {
+    "pageId": "builder-studio",
+    "pageKey": "builder-studio",
+    "menuCode": "AMENU_BUILDER_STUDIO",
+    "routePath": "/admin/system/builder-studio",
+    "components": [
+      {
+        "componentId": "BuilderStudioPage",
+        "instanceKey": "builder-studio-sdui-editor",
+        "layoutZone": "content",
+        "propsSummary": [
+          "screenSelector",
+          "componentTree",
+          "assetInventory",
+          "aiOperations",
+          "runtimeMetadata"
+        ]
+      }
+    ],
+    "componentCount": 1
+  }
+}

@@ -1,0 +1,1 @@
+import{r as u}from"./vendor-react-DQCpd17N.js";const e=new Map;function p(t){u.useEffect(()=>{const c=`script[src="${t}"]`,o=document.querySelector(c),n=o||document.createElement("script"),s=(e.get(t)||0)+1;return e.set(t,s),o||(n.src=t,document.body.appendChild(n)),()=>{const r=e.get(t)||0;if(r<=1){e.delete(t),n.remove();return}e.set(t,r-1)}},[t])}export{p as u};

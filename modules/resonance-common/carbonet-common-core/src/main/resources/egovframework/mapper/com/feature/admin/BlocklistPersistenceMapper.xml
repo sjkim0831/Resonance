@@ -97,25 +97,25 @@
             #{reason},
             #{reasonEn},
             #{status},
-            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             #{owner},
             #{ownerEn},
             #{source},
             #{sourceTitle},
             #{sourceFingerprint},
             #{sourceSeverity},
-            CASE WHEN #{registeredAt} IS NULL OR #{registeredAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{registeredAt}, 'YYYY-MM-DD HH24:MI:SS') END,
-            CASE WHEN #{activatedAt} IS NULL OR #{activatedAt} = '' THEN NULL ELSE TO_DATETIME(#{activatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{registeredAt} IS NULL OR #{registeredAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{registeredAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{activatedAt} IS NULL OR #{activatedAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{activatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
             #{activatedBy},
-            CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{reviewedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
             #{reviewedBy},
-            CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{updatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
             #{updatedBy},
             'Y',
             COALESCE(#{owner}, 'system'),
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             COALESCE(#{updatedBy}, #{owner}, 'system'),
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -126,22 +126,22 @@
             REASON = #{reason},
             REASON_EN = #{reasonEn},
             STATUS = #{status},
-            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             OWNER = #{owner},
             OWNER_EN = #{ownerEn},
             SOURCE = #{source},
             SOURCE_TITLE = #{sourceTitle},
             SOURCE_FINGERPRINT = #{sourceFingerprint},
             SOURCE_SEVERITY = #{sourceSeverity},
-            REGISTERED_AT = CASE WHEN #{registeredAt} IS NULL OR #{registeredAt} = '' THEN REGISTERED_AT ELSE TO_DATETIME(#{registeredAt}, 'YYYY-MM-DD HH24:MI:SS') END,
-            ACTIVATED_AT = CASE WHEN #{activatedAt} IS NULL OR #{activatedAt} = '' THEN NULL ELSE TO_DATETIME(#{activatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            REGISTERED_AT = CASE WHEN #{registeredAt} IS NULL OR #{registeredAt} = '' THEN REGISTERED_AT ELSE TO_TIMESTAMP(#{registeredAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            ACTIVATED_AT = CASE WHEN #{activatedAt} IS NULL OR #{activatedAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{activatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
             ACTIVATED_BY = #{activatedBy},
-            REVIEWED_AT = CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            REVIEWED_AT = CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{reviewedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
             REVIEWED_BY = #{reviewedBy},
-            LAST_ACTION_AT = CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            LAST_ACTION_AT = CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{updatedAt}, 'YYYY-MM-DD HH24:MI:SS') END,
             LAST_ACTION_BY = #{updatedBy},
             LAST_UPDUSR_ID = COALESCE(#{updatedBy}, LAST_UPDUSR_ID),
-            LAST_UPDT_PNTTM = CURRENT_DATETIME
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE BLOCK_ID = #{blockId}
     </update>
 
@@ -175,13 +175,13 @@
             #{actorId},
             #{actorName},
             #{source},
-            CASE WHEN #{actionAt} IS NULL OR #{actionAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{actionAt}, 'YYYY-MM-DD HH24:MI:SS') END,
-            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{actionAt} IS NULL OR #{actionAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{actionAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             'Y',
             COALESCE(#{actorId}, 'system'),
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             COALESCE(#{actorId}, 'system'),
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -196,10 +196,10 @@
             ACTOR_ID = #{actorId},
             ACTOR_NAME = #{actorName},
             SOURCE = #{source},
-            ACTION_AT = CASE WHEN #{actionAt} IS NULL OR #{actionAt} = '' THEN ACTION_AT ELSE TO_DATETIME(#{actionAt}, 'YYYY-MM-DD HH24:MI:SS') END,
-            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            ACTION_AT = CASE WHEN #{actionAt} IS NULL OR #{actionAt} = '' THEN ACTION_AT ELSE TO_TIMESTAMP(#{actionAt}, 'YYYY-MM-DD HH24:MI:SS') END,
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             LAST_UPDUSR_ID = COALESCE(#{actorId}, LAST_UPDUSR_ID),
-            LAST_UPDT_PNTTM = CURRENT_DATETIME
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE ACTION_ID = #{actionId}
     </update>
 

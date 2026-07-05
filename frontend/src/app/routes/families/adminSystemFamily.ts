@@ -73,6 +73,7 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "scheduler-management", label: "스케줄러 관리", group: "admin", koPath: "/admin/system/scheduler", enPath: "/en/admin/system/scheduler" },
   { id: "db-promotion-policy", label: "DB 반영 정책 카탈로그", group: "admin", koPath: "/admin/system/db-promotion-policy", enPath: "/en/admin/system/db-promotion-policy" },
   { id: "backup-config", label: "백업 설정", group: "admin", koPath: "/admin/system/backup_config", enPath: "/en/admin/system/backup_config" },
+  { id: "db-monitoring", label: "DB 모니터링", group: "admin", koPath: "/admin/system/db-monitoring", enPath: "/en/admin/system/db-monitoring" },
   { id: "backup-execution", label: "백업 실행", group: "admin", koPath: "/admin/system/backup", enPath: "/en/admin/system/backup" },
   { id: "restore-execution", label: "복구 실행", group: "admin", koPath: "/admin/system/restore", enPath: "/en/admin/system/restore" },
   { id: "package-governance", label: "패키지 거버넌스", group: "admin", koPath: "/admin/system/package-governance", enPath: "/en/admin/system/package-governance" }
@@ -133,6 +134,7 @@ const ADMIN_SYSTEM_PAGE_UNITS = [
   { id: "backup-config", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
   { id: "backup-execution", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
   { id: "restore-execution", exportName: "BackupConfigMigrationPage", loader: () => import("../../../features/backup-config/BackupConfigMigrationPage") },
+  { id: "db-monitoring", exportName: "DbMonitoringPage", loader: () => import("../../../features/db-monitoring/DbMonitoringPage") },
   { id: "package-governance", exportName: "PackageGovernanceScreen", loader: () => import("../../../platform/operations/governance/PackageGovernanceScreen") }
 ] as const satisfies PageUnitsOf<typeof ADMIN_SYSTEM_ROUTE_DEFINITIONS>;
 

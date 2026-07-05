@@ -9,9 +9,9 @@ metadata:
     tier: control-plane
 data:
   SERVER_PORT: "18000"
-  CUBRID_HOST: "cubrid-carbonet.carbonet-prod.svc.cluster.local"
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "cubrid.jdbc.driver.CUBRIDDriver"
-  SPRING_DATASOURCE_URL: "jdbc:cubrid:cubrid-carbonet.carbonet-prod.svc.cluster.local:33000:carbonet:::?charset=UTF-8"
+  POSTGRES_HOST: "postgresql.carbonet-prod.svc.cluster.local"
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "org.postgresql.Driver"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresql.carbonet-prod.svc.cluster.local:5432/carbonet?charset=UTF-8"
   LOG_DIR: "/tmp"
   SECURITY_CODEX_ENABLED: "false"
   SECURITY_CODEX_RUNNER_ENABLED: "false"

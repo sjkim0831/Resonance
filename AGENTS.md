@@ -61,3 +61,43 @@ For `/admin/emission/survey-report`, product and byproduct rows live under `OUTP
 Vite bundles are minified. Do not decide whether a bundle is correct by grepping local variable names such as `isUnallocated` or `productOnlyMass`; verify behavior logic, manifest, and the runtime `react-app-overlay` path.
 
 Commit source changes first. Commit frontend build artifacts separately only when explicitly requested. Never commit `data/ai-runtime/*.sqlite3`, `*.db`, vector indexes, runtime caches, or credentials.
+
+## No-Build / No-Deploy Page Development Rule
+
+All AI agents must treat page development as server-driven / metadata-driven by default.
+
+For new pages, page edits, UI layout changes, SDUI changes, menu-screen mapping, page assets, and static files, edit only these project-owned overlay paths:
+
+- `projects/carbonet-frontend/src/main/resources/static/react-app/**`
+- `projects/carbonet-assets/static/**`
+- `projects/carbonet-backend-metadata/**`
+- `var/k8s/carbonet-runtime-manifest.json` only for runtime manifest changes
+- `ops/runtime-metadata/**` only for runtime metadata registry changes
+
+Do not edit these paths for ordinary page development unless the user explicitly asks for runtime/core work:
+
+- `frontend/src/**`
+- `apps/**`
+- `modules/**`
+- `release/**`
+- `templates/**`
+- `deploy/**`
+- `scripts/runtime-configs/**`
+
+The operating rule is:
+
+1. Use `/admin/system/build-studio` as the primary SDUI control plane for all screens and assets.
+2. Store screen structure and behavior as SDUI/metadata, not as new Java controllers or compiled frontend source.
+3. Store page-owned assets under `projects/carbonet-assets/static/**`.
+4. Store backend-driven screen metadata under `projects/carbonet-backend-metadata/**`.
+5. Use `ops/scripts/resonance-no-build-apply.sh` for metadata/overlay diffs.
+6. Never run `npm run build`, Maven package, Docker build, image push, or Kubernetes rollout for page-only work.
+7. If a requested page change appears to require Java/core changes, first redesign it as SDUI metadata or an existing generic runtime API.
+8. Only classify work as build/redeploy-required when it truly changes runtime engine behavior, security/auth, DB schema, or shared Java contracts.
+
+Before finishing any page task, verify the served overlay path, for example:
+
+```bash
+curl -sI http://127.0.0.1:32947/assets/react/api/build-studio-asset-inventory.json
+curl -sI http://127.0.0.1:32947/assets/react/assets/BuilderStudioPage-BBdbfW4J.js
+```

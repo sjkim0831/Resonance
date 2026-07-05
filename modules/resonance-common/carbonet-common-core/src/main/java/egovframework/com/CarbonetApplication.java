@@ -35,7 +35,7 @@ import javax.sql.DataSource;
 @Import({egovframework.com.config.data.DataSourceConfig.class})
 public class CarbonetApplication {
 
-    @Value("${spring.datasource.driver-class-name:cubrid.jdbc.driver.CUBRIDDriver}")
+    @Value("${spring.datasource.driver-class-name:org.postgresql.Driver}")
     private String driverClassName;
 
     @Value("${spring.datasource.url}")

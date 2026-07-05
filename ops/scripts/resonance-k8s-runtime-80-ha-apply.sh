@@ -47,7 +47,7 @@ spec:
 PATCH
 
 kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
-  SPRING_DATASOURCE_URL="jdbc:cubrid:cubrid-carbonet.carbonet-prod.svc.cluster.local:33000:carbonet:::?charset=UTF-8&connectTimeout=5&queryTimeout=30" \
+  SPRING_DATASOURCE_URL="jdbc:postgresql://postgresql.carbonet-prod.svc.cluster.local:5432/carbonet?charset=UTF-8&connectTimeout=5&queryTimeout=30" \
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2 \
   SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=0 \
   SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT=8000 \

@@ -82,7 +82,7 @@
             #{rowId}, #{sectionCode}, #{sectionOrder}, #{commonName}, #{formula},
             #{ar4Value}, #{ar5Value}, #{ar6Value}, #{source}, #{manualInputValue}, #{note},
             #{sourceDocumentName}, #{sourcePageNo}, #{sortOrder},
-            CURRENT_DATETIME, #{actorId}, CURRENT_DATETIME, #{actorId}
+            CURRENT_TIMESTAMP, #{actorId}, CURRENT_TIMESTAMP, #{actorId}
         )
     </insert>
 
@@ -101,7 +101,7 @@
             SOURCE_DOCUMENT_NM = #{sourceDocumentName},
             SOURCE_PAGE_NO = #{sourcePageNo},
             SORT_ORDR = #{sortOrder},
-            LAST_UPDT_PNTTM = CURRENT_DATETIME,
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
             LAST_UPDUSR_ID = #{actorId}
         WHERE ROW_ID = #{rowId}
     </update>

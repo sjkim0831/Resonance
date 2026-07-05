@@ -1,0 +1,63 @@
+{
+  "mode": "no-build-no-deploy",
+  "project": "carbonet",
+  "boundaries": {
+    "operations": {
+      "paths": [
+        "ops/**",
+        "deploy/**",
+        "scripts/runtime-configs/**",
+        "var/k8s/**"
+      ],
+      "purpose": "cluster wiring, runtime mounts, manifests, verification scripts"
+    },
+    "core": {
+      "paths": [
+        "modules/resonance-common/**",
+        "modules/resonance-builder/**",
+        "apps/project-runtime/**"
+      ],
+      "purpose": "stable shared runtime, contracts, metadata readers, server-driven execution"
+    },
+    "project": {
+      "paths": [
+        "projects/carbonet-assets/static/**",
+        "projects/carbonet-backend-metadata/**",
+        "projects/carbonet-frontend/src/main/resources/static/react-app/**"
+      ],
+      "purpose": "Carbonet pages, assets, and backend metadata that can change without build or redeploy"
+    }
+  },
+  "frontend": {
+    "strategy": "hostPath overlays",
+    "reactHostPath": "/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app",
+    "reactContainerPath": "/app/react-app-overlay",
+    "staticHostPath": "/opt/Resonance/projects/carbonet-assets/static",
+    "staticContainerPath": "/app/static-overlay",
+    "instantPaths": [
+      "react-app/api/page-component-map.json",
+      "react-app/api/page-component-by-menu.json",
+      "react-app/assets/**",
+      "react-shell/**",
+      "download/**",
+      "downloads/**",
+      "img/**",
+      "error/**"
+    ]
+  },
+  "backend": {
+    "strategy": "server-driven metadata",
+    "metadataHostPath": "/opt/Resonance/projects/carbonet-backend-metadata",
+    "metadataContainerPath": "/app/backend-metadata",
+    "manifestSource": "/opt/Resonance/var/k8s/carbonet-runtime-manifest.json",
+    "containerManifest": "/app/config/manifest.json",
+    "configMap": "carbonet-prod/carbonet-runtime-manifest",
+    "runtimeInfoApi": "/api/runtime/project-info"
+  },
+  "apply": {
+    "script": "ops/scripts/resonance-no-build-apply.sh",
+    "build": false,
+    "deploy": false,
+    "restart": false
+  }
+}

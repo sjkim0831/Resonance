@@ -149,8 +149,8 @@
             #{tier},
             #{createdBy},
             #{calcStatus},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
         <selectKey keyProperty="sessionId" resultType="long" order="AFTER">
             SELECT emission_input_session_ai_session_id.current_value
@@ -173,8 +173,8 @@
             #{lineNo},
             #{valueNum},
             #{valueText},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
         <selectKey keyProperty="inputValueId" resultType="long" order="AFTER">
             SELECT emission_input_value_ai_input_value_id.current_value
@@ -229,7 +229,7 @@
             #{formulaSummary},
             #{factorSnapshotJson},
             #{defaultAppliedYn},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
         <selectKey keyProperty="resultId" resultType="long" order="AFTER">
             SELECT emission_calc_result_ai_result_id.current_value
@@ -252,8 +252,8 @@
             #{subCode},
             #{subName},
             #{useYn},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
         <selectKey keyProperty="categoryId" resultType="long" order="AFTER">
             SELECT emission_category_ai_category_id.current_value
@@ -316,8 +316,8 @@
             #{sectionDescription},
             #{sectionFormula},
             #{useYn},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -342,7 +342,7 @@
             section_description = #{sectionDescription},
             section_formula = #{sectionFormula},
             use_yn = #{useYn},
-            updated_at = CURRENT_DATETIME
+            updated_at = CURRENT_TIMESTAMP
         WHERE category_id = #{categoryId}
           AND tier = #{tier}
           AND var_code = #{varCode}
@@ -367,7 +367,7 @@
             #{draftId},
             #{publishedVersionId},
             #{materializedBy},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{createdCategoryYn},
             #{insertedVariableCount},
             #{updatedVariableCount}
@@ -415,7 +415,7 @@
             #{categoryCode},
             #{tier},
             #{transitionedBy},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{sessionId},
             #{resultId},
             #{runtimeMode},

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 40" role="img" aria-labelledby="govSymbolTitle govSymbolDesc">
+  <title id="govSymbolTitle">Government Symbol of the Republic of Korea</title>
+  <desc id="govSymbolDesc">A compact government symbol with a Taegeuk-inspired mark and Korean government wordmark.</desc>
+  <rect width="220" height="40" fill="none"/>
+  <g transform="translate(4 4)">
+    <circle cx="16" cy="16" r="12" fill="#ffffff" stroke="#d7dce5" stroke-width="1.5"/>
+    <path d="M16 4a12 12 0 0 1 0 24c-4.6 0-8.7-2.6-10.7-6.6 1.8 1.1 3.9 1.8 6.1 1.8 6.1 0 11-4.9 11-11 0-3.1-1.3-6-3.4-8.2A11.9 11.9 0 0 1 16 4z" fill="#cd2e3a"/>
+    <path d="M16 28A12 12 0 0 1 16 4c4.6 0 8.7 2.6 10.7 6.6-1.8-1.1-3.9-1.8-6.1-1.8-6.1 0-11 4.9-11 11 0 3.1 1.3 6 3.4 8.2A11.9 11.9 0 0 1 16 28z" fill="#0047a0"/>
+    <rect x="36" y="8" width="2.5" height="16" rx="1.25" fill="#c7cfdb"/>
+    <g fill="#1f2937" font-family="'Noto Sans KR', 'Malgun Gothic', sans-serif">
+      <text x="46" y="15" font-size="9.5" font-weight="700">대한민국 정부</text>
+      <text x="46" y="24.5" font-size="6.5" fill="#6b7280" font-weight="600">Government of the Republic of Korea</text>
+    </g>
+  </g>
+</svg>

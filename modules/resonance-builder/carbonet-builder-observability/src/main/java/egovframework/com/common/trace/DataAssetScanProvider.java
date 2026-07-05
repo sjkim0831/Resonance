@@ -25,7 +25,7 @@ public class DataAssetScanProvider implements AssetScanProvider {
         List<SystemAssetInventoryVO> assets = new ArrayList<>();
         
         // CUBRID specific query for user tables
-        String sql = "SELECT class_name, owner_name FROM db_class WHERE is_system_class = 'NO'";
+        String sql = "SELECT table_name AS class_name, table_schema AS owner_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'";
         List<Map<String, Object>> tables = jdbcTemplate.queryForList(sql);
 
         for (Map<String, Object> table : tables) {
@@ -57,7 +57,7 @@ public class DataAssetScanProvider implements AssetScanProvider {
 
     private String generateTableHash(String tableName) {
         // Hash the column structure
-        String sql = "SELECT attr_name, data_type FROM db_attribute WHERE class_name = ?";
+        String sql = "SELECT attr_name, data_type FROM information_schema.columns WHERE class_name = ?";
         List<Map<String, Object>> columns = jdbcTemplate.queryForList(sql, tableName);
         return Integer.toHexString(columns.toString().hashCode());
     }

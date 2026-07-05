@@ -1,0 +1,2725 @@
+{
+  "assets": [
+    {
+      "scope": "static",
+      "path": "download/CarbonetMobile.apk",
+      "size": 52137559
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-compact-print.pl",
+      "size": 2247
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-escape-font-quotes.pl",
+      "size": 553
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-fill-print.pl",
+      "size": 2083
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-page2-margin.pl",
+      "size": 820
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-pretendard-gov-print.pl",
+      "size": 3124
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-print-12px-15margin.pl",
+      "size": 1221
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-print-16px.pl",
+      "size": 1874
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-print-font-14-16.pl",
+      "size": 1151
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-print-layout-fix.pl",
+      "size": 3066
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-print-margin-30.pl",
+      "size": 376
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-print-margin-visible.pl",
+      "size": 703
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-readable-a4-print.pl",
+      "size": 1819
+    },
+    {
+      "scope": "static",
+      "path": "downloads/lca/lca-section-title-spacing.pl",
+      "size": 750
+    },
+    {
+      "scope": "static",
+      "path": "downloads/menu-permission-diagnostics.sql",
+      "size": 3030
+    },
+    {
+      "scope": "static",
+      "path": "error/403.html",
+      "size": 315
+    },
+    {
+      "scope": "static",
+      "path": "img/egovframework/kr_gov_symbol.png",
+      "size": 32239
+    },
+    {
+      "scope": "static",
+      "path": "img/egovframework/kr_gov_symbol.svg",
+      "size": 1202
+    },
+    {
+      "scope": "static",
+      "path": "react-app/.vite/manifest.json",
+      "size": 154672
+    },
+    {
+      "scope": "static",
+      "path": "react-app/api/build-studio-asset-inventory.json",
+      "size": 69593
+    },
+    {
+      "scope": "static",
+      "path": "react-app/api/page-component-by-menu.json",
+      "size": 79872
+    },
+    {
+      "scope": "static",
+      "path": "react-app/api/page-component-map.json",
+      "size": 612039
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AIChatPanel-Ckm8wvnA.js",
+      "size": 17158
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AIChatPanel-YXrC7Abo.js",
+      "size": 17158
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AccessHistoryMigrationPage-DaWBwvUz.js",
+      "size": 21978
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AccessHistoryMigrationPage-DsUxfD1V.js",
+      "size": 21978
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminAccountCreateMigrationPage-D5B7vecp.js",
+      "size": 23049
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminAccountCreateMigrationPage-m7X65G9d.js",
+      "size": 23049
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminEntryPages-kl3VHHvp.js",
+      "size": 25030
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminEntryPages-sxX0QwaY.js",
+      "size": 25030
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminListMigrationPage-DwmScdOs.js",
+      "size": 10091
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminListMigrationPage-cGWe85SP.js",
+      "size": 10091
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminMenuOverviewMigrationPage-CVTkd0Js.js",
+      "size": 14652
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminMenuOverviewMigrationPage-alSrqAaQ.js",
+      "size": 14652
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminMenuPlaceholderPage-B3BNRKpf.js",
+      "size": 2482
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminMenuPlaceholderPage-CZ4twmb0.js",
+      "size": 2482
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminPermissionMigrationPage-Bv5UWBEG.js",
+      "size": 12543
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminPermissionMigrationPage-DtGAAYSX.js",
+      "size": 12543
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminSitemapMigrationPage-CgYBFNqr.js",
+      "size": 3948
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AdminSitemapMigrationPage-DgFBym31.js",
+      "size": 3948
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiAgentsPage-49T_oy99.js",
+      "size": 3373
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiAgentsPage-D20HyV1z.js",
+      "size": 3373
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiDashboardPage-D4yu0HQX.js",
+      "size": 5559
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiDashboardPage-q5mkz_cN.js",
+      "size": 5559
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiLogsPage-B0EVu6Db.js",
+      "size": 3783
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiLogsPage-DDQKUzzI.js",
+      "size": 3783
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiModelsPage-BS6NlZOg.js",
+      "size": 3978
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiModelsPage-DufwAHTH.js",
+      "size": 3978
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiObservabilityPage-DKdC_1wG.js",
+      "size": 10091
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiObservabilityPage-DaBeNA74.js",
+      "size": 10091
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiQualityPage-B08mlzNW.js",
+      "size": 3934
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiQualityPage-fCYcrs7q.js",
+      "size": 3934
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiRagPage-BMKKImR2.js",
+      "size": 9564
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiRagPage-qZRwc62m.js",
+      "size": 9564
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiTrainingPage-02xUx-PH.js",
+      "size": 9279
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AiTrainingPage-DmxQnrC5.js",
+      "size": 9279
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetDeficiencyQueueMigrationPage-C5dPvg76.js",
+      "size": 7178
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetDeficiencyQueueMigrationPage-bKi_waea.js",
+      "size": 7178
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetDetailMigrationPage-Bmk3Ewq3.js",
+      "size": 14993
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetDetailMigrationPage-CfrOaIMT.js",
+      "size": 14993
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetImpactMigrationPage-BXWwtvpH.js",
+      "size": 10274
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetImpactMigrationPage-C8awDHIv.js",
+      "size": 10274
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetInventoryMigrationPage-DIKpo-qu.js",
+      "size": 16497
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetInventoryMigrationPage-DWb7LCAI.js",
+      "size": 16497
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetLifecycleMigrationPage-C7hzG6AT.js",
+      "size": 6884
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AssetLifecycleMigrationPage-CQ27eXLc.js",
+      "size": 6884
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AuthChangeMigrationPage-BoYWTKmz.js",
+      "size": 18104
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AuthChangeMigrationPage-qzhtcI8b.js",
+      "size": 18104
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AuthGroupMigrationPage-DWgRNheY.js",
+      "size": 62158
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/AuthGroupMigrationPage-ihP2QTV4.js",
+      "size": 62158
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BackupConfigMigrationPage-BlgFTbz9.js",
+      "size": 64408
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BackupConfigMigrationPage-mDPRq4io.js",
+      "size": 64408
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BannerEditMigrationPage-DeT9qLCI.js",
+      "size": 5853
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BannerEditMigrationPage-jwEV1rOT.js",
+      "size": 5853
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BannerListMigrationPage-BIu8PF-o.js",
+      "size": 12102
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BannerListMigrationPage-DV4v7hTF.js",
+      "size": 12102
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BatchManagementMigrationPage-CWxnZd5V.js",
+      "size": 19517
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BatchManagementMigrationPage-Ce1wyiEs.js",
+      "size": 19517
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BatchMonitoringPage-BvCSDy-D.js",
+      "size": 4743
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BatchMonitoringPage-DHsM6NBa.js",
+      "size": 4743
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BlocklistMigrationPage-CEXtwtvr.js",
+      "size": 34327
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BlocklistMigrationPage-CKEvnYAr.js",
+      "size": 34327
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BoardAddMigrationPage-DJ2VTHvs.js",
+      "size": 16949
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BoardAddMigrationPage-qvMHn_0d.js",
+      "size": 16949
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BoardListMigrationPage-CETe3cCg.js",
+      "size": 10688
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BoardListMigrationPage-DC6qYALN.js",
+      "size": 10688
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BuilderGovernancePages-VGOPNS6W.js",
+      "size": 39114
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BuilderGovernancePages-jKnGd0dS.js",
+      "size": 39114
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BuilderStudioPage-BBdbfW4J.js",
+      "size": 8842
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BuilderStudioPage-BMLKrWvl.js",
+      "size": 8842
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/BuilderStudioPage-CLYZaISy.js",
+      "size": 8842
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CanView-Cd8Py6_s.js",
+      "size": 180
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateApplyMigrationPage-BtmoTZY2.js",
+      "size": 20960
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateApplyMigrationPage-DUck4cSo.js",
+      "size": 20960
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateApproveMigrationPage-kq6vVYEH.js",
+      "size": 19384
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateApproveMigrationPage-o-mcOjyk.js",
+      "size": 19384
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateAuditLogMigrationPage-CsW4WkFj.js",
+      "size": 13853
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateAuditLogMigrationPage-D_JCb9Rf.js",
+      "size": 13853
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateListMigrationPage-BHSdXbfc.js",
+      "size": 24965
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateListMigrationPage-aiiyiiI8.js",
+      "size": 24965
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateObjectionListMigrationPage-CPKV5-p8.js",
+      "size": 16567
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateObjectionListMigrationPage-Cc37CUdr.js",
+      "size": 16567
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificatePendingMigrationPage-1XrKptmd.js",
+      "size": 12165
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificatePendingMigrationPage-pWxNSixs.js",
+      "size": 12165
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateRecCheckMigrationPage-BwG_QjYs.js",
+      "size": 19047
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateRecCheckMigrationPage-DTnTvY1_.js",
+      "size": 19047
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReportEditMigrationPage-BDgy5Ab9.js",
+      "size": 28914
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReportEditMigrationPage-DTbke9dW.js",
+      "size": 28914
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReportFormMigrationPage-D6noyM1g.js",
+      "size": 24608
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReportFormMigrationPage-DFJkHM1Y.js",
+      "size": 24608
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReportListMigrationPage-BVjwr0bf.js",
+      "size": 23574
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReportListMigrationPage-n4ZtrKju.js",
+      "size": 23574
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReviewMigrationPage-BchUOWEE.js",
+      "size": 13776
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateReviewMigrationPage-Bwtl5I2M.js",
+      "size": 13776
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateStatisticsMigrationPage-BOTglysi.js",
+      "size": 16828
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CertificateStatisticsMigrationPage-C-MD9QEN.js",
+      "size": 16828
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2AnalysisMigrationPage-DXnHI7BQ.js",
+      "size": 33575
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2AnalysisMigrationPage-LYWKAvY4.js",
+      "size": 33575
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2CreditMigrationPage-W9PNVRdt.js",
+      "size": 34997
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2CreditMigrationPage-g3fUkDrz.js",
+      "size": 34997
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2DemandListMigrationPage-DPnMQLSU.js",
+      "size": 34594
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2DemandListMigrationPage-DZU72L2o.js",
+      "size": 34594
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2IntegrityMigrationPage-B6ZpICqQ.js",
+      "size": 31215
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2IntegrityMigrationPage-Cdu_SKB3.js",
+      "size": 31215
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2ProductionListMigrationPage-B7dpVPBM.js",
+      "size": 34185
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2ProductionListMigrationPage-Bw9nmzXB.js",
+      "size": 34185
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2SearchMigrationPage-CXJjoOX4.js",
+      "size": 32447
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Co2SearchMigrationPage-mHTDWWZr.js",
+      "size": 32447
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CodexProvisionMigrationPage-ClEQMjD8.js",
+      "size": 46534
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CodexProvisionMigrationPage-ENY6_HaM.js",
+      "size": 46534
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyAccountMigrationPage-C52APrHl.js",
+      "size": 17505
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyAccountMigrationPage-D-bLEKRy.js",
+      "size": 17505
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyApproveMigrationPage-65GTFYXI.js",
+      "size": 16007
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyApproveMigrationPage-B7gVvZX-.js",
+      "size": 16007
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyDetailMigrationPage-C39uThc2.js",
+      "size": 8259
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyDetailMigrationPage-DVUqU2ED.js",
+      "size": 8259
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyListMigrationPage-BgSDiXHR.js",
+      "size": 8508
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CompanyListMigrationPage-C1FyujGk.js",
+      "size": 8508
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ComponentManagementPage-B_jJH8sF.js",
+      "size": 7708
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ComponentManagementPage-C3GF8YDt.js",
+      "size": 7708
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ComponentManagementPage-CqIkuWwS.js",
+      "size": 8977
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CronMonitoringMigrationPage-DK8nwShP.js",
+      "size": 15415
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CronMonitoringPage-dQPK1QEJ.js",
+      "size": 4322
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CurrentRuntimeCompareMigrationPage-BNn9t9Px.js",
+      "size": 50431
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/CurrentRuntimeCompareMigrationPage-CGwFd8e9.js",
+      "size": 50431
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DbMonitoringMigrationPage-DukDTg1Z.js",
+      "size": 21715
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DbMonitoringPage-gpgUWPzV.js",
+      "size": 3557
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DbPromotionPolicyMigrationPage-BxQXu8OV.js",
+      "size": 12620
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DbPromotionPolicyMigrationPage-DUBOA4JG.js",
+      "size": 12620
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DbSyncDeployMigrationPage-7dSUY4M2.js",
+      "size": 21586
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DbSyncDeployMigrationPage-B4ZA2JjJ.js",
+      "size": 21586
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DeptRoleMappingMigrationPage-BZ3zpUsU.js",
+      "size": 15082
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/DeptRoleMappingMigrationPage-CKNehcx2.js",
+      "size": 15082
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduApplyMigrationPage-CA_MByIN.js",
+      "size": 20453
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduApplyMigrationPage-KMmlxV9a.js",
+      "size": 20453
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduCertificateMigrationPage-BHsJZ7CC.js",
+      "size": 20707
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduCertificateMigrationPage-DjdK_ltx.js",
+      "size": 20707
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduContentMigrationPage-Cz4lMGPU.js",
+      "size": 26722
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduContentMigrationPage-Gkz-TojB.js",
+      "size": 26722
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduCourseDetailMigrationPage-3tX2yJbq.js",
+      "size": 28380
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduCourseDetailMigrationPage-Bd1X_hz9.js",
+      "size": 28380
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduCourseListMigrationPage-CYE0vder.js",
+      "size": 29204
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduCourseListMigrationPage-t31-7PPg.js",
+      "size": 29204
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduMyCourseMigrationPage-By6cab4I.js",
+      "size": 23485
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduMyCourseMigrationPage-CBbz1GWT.js",
+      "size": 23485
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduProgressMigrationPage-CsSFt1gf.js",
+      "size": 29351
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduProgressMigrationPage-DUVqgNtQ.js",
+      "size": 29351
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduSurveyMigrationPage-C3vVWihx.js",
+      "size": 18343
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EduSurveyMigrationPage-DxGK_Wg3.js",
+      "size": 18343
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionClassificationCatalogPanel-DhAvS_Me.js",
+      "size": 3171
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionDashboardPage-2nCoRssR.js",
+      "size": 39503
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionDashboardPage-D9SiDT4b.js",
+      "size": 39503
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionDataHistoryMigrationPage-BR0THVl9.js",
+      "size": 14344
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionDataHistoryMigrationPage-CzUKphr8.js",
+      "size": 14344
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionDataInputMigrationPage-BNdyNaer.js",
+      "size": 44825
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionDataInputMigrationPage-BfMQJF08.js",
+      "size": 44825
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionEcoinventAdminMigrationPage-4AjBojVO.js",
+      "size": 14792
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionEcoinventAdminMigrationPage-CedmmNBE.js",
+      "size": 14792
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionGwpValuesMigrationPage-99kjWTtE.js",
+      "size": 56034
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionGwpValuesMigrationPage-BAD7Z6cf.js",
+      "size": 56034
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionHomeValidateMigrationPage-BanD8NOA.js",
+      "size": 30488
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionHomeValidateMigrationPage-BfP4M_kA.js",
+      "size": 30488
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionLcaMigrationPage-Ci3xLL-j.js",
+      "size": 28274
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionLcaMigrationPage-DyLGv19s.js",
+      "size": 28274
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionLciClassificationMigrationPage-BKsVRkSa.js",
+      "size": 11857
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionLciClassificationMigrationPage-BvcOqAd-.js",
+      "size": 11857
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionLciMigrationPage-D_VYr5FB.js",
+      "size": 32193
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionLciMigrationPage-Dd4loJbe.js",
+      "size": 32193
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionManagementMigrationPage-BuwqME9b.js",
+      "size": 80385
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionManagementMigrationPage-C4YR8KhV.js",
+      "size": 80385
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionProjectListMigrationPage-BAdQ6XJe.js",
+      "size": 81444
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionProjectListMigrationPage-ChtKfMcx.js",
+      "size": 81444
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionReductionMigrationPage-B_IGqWbs.js",
+      "size": 31292
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionReductionMigrationPage-DiJGodx5.js",
+      "size": 31292
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionReportSubmitMigrationPage-COpWsBLp.js",
+      "size": 26462
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionReportSubmitMigrationPage-CUHFUb--.js",
+      "size": 26462
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionResultDetailMigrationPage-CARssNLe.js",
+      "size": 12336
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionResultDetailMigrationPage-KQewWeGY.js",
+      "size": 12336
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionResultListMigrationPage-BQX_E8_w.js",
+      "size": 14535
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionResultListMigrationPage-DNCc5PRi.js",
+      "size": 14535
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSimulateMigrationPage-CV7Qpivi.js",
+      "size": 24224
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSimulateMigrationPage-KRSNLxNN.js",
+      "size": 24224
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSiteManagementMigrationPage-D6nymy_Z.js",
+      "size": 10016
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSiteManagementMigrationPage-mxhYA5lL.js",
+      "size": 10016
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyAdminDataMigrationPage-BSBjs9__.js",
+      "size": 40513
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyAdminDataMigrationPage-PObYgaks.js",
+      "size": 40513
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyAdminMigrationPage-C_K1if9Z.js",
+      "size": 69965
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyAdminMigrationPage-CiUrvnP5.js",
+      "size": 69965
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyReportListPage-SxMJaQy9.js",
+      "size": 17201
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyReportMigrationPage-7gdCBHNG.js",
+      "size": 76050
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionSurveyReportMigrationPage-Bctm4sju.js",
+      "size": 74974
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionValidateMigrationPage-AGGjMbmL.js",
+      "size": 15266
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/EmissionValidateMigrationPage-BmtkjKQ3.js",
+      "size": 15266
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ErrorLogMigrationPage-BwUG4SWP.js",
+      "size": 10247
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ErrorLogMigrationPage-DjPaisqq.js",
+      "size": 10247
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalConnectionAddMigrationPage-DtwqwQ8s.js",
+      "size": 465
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalConnectionAddMigrationPage-Yl_4OoFu.js",
+      "size": 465
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalConnectionEditMigrationPage-CnIBTElZ.js",
+      "size": 18477
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalConnectionEditMigrationPage-DziK3T23.js",
+      "size": 18477
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalConnectionListMigrationPage-B_eKaDUQ.js",
+      "size": 20015
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalConnectionListMigrationPage-DBnNO9os.js",
+      "size": 20015
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalKeysMigrationPage-C60_b2qd.js",
+      "size": 21022
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalKeysMigrationPage-CvJovXCq.js",
+      "size": 21022
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalLogsMigrationPage-Cbl7yHpF.js",
+      "size": 12933
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalLogsMigrationPage-VhwCjjra.js",
+      "size": 12933
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalMaintenanceMigrationPage-9aH2nhDh.js",
+      "size": 17365
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalMaintenanceMigrationPage-B1yzneNY.js",
+      "size": 17365
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalMonitoringMigrationPage-D6n0RP0N.js",
+      "size": 13699
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalMonitoringMigrationPage-DUClEpq6.js",
+      "size": 13699
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalRetryMigrationPage-B4yBf1bx.js",
+      "size": 12302
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalRetryMigrationPage-lQZlOFxu.js",
+      "size": 12302
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalSchemaMigrationPage-BZjJhqlY.js",
+      "size": 25094
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalSchemaMigrationPage-DxmP3Fvs.js",
+      "size": 25094
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalSyncMigrationPage-B4LlGxyg.js",
+      "size": 14382
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalSyncMigrationPage-BfN2-SzV.js",
+      "size": 14382
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalUsageMigrationPage-D_Zv3Q2R.js",
+      "size": 10764
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalUsageMigrationPage-lNF_OhYL.js",
+      "size": 10764
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalWebhooksMigrationPage-CIAdTlD_.js",
+      "size": 15936
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ExternalWebhooksMigrationPage-YTXfHVy0.js",
+      "size": 15936
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FaqManagementMigrationPage-CYBKq_i9.js",
+      "size": 13180
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FaqManagementMigrationPage-DwrAv7w3.js",
+      "size": 13180
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FaqMenuManagementMigrationPage-BJYY0q9q.js",
+      "size": 16441
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FaqMenuManagementMigrationPage-BxzFyLMI.js",
+      "size": 16441
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FileManagementMigrationPage-BgA_DtDw.js",
+      "size": 21783
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FileManagementMigrationPage-CiB6ZjAP.js",
+      "size": 21783
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FlutterAppPage-DP0nfO1Q.js",
+      "size": 348
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FullStackManagementMigrationPage-CBYU2B3O.js",
+      "size": 50495
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FullStackManagementMigrationPage-f9JRK6dC.js",
+      "size": 50495
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FunctionManagementMigrationPage-BNfzX5bH.js",
+      "size": 10838
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/FunctionManagementMigrationPage-DIDzYSlX.js",
+      "size": 10838
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/GitBuildMonitoringPage-DgUCVejH.js",
+      "size": 3834
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/GitBuildMonitoringPage-DxIbl3ZX.js",
+      "size": 3834
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/GovernanceCompressionNav-Bj7ePFHU.js",
+      "size": 6464
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/GovernanceCompressionNav-CUYFXOSY.js",
+      "size": 6464
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HelpManagementMigrationPage-CX0813Yb.js",
+      "size": 34070
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HelpManagementMigrationPage-DPIvSya-.js",
+      "size": 34070
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HelpOverlay-CnytPOAP.js",
+      "size": 3985
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HelpOverlay-D3kkT1Mc.js",
+      "size": 3985
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HermesWorkflowMigrationPage-89qOp53e.js",
+      "size": 12210
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HermesWorkflowMigrationPage-B_HlFh9a.js",
+      "size": 12210
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HomeEntryPages-BAg8TCqD.js",
+      "size": 44383
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HomeEntryPages-dRNCqz2w.js",
+      "size": 44383
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HomeEntrySections-Djp362f4.js",
+      "size": 16283
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HomeEntrySections-DuADmpGT.js",
+      "size": 16283
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HomeMenuPlaceholderPage-Bhfs1dOk.js",
+      "size": 3926
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/HomeMenuPlaceholderPage-DLxLWrfS.js",
+      "size": 3926
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/InfraManagementMigrationPage-BIJm0wrj.js",
+      "size": 15926
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/InfraManagementMigrationPage-Bu5s_1lx.js",
+      "size": 15926
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/IpWhitelistMigrationPage-BhdKg4eT.js",
+      "size": 25836
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/IpWhitelistMigrationPage-DjMpBAsS.js",
+      "size": 25836
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinAuthMigrationPage-BR2GSJ1I.js",
+      "size": 14947
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinAuthMigrationPage-DAxk1afW.js",
+      "size": 14947
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyReapplyMigrationPage-DUfiKwh9.js",
+      "size": 18829
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyReapplyMigrationPage-rMYUw9Ql.js",
+      "size": 18829
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyRegisterCompleteMigrationPage-BGdMlt-x.js",
+      "size": 11369
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyRegisterCompleteMigrationPage-ictwp-3I.js",
+      "size": 11369
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyRegisterMigrationPage-9u7nqaVT.js",
+      "size": 28392
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyRegisterMigrationPage-BDowBky3.js",
+      "size": 28392
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyStatusMigrationPage-BmQkBtWC.js",
+      "size": 31711
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompanyStatusMigrationPage-C_am3U8j.js",
+      "size": 31711
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompleteMigrationPage-BFXhyVDq.js",
+      "size": 11119
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinCompleteMigrationPage-C4yzWC88.js",
+      "size": 11119
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinInfoMigrationPage-31WGhks7.js",
+      "size": 26305
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinInfoMigrationPage-DpIP2Sdj.js",
+      "size": 26305
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinTermsMigrationPage-CTcUwYT2.js",
+      "size": 15368
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinTermsMigrationPage-Cx1ascc6.js",
+      "size": 15368
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinWizardMigrationPage-CDRcbFrC.js",
+      "size": 10330
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/JoinWizardMigrationPage-DkZI7CIK.js",
+      "size": 10330
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/LoginHistoryMigrationPage-Bda1k-cl.js",
+      "size": 854
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/LoginHistoryMigrationPage-DPD42YHf.js",
+      "size": 854
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/LoginHistorySharedPage-B8YMEizA.js",
+      "size": 32270
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/LoginHistorySharedPage-CYPsxlft.js",
+      "size": 32270
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberApproveMigrationPage-8QDa4mA2.js",
+      "size": 16280
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberApproveMigrationPage-D2fCIMTw.js",
+      "size": 16280
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberAuthorityNav-CLHTIbMA.js",
+      "size": 1946
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberAuthorityNav-CoJsiKIq.js",
+      "size": 1946
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberDetailMigrationPage-B5pc7Hxm.js",
+      "size": 12062
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberDetailMigrationPage-DoA6R5Rn.js",
+      "size": 12062
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberEditMigrationPage-BetV98eX.js",
+      "size": 25668
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberEditMigrationPage-DhhQnhWw.js",
+      "size": 25668
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberListMigrationPage-CtYCijMv.js",
+      "size": 11715
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberListMigrationPage-QvG-zeEn.js",
+      "size": 11715
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberRegisterMigrationPage-DQtvfCFg.js",
+      "size": 29613
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberRegisterMigrationPage-DvWG9rs7.js",
+      "size": 29613
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberSecurityHistoryMigrationPage-DF-qi-q0.js",
+      "size": 981
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberSecurityHistoryMigrationPage-yrFt616G.js",
+      "size": 981
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberStatsMigrationPage-DXEwvH-I.js",
+      "size": 7301
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MemberStatsMigrationPage-pe5oZ3Pp.js",
+      "size": 7301
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MenuManagementMigrationPage-BfC-HRuh.js",
+      "size": 30664
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MenuManagementMigrationPage-CrAwSpVb.js",
+      "size": 30664
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/Modal-DpA_xvrL.js",
+      "size": 1327
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ModuleManagementMigrationPage-DFRVEbN5.js",
+      "size": 8840
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ModuleManagementMigrationPage-DZxiV0jM.js",
+      "size": 8840
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringAlertsMigrationPage-8HQXDDAO.js",
+      "size": 30985
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringAlertsMigrationPage-CgrZrV0r.js",
+      "size": 30985
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringDashboardMigrationPage-BZoMF5Ew.js",
+      "size": 30835
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringDashboardMigrationPage-DdRfwITB.js",
+      "size": 30835
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringDashboardPage-3rsoKuwA.js",
+      "size": 23556
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringDashboardPage-CGWzpMaP.js",
+      "size": 23526
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringExportMigrationPage-D9JzCubz.js",
+      "size": 30821
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringExportMigrationPage-MOjnaFoK.js",
+      "size": 30821
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringRealtimeMigrationPage-DMlOd9WY.js",
+      "size": 30540
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringRealtimeMigrationPage-Tfz93Qci.js",
+      "size": 30540
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringReductionTrendMigrationPage-By90EduT.js",
+      "size": 33281
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringReductionTrendMigrationPage-D0Iv7DD_.js",
+      "size": 33281
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringShareMigrationPage-BWtCL820.js",
+      "size": 32124
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringShareMigrationPage-CS96V83S.js",
+      "size": 32124
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringStatisticsMigrationPage-Bi9zWXHQ.js",
+      "size": 30537
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringStatisticsMigrationPage-DAigBKt9.js",
+      "size": 30537
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringTrackMigrationPage-C5pfJO1P.js",
+      "size": 36683
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MonitoringTrackMigrationPage-Lhb1C3Em.js",
+      "size": 36683
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MtnStatusMigrationPage-BA7kmbDS.js",
+      "size": 27044
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MtnStatusMigrationPage-DcAPi4Gb.js",
+      "size": 27044
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MyInquiryMigrationPage-CwxbdlLG.js",
+      "size": 20617
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MyInquiryMigrationPage-FxRJu38o.js",
+      "size": 20617
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageCompanyMigrationPage-B34otiLz.js",
+      "size": 18664
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageCompanyMigrationPage-DlwoJt7y.js",
+      "size": 18664
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageEmailMigrationPage-B02GxGNX.js",
+      "size": 11969
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageEmailMigrationPage-CvE7w5kE.js",
+      "size": 11969
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageMarketingMigrationPage-BW_k8iLz.js",
+      "size": 13693
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageMarketingMigrationPage-CZQdceKx.js",
+      "size": 13693
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageMigrationPage-DTYt-IPd.js",
+      "size": 32282
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageMigrationPage-GfmzBfDe.js",
+      "size": 32282
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageNotificationMigrationPage-D6y6-hBb.js",
+      "size": 17061
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageNotificationMigrationPage-DOrLlx4y.js",
+      "size": 17061
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypagePasswordMigrationPage-DU6VMWYr.js",
+      "size": 16115
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypagePasswordMigrationPage-jAfPp88n.js",
+      "size": 16115
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageStaffMigrationPage-C3UTnNWb.js",
+      "size": 24295
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/MypageStaffMigrationPage-YSu1UGl8.js",
+      "size": 24295
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/NotificationCenterMigrationPage-BFAplLhd.js",
+      "size": 30463
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/NotificationCenterMigrationPage-ir3cK1Hk.js",
+      "size": 30463
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ObservabilityMigrationPage-293vHYqL.js",
+      "size": 55288
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ObservabilityMigrationPage-DiaQjd55.js",
+      "size": 55288
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/OperationsCenterMigrationPage-BUuaz2rh.js",
+      "size": 36529
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/OperationsCenterMigrationPage-CVKUf6qZ.js",
+      "size": 36529
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/OperationsInventoryPages-BAm08rK5.js",
+      "size": 10821
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/OperationsInventoryPages-DicuRHqv.js",
+      "size": 10821
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PackageGovernanceScreen-DJiuul2w.js",
+      "size": 7470
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PageManagementMigrationPage-2nLHkuqR.js",
+      "size": 30598
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PageManagementMigrationPage-BJpFAIG1.js",
+      "size": 30598
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PasswordResetMigrationPage-2Tn7_0Ny.js",
+      "size": 16937
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PasswordResetMigrationPage-X0jLpFA2.js",
+      "size": 16937
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentHistoryMigrationPage-Ban0IdqC.js",
+      "size": 22697
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentHistoryMigrationPage-N2m14ZyE.js",
+      "size": 22697
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentNotifyMigrationPage-B-LrJ1aF.js",
+      "size": 30227
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentNotifyMigrationPage-DqpIPON3.js",
+      "size": 30227
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentPayMigrationPage-CVVWasGB.js",
+      "size": 31928
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentPayMigrationPage-fAN4ZeKW.js",
+      "size": 31928
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentReceiptMigrationPage-2PRnmCsi.js",
+      "size": 29112
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentReceiptMigrationPage-CJaD9rQI.js",
+      "size": 29112
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentRefundAccountMigrationPage-CFEn9FW3.js",
+      "size": 30962
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentRefundAccountMigrationPage-CyydtoKW.js",
+      "size": 30962
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentRefundMigrationPage-BVjmzPPX.js",
+      "size": 30982
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentRefundMigrationPage-DmL0lZKI.js",
+      "size": 30982
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentVirtualAccountMigrationPage-8JIlRQQ0.js",
+      "size": 37336
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PaymentVirtualAccountMigrationPage-CVJ06K4p.js",
+      "size": 37336
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PerformanceMigrationPage-Bl68N04a.js",
+      "size": 17101
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PerformanceMigrationPage-yGTw9Bdo.js",
+      "size": 17101
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PopupEditMigrationPage-BsTWqSXv.js",
+      "size": 14949
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PopupEditMigrationPage-dVABiKPM.js",
+      "size": 14949
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PopupListMigrationPage-CdFM89Lr.js",
+      "size": 12940
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PopupListMigrationPage-CuKi5BcG.js",
+      "size": 12940
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PostListMigrationPage-DV9q3ESy.js",
+      "size": 12010
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PostListMigrationPage-DlahgbhF.js",
+      "size": 12010
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ProjectVersionManagementMigrationPage-BqTcA6ZO.js",
+      "size": 147436
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ProjectVersionManagementMigrationPage-Dl4xVcT7.js",
+      "size": 147436
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PublicEntryPages--f4lGgbs.js",
+      "size": 63923
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/PublicEntryPages-DFEp89I2.js",
+      "size": 63923
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/QnaCategoryMigrationPage-C4lwAuPt.js",
+      "size": 17495
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/QnaCategoryMigrationPage-Dzsp4ukY.js",
+      "size": 17495
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/RefundListMigrationPage-BQ_AExEU.js",
+      "size": 9959
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/RefundListMigrationPage-B_NtVy3F.js",
+      "size": 9959
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/RefundProcessMigrationPage-B0r1Iyhw.js",
+      "size": 16835
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/RefundProcessMigrationPage-w0eL5m6M.js",
+      "size": 16835
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/RepairWorkbenchMigrationPage-BNaE7jlt.js",
+      "size": 55411
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/RepairWorkbenchMigrationPage-CqOx1E4X.js",
+      "size": 55411
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SchedulerManagementMigrationPage-BVXYb2L6.js",
+      "size": 9884
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SchedulerManagementMigrationPage-BvxpnG0u.js",
+      "size": 9884
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenBuilderDashboardPage-BJQpAz1E.js",
+      "size": 6812
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenBuilderDashboardPage-DP4TdoB6.js",
+      "size": 6812
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenBuilderMigrationPage-Bt7ij4_R.js",
+      "size": 29777
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenBuilderMigrationPage-DzHbEq59.js",
+      "size": 29777
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenFlowManagementMigrationPage-DGaosTUH.js",
+      "size": 16118
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenFlowManagementMigrationPage-libH0cFt.js",
+      "size": 18703
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenManagementMigrationPage-Bx8MwJa6.js",
+      "size": 10350
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenManagementMigrationPage-CRf52tto.js",
+      "size": 10350
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenMenuAssignmentManagementMigrationPage-J-mWhR5c.js",
+      "size": 18720
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenMenuAssignmentManagementMigrationPage-WY0It4jh.js",
+      "size": 28450
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenRuntimeMigrationPage-Dt6sXCTa.js",
+      "size": 28015
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ScreenRuntimeMigrationPage-joT2e8Iu.js",
+      "size": 28015
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityAuditMigrationPage-CrllDbN3.js",
+      "size": 30925
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityAuditMigrationPage-DLnziqWv.js",
+      "size": 30925
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityHistoryMigrationPage-BBvPkIKt.js",
+      "size": 1158
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityHistoryMigrationPage-BUtFtYT5.js",
+      "size": 1158
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityMonitoringMigrationPage-CLyxPL4q.js",
+      "size": 64993
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityMonitoringMigrationPage-CaFgSDEP.js",
+      "size": 64993
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityPolicyMigrationPage-BE0N65pr.js",
+      "size": 93050
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SecurityPolicyMigrationPage-yFWDjhna.js",
+      "size": 93050
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SensorAddMigrationPage-BhLMApfx.js",
+      "size": 13355
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SensorAddMigrationPage-BvbGO36B.js",
+      "size": 13355
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SensorEditMigrationPage-DyDMVMNl.js",
+      "size": 18381
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SensorEditMigrationPage-Dz4SDTqf.js",
+      "size": 18381
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SensorListMigrationPage-CrPB7JkD.js",
+      "size": 23916
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SensorListMigrationPage-DCXFjhHv.js",
+      "size": 23916
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ServerBackupPage-BVeO4gv2.js",
+      "size": 4331
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/ServerBackupPage-a4PYxlwZ.js",
+      "size": 4331
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SettlementCalendarMigrationPage-DY5oHF29.js",
+      "size": 12863
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SettlementCalendarMigrationPage-WVRSeyYz.js",
+      "size": 12863
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SitemapMigrationPage-4ydUrOyh.js",
+      "size": 5340
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SitemapMigrationPage-BsB8r8CH.js",
+      "size": 5340
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SrWorkbenchMigrationPage-C78odaa8.js",
+      "size": 29211
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SrWorkbenchMigrationPage-CVkMzaWu.js",
+      "size": 29211
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SupportFaqMigrationPage-CCiUnSOc.js",
+      "size": 17245
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SupportFaqMigrationPage-DB_tjTP5.js",
+      "size": 17245
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SupportInquiryMigrationPage-BYfqAYky.js",
+      "size": 25890
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SupportInquiryMigrationPage-BecczVry.js",
+      "size": 25890
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SystemCodeSimplePage-C2wlnMnk.js",
+      "size": 9905
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/SystemCodeSimplePage-CczKfVhq.js",
+      "size": 9905
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TagManagementMigrationPage-Ba5YmaMO.js",
+      "size": 11723
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TagManagementMigrationPage-BvhJ-m0j.js",
+      "size": 11723
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TestPagesPage-1NLEdrOc.js",
+      "size": 11556
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TestPagesPage-BwbQfOa_.js",
+      "size": 11556
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeApproveMigrationPage-BLktNliB.js",
+      "size": 18303
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeApproveMigrationPage-BkyEaNVf.js",
+      "size": 18303
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeAutoOrderMigrationPage-CjuPvNad.js",
+      "size": 33257
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeAutoOrderMigrationPage-DrIm-66h.js",
+      "size": 33257
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeBuyRequestMigrationPage-BUc_ZwMk.js",
+      "size": 22741
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeBuyRequestMigrationPage-owjjLCHe.js",
+      "size": 22741
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeCompleteMigrationPage-9esK3KQm.js",
+      "size": 30372
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeCompleteMigrationPage-BIYG3fv_.js",
+      "size": 30372
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeDuplicateMigrationPage-D1RsBLRR.js",
+      "size": 14912
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeDuplicateMigrationPage-DxK_qRob.js",
+      "size": 14912
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeListMigrationPage-DVleAVsn.js",
+      "size": 25499
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeListMigrationPage-Eykrnet4.js",
+      "size": 25499
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeMarketMigrationPage-BCPGU7kC.js",
+      "size": 24205
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeMarketMigrationPage-D0Ku-0nZ.js",
+      "size": 24205
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradePriceAlertMigrationPage-CihhgjkX.js",
+      "size": 24435
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradePriceAlertMigrationPage-Df4WdlMH.js",
+      "size": 24435
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeRejectMigrationPage-DBdgZG-6.js",
+      "size": 13185
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeRejectMigrationPage-xGqYFxzm.js",
+      "size": 13185
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeReportMigrationPage-9GdFC7Z2.js",
+      "size": 28237
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeReportMigrationPage-CAMYV9VV.js",
+      "size": 28237
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeSellMigrationPage-Cpmkx_X6.js",
+      "size": 24049
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeSellMigrationPage-hROjkR7c.js",
+      "size": 24049
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeStatisticsMigrationPage-CoGk-WXk.js",
+      "size": 14006
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/TradeStatisticsMigrationPage-c6qYlnCl.js",
+      "size": 14006
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/UserPortalChrome-s1Euh5oB.js",
+      "size": 5138
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/VirtualIssueMigrationPage-BEU2tch5.js",
+      "size": 13816
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/VirtualIssueMigrationPage-BJxyVwI8.js",
+      "size": 13816
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/WbsManagementMigrationPage-CdyPRC4N.js",
+      "size": 25432
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/WbsManagementMigrationPage-D4q5ql-J.js",
+      "size": 25432
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/adminActions-BrHsZhKv.js",
+      "size": 3635
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/adminActions-CyMNk7V6.js",
+      "size": 3635
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/aiManagement-DzRdZUYJ.js",
+      "size": 773
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/aiManagement-S2Gfw_yD.js",
+      "size": 773
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/aiShared-CvF4_n01.js",
+      "size": 3054
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/builder-h-uvQXMl.js",
+      "size": 1758
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/builder-hQppN0PC.js",
+      "size": 1753
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/content-DTvMcBLG.js",
+      "size": 2509
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/content-k1pfWabe.js",
+      "size": 2509
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementHub-BwcwD2IN.js",
+      "size": 236761
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementHub-vVgFSq7Q.js",
+      "size": 236761
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementShared-BgVdZ24Y.js",
+      "size": 411635
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementShared-QClaV9-B.js",
+      "size": 410264
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementVerificationAsset-XaaADV-o.js",
+      "size": 14280
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementVerificationAsset-nwGoluRq.js",
+      "size": 14280
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementVerificationCenter-11NPlxa5.js",
+      "size": 105948
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/environmentManagementVerificationCenter-CKbBTSYz.js",
+      "size": 105750
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/helpContent-BhSy5BZ4.js",
+      "size": 187423
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/helpContent-DJyW9WF9.js",
+      "size": 187423
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/homeEntryContent-CF2LoFE0.js",
+      "size": 6731
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-9Eew-AWR.js",
+      "size": 74401
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-BN2ekGS4.js",
+      "size": 65046
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-BRQHMdT8.css",
+      "size": 228731
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-BZV7HaW_.js",
+      "size": 18848
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-B_XlTgBk.js",
+      "size": 61555
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-BaOXPYm3.js",
+      "size": 19767
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-BfR75h4W.js",
+      "size": 18987
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-Bqsr1DVF.css",
+      "size": 227641
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-CIGE3Lt-.js",
+      "size": 20986
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-CIuJicV5.js",
+      "size": 61555
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-CKIp_5sa.js",
+      "size": 65046
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-Cd2dhov-.js",
+      "size": 19767
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-CuDMngND.js",
+      "size": 74401
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-DDADHLOs.js",
+      "size": 20986
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-D_kYRxnD.js",
+      "size": 16725
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-Dzij6eYP.js",
+      "size": 16725
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-EPnBoLIb.js",
+      "size": 18848
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/index-u34NBq_Z.js",
+      "size": 18987
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/join-D6EfDNN3.js",
+      "size": 2148
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/join-DNM6ez0Q.js",
+      "size": 2148
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/joinSession-BVBQDsy-.js",
+      "size": 1933
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/joinSession-Cj91OP2x.js",
+      "size": 1933
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/membershipCards-iwytMZjn.js",
+      "size": 2106
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/monitoring-BCWQv_kT.js",
+      "size": 142
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/operatorFlow-BOr3raEL.js",
+      "size": 1244
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/operatorFlow-IcJ4XJF3.js",
+      "size": 1244
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/platformStudio-BkqP6PXp.js",
+      "size": 65079
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/platformStudio-Dq64HvfZ.js",
+      "size": 65079
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/portal-bdTv3w9w.js",
+      "size": 2114
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/portal-gnqI9pwi.js",
+      "size": 2114
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/reportSession-B-Hyykob.js",
+      "size": 277
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderCatalogPreview-Cn8SSLeR.js",
+      "size": 3909
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderCatalogPreview-DAMw3ncM.js",
+      "size": 3909
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderCatalogSource-0MiaM7Q0.js",
+      "size": 169
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderEditor-DEnyyWPm.js",
+      "size": 33650
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderEditor-P0NdfH3n.js",
+      "size": 33650
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderGovernance-C_mjjUzh.js",
+      "size": 52260
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderGovernance-LIeyd8Ea.js",
+      "size": 52260
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderWorkspace-BDJJTB6s.js",
+      "size": 35898
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/screenBuilderWorkspace-OiOQr5-y.js",
+      "size": 35898
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/shared-D6hoN3uh.js",
+      "size": 872
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/shared-DmlttBSs.js",
+      "size": 4275
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/shared-K7vHw_jk.js",
+      "size": 4275
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/status-DQCAVGDF.js",
+      "size": 556
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/toolbar-B57t3opx.js",
+      "size": 748
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/toolbar-DGUod7Ca.js",
+      "size": 748
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/unitOptions-Cl2BhmyH.js",
+      "size": 2362
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/useExternalScript-CCr36V0E.js",
+      "size": 367
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/useJoinSession-CNXy8AWK.js",
+      "size": 295
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/useJoinSession-iGrTqD3U.js",
+      "size": 295
+    },
+    {
+      "scope": "static",
+      "path": "react-app/assets/vendor-react-DQCpd17N.js",
+      "size": 141833
+    },
+    {
+      "scope": "static",
+      "path": "react-app/index.html",
+      "size": 1203
+    },
+    {
+      "scope": "static",
+      "path": "react-shell/index.html",
+      "size": 12715
+    }
+  ],
+  "count": 544
+}

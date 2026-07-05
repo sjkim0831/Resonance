@@ -51,7 +51,7 @@ public class DynamicProjectDataSourceConfig {
                 .url(dbUrl)
                 .username(dbUsername)
                 .password(dbPassword)
-                .driverClassName("cubrid.jdbc.driver.CUBRIDDriver")
+                .driverClassName("org.postgresql.Driver")
                 .build();
     }
 

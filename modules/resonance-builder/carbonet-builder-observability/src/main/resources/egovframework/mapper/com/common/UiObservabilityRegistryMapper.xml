@@ -61,8 +61,8 @@
             #{layoutVersion},
             #{designTokenVersion},
             #{activeYn},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -76,7 +76,7 @@
             LAYOUT_VERSION = #{layoutVersion},
             DESIGN_TOKEN_VERSION = #{designTokenVersion},
             ACTIVE_YN = #{activeYn},
-            UPDATED_AT = CURRENT_DATETIME
+            UPDATED_AT = CURRENT_TIMESTAMP
         WHERE PAGE_ID = #{pageId}
     </update>
 
@@ -102,11 +102,11 @@
             #{componentName},
             #{componentType},
             #{ownerDomain},
-            #{propsSchemaJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{propsSchemaJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{designReference},
             #{activeYn},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -131,10 +131,10 @@
             COMPONENT_NAME = #{componentName},
             COMPONENT_TYPE = #{componentType},
             OWNER_DOMAIN = #{ownerDomain},
-            PROPS_SCHEMA_JSON = #{propsSchemaJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            PROPS_SCHEMA_JSON = #{propsSchemaJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             DESIGN_REFERENCE = #{designReference},
             ACTIVE_YN = #{activeYn},
-            UPDATED_AT = CURRENT_DATETIME
+            UPDATED_AT = CURRENT_TIMESTAMP
         WHERE COMPONENT_ID = #{componentId}
     </update>
 
@@ -152,7 +152,7 @@
         UPDATE UI_PAGE_COMPONENT_MAP
         SET
             COMPONENT_ID = #{toComponentId},
-            UPDATED_AT = CURRENT_DATETIME
+            UPDATED_AT = CURRENT_TIMESTAMP
         WHERE COMPONENT_ID = #{fromComponentId}
     </update>
 
@@ -175,8 +175,8 @@
             #{instanceKey},
             #{displayOrder},
             #{conditionalRuleSummary},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 

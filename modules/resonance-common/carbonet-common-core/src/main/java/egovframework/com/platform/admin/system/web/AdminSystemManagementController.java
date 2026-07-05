@@ -408,8 +408,8 @@ public class AdminSystemManagementController {
         database.put("name", "database");
         database.put("label", "Database");
         List<Map<String, Object>> dbEntries = new ArrayList<>();
-        addConfigEntry(dbEntries, "spring.datasource.url", "jdbc:cubrid:127.0.0.1:33000:carbonet", "Database URL", "database", false);
-        addConfigEntry(dbEntries, "spring.datasource.driver-class-name", "cubrid.jdbc.driver.CUBRIDDriver", "Driver Class", "database", false);
+        addConfigEntry(dbEntries, "spring.datasource.url", "jdbc:postgresql://127.0.0.1:5432/carbonet", "Database URL", "database", false);
+        addConfigEntry(dbEntries, "spring.datasource.driver-class-name", "org.postgresql.Driver", "Driver Class", "database", false);
         addConfigEntry(dbEntries, "spring.jpa.hibernate.ddl-auto", "none", "Hibernate DDL Mode", "database", false);
         database.put("entries", dbEntries);
         categories.add(database);

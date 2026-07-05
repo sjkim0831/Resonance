@@ -202,8 +202,8 @@
             #{caseId}, #{ownerActorId}, #{datasetId}, #{datasetName}, #{sectionCode}, #{caseCode}, #{majorCode}, #{sectionLabel},
             #{lciMajorCode}, #{lciMajorLabel}, #{lciMiddleCode}, #{lciMiddleLabel}, #{lciSmallCode}, #{lciSmallLabel},
             #{sourceFileName}, #{sourcePath}, #{targetPath}, #{caseStatus}, #{rowCount},
-            #{rowSchemaJson}, #{guidanceJson}, #{actorId}, CURRENT_DATETIME,
-            CURRENT_DATETIME, #{actorId}, CURRENT_DATETIME, #{actorId}
+            #{rowSchemaJson}, #{guidanceJson}, #{actorId}, CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP, #{actorId}, CURRENT_TIMESTAMP, #{actorId}
         )
     </insert>
 
@@ -228,8 +228,8 @@
             ROW_SCHEMA_JSON = #{rowSchemaJson},
             GUIDANCE_JSON = #{guidanceJson},
             LAST_SAVED_BY = #{actorId},
-            LAST_SAVED_AT = CURRENT_DATETIME,
-            LAST_UPDT_PNTTM = CURRENT_DATETIME,
+            LAST_SAVED_AT = CURRENT_TIMESTAMP,
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
             LAST_UPDUSR_ID = #{actorId}
         WHERE CASE_ID = #{caseId}
     </update>
@@ -250,7 +250,7 @@
             FRST_REGIST_PNTTM, FRST_REGISTER_ID, LAST_UPDT_PNTTM, LAST_UPDUSR_ID
         ) VALUES (
             #{caseRowId}, #{caseId}, #{rowOrder}, #{rowKey}, #{rowValuesJson}, 'Y',
-            CURRENT_DATETIME, #{actorId}, CURRENT_DATETIME, #{actorId}
+            CURRENT_TIMESTAMP, #{actorId}, CURRENT_TIMESTAMP, #{actorId}
         )
     </insert>
 
@@ -262,7 +262,7 @@
         ) VALUES (
             #{logId}, #{datasetId}, #{ownerActorId}, #{sourceFileName},
             #{lciMajorCode}, #{lciMajorLabel}, #{lciMiddleCode}, #{lciMiddleLabel}, #{lciSmallCode}, #{lciSmallLabel},
-            #{resultStatus}, #{message}, #{sectionCount}, #{rowCount}, #{storageMode}, #{sectionResultJson}, CURRENT_DATETIME
+            #{resultStatus}, #{message}, #{sectionCount}, #{rowCount}, #{storageMode}, #{sectionResultJson}, CURRENT_TIMESTAMP
         )
     </insert>
 

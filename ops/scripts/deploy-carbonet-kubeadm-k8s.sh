@@ -33,7 +33,7 @@ ensure_secret() {
   kubectl -n "$NAMESPACE" create secret generic carbonet-runtime-secret \
     --from-literal=DB_USERNAME="$DB_USER" \
     --from-literal=DB_PASSWORD="$DB_PASSWORD" \
-    --from-literal=DB_URL="jdbc:cubrid:${CUBRID_HOST}:33000:${DB_NAME}:::?charset=UTF-8" \
+    --from-literal=DB_URL="jdbc:postgresql://${CUBRID_HOST}:5432/${DB_NAME}?charset=UTF-8" \
     --from-literal=SPRING_DATASOURCE_USERNAME="$DB_USER" \
     --from-literal=SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD" \
     --from-literal=TOKEN_ACCESS_SECRET="$access_secret" \
@@ -46,10 +46,10 @@ apply_runtime_config() {
   kubectl -n "$NAMESPACE" create configmap carbonet-runtime-config \
     --from-literal=PROJECT_ID="$PROJECT_ID" \
     --from-literal=SERVER_PORT=8080 \
-    --from-literal=CUBRID_HOST="$CUBRID_HOST" \
+    --from-literal=POSTGRES_HOST="$CUBRID_HOST" \
     --from-literal=LOG_DIR=/tmp \
-    --from-literal=SPRING_DATASOURCE_DRIVER_CLASS_NAME=cubrid.jdbc.driver.CUBRIDDriver \
-    --from-literal=SPRING_DATASOURCE_URL="jdbc:cubrid:${CUBRID_HOST}:33000:${DB_NAME}:::?charset=UTF-8" \
+    --from-literal=SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver \
+    --from-literal=SPRING_DATASOURCE_URL="jdbc:postgresql://${CUBRID_HOST}:5432/${DB_NAME}?charset=UTF-8" \
     --from-literal=SPRING_PROFILES_ACTIVE=prod \
     --from-literal=APP_PROJECT_ID="$PROJECT_ID" \
     --from-literal=RESONANCE_RUNTIME_MODE=isolated \
@@ -77,13 +77,13 @@ apply_runtime_config() {
   },
   "bindings": {
     "database": {
-      "bindingMode": "RESTORED_CUBRID_DB",
+      "bindingMode": "RESTORED_POSTGRES_DB",
       "commonDb": {
-        "url": "jdbc:cubrid:${CUBRID_HOST}:33000:${DB_NAME}:::?charset=UTF-8",
+        "url": "jdbc:postgresql://${CUBRID_HOST}:5432/${DB_NAME}?charset=UTF-8",
         "schema": "public"
       },
       "projectDb": {
-        "url": "jdbc:cubrid:${CUBRID_HOST}:33000:${DB_NAME}:::?charset=UTF-8",
+        "url": "jdbc:postgresql://${CUBRID_HOST}:5432/${DB_NAME}?charset=UTF-8",
         "schema": "public"
       }
     },

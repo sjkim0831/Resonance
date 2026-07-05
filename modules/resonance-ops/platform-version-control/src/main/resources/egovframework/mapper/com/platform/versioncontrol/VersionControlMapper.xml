@@ -13,8 +13,8 @@
         <result property="description" column="DESCRIPTION"/>
         <result property="createdBy" column="CREATED_BY"/>
         <result property="updatedBy" column="UPDATED_BY"/>
-        <result property="createdAt" column="CREATED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
-        <result property="updatedAt" column="UPDATED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+        <result property="createdAt" column="CREATED_AT" typeHandler="egovframework.com.config.data.PgLocalDateTimeTypeHandler"/>
+        <result property="updatedAt" column="UPDATED_AT" typeHandler="egovframework.com.config.data.PgLocalDateTimeTypeHandler"/>
     </resultMap>
 
     <insert id="insertReleaseUnit" parameterType="egovframework.com.platform.versioncontrol.model.vo.ReleaseUnitVO">
@@ -23,7 +23,7 @@
             CREATED_BY, UPDATED_BY, CREATED_AT, UPDATED_AT
         ) VALUES (
             #{releaseUnitId}, #{projectId}, #{releaseVersion}, #{releaseStatus}, #{description},
-            #{createdBy}, #{createdBy}, CURRENT_DATETIME, CURRENT_DATETIME
+            #{createdBy}, #{createdBy}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -38,7 +38,7 @@
     <update id="updateReleaseStatus" parameterType="egovframework.com.platform.versioncontrol.model.vo.ReleaseUnitVO">
         UPDATE RSN_RELEASE_UNIT
         SET RELEASE_STATUS = #{releaseStatus},
-            UPDATED_AT = #{updatedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+            UPDATED_AT = #{updatedAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler}
         WHERE RELEASE_UNIT_ID = #{releaseUnitId}
     </update>
 
@@ -51,7 +51,7 @@
         <result property="artifactPath" column="ARTIFACT_PATH"/>
         <result property="fileSize" column="FILE_SIZE"/>
         <result property="buildRunId" column="BUILD_RUN_ID"/>
-        <result property="createdAt" column="CREATED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+        <result property="createdAt" column="CREATED_AT" typeHandler="egovframework.com.config.data.PgLocalDateTimeTypeHandler"/>
     </resultMap>
 
     <insert id="insertRuntimePackage" parameterType="egovframework.com.platform.versioncontrol.model.vo.RuntimePackageVO">
@@ -63,8 +63,8 @@
             #{runtimePackageId}, #{releaseUnitId}, #{packageType}, #{packageHash},
             #{artifactPath}, #{fileSize}, #{buildRunId},
             'SYSTEM', 'SYSTEM',
-            #{createdAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
-            #{createdAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+            #{createdAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler},
+            #{createdAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler}
         )
     </insert>
 
@@ -84,8 +84,8 @@
         <result property="deployStatus" column="DEPLOY_STATUS"/>
         <result property="operatorId" column="OPERATOR_ID"/>
         <result property="deployLog" column="DEPLOY_LOG"/>
-        <result property="startedAt" column="STARTED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
-        <result property="finishedAt" column="FINISHED_AT" typeHandler="egovframework.com.config.data.CubridLocalDateTimeTypeHandler"/>
+        <result property="startedAt" column="STARTED_AT" typeHandler="egovframework.com.config.data.PgLocalDateTimeTypeHandler"/>
+        <result property="finishedAt" column="FINISHED_AT" typeHandler="egovframework.com.config.data.PgLocalDateTimeTypeHandler"/>
     </resultMap>
 
     <insert id="insertDeployTrace" parameterType="egovframework.com.platform.versioncontrol.model.vo.DeployTraceVO">
@@ -96,10 +96,10 @@
         ) VALUES (
             #{deployTraceId}, #{runtimePackageId}, #{targetEnv}, #{deployStatus},
             #{operatorId}, #{deployLog},
-            #{startedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
+            #{startedAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler},
             #{operatorId}, #{operatorId},
-            #{startedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
-            #{startedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+            #{startedAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler},
+            #{startedAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler}
         )
     </insert>
 
@@ -107,8 +107,8 @@
         UPDATE RSN_DEPLOY_TRACE
         SET DEPLOY_STATUS = #{deployStatus},
             DEPLOY_LOG = #{deployLog},
-            FINISHED_AT = #{finishedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler},
-            UPDATED_AT = #{finishedAt, typeHandler=egovframework.com.config.data.CubridLocalDateTimeTypeHandler}
+            FINISHED_AT = #{finishedAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler},
+            UPDATED_AT = #{finishedAt, typeHandler=egovframework.com.config.data.PgLocalDateTimeTypeHandler}
         WHERE DEPLOY_TRACE_ID = #{deployTraceId}
     </update>
 

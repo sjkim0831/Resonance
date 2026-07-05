@@ -11,7 +11,7 @@ import javax.sql.DataSource;
 @Configuration
 public class DataSourceConfig {
 
-    @Value("${spring.datasource.driver-class-name:cubrid.jdbc.driver.CUBRIDDriver}")
+    @Value("${spring.datasource.driver-class-name:org.postgresql.Driver}")
     private String driverClassName;
 
     @Value("${spring.datasource.url}")

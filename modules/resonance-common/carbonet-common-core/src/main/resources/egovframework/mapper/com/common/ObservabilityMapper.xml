@@ -37,13 +37,13 @@
             #{actionCode},
             #{entityType},
             #{entityId},
-            #{beforeSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{afterSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{beforeSummaryJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{afterSummaryJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{resultStatus},
             #{reasonSummary},
             #{ipAddress},
             #{userAgent},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -76,8 +76,8 @@
             #{apiId},
             #{resultCode},
             #{durationMs},
-            #{payloadSummaryJson, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            CURRENT_DATETIME
+            #{payloadSummaryJson, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -102,7 +102,7 @@
             RESPONSE_STATUS,
             DURATION_MS,
             REQUEST_CONTENT_TYPE,
-            "QUERY_STRING",
+            QUERY_STRING,
             PARAMETER_SUMMARY,
             ERROR_MESSAGE,
             COMPANY_SCOPE_DECISION,
@@ -129,11 +129,11 @@
             #{durationMs},
             #{requestContentType},
             #{queryString},
-            #{parameterSummary, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{errorMessage, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{parameterSummary, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{errorMessage, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{companyScopeDecision},
-            #{companyScopeReason, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            CURRENT_DATETIME
+            #{companyScopeReason, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -171,11 +171,11 @@
             #{actorInsttId},
             #{requestUri},
             #{remoteAddr},
-            #{message, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
-            #{stackSummary, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler},
+            #{message, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
+            #{stackSummary, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler},
             #{resultStatus},
             #{userAgent},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 </mapper>

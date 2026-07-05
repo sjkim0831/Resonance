@@ -65,14 +65,14 @@
             #{placementKo},
             #{placementEn},
             #{statusCode},
-            CASE WHEN #{startAt} IS NULL OR #{startAt} = '' THEN NULL ELSE TO_DATETIME(#{startAt}, 'YYYY-MM-DD HH24:MI') END,
-            CASE WHEN #{endAt} IS NULL OR #{endAt} = '' THEN NULL ELSE TO_DATETIME(#{endAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{startAt} IS NULL OR #{startAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{startAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{endAt} IS NULL OR #{endAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{endAt}, 'YYYY-MM-DD HH24:MI') END,
             #{clickCount},
             #{noteEn},
             #{updatedBy},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{updatedBy},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -82,12 +82,12 @@
             PLACEMENT_KO = #{placementKo},
             PLACEMENT_EN = #{placementEn},
             STATUS_CODE = #{statusCode},
-            START_AT = CASE WHEN #{startAt} IS NULL OR #{startAt} = '' THEN NULL ELSE TO_DATETIME(#{startAt}, 'YYYY-MM-DD HH24:MI') END,
-            END_AT = CASE WHEN #{endAt} IS NULL OR #{endAt} = '' THEN NULL ELSE TO_DATETIME(#{endAt}, 'YYYY-MM-DD HH24:MI') END,
+            START_AT = CASE WHEN #{startAt} IS NULL OR #{startAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{startAt}, 'YYYY-MM-DD HH24:MI') END,
+            END_AT = CASE WHEN #{endAt} IS NULL OR #{endAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{endAt}, 'YYYY-MM-DD HH24:MI') END,
             CLICK_COUNT = #{clickCount},
             NOTE_EN = #{noteEn},
             LAST_UPDUSR_ID = #{updatedBy},
-            LAST_UPDT_PNTTM = CURRENT_DATETIME
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE BANNER_ID = #{bannerId}
     </update>
 

@@ -77,14 +77,6 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-        <repository>
-            <id>cubrid-repo</id>
-            <url>https://maven.cubrid.org/</url>
-        </repository>
-        <repository>
-            <id>cubrid</id>
-            <url>https://maven.cubrid.org/</url>
-        </repository>
     </repositories>
 
     <dependencies>
@@ -109,9 +101,9 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
-            <groupId>cubrid</groupId>
-            <artifactId>cubrid-jdbc</artifactId>
-            <version>11.2.0.0035</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.3</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

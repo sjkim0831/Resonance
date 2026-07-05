@@ -92,15 +92,15 @@
             #{owner},
             #{ownerEn},
             #{status},
-            CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{updatedAt}, 'YYYY-MM-DD HH24:MI') END,
             #{memo},
             #{memoEn},
-            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             'Y',
             COALESCE(#{owner}, 'system'),
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             COALESCE(#{owner}, 'system'),
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -114,12 +114,12 @@
             OWNER = #{owner},
             OWNER_EN = #{ownerEn},
             STATUS = #{status},
-            UPDATED_AT = CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{updatedAt}, 'YYYY-MM-DD HH24:MI') END,
+            UPDATED_AT = CASE WHEN #{updatedAt} IS NULL OR #{updatedAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{updatedAt}, 'YYYY-MM-DD HH24:MI') END,
             MEMO = #{memo},
             MEMO_EN = #{memoEn},
-            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             LAST_UPDUSR_ID = COALESCE(#{owner}, LAST_UPDUSR_ID),
-            LAST_UPDT_PNTTM = CURRENT_DATETIME
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE RULE_ID = #{ruleId}
     </update>
 
@@ -157,21 +157,21 @@
             #{reasonEn},
             #{approvalStatus},
             #{approvalStatusEn},
-            CASE WHEN #{requestedAt} IS NULL OR #{requestedAt} = '' THEN CURRENT_DATETIME ELSE TO_DATETIME(#{requestedAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{requestedAt} IS NULL OR #{requestedAt} = '' THEN CURRENT_TIMESTAMP ELSE TO_TIMESTAMP(#{requestedAt}, 'YYYY-MM-DD HH24:MI') END,
             #{requester},
             #{requesterEn},
             #{reviewNote},
-            CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{reviewedAt}, 'YYYY-MM-DD HH24:MI') END,
             #{reviewedBy},
             #{reviewedByEn},
-            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             #{memo},
             #{memoEn},
             'Y',
             COALESCE(#{requester}, 'system'),
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             COALESCE(#{reviewedBy}, #{requester}, 'system'),
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -184,18 +184,18 @@
             REASON_EN = #{reasonEn},
             APPROVAL_STATUS = #{approvalStatus},
             APPROVAL_STATUS_EN = #{approvalStatusEn},
-            REQUESTED_AT = CASE WHEN #{requestedAt} IS NULL OR #{requestedAt} = '' THEN REQUESTED_AT ELSE TO_DATETIME(#{requestedAt}, 'YYYY-MM-DD HH24:MI') END,
+            REQUESTED_AT = CASE WHEN #{requestedAt} IS NULL OR #{requestedAt} = '' THEN REQUESTED_AT ELSE TO_TIMESTAMP(#{requestedAt}, 'YYYY-MM-DD HH24:MI') END,
             REQUESTER = #{requester},
             REQUESTER_EN = #{requesterEn},
             REVIEW_NOTE = #{reviewNote},
-            REVIEWED_AT = CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_DATETIME(#{reviewedAt}, 'YYYY-MM-DD HH24:MI') END,
+            REVIEWED_AT = CASE WHEN #{reviewedAt} IS NULL OR #{reviewedAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{reviewedAt}, 'YYYY-MM-DD HH24:MI') END,
             REVIEWED_BY = #{reviewedBy},
             REVIEWED_BY_EN = #{reviewedByEn},
-            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
+            EXPIRES_AT = CASE WHEN #{expiresAt} IS NULL OR #{expiresAt} = '' THEN NULL ELSE TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI') END,
             MEMO = #{memo},
             MEMO_EN = #{memoEn},
             LAST_UPDUSR_ID = COALESCE(#{reviewedBy}, #{requester}, LAST_UPDUSR_ID),
-            LAST_UPDT_PNTTM = CURRENT_DATETIME
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE REQUEST_ID = #{requestId}
     </update>
 

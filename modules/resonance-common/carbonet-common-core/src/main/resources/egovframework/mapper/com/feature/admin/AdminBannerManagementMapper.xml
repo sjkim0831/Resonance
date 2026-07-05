@@ -69,9 +69,9 @@
             #{bannerDescription},
             #{reflectAt},
             #{createdBy},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{updatedBy},
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             #{bannerImageFile},
             #{sortOrder}
         )
@@ -85,7 +85,7 @@
             BANNER_DC = #{bannerDescription},
             REFLCT_AT = #{reflectAt},
             LAST_UPDUSR_ID = #{updatedBy},
-            LAST_UPDT_PNTTM = CURRENT_DATETIME,
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
             BANNER_IMAGE_FILE = #{bannerImageFile},
             SORT_ORDR = #{sortOrder}
         WHERE BANNER_ID = #{bannerId}

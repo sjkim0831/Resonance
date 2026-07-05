@@ -39,6 +39,42 @@ fi
 
 cd "$REPO_ROOT"
 
+NO_BUILD_APPLY_SCRIPT="$REPO_ROOT/ops/scripts/resonance-no-build-apply.sh"
+if [[ -x "$NO_BUILD_APPLY_SCRIPT" ]]; then
+  mapfile -t no_build_candidates < <(git apply --numstat --summary "$DIFF_FILE" 2>/dev/null | awk '
+    /^[0-9-]+[[:space:]]+[0-9-]+[[:space:]]+/ {print $3; next}
+    / create mode / {print $NF; next}
+    / delete mode / {print $NF; next}
+  ' | sort -u)
+  if [[ ${#no_build_candidates[@]} -eq 0 && -f "$ARTIFACTS_ROOT/changed-files.txt" ]]; then
+    mapfile -t no_build_candidates < <(sed '/^[[:space:]]*$/d' "$ARTIFACTS_ROOT/changed-files.txt" | sort -u)
+  fi
+
+  if [[ ${#no_build_candidates[@]} -gt 0 ]]; then
+    no_build_only=true
+    for changed_file in "${no_build_candidates[@]}"; do
+      case "$changed_file" in
+        projects/carbonet-frontend/src/main/resources/static/react-app/*|\
+        projects/carbonet-assets/static/*|\
+        projects/carbonet-backend-metadata/*|\
+        var/k8s/carbonet-runtime-manifest.json|\
+        ops/runtime-metadata/*|\
+        ops/scripts/resonance-no-build-apply.sh)
+          ;;
+        *)
+          no_build_only=false
+          break
+          ;;
+      esac
+    done
+
+    if [[ "$no_build_only" == true ]]; then
+      echo "Detected runtime metadata/overlay-only diff; applying without build or redeploy."
+      exec bash "$NO_BUILD_APPLY_SCRIPT" "$REPO_ROOT" "$DIFF_FILE"
+    fi
+  fi
+fi
+
 BACKUP_DIR="$REPO_ROOT/var/backups/codex-deploy"
 mkdir -p "$BACKUP_DIR"
 BACKUP_SOURCE="$REPO_ROOT/var/run/carbonet-18000.jar"

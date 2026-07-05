@@ -23,7 +23,7 @@
             #{loginResult},
             #{loginIp},
             #{loginMessage},
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 

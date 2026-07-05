@@ -140,7 +140,7 @@ log_step "5단계: carbonet-runtime 설정"
 kubectl patch configmap carbonet-runtime-config -n ${NAMESPACE} --type merge -p '{
   "data": {
     "CUBRID_HOST": "cubrid-carbonet",
-    "SPRING_DATASOURCE_URL": "jdbc:cubrid:cubrid-carbonet:33000:carbonet:::?charset=UTF-8&connectTimeout=5&queryTimeout=30"
+    "SPRING_DATASOURCE_URL": "jdbc:cubrid:postgresql:5432:carbonet:::?charset=UTF-8&connectTimeout=5&queryTimeout=30"
   }
 }' 2>/dev/null || log_warn "ConfigMap 패치 실패 (계속 진행)"
 

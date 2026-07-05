@@ -38,9 +38,9 @@
             #{snapshotType},
             CASE
                 WHEN #{sourceUpdatedAt} IS NULL OR #{sourceUpdatedAt} = '' THEN NULL
-                ELSE TO_DATETIME(#{sourceUpdatedAt}, 'YYYY-MM-DD HH24:MI:SS')
+                ELSE TO_TIMESTAMP(#{sourceUpdatedAt}, 'YYYY-MM-DD HH24:MI:SS')
             END,
-            CURRENT_DATETIME,
+            CURRENT_TIMESTAMP,
             COALESCE(#{useAt}, 'Y')
         )
     </insert>
@@ -51,9 +51,9 @@
             SNAPSHOT_TYPE = #{snapshotType},
             SOURCE_UPDATED_AT = CASE
                 WHEN #{sourceUpdatedAt} IS NULL OR #{sourceUpdatedAt} = '' THEN SOURCE_UPDATED_AT
-                ELSE TO_DATETIME(#{sourceUpdatedAt}, 'YYYY-MM-DD HH24:MI:SS')
+                ELSE TO_TIMESTAMP(#{sourceUpdatedAt}, 'YYYY-MM-DD HH24:MI:SS')
             END,
-            LAST_COMPUTED_AT = CURRENT_DATETIME,
+            LAST_COMPUTED_AT = CURRENT_TIMESTAMP,
             USE_AT = COALESCE(#{useAt}, USE_AT)
         WHERE SNAPSHOT_KEY = #{snapshotKey}
     </update>

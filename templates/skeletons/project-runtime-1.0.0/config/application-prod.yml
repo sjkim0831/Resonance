@@ -3,13 +3,13 @@ spring:
     name: project-runtime
   datasource:
     common:
-      driver-class-name: cubrid.jdbc.driver.CUBRIDDriver
-      url: jdbc:cubrid:localhost:33000:carbonet_common:::?charset=utf-8
+      driver-class-name: org.postgresql.Driver
+      url: jdbc:postgresql://localhost:5432/carbonet_common?charset=utf-8
       username: carbonet_common
       password: change-me
     project:
-      driver-class-name: cubrid.jdbc.driver.CUBRIDDriver
-      url: jdbc:cubrid:localhost:33000:carbonet_p_template:::?charset=utf-8
+      driver-class-name: org.postgresql.Driver
+      url: jdbc:postgresql://localhost:5432/carbonet_p_template?charset=utf-8
       username: carbonet_project
       password: change-me
 

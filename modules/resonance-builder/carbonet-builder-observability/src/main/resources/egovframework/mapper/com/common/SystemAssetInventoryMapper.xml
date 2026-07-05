@@ -63,7 +63,7 @@
             #{assetId}, #{assetType}, #{assetName}, #{assetVersion}, #{sourcePath}, #{sourceSymbol},
             #{contentHash}, #{assetFamily}, #{ownerDomain}, #{ownerScope}, #{operatorOwner}, #{serviceOwner},
             #{criticality}, #{healthStatus}, #{lastScanAt},
-            #{activeYn}, CURRENT_DATETIME, CURRENT_DATETIME
+            #{activeYn}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -85,7 +85,7 @@
             HEALTH_STATUS = #{healthStatus},
             LAST_SCAN_AT = #{lastScanAt},
             ACTIVE_YN = #{activeYn},
-            UPDATED_AT = CURRENT_DATETIME
+            UPDATED_AT = CURRENT_TIMESTAMP
         WHERE ASSET_ID = #{assetId}
     </update>
 
@@ -97,7 +97,7 @@
         INSERT INTO SYSTEM_ASSET_COMPOSITION (
             COMPOSITION_ID, PARENT_ASSET_ID, CHILD_ASSET_ID, RELATION_TYPE, MAPPING_NOTES, CREATED_AT
         ) VALUES (
-            #{compositionId}, #{parentAssetId}, #{childAssetId}, #{relationType}, #{mappingNotes}, CURRENT_DATETIME
+            #{compositionId}, #{parentAssetId}, #{childAssetId}, #{relationType}, #{mappingNotes}, CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -133,7 +133,7 @@
         INSERT INTO SYSTEM_ASSET_SCAN_LOG (
             SCAN_ID, ASSET_ID, PREVIOUS_HASH, CURRENT_HASH, SCAN_RESULT, SCAN_DETAILS, CREATED_AT
         ) VALUES (
-            #{scanId}, #{assetId}, #{previousHash}, #{currentHash}, #{scanResult}, #{scanDetails, typeHandler=egovframework.com.config.data.CubridClobStringTypeHandler}, CURRENT_DATETIME
+            #{scanId}, #{assetId}, #{previousHash}, #{currentHash}, #{scanResult}, #{scanDetails, typeHandler=egovframework.com.config.data.PgClobStringTypeHandler}, CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -185,7 +185,7 @@
         INSERT INTO SYSTEM_ASSET_LIFECYCLE_PLAN (
             PLAN_ID, ASSET_ID, TARGET_STAGE, PLAN_STATUS, REQUESTER_ID, TARGET_DATE, REASON, CREATED_AT, UPDATED_AT
         ) VALUES (
-            #{planId}, #{assetId}, #{targetStage}, #{planStatus}, #{requesterId}, #{targetDate}, #{reason}, CURRENT_DATETIME, CURRENT_DATETIME
+            #{planId}, #{assetId}, #{targetStage}, #{planStatus}, #{requesterId}, #{targetDate}, #{reason}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -194,7 +194,7 @@
         SET 
             PLAN_STATUS = #{status},
             APPROVER_ID = #{approverId},
-            UPDATED_AT = CURRENT_DATETIME
+            UPDATED_AT = CURRENT_TIMESTAMP
         WHERE PLAN_ID = #{planId}
     </update>
 
@@ -223,7 +223,7 @@
         INSERT INTO SYSTEM_ASSET_LIFECYCLE_EVIDENCE (
             EVIDENCE_ID, PLAN_ID, CHECKPOINT_KEY, EVIDENCE_TYPE, EVIDENCE_VALUE, VERIFIED_BY, CREATED_AT
         ) VALUES (
-            #{evidenceId}, #{planId}, #{checkpointKey}, #{evidenceType}, #{evidenceValue}, #{verifiedBy}, CURRENT_DATETIME
+            #{evidenceId}, #{planId}, #{checkpointKey}, #{evidenceType}, #{evidenceValue}, #{verifiedBy}, CURRENT_TIMESTAMP
         )
     </insert>
 

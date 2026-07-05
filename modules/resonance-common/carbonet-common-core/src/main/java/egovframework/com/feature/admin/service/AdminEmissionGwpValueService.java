@@ -275,7 +275,7 @@ public class AdminEmissionGwpValueService {
             return;
         }
         Integer tableCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM db_class WHERE LOWER(class_name) = LOWER(?)",
+                "SELECT COUNT(*) FROM information_schema.tables WHERE LOWER(table_name) = LOWER(?) AND table_schema = 'public'",
                 Integer.class,
                 TABLE_NAME);
         if (tableCount == null || tableCount == 0) {
@@ -358,7 +358,7 @@ public class AdminEmissionGwpValueService {
 
     private void ensureColumn(String columnName, String alterSql) {
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM db_attribute WHERE LOWER(class_name) = LOWER(?) AND LOWER(attr_name) = LOWER(?)",
+                "SELECT COUNT(*) FROM information_schema.columns WHERE LOWER(table_name) = LOWER(?) AND LOWER(column_name) = LOWER(?)",
                 Integer.class,
                 TABLE_NAME,
                 columnName);

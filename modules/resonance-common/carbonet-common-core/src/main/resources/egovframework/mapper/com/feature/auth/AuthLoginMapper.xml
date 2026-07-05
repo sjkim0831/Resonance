@@ -169,7 +169,7 @@
             EXPIRATION_AT AS expirationAt
         FROM COMTNAUTHTOKENSTORE
         WHERE USER_ID = #{value}
-          AND EXPIRATION_AT > CURRENT_DATETIME
+          AND EXPIRATION_AT > CURRENT_TIMESTAMP
     </select>
 
     <insert id="insertAuthToken" parameterType="map">
@@ -190,11 +190,11 @@
             #{tokenKey},
             #{accessTokenHash},
             #{refreshTokenHash},
-            TO_DATETIME(#{expiresAt}, 'YYYY-MM-DD HH24:MI:SS'),
+            TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI:SS'),
             #{clientIp},
             #{userAgent},
-            CURRENT_DATETIME,
-            CURRENT_DATETIME
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -210,8 +210,8 @@
 
     <update id="touchAuthToken" parameterType="string">
         UPDATE COMTNAUTHTOKENSTORE
-        SET LAST_USED_AT = CURRENT_DATETIME,
-            UPDATED_AT = CURRENT_DATETIME
+        SET LAST_USED_AT = CURRENT_TIMESTAMP,
+            UPDATED_AT = CURRENT_TIMESTAMP
         WHERE TOKEN_KEY = #{value}
     </update>
 </mapper>

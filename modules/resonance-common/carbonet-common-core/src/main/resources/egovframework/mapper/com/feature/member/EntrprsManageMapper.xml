@@ -64,7 +64,7 @@
 	                #{fxnum},
 	                #{indutyCode},
 	                #{applcntNm},
-	                SYSDATETIME,
+	                CURRENT_TIMESTAMP,
 	                #{entrprsMberSttus},
 	                #{entrprsMberPassword},
 	                #{entrprsMberPasswordHint},
@@ -75,7 +75,7 @@
 	                #{areaNo},
                     #{applcntEmailAdres},
                     #{applcntIhidnum},
-                    SYSDATETIME,
+                    CURRENT_TIMESTAMP,
                     #{marketingYn},
                     #{authTy},
                     #{authDn},
@@ -111,7 +111,7 @@
                 #{fileMg},
                 #{fileExtsn},
                 #{fileCn},
-                SYSDATETIME
+                CURRENT_TIMESTAMP
             )
     </insert>
 
@@ -299,7 +299,7 @@
                 RJCT_PNTTM                   =
                 <choose>
                     <when test="rjctPnttm != null and rjctPnttm != ''">
-                        TO_DATETIME(#{rjctPnttm}, 'YYYY-MM-DD HH24:MI:SS')
+                        TO_TIMESTAMP(#{rjctPnttm}, 'YYYY-MM-DD HH24:MI:SS')
                     </when>
                     <otherwise>
                         NULL
@@ -328,7 +328,7 @@
             UPDATE COMTNENTRPRSMBER 
             SET 
                    ENTRPRS_MBER_PASSWORD   =  #{entrprsMberPassword}
-                 , CHG_PWD_LAST_PNTTM = SYSDATETIME
+                 , CHG_PWD_LAST_PNTTM = CURRENT_TIMESTAMP
             WHERE  ESNTL_ID  = #{uniqId}
         
     </update>
@@ -378,8 +378,8 @@
             #{detailAdres},
             #{bizRegFilePath},
             #{insttSttus},
-            SYSDATETIME,
-            SYSDATETIME,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
             #{chargerNm},
             #{chargerEmail},
             #{chargerTel}
@@ -411,7 +411,7 @@
             #{fileMg},
             #{fileExtsn},
             #{fileCn},
-            SYSDATETIME
+            CURRENT_TIMESTAMP
         )
     </insert>
 
@@ -594,27 +594,26 @@
     </select>
 
     <select id="selectEntrprsMberList" resultType="egovframework.com.feature.member.model.vo.EntrprsManageVO">
-        SELECT * FROM ( SELECT rownum rn, TB.* FROM (
-            SELECT 
-                ESNTL_ID              as UNIQ_ID,
-                'USR02'               as USER_TY,
-                ENTRPRS_MBER_ID       as ENTRPRSMBER_ID,
-                CMPNY_NM              as CMPNY_NM,
-                APPLCNT_NM            as APPLCNT_NM,
-                APPLCNT_EMAIL_ADRES   as APPLCNT_EMAIL_ADRES,
-                AREA_NO               as AREA_NO,
-                ENTRPRS_MIDDLE_TELNO  as ENTRPRS_MIDDLE_TELNO,
-                ENTRPRS_END_TELNO     as ENTRPRS_END_TELNO,
-                ENTRPRS_SE_CODE       as ENTRPRS_SE_CODE,
-                INSTT_ID              as INSTT_ID,
-                GROUP_ID              as GROUP_ID,
-                ENTRPRS_MBER_STTUS    as ENTRPRS_MBER_STTUS,
-                RJCT_RSN              as rjctRsn,
-                TO_CHAR(RJCT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') as rjctPnttm,
-                TO_CHAR(SBSCRB_DE, 'YYYY-MM-DD HH24:MI:SS') as SBSCRB_DE,
-                BIZ_REG_FILE_PATH     as BIZ_REG_FILE_PATH
-            FROM    COMTNENTRPRSMBER
-            WHERE 1=1
+        SELECT
+            ESNTL_ID              as UNIQ_ID,
+            'USR02'               as USER_TY,
+            ENTRPRS_MBER_ID       as ENTRPRSMBER_ID,
+            CMPNY_NM              as CMPNY_NM,
+            APPLCNT_NM            as APPLCNT_NM,
+            APPLCNT_EMAIL_ADRES   as APPLCNT_EMAIL_ADRES,
+            AREA_NO               as AREA_NO,
+            ENTRPRS_MIDDLE_TELNO  as ENTRPRS_MIDDLE_TELNO,
+            ENTRPRS_END_TELNO     as ENTRPRS_END_TELNO,
+            ENTRPRS_SE_CODE       as ENTRPRS_SE_CODE,
+            INSTT_ID              as INSTT_ID,
+            GROUP_ID              as GROUP_ID,
+            ENTRPRS_MBER_STTUS    as ENTRPRS_MBER_STTUS,
+            RJCT_RSN              as rjctRsn,
+            TO_CHAR(RJCT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') as rjctPnttm,
+            TO_CHAR(SBSCRB_DE, 'YYYY-MM-DD HH24:MI:SS') as SBSCRB_DE,
+            BIZ_REG_FILE_PATH     as BIZ_REG_FILE_PATH
+        FROM    COMTNENTRPRSMBER
+        WHERE 1=1
         <if test='projectId != null and projectId != ""'>
             AND PROJECT_ID = #{projectId}
         </if>
@@ -645,10 +644,8 @@
             )
             </if>
         </if>
-        <![CDATA[
         ORDER BY SBSCRB_DE DESC
-        ) TB ) Z WHERE rn BETWEEN #{firstIndex} + 1 AND #{firstIndex} + #{recordCountPerPage}
-        ]]>
+        LIMIT #{recordCountPerPage} OFFSET #{firstIndex}
     </select>
 
 
@@ -837,13 +834,13 @@
             RJCT_PNTTM =
             <choose>
                 <when test="rjctPnttm != null and rjctPnttm != ''">
-                    TO_DATETIME(#{rjctPnttm}, 'YYYY-MM-DD HH24:MI:SS')
+                    TO_TIMESTAMP(#{rjctPnttm}, 'YYYY-MM-DD HH24:MI:SS')
                 </when>
                 <otherwise>
                     NULL
                 </otherwise>
             </choose>,
-            LAST_UPDT_PNTTM = SYSDATETIME,
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
             CHARGER_NM = #{chargerNm},
             CHARGER_EMAIL = #{chargerEmail},
             CHARGER_TEL = #{chargerTel}

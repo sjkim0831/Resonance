@@ -10,8 +10,7 @@
     </resultMap>
     
  <select id="selectMberList" resultType="egovMap">
-SELECT * FROM ( SELECT rownum rn, TB.* FROM (
-    SELECT 
+    SELECT
         ESNTL_ID              as UNIQ_ID,
         'USR01'               as USER_TY,
         MBER_ID               as USER_ID,
@@ -40,10 +39,8 @@ SELECT * FROM ( SELECT rownum rn, TB.* FROM (
              (MBER_ID LIKE '%' || #{searchKeyword} || '%' OR MBER_NM LIKE '%' ||#{searchKeyword}|| '%')
         </if>
         </if>
-         <![CDATA[
-        ORDER BY 12 DESC
-        ) TB ) Z WHERE rn BETWEEN #{firstIndex} + 1 AND #{firstIndex} + #{recordCountPerPage}
-        ]]>
+        ORDER BY SBSCRB_DE DESC
+        LIMIT #{recordCountPerPage} OFFSET #{firstIndex}
     </select>
     
     
@@ -112,8 +109,8 @@ SELECT * FROM ( SELECT rownum rn, TB.* FROM (
                     #{mberFxnum},
                     #{mberEmailAdres},
                     #{middleTelno},
-                    SYSDATETIME,
-                    SYSDATETIME  )
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP  )
         
     </insert>
     
@@ -194,7 +191,7 @@ SELECT * FROM ( SELECT rownum rn, TB.* FROM (
             UPDATE COMTNGNRLMBER 
             SET 
                    PASSWORD   =  #{password}
-                 , CHG_PWD_LAST_PNTTM = SYSDATETIME
+                 , CHG_PWD_LAST_PNTTM = CURRENT_TIMESTAMP
             WHERE  ESNTL_ID  = #{uniqId}
         
     </update>
