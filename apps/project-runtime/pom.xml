@@ -153,6 +153,73 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.graalvm.nativeimage</groupId>
+                <artifactId>native-image-maven-plugin</artifactId>
+                <version>24.0.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile-only</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <imageName>project-runtime</imageName>
+                    <mainClass>egovframework.com.ProjectRuntimeApplication</mainClass>
+                    <buildArgs>
+                        --no-fallback
+                        --initialize-at-run-time=org.eclipse.jgit.internal.util.ShutdownHook
+                        -H:+AddAllCharsets
+                        -H:+ReportExceptionStackTraces
+                    </buildArgs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.experimental</groupId>
+                        <artifactId>spring-aot-maven-plugin</artifactId>
+                        <version>0.12.1</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.graalvm.nativeimage</groupId>
+                        <artifactId>native-image-maven-plugin</artifactId>
+                        <version>24.0.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <imageName>project-runtime</imageName>
+                            <mainClass>egovframework.com.ProjectRuntimeApplication</mainClass>
+                            <buildArgs>
+                                --no-fallback
+                                -H:+ReportExceptionStackTraces
+                                -H:+AddAllCharsets
+                            </buildArgs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
