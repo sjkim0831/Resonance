@@ -122,8 +122,9 @@ function ProcessTable({ processes, type }: { processes: SystemMetrics['top_cpu_p
         <thead>
           <tr className="border-b border-gray-200">
             <th className="text-left py-2 px-2 font-medium text-gray-600">PID</th>
-            <th className="text-left py-2 px-2 font-medium text-gray-600">User</th>
+            <th className="text-left py-2 px-2 font-medium text-gray-600">Type</th>
             <th className="text-right py-2 px-2 font-medium text-gray-600">{type === 'cpu' ? 'CPU %' : 'Mem %'}</th>
+            <th className="text-right py-2 px-2 font-medium text-gray-600">RSS</th>
             <th className="text-left py-2 px-2 font-medium text-gray-600">Command</th>
           </tr>
         </thead>
@@ -131,9 +132,24 @@ function ProcessTable({ processes, type }: { processes: SystemMetrics['top_cpu_p
           {processes?.slice(0, 10).map((proc, idx) => (
             <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
               <td className="py-2 px-2 font-mono text-xs">{proc.pid}</td>
-              <td className="py-2 px-2 text-gray-600">{proc.user}</td>
+              <td className="py-2 px-2">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  proc.type === 'java' ? 'bg-orange-100 text-orange-800' :
+                  proc.type === 'python' ? 'bg-green-100 text-green-800' :
+                  proc.type === 'nodejs' ? 'bg-emerald-100 text-emerald-800' :
+                  proc.type === 'database' ? 'bg-purple-100 text-purple-800' :
+                  proc.type === 'webserver' ? 'bg-blue-100 text-blue-800' :
+                  proc.type === 'container' ? 'bg-cyan-100 text-cyan-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {proc.type || 'other'}
+                </span>
+              </td>
               <td className={`py-2 px-2 text-right font-mono ${type === 'cpu' && proc.cpu > 50 ? 'text-red-600 font-bold' : 'text-gray-900'}`}>
                 {proc.cpu.toFixed(1)}
+              </td>
+              <td className="py-2 px-2 text-right font-mono text-xs text-gray-600">
+                {proc.rss_human || (proc.rss_kb ? `${(proc.rss_kb / 1024).toFixed(1)} MB` : '-')}
               </td>
               <td className="py-2 px-2 font-mono text-xs text-gray-600 truncate max-w-xs" title={proc.cmd}>
                 {proc.cmd}
@@ -426,6 +442,73 @@ export function MonitoringDashboardPage() {
           </Card>
         </div>
 
+        {m.gpu?.available && (
+          <div className="mb-6">
+            <Card title="GPU Metrics">
+              <div className="space-y-4">
+                {m.gpu.devices?.map((g) => (
+                  <div key={g.index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-green-600">memory</span>
+                        <span className="font-bold">{g.name}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">GPU {g.index}</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500">Utilization</p>
+                        <p className="text-xl font-bold text-green-600">{g.utilization_percent.toFixed(1)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Memory</p>
+                        <p className="text-xl font-bold text-blue-600">{g.memory_used_mb.toFixed(0)} / {g.memory_total_mb.toFixed(0)} MB</p>
+                        <p className="text-xs text-gray-400">({g.memory_used_percent.toFixed(1)}%)</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Temperature</p>
+                        <p className="text-xl font-bold text-orange-600">{g.temperature_c}°C</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Power</p>
+                        <p className="text-xl font-bold text-purple-600">{g.power_draw_w.toFixed(1)} / {g.power_limit_w.toFixed(0)} W</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Fan Speed</span>
+                        <span className="font-mono">{g.fan_speed_percent.toFixed(0)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Clock (SM)</span>
+                        <span className="font-mono">{g.clock_sm_mhz} MHz</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Clock (Memory)</span>
+                        <span className="font-mono">{g.clock_memory_mhz} MHz</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {!m.gpu?.available && (
+          <div className="mb-6">
+            <Card title="GPU Metrics">
+              <div className="flex items-center justify-center py-8 text-gray-400">
+                <span className="material-symbols-outlined text-4xl mr-3">memory</span>
+                <div>
+                  <p className="text-gray-600 font-medium">GPU Not Available</p>
+                  <p className="text-sm text-gray-400">nvidia-smi not accessible in container</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-2 mb-6">
           <Card title="Load Average">
             <div className="space-y-3">
@@ -481,12 +564,24 @@ export function MonitoringDashboardPage() {
                 <span className="text-2xl font-bold text-green-600">{m.tcp_udp?.tcp_established || 0}</span>
               </div>
               <div className="flex items-center justify-between">
+                <span className="text-gray-600">TCP Listen</span>
+                <span className="text-2xl font-bold text-blue-600">{m.tcp_udp?.tcp_listen || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-gray-600">TCP Timewait</span>
                 <span className="text-2xl font-bold text-yellow-600">{m.tcp_udp?.tcp_timewait || 0}</span>
               </div>
               <div className="flex items-center justify-between">
+                <span className="text-gray-600">TCP Close Wait</span>
+                <span className="text-2xl font-bold text-orange-600">{m.tcp_udp?.tcp_closewait || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-gray-600">UDP Sockets</span>
-                <span className="text-2xl font-bold text-blue-600">{m.tcp_udp?.udp_sockets || 0}</span>
+                <span className="text-2xl font-bold text-purple-600">{m.tcp_udp?.udp_sockets || 0}</span>
+              </div>
+              <div className="pt-2 border-t flex items-center justify-between">
+                <span className="text-gray-600 font-medium">Total TCP</span>
+                <span className="text-xl font-bold">{m.tcp_udp?.tcp_total || 0}</span>
               </div>
             </div>
           </Card>

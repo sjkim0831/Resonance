@@ -66,20 +66,54 @@ export type SystemMetrics = {
     user: string;
     cpu: number;
     mem: number;
+    rss_kb?: number;
+    rss_human?: string;
+    vsz_kb?: number;
     cmd: string;
+    type?: string;
   }>;
   top_mem_processes?: Array<{
     pid: number | string;
     user: string;
     cpu: number;
     mem: number;
+    rss_kb?: number;
+    rss_human?: string;
+    vsz_kb?: number;
     cmd: string;
+    type?: string;
   }>;
+  gpu?: {
+    available: boolean;
+    count: number;
+    devices?: Array<{
+      index: number;
+      name: string;
+      utilization_percent: number;
+      memory_utilization_percent: number;
+      memory_used_mb: number;
+      memory_total_mb: number;
+      memory_free_mb: number;
+      memory_used_percent: number;
+      temperature_c: number;
+      fan_speed_percent: number;
+      power_draw_w: number;
+      power_limit_w: number;
+      clock_sm_mhz: number;
+      clock_memory_mhz: number;
+    }>;
+    average_utilization_percent?: number;
+    average_memory_utilization_percent?: number;
+    error?: string;
+  };
   services?: Record<string, { status: string; enabled: string }>;
   tcp_udp?: {
     tcp_established?: number;
     tcp_timewait?: number;
+    tcp_listen?: number;
+    tcp_closewait?: number;
     udp_sockets?: number;
+    tcp_total?: number;
   };
   success?: boolean;
   error?: string;
