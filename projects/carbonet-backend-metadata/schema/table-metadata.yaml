@@ -1,0 +1,125 @@
+# Database Table Metadata
+# 이 파일로 테이블 구조를 정의하면 동적 Interpretation 가능
+# 실제 DDL은 Flyway/Liquibase로 관리, 이 메타데이터는 런타임 Interpretation용
+
+version: "2.0"
+
+# 테이블 정의
+tables:
+  # 사용자 테이블
+  users:
+    physical:
+      tableName: "users"
+      columns:
+        - name: "user_id"
+          type: "VARCHAR"
+          length: 50
+          primaryKey: true
+          nullable: false
+        - name: "user_nm"
+          type: "VARCHAR"
+          length: 100
+          nullable: false
+        - name: "email"
+          type: "VARCHAR"
+          length: 255
+          nullable: true
+        - name: "password_hash"
+          type: "VARCHAR"
+          length: 255
+          nullable: false
+        - name: "role"
+          type: "VARCHAR"
+          length: 50
+          nullable: false
+          defaultValue: "ROLE_USER"
+        - name: "created_at"
+          type: "TIMESTAMP"
+          nullable: false
+        - name: "updated_at"
+          type: "TIMESTAMP"
+          nullable: false
+    logical:
+      alias: "사용자"
+      description: "시스템 사용자 정보"
+    
+  # 메뉴 테이블
+  com_menu:
+    physical:
+      tableName: "com_menu"
+      columns:
+        - name: "menu_id"
+          type: "VARCHAR"
+          length: 50
+          primaryKey: true
+        - name: "menu_nm"
+          type: "VARCHAR"
+          length: 100
+        - name: "menu_url"
+          type: "VARCHAR"
+          length: 500
+        - name: "parent_menu_id"
+          type: "VARCHAR"
+          length: 50
+        - name: "menu_order"
+          type: "INTEGER"
+        - name: "menu_icon"
+          type: "VARCHAR"
+          length: 100
+        - name: "visible"
+          type: "BOOLEAN"
+        - name: "required_roles"
+          type: "VARCHAR"
+          length: 500
+    logical:
+      alias: "메뉴"
+      description: "메뉴 정보"
+
+  # 코드 관리 테이블
+  com_code:
+    physical:
+      tableName: "com_code"
+      columns:
+        - name: "code_id"
+          type: "VARCHAR"
+          length: 50
+          primaryKey: true
+        - name: "code_group"
+          type: "VARCHAR"
+          length: 50
+        - name: "code_nm"
+          type: "VARCHAR"
+          length: 100
+        - name: "code_value"
+          type: "VARCHAR"
+          length: 100
+        - name: "code_order"
+          type: "INTEGER"
+        - name: "use_at"
+          type: "BOOLEAN"
+    logical:
+      alias: "공통코드"
+      description: "공통코드 관리"
+
+# 관계 정의
+relationships:
+  - name: "user_menu"
+    sourceTable: "users"
+    targetTable: "com_menu"
+    type: "ONE_TO_MANY"
+    sourceColumn: "user_id"
+    targetColumn: "created_by"
+
+# 인덱스 정의
+indexes:
+  users:
+    - name: "idx_users_email"
+      columns: ["email"]
+      unique: true
+    - name: "idx_users_role"
+      columns: ["role"]
+  com_menu:
+    - name: "idx_menu_parent"
+      columns: ["parent_menu_id"]
+    - name: "idx_menu_order"
+      columns: ["menu_order"]

@@ -121,6 +121,7 @@ export function MenuManagementMigrationPage() {
   const [menuUrl, setMenuUrl] = useState("");
   const [menuIcon, setMenuIcon] = useState("web");
   const [useAt, setUseAt] = useState("Y");
+  const [isTopMenu, setIsTopMenu] = useState(false);
   const [treeData, setTreeData] = useState<MenuNode[]>([]);
 
   const deferredSearchKeyword = useDeferredValue(searchKeyword);
@@ -349,6 +350,47 @@ export function MenuManagementMigrationPage() {
     setActionMessage(en ? "Menu order has been saved." : "메뉴 순서를 저장했습니다.");
   }
 
+  async function handleUpdateMenu(code: string, label: string, url: string) {
+    setActionError("");
+    setActionMessage("");
+    const body = new URLSearchParams();
+    body.set("menuType", menuType);
+    body.set("code", code);
+    body.set("codeNm", label);
+    body.set("menuUrl", url);
+    try {
+      await postFormUrlEncoded(
+        buildLocalizedPath("/admin/system/menu/update-page", "/en/admin/system/menu/update-page"),
+        body
+      );
+      refreshAdminMenuTree();
+      setActionMessage(en ? "Menu updated successfully." : "메뉴가 수정되었습니다.");
+      window.location.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to update menu.");
+    }
+  }
+
+  async function handleDeleteMenu(code: string) {
+    if (!confirm(en ? "Delete this menu?" : "이 메뉴를 삭제하시겠습니까?")) return;
+    setActionError("");
+    setActionMessage("");
+    const body = new URLSearchParams();
+    body.set("menuType", menuType);
+    body.set("code", code);
+    try {
+      await postFormUrlEncoded(
+        buildLocalizedPath("/admin/system/menu/delete-page", "/en/admin/system/menu/delete-page"),
+        body
+      );
+      refreshAdminMenuTree();
+      setActionMessage(en ? "Menu deleted." : "메뉴가 삭제되었습니다.");
+      window.location.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to delete menu.");
+    }
+  }
+
   function findSuggestedPageCode() {
     return buildSuggestedPageCode(parentCodeValue, menuCodeRows);
   }
@@ -356,32 +398,64 @@ export function MenuManagementMigrationPage() {
   async function createPageMenu() {
     setActionError("");
     setActionMessage("");
-    const validationError = validateCreateForm({ en, parentCodeValue, codeNm, menuUrl, menuType });
-    if (validationError) {
-      setActionError(validationError);
+    if (isTopMenu && parentCodeValue.length !== 4) {
+      setActionError(en ? "Enter 4-character code for top menu." : "대메뉴는 4자리 코드를 입력하세요.");
+      return;
+    }
+    if (!isTopMenu && !parentCodeValue) {
+      setActionError(en ? "Select a parent menu." : "상위 메뉴를 선택하세요.");
+      return;
+    }
+    if (!codeNm.trim()) {
+      setActionError(en ? "Enter menu name." : "메뉴명을 입력하세요.");
+      return;
+    }
+    if (!menuUrl.trim()) {
+      setActionError(en ? "Enter URL." : "URL을 입력하세요.");
+      return;
+    }
+    if (!menuUrl.startsWith("/")) {
+      setActionError(en ? "URL must start with /." : "URL은 /로 시작해야 합니다.");
+      return;
+    }
+    if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) {
+      setActionError(en ? "Admin URL must start with /admin/." : "관리자 URL은 /admin/으로 시작해야 합니다.");
+      return;
+    }
+    if (menuType === "USER" && !menuUrl.startsWith("/home/")) {
+      setActionError(en ? "Home URL must start with /home/." : "홈 URL은 /home/으로 시작해야 합니다.");
       return;
     }
     const body = new URLSearchParams();
     body.set("menuType", menuType);
-    body.set("parentCode", parentCodeValue);
+    if (isTopMenu) {
+      body.set("isTopMenu", "true");
+      body.set("directCode", parentCodeValue);
+    } else {
+      body.set("parentCode", parentCodeValue);
+    }
     body.set("codeNm", codeNm.trim());
     body.set("codeDc", codeDc.trim());
     body.set("menuUrl", menuUrl.trim());
     body.set("menuIcon", menuIcon);
     body.set("useAt", useAt);
-    const responseBody = await postFormUrlEncoded<{ success?: boolean; message?: string; createdCode?: string }>(
-      buildLocalizedPath("/admin/system/menu/create-page", "/en/admin/system/menu/create-page"),
-      body
-    );
-    if (!responseBody.success) {
-      throw new Error(responseBody.message || "Failed to create page menu.");
+    try {
+      const result = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
+        buildLocalizedPath("/admin/system/menu/create-page", "/en/admin/system/menu/create-page"),
+        body
+      );
+      if (!result.success) {
+        throw new Error(result.message || "Failed");
+      }
+      refreshAdminMenuTree();
+      setActionMessage(result.message || (en ? "Menu created." : "메뉴가 생성되었습니다."));
+      setCodeNm("");
+      setCodeDc("");
+      setMenuUrl("");
+      window.location.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to create menu.");
     }
-    refreshAdminMenuTree();
-    await pageState.reload();
-    setActionMessage(responseBody.message || (en ? "The page has been created." : "페이지를 생성했습니다."));
-    setCodeNm("");
-    setCodeDc("");
-    setMenuUrl("");
   }
 
   function renderNodes(nodes: MenuNode[], path: number[] = []) {
@@ -414,6 +488,38 @@ export function MenuManagementMigrationPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button className="gov-btn gov-btn-outline" disabled={index === 0 || Boolean(deferredSearchKeyword)} onClick={() => updateLevel(currentPath, -1)} type="button">{en ? "Up" : "위로"}</button>
                     <button className="gov-btn gov-btn-outline" disabled={index === nodes.length - 1 || Boolean(deferredSearchKeyword)} onClick={() => updateLevel(currentPath, 1)} type="button">{en ? "Down" : "아래로"}</button>
+                    <button
+                      className="gov-btn gov-btn-outline"
+                      onClick={() => {
+                        const newLabel = prompt(en ? "Enter new menu name:" : "메뉴명을 입력하세요:", node.label);
+                        if (newLabel && newLabel !== node.label) {
+                          const newUrl = prompt(en ? "Enter new URL:" : "URL을 입력하세요:", node.url || "");
+                          void handleUpdateMenu(node.code, newLabel, newUrl || "");
+                        }
+                      }}
+                      type="button"
+                      title={en ? "Edit" : "수정"}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                    <button
+                      className="gov-btn gov-btn-outline text-red-600 hover:bg-red-50"
+                      onClick={() => void handleDeleteMenu(node.code)}
+                      type="button"
+                      title={en ? "Delete" : "삭제"}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                    <a
+                      href={buildLocalizedPath(
+                        `/admin/system/builder-studio?menuCode=${node.code}&pageId=${node.code}&menuTitle=${encodeURIComponent(node.label)}&menuUrl=${encodeURIComponent(node.url || "")}`,
+                        `/en/admin/system/builder-studio?menuCode=${node.code}&pageId=${node.code}&menuTitle=${encodeURIComponent(node.label)}&menuUrl=${encodeURIComponent(node.url || "")}`
+                      )}
+                      className="gov-btn gov-btn-outline"
+                      title={en ? "Open in Builder" : "빌더에서 열기"}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">construction</span>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -541,17 +647,64 @@ export function MenuManagementMigrationPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="gov-label" htmlFor="parentCode">{en ? "Registry Parent" : "레지스트리 부모"}</label>
-              <select className="gov-select" id="parentCode" value={parentCodeValue} onChange={(event) => setParentCodeValue(event.target.value)}>
-                {groupMenuOptions.map((option) => (
-                  <option key={stringOf(option, "value")} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
-                ))}
-              </select>
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isTopMenu}
+                    onChange={(e) => {
+                      setIsTopMenu(e.target.checked);
+                      if (e.target.checked) {
+                        let maxSuffix = 0;
+                        const prefix = "A";
+                        menuCodeRows.forEach((row) => {
+                          if (row.code.length === 4 && row.code.startsWith(prefix)) {
+                            const suffix = Number(row.code.slice(1));
+                            if (Number.isFinite(suffix) && suffix > maxSuffix) {
+                              maxSuffix = suffix;
+                            }
+                          }
+                        });
+                        const newCode = `${prefix}${String(maxSuffix + 1).padStart(3, "0")}`;
+                        setParentCodeValue(newCode);
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium">{en ? "Create as Top Menu (4-char)" : "대메뉴로 등록 (4자리)"}</span>
+                </label>
+              </div>
             </div>
+
+            {isTopMenu ? (
+              <div>
+                <label className="gov-label" htmlFor="topMenuCode">{en ? "Top Menu Code (4 chars)" : "대메뉴 코드 (4자리)"}</label>
+                <input
+                  className="gov-input"
+                  id="topMenuCode"
+                  maxLength={4}
+                  value={parentCodeValue}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+                    setParentCodeValue(val);
+                  }}
+                  placeholder={en ? "e.g. A009" : "예: A009"}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="gov-label" htmlFor="parentCode">{en ? "Registry Parent" : "레지스트리 부모"}</label>
+                <select className="gov-select" id="parentCode" value={parentCodeValue} onChange={(event) => setParentCodeValue(event.target.value)}>
+                  {groupMenuOptions.map((option) => (
+                    <option key={stringOf(option, "value")} value={stringOf(option, "value")}>{stringOf(option, "label")}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="gov-label" htmlFor="suggestedCode">{en ? "Generated Registry Code" : "생성 예정 레지스트리 코드"}</label>
-              <input className="gov-input bg-gray-50" id="suggestedCode" readOnly value={findSuggestedPageCode()} />
+              <input className="gov-input bg-gray-50" id="suggestedCode" readOnly value={isTopMenu ? parentCodeValue.toUpperCase() : findSuggestedPageCode()} />
             </div>
             <div>
               <label className="gov-label" htmlFor="codeNm">{en ? "Registry Name" : "레지스트리명"}</label>

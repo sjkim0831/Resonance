@@ -58,8 +58,8 @@ public class OperationsConsoleApplication {
 
     @Bean
     @Primary
-    public CarbonetScreenBuilderCommandPageSource carbonetScreenBuilderCommandPageSource(ApplicationContext applicationContext) {
-        return new CarbonetScreenBuilderCommandPageSourceImpl(applicationContext);
+    public CarbonetScreenBuilderCommandPageSource carbonetScreenBuilderCommandPageSource() {
+        return new CarbonetScreenBuilderCommandPageSourceImpl();
     }
 
     @Bean

@@ -1,0 +1,6 @@
+[
+  [
+    "org.hibernate.internal.log.ConnectionInfoLogger",
+    "org.jboss.logging.BasicLogger"
+  ]
+]

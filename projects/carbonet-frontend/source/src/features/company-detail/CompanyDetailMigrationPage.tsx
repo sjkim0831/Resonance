@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchCompanyDetailPage } from "../../lib/api/adminMember";
 import type { CompanyDetailPagePayload } from "../../lib/api/memberTypes";
-import { buildLocalizedPath, getNavigationEventName, getSearchParam } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, getSearchParam } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { LookupContextStrip, MemberLinkButton, MemberButtonGroup, MEMBER_BUTTON_LABELS, PageStatusNotice } from "../member/common";
 import { DetailSummaryCard, MemberSectionCard, MemberStateCard } from "../member/sections";
@@ -26,7 +25,6 @@ export function CompanyDetailMigrationPage() {
   const [insttId, setInsttId] = useState(initialInsttId);
   const [page, setPage] = useState<CompanyDetailPagePayload | null>(null);
   const [error, setError] = useState("");
-  const sessionState = useFrontendSession();
 
   async function load(target: string) {
     if (!target.trim()) {
@@ -45,23 +43,6 @@ export function CompanyDetailMigrationPage() {
     }
   }, []);
 
-  useEffect(() => {
-    function syncFiltersFromLocation() {
-      const params = new URLSearchParams(window.location.search);
-      const nextInsttId = params.get("insttId") || "";
-      if (nextInsttId && nextInsttId !== insttId) {
-        load(nextInsttId).catch((nextError: Error) => setError(nextError.message));
-      }
-    }
-    const eventName = getNavigationEventName();
-    window.addEventListener(eventName, syncFiltersFromLocation);
-    window.addEventListener("popstate", syncFiltersFromLocation);
-    return () => {
-      window.removeEventListener(eventName, syncFiltersFromLocation);
-      window.removeEventListener("popstate", syncFiltersFromLocation);
-    };
-  }, [insttId]);
-
   const company = (page?.company || {}) as Record<string, unknown>;
   const companyFiles = (page?.companyFiles || []) as Array<Record<string, unknown>>;
   const loading = !page && !error;
@@ -69,15 +50,11 @@ export function CompanyDetailMigrationPage() {
   const hasCompany = !!page?.company;
 
   useEffect(() => {
-    const session = sessionState.value;
     if (!page) {
       return;
     }
     logGovernanceScope("PAGE", "company-detail", {
       route: window.location.pathname,
-      actorUserId: session?.userId || "",
-      actorAuthorCode: session?.authorCode || "",
-      actorInsttId: session?.insttId || "",
       insttId,
       canView: !!page.canViewCompanyDetail,
       canUseEditLink: !!page.canUseCompanyEditLink,
@@ -89,7 +66,7 @@ export function CompanyDetailMigrationPage() {
       fileCount: companyFiles.length,
       insttId
     });
-  }, [companyFiles.length, insttId, page, sessionState.value]);
+  }, [companyFiles.length, insttId, page]);
 
   return (
     <AdminPageShell

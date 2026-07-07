@@ -1,20 +1,11 @@
-{
-  "reflection": [
-    {
-      "name": "egovframework.com.platform.codex.service.impl.ScreenCommandCenterServiceImpl",
-      "methods": [
-        {
-          "name": "getScreenCommandPage",
-          "parameterTypes": ["java.lang.String"]
-        }
-      ]
-    }
-  ],
-  "resources": {
-    "includes": [
+[
+  {
+    "name": "egovframework.com.platform.codex.service.impl.ScreenCommandCenterServiceImpl",
+    "methods": [
       {
-        "pattern": "egovframework/mapper/.*\\.xml$"
+        "name": "getScreenCommandPage",
+        "parameterTypes": ["java.lang.String"]
       }
     ]
   }
-}
+]

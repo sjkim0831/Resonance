@@ -14,6 +14,8 @@ public class MenuInfoDTO {
     private String codeDc;
     private String menuIcon;
     private String useAt;
+    private String expsrAt;
+    private String dependentScreenCode;
     private Integer sortOrdr;
 
     public String getMenuCode() { return menuCode; }
@@ -22,14 +24,11 @@ public class MenuInfoDTO {
     public void setMenuUrl(String menuUrl) { this.menuUrl = menuUrl; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
-    public String getCodeNm() { return codeNm; }
     public void setCodeNm(String codeNm) { this.codeNm = codeNm; }
-    public String getCodeDc() { return codeDc; }
     public void setCodeDc(String codeDc) { this.codeDc = codeDc; }
-    public String getMenuIcon() { return menuIcon; }
     public void setMenuIcon(String menuIcon) { this.menuIcon = menuIcon; }
-    public String getUseAt() { return useAt; }
     public void setUseAt(String useAt) { this.useAt = useAt; }
-    public Integer getSortOrdr() { return sortOrdr; }
+    public void setExpsrAt(String expsrAt) { this.expsrAt = expsrAt; }
+    public void setDependentScreenCode(String dependentScreenCode) { this.dependentScreenCode = dependentScreenCode; }
     public void setSortOrdr(Integer sortOrdr) { this.sortOrdr = sortOrdr; }
 }

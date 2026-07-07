@@ -16,6 +16,15 @@
 
     <name>common-auth</name>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -24,14 +33,6 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
-                    <includes>
-                        <include>egovframework/com/feature/auth/domain/**/*.java</include>
-                        <include>egovframework/com/feature/auth/dto/**/*.java</include>
-                        <include>egovframework/com/feature/auth/mapper/AuthLoginMapper.java</include>
-                        <include>egovframework/com/feature/auth/service/AuthService.java</include>
-                        <include>egovframework/com/feature/auth/service/impl/AuthServiceImpl.java</include>
-                        <include>egovframework/com/feature/auth/util/JwtTokenProvider.java</include>
-                    </includes>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

@@ -176,6 +176,15 @@ carbonet:
     ollama:
       base-url: ${CARBONET_AI_OLLAMA_BASE_URL:http://127.0.0.1:11434}
       model: ${CARBONET_AI_OLLAMA_MODEL:qwen3:0.6b}
+  script:
+    path: ${CARBONET_SCRIPT_PATH:/opt/Resonance/projects/carbonet-backend-metadata/scripts}
+    auto-reload: ${CARBONET_SCRIPT_AUTO_RELOAD:true}
+  security:
+    config-path: ${CARBONET_SECURITY_CONFIG_PATH:/opt/Resonance/projects/carbonet-backend-metadata/security/security-rules.yaml}
+    auto-reload: ${CARBONET_SECURITY_AUTO_RELOAD:true}
+  schema:
+    metadata-path: ${CARBONET_SCHEMA_METADATA_PATH:/opt/Resonance/projects/carbonet-backend-metadata/schema}
+    auto-reload: ${CARBONET_SCHEMA_AUTO_RELOAD:true}
   react-bootstrap-adapter:
     bindings:
       - bootstrap-endpoint: /en/admin/login/api/app/bootstrap
@@ -233,7 +242,7 @@ org:
       defaultTargetUrl: /main
       dataSource: dataSource
       permitAllList: ^/css/.*$,^/images/.*$,^/js/.*$,^/uat/.*$,^/home(?:/.*)?$,^/signin/.*$,^/en/signin/.*$,^/join/.*$,^/en/join/.*$,^/admin/login/.*$,^/en/admin/login/.*$,^/react-shell/.*$,^/assets/react/.*$,^/admin/assets/react/.*$,^/en/admin/assets/react/.*$,^/actuator/.*$,^/api/telemetry/.*$,^/api/frontend/session$,^/api/frontend/error/report$,^/api/app/bootstrap(?:\\?.*)?$,^/en/api/app/bootstrap(?:\\?.*)?$,^/api/admin/app/bootstrap(?:\\?.*)?$,^/en/api/admin/app/bootstrap(?:\\?.*)?$,^/admin(?:/.*)?(?:\\?.*)?$,^/en/admin(?:/.*)?(?:\\?.*)?$
-      csrf: true
+      csrf: false
       xframeOptions: sameorigin
       sniff: false
       xssProtection: true
@@ -266,3 +275,4 @@ org:
         IS_AUTHENTICATED_FULLY > IS_AUTHENTICATED_REMEMBERED
         ROLE_USER > IS_AUTHENTICATED_FULLY
         ROLE_ADMIN > ROLE_USER
+

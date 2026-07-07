@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { CanView } from "../../components/access/CanView";
 import { fetchCompanyListPage } from "../../lib/api/adminMember";
 import type { CompanyListPagePayload } from "../../lib/api/memberTypes";
-import { buildLocalizedPath, getNavigationEventName } from "../../lib/navigation/runtime";
+import { buildLocalizedPath } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, AdminTable, MemberButton, MemberLinkButton, MemberPagination, MemberSectionToolbar } from "../member/common";
 import { MEMBER_BUTTON_LABELS, MEMBER_LIST_LABELS } from "../member/labels";
@@ -35,7 +34,6 @@ const STATUS_OPTIONS = [
 ];
 
 export function CompanyListMigrationPage() {
-  const sessionState = useFrontendSession();
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const [actionError, setActionError] = useState("");
@@ -74,43 +72,11 @@ export function CompanyListMigrationPage() {
   }, [filters.searchKeyword, filters.status]);
 
   useEffect(() => {
-    function syncFiltersFromLocation() {
-      const params = new URLSearchParams(window.location.search);
-      const nextSearchKeyword = params.get("searchKeyword") || "";
-      const nextStatus = params.get("sbscrbSttus") || "";
-      const nextPageIndex = Number(params.get("pageIndex") || "1");
-      setDraftFilters({
-        searchKeyword: nextSearchKeyword,
-        status: nextStatus,
-        pageIndex: nextPageIndex
-      });
-      if (nextSearchKeyword !== draftFilters.searchKeyword || nextStatus !== draftFilters.status || nextPageIndex !== draftFilters.pageIndex) {
-        setFilters({
-          searchKeyword: nextSearchKeyword,
-          status: nextStatus,
-          pageIndex: Number.isFinite(nextPageIndex) && nextPageIndex > 0 ? nextPageIndex : 1
-        });
-      }
-    }
-    const eventName = getNavigationEventName();
-    window.addEventListener(eventName, syncFiltersFromLocation);
-    window.addEventListener("popstate", syncFiltersFromLocation);
-    return () => {
-      window.removeEventListener(eventName, syncFiltersFromLocation);
-      window.removeEventListener("popstate", syncFiltersFromLocation);
-    };
-  }, [draftFilters.pageIndex, draftFilters.searchKeyword, draftFilters.status]);
-
-  useEffect(() => {
-    const session = sessionState.value;
     if (!page) {
       return;
     }
     logGovernanceScope("PAGE", "company-list", {
       route: window.location.pathname,
-      actorUserId: session?.userId || "",
-      actorAuthorCode: session?.authorCode || "",
-      actorInsttId: session?.insttId || "",
       canView: !!page.canViewCompanyList,
       canUseActions: !!page.canUseCompanyListActions,
       currentPage,
@@ -124,7 +90,7 @@ export function CompanyListMigrationPage() {
       currentPage,
       totalPages
     });
-  }, [currentPage, filters.searchKeyword, filters.status, page, sessionState.value, totalPages]);
+  }, [currentPage, filters.searchKeyword, filters.status, page, totalPages]);
 
   function updateDraft<K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) {
     setDraftFilters((current) => ({ ...current, [key]: value }));

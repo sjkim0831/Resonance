@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import {
   readBootstrappedEmissionValidatePageData
 } from "../../lib/api/bootstrap";
 import { fetchEmissionValidatePage } from "../../lib/api/emission";
 import type { EmissionValidatePagePayload } from "../../lib/api/emissionTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { AdminInput, AdminSelect, CollectionResultPanel, DiagnosticCard, GridToolbar, LookupContextStrip, MemberPagination, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -129,43 +125,10 @@ function matchesInitialValidatePayload(payload: EmissionValidatePagePayload | nu
 
 export function EmissionValidateMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => {
-      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-    };
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
   const returnUrl = readReturnUrl();
   const initial = useMemo<Filters>(() => readInitialFilters(), []);
-  const pageInitialPayload = useMemo(() => readBootstrappedEmissionValidatePageData(), []);
-  const canUseInitialPayload = matchesInitialValidatePayload(pageInitialPayload, initial);
+  const initialPayload = useMemo(() => readBootstrappedEmissionValidatePageData(), []);
+  const canUseInitialPayload = matchesInitialValidatePayload(initialPayload, initial);
   const [filters, setFilters] = useState(initial);
   const [draft, setDraft] = useState(initial);
   const pageState = useAsyncValue<EmissionValidatePagePayload>(() => fetchEmissionValidatePage(filters), [filters.pageIndex, filters.resultId, filters.searchKeyword, filters.verificationStatus, filters.priorityFilter], {
@@ -224,9 +187,6 @@ export function EmissionValidateMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-validate", {
       language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
       pageIndex: currentPage,
       resultId: filters.resultId,
       searchKeyword: filters.searchKeyword,
@@ -239,7 +199,7 @@ export function EmissionValidateMigrationPage() {
       totalPages,
       currentPage
     });
-  }, [currentPage, en, filters.priorityFilter, filters.resultId, filters.searchKeyword, filters.verificationStatus, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, queueRows.length, totalPages]);
+  }, [currentPage, en, filters.priorityFilter, filters.resultId, filters.searchKeyword, filters.verificationStatus, queueRows.length, totalPages]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

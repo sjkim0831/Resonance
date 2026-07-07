@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchExternalMaintenancePage } from "../../lib/api/ops";
 import type { ExternalMaintenancePagePayload } from "../../lib/api/opsTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { stringOf } from "../admin-system/adminSystemShared";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, GridToolbar, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
@@ -100,7 +99,6 @@ function badgeClass(value: string) {
 
 export function ExternalMaintenanceMigrationPage() {
   const en = isEnglish();
-  void useFrontendSession();
   const pageState = useAsyncValue<ExternalMaintenancePagePayload>(fetchExternalMaintenancePage, [], {});
   const page = pageState.value;
   const summary = useMemo(() => ((page?.externalMaintenanceSummary || []) as Array<Record<string, string>>), [page]);
@@ -112,22 +110,6 @@ export function ExternalMaintenanceMigrationPage() {
   const [keyword, setKeyword] = useState("");
   const [syncMode, setSyncMode] = useState("ALL");
   const [status, setStatus] = useState("ALL");
-
-  useEffect(() => {
-    function syncFromNavigation() {
-      const params = new URLSearchParams(window.location.search);
-      setKeyword(params.get("keyword") || "");
-      setSyncMode(params.get("syncMode") || "ALL");
-      setStatus(params.get("status") || "ALL");
-    }
-    const navigationEventName = getNavigationEventName();
-    window.addEventListener("popstate", syncFromNavigation);
-    window.addEventListener(navigationEventName, syncFromNavigation);
-    return () => {
-      window.removeEventListener("popstate", syncFromNavigation);
-      window.removeEventListener(navigationEventName, syncFromNavigation);
-    };
-  }, []);
 
   const filteredRows = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();

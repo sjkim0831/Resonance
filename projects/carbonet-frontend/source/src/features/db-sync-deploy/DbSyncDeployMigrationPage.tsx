@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { analyzeDbSyncDeploy, executeDbSyncDeploy, fetchDbSyncDeployPage, validateDbSyncDeployPolicy } from "../../lib/api/ops";
 import type { DbSyncDeployPagePayload } from "../../lib/api/opsTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { MemberButton } from "../admin-ui/common";
 import { KeyValueGridPanel, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
@@ -85,7 +84,6 @@ const SCRIPT_CHAIN = {
 
 export function DbSyncDeployMigrationPage() {
   const en = isEnglish();
-  void useFrontendSession();
   const copy = en ? "en" : "ko";
   const pageState = useAsyncValue<DbSyncDeployPagePayload>(fetchDbSyncDeployPage, []);
   const page = pageState.value;
@@ -98,22 +96,6 @@ export function DbSyncDeployMigrationPage() {
   const [ticketNumber, setTicketNumber] = useState("");
   const [approver, setApprover] = useState("");
   const [executionSource, setExecutionSource] = useState("page");
-
-  useEffect(() => {
-    function syncFromNavigation() {
-      const params = new URLSearchParams(window.location.search);
-      setTicketNumber(params.get("ticket") || "");
-      setApprover(params.get("approver") || "");
-      setExecutionSource(params.get("source") || "page");
-    }
-    const navigationEventName = getNavigationEventName();
-    window.addEventListener("popstate", syncFromNavigation);
-    window.addEventListener(navigationEventName, syncFromNavigation);
-    return () => {
-      window.removeEventListener("popstate", syncFromNavigation);
-      window.removeEventListener(navigationEventName, syncFromNavigation);
-    };
-  }, []);
 
   const summaryCards = (page?.dbSyncDeploySummary as Array<Record<string, string>> | undefined) || SUMMARY_CARDS[copy];
   const guardrails = (page?.dbSyncDeployGuardrailRows as Array<Record<string, string>> | undefined) || [];

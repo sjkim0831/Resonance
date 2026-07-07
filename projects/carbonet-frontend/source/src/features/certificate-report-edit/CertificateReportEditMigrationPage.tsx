@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type StepState = "completed" | "active" | "upcoming";
 
@@ -262,18 +258,6 @@ function toneClasses(tone: IssueItem["tone"] | TimelineItem["tone"]) {
 export function CertificateReportEditMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
   const content = EDIT_CONTENT[en ? "en" : "ko"];
 
   const [fuelUsage, setFuelUsage] = useState("132.80");
@@ -309,34 +293,14 @@ export function CertificateReportEditMigrationPage() {
   );
   const completionPercent = Math.round((checklistCompleted / content.checklist.length) * 100);
 
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
   useEffect(() => {
     logGovernanceScope("PAGE", "certificate-report-edit", {
       language: en ? "en" : "ko",
       estimatedEmission,
       checklistCompleted,
-      completionPercent,
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn)
+      completionPercent
     });
-  }, [checklistCompleted, completionPercent, en, estimatedEmission, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
+  }, [checklistCompleted, completionPercent, en, estimatedEmission]);
 
   return (
     <>

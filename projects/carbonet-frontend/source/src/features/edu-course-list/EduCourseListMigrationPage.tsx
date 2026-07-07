@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HomePayload } from "../home-entry/homeEntryTypes";
+import { useMemo, useState } from "react";
+import {
+  UserGovernmentBar,
+  UserLanguageToggle,
+  UserPortalFooter,
+  UserPortalHeader
+} from "../../components/user-shell/UserPortalChrome";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type CourseCategory = "analysis" | "policy" | "safety" | "digital" | "leadership";
 type CourseLevel = "beginner" | "intermediate" | "advanced";
@@ -233,38 +233,9 @@ function matchesText(value: string, keyword: string) {
 
 export function EduCourseListMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState<CourseCategory | "all">("all");
   const [level, setLevel] = useState<CourseLevel | "all">("all");
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
 
   const filteredCourses = useMemo(() => {
     return COURSES.filter((course) => {
@@ -276,17 +247,6 @@ export function EduCourseListMigrationPage() {
       return sameCategory && sameLevel && sameKeyword;
     });
   }, [category, en, keyword, level]);
-
-  useEffect(() => {
-    logGovernanceScope("PAGE", "edu-course-list", {
-      language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
-      totalCourses: COURSES.length,
-      filteredCoursesCount: filteredCourses.length,
-    });
-  }, [en, mobileMenuOpen, homeMenu.length, payload.isLoggedIn, filteredCourses.length]);
 
   const copy = {
     skip: en ? "Skip to main content" : "본문 바로가기",
@@ -325,88 +285,34 @@ export function EduCourseListMigrationPage() {
 
   return (
     <div
-      className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen"
+      className="min-h-screen bg-[linear-gradient(180deg,#eff5ff_0%,#f8fafc_22%,#ffffff_100%)] text-[var(--kr-gov-text-primary)]"
       style={{
-        "--kr-gov-blue": "#00378b",
-        "--kr-gov-blue-hover": "#002d72",
-        "--kr-gov-text-primary": "#1a1a1a",
-        "--kr-gov-text-secondary": "#4d4d4d",
-        "--kr-gov-border-light": "#d9d9d9",
-        "--kr-gov-focus": "#005fde",
-        "--kr-gov-bg-gray": "#f2f2f2",
-        "--kr-gov-radius": "5px",
-      } as React.CSSProperties}
+        ["--kr-gov-blue" as string]: "#0f3d91",
+        ["--kr-gov-blue-hover" as string]: "#0a2f70",
+        ["--kr-gov-text-primary" as string]: "#0f172a",
+        ["--kr-gov-text-secondary" as string]: "#475569",
+        ["--kr-gov-border-light" as string]: "#d7e0ec",
+        ["--kr-gov-bg-gray" as string]: "#f3f7fb",
+        ["--kr-gov-radius" as string]: "12px"
+      }}
     >
-      <a className="skip-link focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded focus:bg-[var(--kr-gov-blue)] focus:px-4 focus:py-3 focus:text-white" href="#main-content">
+      <a className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-[var(--kr-gov-blue)] focus:px-4 focus:py-3 focus:text-white" href="#main-content">
         {copy.skip}
       </a>
-
-      {/* Government Bar */}
-      <div className="bg-[var(--kr-gov-blue)] px-4 py-1.5 text-center">
-        <p className="text-xs text-white/90">{copy.government}</p>
-      </div>
-
-      {/* Main Header */}
-      <header className="sticky top-0 z-50 border-b border-[var(--kr-gov-border-light)] bg-white shadow-sm">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8">
-          <div className="flex items-center gap-6">
-            <a className="flex items-center gap-2 text-xl font-bold text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/home", "/en/home")}>
-              <span className="material-symbols-outlined text-2xl">school</span>
-              <span className="hidden sm:inline">{copy.brandTitle}</span>
-            </a>
-            <nav className="hidden lg:flex gap-6">
-              <a className="text-sm font-bold text-[var(--kr-gov-text-primary)] border-b-2 border-[var(--kr-gov-blue)] pb-1" href="#">{en ? "Courses" : "교육과정"}</a>
-              <a className="text-sm font-medium text-[var(--kr-gov-text-secondary)] hover:text-[var(--kr-gov-blue)] transition-colors" href={buildLocalizedPath("/edu/my_course", "/en/edu/my_course")}>{en ? "My Learning" : "나의 학습"}</a>
-              <a className="text-sm font-medium text-[var(--kr-gov-text-secondary)] hover:text-[var(--kr-gov-blue)] transition-colors" href={buildLocalizedPath("/edu/certificate", "/en/edu/certificate")}>{en ? "Certificate" : "수료증"}</a>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center rounded-full border border-sky-100 bg-sky-50 px-4 py-1.5 text-xs font-bold text-[var(--kr-gov-text-secondary)]">
+      <UserGovernmentBar governmentText={copy.government} guidelineText={copy.guideline} />
+      <UserPortalHeader
+        brandTitle={copy.brandTitle}
+        brandSubtitle={copy.brandSubtitle}
+        homeHref={buildLocalizedPath("/home", "/en/home")}
+        rightContent={(
+          <>
+            <div className="hidden lg:flex items-center rounded-full border border-sky-100 bg-white px-4 py-2 text-xs font-bold text-[var(--kr-gov-text-secondary)] shadow-sm">
               {copy.portalNote}
             </div>
-            <button
-              className="lg:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--kr-gov-border-light)] bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-50"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              type="button"
-              aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
-            >
-              <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-            </button>
-<button
-              className="flex items-center gap-1 rounded-lg border border-[var(--kr-gov-border-light)] bg-white px-3 py-1.5 text-sm font-bold text-[var(--kr-gov-text-secondary)] hover:bg-gray-50"
-              onClick={() => navigate(en ? "/edu/course_list" : "/en/edu/course_list")}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-lg">language</span>
-              <span>{en ? "EN" : "KO"}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="absolute top-16 left-0 right-0 border-b border-[var(--kr-gov-border-light)] bg-white shadow-lg lg:hidden">
-            <nav className="flex flex-col p-4 gap-2">
-              <a className="flex items-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-sm font-bold text-white" href="#">
-                <span className="material-symbols-outlined">list_alt</span>
-                {en ? "Course Catalog" : "교육과정 목록"}
-              </a>
-              <a className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-[var(--kr-gov-text-secondary)] hover:bg-gray-50" href={buildLocalizedPath("/edu/my_course", "/en/edu/my_course")}>
-                <span className="material-symbols-outlined">menu_book</span>
-                {en ? "My Learning" : "나의 학습"}
-              </a>
-              <a className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-[var(--kr-gov-text-secondary)] hover:bg-gray-50" href={buildLocalizedPath("/edu/certificate", "/en/edu/certificate")}>
-                <span className="material-symbols-outlined">verified</span>
-                {en ? "Certificate" : "수료증"}
-              </a>
-              <a className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium text-[var(--kr-gov-text-secondary)] hover:bg-gray-50" href={buildLocalizedPath("/edu/apply", "/en/edu/apply")}>
-                <span className="material-symbols-outlined">add_circle</span>
-                {en ? "Course Application" : "교육 신청"}
-              </a>
-            </nav>
-          </div>
+            <UserLanguageToggle en={en} onKo={() => navigate("/edu/course_list")} onEn={() => navigate("/en/edu/course_list")} />
+          </>
         )}
-      </header>
+      />
 
       <main id="main-content">
         <section className="relative overflow-hidden border-b border-slate-900/10 bg-[radial-gradient(circle_at_top_left,#1d4ed8_0,#0f172a_48%,#111827_100%)]" data-help-id="edu-course-list-hero">
@@ -677,42 +583,15 @@ export function EduCourseListMigrationPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[var(--kr-gov-border-light)] bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-4">
-            <div className="lg:col-span-2">
-              <div className="flex items-center gap-2 text-xl font-bold text-[var(--kr-gov-blue)]">
-                <span className="material-symbols-outlined">school</span>
-                <span>{copy.brandTitle}</span>
-              </div>
-              <p className="mt-3 text-sm text-[var(--kr-gov-text-secondary)]">{copy.footerServiceLine}</p>
-              <p className="mt-2 text-xs text-[var(--kr-gov-text-secondary)]">{copy.footerAddress}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Quick Links" : "바로가기"}</h4>
-              <ul className="mt-3 space-y-2">
-                <li><a className="text-sm text-[var(--kr-gov-text-secondary)] hover:text-[var(--kr-gov-blue)]" href="#">{copy.footerLinks[0]}</a></li>
-                <li><a className="text-sm text-[var(--kr-gov-text-secondary)] hover:text-[var(--kr-gov-blue)]" href="#">{copy.footerLinks[1]}</a></li>
-                <li><a className="text-sm text-[var(--kr-gov-text-secondary)] hover:text-[var(--kr-gov-blue)]" href="#">{copy.footerLinks[2]}</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{en ? "Help Desk" : "학습지원"}</h4>
-              <p className="mt-3 text-2xl font-black text-[var(--kr-gov-blue)]">1588-1234</p>
-              <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Mon-Fri 09:00-18:00" : "평일 09:00-18:00"}</p>
-            </div>
-          </div>
-          <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-[var(--kr-gov-border-light)] pt-6 lg:flex-row">
-            <p className="text-xs text-[var(--kr-gov-text-secondary)]">
-              © 2026 {copy.footerOrg}. {en ? "All rights reserved." : "모든 권리 보유."}
-            </p>
-            <p className="text-xs text-[var(--kr-gov-text-secondary)]">
-              {copy.lastModifiedLabel} 2026-06-10
-            </p>
-          </div>
-        </div>
-      </footer>
+      <UserPortalFooter
+        addressLine={copy.footerAddress}
+        copyright="© 2026 Smart Education Platform. All rights reserved."
+        footerLinks={copy.footerLinks}
+        lastModifiedLabel={copy.lastModifiedLabel}
+        orgName={copy.footerOrg}
+        serviceLine={copy.footerServiceLine}
+        waAlt={copy.footerWaAlt}
+      />
     </div>
   );
 }

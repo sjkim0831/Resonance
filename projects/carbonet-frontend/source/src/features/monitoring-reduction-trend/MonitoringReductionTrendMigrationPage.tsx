@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HomePayload } from "../home-entry/homeEntryTypes";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminSelect, MemberButton, PageStatusNotice } from "../member/common";
 
 type RangeKey = "24h" | "7d" | "30d";
@@ -516,57 +512,21 @@ export function MonitoringReductionTrendMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
   const content = CONTENT[en ? "en" : "ko"];
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [range, setRange] = useState<RangeKey>("24h");
   const [siteFilter, setSiteFilter] = useState("all");
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
-  const timeline = content.timelines[range];
-  const visibleSites = useMemo(() => (
-    siteFilter === "all" ? content.sites : content.sites.filter((site) => site.key === siteFilter)
-  ), [content.sites, siteFilter]);
-
-  const mobileMenuItems = useMemo(() => content.navItems.map((item) => ({
-    label: item.label,
-    href: item.href
-  })), [content.navItems]);
 
   useEffect(() => {
     logGovernanceScope("PAGE", "monitoring-reduction-trend", {
       language: en ? "en" : "ko",
       range,
-      siteFilter,
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
+      siteFilter
     });
-  }, [en, range, siteFilter, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
+  }, [en, range, siteFilter]);
+
+  const timeline = content.timelines[range];
+  const visibleSites = useMemo(() => (
+    siteFilter === "all" ? content.sites : content.sites.filter((site) => site.key === siteFilter)
+  ), [content.sites, siteFilter]);
 
   return (
     <div className="monitoring-reduction-shell">
@@ -608,14 +568,6 @@ export function MonitoringReductionTrendMigrationPage() {
                 <span className="material-symbols-outlined text-indigo-600">psychology</span>
                 <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[8px] font-black text-white">{content.assistantCount}</span>
               </button>
-              <button
-                className="xl:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                type="button"
-                aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
-              >
-                <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-              </button>
               <UserLanguageToggle en={en} onKo={() => navigate("/monitoring/reduction_trend")} onEn={() => navigate("/en/monitoring/reduction_trend")} />
               {session.value?.authenticated ? (
                 <MemberButton onClick={() => void session.logout()} variant="primary">{en ? "Logout" : "로그아웃"}</MemberButton>
@@ -628,30 +580,6 @@ export function MonitoringReductionTrendMigrationPage() {
           </div>
         </div>
       </header>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="absolute top-[81px] left-0 right-0 border-b border-[var(--kr-gov-border-light)] bg-white shadow-lg xl:hidden z-50">
-          <nav className="flex flex-col p-4 gap-2">
-            {mobileMenuItems.map((item) => (
-              <button
-                className="!rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left hover:!bg-indigo-50"
-                key={item.label}
-                onClick={() => {
-                  navigate(item.href);
-                  setMobileMenuOpen(false);
-                }}
-                type="button"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">circle</span>
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
 
       <main className="pb-14">
         <section className="monitoring-reduction-hero relative overflow-hidden border-b border-slate-800 py-8" data-help-id="monitoring-reduction-trend-hero">

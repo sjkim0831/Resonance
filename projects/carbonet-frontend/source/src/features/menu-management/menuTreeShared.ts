@@ -9,6 +9,7 @@ export type MenuTreeNode = {
   children: MenuTreeNode[];
   useAt?: string;
   expsrAt?: string;
+  dependentScreenCode?: string;
 };
 
 type BuildMenuTreeOptions = {
@@ -46,7 +47,8 @@ export function buildMenuTree(rows: Array<Record<string, unknown>>, options: Bui
       sortOrdr: numberOf(row, "sortOrdr"),
       children: [],
       ...(includeUseAt ? { useAt: stringOf(row, "useAt") || "Y" } : {}),
-      ...(includeExposure ? { expsrAt: stringOf(row, "expsrAt") || "Y" } : {})
+      ...(includeExposure ? { expsrAt: stringOf(row, "expsrAt") || "Y" } : {}),
+      ...(includeExposure ? { dependentScreenCode: stringOf(row, "dependentScreenCode") || "" } : {})
     });
   });
 

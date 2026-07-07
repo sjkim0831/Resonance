@@ -1,5 +1,4 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { useJoinSession } from "../../app/hooks/useJoinSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
@@ -241,10 +240,8 @@ export function JoinInfoMigrationPage() {
   });
   const session = sessionState.value;
   const error = actionError || sessionState.error;
-  const frontendSession = useFrontendSession();
 
   useEffect(() => {
-    void frontendSession.reload();
     logGovernanceScope("PAGE", "join-step4", {
       language: en ? "en" : "ko",
       membershipType: searchMembershipType || String(session?.joinVO?.membershipType || ""),
@@ -264,7 +261,6 @@ export function JoinInfoMigrationPage() {
     draftSearchKeyword,
     en,
     form.insttId,
-    frontendSession,
     modalOpen,
     searchLoading,
     searchMembershipType,

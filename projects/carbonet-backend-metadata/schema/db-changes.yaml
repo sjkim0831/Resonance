@@ -1,0 +1,73 @@
+# Database Change Log
+# DB 변경 이력을 메타데이터로 관리 - 스크립트에서 동적 Interpretation
+# ⚠️ 실제 DDL은 Flyway/Liquibase로 실행, 이 파일은 런타임 Interpretation용
+
+version: "2.0"
+
+changesets:
+  # 001: 초기 스키마 (2026-07-06)
+  - id: "001-initial-schema"
+    author: "system"
+    createdAt: "2026-07-06T00:00:00Z"
+    description: "Initial schema creation"
+    status: "completed"
+    tables:
+      - "users"
+      - "com_menu"
+      - "com_code"
+      - "com_file"
+      - "com_audit_log"
+
+  # 002: 사용자 테이블 확장 (2026-07-06)
+  - id: "002-user-extensions"
+    author: "admin"
+    createdAt: "2026-07-06T10:00:00Z"
+    description: "Add user profile fields"
+    status: "completed"
+    alterations:
+      users:
+        addColumns:
+          - name: "phone"
+            type: "VARCHAR"
+            length: 20
+          - name: "department"
+            type: "VARCHAR"
+            length: 100
+          - name: "position"
+            type: "VARCHAR"
+            length: 100
+          - name: "profile_image_url"
+            type: "VARCHAR"
+            length: 500
+
+  # 003: 메뉴 테이블 확장 (계획중)
+  - id: "003-menu-extensions"
+    author: "admin"
+    createdAt: "2026-07-15T00:00:00Z"
+    description: "Add menu metadata fields (planned)"
+    status: "pending"
+    scheduledAt: "2026-07-15"
+    alterations:
+      com_menu:
+        addColumns:
+          - name: "menu_description"
+            type: "VARCHAR"
+            length: 500
+          - name: "menu_icon_url"
+            type: "VARCHAR"
+            length: 500
+          - name: "target_blank"
+            type: "BOOLEAN"
+
+# 마이그레이션 규칙
+migrationRules:
+  autoMigrate: false
+  backupBeforeChange: true
+  rollbackEnabled: true
+  validationRules:
+    - name: "noDataLoss"
+      description: "Column drop requires no data in that column"
+    - name: "noPrimaryKeyChange"
+      description: "Primary key cannot be modified after creation"
+    - name: "typeConversionSafe"
+      description: "Type change must be compatible (e.g., VARCHAR to larger VARCHAR)"

@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { resetJoinSession } from "../../lib/api/joinSession";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -30,10 +29,8 @@ function readPayload(): CompanyRegisterCompletePayload {
 export function JoinCompanyRegisterCompleteMigrationPage() {
   const en = isEnglish();
   const payload = readPayload();
-  const session = useFrontendSession();
 
   useEffect(() => {
-    void session.reload();
     logGovernanceScope("PAGE", "join-company-register-complete", {
       language: en ? "en" : "ko",
       insttNm: payload.insttNm || "",
@@ -45,7 +42,7 @@ export function JoinCompanyRegisterCompleteMigrationPage() {
       bizrnoPresent: Boolean(payload.bizrno),
       regDatePresent: Boolean(payload.regDate)
     });
-  }, [en, payload.bizrno, payload.insttNm, payload.regDate, session]);
+  }, [en, payload.bizrno, payload.insttNm, payload.regDate]);
 
   async function handleHome() {
     logGovernanceScope("ACTION", "join-company-register-complete-home", {

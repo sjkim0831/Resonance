@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
@@ -647,51 +643,15 @@ export function MonitoringTrackMigrationPage() {
   const [selectedNodeId, setSelectedNodeId] = useState(nodes[1]?.id || nodes[0]?.id || "");
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || nodes[0];
   const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
-  const mobileMenuItems = useMemo(() => content.navItems.filter((item) => item.href).map((item) => ({
-    label: item.label,
-    href: item.href!
-  })), [content.navItems]);
 
   useEffect(() => {
     document.documentElement.lang = content.htmlLang;
     document.title = content.pageTitle;
     logGovernanceScope("PAGE", "monitoring-track", {
       locale,
-      path: window.location.pathname,
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
+      path: window.location.pathname
     });
-  }, [content.htmlLang, content.pageTitle, locale, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
+  }, [content.htmlLang, content.pageTitle, locale]);
 
   return (
     <div className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
@@ -765,14 +725,6 @@ export function MonitoringTrackMigrationPage() {
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full text-[8px] text-white flex items-center justify-center font-bold">4</span>
               </button>
               <button
-                className="xl:hidden flex h-10 w-10 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 hover:bg-blue-100"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                type="button"
-                aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
-              >
-                <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-              </button>
-              <button
                 className="px-5 py-2.5 font-bold rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] text-sm focus-visible"
                 onClick={() => { void session.logout(); }}
                 type="button"
@@ -783,30 +735,6 @@ export function MonitoringTrackMigrationPage() {
           </div>
         </div>
       </header>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="absolute top-[81px] left-0 right-0 border-b border-[var(--kr-gov-border-light)] bg-white shadow-lg xl:hidden z-50">
-          <nav className="flex flex-col p-4 gap-2">
-            {mobileMenuItems.map((item) => (
-              <button
-                className="!rounded-lg !border-0 !bg-transparent !px-4 !py-3 !text-left hover:!bg-blue-50"
-                key={item.label}
-                onClick={() => {
-                  navigate(item.href);
-                  setMobileMenuOpen(false);
-                }}
-                type="button"
-              >
-                <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">circle</span>
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
 
       <main id="main-content">
         <section className="bg-[var(--tracer-bg)] py-12 relative min-h-[850px] overflow-hidden" data-help-id="monitoring-track-hero">

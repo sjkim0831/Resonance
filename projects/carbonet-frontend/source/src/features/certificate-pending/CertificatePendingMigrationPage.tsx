@@ -50,7 +50,6 @@ function readInitialFilters(): PendingFilters {
 
 export function CertificatePendingMigrationPage() {
   const en = isEnglish();
-
   const [filters, setFilters] = useState<PendingFilters>(readInitialFilters);
   const [draft, setDraft] = useState<PendingFilters>(readInitialFilters);
   const [result, setResult] = useState<CertificatePendingPagePayload | null>(null);

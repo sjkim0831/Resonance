@@ -470,7 +470,7 @@ export function EmissionDashboardPage() {
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="relative flex items-center h-24">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
-              <HeaderBrand content={content} />
+              <HeaderBrand content={content} en={en} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
                 {/* AI Chat Button */}

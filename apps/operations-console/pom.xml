@@ -41,7 +41,7 @@
 <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
-            <version>3.5.6</version>
+            <version>${spring-boot.maven-plugin.version}</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
@@ -89,7 +89,7 @@
                             <outputDirectory>${project.build.directory}/classes/static</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.basedir}/../carbonet-app/src/main/resources/static</directory>
+                                    <directory>${project.basedir}/../../projects/carbonet-assets/static</directory>
                                 </resource>
                             </resources>
                         </configuration>

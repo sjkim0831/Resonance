@@ -16,8 +16,7 @@ public class CarbonetScreenBuilderCommandPageSourceImpl implements CarbonetScree
     @Override
     public Map<String, Object> getScreenCommandPage(String pageId) throws Exception {
         Object service = applicationContext.getBean("screenCommandCenterService");
-        Class<?> serviceType = service.getClass();
-        java.lang.reflect.Method method = serviceType.getMethod("getScreenCommandPage", String.class);
+        java.lang.reflect.Method method = service.getClass().getMethod("getScreenCommandPage", String.class);
         @SuppressWarnings("unchecked")
         Map<String, Object> result = (Map<String, Object>) method.invoke(service, pageId);
         return result;

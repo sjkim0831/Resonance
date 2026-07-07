@@ -2,6 +2,7 @@
   "policyId": "resonance-no-build-page-development",
   "defaultMode": "server-driven-metadata-driven",
   "pageWorkRequiresBuild": false,
+  "version": "3.0",
   "controlPlane": "/admin/system/build-studio",
   "allowedPageEditPaths": [
     "projects/carbonet-frontend/src/main/resources/static/react-app/**",
@@ -9,6 +10,15 @@
     "projects/carbonet-backend-metadata/**",
     "var/k8s/carbonet-runtime-manifest.json",
     "ops/runtime-metadata/**"
+  ],
+  "allowedBackendScriptPaths": [
+    "projects/carbonet-backend-metadata/scripts/**"
+  ],
+  "allowedSecurityConfigPaths": [
+    "projects/carbonet-backend-metadata/security/**"
+  ],
+  "allowedSchemaMetadataPaths": [
+    "projects/carbonet-backend-metadata/schema/**"
   ],
   "forbiddenForOrdinaryPageWork": [
     "frontend/src/**",
@@ -19,6 +29,11 @@
     "deploy/**",
     "scripts/runtime-configs/**"
   ],
+  "forbiddenForBackendScriptWork": [
+    "apps/project-runtime/src/main/java/**",
+    "modules/resonance-common/**",
+    "modules/resonance-builder/**"
+  ],
   "applyCommand": "bash ops/scripts/resonance-no-build-apply.sh <repo-root> <diff-file>",
   "neverForPageOnlyWork": [
     "npm run build",
@@ -27,16 +42,63 @@
     "kubectl rollout restart",
     "kubectl set image"
   ],
-  "buildRequiredOnlyFor": [
-    "runtime engine behavior",
-    "Java shared contracts",
-    "security or auth changes",
-    "DB schema changes",
-    "mapper contract changes",
-    "new generic backend capability that cannot be represented as metadata"
+  "neverForScriptWork": [
+    "mvn package",
+    "docker build",
+    "kubectl rollout restart"
   ],
+  "buildRequiredOnlyFor": [
+    "new Java class addition/removal",
+    "Java interface contract modifications",
+    "DB schema DDL changes (use Flyway/Liquibase migration)",
+    "security engine core changes",
+    "new ORM entity mapping"
+  ],
+  "metadataEditableOnly": [
+    "Security rules (path authorization, roles, CORS, rate limiting)",
+    "Role-permission mappings",
+    "Table metadata definitions",
+    "Query templates",
+    "DB change logs"
+  ],
+  "scriptManagement": {
+    "enabled": true,
+    "engine": "groovy",
+    "path": "/opt/Resonance/projects/carbonet-backend-metadata/scripts",
+    "autoReload": true,
+    "endpoints": [
+      "/api/script/list",
+      "/api/script/reload/{name}",
+      "/api/script/reload-all"
+    ]
+  },
+  "securityManagement": {
+    "enabled": true,
+    "type": "yaml-based-dynamic",
+    "path": "/opt/Resonance/projects/carbonet-backend-metadata/security",
+    "autoReload": true,
+    "endpoints": [
+      "/api/security/config",
+      "/api/security/reload",
+      "/api/security/access/{path}"
+    ]
+  },
+  "schemaManagement": {
+    "enabled": true,
+    "type": "metadata-driven",
+    "path": "/opt/Resonance/projects/carbonet-backend-metadata/schema",
+    "autoReload": true,
+    "endpoints": [
+      "/api/schema/metadata",
+      "/api/schema/metadata/{tableName}",
+      "/api/schema/query-template/{name}",
+      "/api/schema/changes"
+    ]
+  },
   "verification": [
     "curl -sI http://127.0.0.1:32947/assets/react/api/build-studio-asset-inventory.json",
-    "curl -sI http://127.0.0.1:32947/assets/react/assets/BuilderStudioPage-BBdbfW4J.js"
+    "curl -s http://127.0.0.1:32947/api/script/list",
+    "curl -s http://127.0.0.1:32947/api/security/config",
+    "curl -s http://127.0.0.1:32947/api/schema/metadata"
   ]
 }

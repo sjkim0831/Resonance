@@ -1,0 +1,90 @@
+# Role-Permission Mapping Configuration
+# 역할별 권한 매핑 - 이 파일만 수정하면 권한 정책 변경 가능
+# 스크립트 호출 시 동적으로 로드됨
+
+version: "2.0"
+
+# 역할-메뉴 권한 매핑
+roleMenuPermissions:
+  ROLE_ANONYMOUS:
+    menus:
+      - "HMENU_HOME"
+      - "HMENU_SIGNIN"
+      - "HMENU_LOGIN"
+    screens:
+      - "home"
+      - "login"
+      - "signin"
+
+  ROLE_USER:
+    menus:
+      - "HMENU_HOME"
+      - "HMENU_MYPAGE"
+      - "AMENU_ADMIN_HOME"
+    screens:
+      - "home"
+      - "mypage"
+      - "dashboard"
+    permissions:
+      - "READ"
+      - "WRITE_OWN"
+      - "DELETE_OWN"
+
+  ROLE_ADMIN:
+    menus:
+      - "HMENU_HOME"
+      - "HMENU_MYPAGE"
+      - "AMENU_ADMIN_HOME"
+      - "AMENU_SYSTEM"
+      - "AMENU_USER_MGMT"
+      - "AMENU_MENU_MGMT"
+      - "AMENU_AUTH_GROUP"
+      - "AMENU_DEPT_ROLE"
+      - "AMENU_CODE_MGMT"
+    screens:
+      - "home"
+      - "mypage"
+      - "admin-home"
+      - "system-management"
+      - "user-management"
+      - "menu-management"
+      - "auth-group"
+      - "dept-role"
+      - "code-management"
+    permissions:
+      - "READ"
+      - "WRITE"
+      - "DELETE"
+      - "ADMIN"
+
+# 데이터 필터링 규칙
+dataFiltering:
+  ROLE_USER:
+    filterColumn: "owner_id"
+    filterType: "OWNED_ONLY"
+  ROLE_ADMIN:
+    filterColumn: null
+    filterType: "ALL"
+
+# API 접근 제어
+apiAccessControl:
+  "/api/admin/**":
+    roles: ["ROLE_ADMIN"]
+  "/api/user/**":
+    roles: ["ROLE_USER", "ROLE_ADMIN"]
+  "/api/public/**":
+    roles: ["ROLE_ANONYMOUS", "ROLE_USER", "ROLE_ADMIN"]
+  "/api/operations/**":
+    roles: ["ROLE_ADMIN"]
+
+# 필드 수준 접근 제어
+fieldLevelAccess:
+  user:
+    password:
+      readableBy: ["ROLE_ADMIN"]
+    email:
+      readableBy: ["ROLE_USER", "ROLE_ADMIN"]
+      writableBy: ["ROLE_USER", "ROLE_ADMIN"]
+    phone:
+      readableBy: ["ROLE_ADMIN"]
+      writableBy: ["ROLE_USER", "ROLE_ADMIN"]

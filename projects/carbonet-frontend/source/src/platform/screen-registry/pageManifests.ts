@@ -986,22 +986,6 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EmissionProjectAdminLinkage", instanceKey: "emission-project-admin-linkage", layoutZone: "actions", propsSummary: ["adminSiteManagementHref", "session", "homeMenu"] }
     ]
   },
-  "emission-dashboard": {
-    pageId: "emission-dashboard",
-    routePath: "/emission/dashboard",
-    menuCode: "H0010107",
-    domainCode: "home",
-    layoutVersion: "v1",
-    designTokenVersion: "krds-current",
-    components: [
-      { componentId: "EmissionDashboardHero", instanceKey: "emission-dashboard-hero", layoutZone: "header", propsSummary: ["scopeData", "totalEmissions", "overallAchievement"] },
-      { componentId: "EmissionDashboardScopeBreakdown", instanceKey: "emission-dashboard-scope", layoutZone: "content", propsSummary: ["scopeData", "scopeData"] },
-      { componentId: "EmissionDashboardTrend", instanceKey: "emission-dashboard-trend", layoutZone: "content", propsSummary: ["emissionTrends", "maxTrendValue"] },
-      { componentId: "EmissionDashboardSites", instanceKey: "emission-dashboard-sites", layoutZone: "content", propsSummary: ["siteEmissions", "en"] },
-      { componentId: "EmissionDashboardReduction", instanceKey: "emission-dashboard-reduction", layoutZone: "content", propsSummary: ["reductionTargets", "en"] },
-      { componentId: "EmissionDashboardQuality", instanceKey: "emission-dashboard-quality", layoutZone: "content", propsSummary: ["dataQuality", "en"] }
-    ]
-  },
   "emission-reduction": {
     pageId: "emission-reduction",
     routePath: "/emission/reduction",

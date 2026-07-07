@@ -1,0 +1,99 @@
+# Dynamic Query Templates
+# 스크립트에서 참조하는 Query 템플릿 - 이 파일 수정으로 Query 로직 변경 가능
+
+version: "2.0"
+
+# 기본 CRUD 템플릿
+templates:
+  findById:
+    template: |
+      SELECT {columns}
+      FROM {table}
+      WHERE {idColumn} = :id
+      LIMIT 1
+    
+  findAll:
+    template: |
+      SELECT {columns}
+      FROM {table}
+      {whereClause}
+      {orderByClause}
+      LIMIT :limit OFFSET :offset
+    
+  count:
+    template: |
+      SELECT COUNT(*) as cnt
+      FROM {table}
+      {whereClause}
+    
+  insert:
+    template: |
+      INSERT INTO {table} ({columns})
+      VALUES ({values})
+    
+  update:
+    template: |
+      UPDATE {table}
+      SET {setClause}
+      WHERE {idColumn} = :id
+    
+  delete:
+    template: |
+      DELETE FROM {table}
+      WHERE {idColumn} = :id
+
+# 화면별 Query 템플릿
+screenQueries:
+  # 메뉴 조회
+  menuList:
+    query: |
+      SELECT m.menu_id, m.menu_nm, m.menu_url, m.parent_menu_id,
+             m.menu_order, m.menu_icon, m.visible, m.required_roles
+      FROM com_menu m
+      WHERE 1=1
+      {customCondition}
+      ORDER BY m.menu_order ASC
+    
+  # 사용자 검색
+  userSearch:
+    query: |
+      SELECT u.user_id, u.user_nm, u.email, u.role, u.created_at
+      FROM users u
+      WHERE 1=1
+      {searchCondition}
+      ORDER BY u.created_at DESC
+      LIMIT :pageSize OFFSET :offset
+    
+  # 권한별 메뉴
+  menuByRole:
+    query: |
+      SELECT DISTINCT m.menu_id, m.menu_nm, m.menu_url, m.parent_menu_id,
+             m.menu_order, m.menu_icon
+      FROM com_menu m
+      LEFT JOIN LATERAL unnest(string_to_array(m.required_roles, ',')) AS r(role) ON true
+      WHERE m.visible = true
+        AND (m.required_roles IS NULL OR r.role = :role OR r.role = 'ROLE_ANONYMOUS')
+      ORDER BY m.menu_order ASC
+
+# 동적 필터링 규칙
+dynamicFilters:
+  user:
+    rules:
+      - field: "user_nm"
+        operator: "LIKE"
+        valuePattern: "%{value}%"
+      - field: "email"
+        operator: "LIKE"
+        valuePattern: "%{value}%"
+      - field: "role"
+        operator: "="
+      
+  menu:
+    rules:
+      - field: "menu_nm"
+        operator: "LIKE"
+        valuePattern: "%{value}%"
+      - field: "visible"
+        operator: "="
+      - field: "parent_menu_id"
+        operator: "="

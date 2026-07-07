@@ -13,14 +13,18 @@ const mirrorTarget = process.env.VITE_BUILD_TARGET === "classes"
 const appResourceTarget = "../../../apps/carbonet-app/src/main/resources/static/react-app";
 
 async function replaceDirectory(sourceDir: string, targetDir: string) {
-  await rm(targetDir, {
-    recursive: true,
-    force: true,
-    maxRetries: 5,
-    retryDelay: 200
-  });
-  await mkdir(path.dirname(targetDir), { recursive: true });
-  await cp(sourceDir, targetDir, { recursive: true });
+  try {
+    await rm(targetDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 200
+    });
+    await mkdir(path.dirname(targetDir), { recursive: true });
+    await cp(sourceDir, targetDir, { recursive: true });
+  } catch (err) {
+    console.warn("[sync-build-output] Skipped directory mirror copy due to: ", err.message);
+  }
 }
 
 function syncBuildOutputPlugin() {

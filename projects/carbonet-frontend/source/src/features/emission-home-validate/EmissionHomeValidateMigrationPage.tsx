@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { isEnglish, navigate } from "../../lib/navigation/runtime";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
@@ -133,36 +128,13 @@ function EmissionHomeValidateInlineStyles() {
 
 export function EmissionHomeValidateMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
     return () => document.body.classList.remove("mobile-menu-open");
   }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => {
-      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-    };
-  }, [payloadState, session]);
 
   const topMenus = useMemo<TopMenu[]>(() => en ? [
     {

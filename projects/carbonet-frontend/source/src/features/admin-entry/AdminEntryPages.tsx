@@ -60,21 +60,12 @@ export function AdminLoginPage() {
     }
     setSubmitting(true);
     try {
-      let body = await postJson<{ status?: string; errors?: string }>(
+      const body = await postJson<{ status?: string; errors?: string }>(
         buildLocalizedPath("/admin/login/actionLogin", "/en/admin/login/actionLogin"),
         { userId: userId.trim(), userPw, userSe: "USR" }
       );
       if (body.status === "loginFailure") {
-        body = await postJson<{ status?: string; errors?: string }>(
-          buildLocalizedPath("/admin/login/actionLogin", "/en/admin/login/actionLogin"),
-          { userId: userId.trim(), userPw, userSe: "ENT" }
-        );
-        if (body.status === "loginFailure") {
-          window.alert(body.errors || (en ? "Login failed." : "로그인에 실패했습니다."));
-          return;
-        }
-        window.sessionStorage.setItem(ADMIN_SESSION_STORAGE_KEY, String(Date.now() + ADMIN_SESSION_DURATION_MS));
-        navigate(buildLocalizedPath("/home", "/en/home"));
+        window.alert(body.errors || (en ? "Login failed." : "로그인에 실패했습니다."));
         return;
       }
       window.sessionStorage.setItem(ADMIN_SESSION_STORAGE_KEY, String(Date.now() + ADMIN_SESSION_DURATION_MS));

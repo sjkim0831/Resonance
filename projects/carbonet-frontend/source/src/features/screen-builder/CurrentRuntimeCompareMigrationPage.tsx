@@ -16,7 +16,7 @@ import {
 } from "../../lib/api/resonanceControlPlane";
 import { fetchScreenBuilderPage, fetchScreenBuilderPreview, fetchScreenCommandPage } from "../../lib/api/platform";
 import type { ScreenCommandPagePayload } from "../../lib/api/platformTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ContextKeyStrip } from "../admin-ui/ContextKeyStrip";
 import { CopyableCodeBlock, GridToolbar, KeyValueGridPanel, MemberLinkButton, MemberPermissionButton, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
@@ -485,18 +485,6 @@ export function CurrentRuntimeCompareMigrationPage() {
       repairQueueCount: repairQueue.length
     });
   }, [blockerRows.length, compareRows.length, currentNodes.length, generatedNodes.length, page, repairQueue.length]);
-  useEffect(() => {
-    function handleNavigationSync() {
-      void commandState.reload();
-      void pageState.reload();
-      void publishedPreviewState.reload();
-      void currentPreviewState.reload();
-      void auditState.reload();
-      void sessionState.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [commandState, pageState, publishedPreviewState, currentPreviewState, auditState, sessionState]);
   const recentAuditCount = (auditState.value?.items || []).length;
   const latestPublishAudit = (auditState.value?.items || []).find((row) => String(row.actionCode || "").includes("PUBLISH")) || null;
   const verifyClosureRows: VerifyClosureRow[] = [

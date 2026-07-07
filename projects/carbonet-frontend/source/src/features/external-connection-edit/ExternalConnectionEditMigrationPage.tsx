@@ -1,6 +1,5 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchExternalConnectionFormPage, saveExternalConnection } from "../../lib/api/ops";
 import type { ExternalConnectionFormPagePayload } from "../../lib/api/opsTypes";
@@ -123,7 +122,6 @@ function helpId(mode: ExternalConnectionFormMode, suffix: string) {
 
 export function ExternalConnectionFormMigrationPage({ mode = "edit" }: { mode?: ExternalConnectionFormMode }) {
   const en = isEnglish();
-  void useFrontendSession();
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const queryConnectionId = search.get("connectionId") || "";
   const pageState = useAsyncValue<ExternalConnectionFormPagePayload>(

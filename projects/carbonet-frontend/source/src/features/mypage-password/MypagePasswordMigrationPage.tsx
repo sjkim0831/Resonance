@@ -1,17 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { useMemo, useState } from "react";
 import {
   UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
+import { logGovernanceScope } from "../../app/policy/debug";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 const COPY = {
   ko: {
@@ -148,10 +144,8 @@ function MenuItem(props: {
 
 export function MypagePasswordMigrationPage() {
   const en = isEnglish();
-  const copy = en ? COPY.en : COPY.ko;
+  const copy = COPY[en ? "en" : "ko"];
   const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -160,35 +154,7 @@ export function MypagePasswordMigrationPage() {
   const name = useMemo(() => session.value?.userId || (en ? "Hyunjang Lee" : "이현장 관리자"), [en, session.value?.userId]);
   const strength = strengthState(newPassword, en);
 
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const menuCount = homeMenu.length;
-  const isLoggedIn = payload.isLoggedIn;
-
-  logGovernanceScope("PAGE", "mypage-password", { mobileMenuOpen, menuCount, isLoggedIn });
+  logGovernanceScope("PAGE", "mypage-password", {});
 
   return (
     <div
@@ -214,14 +180,6 @@ export function MypagePasswordMigrationPage() {
         homeHref={buildLocalizedPath("/home", "/en/home")}
         rightContent={(
           <>
-            <button
-              aria-label="Toggle menu"
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              type="button"
-            >
-              <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-            </button>
             <div className="hidden md:flex flex-col items-end mr-2">
               <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{copy.securityLabel}</span>
               <span className="text-sm font-black text-[var(--kr-gov-text-primary)]">{name}</span>
@@ -230,25 +188,6 @@ export function MypagePasswordMigrationPage() {
           </>
         )}
       />
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <button className="flex-1 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
-          <nav className="w-72 bg-white p-6 shadow-xl">
-            <div className="mb-6 flex items-center justify-between">
-              <span className="text-lg font-bold text-slate-900">{copy.brandTitle}</span>
-              <button onClick={() => setMobileMenuOpen(false)} type="button">
-                <span className="material-symbols-outlined text-slate-600">close</span>
-              </button>
-            </div>
-            <div className="space-y-1">
-              <button className="flex w-full items-center gap-3 rounded-lg bg-blue-50 px-4 py-3 text-sm font-bold text-[var(--kr-gov-blue)]" type="button">
-                <span className="material-symbols-outlined">lock_reset</span>
-                {copy.title}
-              </button>
-            </div>
-          </nav>
-        </div>
-      )}
       <main className="min-h-screen pb-20" id="main-content">
         <section className="relative overflow-hidden bg-slate-900 pb-24 pt-12" data-help-id="mypage-password-hero">
           <div

@@ -1,18 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { logGovernanceScope } from "../../app/policy/debug";
+import { useMemo, useState } from "react";
 import {
   UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomeButton } from "../home-ui/common";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 type CopySet = {
   skip: string;
@@ -165,90 +159,10 @@ export function SupportFaqMigrationPage() {
     return faqs.filter((item) => `${item.question} ${item.answer}`.toLowerCase().includes(normalized));
   }, [faqs, query]);
 
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const isLoggedIn = payload.isLoggedIn;
-  const menuCount = homeMenu.length;
-  const mobileMenuItems = useMemo(() =>
-    homeMenu.flatMap(item => item.sections?.flatMap(section => section.items || []) || []),
-    [homeMenu]
-  );
-
-  useEffect(() => {
-    logGovernanceScope("PAGE", "support-faq", {
-      language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount,
-      isLoggedIn,
-      query,
-      resultCount: filteredFaqs.length
-    });
-  }, [en, mobileMenuOpen, menuCount, isLoggedIn, query, filteredFaqs.length]);
-
   return (
     <div className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
       <a className="skip-link" href="#main-content">{copy.skip}</a>
       <UserGovernmentBar governmentText={copy.government} guidelineText={copy.guideline} />
-      <button
-        aria-label="Toggle mobile menu"
-        className="fixed right-4 top-4 z-[200] flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg md:hidden"
-        onClick={() => setMobileMenuOpen((prev) => !prev)}
-        type="button"
-      >
-        <span className="material-symbols-outlined text-2xl text-[var(--kr-gov-text-primary)]">
-          {mobileMenuOpen ? "close" : "menu"}
-        </span>
-      </button>
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-[199] bg-black/50 md:hidden" onClick={() => setMobileMenuOpen(false)} onKeyDown={() => {}} role="button" tabIndex={-1} />
-      )}
-      <div className={`fixed left-0 top-0 z-[200] h-full w-72 bg-white shadow-2xl transition-transform md:hidden ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
-          <span className="font-black text-[var(--kr-gov-text-primary)]">{en ? "Menu" : "메뉴"}</span>
-          <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100" onClick={() => setMobileMenuOpen(false)} type="button">
-            <span className="material-symbols-outlined text-xl text-gray-500">close</span>
-          </button>
-        </div>
-        <nav className="overflow-y-auto p-4">
-          <ul className="space-y-1">
-            {mobileMenuItems.map((item, idx) => (
-              <li key={idx}>
-                <a className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50" href={item.url}>
-                  <span className="material-symbols-outlined text-lg text-[var(--kr-gov-blue)]">circle</span>
-                  {item.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
       <UserPortalHeader
         brandSubtitle="Site Overseer Control Center"
         brandTitle={en ? "Support Center" : "고객지원"}

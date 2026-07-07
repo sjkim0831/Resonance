@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type StepState = "completed" | "active" | "upcoming";
 
@@ -213,18 +209,6 @@ function completionRate(fields: string[]) {
 export function CertificateReportFormMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
   const content = FORM_CONTENT[en ? "en" : "ko"];
 
   const [reportType, setReportType] = useState(content.reportTypes[0]);
@@ -247,34 +231,14 @@ export function CertificateReportFormMigrationPage() {
 
   const completedPercent = completionRate([reportType, title, company, site, assignee, facility, periodStart, periodEnd]);
 
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
   useEffect(() => {
     logGovernanceScope("PAGE", "certificate-report-form", {
       language: en ? "en" : "ko",
       reportType,
       completedPercent,
-      estimatedEmission,
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn)
+      estimatedEmission
     });
-  }, [completedPercent, en, estimatedEmission, reportType, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
+  }, [completedPercent, en, estimatedEmission, reportType]);
 
   return (
     <>

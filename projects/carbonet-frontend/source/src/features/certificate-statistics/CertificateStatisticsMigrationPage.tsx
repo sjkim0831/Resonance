@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { readBootstrappedCertificateStatisticsPageData, readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedCertificateStatisticsPageData } from "../../lib/api/bootstrap";
 import { fetchCertificateStatisticsPage } from "../../lib/api/trade";
 import type { CertificateStatisticsPagePayload } from "../../lib/api/tradeTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import {
   AdminInput,
@@ -32,21 +29,6 @@ type Filters = {
 
 export function CertificateStatisticsMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
-  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen] = useState(false);
-
-  const homePayloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  const homeMenu = homePayloadState.value?.homeMenu || [];
-
   const initial = useMemo<Filters>(() => {
     const search = new URLSearchParams(window.location.search);
     return {
@@ -83,20 +65,6 @@ export function CertificateStatisticsMigrationPage() {
   const maxMonthlyIssued = Math.max(1, ...monthlyRows.map((item) => Number(stringOf(item, "issuedCount") || "0")));
 
   useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void homePayloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [homePayloadState, session]);
-
-  useEffect(() => {
     const next = new URLSearchParams();
     if (filters.pageIndex > 1) next.set("pageIndex", String(filters.pageIndex));
     if (filters.searchKeyword) next.set("searchKeyword", filters.searchKeyword);
@@ -116,10 +84,7 @@ export function CertificateStatisticsMigrationPage() {
       certificateType: filters.certificateType,
       issuanceStatus: filters.issuanceStatus,
       monthlyRowCount: monthlyRows.length,
-      institutionRowCount: institutionRows.length,
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(homePayloadState.value?.isLoggedIn)
+      institutionRowCount: institutionRows.length
     });
     logGovernanceScope("COMPONENT", "certificate-statistics-dashboard", {
       totalIssuedCount: Number(page?.totalIssuedCount || 0),

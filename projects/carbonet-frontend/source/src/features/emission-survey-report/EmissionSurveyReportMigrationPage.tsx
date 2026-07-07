@@ -1,12 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -597,55 +592,16 @@ function useEnglishMaterialNames(report: ReturnType<typeof loadEmissionSurveyRep
 
 export function EmissionSurveyReportMigrationPage() {
   const routeEn = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [routeEn],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: routeEn, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => {
-      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-    };
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: routeEn, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
   const [printLanguageOpen, setPrintLanguageOpen] = useState(false);
   const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
   const en = routeEn;
   const report = loadEmissionSurveyReportSession();
 
-  useEffect(() => {
-    logGovernanceScope("PAGE", "emission-survey-report", {
-      route: window.location.pathname,
-      language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
-      hasSessionPayload: Boolean(report),
-      productName: report?.productName || ""
-    });
-  }, [en, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, report]);
+  logGovernanceScope("PAGE", "emission-survey-report", {
+    route: window.location.pathname,
+    hasSessionPayload: Boolean(report),
+    productName: report?.productName || ""
+  });
 
   const chartSections = useMemo(
     () => (report?.sectionSummaries || []).filter((section) => section.totalEmission > 0),
@@ -770,12 +726,14 @@ export function EmissionSurveyReportMigrationPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--kr-gov-blue)]">{en ? "Contribution Analysis" : "기여도 분석"}</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-[var(--kr-gov-text-primary)]">{en ? "Section Contribution Graph" : "섹션별 탄소배출 기여 그래프"}</h2>
                 </div>
               </div>
 
               <div className="mt-6 rounded-[calc(var(--kr-gov-radius)+4px)] border border-amber-200 bg-amber-50/70 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">{en ? "Normalization Base" : "정규화 기준"}</p>
                     <h3 className="mt-1 text-xl font-black tracking-[-0.03em] text-slate-950">{en ? "Product And Byproduct Mass Basis" : "제품 및 부산물 질량 기준"}</h3>
                     <p className="mt-2 text-xs font-bold leading-5 text-amber-800">
                       {en
@@ -806,17 +764,7 @@ export function EmissionSurveyReportMigrationPage() {
                   </div>
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">{en ? "Product GWP" : "제품 GWP"}</p>
-                    <p className="mt-1 font-mono text-lg font-black text-slate-950">
-                      {outputNormalizationRows.length > 0
-                        ? (() => {
-                            const firstRow = outputNormalizationRows[0];
-                            const massShare = outputMassShare(firstRow, outputNormalizationRows, normalization.outputQuantityTotal, byproductAllocation);
-                            const massShareEmission = report.summary.totalEmission * massShare;
-                            const perTonEmission = firstRow.originalAmount > 0 ? massShareEmission / firstRow.originalAmount : 0;
-                            return formatNumber(perTonEmission, 4);
-                          })()
-                        : 0}
-                    </p>
+                    <p className="mt-1 font-mono text-lg font-black text-slate-950">{formatNumber(outputNormalizationRows.length > 0 ? outputNormalizedEmission(outputNormalizationRows[0], outputNormalizationRows, report.summary.totalEmission, normalization.outputQuantityTotal, byproductAllocation) : 0, 6)}</p>
                     <p className="text-[10px] font-bold text-slate-400">kg CO2e/ton of {en ? (report.productName || "Product") : (report.productName || "제품")}</p>
                   </div>
                   <div>
@@ -835,16 +783,23 @@ export function EmissionSurveyReportMigrationPage() {
                   <PrintOutputAllocationTable
                     en={en}
                     outputQuantityTotal={normalization.outputQuantityTotal}
+                    normalizationFactor={normalization.factor}
                     byproductAllocation={byproductAllocation}
                     rows={outputNormalizationRows}
                     totalEmission={report.summary.totalEmission}
+                    productName={report.productName}
                   />
                 </section>
               </div>
 
               <div className="mt-6 grid gap-4 xl:grid-cols-2">
                 <div className="rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-slate-50 p-5">
-                  <h3 className="mt-1 text-lg font-black tracking-[-0.03em] text-slate-950">{en ? "Section Contribution Bars" : "섹션별 탄소배출 기여 그래프"}</h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--kr-gov-blue)]">{en ? "Existing View" : "기존 그래프"}</p>
+                      <h3 className="mt-1 text-lg font-black tracking-[-0.03em] text-slate-950">{en ? "Section Contribution Bars" : "섹션별 탄소배출 기여 그래프"}</h3>
+                    </div>
+                  </div>
                   <div className="mt-5 space-y-4">
                     {chartSections.map((section, index) => {
                       const width = Math.max(4, (section.totalEmission / maxChartEmission) * 100);
@@ -1390,6 +1345,7 @@ export function EmissionSurveyReportPrintPage() {
         <section className="print-card print-soft-bg mt-7 rounded-3xl border border-amber-200 bg-[linear-gradient(135deg,#fffbeb,#fff7ed)] p-5">
           <div className="flex flex-wrap justify-between gap-3 items-start">
             <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Normalization Base" : "정규화 기준"}</p>
               <h2 className="mt-1 text-xl font-black">{en ? "Product And Byproduct Mass Basis" : "제품 및 부산물 질량 기준"}</h2>
             </div>
             <div className="min-w-[160px] bg-white rounded-xl p-1 shadow-sm border border-amber-200 print:hidden">
@@ -1443,12 +1399,14 @@ export function EmissionSurveyReportPrintPage() {
             en={en}
             englishNameMap={englishNameMap}
             outputQuantityTotal={normalization.outputQuantityTotal}
+            normalizationFactor={normalization.factor}
             byproductAllocation={byproductAllocation}
             onRowShareChange={updateOutputSharePercent}
             onRowNumberChange={updateOutputRowNumber}
             onRowTextChange={updateInventoryRow}
             rows={outputNormalizationRows}
             totalEmission={totalEmission}
+            productName={effectiveReport.productName}
           />
         </section>
 
@@ -1659,7 +1617,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   return (
     <main className="min-h-screen bg-[#e8edf3] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:20px;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:20mm!important;box-sizing:border-box!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;padding:0!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:10pt!important;font-weight:400!important;line-height:1.35!important}.lca-sheet header{min-height:25px!important;margin-bottom:8px!important}.lca-sheet header,.lca-sheet header *{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:18pt!important;font-weight:600!important;line-height:1.2!important}.lca-sheet h2{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:12pt!important;font-weight:600!important;line-height:1.2!important;margin-bottom:6px!important}.lca-page-2>h2{font-size:18pt!important;font-weight:600!important;margin-bottom:18pt!important}.lca-sheet p,.lca-overview-copy{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:9pt!important;font-weight:400!important;line-height:1.45!important}.lca-section{break-inside:avoid;page-break-inside:avoid;margin-top:26px!important}.lca-page-2{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:60px!important}.lca-sheet>.lca-section:last-child{padding-bottom:0!important}.lca-table{break-inside:auto;page-break-inside:auto;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;width:100%!important}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:500!important;line-height:1.25!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td{padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;line-height:1.25!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9pt!important;line-height:1.3!important}.lca-table td.bg-\[\#f2f2f2\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;font-weight:500!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}.lca-required-field{background-image:linear-gradient(135deg,#ef233c 0 8px,transparent 8px)!important;background-repeat:no-repeat!important;background-position:left top!important;background-size:12px 12px!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9px!important;line-height:1.3!important}.lca-overview-copy{font-size:9px!important;line-height:1.45!important}}"}
+        {"@page{size:A4;margin:60px;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:60px!important;box-sizing:border-box!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;padding:0!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:10pt!important;font-weight:400!important;line-height:1.35!important}.lca-sheet header{min-height:25px!important;margin-bottom:8px!important}.lca-sheet header,.lca-sheet header *{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:18pt!important;font-weight:600!important;line-height:1.2!important}.lca-sheet h2{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:12pt!important;font-weight:600!important;line-height:1.2!important;margin-bottom:6px!important}.lca-page-2>h2{font-size:18pt!important;font-weight:600!important;margin-bottom:18pt!important}.lca-sheet p,.lca-overview-copy{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:9pt!important;font-weight:400!important;line-height:1.45!important}.lca-section{break-inside:avoid;page-break-inside:avoid;margin-top:26px!important}.lca-page-2{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:60px!important}.lca-sheet>.lca-section:last-child{padding-bottom:0!important}.lca-table{break-inside:auto;page-break-inside:auto;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;width:100%!important}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:500!important;line-height:1.25!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td{padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;line-height:1.25!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9pt!important;line-height:1.3!important}.lca-table td.bg-\[\#f2f2f2\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;font-weight:500!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}.lca-required-field{background-image:linear-gradient(135deg,#ef233c 0 8px,transparent 8px)!important;background-repeat:no-repeat!important;background-position:left top!important;background-size:12px 12px!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9px!important;line-height:1.3!important}.lca-overview-copy{font-size:9px!important;line-height:1.45!important}}"}
       </style>
 
       <div className="print-hidden mx-auto mb-4 flex max-w-[900px] justify-between gap-3">
@@ -1749,11 +1707,11 @@ export function EmissionSurveyLcaSummaryPrintPage() {
             <tbody>
               <tr>
                 <td className={`${tableLabelClass} w-[28%]`}>{en ? "Product model" : "제품모델"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} placeholder="" value={productModel} /></td>
+                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} placeholder="* 제품명으로 수정" value={productModel} /></td>
               </tr>
               <tr>
                 <td className={tableLabelClass}>{en ? "General information" : "제품 일반 정보"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} maxLength={300} multiline onCommit={setProductDescription} placeholder="" value={productDescription} /></td>
+                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} maxLength={300} multiline onCommit={setProductDescription} placeholder={`* 모델명으로 수정\n제품 일반 정보를 입력`} value={productDescription} /></td>
               </tr>
               <tr>
                 <td className={`${tableLabelClass} w-[28%] align-middle`} rowSpan={2}>Product Spec.</td>
@@ -1764,7 +1722,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
               </tr>
               <tr>
                 <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductModel} placeholder="* 제품명" value={productModel} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} placeholder="" value={productType} /></td>
+                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} placeholder="* 모델명" value={productType} /></td>
                 <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setEquipmentWeight} placeholder="장비중량(ton)" value={equipmentWeight} /></td>
                 <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setBucketCapacity} placeholder="버킷 용량(m2)" value={bucketCapacity} /></td>
               </tr>
@@ -2024,16 +1982,19 @@ function PrintOutputAllocationTable({
   englishNameMap,
   totalEmission,
   outputQuantityTotal,
+  normalizationFactor,
   byproductAllocation,
   onRowNumberChange,
   onRowTextChange,
-  onRowShareChange
+  onRowShareChange,
+  productName
 }: {
   rows: EmissionSurveyReportRow[];
   en: boolean;
   englishNameMap?: EnglishMaterialNameMap;
   totalEmission: number;
   outputQuantityTotal: number;
+  normalizationFactor?: number;
   byproductAllocation?: "allocated" | "unallocated";
   onRowNumberChange?: (rowId: string, key: "originalAmount" | "amount", value: number) => void;
   onRowTextChange?: (rowId: string, key: keyof EmissionSurveyReportRow, value: string | number) => void;
@@ -2055,8 +2016,8 @@ function PrintOutputAllocationTable({
       <table className="print-table w-full table-fixed border-separate border-spacing-0 text-[11px]">
         <thead className="bg-amber-50">
           <tr className="text-left font-black text-amber-900">
-            <th className="w-[28%] rounded-tl-3xl border-b border-amber-200 px-3 py-3">{en ? "Item" : "항목"}</th>
-            <th className="w-[12%] border-b border-amber-200 px-3 py-3 text-center">{en ? "Model name" : "모델명"}</th>
+            <th className="w-[12%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Model name" : "모델명"}</th>
+            <th className="w-[28%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
             <th className="w-[16%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
             <th className="w-[10%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Mass Share" : "질량 비중"}</th>
             <th className="w-[17%] border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission (by Mass Share)" : "질량 비중에 따른 배출량 계산"}</th>
@@ -2067,10 +2028,15 @@ function PrintOutputAllocationTable({
           {rows.map((row) => {
             const massShare = outputMassShare(row, rows, outputQuantityTotal, byproductAllocation || "allocated");
             const displaySharePercent = massShare * 100;
-            const massShareEmission = totalEmission * massShare;
-            const perTonEmission = row.originalAmount > 0 ? massShareEmission / row.originalAmount : 0;
+            const effectiveNormalizationFactor = normalizationFactor || 1;
+            const sourceTotalEmission = effectiveNormalizationFactor > 0 ? totalEmission / effectiveNormalizationFactor : totalEmission;
+            const massShareEmission = sourceTotalEmission * massShare;
+            const perTonEmission = outputQuantityTotal > 0 ? (sourceTotalEmission / outputQuantityTotal) * massShare : totalEmission * massShare;
             return (
               <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
+                <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
+                  {groupLabel(row, en)}
+                </td>
                 <td className="px-3 py-3 align-middle">
                   {editable ? (
                     <EditableText
@@ -2087,9 +2053,6 @@ function PrintOutputAllocationTable({
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-amber-100">
                     <div className="h-full rounded-full bg-amber-600" style={{ width: `${Math.max(2, Math.min(displaySharePercent, 100))}%` }} />
                   </div>
-                </td>
-                <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
-                  {groupLabel(row, en)}
                 </td>
                 <td className="px-2 py-3 text-center">
                   <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap font-mono text-[11px] font-black text-slate-900">
@@ -2123,15 +2086,15 @@ function PrintOutputAllocationTable({
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
-                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(massShareEmission, 4)}</span>
+                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(massShareEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">kg CO2e</span>
                   </div>
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
-                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(perTonEmission, 4)}</span>
+                    <span className="font-mono text-sm font-black text-slate-950">{formatNumber(perTonEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">
-                      kg CO2e/ton of <br />{en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                      kg CO2e/ton of <br />{en ? (productName || "Product") : (productName || "제품")}
                     </span>
                   </div>
                 </td>
@@ -2184,7 +2147,8 @@ function PrintSectionRows({
             )}
           </td>
           <td className="px-3 py-2">
-            <div className="flex items-center justify-end gap-2 rounded-lg bg-slate-50 px-2 py-1">
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1">
+              <span className="min-w-12 text-[10px] font-bold text-slate-500">{en ? "Mass" : "질량"}</span>
               <span className="whitespace-nowrap font-mono">
                 {editable ? (
                   <EditableNumber

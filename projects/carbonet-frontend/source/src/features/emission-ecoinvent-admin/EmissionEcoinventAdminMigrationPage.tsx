@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import {
   fetchEcoinventDatasetPage,
   fetchEcoinventFilterOptions,
@@ -14,8 +9,7 @@ import {
   saveEcoinventMapping
 } from "../../lib/api/emission";
 import type { EcoinventDatasetRow } from "../../lib/api/emissionTypes";
-import { getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -138,39 +132,6 @@ function sortIndicator(field: SortField, sortField: SortField | "", sortDirectio
 
 export function EmissionEcoinventAdminMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => {
-      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-    };
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
   const [keyword, setKeyword] = useState("");
   const [appliedKeyword, setAppliedKeyword] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
@@ -282,17 +243,6 @@ export function EmissionEcoinventAdminMigrationPage() {
   useEffect(() => {
     setActiveSuggestionIndex(-1);
   }, [keyword]);
-
-  useEffect(() => {
-    logGovernanceScope("PAGE", "emission-ecoinvent-admin", {
-      language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
-      totalCount,
-      selectedRowCount: selectedIds.length
-    });
-  }, [en, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, selectedIds.length, totalCount]);
 
   function chooseSuggestion(value: string) {
     setKeyword(value);
@@ -462,12 +412,11 @@ export function EmissionEcoinventAdminMigrationPage() {
   }
 
   return (
-    <>
-      <AdminPageShell
-        breadcrumbs={[
-          { label: en ? "Home" : "홈" },
-          { label: en ? "Emissions & Certification" : "배출/인증" },
-          { label: "ecoinvent" }
+    <AdminPageShell
+      breadcrumbs={[
+        { label: en ? "Home" : "홈" },
+        { label: en ? "Emissions & Certification" : "배출/인증" },
+        { label: "ecoinvent" }
       ]}
       loading={false}
       loadingLabel={en ? "Loading ecoinvent admin..." : "ecoinvent 관리 화면을 불러오는 중입니다."}
@@ -683,61 +632,5 @@ export function EmissionEcoinventAdminMigrationPage() {
  */}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
-
-    <button
-      id="mobile-menu-toggle"
-      className="fixed bottom-6 right-6 z-50 xl:hidden w-12 h-12 rounded-full bg-[var(--kr-gov-blue)] text-white shadow-lg flex items-center justify-center"
-      type="button"
-      aria-controls="mobile-menu"
-      aria-expanded={mobileMenuOpen}
-      aria-label={en ? "Open menu" : "메뉴 열기"}
-      onClick={() => setMobileMenuOpen((current) => !current)}
-    >
-      <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-    </button>
-
-    <div id="mobile-menu" className={`${mobileMenuOpen ? "" : "hidden"} xl:hidden fixed inset-0 z-[70]`} aria-hidden={!mobileMenuOpen}>
-      <button type="button" className="absolute inset-0 bg-black/50" aria-label={en ? "Close menu" : "메뉴 닫기"} onClick={() => setMobileMenuOpen(false)} />
-      <aside className="absolute top-0 right-0 h-full w-[280px] bg-white shadow-xl overflow-y-auto">
-        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b border-[var(--kr-gov-border-light)] bg-white">
-          <strong className="text-lg font-bold text-[var(--kr-gov-text-primary)]">{en ? "Menu" : "메뉴"}</strong>
-          <button className="w-10 h-10 p-0 text-[var(--kr-gov-text-secondary)]" type="button" onClick={() => setMobileMenuOpen(false)}>
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <nav className="p-4">
-          {homeMenu.length === 0 ? (
-            <p className="text-sm text-[var(--kr-gov-text-secondary)]">{en ? "No menu items" : "메뉴 항목이 없습니다."}</p>
-          ) : (
-            <ul className="space-y-2">
-              {homeMenu.map((item, index) => (
-                <li key={`${item.label || "menu"}-${index}`}>
-                  <a
-                    className="block px-4 py-3 rounded-lg hover:bg-gray-50 text-[var(--kr-gov-text-primary)] font-medium"
-                    href={item.url || "#"}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {item.label || ""}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-6 pt-6 border-t border-[var(--kr-gov-border-light)]">
-            <button
-              className="w-full px-4 py-3 rounded-lg bg-red-50 text-red-600 font-bold hover:bg-red-100"
-              type="button"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                void session.logout();
-              }}
-            >
-              {en ? "Logout" : "로그아웃"}
-            </button>
-          </div>
-        </nav>
-      </aside>
-    </div>
-    </>
   );
 }

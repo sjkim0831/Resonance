@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
-import { HomePayload } from "../home-entry/homeEntryTypes";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { CanView } from "../../components/access/CanView";
 import { submitTradeApproveAction } from "../../lib/api/adminActions";
 import { readBootstrappedTradeApprovePageData } from "../../lib/api/bootstrap";
 import { fetchTradeApprovePage } from "../../lib/api/trade";
 import type { TradeApprovePagePayload } from "../../lib/api/tradeTypes";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import {
   AdminInput,
@@ -108,11 +105,9 @@ function reviewDataRows(row: Record<string, unknown>, en: boolean) {
 
 export function TradeApproveMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
+  const sessionState = useFrontendSession();
   const initialFilters = useMemo<Filters>(() => readInitialFilters(), []);
   const initialPayload = useMemo(() => readBootstrappedTradeApprovePageData(), []);
-  const homeInitialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [draft, setDraft] = useState(initialFilters);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -121,15 +116,6 @@ export function TradeApproveMigrationPage() {
   const [message, setMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: homeInitialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
 
   const pageState = useAsyncValue<TradeApprovePagePayload>(
     () => fetchTradeApprovePage(filters),
@@ -158,25 +144,6 @@ export function TradeApproveMigrationPage() {
   const tradeTypeOptions = (page?.tradeTypeOptions || []) as Array<Record<string, unknown>>;
   const currentPage = numberOf(page?.pageIndex) || 1;
   const totalPages = numberOf(page?.totalPages) || 1;
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const mobileMenuItems = useMemo(() => homeMenu.flatMap(item => item.sections?.flatMap(section => section.items || []) || []), [homeMenu]);
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => {
-      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-    };
-  }, [payloadState, session]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -202,10 +169,7 @@ export function TradeApproveMigrationPage() {
   useEffect(() => {
     logGovernanceScope("PAGE", "trade-approve", {
       language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
-      actorInsttId: session.value?.insttId || "",
+      actorInsttId: sessionState.value?.insttId || "",
       pageIndex: currentPage,
       searchKeyword: filters.searchKeyword,
       approvalStatus: filters.approvalStatus,
@@ -213,7 +177,7 @@ export function TradeApproveMigrationPage() {
       selectedCount: selectedIds.length,
       rowCount: rows.length
     });
-  }, [currentPage, en, filters.approvalStatus, filters.searchKeyword, filters.tradeType, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, rows.length, selectedIds.length, session.value?.insttId]);
+  }, [currentPage, en, filters.approvalStatus, filters.searchKeyword, filters.tradeType, rows.length, selectedIds.length, sessionState.value?.insttId]);
 
   useEffect(() => {
     if (!reviewRow) {
@@ -227,8 +191,8 @@ export function TradeApproveMigrationPage() {
   const allActionableSelected = actionableIds.length > 0 && actionableIds.every((id) => selectedIds.includes(id));
 
   async function handleAction(action: string, tradeId?: string) {
-    const currentSession = session.value;
-    if (!currentSession) {
+    const session = sessionState.value;
+    if (!session) {
       return;
     }
     setActionError("");
@@ -238,7 +202,7 @@ export function TradeApproveMigrationPage() {
       return;
     }
     try {
-      await submitTradeApproveAction(currentSession, {
+      await submitTradeApproveAction(session, {
         action,
         tradeId,
         selectedIds: tradeId ? undefined : selectedIds,
@@ -261,41 +225,6 @@ export function TradeApproveMigrationPage() {
   }
 
   return (
-    <div className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen">
-      <button
-        className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--kr-gov-blue)] text-white shadow-lg xl:hidden"
-        onClick={() => setMobileMenuOpen((prev) => !prev)}
-        type="button"
-      >
-        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-      </button>
-
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 xl:hidden" onClick={() => setMobileMenuOpen(false)} />
-      )}
-
-      <div
-        className={`fixed right-0 top-0 z-50 h-full w-72 transform overflow-y-auto bg-white shadow-2xl transition-transform duration-300 xl:hidden ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
-      >
-        <div className="flex items-center justify-between border-b border-[var(--kr-gov-border-light)] px-4 py-4">
-          <h2 className="text-lg font-bold">{en ? "Menu" : "메뉴"}</h2>
-          <button onClick={() => setMobileMenuOpen(false)} type="button">
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <nav className="p-4">
-          {mobileMenuItems.map((item, idx) => (
-            <a
-              className="block rounded-lg px-4 py-3 text-sm font-medium text-[var(--kr-gov-text-primary)] hover:bg-[var(--kr-gov-bg-gray)]"
-              href={item.url || "#"}
-              key={`${item.label || "menu"}-${idx}`}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </div>
-
     <AdminPageShell
       actions={(
         <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-[var(--kr-gov-blue)]">
@@ -521,6 +450,5 @@ export function TradeApproveMigrationPage() {
         </ReviewModalFrame>
       </CanView>
     </AdminPageShell>
-    </div>
   );
 }

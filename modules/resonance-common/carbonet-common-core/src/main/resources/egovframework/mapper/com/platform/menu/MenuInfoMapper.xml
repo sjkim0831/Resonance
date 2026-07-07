@@ -38,10 +38,12 @@
                  AND COALESCE(M.USE_AT, 'Y') = 'Y' THEN 'Y'
                 ELSE 'N'
             END AS USE_AT,
+            COALESCE(M.EXPSR_AT, 'Y') AS EXPSR_AT,
             M.MENU_CODE,
             M.MENU_URL,
             M.MENU_ICON,
-            O.SORT_ORDR
+            O.SORT_ORDR,
+            M.DEPENDENT_SCREEN_CODE
         FROM COMTCCMMNDETAILCODE D
         LEFT JOIN COMTNMENUINFO M ON D.CODE = M.MENU_CODE
         LEFT JOIN COMTNMENUORDER O ON D.CODE = O.MENU_CODE
@@ -143,5 +145,30 @@
             LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
         WHERE MENU_CODE = #{code}
     </update>
+
+    <update id="updateMenuExposure">
+        UPDATE COMTNMENUINFO
+        SET EXPSR_AT = #{expsrAt},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE MENU_CODE = #{menuCode}
+    </update>
+
+    <update id="updateDependentScreen">
+        UPDATE COMTNMENUINFO
+        SET DEPENDENT_SCREEN_CODE = #{dependentScreenCode},
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE MENU_CODE = #{menuCode}
+    </update>
+
+    <select id="countMenuInfoByMenuCode" parameterType="string" resultType="int">
+        SELECT COUNT(*)
+        FROM COMTNMENUINFO
+        WHERE MENU_CODE = #{menuCode}
+    </select>
+
+    <insert id="insertMenuInfoForDependentScreen">
+        INSERT INTO COMTNMENUINFO (MENU_CODE, DEPENDENT_SCREEN_CODE, CREAT_PNTTM)
+        VALUES (#{menuCode}, #{dependentScreenCode}, CURRENT_TIMESTAMP)
+    </insert>
 
 </mapper>

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchBlocklistPage, updateSecurityMonitoringBlockCandidate } from "../../lib/api/security";
 import type { BlocklistPagePayload } from "../../lib/api/securityTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import {
   AdminInput,
@@ -105,29 +104,8 @@ function readFiltersFromLocation(): BlocklistFilters {
 
 export function BlocklistMigrationPage() {
   const en = isEnglish();
-  void useFrontendSession();
   const initialFilters = readFiltersFromLocation();
   const [filters, setFilters] = useState(initialFilters);
-
-  useEffect(() => {
-    function syncFromNavigation() {
-      const params = new URLSearchParams(window.location.search);
-      setFilters((current) => ({
-        searchKeyword: params.get("searchKeyword") || "",
-        blockType: params.get("blockType") || current.blockType,
-        status: params.get("status") || current.status,
-        source: params.get("source") || current.source
-      }));
-    }
-    const navigationEventName = getNavigationEventName();
-    window.addEventListener("popstate", syncFromNavigation);
-    window.addEventListener(navigationEventName, syncFromNavigation);
-    return () => {
-      window.removeEventListener("popstate", syncFromNavigation);
-      window.removeEventListener(navigationEventName, syncFromNavigation);
-    };
-  }, []);
-
   const [draft, setDraft] = useState(initialFilters);
   const [releaseHistoryKeyword, setReleaseHistoryKeyword] = useState("");
   const [releaseQueueKeyword, setReleaseQueueKeyword] = useState("");

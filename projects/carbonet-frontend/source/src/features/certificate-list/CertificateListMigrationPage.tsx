@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type CertificateStatusKey = "expiring" | "renewal" | "valid" | "verify" | "reissue";
 
@@ -417,38 +413,9 @@ function iconToneClassName(statusKey: CertificateStatusKey) {
 export function CertificateListMigrationPage() {
   const en = isEnglish();
   const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
   const content = CONTENT[en ? "en" : "ko"];
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | CertificateStatusKey>("ALL");
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
 
   const filteredCards = useMemo(() => content.cards.filter((card) => {
     const loweredKeyword = keyword.trim().toLowerCase();
@@ -462,12 +429,9 @@ export function CertificateListMigrationPage() {
       language: en ? "en" : "ko",
       keyword,
       statusFilter,
-      filteredCount: filteredCards.length,
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn)
+      filteredCount: filteredCards.length
     });
-  }, [en, filteredCards.length, keyword, statusFilter, mobileMenuOpen, homeMenu.length, payload.isLoggedIn]);
+  }, [en, filteredCards.length, keyword, statusFilter]);
 
   return (
     <>
@@ -501,15 +465,7 @@ export function CertificateListMigrationPage() {
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--kr-gov-text-secondary)]">{content.managerRole}</p>
                 <p className="text-sm font-black">{content.managerName}</p>
               </div>
-              <UserLanguageToggle en={en} onKo={() => navigate(buildLocalizedPath("/certificate/list", "/en/certificate/list"))} onEn={() => navigate(buildLocalizedPath("/en/certificate/list", "/certificate/list"))} />
-              <button
-                aria-label={en ? "Open menu" : "메뉴 열기"}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 lg:hidden"
-                onClick={() => setMobileMenuOpen((prev) => !prev)}
-                type="button"
-              >
-                <span className="material-symbols-outlined text-2xl text-slate-600">{mobileMenuOpen ? "close" : "menu"}</span>
-              </button>
+              <UserLanguageToggle en={en} onKo={() => navigate("/certificate/list")} onEn={() => navigate("/en/certificate/list")} />
               {session.value?.authenticated ? (
                 <button className="gov-btn bg-[var(--kr-gov-blue)] px-4 py-2 text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button" onClick={() => void session.logout()}>
                   {en ? "Logout" : "로그아웃"}

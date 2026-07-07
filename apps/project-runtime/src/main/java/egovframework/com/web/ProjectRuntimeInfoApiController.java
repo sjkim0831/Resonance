@@ -25,6 +25,7 @@ public class ProjectRuntimeInfoApiController {
         String projectId = safe(projectRuntimeContext == null ? null : projectRuntimeContext.getProjectId());
         if (projectId.isEmpty()) {
             Map<String, Object> response = new LinkedHashMap<>();
+            response.put("hotReloadActive", "true");
             response.put("status", "UNBOUND");
             response.put("message", "Project runtime is not bound to a projectId.");
             return ResponseEntity.ok(response);

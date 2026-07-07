@@ -35,8 +35,12 @@ export const AI_MANAGEMENT_FAMILY = createRouteFamily(AI_MANAGEMENT_ROUTE_DEFINI
   projectExecutor: { owner: "AI management project executor", responsibilities: ["AI management execution"] },
   installDeploy: { packagingOwnerPath: "frontend/src/app/routes/families", assemblyOwnerPath: "frontend/src/app/routes/families/allRouteFamilies.ts", bootstrapPayloadTarget: "/admin/ai/dashboard", bindingInputs: ["AI management menu binding"], validatorChecks: ["AI management manifest linked"], runtimeVerificationTarget: "/admin/ai/dashboard", compareTarget: "/admin/ai/models", deploySequence: "frontend build -> package -> restart -> AI management route verify", freshnessVerificationSequence: "npm run build -> package -> restart -> AI management route verify", validator: "AI management route family aggregate validator", rollbackEvidence: "AI management governance evidence", auditTrace: "AI management governance trace" },
   pageContracts: buildManifestBackedRoutePageContracts(AI_MANAGEMENT_ROUTE_DEFINITIONS, { familyId: "ai-management", manifestRoot: "aiManagementFamily.manifest", menuCodePrefix: "AI_MANAGEMENT", validator: "AI management route family aggregate validator", rollbackEvidence: "AI management governance evidence" }),
-  pageSystemizationCloseout: "CLOSED",
-  authorityScopeApplicationCloseout: "CLOSED",
-  builderInstallDeployCloseout: "CLOSED",
-  projectBindingPatternsCloseout: "CLOSED"
+  pageSystemizationCloseout:
+    "CLOSED: page systemization is complete for ai-management; identity, authority scope, contracts, project binding, validator checks, and runtime verification target are explicit.",
+  authorityScopeApplicationCloseout:
+    "CLOSED: authority scope is consistently applied for ai-management; menu, entry, query, action, approval, audit, and trace surfaces follow the same governed policy.",
+  builderInstallDeployCloseout:
+    "CLOSED: builder install and deploy closeout is complete for ai-management; install inputs, project bindings, packaging source of truth, runtime target, and evidence surfaces are explicit.",
+  projectBindingPatternsCloseout:
+    "CLOSED: project binding is explicit for ai-management; common definition, project binding, and project executor lines are separately traceable."
 });

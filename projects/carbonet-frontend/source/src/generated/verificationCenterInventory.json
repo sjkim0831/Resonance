@@ -10,12 +10,12 @@
     "governancePlan": "docs/architecture/verification-center-and-baseline-governance-plan.md"
   },
   "summary": {
-    "pageCount": 231,
-    "menuBoundPageCount": 231,
-    "staticMenuBoundPageCount": 230,
+    "pageCount": 230,
+    "menuBoundPageCount": 230,
+    "staticMenuBoundPageCount": 229,
     "dynamicMenuBoundPageCount": 1,
     "unmanagedPageCount": 0,
-    "routeBoundPageCount": 231,
+    "routeBoundPageCount": 230,
     "apiCount": 13,
     "uniqueRouteCount": 13,
     "functionCount": 59,
@@ -508,13 +508,6 @@
       "pageId": "edu-survey",
       "routePath": "/edu/survey",
       "menuCode": "HMENU_EDU_SURVEY",
-      "menuBindingType": "static"
-    },
-    {
-      "manifestKey": "emission-dashboard",
-      "pageId": "emission-dashboard",
-      "routePath": "/emission/dashboard",
-      "menuCode": "H0010107",
       "menuBindingType": "static"
     },
     {

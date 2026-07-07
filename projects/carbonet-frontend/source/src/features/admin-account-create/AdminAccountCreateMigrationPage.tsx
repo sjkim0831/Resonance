@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { CanView } from "../../components/access/CanView";
 import { createAdminAccount } from "../../lib/api/adminActions";
 import { fetchAdminAccountCreatePage, checkAdminAccountId, searchAdminCompanies } from "../../lib/api/adminMember";
+import { fetchFrontendSession } from "../../lib/api/adminShell";
+import type { FrontendSession } from "../../lib/api/adminShellTypes";
 import type { AdminAccountCreatePagePayload, CompanySearchPayload } from "../../lib/api/memberTypes";
-import { buildLocalizedPath, getNavigationEventName, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, navigate } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ADMIN_BUTTON_LABELS } from "../admin-ui/labels";
 import {
@@ -53,7 +54,7 @@ type CompanyResult = CompanySearchPayload["list"][number];
 let daumScriptLoaded = false;
 
 export function AdminAccountCreateMigrationPage() {
-  const sessionState = useFrontendSession();
+  const [session, setSession] = useState<FrontendSession | null>(null);
   const [page, setPage] = useState<AdminAccountCreatePagePayload | null>(null);
   const [rolePreset, setRolePreset] = useState("MASTER");
   const [adminId, setAdminId] = useState("");
@@ -85,8 +86,9 @@ export function AdminAccountCreateMigrationPage() {
   const canSearchCompanies = rolePreset !== "MASTER";
 
   useEffect(() => {
-    fetchAdminAccountCreatePage()
-      .then((pagePayload) => {
+    Promise.all([fetchFrontendSession(), fetchAdminAccountCreatePage()])
+      .then(([sessionPayload, pagePayload]) => {
+        setSession(sessionPayload);
         setPage(pagePayload);
         const presetOptions = (((pagePayload.adminAccountCreateAllowedPresets as string[] | undefined)
           || Object.keys((pagePayload.adminAccountCreatePresetAuthorCodes || {}) as Record<string, string>))).map((item) => String(item));
@@ -144,22 +146,6 @@ export function AdminAccountCreateMigrationPage() {
   }, [bizrno, companyName, insttId, representativeName]);
 
   useEffect(() => {
-    function syncFiltersFromLocation() {
-      const params = new URLSearchParams(window.location.search);
-      const nextRolePreset = params.get("rolePreset") || "";
-      if (nextRolePreset && nextRolePreset !== rolePreset) setRolePreset(nextRolePreset);
-    }
-    const eventName = getNavigationEventName();
-    window.addEventListener(eventName, syncFiltersFromLocation);
-    window.addEventListener("popstate", syncFiltersFromLocation);
-    return () => {
-      window.removeEventListener(eventName, syncFiltersFromLocation);
-      window.removeEventListener("popstate", syncFiltersFromLocation);
-    };
-  }, [rolePreset]);
-
-  useEffect(() => {
-    const session = sessionState.value;
     if (!page || !session) {
       return;
     }
@@ -179,7 +165,7 @@ export function AdminAccountCreateMigrationPage() {
       selectedInsttId: insttId,
       companySearchOpen
     });
-  }, [canSearchCompanies, companySearchOpen, insttId, page, rolePreset, sessionState.value]);
+  }, [canSearchCompanies, companySearchOpen, insttId, page, rolePreset, session]);
 
   function resetForm() {
     setAdminId("");
@@ -215,7 +201,6 @@ export function AdminAccountCreateMigrationPage() {
   }
 
   async function handleCheckId() {
-    const session = sessionState.value;
     logGovernanceScope("ACTION", "admin-account-id-check", {
       actorInsttId: session?.insttId || "",
       adminId
@@ -231,7 +216,6 @@ export function AdminAccountCreateMigrationPage() {
   }
 
   async function handleCompanySearch(pageIndex = 1) {
-    const session = sessionState.value;
     logGovernanceScope("ACTION", "admin-account-org-search", {
       actorInsttId: session?.insttId || "",
       rolePreset,
@@ -291,7 +275,6 @@ export function AdminAccountCreateMigrationPage() {
   }
 
   async function handleSave() {
-    const session = sessionState.value;
     logGovernanceScope("ACTION", "admin-account-create", {
       actorInsttId: session?.insttId || "",
       rolePreset,

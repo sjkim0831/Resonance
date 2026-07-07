@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
@@ -8,11 +7,8 @@ import {
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomeButton, HomeInput } from "../home-ui/common";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 type RenewalCard = {
   id: string;
@@ -230,38 +226,8 @@ const ROADMAP: RoadmapItem[] = [
 export function EduContentMigrationPage() {
   const session = useFrontendSession();
   const en = isEnglish();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const isLoggedIn = payload.isLoggedIn;
-  const menuCount = homeMenu.length;
 
   const renewalCards = useMemo(
     () => RENEWAL_CARDS.filter((item) => `${item.titleKo} ${item.titleEn} ${item.bodyKo} ${item.bodyEn}`.toLowerCase().includes(normalizedQuery)),
@@ -271,19 +237,6 @@ export function EduContentMigrationPage() {
     () => CERTIFICATION_ROWS.filter((item) => `${item.nameKo} ${item.nameEn} ${item.licenseNo}`.toLowerCase().includes(normalizedQuery)),
     [normalizedQuery]
   );
-
-  useEffect(() => {
-    logGovernanceScope("PAGE", "edu-content", {
-      language: en ? "en" : "ko",
-      query,
-      renewalCount: renewalCards.length,
-      certificationCount: certificationRows.length,
-      userType: session.value?.authorCode || "guest",
-      mobileMenuOpen,
-      menuCount,
-      isLoggedIn
-    });
-  }, [certificationRows.length, en, query, renewalCards.length, session.value?.authorCode, mobileMenuOpen, menuCount, isLoggedIn]);
 
   useEffect(() => {
     logGovernanceScope("PAGE", "edu-content", {
@@ -380,31 +333,6 @@ export function EduContentMigrationPage() {
           </>
         )}
       />
-
-      <button
-        aria-label={mobileMenuOpen ? (en ? "Close menu" : "메뉴 닫기") : (en ? "Open menu" : "메뉴 열기")}
-        className="fixed right-4 top-4 z-[60] flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg xl:hidden"
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        type="button"
-      >
-        <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-      </button>
-
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-[var(--kr-gov-bg-gray)] xl:hidden">
-          <div className="flex h-full flex-col pt-20">
-            <nav className="flex-1 overflow-y-auto px-4">
-              <div className="space-y-2">
-                <button className="block w-full rounded-lg px-4 py-3 text-left text-lg font-bold hover:bg-slate-100" onClick={() => { navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list")); setMobileMenuOpen(false); }} type="button">{copy.navDashboard}</button>
-                <button className="block w-full rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-left text-lg font-bold text-white" onClick={() => { navigate(buildLocalizedPath("/edu/content", "/en/edu/content")); setMobileMenuOpen(false); }} type="button">{copy.navPlanner}</button>
-                <button className="block w-full rounded-lg px-4 py-3 text-left text-lg font-bold hover:bg-slate-100" onClick={() => { navigate(buildLocalizedPath("/edu/progress", "/en/edu/progress")); setMobileMenuOpen(false); }} type="button">{copy.navProgress}</button>
-                <button className="block w-full rounded-lg px-4 py-3 text-left text-lg font-bold hover:bg-slate-100" onClick={() => { navigate(buildLocalizedPath("/edu/certificate", "/en/edu/certificate")); setMobileMenuOpen(false); }} type="button">{copy.navPolicy}</button>
-                <button className="mt-4 block w-full rounded-lg bg-red-50 px-4 py-3 text-left text-lg font-bold text-red-600 hover:bg-red-100" onClick={() => { void session.logout(); setMobileMenuOpen(false); }} type="button">{en ? "Logout" : "로그아웃"}</button>
-              </div>
-            </nav>
-          </div>
-        </div>
-      )}
 
       <main id="main-content">
         <section className="relative overflow-hidden border-b border-slate-800 bg-slate-900 py-10" data-help-id="edu-content-hero">

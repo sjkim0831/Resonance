@@ -19,6 +19,11 @@
     <dependencies>
         <dependency>
             <groupId>egovframework</groupId>
+            <artifactId>resonance-runtimecontrol-core</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>egovframework</groupId>
             <artifactId>resonance-mapper-infra</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
@@ -45,14 +50,6 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>${project.basedir}/../../src/main/resources</directory>
-                <includes>
-                    <include>egovframework/mapper/com/platform/runtimecontrol/**</include>
-                </includes>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

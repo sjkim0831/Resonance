@@ -1,13 +1,9 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { fetchEmissionGwpValuesPage, saveEmissionGwpValue } from "../../lib/api/emission";
 import type { EmissionGwpValuesPagePayload } from "../../lib/api/emissionTypes";
-import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, LookupContextStrip, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -219,39 +215,6 @@ function buildRecommendationReason(row: Record<string, string> | null | undefine
 export function EmissionGwpValuesMigrationPage() {
   const policyOrder = ["AUTO", "TEXT_ONLY", "OCR_PREFERRED"] as const;
   const en = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => {
-      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-    };
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-
   const [showReferenceCompare, setShowReferenceCompare] = useState(false);
   const [showPolicyCompare, setShowPolicyCompare] = useState(false);
   const [loadAllPdfEvidence, setLoadAllPdfEvidence] = useState(false);
@@ -407,14 +370,11 @@ export function EmissionGwpValuesMigrationPage() {
     logGovernanceScope("PAGE", "emission-gwp-values", {
       route: window.location.pathname,
       language: en ? "en" : "ko",
-      mobileMenuOpen,
-      menuCount: homeMenu.length,
-      isLoggedIn: Boolean(payload.isLoggedIn),
       sectionCode: appliedFilters.sectionCode,
       resultCount: rows.length,
       selectedRowId: stringOf(selectedRow, "rowId")
     });
-  }, [en, appliedFilters.sectionCode, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, rows.length, selectedRow]);
+  }, [en, appliedFilters.sectionCode, rows.length, selectedRow]);
 
   const visibleSummaryCards = useMemo(() => summaryCards.slice(0, 4), [summaryCards]);
   const visibleComparisonSummary = useMemo(() => comparisonSummary.slice(0, 3), [comparisonSummary]);

@@ -1,6 +1,8 @@
 {
   "mode": "no-build-no-deploy",
   "project": "carbonet",
+  "version": "3.0",
+  "description": "Enhanced no-build runtime v3 with Security Rules, Schema Metadata, and Business Rules support",
   "boundaries": {
     "operations": {
       "paths": [
@@ -46,18 +48,114 @@
     ]
   },
   "backend": {
-    "strategy": "server-driven metadata",
-    "metadataHostPath": "/opt/Resonance/projects/carbonet-backend-metadata",
-    "metadataContainerPath": "/app/backend-metadata",
+    "strategy": "metadata-driven + script-engine",
+    "security": {
+      "enabled": true,
+      "type": "yaml-based-dynamic",
+      "configPath": "/opt/Resonance/projects/carbonet-backend-metadata/security/security-rules.yaml",
+      "containerPath": "/app/backend-metadata/security",
+      "autoReload": true,
+      "features": [
+        "path-based authorization",
+        "role-permission mapping",
+        "CORS configuration",
+        "rate limiting",
+        "password policy",
+        "session management"
+      ],
+      "api": "/api/security/config"
+    },
+    "schema": {
+      "enabled": true,
+      "type": "metadata-driven-dynamic",
+      "metadataPath": "/opt/Resonance/projects/carbonet-backend-metadata/schema",
+      "containerPath": "/app/backend-metadata/schema",
+      "autoReload": true,
+      "files": [
+        {
+          "name": "table-metadata.yaml",
+          "purpose": "table structure and column definitions"
+        },
+        {
+          "name": "query-templates.yaml",
+          "purpose": "dynamic SQL query templates"
+        },
+        {
+          "name": "db-changes.yaml",
+          "purpose": "DB change history and migration tracking"
+        }
+      ],
+      "api": "/api/schema/metadata"
+    },
+    "scriptEngine": {
+      "enabled": true,
+      "path": "/opt/Resonance/projects/carbonet-backend-metadata/scripts",
+      "containerPath": "/app/backend-metadata/scripts",
+      "autoReload": true,
+      "scripts": [
+        {
+          "name": "MenuRenderer",
+          "file": "menu-renderer.groovy",
+          "purpose": "Dynamic menu rendering with permission evaluation"
+        },
+        {
+          "name": "QueryBuilder",
+          "file": "query-builder.groovy",
+          "purpose": "Dynamic SQL query construction"
+        },
+        {
+          "name": "ValidationRules",
+          "file": "validation-rules.groovy",
+          "purpose": "Form validation rules"
+        },
+        {
+          "name": "BusinessRules",
+          "file": "business-rules.groovy",
+          "purpose": "Core business logic, calculations, workflows"
+        },
+        {
+          "name": "DataProcessing",
+          "file": "data-processing.groovy",
+          "purpose": "Data transformation, aggregation, filtering"
+        }
+      ],
+      "api": "/api/script"
+    },
     "manifestSource": "/opt/Resonance/var/k8s/carbonet-runtime-manifest.json",
     "containerManifest": "/app/config/manifest.json",
-    "configMap": "carbonet-prod/carbonet-runtime-manifest",
-    "runtimeInfoApi": "/api/runtime/project-info"
+    "configMap": "carbonet-prod/carbonet-runtime-manifest"
   },
   "apply": {
     "script": "ops/scripts/resonance-no-build-apply.sh",
     "build": false,
     "deploy": false,
     "restart": false
-  }
+  },
+  "buildRequiredOnlyFor": [
+    "new Java class addition/removal",
+    "Java interface contract changes",
+    "DB schema DDL changes (use Flyway/Liquibase for migration)",
+    "security engine core changes",
+    "new ORM entity mapping"
+  ],
+  "metadataEditableOnly": [
+    "security-rules.yaml - path authorization, roles, CORS, rate limiting",
+    "role-permission-mapping.yaml - role-menu permissions",
+    "table-metadata.yaml - table structure interpretation",
+    "query-templates.yaml - SQL query templates",
+    "db-changes.yaml - change tracking"
+  ],
+  "scriptEditableOnly": [
+    "menu-renderer.groovy - menu logic",
+    "query-builder.groovy - query construction",
+    "validation-rules.groovy - validation",
+    "business-rules.groovy - core business logic",
+    "data-processing.groovy - data transformation"
+  ],
+  "verification": [
+    "curl -sI http://127.0.0.1:32947/assets/react/api/build-studio-asset-inventory.json",
+    "curl -s http://127.0.0.1:32947/api/script/list",
+    "curl -s http://127.0.0.1:32947/api/security/config",
+    "curl -s http://127.0.0.1:32947/api/schema/metadata"
+  ]
 }

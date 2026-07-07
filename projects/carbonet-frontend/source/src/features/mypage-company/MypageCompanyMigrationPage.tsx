@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useMemo } from "react";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
@@ -8,11 +7,8 @@ import {
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HomeButton, HomeInput } from "../home-ui/common";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 type CopySet = {
   skip: string;
@@ -225,42 +221,12 @@ export function MypageCompanyMigrationPage() {
   const en = isEnglish();
   const copy = COPY[en ? "en" : "ko"];
   const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const displayName = useMemo(() => {
     const name = session.value?.userId?.trim();
     return name && name.length > 0 ? name : en ? "Corporate Admin" : "기업 관리자";
   }, [en, session.value?.userId]);
 
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const menuCount = homeMenu.length;
-  const isLoggedIn = payload.isLoggedIn;
-
-  logGovernanceScope("PAGE", "mypage-company", { mobileMenuOpen, menuCount, isLoggedIn });
+  logGovernanceScope("PAGE", "mypage-company", {});
 
   return (
     <div
@@ -283,42 +249,13 @@ export function MypageCompanyMigrationPage() {
         brandSubtitle={en ? "Corporate Account Center" : "기업 회원 관리 센터"}
         homeHref={buildLocalizedPath("/home", "/en/home")}
         rightContent={(
-          <>
-            <button
-              aria-label="Toggle menu"
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              type="button"
-            >
-              <span className="material-symbols-outlined">{mobileMenuOpen ? "close" : "menu"}</span>
-            </button>
-            <UserLanguageToggle
-              en={en}
-              onKo={() => navigate("/mypage/company")}
-              onEn={() => navigate("/en/mypage/company")}
-            />
-          </>
+          <UserLanguageToggle
+            en={en}
+            onKo={() => navigate("/mypage/company")}
+            onEn={() => navigate("/en/mypage/company")}
+          />
         )}
       />
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <button className="flex-1 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
-          <nav className="w-72 bg-white p-6 shadow-xl">
-            <div className="mb-6 flex items-center justify-between">
-              <span className="text-lg font-bold text-slate-900">{copy.title}</span>
-              <button onClick={() => setMobileMenuOpen(false)} type="button">
-                <span className="material-symbols-outlined text-slate-600">close</span>
-              </button>
-            </div>
-            <div className="space-y-1">
-              <button className="flex w-full items-center gap-3 rounded-lg bg-blue-50 px-4 py-3 text-sm font-bold text-[var(--kr-gov-blue)]" type="button">
-                <span className="material-symbols-outlined">business</span>
-                {copy.title}
-              </button>
-            </div>
-          </nav>
-        </div>
-      )}
       <main id="main-content" className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-8 lg:px-8 lg:py-10">
         <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.08)]" data-help-id="mypage-company-hero">
           <div className="grid gap-0 xl:grid-cols-[1.3fr_0.7fr]">

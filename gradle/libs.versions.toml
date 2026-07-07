@@ -1,0 +1,40 @@
+[versions]
+java = "17"
+springBoot = "3.4.5"
+jackson = "2.19.0"
+lombok = "1.18.34"
+graalvm = "23.1.2"
+postgresql = "42.7.3"
+jjwt = "0.12.6"
+nativeBuildtools = "0.10.6"
+h2 = "2.2.224"
+commonsLang3 = "3.18.0"
+commonsIo = "2.20.0"
+commonsText = "1.14.0"
+commonsBeanutils = "1.11.0"
+
+[libraries]
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "springBoot" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "springBoot" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "springBoot" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "springBoot" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security", version.ref = "springBoot" }
+
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
+
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commonsIo" }
+commons-text = { module = "org.apache.commons:commons-text", version.ref = "commonsText" }
+commons-beanutils = { module = "commons-beanutils:commons-beanutils", version.ref = "commonsBeanutils" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+native = { id = "org.graalvm.buildtools.native", version.ref = "nativeBuildtools" }
+dependency-management = { id = "io.spring.gradle:dependency-management-plugin", version = "1.1.7" }

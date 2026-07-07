@@ -4,6 +4,7 @@ import egovframework.com.platform.menu.dto.AdminCodeCommandDTO;
 import egovframework.com.platform.menu.dto.MenuInfoDTO;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
@@ -50,5 +51,21 @@ public class MenuInfoMapper extends BaseMapperSupport {
         params.setCode(menuCode);
         params.setSortOrdr(sortOrdr);
         update("MenuInfoMapper.updateMenuOrder", params);
+    }
+    public void updateMenuExposure(String menuCode, String expsrAt) {
+        update("MenuInfoMapper.updateMenuExposure", Map.of("menuCode", menuCode, "expsrAt", expsrAt));
+    }
+
+    public int countMenuInfoByMenuCode(String menuCode) {
+        Integer count = selectOne("MenuInfoMapper.countMenuInfoByMenuCode", menuCode);
+        return count == null ? 0 : count;
+    }
+
+    public void updateDependentScreen(String menuCode, String dependentScreenCode) {
+        update("MenuInfoMapper.updateDependentScreen", Map.of("menuCode", menuCode, "dependentScreenCode", dependentScreenCode));
+    }
+
+    public void insertMenuInfoForDependentScreen(String menuCode, String dependentScreenCode) {
+        insert("MenuInfoMapper.insertMenuInfoForDependentScreen", Map.of("menuCode", menuCode, "dependentScreenCode", dependentScreenCode));
     }
 }

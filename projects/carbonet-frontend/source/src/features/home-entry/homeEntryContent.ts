@@ -1,4 +1,4 @@
-import { HomeServiceItem, SummaryCard } from "./homeEntryTypes";
+import { HomeQuickLink, HomeServiceItem, SummaryCard } from "./homeEntryTypes";
 
 export const HOME_ENTRY_ASSETS = {
   GOV_SYMBOL:
@@ -17,8 +17,8 @@ export const LOCALIZED_CONTENT = {
     govAlt: "대한민국 정부 상징",
     govText: "대한민국 정부 공식 서비스",
     govGuide: "이 누리집은 2025 디지털 정부 UI/UX 가이드라인을 준수합니다.",
-    logoTitle: "CCUS 통합관리 포털",
-    logoSubtitle: "탄소 배출 관리 서비스",
+    logoTitle: "CCUS 탄소발자국 플랫폼",
+    logoSubtitle: "Carbon Footprint Platform",
     navAria: "주 메뉴",
     allMenu: "전체메뉴",
     openAllMenu: "전체메뉴 열기",
@@ -27,36 +27,54 @@ export const LOCALIZED_CONTENT = {
     logout: "로그아웃",
     signup: "회원가입",
     heroBadge: "2050 탄소중립 실천",
-    heroTitle: "지속가능한 미래를 위한 탄소 관리",
-    heroDescription: "국가 CCUS 핵심 데이터, 정밀 시뮬레이션 및 인증 서비스를 통합적으로 제공합니다.",
-    heroButton: "상세 분석 보기",
-    searchPlaceholder: "자원, 배출 계수 또는 프로젝트 상태 검색...",
+    heroTitle: "지속 가능한 미래,\n탄소 중립의 새로운 파트너",
+    heroDescription: "CCUS 기술 기반 탄소배출량 산정부터 인증까지 원스톱으로 지원합니다.",
+    heroButton: "서비스 가이드 보기",
+    searchTitle: "무엇을 도와드릴까요?",
+    searchPlaceholder: "서비스, 정책자료, 공지사항 등 통합 검색",
     searchAria: "통합 검색",
-    dashboardTitle: "실시간 현황 대시보드",
-    dashboardSubtitle: "2025년 8월 24일 기준 실시간 데이터 요약",
-    coreServicesTitle: "핵심 서비스",
+    popularSearches: "인기 검색어",
+    popularTags: [
+      { label: "#배출량산정", href: "/home", query: "배출량산정" },
+      { label: "#인증서발급", href: "/home", query: "인증서발급" },
+      { label: "#크레딧거래", href: "/home", query: "크레딧거래" },
+      { label: "#수수료안내", href: "/home", query: "수수료안내" }
+    ] as HomeQuickLink[],
+    coreServicesTitle: "주요 서비스",
+    coreServicesDescription: "CCUS 탄소발자국 플랫폼의 핵심 기능을 바로 이용해보세요.",
+    services: [
+      { icon: "factory", title: "탄소배출 산정", description: "산업 공정별 이산화탄소 배출량을 시뮬레이션하고 산정합니다.", href: "/join/step1" },
+      { icon: "verified_user", title: "보고서 & 인증서", description: "검증된 배출량에 대한 공식 인증서를 신청하고 발급받습니다.", href: "/signin/loginView" },
+      { icon: "database", title: "탄소 정보 조회", description: "유통되는 탄소의 출처와 관련된 상세 데이터를 확인합니다.", href: "/home" },
+      { icon: "storefront", title: "탄소 거래소", description: "탄소 크레딧 및 배출권을 투명하게 거래할 수 있습니다.", href: "/signin/loginView" },
+      { icon: "monitoring", title: "실시간 모니터링", description: "국가 및 개별 사업장의 탄소 현황을 대시보드로 제공합니다.", href: "/home" },
+      { icon: "credit_card", title: "통합 결제", description: "이용 수수료 및 거래 대금을 안전하게 결제합니다.", href: "/signin/loginView" },
+      { icon: "support_agent", title: "고객 지원 센터", description: "이용 중 발생하는 문의사항을 신속하게 해결해 드립니다.", href: "/signin/findId" },
+      { icon: "menu_book", title: "플랫폼 이용 가이드", description: "처음 방문자를 위한 단계별 이용 방법을 안내합니다.", href: "/join/step1" }
+    ] as HomeServiceItem[],
+    summaryTitle: "실시간 데이터 요약",
+    summaryDescription: "국가 CCUS 활동 모니터링 주요 지표 (2025년 누적)",
+    summaryUpdated: "최종 업데이트: 2025.08.14 09:00",
     summaryCards: [
       {
-        title: "누적 CO2 포집량",
-        badge: "목표 달성 중",
+        title: "누적 이산화탄소 포집량",
+        badge: "실시간",
         value: "1,452,890",
         unit: "tCO2",
-        progressLabel: "연간 목표 달성률",
+        progressLabel: "올해 목표 (2,000,000 tCO2)",
         progressValue: "72.6%",
         progressWidth: "72.6%"
       },
       {
-        title: "진행 중인 프로젝트",
+        title: "진행 중인 활성 프로젝트",
         statBlocks: [
-          { label: "상용화 단계", value: "18", unit: "건" },
-          { label: "실증/파일럿", value: "27", unit: "건" }
+          { label: "상업화 단계", value: "18", unit: "건" },
+          { label: "실증 단계", value: "27", unit: "건" }
         ],
-        note: "전월 대비 +12.4%",
-        progressLabel: "수도권/영남권 비율",
-        progressValue: "40%/60%"
+        note: "전분기 대비 15% 활성도 증가"
       },
       {
-        title: "인증 처리 상태",
+        title: "인증 서비스 현황",
         ringText: "85%",
         rows: [
           { label: "검증 완료", value: "124건" },
@@ -65,19 +83,10 @@ export const LOCALIZED_CONTENT = {
         ringNote: "심사 적체 해소 중"
       }
     ] as SummaryCard[],
-    services: [
-      { icon: "analytics", title: "배출량 시뮬레이션", description: "AI 기반 모델로 탄소 발자국을 예측하고 최적의 격리지를 탐색합니다.", href: "/join/step1" },
-      { icon: "verified_user", title: "인증 신청", description: "산업체 탄소 감축에 대한 공식 정부 검증 절차를 시작하세요.", href: "/signin/loginView" },
-      { icon: "label", title: "CO2 태그 검색", description: "특정 탄소 배출권 및 검증된 격리 배치 데이터를 조회합니다.", href: "/home" },
-      { icon: "database", title: "데이터 저장소", description: "전국의 기술 매뉴얼, 정책 보고서 및 실시간 센서 데이터를 제공합니다.", href: "/home" }
-    ] as HomeServiceItem[],
-    announcementsTitle: "공지사항",
-    supportTitle: "기술 지원 센터",
-    supportDescription: "배출량 보고 또는 기술 통합에 도움이 필요하신가요? 공공기관 및 기업 이해관계자를 위한 전담 지원팀이 상시 대기 중입니다.",
-    supportHotline: "080-1234-5678",
-    footerOrg: "CCUS 관리본부",
-    footerAddress: "© 2025 CCUS 관리본부. All rights reserved. 대한민국 디지털 정부 혁신 서비스.",
-    footerLinks: ["개인정보처리방침", "이용약관", "고객지원", "기관정보", "사이트맵"],
+    footerOrg: "CCUS 통합관리본부",
+    footerAddress: "(04551) 서울특별시 중구 세종대로 110 | 대표전화: 02-1234-5678 (평일 09:00~18:00)",
+    footerDesc: "본 서비스는 관계 법령에 의거하여 온실가스 감축 성과를 관리합니다.",
+    footerLinks: ["개인정보처리방침", "이용약관", "사이트맵", "이메일무단수집거부", "찾아오시는 길"],
     lastModified: "최종 수정일:",
     waAlt: "웹 접근성 품질인증 마크"
   },
@@ -86,8 +95,8 @@ export const LOCALIZED_CONTENT = {
     govAlt: "Government Symbol of the Republic of Korea",
     govText: "Official Website of the Republic of Korea Government",
     govGuide: "This website complies with the 2025 Digital Government UI/UX Guidelines.",
-    logoTitle: "CCUS 통합관리 포털",
-    logoSubtitle: "Carbon Emission Management Service",
+    logoTitle: "CCUS Footprint Platform",
+    logoSubtitle: "Carbon Footprint Platform",
     navAria: "Main menu",
     allMenu: "All Menu",
     openAllMenu: "Open all menu",
@@ -96,57 +105,66 @@ export const LOCALIZED_CONTENT = {
     logout: "Logout",
     signup: "Sign Up",
     heroBadge: "2050 Net-Zero Commitment",
-    heroTitle: "Sustainable Future for Carbon Management",
-    heroDescription: "Providing integrated national CCUS core data, precision simulation, and certification services.",
-    heroButton: "View Details",
-    searchPlaceholder: "Search resources, emission factors, or project status...",
+    heroTitle: "Sustainable Future,\nYour Partner in Carbon Neutrality",
+    heroDescription: "Providing a one-stop solution from CCUS-based carbon emission calculation to official certification.",
+    heroButton: "View Service Guide",
+    searchTitle: "How can we help you?",
+    searchPlaceholder: "Search services, policy data, announcements, and more",
     searchAria: "Integrated search",
-    dashboardTitle: "Real-time Status Dashboard",
-    dashboardSubtitle: "Real-time data summary as of August 24, 2025",
+    popularSearches: "Popular Searches",
+    popularTags: [
+      { label: "#EmissionCalculation", href: "/en/home", query: "emission calculation" },
+      { label: "#CertificationIssuance", href: "/en/home", query: "certification issuance" },
+      { label: "#CreditTrading", href: "/en/home", query: "credit trading" },
+      { label: "#FeeGuide", href: "/en/home", query: "fee guide" }
+    ] as HomeQuickLink[],
     coreServicesTitle: "Core Services",
+    coreServicesDescription: "Access the key features of the CCUS Carbon Footprint Platform.",
+    services: [
+      { icon: "factory", title: "Emission Calculation", description: "Simulate and calculate CO2 emissions for various industrial processes.", href: "/join/en/step1" },
+      { icon: "verified_user", title: "Reports & Certificates", description: "Apply for and receive official certificates for verified emission levels.", href: "/en/signin/loginView" },
+      { icon: "database", title: "Carbon Data Inquiry", description: "Check detailed data related to the origin and distribution of carbon.", href: "/en/home" },
+      { icon: "storefront", title: "Carbon Marketplace", description: "Transparently trade carbon credits and emission allowances.", href: "/en/signin/loginView" },
+      { icon: "monitoring", title: "Real-time Monitoring", description: "Dashboards displaying national and enterprise-level carbon status.", href: "/en/home" },
+      { icon: "credit_card", title: "Integrated Payment", description: "Securely pay service fees and transaction amounts.", href: "/en/signin/loginView" },
+      { icon: "support_agent", title: "Customer Support", description: "Quickly resolve inquiries or issues encountered during platform use.", href: "/en/signin/findId" },
+      { icon: "menu_book", title: "Platform Guide", description: "Step-by-step instructions for first-time visitors.", href: "/join/en/step1" }
+    ] as HomeServiceItem[],
+    summaryTitle: "Real-time Data Summary",
+    summaryDescription: "Key indicators for National CCUS activities (2025 Cumulative)",
+    summaryUpdated: "Last updated: 2025.08.14 09:00",
     summaryCards: [
       {
         title: "Cumulative CO2 Captured",
-        badge: "On Target",
+        badge: "LIVE",
         value: "1,452,890",
         unit: "tCO2",
-        progressLabel: "Annual Target Achievement",
+        progressLabel: "Annual Goal (2,000,000 tCO2)",
         progressValue: "72.6%",
         progressWidth: "72.6%"
       },
       {
-        title: "Active Projects",
+        title: "Active Projects in Progress",
         statBlocks: [
           { label: "Commercial Stage", value: "18", unit: "cases" },
-          { label: "Demo/Pilot Stage", value: "27", unit: "cases" }
+          { label: "Demonstration Stage", value: "27", unit: "cases" }
         ],
-        note: "+12.4% from last month",
-        progressLabel: "Capital Area / Yeongnam Ratio",
-        progressValue: "40% / 60%"
+        note: "15% increase in activity from last quarter"
       },
       {
-        title: "Certification Processing",
+        title: "Certification Service Status",
         ringText: "85%",
         rows: [
-          { label: "Verified Complete", value: "124 cases" },
+          { label: "Completed", value: "124 cases" },
           { label: "Under Review", value: "22 cases" }
         ],
         ringNote: "Backlog clearing in progress"
       }
     ] as SummaryCard[],
-    services: [
-      { icon: "analytics", title: "Emission Simulation", description: "Predict carbon footprint and explore optimal storage sites with AI-based models.", href: "/join/en/step1" },
-      { icon: "verified_user", title: "Certification Application", description: "Start the official government verification process for industrial carbon reduction.", href: "/en/signin/loginView" },
-      { icon: "label", title: "CO2 Tag Search", description: "Query specific carbon emission rights and verified storage placement data.", href: "/en/home" },
-      { icon: "database", title: "Data Repository", description: "Provides national technical manuals, policy reports, and real-time sensor data.", href: "/en/home" }
-    ] as HomeServiceItem[],
-    announcementsTitle: "Announcements",
-    supportTitle: "Technical Support Center",
-    supportDescription: "Need help with emission reporting or technical integration? A dedicated support team for public institutions and enterprise stakeholders is on standby.",
-    supportHotline: "080-1234-5678",
-    footerOrg: "CCUS Management HQ",
-    footerAddress: "© 2025 CCUS Management HQ. All rights reserved. Republic of Korea Digital Government Innovation Service.",
-    footerLinks: ["Privacy Policy", "Terms of Use", "Customer Support", "Organization Info", "Sitemap"],
+    footerOrg: "CCUS Integrated Management HQ",
+    footerAddress: "(04551) 110 Sejong-daero, Jung-gu, Seoul | Main Phone: 02-1234-5678 (Weekdays 09:00~18:00)",
+    footerDesc: "This service manages greenhouse gas reduction performance in accordance with relevant laws.",
+    footerLinks: ["Privacy Policy", "Terms of Use", "Sitemap", "Rejection of Unauthorized Email Collection", "Directions"],
     lastModified: "Last Modified:",
     waAlt: "Web Accessibility Quality Certification Mark"
   }

@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { AIChatPanel, AIInsightCard } from "../emission-common/AIChatPanel";
-import { analyzeEmissionSite, getDataQualityAnalysis } from "../../lib/ai/useAIStream";
 import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
@@ -182,9 +180,6 @@ export function EmissionDataInputMigrationPage() {
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [aiChatOpen, setAiChatOpen] = useState(false);
-  const [aiInsights, setAiInsights] = useState<Array<{ title: string; content: string; type: "analysis" | "forecast" | "recommendation" | "alert"; confidence?: number }>>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
     [en],
@@ -193,15 +188,6 @@ export function EmissionDataInputMigrationPage() {
       onError: () => undefined
     }
   );
-
-  const aiSiteContext = useMemo(() => ({
-    siteId: "DATA-INPUT-HUB",
-    siteName: "Data Input Hub",
-    currentEmission: "45,120",
-    targetEmission: "60,000",
-    status: "75.2% progress",
-    dataCompleteness: "82%"
-  }), []);
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
@@ -292,61 +278,6 @@ export function EmissionDataInputMigrationPage() {
     { id: "DJ-021", title: "대전 R&D 캠퍼스", emission: "210 tCO2", status: "입력대기", statusClass: "text-orange-600", actionLabel: "입력 개시", actionClass: "border-orange-200 text-orange-600 hover:bg-orange-50" },
     { id: "PJ-088", title: "파주 전산센터", emission: "890 tCO2", status: "정상", statusClass: "text-emerald-600", actionLabel: "데이터 상세", actionClass: "border-gray-200 text-gray-600 hover:bg-gray-50" }
   ], [en]);
-
-  const runAIAnalysis = useCallback(async () => {
-    if (isAnalyzing) return;
-    setIsAnalyzing(true);
-
-    const insights: Array<{ title: string; content: string; type: "analysis" | "forecast" | "recommendation" | "alert"; confidence?: number }> = [];
-
-    try {
-      const analysis = await analyzeEmissionSite({
-        siteId: "DATA-INPUT-HUB",
-        siteName: "Data Input Hub",
-        currentEmission: "45,120 tCO2",
-        targetEmission: "60,000 tCO2",
-        status: "75.2% progress",
-        dataCompleteness: "82%"
-      }, en);
-      insights.push({
-        title: en ? "Data Input Analysis" : "데이터 입력 분석",
-        content: analysis,
-        type: "analysis"
-      });
-
-      const qualityAnalysis = await getDataQualityAnalysis("82%", "2025-08-14", "In Progress", en);
-      insights.push({
-        title: en ? "Data Quality Score" : "데이터 품질 점수",
-        content: `${en ? "Current quality score" : "현재 품질 점수"}: ${qualityAnalysis.score}/100. ${qualityAnalysis.recommendations}`,
-        type: "recommendation",
-        confidence: qualityAnalysis.score / 100
-      });
-
-      if (queueCards.length > 0) {
-        insights.push({
-          title: en ? "Priority Alert" : "우선순위 알림",
-          content: queueCards[0].badge + " - " + queueCards[0].title + (en ? ": Immediate action required" : ": 즉각 조치가 필요합니다"),
-          type: "alert"
-        });
-      }
-    } catch {
-      insights.push({
-        title: en ? "AI Temporarily Unavailable" : "AI 일시적 이용 불가",
-        content: en ? "AI analysis is temporarily unavailable. Please try again later." : "AI 분석이 일시적으로 이용 불가능합니다. 나중에 다시 시도해 주세요.",
-        type: "alert"
-      });
-    }
-
-    setAiInsights(insights);
-    setIsAnalyzing(false);
-  }, [en, isAnalyzing, queueCards]);
-
-  useEffect(() => {
-    if (!isAnalyzing && aiInsights.length === 0) {
-      const timer = setTimeout(() => { void runAIAnalysis(); }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [runAIAnalysis, isAnalyzing, aiInsights.length]);
 
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-data-input", {
@@ -439,18 +370,9 @@ export function EmissionDataInputMigrationPage() {
           <div className="mx-auto max-w-7xl px-4 lg:px-8">
             <div className="relative flex h-24 items-center">
               <div className="h-11 w-11 shrink-0 xl:hidden" aria-hidden="true" />
-              <HeaderBrand content={content} />
+              <HeaderBrand content={content} en={en} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5"
-                  onClick={() => setAiChatOpen(true)}
-                  title={en ? "AI Data Assistant" : "AI 데이터 입력 도우미"}
-                >
-                  <span className="material-symbols-outlined text-[18px]">psychology</span>
-                  <span className="hidden sm:inline">{en ? "AI Assistant" : "AI 도우미"}</span>
-                </button>
                 <div className="hidden overflow-hidden rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] xl:flex">
                   <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/emission/data_input")}>KO</button>
                   <button type="button" className={`border-l border-[var(--kr-gov-border-light)] px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate("/en/emission/data_input")}>EN</button>
@@ -526,50 +448,6 @@ export function EmissionDataInputMigrationPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
-          <section className="relative z-20 mx-auto -mt-8 max-w-[1440px] px-4 lg:px-8" data-help-id="emission-data-input-ai-insights">
-            <div className="mb-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
-                  <span className="material-symbols-outlined text-[20px] text-white">psychology</span>
-                </div>
-                <div>
-                  <h2 className="text-lg font-black text-gray-800">{en ? "AI Data Input Insights" : "AI 데이터 입력 인사이트"}</h2>
-                  <p className="text-xs text-gray-500">{en ? "Real-time analysis of your emission data input status" : "배출 데이터 입력 현황 실시간 분석"}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600 transition-colors hover:bg-indigo-100"
-                onClick={() => { void runAIAnalysis(); }}
-                disabled={isAnalyzing}
-              >
-                <span className={`material-symbols-outlined text-[16px] ${isAnalyzing ? "animate-spin" : ""}`}>refresh</span>
-                {isAnalyzing ? (en ? "Analyzing..." : "분석 중...") : (en ? "Refresh Analysis" : "분석 새로고침")}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {aiInsights.length > 0 ? aiInsights.map((insight, index) => (
-                <AIInsightCard
-                  key={index}
-                  en={en}
-                  title={insight.title}
-                  content={insight.content}
-                  type={insight.type}
-                  confidence={insight.confidence}
-                />
-              )) : (
-                <>
-                  {[1, 2, 3, 4].map((i) => (
-                    <div className="animate-pulse rounded-xl border border-gray-100 bg-white p-5" key={i}>
-                      <div className="mb-3 h-4 w-24 rounded bg-gray-200" />
-                      <div className="mb-2 h-3 w-full rounded bg-gray-100" />
-                      <div className="h-3 w-3/4 rounded bg-gray-100" />
-                    </div>
-                  ))}
-                </>
-              )}
             </div>
           </section>
           <section className="relative z-20 -mt-8 mx-auto max-w-[1440px] px-4 lg:px-8" data-help-id="emission-data-input-search">
@@ -747,15 +625,6 @@ export function EmissionDataInputMigrationPage() {
             </div>
           </section>
         </main>
-        {aiChatOpen && (
-          <div className="fixed bottom-6 right-6 z-50 shadow-2xl">
-            <AIChatPanel
-              en={en}
-              siteContext={aiSiteContext}
-              onClose={() => setAiChatOpen(false)}
-            />
-          </div>
-        )}
         <footer className="border-t border-gray-200 bg-white">
           <div className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 lg:px-8">
             <div className="flex flex-col justify-between gap-10 border-b border-gray-100 pb-10 md:flex-row">

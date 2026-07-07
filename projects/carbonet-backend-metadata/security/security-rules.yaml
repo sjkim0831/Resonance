@@ -1,0 +1,124 @@
+# Security Rules Configuration
+# 수정 시 빌드/배포 불필요 - 설정만으로 인증/인가 정책 변경 가능
+# 적용: application.yml의 carbonet.security.config-path 참조
+
+version: "2.0"
+
+# 공개 경로 (인증 불필요)
+publicPaths:
+  - pattern: "/uat/uia/**"
+    method: ANY
+  - pattern: "/api/frontend/session"
+    method: POST
+  - pattern: "/api/frontend/session"
+    method: GET
+  - pattern: "/actuator/health/**"
+    method: GET
+  - pattern: "/img/**"
+    method: GET
+
+# 관리자 전용 경로
+adminPaths:
+  - pattern: "/uat/uap/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sec/ram/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sec/rgm/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sec/gmt/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sec/rmt/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/adminmain/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/admin/system/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/uss/olp/qmc/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/uss/olp/qtm/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/uss/olp/qrm/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/uss/olp/qqm/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/uss/olp/qim/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sym/ccm/ccc/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sym/ccm/cde/**"
+    roles: ["ROLE_ADMIN"]
+  - pattern: "/sym/ccm/cca/**"
+    roles: ["ROLE_ADMIN"]
+
+# 사용자 경로
+userPaths:
+  - pattern: "/mip/**"
+    roles: ["ROLE_USER"]
+  - pattern: "/cop/**"
+    roles: ["ROLE_USER"]
+  - pattern: "/uss/olp/qri/**"
+    roles: ["ROLE_USER"]
+  - pattern: "/ext/ops/**"
+    roles: ["ROLE_USER"]
+
+# 역할 정의
+roles:
+  - name: ROLE_ANONYMOUS
+    priority: 0
+    description: "Anonymous user"
+  - name: ROLE_USER
+    priority: 1
+    description: "Authenticated user"
+  - name: ROLE_ADMIN
+    priority: 2
+    description: "System administrator"
+
+# 추가 보안 설정
+security:
+  # CSRF 보호
+  csrf:
+    enabled: true
+    cookieName: "CSRF-TOKEN"
+    headerName: "X-CSRF-TOKEN"
+    
+  # 세션 관리
+  session:
+    timeout: 3600
+    maxSessions: 5
+    fixSession: true
+    
+  # 비밀번호 정책
+  password:
+    minLength: 8
+    requireUppercase: true
+    requireLowercase: true
+    requireNumber: true
+    requireSpecial: false
+    
+  # 로그인 잠금
+  lockout:
+    enabled: true
+    maxAttempts: 5
+    lockoutDuration: 300
+
+  # CORS 설정
+  cors:
+    allowedOrigins:
+      - "http://172.16.1.232"
+      - "http://localhost:*"
+    allowedMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowedHeaders:
+      - "*"
+    allowCredentials: true
+    maxAge: 3600
+
+  # Rate Limiting
+  rateLimit:
+    enabled: true
+    requestsPerMinute: 60
+    burst: 10

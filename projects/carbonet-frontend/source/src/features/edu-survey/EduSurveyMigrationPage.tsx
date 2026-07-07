@@ -1,22 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import {
-  getNavigationEventName,
-  isEnglish,
-  navigate
-} from "../../lib/navigation/runtime";
+import { useMemo, useState } from "react";
 import {
   UserGovernmentBar,
   UserLanguageToggle,
   UserPortalFooter,
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
-import type { HomePayload } from "../home-entry/homeEntryTypes";
-import { buildLocalizedPath } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type QuestionOption = {
   id: string;
@@ -72,19 +61,6 @@ const TIMELINE = {
 
 export function EduSurveyMigrationPage() {
   const en = isEnglish();
-  const session = useFrontendSession();
-  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
-    [en],
-    {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
-      onError: () => undefined,
-    }
-  );
-
   const [selectedOption, setSelectedOption] = useState("good");
   const [comment, setComment] = useState("");
 
@@ -95,34 +71,6 @@ export function EduSurveyMigrationPage() {
     () => OPTIONS.find((option) => option.id === selectedOption),
     [selectedOption]
   );
-
-  const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
-  const homeMenu = payload.homeMenu || [];
-  const isLoggedIn = payload.isLoggedIn;
-  const menuCount = homeMenu.length;
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
-
-  useEffect(() => {
-    logGovernanceScope("PAGE", "edu-survey", {
-      mobileMenuOpen,
-      menuCount,
-      isLoggedIn,
-      pathname: window.location.pathname
-    });
-  }, [mobileMenuOpen, menuCount, isLoggedIn]);
 
   const copy = {
     skip: en ? "Skip to main content" : "본문 바로가기",
@@ -203,47 +151,9 @@ export function EduSurveyMigrationPage() {
               {copy.portalNote}
             </div>
             <UserLanguageToggle en={en} onKo={() => navigate("/edu/survey")} onEn={() => navigate("/en/edu/survey")} />
-            <button
-              className="rounded-lg border border-slate-200 bg-white p-2 lg:hidden"
-              onClick={() => setMobileMenuOpen((prev) => !prev)}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-slate-600">{mobileMenuOpen ? "close" : "menu"}</span>
-            </button>
           </>
         )}
       />
-
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden">
-          <div className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white">
-            <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white p-4">
-              <span className="font-bold text-gray-900">{copy.brandTitle}</span>
-              <button onClick={() => setMobileMenuOpen(false)} type="button">
-                <span className="material-symbols-outlined text-gray-600">close</span>
-              </button>
-            </div>
-            <nav className="p-4">
-              <button className="flex w-full items-center gap-3 rounded-lg border-b border-gray-100 py-3 text-gray-700" onClick={() => { navigate(buildLocalizedPath("/edu/my_course", "/en/edu/my_course")); setMobileMenuOpen(false); }} type="button">
-                <span className="material-symbols-outlined text-gray-400">school</span>
-                {copy.navClassroom}
-              </button>
-              <button className="flex w-full items-center gap-3 rounded-lg border-b border-gray-100 py-3 text-indigo-600" onClick={() => setMobileMenuOpen(false)} type="button">
-                <span className="material-symbols-outlined text-indigo-600">task_alt</span>
-                {copy.navSurvey}
-              </button>
-              <button className="flex w-full items-center gap-3 rounded-lg border-b border-gray-100 py-3 text-gray-700" onClick={() => { navigate(buildLocalizedPath("/certificate/list", "/en/certificate/list")); setMobileMenuOpen(false); }} type="button">
-                <span className="material-symbols-outlined text-gray-400">workspace_premium</span>
-                {copy.navCertificate}
-              </button>
-              <button className="flex w-full items-center gap-3 rounded-lg py-3 text-gray-700" onClick={() => { navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list")); setMobileMenuOpen(false); }} type="button">
-                <span className="material-symbols-outlined text-gray-400">menu_book</span>
-                {copy.navLibrary}
-              </button>
-            </nav>
-          </div>
-        </div>
-      )}
 
       <main id="main-content">
         <section className="border-b border-slate-800 bg-[radial-gradient(circle_at_top_left,#3730a3_0%,#111827_58%,#0f172a_100%)]" data-help-id="edu-survey-hero">

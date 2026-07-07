@@ -121,10 +121,14 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
                         result.getMberId(), result.getPassword(), result.getMberNm(), userSe,
                         result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt())));
             case "ENT": // 기업회원
-                return findEnterpriseMember(userId).map(result -> new LoginIncorrectDTO(
-                        result.getEntrprsMberId(), result.getEntrprsMberPassword(), result.getCmpnyNm(), userSe,
-                        result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt())))
-                        .orElse(null);
+                // enterprise 테이블에 없으면 employee 테이블 fallback (actionLogin과 동일)
+                return findLoginInfoOrFallback(userId, userSe,
+                        () -> findEnterpriseMember(userId).map(result -> new LoginIncorrectDTO(
+                                result.getEntrprsMberId(), result.getEntrprsMberPassword(), result.getCmpnyNm(), userSe,
+                                result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt()))),
+                        () -> findEmployeeMember(userId).map(result -> new LoginIncorrectDTO(
+                                result.getEmplyrId(), result.getPassword(), result.getUserNm(), "USR",
+                                result.getEsntlId(), getLockAt(result.getLockAt()), getLockCnt(result.getLockCnt()))));
             case "USR": // 업무사용자
                 return getLoginInfo(empRepository::findById, userId, result -> new LoginIncorrectDTO(
                         result.getEmplyrId(), result.getPassword(), result.getUserNm(), userSe,
@@ -139,6 +143,16 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
         return findByIdFunction.apply(userId)
                 .map(mapper)
                 .orElse(null);
+    }
+
+    private LoginIncorrectDTO findLoginInfoOrFallback(String userId, String userSe,
+            java.util.function.Supplier<java.util.Optional<LoginIncorrectDTO>> primaryLookup,
+            java.util.function.Supplier<java.util.Optional<LoginIncorrectDTO>> fallbackLookup) {
+        java.util.Optional<LoginIncorrectDTO> primary = primaryLookup.get();
+        if (primary.isPresent()) {
+            return primary.get();
+        }
+        return fallbackLookup.get().orElse(null);
     }
 
     private String getLockAt(String lockAt) {
@@ -477,6 +491,10 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
             }
         }
         return entRepository.findById(normalizedUserId);
+    }
+
+    private Optional<EmplyrInfo> findEmployeeMember(String userId) {
+        return empRepository.findById(normalizeUserId(userId));
     }
 
     private String currentProjectId() {
