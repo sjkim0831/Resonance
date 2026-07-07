@@ -1,0 +1,188 @@
+export type TradeDuplicatePagePayload = Record<string, unknown> & {
+  abnormalTradeRows?: Array<Record<string, unknown>>;
+  totalCount?: number;
+  criticalCount?: number;
+  reviewCount?: number;
+  settlementBlockedCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  searchKeyword?: string;
+  detectionType?: string;
+  reviewStatus?: string;
+  riskLevel?: string;
+  detectionTypeOptions?: Array<Record<string, unknown>>;
+  reviewStatusOptions?: Array<Record<string, unknown>>;
+  riskLevelOptions?: Array<Record<string, unknown>>;
+  escalationAlerts?: Array<Record<string, unknown>>;
+  isEn?: boolean;
+};
+
+export type TradeListPagePayload = Record<string, unknown> & {
+  tradeRows?: Array<Record<string, unknown>>;
+  totalCount?: number;
+  matchingCount?: number;
+  settlementPendingCount?: number;
+  completedCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  searchKeyword?: string;
+  tradeStatus?: string;
+  settlementStatus?: string;
+  tradeStatusOptions?: Array<Record<string, unknown>>;
+  settlementStatusOptions?: Array<Record<string, unknown>>;
+  settlementAlerts?: Array<Record<string, unknown>>;
+  isEn?: boolean;
+};
+
+export type TradeStatisticsPagePayload = Record<string, unknown> & {
+  totalTradeVolume?: number;
+  totalSettlementAmount?: number;
+  pendingSettlementCount?: number;
+  exceptionCount?: number;
+  settlementCompletionRate?: string;
+  avgSettlementDays?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  totalCount?: number;
+  searchKeyword?: string;
+  periodFilter?: string;
+  tradeType?: string;
+  settlementStatus?: string;
+  monthlyRows?: Array<Record<string, unknown>>;
+  tradeTypeRows?: Array<Record<string, unknown>>;
+  institutionRows?: Array<Record<string, unknown>>;
+  alertRows?: Array<Record<string, unknown>>;
+  isEn?: boolean;
+};
+
+export type SettlementCalendarPagePayload = Record<string, unknown> & {
+  selectedMonth?: string;
+  searchKeyword?: string;
+  settlementStatus?: string;
+  riskLevel?: string;
+  totalScheduledCount?: number;
+  dueTodayCount?: number;
+  highRiskCount?: number;
+  completedCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  monthOptions?: Array<Record<string, unknown>>;
+  settlementStatusOptions?: Array<Record<string, unknown>>;
+  riskLevelOptions?: Array<Record<string, unknown>>;
+  calendarDays?: Array<Record<string, unknown>>;
+  scheduleRows?: Array<Record<string, unknown>>;
+  alertRows?: Array<Record<string, unknown>>;
+  isEn?: boolean;
+};
+
+export type RefundListPagePayload = Record<string, unknown> & {
+  refundRows?: Array<Record<string, unknown>>;
+  totalCount?: number;
+  pendingCount?: number;
+  inReviewCount?: number;
+  transferScheduledCount?: number;
+  completedCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  searchKeyword?: string;
+  status?: string;
+  riskLevel?: string;
+  statusOptions?: Array<Record<string, unknown>>;
+  riskLevelOptions?: Array<Record<string, unknown>>;
+  refundAlerts?: Array<Record<string, unknown>>;
+  isEn?: boolean;
+};
+
+export type TradeApprovePagePayload = Record<string, unknown> & {
+  approvalRows?: Array<Record<string, unknown>>;
+  totalCount?: number;
+  pendingCount?: number;
+  approvedCount?: number;
+  rejectedCount?: number;
+  holdCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  searchKeyword?: string;
+  approvalStatus?: string;
+  tradeType?: string;
+  approvalStatusOptions?: Array<Record<string, unknown>>;
+  tradeTypeOptions?: Array<Record<string, unknown>>;
+  canViewTradeApprove?: boolean;
+  canUseTradeApproveAction?: boolean;
+  isEn?: boolean;
+};
+
+export type RefundProcessPagePayload = Record<string, unknown> & {
+  refundRows?: Array<Record<string, unknown>>;
+  refundSummary?: Array<Record<string, unknown>>;
+  refundGuidance?: Array<Record<string, unknown>>;
+  totalCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  searchKeyword?: string;
+  refundStatus?: string;
+  refundChannel?: string;
+  priority?: string;
+  canViewRefundProcess?: boolean;
+  isEn?: boolean;
+};
+
+export type TradeRejectPagePayload = Record<string, unknown> & {
+  found?: boolean;
+  tradeId?: string;
+  returnUrl?: string;
+  listUrl?: string;
+  pageError?: string;
+  productType?: string;
+  sellerName?: string;
+  buyerName?: string;
+  contractName?: string;
+  quantity?: string;
+  amount?: string;
+  requestedAt?: string;
+  tradeStatusCode?: string;
+  tradeStatusLabel?: string;
+  settlementStatusCode?: string;
+  settlementStatusLabel?: string;
+  blockerCount?: number;
+  evidenceCount?: number;
+  historyCount?: number;
+  suggestedReason?: string;
+  rejectionChecklist?: Array<Record<string, unknown>>;
+  rejectionReasons?: Array<Record<string, unknown>>;
+  evidenceRows?: Array<Record<string, unknown>>;
+  historyRows?: Array<Record<string, unknown>>;
+  notificationPlan?: Array<Record<string, unknown>>;
+  quickLinks?: Array<Record<string, unknown>>;
+  isEn?: boolean;
+};
+
+export type CertificateStatisticsPagePayload = Record<string, unknown> & {
+  totalIssuedCount?: number;
+  pendingCount?: number;
+  rejectedCount?: number;
+  reissuedCount?: number;
+  totalRequestCount?: number;
+  avgLeadDays?: string;
+  issuanceRate?: string;
+  pageIndex?: number;
+  pageSize?: number;
+  totalPages?: number;
+  totalCount?: number;
+  searchKeyword?: string;
+  periodFilter?: string;
+  certificateType?: string;
+  issuanceStatus?: string;
+  monthlyRows?: Array<Record<string, string>>;
+  certificateTypeRows?: Array<Record<string, string>>;
+  institutionRows?: Array<Record<string, string>>;
+  alertRows?: Array<Record<string, string>>;
+  isEn?: boolean;
+};

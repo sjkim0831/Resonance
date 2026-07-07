@@ -60,6 +60,16 @@ For `/admin/emission/survey-report`, product and byproduct rows live under `OUTP
 
 Vite bundles are minified. Do not decide whether a bundle is correct by grepping local variable names such as `isUnallocated` or `productOnlyMass`; verify behavior logic, manifest, and the runtime `react-app-overlay` path.
 
+## React Bundle Integrity Guard
+
+`projects/carbonet-frontend/src/main/resources/static/react-app/index.html` is a Vite build artifact — **never edit it manually**. Every `/assets/react/assets/*.{js,css,mjs}` reference it contains must exist on disk in the same `react-app/assets/` directory.
+
+- Run `bash ops/scripts/resonance-react-bundle-integrity.sh` to verify: it fails (non-zero exit) if any referenced bundle is missing. This check runs automatically in `.git/hooks/pre-commit` and `ops/scripts/resonance-frontend-auto-build.sh`.
+- When changing the frontend, **always build from source** (`cd projects/carbonet-frontend/source && CARBONET_NODE_HEAP_MB=8192 npm run build`) and commit `index.html` **together** with all the new hashed asset files and `.vite/manifest.json` in the same commit. Never commit `index.html` alone.
+- `ops/scripts/resonance-frontend-auto-build.sh` fails explicitly (does not silently skip) if `projects/carbonet-frontend/source/` is missing. Restore with `git checkout <good-commit> -- projects/carbonet-frontend/source/`.
+- `projects/carbonet-frontend/source/` must contain a working `package.json` and all `src/` files. If TypeScript fails to compile, fix the source before committing overlay changes.
+- Never copy an `index.html` from another branch or environment without also committing the exact bundle files it references.
+
 Commit source changes first. Commit frontend build artifacts separately only when explicitly requested. Never commit `data/ai-runtime/*.sqlite3`, `*.db`, vector indexes, runtime caches, or credentials.
 
 ## No-Build / No-Deploy Page Development Rule
@@ -101,3 +111,45 @@ Before finishing any page task, verify the served overlay path, for example:
 curl -sI http://127.0.0.1:32947/assets/react/api/build-studio-asset-inventory.json
 curl -sI http://127.0.0.1:32947/assets/react/assets/BuilderStudioPage-BBdbfW4J.js
 ```
+
+## No-Build Backend Script Development
+
+Resonance v2.0부터 백엔드의 일부 로직도 무빌드/무배포로 수정할 수 있습니다.
+
+### 지원 범위
+
+| 구분 | 무빌드 가능 | 방식 |
+|------|:----------:|------|
+| Frontend/UI | ✅ | HostPath Overlay |
+| Static Assets | ✅ | HostPath Overlay |
+| Metadata | ✅ | HostPath Overlay |
+| Menu/Query/Validation | ✅ | Groovy Script Engine |
+| 핵심 Java 로직 | ❌ | 빌드 필요 |
+
+### Groovy 스크립트 경로
+```
+projects/carbonet-backend-metadata/scripts/
+├── menu-renderer.groovy    # 메뉴 렌더링, 권한
+├── query-builder.groovy    # 동적 SQL 생성
+└── validation-rules.groovy # 폼 검증
+```
+
+### 스크립트 수정 시
+- **WatchService**가 파일 변경 자동 감지
+- 즉시 reload (재빌드 불필요)
+- 수동 reload: `curl -X POST http://127.0.0.1:32947/api/script/reload-all`
+
+### 스크립트 관리 API
+```bash
+GET  /api/script/list           # 로드된 스크립트 목록
+POST /api/script/reload/{name}  # 특정 스크립트 재로드
+POST /api/script/reload-all     # 전체 재로드
+POST /api/script/test/{name}/{method}  # 테스트 실행
+```
+
+### 여전히 빌드必需的 경우
+- Java 클래스 신규 추가/수정
+- DB 스키마 변경
+- 보안/인증 로직 변경
+- 새로운 REST API 엔드포인트
+- Transaction 로직 변경

@@ -1,0 +1,1 @@
+export { ScreenMenuAssignmentManagementMigrationPage } from "../screen-management/ScreenMenuAssignmentManagementMigrationPage";

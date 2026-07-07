@@ -23,7 +23,12 @@ fingerprint() {
 }
 new_fp="$(fingerprint)"
 old_fp="$(cat "$STAMP_FILE" 2>/dev/null || true)"
+if [[ ! -d "$SRC_DIR" || ! -f "$SRC_DIR/package.json" ]]; then
+  echo "[$(date -Is)] ERROR: frontend source not found at $SRC_DIR — cannot auto-build. Restore with: git checkout <commit> -- projects/carbonet-frontend/source/" >&2
+  exit 1
+fi
 if [[ "$new_fp" == "$old_fp" && -f "$OUT_DIR/.vite/manifest.json" ]]; then
+  echo "[$(date -Is)] frontend unchanged, skipping build"
   exit 0
 fi
 {
@@ -35,4 +40,10 @@ fi
   CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}" npm run build
   printf '%s\n' "$new_fp" > "$STAMP_FILE"
   echo "[$(date -Is)] frontend build complete: $OUT_DIR"
+  echo "[$(date -Is)] running bundle integrity check..."
+  bash "$ROOT_DIR/ops/scripts/resonance-react-bundle-integrity.sh" || {
+    echo "[$(date -Is)] BUNDLE INTEGRITY FAILED — build output does not match index.html references"
+    exit 1
+  }
+  echo "[$(date -Is)] bundle integrity OK"
 } >> "$LOG_DIR/resonance-frontend-auto-build.log" 2>&1

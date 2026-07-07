@@ -1,0 +1,1 @@
+export { InfraManagementMigrationPage as SystemInfraMigrationPage } from "../system-infra/InfraManagementMigrationPage";

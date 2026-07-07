@@ -1,0 +1,1 @@
+export { ThemeManagementMigrationPage } from "../theme-management/ThemeManagementMigrationPage";
