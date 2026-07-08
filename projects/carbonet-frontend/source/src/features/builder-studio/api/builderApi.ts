@@ -151,3 +151,40 @@ export async function getCategories(): Promise<{ categories: Array<{ code: strin
 export async function healthCheck(): Promise<{ status: string; timestamp: number }> {
   return fetchJson(`${API_BASE}/health`);
 }
+
+export type FullStackBuilderMode = 'frontend-only' | 'metadata-api' | 'java-core' | 'db-migration';
+
+export type FullStackBuilderPlanRequest = {
+  mode: FullStackBuilderMode;
+  target: Record<string, unknown>;
+  frontendCandidate: Record<string, unknown>;
+  changedFiles: string[];
+};
+
+export type FullStackBuilderStatus = {
+  status: string;
+  workspaceRoot: string;
+  backendMetadataRoot: string;
+  gitHead: string;
+  gitBranch: string;
+  changedFiles: string[];
+  capabilities: string[];
+};
+
+export async function getFullStackBuilderStatus(): Promise<FullStackBuilderStatus> {
+  return fetchJson('/api/runtime/full-stack-builder/status');
+}
+
+export async function createFullStackBuilderPlan(payload: FullStackBuilderPlanRequest): Promise<Record<string, unknown>> {
+  return fetchJson('/api/runtime/full-stack-builder/plan', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createFullStackBuilderSnapshot(payload: FullStackBuilderPlanRequest): Promise<Record<string, unknown>> {
+  return fetchJson('/api/runtime/full-stack-builder/snapshot', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

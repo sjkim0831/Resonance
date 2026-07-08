@@ -412,6 +412,9 @@ export function BuilderStudioPage() {
   const [fullStackMode, setFullStackMode] = useState<'frontend-only' | 'metadata-api' | 'java-core' | 'db-migration'>('frontend-only');
   const [changedFileDraft, setChangedFileDraft] = useState('');
   const [rollbackPoints, setRollbackPoints] = useState<Array<{ id: string; label: string; candidateId: string; createdAt: string }>>([]);
+  const [workbenchStatus, setWorkbenchStatus] = useState<api.FullStackBuilderStatus | null>(null);
+  const [workbenchResult, setWorkbenchResult] = useState<Record<string, unknown> | null>(null);
+  const [isWorkbenchBusy, setIsWorkbenchBusy] = useState(false);
   const [builderToast, setBuilderToast] = useState('');
   const [pageQualityFilter, setPageQualityFilter] = useState<PageCompletenessInventoryRow['status'] | 'all'>('all');
 
@@ -726,6 +729,68 @@ export function BuilderStudioPage() {
     };
     setRollbackPoints([point, ...rollbackPoints].slice(0, 12));
     showToast('롤백 지점을 만들었습니다.');
+  }
+
+  function buildFullStackWorkbenchPayload(): api.FullStackBuilderPlanRequest {
+    return {
+      mode: fullStackMode,
+      target: {
+        menuCode: targetContext.menuCode,
+        pageId: targetContext.pageId,
+        menuTitle: targetContext.menuTitle,
+        menuUrl: targetContext.menuUrl,
+        routeSource: targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '',
+      },
+      frontendCandidate: selectedFrontendCandidate ? {
+        id: selectedFrontendCandidate.id,
+        title: selectedFrontendCandidate.title,
+        source: selectedFrontendCandidate.source,
+        summary: selectedFrontendCandidate.summary,
+        html: selectedFrontendCandidate.html,
+      } : {},
+      changedFiles: changedFileDraft.split('\n').map(item => item.trim()).filter(Boolean),
+    };
+  }
+
+  async function refreshWorkbenchStatus() {
+    setIsWorkbenchBusy(true);
+    try {
+      const status = await api.getFullStackBuilderStatus();
+      setWorkbenchStatus(status);
+      setWorkbenchResult(status as unknown as Record<string, unknown>);
+      showToast('전체 개발 워크벤치 상태를 조회했습니다.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '워크벤치 상태 조회에 실패했습니다.');
+    } finally {
+      setIsWorkbenchBusy(false);
+    }
+  }
+
+  async function createWorkbenchPlan() {
+    setIsWorkbenchBusy(true);
+    try {
+      const result = await api.createFullStackBuilderPlan(buildFullStackWorkbenchPayload());
+      setWorkbenchResult(result);
+      showToast('변경 파일 기준 컴파일/검증 계획을 생성했습니다.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '워크벤치 계획 생성에 실패했습니다.');
+    } finally {
+      setIsWorkbenchBusy(false);
+    }
+  }
+
+  async function createWorkbenchSnapshot() {
+    setIsWorkbenchBusy(true);
+    try {
+      const result = await api.createFullStackBuilderSnapshot(buildFullStackWorkbenchPayload());
+      setWorkbenchResult(result);
+      createRollbackPoint(String(result.snapshotId || `${targetContext.menuTitle || '화면'} 스냅샷`));
+      showToast('백엔드 스냅샷을 생성했습니다.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '워크벤치 스냅샷 생성에 실패했습니다.');
+    } finally {
+      setIsWorkbenchBusy(false);
+    }
   }
 
   function requestFullStackChange(executeNow: boolean) {
@@ -1273,7 +1338,9 @@ export function BuilderStudioPage() {
               <p className="mt-1 text-sm text-slate-500">프론트 후보 선택, HTML 업로드, 백엔드/API/DB 변경 계획, 변경 파일 기준 컴파일과 롤백을 한 번에 관리합니다.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => createRollbackPoint(`${targetContext.menuTitle || '화면'} 변경 전`)} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">롤백 지점 생성</button>
+              <button type="button" onClick={() => { void refreshWorkbenchStatus(); }} disabled={isWorkbenchBusy} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-50">상태 조회</button>
+              <button type="button" onClick={() => { void createWorkbenchPlan(); }} disabled={isWorkbenchBusy} className="rounded border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-blue-700 disabled:opacity-50">컴파일 계획</button>
+              <button type="button" onClick={() => { void createWorkbenchSnapshot(); }} disabled={isWorkbenchBusy} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-50">백엔드 스냅샷</button>
               <button type="button" onClick={() => requestFullStackChange(false)} className="rounded bg-slate-800 px-3 py-2 text-sm font-bold text-white">AI 요청 작성</button>
               <button type="button" onClick={() => requestFullStackChange(true)} className="rounded bg-blue-700 px-3 py-2 text-sm font-bold text-white">즉시 수정 요청</button>
             </div>
@@ -1327,6 +1394,12 @@ export function BuilderStudioPage() {
               <section className="rounded border bg-white p-4 shadow-sm">
                 <p className="text-xs font-black uppercase text-blue-700">Change Scope</p>
                 <h3 className="mt-1 font-black text-slate-900">변경 범위와 즉시 반영 방식</h3>
+                {workbenchStatus ? (
+                  <div className="mt-3 rounded border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <p className="font-black">{workbenchStatus.gitBranch} · {workbenchStatus.gitHead}</p>
+                    <p className="mt-1">{workbenchStatus.changedFiles.length}개 변경 파일 감지 · {workbenchStatus.status}</p>
+                  </div>
+                ) : null}
                 <div className="mt-3 grid gap-2">
                   {[
                     ['frontend-only', '프론트/HTML만', '오버레이 동기화와 변경 청크 중심으로 즉시 반영'],
@@ -1380,6 +1453,14 @@ export function BuilderStudioPage() {
                     </button>
                   ))}
                   {rollbackPoints.length === 0 ? <p className="rounded border border-dashed p-4 text-center text-xs text-slate-400">아직 생성된 롤백 지점이 없습니다.</p> : null}
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Runtime Result</p>
+                <h3 className="mt-1 font-black text-slate-900">백엔드 실행 결과</h3>
+                <div className="mt-3 max-h-[260px] overflow-auto rounded border bg-slate-950 p-3">
+                  <pre className="whitespace-pre-wrap break-all text-xs leading-5 text-slate-100">{workbenchResult ? JSON.stringify(workbenchResult, null, 2) : '상태 조회, 컴파일 계획, 백엔드 스냅샷 결과가 여기에 표시됩니다.'}</pre>
                 </div>
               </section>
             </aside>
