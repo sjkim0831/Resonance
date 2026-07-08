@@ -260,6 +260,21 @@ public class PlatformBuilderApiController {
         return Map.of("themes", themes, "count", themes.size());
     }
 
+    @GetMapping("/assets/{collection}")
+    public Map<String, Object> builderAssets(@PathVariable String collection) throws IOException {
+        List<Map<String, Object>> items = assetList(collection);
+        return Map.of("collection", collection, "items", items, "count", items.size());
+    }
+
+    @PutMapping("/assets/{collection}")
+    public Map<String, Object> saveBuilderAssets(@PathVariable String collection, @RequestBody Map<String, Object> payload) throws IOException {
+        List<Map<String, Object>> items = mapList(payload.get("items"));
+        Store store = load();
+        store.assets.put(collection, items);
+        save(store);
+        return Map.of("collection", collection, "items", items, "count", items.size());
+    }
+
     @GetMapping("/component-types")
     public Map<String, Object> componentTypes() {
         return Map.of("types", List.of(
@@ -294,6 +309,11 @@ public class PlatformBuilderApiController {
         return List.of();
     }
 
+    private synchronized List<Map<String, Object>> assetList(String collection) throws IOException {
+        Store store = load();
+        return store.assets.getOrDefault(collection, List.of());
+    }
+
     private synchronized java.util.Optional<Map<String, Object>> find(String collection, String key, String value) throws IOException {
         return list(collection).stream().filter(row -> value.equals(string(row, key))).findFirst();
     }
@@ -309,6 +329,7 @@ public class PlatformBuilderApiController {
         store.components = mapList(raw.get("components"));
         store.screens = mapList(raw.get("screens"));
         store.themes = mapList(raw.get("themes"));
+        store.assets = mapOfLists(raw.get("assets"));
         if (store.components.isEmpty() || store.screens.isEmpty() || store.themes.isEmpty()) {
             Store defaults = defaultStore();
             if (store.components.isEmpty()) store.components = defaults.components;
@@ -325,6 +346,7 @@ public class PlatformBuilderApiController {
         raw.put("components", store.components);
         raw.put("screens", store.screens);
         raw.put("themes", store.themes);
+        raw.put("assets", store.assets);
         raw.put("updatedAt", Instant.now().toString());
         Files.writeString(storeFile, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(raw), StandardCharsets.UTF_8);
     }
@@ -466,6 +488,13 @@ public class PlatformBuilderApiController {
         return result;
     }
 
+    private Map<String, List<Map<String, Object>>> mapOfLists(Object value) {
+        Map<String, List<Map<String, Object>>> result = new LinkedHashMap<>();
+        if (!(value instanceof Map<?, ?> map)) return result;
+        map.forEach((key, val) -> result.put(String.valueOf(key), mapList(val)));
+        return result;
+    }
+
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> nodeList(Map<String, Object> screen) {
         Object nodes = screen.get("nodes");
@@ -514,5 +543,6 @@ public class PlatformBuilderApiController {
         List<Map<String, Object>> components = new ArrayList<>();
         List<Map<String, Object>> screens = new ArrayList<>();
         List<Map<String, Object>> themes = new ArrayList<>();
+        Map<String, List<Map<String, Object>>> assets = new LinkedHashMap<>();
     }
 }

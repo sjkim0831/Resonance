@@ -152,6 +152,17 @@ export async function healthCheck(): Promise<{ status: string; timestamp: number
   return fetchJson(`${API_BASE}/health`);
 }
 
+export async function getBuilderAssetCollection<T>(collection: string): Promise<{ collection: string; items: T[]; count: number }> {
+  return fetchJson(`${API_BASE}/assets/${encodeURIComponent(collection)}`);
+}
+
+export async function saveBuilderAssetCollection<T>(collection: string, items: T[]): Promise<{ collection: string; items: T[]; count: number }> {
+  return fetchJson(`${API_BASE}/assets/${encodeURIComponent(collection)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
+  });
+}
+
 export type FullStackBuilderMode = 'frontend-only' | 'metadata-api' | 'java-core' | 'db-migration';
 
 export type FullStackBuilderPlanRequest = {

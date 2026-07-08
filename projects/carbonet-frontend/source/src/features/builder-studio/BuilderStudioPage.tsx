@@ -64,6 +64,8 @@ type CapturedPreviewElement = {
 
 const SECTION_STORAGE_KEY = 'carbonet:builder:saved-sections';
 const FRONTEND_CANDIDATE_STORAGE_KEY = 'carbonet:builder:frontend-candidates';
+const SERVER_SECTION_COLLECTION = 'saved-sections';
+const SERVER_FRONTEND_CANDIDATE_COLLECTION = 'frontend-candidates';
 const BUILDER_AGENT_OPTIONS: Array<{ id: BuilderAgentId; label: string; description: string; modelNote: string }> = [
   { id: 'HERMES', label: 'HERMES', description: '기존 Hermes 작업 흐름으로 화면 수정 요청을 전달합니다.', modelNote: '현재 로컬 모델 설정은 추후 비중국 모델로 교체 예정' },
   { id: 'KILO', label: 'KILO', description: 'Kilo 에이전트 작업 큐로 넘길 요청 형식을 생성합니다.', modelNote: '현재 모델 설정은 추후 Mixtral/Gemma 계열로 교체 예정' },
@@ -210,12 +212,16 @@ function loadFrontendCandidates(target: BuilderTargetContext): FrontendCandidate
   try {
     const raw = window.localStorage.getItem(FRONTEND_CANDIDATE_STORAGE_KEY);
     const saved = raw ? JSON.parse(raw) as FrontendCandidate[] : [];
-    const defaults = defaultFrontendCandidates(target);
-    const savedIds = new Set(saved.map(item => item.id));
-    return [...defaults.filter(item => !savedIds.has(item.id)), ...saved].slice(0, 20);
+    return mergeFrontendCandidates(target, saved);
   } catch {
     return defaultFrontendCandidates(target);
   }
+}
+
+function mergeFrontendCandidates(target: BuilderTargetContext, saved: FrontendCandidate[]) {
+  const defaults = defaultFrontendCandidates(target);
+  const savedIds = new Set(saved.map(item => item.id));
+  return [...defaults.filter(item => !savedIds.has(item.id)), ...saved].slice(0, 20);
 }
 
 function persistFrontendCandidates(candidates: FrontendCandidate[]) {
@@ -479,6 +485,7 @@ export function BuilderStudioPage() {
       setTargetContext(nextTarget);
       setManagedAssetContext(readManagedAssetContext());
       setFrontendCandidates(loadFrontendCandidates(nextTarget));
+      void loadServerBuilderAssets(nextTarget);
     }
     window.addEventListener('popstate', syncTargetContext);
     window.addEventListener('carbonet:navigation', syncTargetContext);
@@ -491,12 +498,22 @@ export function BuilderStudioPage() {
   async function loadInitialData() {
     try {
       setIsLoading(true);
-      const [componentsRes, screensRes] = await Promise.all([
+      const [componentsRes, screensRes, sectionsRes, frontendCandidateRes] = await Promise.all([
         api.getComponents({ activeOnly: true }),
         api.getScreens(),
+        api.getBuilderAssetCollection<SavedBuilderSection>(SERVER_SECTION_COLLECTION).catch(() => ({ collection: SERVER_SECTION_COLLECTION, items: [] as SavedBuilderSection[], count: 0 })),
+        api.getBuilderAssetCollection<FrontendCandidate>(SERVER_FRONTEND_CANDIDATE_COLLECTION).catch(() => ({ collection: SERVER_FRONTEND_CANDIDATE_COLLECTION, items: [] as FrontendCandidate[], count: 0 })),
       ]);
       setComponents(componentsRes.components);
       setScreens(screensRes.screens);
+      if (sectionsRes.items.length) {
+        setSavedSections(sectionsRes.items);
+        persistSavedSections(sectionsRes.items);
+      }
+      if (frontendCandidateRes.items.length) {
+        setFrontendCandidates(mergeFrontendCandidates(targetContext, frontendCandidateRes.items));
+        persistFrontendCandidates(frontendCandidateRes.items);
+      }
       if (screensRes.screens.length > 0) {
         setCurrentScreen(screensRes.screens[0]);
       }
@@ -504,6 +521,25 @@ export function BuilderStudioPage() {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function loadServerBuilderAssets(nextTarget: BuilderTargetContext) {
+    try {
+      const [sectionsRes, frontendCandidateRes] = await Promise.all([
+        api.getBuilderAssetCollection<SavedBuilderSection>(SERVER_SECTION_COLLECTION),
+        api.getBuilderAssetCollection<FrontendCandidate>(SERVER_FRONTEND_CANDIDATE_COLLECTION),
+      ]);
+      if (sectionsRes.items.length) {
+        setSavedSections(sectionsRes.items);
+        persistSavedSections(sectionsRes.items);
+      }
+      if (frontendCandidateRes.items.length) {
+        setFrontendCandidates(mergeFrontendCandidates(nextTarget, frontendCandidateRes.items));
+        persistFrontendCandidates(frontendCandidateRes.items);
+      }
+    } catch {
+      // Local fallback keeps builder usable when the metadata API is unavailable.
     }
   }
 
@@ -757,7 +793,7 @@ export function BuilderStudioPage() {
   function handleFrontendCandidateUpload(file: File | null) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const html = String(reader.result || '');
       const candidate: FrontendCandidate = {
         id: `uploaded-${Date.now()}`,
@@ -772,6 +808,15 @@ export function BuilderStudioPage() {
       setFrontendCandidates(next);
       persistFrontendCandidates(next);
       setSelectedFrontendCandidateId(candidate.id);
+      try {
+        await api.saveBuilderAssetCollection(
+          SERVER_FRONTEND_CANDIDATE_COLLECTION,
+          next.filter(item => item.source === 'uploaded')
+        );
+      } catch {
+        showToast('HTML 후보를 로컬에 저장했습니다. 서버 메타데이터 저장은 재시도하세요.');
+        return;
+      }
       showToast('HTML 후보를 업로드하고 선택했습니다.');
     };
     reader.readAsText(file);
@@ -1009,7 +1054,7 @@ export function BuilderStudioPage() {
     showToast('선택 요소 디자인 수치를 적용했습니다. 저장/발행하면 빌더 화면에 반영됩니다.');
   }
 
-  function saveSelectedNodeAsSection() {
+  async function saveSelectedNodeAsSection() {
     if (!selectedNode) {
       showToast('보관할 섹션 노드를 먼저 선택하세요.');
       return;
@@ -1025,6 +1070,12 @@ export function BuilderStudioPage() {
     const next = [section, ...savedSections].slice(0, 60);
     setSavedSections(next);
     persistSavedSections(next);
+    try {
+      await api.saveBuilderAssetCollection(SERVER_SECTION_COLLECTION, next);
+    } catch {
+      showToast('섹션을 로컬에 저장했습니다. 서버 메타데이터 저장은 재시도하세요.');
+      return;
+    }
     showToast('섹션 보관함에 저장했습니다.');
   }
 
