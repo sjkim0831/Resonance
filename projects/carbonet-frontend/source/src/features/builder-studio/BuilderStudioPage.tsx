@@ -9,8 +9,8 @@ import { PAGE_COMPLETENESS_INVENTORY, type PageCompletenessInventoryRow } from '
 import { ROUTE_SOURCE_INVENTORY, type RouteSourceInventoryRow } from './routeSourceInventory';
 
 
-type BuilderAgentId = 'HERMES' | 'KILO';
-type BuilderWorkspaceTab = 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'full-stack-workbench' | 'page-quality' | 'environment-audit';
+type BuilderAgentId = 'HERMES' | 'KILO' | 'CODEX';
+type BuilderWorkspaceTab = 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'ui-recommendations' | 'full-stack-workbench' | 'page-quality' | 'environment-audit';
 
 type BuilderTargetContext = {
   menuCode: string;
@@ -69,6 +69,7 @@ const SERVER_FRONTEND_CANDIDATE_COLLECTION = 'frontend-candidates';
 const BUILDER_AGENT_OPTIONS: Array<{ id: BuilderAgentId; label: string; description: string; modelNote: string }> = [
   { id: 'HERMES', label: 'HERMES', description: '기존 Hermes 작업 흐름으로 화면 수정 요청을 전달합니다.', modelNote: '현재 로컬 모델 설정은 추후 비중국 모델로 교체 예정' },
   { id: 'KILO', label: 'KILO', description: 'Kilo 에이전트 작업 큐로 넘길 요청 형식을 생성합니다.', modelNote: '현재 모델 설정은 추후 Mixtral/Gemma 계열로 교체 예정' },
+  { id: 'CODEX', label: 'CODEX', description: 'Codex 작업 큐로 화면 생성, 소스 수정, 검증 요청을 전달합니다.', modelNote: 'API 키는 서버 OPENAI_API_KEY 시크릿으로 주입' },
 ];
 
 const ENVIRONMENT_BUILDER_SURFACES = [
@@ -127,6 +128,7 @@ function readInitialBuilderTab(): BuilderWorkspaceTab {
   if (tab === 'sections' || window.location.pathname.endsWith('/section-management')) return 'sections';
   if (tab === 'builder-canvas') return 'builder-canvas';
   if (tab === 'asset-registry') return 'asset-registry';
+  if (tab === 'ui-recommendations') return 'ui-recommendations';
   if (tab === 'full-stack-workbench') return 'full-stack-workbench';
   if (tab === 'page-quality') return 'page-quality';
   if (tab === 'environment-audit') return 'environment-audit';
@@ -468,7 +470,7 @@ export function BuilderStudioPage() {
   const [selectedFrontendCandidateId, setSelectedFrontendCandidateId] = useState('original-runtime');
   const [fullStackMode, setFullStackMode] = useState<'frontend-only' | 'metadata-api' | 'java-core' | 'db-migration'>('frontend-only');
   const [changedFileDraft, setChangedFileDraft] = useState('');
-  const [rollbackPoints, setRollbackPoints] = useState<Array<{ id: string; label: string; candidateId: string; createdAt: string }>>([]);
+  const [rollbackPoints, setRollbackPoints] = useState<Array<{ id: string; label: string; candidateId: string; createdAt: string; nodes?: BuilderNode[] }>>([]);
   const [workbenchStatus, setWorkbenchStatus] = useState<api.FullStackBuilderStatus | null>(null);
   const [workbenchResult, setWorkbenchResult] = useState<Record<string, unknown> | null>(null);
   const [isWorkbenchBusy, setIsWorkbenchBusy] = useState(false);
@@ -828,9 +830,72 @@ export function BuilderStudioPage() {
       label,
       candidateId: selectedFrontendCandidate?.id || 'original-runtime',
       createdAt: new Date().toISOString(),
+      nodes: currentScreen?.nodes.map(node => ({ ...node, props: { ...node.props } })),
     };
     setRollbackPoints([point, ...rollbackPoints].slice(0, 12));
     showToast('롤백 지점을 만들었습니다.');
+  }
+
+  function buildFrontendCandidateInstruction(intent: 'generate' | 'apply' | 'review', candidateOverride?: FrontendCandidate) {
+    const candidate = candidateOverride || selectedFrontendCandidate;
+    return [
+      intent === 'apply' ? '선택한 UI 후보를 실제 화면에 반영해줘.' : intent === 'review' ? '선택한 UI 후보를 검토하고 적용 가능한 변경안을 만들어줘.' : '현재 화면에 맞는 UI 후보를 최대 5개 추천하고 가장 적합한 후보를 제안해줘.',
+      `agent=${selectedAgent}`,
+      `menuCode=${targetContext.menuCode}`,
+      `pageId=${targetContext.pageId}`,
+      `menuTitle=${targetContext.menuTitle}`,
+      `menuUrl=${targetContext.menuUrl}`,
+      `routeSource=${targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}`,
+      `candidate=${candidate ? JSON.stringify({ id: candidate.id, title: candidate.title, source: candidate.source, summary: candidate.summary, confidence: candidate.confidence, html: candidate.html.slice(0, 8000) }) : '-'}`,
+      'requirements=프론트 파일 경로, 컨트롤러/API/DB 필요 여부, 변경 파일, 검증 방법, 롤백 방법을 반드시 포함해줘.',
+      'applyPolicy=선택 후보를 바로 적용할 수 있으면 변경 파일만 수정하고, Java 변경은 project-core 기준으로 분리해줘.',
+      'rollbackPolicy=적용 전 후보/화면 상태를 롤백 포인트로 남기고 실패 시 이전 후보로 되돌릴 수 있게 해줘.',
+    ].join('\n');
+  }
+
+  function requestFrontendCandidateAi(intent: 'generate' | 'apply' | 'review', executeNow = false, candidateOverride?: FrontendCandidate) {
+    setAiPrompt(buildFrontendCandidateInstruction(intent, candidateOverride));
+    setShowAiPanel(true);
+    if (executeNow) {
+      window.setTimeout(() => { void submitBuilderAgentRequest(true); }, 0);
+    }
+  }
+
+  async function applySelectedFrontendCandidateToCanvas(candidateOverride?: FrontendCandidate) {
+    const candidate = candidateOverride || selectedFrontendCandidate;
+    if (!currentScreen || !candidate) {
+      showToast('적용할 화면과 UI 후보를 먼저 선택하세요.');
+      return;
+    }
+    createRollbackPoint(`${currentScreen.menuNm} 적용 전`);
+    const existingIndex = currentScreen.nodes.findIndex(node => node.nodeId === 'node-selected-frontend-candidate');
+    const nextNode: BuilderNode = {
+      nodeId: 'node-selected-frontend-candidate',
+      componentId: 'FRONTEND_CANDIDATE_HTML',
+      parentNodeId: null,
+      componentType: 'SECTION',
+      slotName: 'root',
+      sortOrder: existingIndex >= 0 ? currentScreen.nodes[existingIndex].sortOrder : currentScreen.nodes.filter(n => n.parentNodeId === null).length,
+      props: {
+        label: candidate.title,
+        className: 'rounded border border-blue-200 bg-white p-4 shadow-sm',
+        html: candidate.html,
+        candidateId: candidate.id,
+        source: candidate.source,
+      },
+    };
+    const nextNodes = existingIndex >= 0
+      ? currentScreen.nodes.map((node, index) => index === existingIndex ? nextNode : node)
+      : [...currentScreen.nodes, nextNode];
+    const updatedScreen = { ...currentScreen, nodes: nextNodes };
+    setCurrentScreen(updatedScreen);
+    setSelectedNode(nextNode);
+    try {
+      await api.updateScreen(currentScreen.screenId, updatedScreen);
+      showToast('선택한 UI 후보를 빌더 화면에 적용하고 저장했습니다.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '선택 후보 적용 저장에 실패했습니다.');
+    }
   }
 
   function buildFullStackWorkbenchPayload(): api.FullStackBuilderPlanRequest {
@@ -1232,6 +1297,7 @@ export function BuilderStudioPage() {
             ['builder-canvas', '빌더 캔버스'],
             ['sections', '섹션 보관함'],
             ['asset-registry', '자산 레지스트리'],
+            ['ui-recommendations', 'UI 추천'],
             ['full-stack-workbench', '전체 개발'],
             ['page-quality', '페이지 완성도'],
             ['environment-audit', '환경 기능 확인'],
@@ -1438,6 +1504,85 @@ export function BuilderStudioPage() {
         </div>
       ) : null}
 
+      {activeWorkspaceTab === 'ui-recommendations' ? (
+        <div className="flex-1 overflow-auto bg-slate-50 p-6">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">UI 생성/추천</h2>
+              <p className="mt-1 text-sm text-slate-500">운영 원본과 추천 후보 4개, 업로드 HTML을 비교하고 선택한 화면을 AI 작업 또는 빌더 적용으로 넘깁니다.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value as BuilderAgentId)} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                {BUILDER_AGENT_OPTIONS.map(agent => <option key={agent.id} value={agent.id}>{agent.label}</option>)}
+              </select>
+              <label className="cursor-pointer rounded border border-blue-200 bg-white px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50">
+                HTML 업로드
+                <input type="file" accept=".html,.htm,text/html" className="hidden" onChange={e => handleFrontendCandidateUpload(e.target.files?.[0] || null)} />
+              </label>
+              <button type="button" onClick={() => requestFrontendCandidateAi('generate', false)} className="rounded border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-indigo-700">5개 추천 요청</button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <section className="grid gap-3 md:grid-cols-2">
+              {frontendCandidates.slice(0, 5).map(candidate => (
+                <article key={candidate.id} className={`rounded border bg-white p-4 shadow-sm ${selectedFrontendCandidateId === candidate.id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'}`}>
+                  <button type="button" onClick={() => setSelectedFrontendCandidateId(candidate.id)} className="w-full text-left">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-black uppercase text-slate-500">{candidate.source}</p>
+                        <h3 className="mt-1 font-black text-slate-900">{candidate.title}</h3>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{candidate.confidence}%</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500">{candidate.summary}</p>
+                    <p className="mt-3 line-clamp-3 break-all font-mono text-xs text-slate-400">{candidate.html}</p>
+                  </button>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('review', false, candidate); }} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">AI 검토</button>
+                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('apply', false, candidate); }} className="rounded border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">AI 반영 요청</button>
+                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); void applySelectedFrontendCandidateToCanvas(candidate); }} className="rounded border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">빌더 적용</button>
+                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('apply', true, candidate); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white">즉시 요청</button>
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <aside className="space-y-4">
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Selected UI</p>
+                <h3 className="mt-1 font-black text-slate-900">{selectedFrontendCandidate?.title || '선택 후보 없음'}</h3>
+                <div className="mt-3 max-h-[300px] overflow-auto rounded border bg-slate-950 p-3">
+                  <pre className="whitespace-pre-wrap break-all text-xs leading-5 text-slate-100">{selectedFrontendCandidate?.html || ''}</pre>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => createRollbackPoint('수동 롤백 지점')} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">롤백 지점</button>
+                  <button type="button" onClick={() => { void applySelectedFrontendCandidateToCanvas(); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white">선택 화면 적용</button>
+                </div>
+              </section>
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Agent</p>
+                <h3 className="mt-1 font-black text-slate-900">{selectedAgent}</h3>
+                <p className="mt-2 text-sm text-slate-500">{BUILDER_AGENT_OPTIONS.find(agent => agent.id === selectedAgent)?.description}</p>
+                <p className="mt-2 rounded bg-slate-50 p-2 text-xs font-bold text-slate-500">{BUILDER_AGENT_OPTIONS.find(agent => agent.id === selectedAgent)?.modelNote}</p>
+              </section>
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Rollback</p>
+                <div className="mt-3 space-y-2">
+                  {rollbackPoints.map(point => (
+                    <button key={point.id} type="button" onClick={() => { setSelectedFrontendCandidateId(point.candidateId); if (point.nodes && currentScreen) setCurrentScreen({ ...currentScreen, nodes: point.nodes }); showToast('선택 후보와 캔버스를 롤백 지점으로 되돌렸습니다.'); }} className="w-full rounded border border-slate-200 px-3 py-2 text-left text-xs hover:border-blue-200">
+                      <span className="block font-black text-slate-900">{point.label}</span>
+                      <span className="text-slate-400">{point.createdAt}</span>
+                    </button>
+                  ))}
+                  {rollbackPoints.length === 0 ? <p className="rounded border border-dashed p-4 text-center text-xs text-slate-400">아직 생성된 롤백 지점이 없습니다.</p> : null}
+                </div>
+              </section>
+            </aside>
+          </div>
+        </div>
+      ) : null}
+
       {activeWorkspaceTab === 'full-stack-workbench' ? (
         <div className="flex-1 overflow-auto bg-slate-50 p-6">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -1552,7 +1697,8 @@ export function BuilderStudioPage() {
                       type="button"
                       onClick={() => {
                         setSelectedFrontendCandidateId(point.candidateId);
-                        showToast('선택 후보를 롤백 지점으로 되돌렸습니다.');
+                        if (point.nodes && currentScreen) setCurrentScreen({ ...currentScreen, nodes: point.nodes });
+                        showToast('선택 후보와 캔버스를 롤백 지점으로 되돌렸습니다.');
                       }}
                       className="w-full rounded border border-slate-200 px-3 py-2 text-left text-xs hover:border-blue-200"
                     >
@@ -1958,6 +2104,14 @@ function NodeRenderer({ node, allNodes, selectedNode, onSelect, onDelete, onDrop
             onDragOver={onDragOver}
             onDrop={e => onDrop(e, node.nodeId, 'children')}
           >
+            {typeof node.props?.html === 'string' && node.props.html ? (
+              <div className="mb-3 overflow-hidden rounded border border-slate-200 bg-white">
+                <div className="border-b bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
+                  {String(node.props?.label || 'Selected UI candidate')}
+                </div>
+                <iframe title={String(node.props?.candidateId || node.nodeId)} srcDoc={String(node.props.html)} sandbox="" className="h-72 w-full bg-white" />
+              </div>
+            ) : null}
             {children.map(child => (
               <NodeRenderer
                 key={child.nodeId}
@@ -1970,7 +2124,7 @@ function NodeRenderer({ node, allNodes, selectedNode, onSelect, onDelete, onDrop
                 onDragOver={onDragOver}
               />
             ))}
-            {children.length === 0 && (
+            {children.length === 0 && !node.props?.html && (
               <div className="text-gray-300 text-sm p-4 border-2 border-dashed rounded text-center">
                 여기에 드롭
               </div>
