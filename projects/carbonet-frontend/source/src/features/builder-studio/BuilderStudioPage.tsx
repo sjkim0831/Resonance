@@ -763,6 +763,22 @@ export function BuilderStudioPage() {
     showToast('보관된 섹션을 현재 화면에 추가했습니다.');
   }
 
+  function buildSavedSectionBuilderUrl(section: SavedBuilderSection) {
+    const query = new URLSearchParams();
+    query.set('menuCode', targetContext.menuCode || section.sourceMenuCode || 'section-management');
+    query.set('pageId', targetContext.pageId || section.sourcePageId || 'section-management');
+    query.set('menuTitle', targetContext.menuTitle || section.name || '섹션 관리');
+    query.set('menuUrl', targetContext.menuUrl || '/admin/system/section-management');
+    query.set('assetType', 'section');
+    query.set('assetId', section.id);
+    query.set('assetLabel', section.name);
+    query.set('selector', String(section.node.props?.className || section.node.componentType || 'section'));
+    query.set('sourcePath', 'features/builder-studio/BuilderStudioPage.tsx');
+    query.set('focus', 'section-management');
+    query.set('tab', 'asset-registry');
+    return `/admin/system/builder-studio?${query.toString()}`;
+  }
+
   async function handleCreateNewScreen() {
     try {
       const newScreen = await api.createScreen({
@@ -970,7 +986,20 @@ export function BuilderStudioPage() {
                 <h3 className="mt-1 font-black text-slate-900">{section.name}</h3>
                 <p className="mt-1 text-xs text-slate-500">{section.node.componentType} · {new Date(section.savedAt).toLocaleString()}</p>
                 <p className="mt-2 line-clamp-2 break-all text-xs font-mono text-slate-500">{String(section.node.props?.className || '')}</p>
-                <button onClick={() => insertSavedSection(section)} className="mt-3 rounded border border-blue-200 px-3 py-2 text-sm font-bold text-blue-700">현재 화면에 추가</button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => insertSavedSection(section)} className="rounded border border-blue-200 px-3 py-2 text-sm font-bold text-blue-700">현재 화면에 추가</button>
+                  <a href={buildSavedSectionBuilderUrl(section)} className="rounded border border-indigo-200 px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50">빌더 수정</a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAiPanel(true);
+                      setAiPrompt(`섹션 자산을 기준으로 화면과 섹션 디자인을 수정해줘.\nsectionId=${section.id}\nsectionName=${section.name}\nsourcePageId=${section.sourcePageId}\nsourceMenuCode=${section.sourceMenuCode}\ncomponentType=${section.node.componentType}\nclassName=${String(section.node.props?.className || '')}\nmenuUrl=${targetContext.menuUrl}`);
+                    }}
+                    className="rounded bg-slate-800 px-3 py-2 text-sm font-bold text-white"
+                  >
+                    AI 수정
+                  </button>
+                </div>
               </article>
             ))}
             {savedSections.length === 0 ? <div className="rounded border border-dashed bg-white p-8 text-center text-sm text-slate-400">저장된 섹션이 없습니다.</div> : null}
