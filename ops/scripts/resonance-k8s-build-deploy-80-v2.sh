@@ -33,6 +33,7 @@ SKIP_BACKEND="${SKIP_BACKEND:-$SKIP_MAVEN}"
 SKIP_IMAGE_BUILD="${SKIP_IMAGE_BUILD:-false}"
 SKIP_OVERLAY_SYNC="${SKIP_OVERLAY_SYNC:-false}"
 INCREMENTAL="${INCREMENTAL:-false}"
+PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 RUN_DIR="$ROOT_DIR/var/run"
@@ -99,7 +100,7 @@ log_event() {
 }
 
 init_error_logging() {
-  mkdir -p "$ERROR_LOG_DIR"
+  mkdir -p "$ERROR_LOG_DIR" "$(dirname "$EVENT_LOG")" "$(dirname "$MANIFEST_LOG")" "$LOG_DIR" "$BACKUP_DIR"
   local timestamp=$(date +%Y%m%d-%H%M%S)
   FRONTEND_ERROR_LOG="$ERROR_LOG_DIR/frontend-$timestamp.log"
   MAVEN_ERROR_LOG="$ERROR_LOG_DIR/backend-$timestamp.log"
@@ -172,7 +173,13 @@ rollback_and_fail() {
   echo -e "${YELLOW}Diagnostic Log:${NC} $DIAGNOSTIC_LOG"
   echo -e "${YELLOW}Error Logs Dir:${NC} $ERROR_LOG_DIR/"
 
-  kubectl -n "$NAMESPACE" rollout undo "deployment/$DEPLOYMENT" 2>/dev/null || true
+  if [[ -n "${PRE_ROLLOUT_IMAGE:-}" ]]; then
+    log_warning "Restoring previous deployment image: $PRE_ROLLOUT_IMAGE"
+    kubectl -n "$NAMESPACE" set image "deployment/$DEPLOYMENT" "$CONTAINER=$PRE_ROLLOUT_IMAGE" >/dev/null 2>&1 || true
+    kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=180s >/dev/null 2>&1 || true
+  else
+    log_warning "No previous deployment image captured; leaving deployment unchanged"
+  fi
   release_lock
   exit 1
 }
@@ -257,6 +264,10 @@ preflight_check() {
 
 guard_frontend_overlay() {
   local action="$1"
+  if [[ "$SKIP_FRONTEND" == "true" && "$SKIP_OVERLAY_SYNC" == "true" ]]; then
+    log_detail "Frontend overlay guard skipped for project-core deploy: $action"
+    return
+  fi
   if [[ ! -x "$FRONTEND_GUARD_SCRIPT" ]]; then
     rollback_and_fail "FRONTEND_GUARD_MISSING" \
       "Frontend overlay guard is missing or not executable: $FRONTEND_GUARD_SCRIPT" \
@@ -576,6 +587,11 @@ build_image() {
 
 rollout_image() {
   log_step "Rollout"
+
+  PRE_ROLLOUT_IMAGE="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+  if [[ -n "$PRE_ROLLOUT_IMAGE" ]]; then
+    log_detail "Previous deployment image: $PRE_ROLLOUT_IMAGE"
+  fi
 
   local image_sha
   image_sha="$(root_cmd sh -c "docker inspect '$IMAGE_NAME' --format='{{.Id}}' 2>/dev/null" | sed 's/sha256://' | cut -c1-12)" || image_sha=""
