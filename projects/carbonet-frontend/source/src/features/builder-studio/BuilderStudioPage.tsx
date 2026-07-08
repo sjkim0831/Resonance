@@ -10,7 +10,7 @@ import { ROUTE_SOURCE_INVENTORY, type RouteSourceInventoryRow } from './routeSou
 
 
 type BuilderAgentId = 'HERMES' | 'KILO' | 'CODEX';
-type BuilderWorkspaceTab = 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'ui-recommendations' | 'full-stack-workbench' | 'page-quality' | 'environment-audit';
+type BuilderWorkspaceTab = 'unified-workspace' | 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'ui-recommendations' | 'full-stack-workbench' | 'page-quality' | 'environment-audit';
 
 type BuilderTargetContext = {
   menuCode: string;
@@ -122,9 +122,10 @@ function readManagedAssetContext(): BuilderManagedAssetContext {
 }
 
 function readInitialBuilderTab(): BuilderWorkspaceTab {
-  if (typeof window === 'undefined') return 'target-preview';
+  if (typeof window === 'undefined') return 'unified-workspace';
   const params = new URLSearchParams(window.location.search);
   const tab = params.get('tab');
+  if (tab === 'unified-workspace') return 'unified-workspace';
   if (tab === 'sections' || window.location.pathname.endsWith('/section-management')) return 'sections';
   if (tab === 'builder-canvas') return 'builder-canvas';
   if (tab === 'asset-registry') return 'asset-registry';
@@ -132,7 +133,7 @@ function readInitialBuilderTab(): BuilderWorkspaceTab {
   if (tab === 'full-stack-workbench') return 'full-stack-workbench';
   if (tab === 'page-quality') return 'page-quality';
   if (tab === 'environment-audit') return 'environment-audit';
-  return 'target-preview';
+  return 'unified-workspace';
 }
 
 function normalizePreviewUrl(menuUrl: string) {
@@ -862,6 +863,59 @@ export function BuilderStudioPage() {
     }
   }
 
+  function buildUnifiedWorkspaceInstruction(intent: 'recommend' | 'modify' | 'apply') {
+    const componentSummary = components.slice(0, 20).map(component => ({
+      id: component.componentId,
+      name: component.componentNm,
+      type: component.componentType,
+      category: component.categoryCd,
+      defaultClass: component.defaultClassNm,
+    }));
+    const sectionSummary = savedSections.slice(0, 12).map(section => ({
+      id: section.id,
+      name: section.name,
+      sourcePageId: section.sourcePageId,
+      componentType: section.node.componentType,
+      className: String(section.node.props?.className || ''),
+    }));
+    const designSurfaces = ENVIRONMENT_BUILDER_SURFACES
+      .filter(item => item.assetType === 'theme' || item.assetType === 'component' || item.assetType === 'section' || item.assetType === 'surface')
+      .map(item => ({ id: item.id, title: item.title, route: item.route, assetType: item.assetType, status: item.status }));
+    const selectedNodeSummary = selectedNode ? {
+      nodeId: selectedNode.nodeId,
+      componentId: selectedNode.componentId,
+      componentType: selectedNode.componentType,
+      props: selectedNode.props,
+    } : null;
+    return [
+      intent === 'apply' ? '선택한 UI 후보를 실제 화면에 반영할 수 있는 변경안으로 적용해줘.' : intent === 'modify' ? '현재 선택한 화면 요소를 시스템 디자인 제약 안에서 수정해줘.' : '현재 화면을 기준으로 시스템 테마/섹션/컴포넌트 제약을 지킨 UI 시안 5개를 추천해줘.',
+      `agent=${selectedAgent}`,
+      `menuCode=${targetContext.menuCode}`,
+      `pageId=${targetContext.pageId}`,
+      `menuTitle=${targetContext.menuTitle}`,
+      `menuUrl=${targetContext.menuUrl}`,
+      `routeSource=${targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}`,
+      `selectedNode=${selectedNodeSummary ? JSON.stringify(selectedNodeSummary) : '-'}`,
+      `managedAsset=${JSON.stringify(managedAssetContext)}`,
+      `selectedCandidate=${selectedFrontendCandidate ? JSON.stringify({ id: selectedFrontendCandidate.id, title: selectedFrontendCandidate.title, source: selectedFrontendCandidate.source, summary: selectedFrontendCandidate.summary, html: selectedFrontendCandidate.html.slice(0, 8000) }) : '-'}`,
+      `themeComponentSectionConstraints=${JSON.stringify({ designSurfaces, components: componentSummary, sections: sectionSummary })}`,
+      `assetRegistry=${JSON.stringify(assetRows.slice(0, 24).map(row => ({ group: row.group, title: row.title, status: row.status, owner: row.owner, path: row.path })))}`,
+      'designPolicy=테마 관리의 색상/간격/반경/그림자 기준을 우선 사용하고, 컴포넌트 관리에 등록된 컴포넌트 타입과 기본 클래스를 우선 사용해줘.',
+      'sectionPolicy=섹션 관리에 저장된 섹션을 재사용할 수 있으면 먼저 제안하고, 새 섹션이 필요하면 section-management에 등록 가능한 단위로 나눠줘.',
+      'pathPolicy=프론트 파일, 컨트롤러 경로, API 경로, DB 자산 경로를 메뉴/라우트 계열과 일관되게 제안해줘.',
+      'rollbackPolicy=적용 전에는 빌더 롤백 지점과 변경 파일 diff 기준을 만들고, 실패 시 이전 후보와 캔버스 상태로 되돌릴 수 있게 해줘.',
+      'output=추천 후보 5개, 선택 후보 HTML, 적용 파일 목록, 검증 방법, Java/API/DB 변경 필요 여부를 포함해줘.',
+    ].join('\n');
+  }
+
+  function requestUnifiedWorkspaceAi(intent: 'recommend' | 'modify' | 'apply', executeNow = false) {
+    setAiPrompt(buildUnifiedWorkspaceInstruction(intent));
+    setShowAiPanel(true);
+    if (executeNow) {
+      window.setTimeout(() => { void submitBuilderAgentRequest(true); }, 0);
+    }
+  }
+
   async function applySelectedFrontendCandidateToCanvas(candidateOverride?: FrontendCandidate) {
     const candidate = candidateOverride || selectedFrontendCandidate;
     if (!currentScreen || !candidate) {
@@ -1294,6 +1348,7 @@ export function BuilderStudioPage() {
       <div className="border-b bg-white px-4 py-2">
         <div className="flex flex-wrap gap-2">
           {[
+            ['unified-workspace', '통합 작업실'],
             ['target-preview', '대상 화면'],
             ['builder-canvas', '빌더 캔버스'],
             ['sections', '섹션 보관함'],
@@ -1311,6 +1366,205 @@ export function BuilderStudioPage() {
           </label>
         </div>
       </div>
+
+      {activeWorkspaceTab === 'unified-workspace' ? (
+        <div className="flex-1 overflow-auto bg-slate-50 p-5">
+          <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_380px]">
+            <aside className="space-y-4">
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Target</p>
+                <h2 className="mt-1 text-lg font-black text-slate-900">{targetContext.menuTitle}</h2>
+                <div className="mt-3 space-y-1 text-xs text-slate-600">
+                  <p><b>menuCode</b> {targetContext.menuCode || '-'}</p>
+                  <p><b>pageId</b> {targetContext.pageId || '-'}</p>
+                  <p className="break-all"><b>url</b> {targetContext.menuUrl || '-'}</p>
+                  <p className="break-all"><b>source</b> {targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}</p>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={attachPreviewInspector} className="rounded border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700">요소 캡처</button>
+                  <button type="button" onClick={() => setActiveWorkspaceTab('target-preview')} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">전체 미리보기</button>
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Design Constraints</p>
+                <h3 className="mt-1 font-black text-slate-900">테마/섹션/컴포넌트 제약</h3>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                  <a href="/admin/system/theme-management" className="rounded border border-slate-200 px-2 py-3 hover:border-blue-200">
+                    <span className="block font-black text-slate-900">Theme</span>
+                    <span className="text-slate-500">토큰 기준</span>
+                  </a>
+                  <button type="button" onClick={() => setActiveWorkspaceTab('sections')} className="rounded border border-slate-200 px-2 py-3 hover:border-blue-200">
+                    <span className="block font-black text-slate-900">{savedSections.length}</span>
+                    <span className="text-slate-500">섹션</span>
+                  </button>
+                  <a href="/admin/system/component-management" className="rounded border border-slate-200 px-2 py-3 hover:border-blue-200">
+                    <span className="block font-black text-slate-900">{components.length}</span>
+                    <span className="text-slate-500">컴포넌트</span>
+                  </a>
+                </div>
+                <div className="mt-3 rounded bg-slate-50 p-3 text-xs text-slate-600">
+                  AI 추천/생성 시 테마 관리의 색상, 간격, 반경, 그림자 기준과 등록 컴포넌트/섹션 목록을 함께 전달합니다.
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Components</p>
+                <select value={activeCategory} onChange={e => setActiveCategory(e.target.value)} className="mt-2 w-full rounded border px-3 py-2 text-sm">
+                  {categories.map(cat => <option key={cat} value={cat}>{cat === 'ALL' ? '전체' : CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]?.ko || cat}</option>)}
+                </select>
+                <div className="mt-3 max-h-64 space-y-2 overflow-auto">
+                  {filteredComponents.slice(0, 18).map(comp => (
+                    <div
+                      key={comp.componentId}
+                      draggable
+                      onDragStart={e => handleDragStart(e, comp)}
+                      className="rounded border border-slate-200 bg-slate-50 p-3 text-sm cursor-grab hover:border-blue-300"
+                    >
+                      <p className="font-black text-slate-900">{comp.componentNm}</p>
+                      <p className="text-xs text-slate-500">{COMPONENT_TYPE_LABELS[comp.componentType]?.ko || comp.componentType}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </aside>
+
+            <main className="space-y-4">
+              <section className="overflow-hidden rounded border bg-white shadow-sm">
+                <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">Live Screen</p>
+                    <h3 className="font-black text-slate-900">대상 화면을 불러오고 우클릭/선택 요소를 수정합니다</h3>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => requestUnifiedWorkspaceAi('recommend', false)} className="rounded border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700">AI 시안 5개</button>
+                    <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="rounded bg-slate-800 px-3 py-2 text-xs font-bold text-white">선택 요소 수정</button>
+                  </div>
+                </div>
+                <div className="relative h-[420px] bg-white">
+                  <iframe ref={previewFrameRef} title="unified-builder-target-preview" src={previewUrl} className="h-full w-full" onLoad={attachPreviewInspector} />
+                  {previewContextRequest ? (
+                    <div className="absolute left-4 top-4 z-20 max-w-sm rounded border border-blue-200 bg-white p-3 text-xs shadow-xl">
+                      <p className="font-black text-blue-700">선택된 화면 요소</p>
+                      <p className="mt-1 break-all font-mono text-slate-600">{previewContextRequest.selector}</p>
+                      <p className="mt-1 line-clamp-2 text-slate-500">{previewContextRequest.element?.text || previewContextRequest.element?.ariaLabel || previewContextRequest.element?.tagName}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="rounded bg-blue-700 px-2 py-1.5 font-bold text-white">AI 수정</button>
+                        <button type="button" onClick={() => setPreviewContextRequest(null)} className="rounded border border-slate-200 px-2 py-1.5 font-bold text-slate-700">닫기</button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">Builder Canvas</p>
+                    <h3 className="font-black text-slate-900">선택 후보와 컴포넌트를 캔버스에 적용</h3>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={saveSelectedNodeAsSection} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">섹션 저장</button>
+                    <button type="button" onClick={handleSave} disabled={isSaving} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">저장</button>
+                  </div>
+                </div>
+                <div
+                  onDragOver={handleDragOver}
+                  onDrop={e => handleDrop(e, null, 'root')}
+                  className="mt-4 min-h-[260px] rounded border-2 border-dashed border-slate-200 bg-slate-50 p-4"
+                >
+                  {currentScreen?.nodes.filter(n => n.parentNodeId === null).map(node => (
+                    <NodeRenderer
+                      key={node.nodeId}
+                      node={node}
+                      allNodes={currentScreen.nodes}
+                      selectedNode={selectedNode}
+                      onSelect={setSelectedNode}
+                      onDelete={handleNodeDelete}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                    />
+                  ))}
+                  {!currentScreen?.nodes.length ? (
+                    <div className="flex h-40 items-center justify-center rounded bg-white text-sm font-bold text-slate-400">왼쪽 컴포넌트를 끌어오거나 UI 후보를 적용하세요.</div>
+                  ) : null}
+                </div>
+              </section>
+            </main>
+
+            <aside className="space-y-4">
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Selected Element</p>
+                <h3 className="mt-1 font-black text-slate-900">{selectedNode?.componentType || previewContextRequest?.element?.tagName || '선택 없음'}</h3>
+                <div className="mt-3 space-y-2">
+                  <label className="block text-xs font-bold text-slate-500">Label</label>
+                  <input
+                    value={String(selectedNode?.props?.label || '')}
+                    onChange={e => selectedNode && handleUpdateNodeProps(selectedNode.nodeId, { label: e.target.value })}
+                    className="w-full rounded border px-3 py-2 text-sm"
+                    placeholder="선택한 빌더 요소 라벨"
+                  />
+                  <label className="block text-xs font-bold text-slate-500">Class</label>
+                  <textarea
+                    value={String(selectedNode?.props?.className || '')}
+                    onChange={e => selectedNode && handleUpdateNodeProps(selectedNode.nodeId, { className: e.target.value })}
+                    className="min-h-[84px] w-full rounded border px-3 py-2 font-mono text-xs"
+                    placeholder="테마/컴포넌트 기준 className"
+                  />
+                </div>
+                <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="mt-3 w-full rounded bg-slate-800 px-3 py-2 text-xs font-bold text-white">선택 정보로 AI 요청</button>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">UI Candidates</p>
+                    <h3 className="mt-1 font-black text-slate-900">추천/업로드/적용</h3>
+                  </div>
+                  <label className="cursor-pointer rounded border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">
+                    HTML
+                    <input type="file" accept=".html,.htm,text/html" className="hidden" onChange={e => handleFrontendCandidateUpload(e.target.files?.[0] || null)} />
+                  </label>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {frontendCandidates.slice(0, 5).map(candidate => (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      onClick={() => setSelectedFrontendCandidateId(candidate.id)}
+                      className={`w-full rounded border p-3 text-left ${selectedFrontendCandidateId === candidate.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-200'}`}
+                    >
+                      <span className="block text-xs font-black text-slate-500">{candidate.source} · {candidate.confidence}%</span>
+                      <span className="block font-black text-slate-900">{candidate.title}</span>
+                      <span className="line-clamp-1 text-xs text-slate-500">{candidate.summary}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setShowCandidatePreview(true)} className="rounded border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700">팝업 보기</button>
+                  <button type="button" onClick={() => { void applySelectedFrontendCandidateToCanvas(); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white">캔버스 적용</button>
+                  <button type="button" onClick={() => requestUnifiedWorkspaceAi('recommend', false)} className="rounded border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700">추천 요청</button>
+                  <button type="button" onClick={() => requestUnifiedWorkspaceAi('apply', true)} className="rounded bg-slate-800 px-3 py-2 text-xs font-bold text-white">즉시 반영</button>
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Rollback</p>
+                <button type="button" onClick={() => createRollbackPoint('통합 작업실 수동 롤백')} className="mt-2 w-full rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">현재 상태 저장</button>
+                <div className="mt-3 max-h-40 space-y-2 overflow-auto">
+                  {rollbackPoints.map(point => (
+                    <button key={point.id} type="button" onClick={() => { setSelectedFrontendCandidateId(point.candidateId); if (point.nodes && currentScreen) setCurrentScreen({ ...currentScreen, nodes: point.nodes }); showToast('선택 후보와 캔버스를 롤백 지점으로 되돌렸습니다.'); }} className="w-full rounded border border-slate-200 px-3 py-2 text-left text-xs hover:border-blue-200">
+                      <span className="block font-black text-slate-900">{point.label}</span>
+                      <span className="text-slate-400">{point.createdAt}</span>
+                    </button>
+                  ))}
+                  {rollbackPoints.length === 0 ? <p className="rounded border border-dashed p-3 text-center text-xs text-slate-400">롤백 지점 없음</p> : null}
+                </div>
+              </section>
+            </aside>
+          </div>
+        </div>
+      ) : null}
 
       {activeWorkspaceTab === 'target-preview' ? (
         <div className="flex-1 overflow-hidden bg-slate-100 p-4">
