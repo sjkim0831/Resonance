@@ -76,6 +76,40 @@ type CronMonitoringPayload = {
   source: string;
   error?: string;
 };
+type BatchPodRow = {
+  namespace: string;
+  name: string;
+  phase: string;
+  ready: string;
+  restarts: number;
+  node: string;
+  podIP: string;
+  createdAt: string;
+  owner: string;
+};
+type BatchWorkloadRow = {
+  kind: string;
+  namespace: string;
+  name: string;
+  ready: string;
+  available: string;
+  updated: string;
+  createdAt: string;
+};
+type BatchMonitoringPayload = {
+  summary: CronSummary[];
+  health: "NORMAL" | "WARN" | string;
+  jobs: Array<KubernetesJobRow & { owner?: string }>;
+  cronJobs: Pick<CronJobRow, "namespace" | "name" | "schedule" | "suspend" | "active" | "lastScheduleTime" | "lastSuccessfulTime" | "containers">[];
+  pods: BatchPodRow[];
+  workloads: BatchWorkloadRow[];
+  warningEvents: CronWarningEvent[];
+  completeJobs: number;
+  unhealthyPods: number;
+  generatedAt: string;
+  source: string;
+  error?: string;
+};
 
 function statusClass(status: MonitorRow["status"]) {
   switch (status) {
@@ -518,7 +552,244 @@ export function DbMonitoringPage() {
 }
 
 export function BatchMonitoringPage() {
-  return <MonitoringOperationsPage kind="batch" />;
+  const en = isEnglish();
+  const [payload, setPayload] = useState<BatchMonitoringPayload | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const load = async () => {
+    try {
+      setError(null);
+      const response = await fetch("/admin/api/batch-monitoring/status", {
+        credentials: "include",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      setPayload(data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = setInterval(() => { void load(); }, 30000);
+    return () => clearInterval(timer);
+  }, [autoRefresh]);
+
+  const jobs = payload?.jobs ?? [];
+  const cronJobs = payload?.cronJobs ?? [];
+  const pods = payload?.pods ?? [];
+  const workloads = payload?.workloads ?? [];
+  const warningEvents = payload?.warningEvents ?? [];
+  const failedJobs = useMemo(() => jobs.filter((job) => job.status === "Failed").length, [jobs]);
+  const runningJobs = jobs.filter((job) => job.status === "Running").length;
+  const completeJobs = payload?.completeJobs ?? jobs.filter((job) => job.status === "Complete").length;
+  const health = payload?.health ?? (failedJobs > 0 || warningEvents.length > 0 ? "WARN" : "NORMAL");
+  const summary = payload?.summary?.length ? payload.summary : [
+    { title: "Jobs", value: String(jobs.length), description: "Kubernetes Job resources" },
+    { title: "Running Jobs", value: String(runningJobs), description: "Currently active batch executions" },
+    { title: "Failed Jobs", value: String(failedJobs), description: "Retained failed batch executions" },
+    { title: "Warning Events", value: String(warningEvents.length), description: "Batch-related Kubernetes warning events" }
+  ];
+
+  return (
+    <AdminPageShell
+      breadcrumbs={[
+        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
+        { label: en ? "System" : "시스템" },
+        { label: en ? "Monitoring" : "모니터링" },
+        { label: en ? "Batch" : "배치" }
+      ]}
+      title={en ? "Kubernetes Batch Monitoring" : "Kubernetes 배치 모니터링"}
+      subtitle={en ? "Live Job, CronJob, related Pod, workload, and warning event state from the current cluster." : "현재 클러스터의 Job, CronJob, 관련 Pod, 워크로드, Warning 이벤트 상태를 실시간으로 확인합니다."}
+      sidebarVariant="system"
+      actions={
+        <div className="flex flex-wrap items-center gap-3">
+          {lastUpdated && <span className="text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Updated" : "갱신"}: {lastUpdated.toLocaleTimeString()}</span>}
+          <label className="flex items-center gap-1.5 text-sm text-[var(--kr-gov-text-secondary)]">
+            <input className="gov-checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} type="checkbox" />
+            {en ? "Auto-refresh (30s)" : "자동 새로고침 (30초)"}
+          </label>
+          <button className="gov-btn gov-btn-outline" onClick={() => void load()} type="button">{en ? "Refresh" : "새로고침"}</button>
+        </div>
+      }
+    >
+      <AdminWorkspacePageFrame>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            {error && <PageStatusNotice tone="warning">{en ? "Failed to load live batch data." : "실시간 배치 데이터를 불러오지 못했습니다."} ({error})</PageStatusNotice>}
+            {payload?.error && <PageStatusNotice tone="warning">{payload.error}</PageStatusNotice>}
+            <PageStatusNotice tone={health === "WARN" ? "warning" : "info"}>
+              {health === "WARN"
+                ? (en ? "Warning state detected. Check failed jobs, unhealthy pods, and warning events below." : "경고 상태가 감지되었습니다. 아래 실패 Job, 비정상 Pod, Warning 이벤트를 확인하십시오.")
+                : (en ? "Batch resources are currently normal." : "현재 배치 리소스는 정상 범위입니다.")}
+            </PageStatusNotice>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {summary.map((item) => (
+                <SummaryMetricCard key={item.title} title={item.title} value={item.value} description={item.description} />
+              ))}
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SummaryMetricCard title={en ? "Cluster Health" : "클러스터 상태"} value={health} description={payload?.source ?? "Kubernetes API"} />
+              <SummaryMetricCard title={en ? "Completed Jobs" : "완료 Job"} value={String(completeJobs)} description={en ? "Retained successful executions" : "보존 중인 성공 실행"} />
+              <SummaryMetricCard title={en ? "Unhealthy Pods" : "비정상 Pod"} value={String(payload?.unhealthyPods ?? 0)} description={en ? "Related pods not Running/Succeeded" : "관련 Pod 중 Running/Succeeded 아님"} />
+              <SummaryMetricCard title={en ? "Generated At" : "생성 시각"} value={formatTime(payload?.generatedAt ?? "-")} description={en ? "Backend collection timestamp" : "백엔드 수집 시각"} />
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Recent Batch Jobs" : "최근 배치 Job"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Newest jobs are listed first with execution result and retry policy." : "최신 Job을 먼저 표시하고 실행 결과와 재시도 정책을 함께 보여줍니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Namespace", "Job", "Owner", "Status", "Active", "Succeeded", "Failed", "Backoff", "Started", "Completed"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {jobs.map((row) => (
+                      <tr key={`${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3">{row.owner ?? row.cronJob}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${cronStatusClass(row.status)}`}>{row.status}</span></td>
+                        <td className="px-4 py-3">{row.active}</td>
+                        <td className="px-4 py-3">{row.succeeded}</td>
+                        <td className="px-4 py-3">{row.failed}</td>
+                        <td className="px-4 py-3">{row.backoffLimit}</td>
+                        <td className="px-4 py-3">{formatTime(row.startTime)}</td>
+                        <td className="px-4 py-3">{formatTime(row.completionTime)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Batch Schedules" : "배치 스케줄"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "CronJob schedules and last execution timestamps are shown together." : "CronJob 스케줄과 최근 실행/성공 시각을 함께 표시합니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Namespace", "CronJob", "Schedule", "Suspend", "Active", "Last Schedule", "Last Success", "Container / Image"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {cronJobs.map((row) => (
+                      <tr key={`${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3 font-mono text-[13px]">{row.schedule}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${cronStatusClass(row.suspend ? "SUSPENDED" : "ACTIVE")}`}>{row.suspend ? "SUSPENDED" : "ACTIVE"}</span></td>
+                        <td className="px-4 py-3">{row.active}</td>
+                        <td className="px-4 py-3">{formatTime(row.lastScheduleTime)}</td>
+                        <td className="px-4 py-3">{formatTime(row.lastSuccessfulTime)}</td>
+                        <td className="px-4 py-3 text-[var(--kr-gov-text-secondary)]">{row.containers}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Related Pods" : "관련 Pod"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Batch-related pod phase, readiness, restart count, node, and owner are displayed." : "배치 관련 Pod의 상태, 준비율, 재시작 수, 노드, 소유자를 표시합니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Namespace", "Pod", "Phase", "Ready", "Restarts", "Node", "IP", "Owner", "Created"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {pods.map((row) => (
+                      <tr key={`${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${cronStatusClass(row.phase)}`}>{row.phase}</span></td>
+                        <td className="px-4 py-3">{row.ready}</td>
+                        <td className="px-4 py-3">{row.restarts}</td>
+                        <td className="px-4 py-3">{row.node}</td>
+                        <td className="px-4 py-3">{row.podIP}</td>
+                        <td className="px-4 py-3 text-[var(--kr-gov-text-secondary)]">{row.owner}</td>
+                        <td className="px-4 py-3">{formatTime(row.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Related Workloads" : "관련 워크로드"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Deployments and StatefulSets that can affect batch execution are summarized." : "배치 실행에 영향을 줄 수 있는 Deployment와 StatefulSet 준비 상태를 요약합니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Kind", "Namespace", "Name", "Ready", "Available", "Updated", "Created"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {workloads.map((row) => (
+                      <tr key={`${row.kind}-${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.kind}</td>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3">{row.ready}</td>
+                        <td className="px-4 py-3">{row.available}</td>
+                        <td className="px-4 py-3">{row.updated}</td>
+                        <td className="px-4 py-3">{formatTime(row.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Warning Events" : "Warning 이벤트"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Batch, job, cron, backup, queue, and worker warning events are collected." : "배치, Job, Cron, 백업, 큐, 워커 관련 Warning 이벤트를 모아 표시합니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Time", "Namespace", "Object", "Reason", "Message"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {warningEvents.length === 0 ? (
+                      <tr><td className="px-4 py-6 text-center text-[var(--kr-gov-text-secondary)]" colSpan={5}>{en ? "No warning events." : "Warning 이벤트가 없습니다."}</td></tr>
+                    ) : warningEvents.map((row, index) => (
+                      <tr key={`${row.objectName}-${row.reason}-${index}`}>
+                        <td className="px-4 py-3">{formatTime(row.lastTimestamp)}</td>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px]">{row.objectKind}/{row.objectName}</td>
+                        <td className="px-4 py-3"><span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-700">{row.reason}</span></td>
+                        <td className="px-4 py-3 text-[var(--kr-gov-text-secondary)]">{row.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+      </AdminWorkspacePageFrame>
+    </AdminPageShell>
+  );
 }
 
 export function GitBuildMonitoringPage() {

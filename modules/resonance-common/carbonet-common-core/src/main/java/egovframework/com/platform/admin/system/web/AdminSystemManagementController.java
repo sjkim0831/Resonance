@@ -766,6 +766,148 @@ public class AdminSystemManagementController {
         }
     }
 
+    @GetMapping("/batch-monitoring/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getBatchMonitoringStatus() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        List<Map<String, Object>> jobs = new ArrayList<>();
+        List<Map<String, Object>> cronJobs = new ArrayList<>();
+        List<Map<String, Object>> pods = new ArrayList<>();
+        List<Map<String, Object>> workloads = new ArrayList<>();
+        List<Map<String, Object>> warningEvents = new ArrayList<>();
+
+        try {
+            Map<String, Object> jobJson = readKubernetesJson("/apis/batch/v1/jobs");
+            Map<String, Object> cronJson = readKubernetesJson("/apis/batch/v1/cronjobs");
+            Map<String, Object> podJson = readKubernetesJson("/api/v1/pods");
+            Map<String, Object> deployJson = readKubernetesJson("/apis/apps/v1/deployments");
+            Map<String, Object> statefulSetJson = readKubernetesJson("/apis/apps/v1/statefulsets");
+            Map<String, Object> eventJson = readKubernetesJson("/api/v1/events");
+
+            for (Object item : asList(jobJson.get("items"))) {
+                Map<String, Object> job = asMap(item);
+                Map<String, Object> metadata = asMap(job.get("metadata"));
+                Map<String, Object> spec = asMap(job.get("spec"));
+                Map<String, Object> status = asMap(job.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", text(metadata.get("name")));
+                row.put("owner", ownerCronJobName(metadata));
+                row.put("status", jobStatus(status));
+                row.put("active", numberText(status.get("active")));
+                row.put("succeeded", numberText(status.get("succeeded")));
+                row.put("failed", numberText(status.get("failed")));
+                row.put("parallelism", numberText(spec.get("parallelism")));
+                row.put("completions", numberText(spec.get("completions")));
+                row.put("backoffLimit", numberText(spec.get("backoffLimit")));
+                row.put("startTime", blankToDash(text(status.get("startTime"))));
+                row.put("completionTime", blankToDash(text(status.get("completionTime"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                jobs.add(row);
+            }
+            jobs.sort((left, right) -> text(right.get("createdAt")).compareTo(text(left.get("createdAt"))));
+
+            for (Object item : asList(cronJson.get("items"))) {
+                Map<String, Object> cron = asMap(item);
+                Map<String, Object> metadata = asMap(cron.get("metadata"));
+                Map<String, Object> spec = asMap(cron.get("spec"));
+                Map<String, Object> status = asMap(cron.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", text(metadata.get("name")));
+                row.put("schedule", text(spec.get("schedule")));
+                row.put("suspend", Boolean.TRUE.equals(spec.get("suspend")));
+                row.put("active", asList(status.get("active")).size());
+                row.put("lastScheduleTime", blankToDash(text(status.get("lastScheduleTime"))));
+                row.put("lastSuccessfulTime", blankToDash(text(status.get("lastSuccessfulTime"))));
+                row.put("containers", extractCronContainers(spec));
+                cronJobs.add(row);
+            }
+
+            for (Object item : asList(podJson.get("items"))) {
+                Map<String, Object> pod = asMap(item);
+                Map<String, Object> metadata = asMap(pod.get("metadata"));
+                Map<String, Object> spec = asMap(pod.get("spec"));
+                Map<String, Object> status = asMap(pod.get("status"));
+                String name = text(metadata.get("name"));
+                String namespace = text(metadata.get("namespace"));
+                if (!isBatchRelated(namespace, name)) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", namespace);
+                row.put("name", name);
+                row.put("phase", blankToDash(text(status.get("phase"))));
+                row.put("ready", podReady(status));
+                row.put("restarts", podRestarts(status));
+                row.put("node", blankToDash(text(spec.get("nodeName"))));
+                row.put("podIP", blankToDash(text(status.get("podIP"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                row.put("owner", podOwner(metadata));
+                pods.add(row);
+            }
+            pods.sort((left, right) -> text(right.get("createdAt")).compareTo(text(left.get("createdAt"))));
+
+            collectWorkloads(workloads, deployJson, "Deployment");
+            collectWorkloads(workloads, statefulSetJson, "StatefulSet");
+
+            for (Object item : asList(eventJson.get("items"))) {
+                Map<String, Object> event = asMap(item);
+                Map<String, Object> involved = asMap(event.get("involvedObject"));
+                String type = text(event.get("type"));
+                String reason = text(event.get("reason"));
+                String name = text(involved.get("name"));
+                String namespace = text(event.get("metadata") instanceof Map ? asMap(event.get("metadata")).get("namespace") : "");
+                if (!"Warning".equalsIgnoreCase(type) || !isBatchRelated(namespace, name + " " + reason + " " + text(event.get("message")))) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", namespace);
+                row.put("reason", reason);
+                row.put("objectKind", text(involved.get("kind")));
+                row.put("objectName", name);
+                row.put("message", text(event.get("message")));
+                row.put("lastTimestamp", firstNonBlank(text(event.get("lastTimestamp")), text(event.get("eventTime")), text(event.get("metadata") instanceof Map ? asMap(event.get("metadata")).get("creationTimestamp") : "")));
+                warningEvents.add(row);
+            }
+            warningEvents.sort((left, right) -> text(right.get("lastTimestamp")).compareTo(text(left.get("lastTimestamp"))));
+
+            long failedJobs = jobs.stream().filter(row -> "Failed".equals(row.get("status"))).count();
+            long runningJobs = jobs.stream().filter(row -> "Running".equals(row.get("status"))).count();
+            long completeJobs = jobs.stream().filter(row -> "Complete".equals(row.get("status"))).count();
+            long unhealthyPods = pods.stream().filter(row -> !"Running".equals(row.get("phase")) && !"Succeeded".equals(row.get("phase"))).count();
+
+            response.put("summary", Arrays.asList(
+                    summary("Jobs", String.valueOf(jobs.size()), "Kubernetes Job resources"),
+                    summary("Running Jobs", String.valueOf(runningJobs), "Currently active batch executions"),
+                    summary("Failed Jobs", String.valueOf(failedJobs), "Retained failed batch executions"),
+                    summary("Warning Events", String.valueOf(warningEvents.size()), "Batch-related Kubernetes warning events")
+            ));
+            response.put("health", failedJobs > 0 || unhealthyPods > 0 || !warningEvents.isEmpty() ? "WARN" : "NORMAL");
+            response.put("jobs", jobs.size() > 100 ? jobs.subList(0, 100) : jobs);
+            response.put("cronJobs", cronJobs);
+            response.put("pods", pods.size() > 100 ? pods.subList(0, 100) : pods);
+            response.put("workloads", workloads);
+            response.put("warningEvents", warningEvents.size() > 60 ? warningEvents.subList(0, 60) : warningEvents);
+            response.put("completeJobs", completeJobs);
+            response.put("unhealthyPods", unhealthyPods);
+            response.put("generatedAt", Instant.now().toString());
+            response.put("source", "Kubernetes in-cluster API: jobs, cronjobs, pods, deployments, statefulsets, events");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to build batch monitoring status", e);
+            response.put("error", e.getMessage());
+            response.put("summary", Collections.emptyList());
+            response.put("jobs", jobs);
+            response.put("cronJobs", cronJobs);
+            response.put("pods", pods);
+            response.put("workloads", workloads);
+            response.put("warningEvents", warningEvents);
+            response.put("generatedAt", Instant.now().toString());
+            return ResponseEntity.ok(response);
+        }
+    }
+
     private Map<String, Object> summary(String title, String value, String description) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("title", title);
@@ -900,6 +1042,75 @@ public class AdminSystemManagementController {
             }
         }
         return "-";
+    }
+
+    private boolean isBatchRelated(String namespace, String value) {
+        String normalized = (firstNonBlank(namespace, "") + " " + firstNonBlank(value, "")).toLowerCase(Locale.ROOT);
+        return normalized.contains("batch")
+                || normalized.contains("job")
+                || normalized.contains("cron")
+                || normalized.contains("backup")
+                || normalized.contains("postgres-carbonet")
+                || normalized.contains("scheduler")
+                || normalized.contains("worker")
+                || normalized.contains("queue")
+                || normalized.contains("carbonet-prod")
+                || normalized.contains("default");
+    }
+
+    private String podReady(Map<String, Object> status) {
+        int ready = 0;
+        int total = 0;
+        for (Object containerObject : asList(status.get("containerStatuses"))) {
+            total++;
+            Map<String, Object> container = asMap(containerObject);
+            if (Boolean.TRUE.equals(container.get("ready"))) {
+                ready++;
+            }
+        }
+        return ready + "/" + total;
+    }
+
+    private int podRestarts(Map<String, Object> status) {
+        int restarts = 0;
+        for (Object containerObject : asList(status.get("containerStatuses"))) {
+            Object restartCount = asMap(containerObject).get("restartCount");
+            if (restartCount instanceof Number number) {
+                restarts += number.intValue();
+            }
+        }
+        return restarts;
+    }
+
+    private String podOwner(Map<String, Object> metadata) {
+        List<String> owners = new ArrayList<>();
+        for (Object ownerObject : asList(metadata.get("ownerReferences"))) {
+            Map<String, Object> owner = asMap(ownerObject);
+            owners.add(firstNonBlank(text(owner.get("kind")), "-") + "/" + firstNonBlank(text(owner.get("name")), "-"));
+        }
+        return owners.isEmpty() ? "-" : String.join(", ", owners);
+    }
+
+    private void collectWorkloads(List<Map<String, Object>> workloads, Map<String, Object> json, String kind) {
+        for (Object item : asList(json.get("items"))) {
+            Map<String, Object> workload = asMap(item);
+            Map<String, Object> metadata = asMap(workload.get("metadata"));
+            Map<String, Object> status = asMap(workload.get("status"));
+            String namespace = text(metadata.get("namespace"));
+            String name = text(metadata.get("name"));
+            if (!isBatchRelated(namespace, name)) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("kind", kind);
+            row.put("namespace", namespace);
+            row.put("name", name);
+            row.put("ready", numberText(status.get("readyReplicas")) + "/" + numberText(status.get("replicas")));
+            row.put("available", numberText(status.get("availableReplicas")));
+            row.put("updated", numberText(status.get("updatedReplicas")));
+            row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+            workloads.add(row);
+        }
     }
 
     private String executeCommand(String command) {
