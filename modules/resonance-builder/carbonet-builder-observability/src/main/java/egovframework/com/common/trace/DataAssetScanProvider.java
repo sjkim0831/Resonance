@@ -24,7 +24,7 @@ public class DataAssetScanProvider implements AssetScanProvider {
     public List<SystemAssetInventoryVO> scan() {
         List<SystemAssetInventoryVO> assets = new ArrayList<>();
         
-        // CUBRID specific query for user tables
+        // PostgreSQL query for user tables
         String sql = "SELECT table_name AS class_name, table_schema AS owner_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'";
         List<Map<String, Object>> tables = jdbcTemplate.queryForList(sql);
 
@@ -36,7 +36,7 @@ public class DataAssetScanProvider implements AssetScanProvider {
             asset.setAssetId("TABLE-" + tableName);
             asset.setAssetType("TABLE");
             asset.setAssetName(tableName);
-            asset.setSourcePath("CUBRID/" + ownerName);
+            asset.setSourcePath("POSTGRESQL/" + ownerName);
             asset.setSourceSymbol(tableName);
             asset.setOwnerDomain(inferDomain(tableName));
             asset.setContentHash(generateTableHash(tableName));

@@ -14,9 +14,9 @@ sudo ufw allow 443/tcp
 sudo ufw allow 80/tcp
 sudo ufw allow 22/tcp
 sudo ufw allow from 172.16.1.231 to any port 24453
-sudo ufw allow from 10.244.0.0/16 to any port 33000
-sudo ufw allow from 192.168.0.0/16 to any port 33000
-sudo ufw allow from 10.0.0.0/8 to any port 33000
+sudo ufw allow from 10.244.0.0/16 to any port 5432
+sudo ufw allow from 192.168.0.0/16 to any port 5432
+sudo ufw allow from 10.0.0.0/8 to any port 5432
 
 echo "[3] Setting default policies..."
 sudo ufw default deny incoming

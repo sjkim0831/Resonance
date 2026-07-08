@@ -4,16 +4,17 @@ import egovframework.com.platform.screenbuilder.support.CarbonetScreenBuilderRun
 import egovframework.com.platform.screenbuilder.support.ScreenBuilderRuntimeComparePort;
 import egovframework.com.platform.screenbuilder.support.model.ScreenBuilderRuntimeCompareRequest;
 import egovframework.com.platform.screenbuilder.support.model.ScreenBuilderRuntimeCompareResult;
-import lombok.RequiredArgsConstructor;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-@RequiredArgsConstructor
 public class CarbonetScreenBuilderRuntimeCompareAdapter implements ScreenBuilderRuntimeComparePort {
 
     private final CarbonetScreenBuilderRuntimeCompareSource carbonetScreenBuilderRuntimeCompareSource;
+
+    public CarbonetScreenBuilderRuntimeCompareAdapter(CarbonetScreenBuilderRuntimeCompareSource carbonetScreenBuilderRuntimeCompareSource) {
+        this.carbonetScreenBuilderRuntimeCompareSource = carbonetScreenBuilderRuntimeCompareSource;
+    }
 
     @Override
     public ScreenBuilderRuntimeCompareResult compare(ScreenBuilderRuntimeCompareRequest request) throws Exception {

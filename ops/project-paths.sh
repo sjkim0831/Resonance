@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Change this value first if the repository root path changes.
-DEFAULT_PROJECT_ROOT="/opt/Resonance-react-migration"
+DEFAULT_PROJECT_ROOT="/opt/Resonance"
 
 # Allow shell callers to override PROJECT_ROOT explicitly, but keep one default here.
 PROJECT_ROOT="${PROJECT_ROOT:-${DEFAULT_PROJECT_ROOT}}"

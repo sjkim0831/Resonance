@@ -16,7 +16,7 @@ import java.util.*;
 @Slf4j
 public class MonitoringService {
 
-    private static final String POD_NAME = "cubrid-carbonet-0";
+    private static final String POD_NAME = "postgres-patroni-0";
     private static final String NAMESPACE = "carbonet-prod";
 
     public Map<String, Object> getSystemMetrics() {
@@ -51,12 +51,12 @@ public class MonitoringService {
         result.put("timestamp", new Date());
 
         try {
-            String output = executeKubectl("exec " + POD_NAME + " -n " + NAMESPACE + " -- bash -c \"source /home/cubrid/.cubrid.sh && cubrid server status carbonet\" 2>&1");
+            String output = executeKubectl("exec " + POD_NAME + " -n " + NAMESPACE + " -- bash -c \"patronictl list\" 2>&1");
 
-            result.put("serverStatus", output.contains("Server") ? "running" : "stopped");
+            result.put("serverStatus", output.contains("Running") ? "running" : "stopped");
             result.put("serverOutput", output);
 
-            String stats = executeKubectl("exec " + POD_NAME + " -n " + NAMESPACE + " -- bash -c \"source /home/cubrid/.cubrid.sh && csql -C -u dba -p '' -c 'SELECT COUNT(*) FROM db_class; SELECT COUNT(*) FROM emission_material_translation;' carbonet@localhost 2>&1\" 2>&1");
+            String stats = executeKubectl("exec " + POD_NAME + " -n " + NAMESPACE + " -- bash -c \"psql -U postgres -d carbonet -c 'SELECT COUNT(*) AS class_count FROM pg_class WHERE relkind=\\'r\\' AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = \\'public\\'' -c 'SELECT COUNT(*) FROM emission_material_translation'\" 2>&1");
 
             result.put("stats", stats);
             result.put("success", true);

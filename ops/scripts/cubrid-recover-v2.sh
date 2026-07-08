@@ -1,4 +1,9 @@
 #!/bin/bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# PostgreSQL 환경: postgres-patroni-0/1/2 (Patroni HA)
+echo "[DEPRECATED] cubrid-recover-v2: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #============================================
 # Carbonet Recovery System v2 - Optimized
 # 세분화된 단계, 상세 로그, 시간 측정

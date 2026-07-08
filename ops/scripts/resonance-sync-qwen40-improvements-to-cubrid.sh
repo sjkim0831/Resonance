@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# 이 스크립트는 resonance-sync-qwen40-improvements-to-postgresql.sh 로 교체 예정
 set -euo pipefail
 
+echo "[DEPRECATED] 이 스크립트는 CUBRID 제거로 더 이상 사용되지 않습니다."
+echo "PostgreSQL 사용: resonance-sync-qwen40-improvements-to-postgresql.sh 또는"
+echo "  kubectl exec postgres-patroni-0 -n carbonet-prod -- psql -U postgres -d carbonet -f /tmp/..."
+exit 1
+
+# --- 원본 은/Reference Only (아래는 실제 실행 불가) ---
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
-POD="${CUBRID_POD:-cubrid-carbonet-0}"
+POD="${POSTGRES_POD:-postgres-patroni-0}"
 DB_NAME="${DB_NAME:-carbonet}"
-DB_USER="${DB_USER:-dba}"
+DB_USER="${DB_USER:-postgres}"
 SOURCE_FILE="${SOURCE_FILE:-$ROOT_DIR/var/ai-runtime/qwen40-improvement-suggestions.jsonl}"
 INCIDENT_SUMMARY_JSON="${INCIDENT_SUMMARY_JSON:-$ROOT_DIR/var/ai-runtime/incident-patterns-summary.json}"
 STATE_FILE="${STATE_FILE:-$ROOT_DIR/var/run/qwen40-improvement-db-sync.offset}"
@@ -18,7 +26,7 @@ log_event() {
   python3 - "$EVENT_LOG" "$status" "$code" "$message" <<'PY'
 import datetime,json,pathlib,sys
 path=pathlib.Path(sys.argv[1])
-event={"ts":datetime.datetime.now(datetime.timezone.utc).isoformat(),"script":"resonance-sync-qwen40-improvements-to-cubrid","status":sys.argv[2],"code":sys.argv[3],"message":sys.argv[4]}
+event={"ts":datetime.datetime.now(datetime.timezone.utc).isoformat(),"script":"resonance-sync-qwen40-improvements-to-postgresql","status":sys.argv[2],"code":sys.argv[3],"message":sys.argv[4]}
 with path.open("a",encoding="utf-8") as f: f.write(json.dumps(event,ensure_ascii=False)+"\n")
 PY
 }
@@ -33,7 +41,7 @@ kubectl -n "$NAMESPACE" wait --for=condition=Ready "pod/$POD" --timeout=30s >/de
 
 SCHEMA_SQL="$OUT_DIR/qwen40-improvement-schema.sql"
 cat > "$SCHEMA_SQL" <<'SQL'
-CREATE TABLE AI_IMPROVEMENT_LOG (
+CREATE TABLE IF NOT EXISTS AI_IMPROVEMENT_LOG (
   LOG_ID VARCHAR(40) NOT NULL,
   TS VARCHAR(80),
   STATUS VARCHAR(30),
@@ -45,7 +53,7 @@ CREATE TABLE AI_IMPROVEMENT_LOG (
   CREATED_AT VARCHAR(80),
   PRIMARY KEY (LOG_ID)
 );
-CREATE TABLE AI_INCIDENT_PATTERN_LOG (
+CREATE TABLE IF NOT EXISTS AI_INCIDENT_PATTERN_LOG (
   PATTERN_CODE VARCHAR(120) NOT NULL,
   SEVERITY VARCHAR(30),
   PATTERN_COUNT INTEGER,
@@ -60,7 +68,7 @@ CREATE TABLE AI_INCIDENT_PATTERN_LOG (
 );
 SQL
 kubectl -n "$NAMESPACE" cp "$SCHEMA_SQL" "$POD:/tmp/qwen40-improvement-schema.sql" >/dev/null
-kubectl -n "$NAMESPACE" exec "$POD" -- bash -lc "csql -u '$DB_USER' '$DB_NAME' -i /tmp/qwen40-improvement-schema.sql >/tmp/qwen40-improvement-schema.out 2>&1 || true"
+kubectl -n "$NAMESPACE" exec "$POD" -- bash -lc "psql -U '$DB_USER' -d '$DB_NAME' -f /tmp/qwen40-improvement-schema.sql >/tmp/qwen40-improvement-schema.out 2>&1 || true"
 
 sync_incident_patterns() {
   if [[ ! -s "$INCIDENT_SUMMARY_JSON" ]]; then
@@ -110,7 +118,7 @@ PY
   row_count="$(grep -c '^INSERT INTO AI_INCIDENT_PATTERN_LOG' "$incident_sql" || true)"
   if [[ "$row_count" != "0" ]]; then
     kubectl -n "$NAMESPACE" cp "$incident_sql" "$POD:/tmp/incident-pattern-upsert.sql" >/dev/null
-    kubectl -n "$NAMESPACE" exec "$POD" -- bash -lc "csql -u '$DB_USER' '$DB_NAME' -i /tmp/incident-pattern-upsert.sql >/tmp/incident-pattern-upsert.out 2>&1"
+    kubectl -n "$NAMESPACE" exec "$POD" -- bash -lc "psql -U '$DB_USER' -d '$DB_NAME' -f /tmp/incident-pattern-upsert.sql >/tmp/incident-pattern-upsert.out 2>&1"
   fi
   log_event OK INCIDENT_PATTERNS_SYNCED "synced rows=$row_count table=AI_INCIDENT_PATTERN_LOG db=$DB_NAME"
 }
@@ -188,7 +196,7 @@ if [[ "$ROW_COUNT" == "0" ]]; then
   exit 0
 fi
 kubectl -n "$NAMESPACE" cp "$SQL_FILE" "$POD:/tmp/qwen40-improvement-insert.sql" >/dev/null
-kubectl -n "$NAMESPACE" exec "$POD" -- bash -lc "csql -u '$DB_USER' '$DB_NAME' -i /tmp/qwen40-improvement-insert.sql >/tmp/qwen40-improvement-insert.out 2>&1"
+kubectl -n "$NAMESPACE" exec "$POD" -- bash -lc "psql -U '$DB_USER' -d '$DB_NAME' -f /tmp/qwen40-improvement-insert.sql >/tmp/qwen40-improvement-insert.out 2>&1"
 echo "$TOTAL_LINES" > "$STATE_FILE"
 log_event OK SYNCED "synced rows=$ROW_COUNT offset=$TOTAL_LINES table=AI_IMPROVEMENT_LOG db=$DB_NAME"
 sync_incident_patterns

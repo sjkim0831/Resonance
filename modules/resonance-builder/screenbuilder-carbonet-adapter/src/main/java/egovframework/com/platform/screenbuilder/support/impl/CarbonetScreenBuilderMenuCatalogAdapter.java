@@ -6,17 +6,22 @@ import egovframework.com.platform.screenbuilder.support.ScreenBuilderMenuBinding
 import egovframework.com.platform.screenbuilder.support.ScreenBuilderMenuCatalogPort;
 import egovframework.com.platform.screenbuilder.support.ScreenBuilderRuntimeComparePolicyPort;
 import egovframework.com.platform.screenbuilder.support.model.ScreenBuilderMenuDescriptor;
-import lombok.RequiredArgsConstructor;
-
 import java.util.ArrayList;
 import java.util.List;
 
-@RequiredArgsConstructor
 public class CarbonetScreenBuilderMenuCatalogAdapter implements ScreenBuilderMenuCatalogPort {
 
     private final CarbonetScreenBuilderMenuSource carbonetScreenBuilderMenuSource;
     private final ScreenBuilderMenuBindingPolicyPort screenBuilderMenuBindingPolicyPort;
     private final ScreenBuilderRuntimeComparePolicyPort screenBuilderRuntimeComparePolicyPort;
+
+    public CarbonetScreenBuilderMenuCatalogAdapter(CarbonetScreenBuilderMenuSource carbonetScreenBuilderMenuSource,
+                                                   ScreenBuilderMenuBindingPolicyPort screenBuilderMenuBindingPolicyPort,
+                                                   ScreenBuilderRuntimeComparePolicyPort screenBuilderRuntimeComparePolicyPort) {
+        this.carbonetScreenBuilderMenuSource = carbonetScreenBuilderMenuSource;
+        this.screenBuilderMenuBindingPolicyPort = screenBuilderMenuBindingPolicyPort;
+        this.screenBuilderRuntimeComparePolicyPort = screenBuilderRuntimeComparePolicyPort;
+    }
 
     @Override
     public List<ScreenBuilderMenuDescriptor> selectMenuTreeList(String codeId) throws Exception {

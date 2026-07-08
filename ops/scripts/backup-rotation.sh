@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-BACKUP_DIR="${BACKUP_DIR:-/opt/Resonance/data/cubrid/backups}"
+BACKUP_DIR="${BACKUP_DIR:-/opt/Resonance/var/postgres-backups-ha}"
 KEEP_FULL="${KEEP_FULL:-3}"
 KEEP_INCREMENTAL="${KEEP_INCREMENTAL:-7}"
 KEEP_UNLOAD="${KEEP_UNLOAD:-2}"

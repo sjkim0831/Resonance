@@ -2,6 +2,7 @@ package egovframework.com.feature.admin.web;
 
 import egovframework.com.platform.menu.dto.AdminMenuDomainDTO;
 import egovframework.com.platform.menu.service.MenuInfoService;
+import egovframework.com.platform.governance.service.AdminCodeManageService;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.platform.executiongate.ExecutionGateRequestContext;
 import egovframework.com.platform.executiongate.GateActorScope;
@@ -31,6 +32,7 @@ public class AdminMenuController {
     private final CurrentUserContextService currentUserContextService;
     private final MenuResolutionGate menuResolutionGate;
     private final MenuInfoService menuInfoService;
+    private final AdminCodeManageService adminCodeManageService;
 
     @RequestMapping(value = "/menu-data", method = RequestMethod.GET)
     @ResponseBody
@@ -86,4 +88,63 @@ public class AdminMenuController {
             return ResponseEntity.ok(Map.of("success", false, "message", "Failed to update dependent screen: " + e.getMessage()));
         }
     }
+
+
+    @PostMapping("/menu/update-page")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> updateMenuPage(
+            @RequestParam String menuType,
+            @RequestParam String code,
+            @RequestParam String codeNm,
+            @RequestParam String codeDc,
+            @RequestParam String menuUrl,
+            @RequestParam String menuIcon,
+            @RequestParam String useAt,
+            HttpServletRequest request) {
+        try {
+            String normalizedCode = safeString(code).toUpperCase(Locale.ROOT);
+            String normalizedName = safeString(codeNm);
+            String normalizedUrl = safeString(menuUrl);
+            if (normalizedCode.isEmpty() || normalizedName.isEmpty() || normalizedUrl.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Menu code, name, and URL are required"
+                ));
+            }
+            String actorId = safeString(currentUserContextService.resolve(request).getUserId());
+            if (actorId.isEmpty()) {
+                actorId = "system";
+            }
+            String normalizedCodeDc = safeString(codeDc);
+            String normalizedIcon = safeString(menuIcon);
+            String normalizedUseAt = safeString(useAt);
+            adminCodeManageService.updatePageManagement(
+                    normalizedCode,
+                    normalizedName,
+                    normalizedCodeDc.isEmpty() ? normalizedName : normalizedCodeDc,
+                    normalizedUrl,
+                    normalizedIcon.isEmpty() ? "menu" : normalizedIcon,
+                    normalizedUseAt.isEmpty() ? "Y" : normalizedUseAt,
+                    actorId
+            );
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Menu page updated",
+                    "menuType", safeString(menuType),
+                    "code", normalizedCode,
+                    "codeNm", normalizedName,
+                    "menuUrl", normalizedUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "Failed to update menu page: " + e.getMessage()
+            ));
+        }
+    }
+
+    private String safeString(String value) {
+        return value == null ? "" : value.trim();
+    }
+
 }

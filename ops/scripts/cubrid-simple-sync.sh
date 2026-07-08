@@ -1,4 +1,9 @@
 #!/bin/bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# PostgreSQL 환경: postgres-patroni-0/1/2 (Patroni HA)
+echo "[DEPRECATED] cubrid-simple-sync: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 # Simple sync: carbonet -> carbonet_bak
 POD="cubrid-carbonet-0"
 NS="carbonet-prod"

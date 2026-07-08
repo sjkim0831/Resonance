@@ -21,6 +21,10 @@ EOF
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
 SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$APP_TARGET_JAR_PATH}"
 FRONTEND_STATIC_DIR="$ROOT_DIR/src/main/resources/static/react-app"

@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] ai-guardian.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/bin/bash
 #============================================
 # AI Guardian v2 - AI 작업 중 자동 감시 + 즉시 복구

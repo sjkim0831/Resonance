@@ -317,6 +317,7 @@ public class AdminSystemManagementController {
         return usage;
     }
 
+    @Deprecated
     @GetMapping("/cubrid/status")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getCubridStatus() {
@@ -324,7 +325,7 @@ public class AdminSystemManagementController {
         try {
             status.put("dbName", "carbonet");
             status.put("host", "127.0.0.1");
-            status.put("port", 33000);
+            status.put("port", 5432);
             status.put("status", "online");
             status.put("pagesize", "16KB");
             status.put("logPagesize", "16KB");
@@ -333,12 +334,13 @@ public class AdminSystemManagementController {
             status.put("activeUsers", 2);
             return ResponseEntity.ok(status);
         } catch (Exception e) {
-            log.error("Failed to get CUBRID status", e);
+            log.error("Failed to get PostgreSQL status", e);
             status.put("error", e.getMessage());
             return ResponseEntity.ok(status);
         }
     }
 
+    @Deprecated
     @GetMapping("/cubrid/tables")
     @ResponseBody
     public ResponseEntity<List<Map<String, Object>>> getCubridTables() {
@@ -361,11 +363,12 @@ public class AdminSystemManagementController {
             }
             return ResponseEntity.ok(tables);
         } catch (Exception e) {
-            log.error("Failed to get CUBRID tables", e);
+            log.error("Failed to get PostgreSQL tables", e);
             return ResponseEntity.ok(tables);
         }
     }
 
+    @Deprecated
     @PostMapping("/cubrid/query")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> executeCubridQuery(@RequestBody Map<String, String> request) {
@@ -393,7 +396,7 @@ public class AdminSystemManagementController {
             result.put("executionTime", "15ms");
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.error("Failed to execute CUBRID query", e);
+            log.error("Failed to execute PostgreSQL query", e);
             result.put("error", e.getMessage());
             return ResponseEntity.ok(result);
         }
@@ -408,8 +411,8 @@ public class AdminSystemManagementController {
         database.put("name", "database");
         database.put("label", "Database");
         List<Map<String, Object>> dbEntries = new ArrayList<>();
-        addConfigEntry(dbEntries, "spring.datasource.url", "jdbc:cubrid:127.0.0.1:33000:carbonet", "Database URL", "database", false);
-        addConfigEntry(dbEntries, "spring.datasource.driver-class-name", "cubrid.jdbc.driver.CUBRIDDriver", "Driver Class", "database", false);
+        addConfigEntry(dbEntries, "spring.datasource.url", "jdbc:postgresql://127.0.0.1:5432/carbonet", "Database URL", "database", false);
+        addConfigEntry(dbEntries, "spring.datasource.driver-class-name", "org.postgresql.Driver", "Driver Class", "database", false);
         addConfigEntry(dbEntries, "spring.jpa.hibernate.ddl-auto", "none", "Hibernate DDL Mode", "database", false);
         database.put("entries", dbEntries);
         categories.add(database);

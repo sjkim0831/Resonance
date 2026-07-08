@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] cubrid-live-sync.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/bin/bash
 # CUBRID LIVE SYNC - 실시간 복제
 POD="cubrid-carbonet-0"

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# PostgreSQL 진단: kubectl exec postgres-patroni-0 -n carbonet-prod -- patronictl list
+echo "[DEPRECATED] CUBRID brokerdoctor: CUBRID는 제거됨. postgres-patroni 사용."
+exit 1
+
 set -euo pipefail
 NAMESPACE=${NAMESPACE:-carbonet-prod}
 POD=${POD:-cubrid-carbonet-0}

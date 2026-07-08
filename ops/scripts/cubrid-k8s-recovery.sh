@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# PostgreSQL 환경: postgres-patroni-0/1/2 (Patroni HA)
+echo "[DEPRECATED] cubrid-k8s-recovery: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 # cubrid-k8s-recovery.sh - Robust CUBRID Kubernetes Recovery Script v3.0
 # Step-by-step validation with rollback capability
 # Usage: bash ops/scripts/cubrid-k8s-recovery.sh [full-check|restore|diagnose|rollback]

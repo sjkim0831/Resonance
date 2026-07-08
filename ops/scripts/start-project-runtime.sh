@@ -35,14 +35,14 @@ LOADER_PATH="lib/"
 if [[ -d "$COMMON_LIB_DIR" ]]; then
   LOADER_PATH="lib/,$COMMON_LIB_DIR/"
 fi
-DB_URL="jdbc:postgresql://${CUBRID_HOST:-127.0.0.1}:5432/${CUBRID_DB:-carbonet}?charset=UTF-8"
+DB_URL="jdbc:postgresql://${POSTGRES_HOST:-127.0.0.1}:5432/${POSTGRES_DB:-carbonet}?charset=UTF-8"
 
 exec java -Dloader.path="$LOADER_PATH" -jar project-runtime.jar \
   --spring.profiles.active=prod \
   --app.project-id="$PROJECT_ID" \
   --spring.datasource.url="$DB_URL" \
-  --spring.datasource.username="${CUBRID_USER:-dba}" \
-  --spring.datasource.password="${CUBRID_PASSWORD:-}" \
+  --spring.datasource.username="${POSTGRES_USER:-carbonet_app}" \
+  --spring.datasource.password="${POSTGRES_PASSWORD:-postgres123}" \
   --logging.file.path="$LOG_DIR" \
   --server.port="$PORT" \
   >> "$LOG_DIR/stdout.log" 2>&1

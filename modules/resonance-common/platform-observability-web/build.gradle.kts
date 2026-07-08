@@ -24,4 +24,6 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.34")
     implementation(project(":modules:resonance-common:web-support"))
     implementation(project(":modules:resonance-common:platform-service-contracts"))
+    implementation(project(":modules:resonance-common:platform-request-contracts"))
+    implementation("org.springframework.security:spring-security-web")
 }

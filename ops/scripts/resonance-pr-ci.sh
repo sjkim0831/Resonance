@@ -6,6 +6,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 BRANCH="${2:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')}"
 LOG_DIR="$ROOT_DIR/var/logs/pr-ci"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

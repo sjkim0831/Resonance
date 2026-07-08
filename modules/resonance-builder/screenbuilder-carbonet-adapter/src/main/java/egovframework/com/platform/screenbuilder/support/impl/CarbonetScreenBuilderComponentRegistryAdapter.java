@@ -4,14 +4,15 @@ import egovframework.com.common.trace.UiComponentRegistryVO;
 import egovframework.com.common.trace.UiComponentUsageVO;
 import egovframework.com.platform.screenbuilder.support.CarbonetScreenBuilderComponentRegistrySource;
 import egovframework.com.platform.screenbuilder.support.ScreenBuilderComponentRegistryPort;
-import lombok.RequiredArgsConstructor;
-
 import java.util.List;
 
-@RequiredArgsConstructor
 public class CarbonetScreenBuilderComponentRegistryAdapter implements ScreenBuilderComponentRegistryPort {
 
     private final CarbonetScreenBuilderComponentRegistrySource carbonetScreenBuilderComponentRegistrySource;
+
+    public CarbonetScreenBuilderComponentRegistryAdapter(CarbonetScreenBuilderComponentRegistrySource carbonetScreenBuilderComponentRegistrySource) {
+        this.carbonetScreenBuilderComponentRegistrySource = carbonetScreenBuilderComponentRegistrySource;
+    }
 
     @Override
     public List<UiComponentUsageVO> selectComponentUsageList(String componentId) throws Exception {

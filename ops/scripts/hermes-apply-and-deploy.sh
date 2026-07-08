@@ -102,7 +102,18 @@ if [[ -d "$REPO_ROOT/frontend" ]]; then
   )
 fi
 
-mvn -q -pl apps/carbonet-app -am -DskipTests package
+mvn -q -pl apps/carbonet-app -am -DskipTests package || {
+  # Gradle fallback: use build.sh wrapper
+  ROOT_DIR="$REPO_ROOT"
+  # shellcheck source=ops/scripts/build.sh
+  source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+  init_build_tool
+  if [[ "${BUILD_TOOL:-}" == "gradle" ]]; then
+    "${GRADLE_BIN[@]}" ":apps:carbonet-app:bootJar" -x test -q
+  else
+    false
+  fi
+}
 
 echo "App closure verification started"
 bash "$REPO_ROOT/ops/scripts/verify-large-move-app-closure.sh"

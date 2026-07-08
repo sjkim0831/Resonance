@@ -12,8 +12,8 @@ public class TypeScopedRoleAssignmentTool {
 
     public static void main(String[] args) throws Exception {
         boolean dryRun = Boolean.parseBoolean(property("authority.assign.dry-run", "true"));
-        String jdbcUrl = property("authority.assign.jdbc.url", "jdbc:cubrid:127.0.0.1:33000:carbonet:::?charset=UTF-8");
-        String jdbcUser = property("authority.assign.jdbc.user", "dba");
+        String jdbcUrl = property("authority.assign.jdbc.url", "jdbc:postgresql://127.0.0.1:5432/carbonet?charset=UTF-8");
+        String jdbcUser = property("authority.assign.jdbc.user", "postgres");
         String jdbcPassword = property("authority.assign.jdbc.password", "");
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)) {

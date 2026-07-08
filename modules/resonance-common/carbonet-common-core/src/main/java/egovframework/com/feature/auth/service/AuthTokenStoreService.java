@@ -20,7 +20,7 @@ import java.util.Map;
 @Slf4j
 public class AuthTokenStoreService {
 
-    private static final DateTimeFormatter CUBRID_DATETIME =
+    private static final DateTimeFormatter TOKEN_DATETIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
     private final AuthLoginMapper authLoginMapper;
@@ -38,7 +38,7 @@ public class AuthTokenStoreService {
         params.put("tokenKey", jwtTokenProvider.generateTokenHash(refreshToken));
         params.put("accessTokenHash", jwtTokenProvider.generateTokenHash(accessToken));
         params.put("refreshTokenHash", jwtTokenProvider.generateTokenHash(refreshToken));
-        params.put("expiresAt", CUBRID_DATETIME.format(Instant.now().plusMillis(refreshExpirationMillis)));
+        params.put("expiresAt", TOKEN_DATETIME.format(Instant.now().plusMillis(refreshExpirationMillis)));
         params.put("clientIp", resolveClientIp(request));
         params.put("userAgent", request == null ? "" : safeString(request.getHeader("User-Agent")));
 
@@ -84,7 +84,7 @@ public class AuthTokenStoreService {
             }
             authLoginMapper.deleteAuthTokenByUserId(userId);
         } catch (DataAccessException e) {
-            log.warn("Failed to revoke auth token from CUBRID token store. userId={}", userId, e);
+            log.warn("Failed to revoke auth token from token store. userId={}", userId, e);
         }
     }
 

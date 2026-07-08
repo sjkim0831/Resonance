@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] cubrid-k8s-backup.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/usr/bin/env bash
 # cubrid-k8s-backup.sh - CUBRID Kubernetes Backup Script (UTF-8 Korean Safe)
 # Version: 2.0 - Enhanced with Korean character encoding support

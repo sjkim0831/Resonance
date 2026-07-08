@@ -18,10 +18,21 @@ dependencyManagement {
 group = "egovframework"
 version = "1.0.0"
 
+
 dependencies {
     compileOnly("org.springframework.boot:spring-boot-starter-web")
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
+    implementation("org.egovframe.rte:egovframe-rte-psl-dataaccess:5.0.0")
+    implementation("org.egovframe.rte:egovframe-rte-fdl-cmmn:5.0.0")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("org.springframework:spring-core")
+    implementation("org.springframework:spring-context")
+    implementation("org.springframework:spring-web")
+    implementation("org.springframework:spring-beans")
+    implementation(project(":modules:resonance-common:platform-request-contracts"))
+    implementation(project(":modules:resonance-common:platform-service-contracts"))
     implementation(project(":modules:resonance-common:mapper-infra"))
     implementation(project(":modules:resonance-builder:screenbuilder-core"))
 }

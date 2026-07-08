@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] cubrid-safe-guardian.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/bin/bash
 # CUBRID SAFE GUARDIAN v2 - 데이터 절대 유실 안 됨
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'

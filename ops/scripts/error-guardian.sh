@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] error-guardian.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/bin/bash
 #============================================
 # Error Guardian v2 - Error Detection & Immediate Recovery

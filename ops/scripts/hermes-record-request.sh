@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
-CUBRID_POD="${CUBRID_POD:-cubrid-carbonet-0}"
+CUBRID_POD="${CUBRID_POD:-postgres-patroni-0}"
 DB_NAME="${DB_NAME:-carbonet}"
-DB_USER="${DB_USER:-dba}"
+DB_USER="${DB_USER:-postgres}"
 MODEL_BASE_URL="${MODEL_BASE_URL:-http://127.0.0.1:24036/v1}"
 MODEL_API_KEY="${MODEL_API_KEY:-qwer1234}"
 MODEL_NAME="${MODEL_NAME:-qwen3.6-40b-deck-opus-q4}"
@@ -569,14 +569,15 @@ def run(cmd):
         raise SystemExit(result.stdout)
     return result.stdout
 
-def csql_read(sql):
+def psql_read(sql):
     escaped = sql.replace('"', '\\"')
     result = subprocess.run(
-        ["kubectl", "-n", namespace, "exec", pod, "--", "bash", "-lc", f'csql -u {db_user} -C {db_name} -c "{escaped}"'],
+        ["kubectl", "-n", namespace, "exec", pod, "--", "bash", "-lc", f'psql -U {db_user} -d {db_name} -c "{escaped}"'],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         check=False,
+        env={**os.environ, "PGPASSWORD": "postgres123"},
     )
     return result.stdout[-3900:]
 
@@ -666,44 +667,44 @@ def model_role_for_stage(stage_code):
 safe_pattern_id = pattern_id.replace("'", "''")
 registered_work_order = {
     "systemAssetSearchTerms": asset_terms,
-    "systemAssets": csql_read(f"select asset_type, asset_name, source_path, owner_domain, owner_scope from system_asset_inventory where active_yn='Y' and ({asset_clause}) order by last_scan_at desc limit 40;"),
-    "systemTree": csql_read(f"select node_type, node_depth, node_path, owner_domain, language_hint from system_asset_tree_snapshot where active_yn='Y' and ({tree_clause}) order by node_depth, node_path limit 40;"),
-    "systemFramework": csql_read(f"select structure_type, node_name, node_path, framework_role, build_tool from system_asset_framework_structure where active_yn='Y' and ({framework_clause}) order by structure_type, node_path limit 30;"),
-    "systemCodeStructures": csql_read(f"select symbol_type, symbol_name, source_path, pattern_code, line_no from system_asset_code_structure where active_yn='Y' and ({code_clause}) order by source_path, line_no limit 50;"),
-    "developmentPatternBindings": csql_read(f"select asset_path, pattern_id, pattern_scope, confidence_score from system_asset_development_pattern_binding where active_yn='Y' and ({binding_clause}) order by confidence_score desc limit 40;"),
-    "builderPageGaps": csql_read(f"select gap_type, page_name, source_path, target_route, builder_role, priority_score from system_builder_page_gap where active_yn='Y' and gap_status='OPEN' and ({gap_clause}) order by priority_score desc, page_name limit 50;"),
-    "emptyPages": csql_read(f"select page_name, route_path, component_path, empty_type, severity_score from system_empty_page_inventory where active_yn='Y' and ({empty_clause}) order by severity_score desc, page_name limit 50;"),
-    "designArtifacts": csql_read(f"select artifact_type, title, source_path, canonical_priority, target_route_hint from system_design_artifact_registry where active_yn='Y' and ({design_clause}) order by canonical_priority desc, title limit 50;"),
-    "designReferences": csql_read(f"select reference_kind, target_page_name, target_route, target_component_path, match_confidence, usage_policy from system_design_reference_map where active_yn='Y' and ({design_ref_clause}) order by match_confidence desc, target_page_name limit 50;"),
-    "themeTokens": csql_read(f"select theme_set_id, token_group, token_name, token_value, token_role, approval_state from system_theme_token_registry where active_yn='Y' and ({theme_token_clause}) order by approval_state, token_group, token_name limit 50;"),
-    "uiComponentPatterns": csql_read(f"select pattern_family, pattern_name, owner_scope, canonical_component_path, theme_set_id from system_ui_component_pattern_registry where active_yn='Y' and ({ui_pattern_clause}) order by pattern_family, pattern_name limit 50;"),
-    "cssSelectors": csql_read(f"select selector_kind, selector_text, source_path, declaration_count from system_css_selector_registry where active_yn='Y' and ({css_selector_clause}) order by selector_kind, selector_text limit 50;"),
-    "cssDeclarations": csql_read(f"select token_group, token_name, property_name, property_value, selector_text from system_css_declaration_registry where active_yn='Y' and ({css_decl_clause}) order by token_group, property_name limit 50;"),
-    "designPatterns": csql_read(f"select pattern_layer, pattern_name, pattern_role, approval_state from system_design_pattern_registry where active_yn='Y' and ({design_memory_clause}) order by approval_state, pattern_layer, pattern_name limit 50;"),
-    "brandMemory": csql_read(f"select memory_scope, memory_name, memory_type, approval_state from system_brand_memory_registry where active_yn='Y' and ({brand_memory_clause}) order by approval_state, memory_scope, memory_name limit 50;"),
-    "uxInteractionPatterns": csql_read(f"select interaction_family, pattern_name, trigger_event, expected_feedback from system_ux_interaction_pattern_registry where active_yn='Y' and ({ux_pattern_clause}) order by interaction_family, pattern_name limit 50;"),
-    "accessibilityRules": csql_read("select rule_family, rule_name, severity_score, verification_hint from system_accessibility_rule_registry where active_yn='Y' order by severity_score desc, rule_family, rule_name limit 50;"),
-    "aiDesignRules": csql_read("select rule_stage, rule_name, required_registry, verification_evidence from system_ai_design_generation_rule where active_yn='Y' order by rule_stage, rule_name limit 50;"),
-    "platformLayers": csql_read(f"select layer_order, layer_name, layer_type, source_of_truth from system_platform_layer_registry where active_yn='Y' and ({platform_clause}) order by layer_order limit 50;"),
-    "osPackages": csql_read(f"select os_family, package_name, package_role, service_name from system_os_package_registry where active_yn='Y' and ({os_package_clause}) order by os_family, package_name limit 50;"),
-    "containerServices": csql_read(f"select service_name, compose_path, dockerfile_path, image_name, port_mapping, restart_policy from system_container_service_registry where active_yn='Y' and ({container_service_clause}) order by service_name limit 50;"),
-    "buildUnits": csql_read(f"select build_unit_name, build_unit_type, source_path, build_command, verification_command from system_build_unit_registry where active_yn='Y' and ({build_unit_clause}) order by build_unit_type, build_unit_name limit 50;"),
-    "modelLanePolicies": csql_read("select lane_id, lane_order, lane_name, preferred_model, preferred_base_url, download_policy, active_yn from hermes_model_lane_policy where project_id='carbonet' order by lane_order;"),
-    "modelCandidates": csql_read("select candidate_model_id, model_name, candidate_role, status, allowed_use, forbidden_use, benchmark_gate from hermes_model_candidate_registry where project_id='carbonet' and active_yn='Y' order by candidate_order;"),
-    "agentTeamRegistry": csql_read("select team_id, team_name, default_start_mode, primary_model, fallback_model, scope_summary from hermes_agent_team_registry where project_id='carbonet' and active_yn='Y' order by team_order;"),
-    "workKindRoutes": csql_read("select work_kind_id, work_kind_name, primary_team_ids_json, gate_team_ids_json, support_lane_json, required_preflight_json from hermes_work_kind_model_route where project_id='carbonet' and active_yn='Y' order by route_order;"),
-    "developmentPreflightRoutes": csql_read("select route_order, route_code, route_name, required_output from system_development_preflight_route where active_yn='Y' order by route_order;"),
-    "pageDesignRegistry": csql_read(f"select page_id, page_name, route_path, menu_code, implementation_status, page_archetype, builder_ready_status, priority_score from system_page_design_registry where active_yn='Y' and ({page_design_clause}) order by priority_score desc, page_id limit 50;"),
-    "pageQualityScores": csql_read(f"select page_id, route_path, implementation_status, quality_score, score_grade, completion_level, service_ready_yn, top_gap_summary from system_page_development_quality_score where active_yn='Y' and ({quality_score_clause}) order by service_ready_yn, quality_score, priority_score desc limit 50;"),
-    "pageQualityDimensions": csql_read(f"select page_id, dimension_code, raw_score, pass_yn, gap_summary from system_page_quality_dimension_score where active_yn='Y' and ({dimension_score_clause}) order by raw_score, page_id limit 80;"),
-    "developmentBranchDecisions": csql_read(f"select page_id, branch_code, development_stage, existing_page_skip_yn, selected_pattern_id, required_rag_query from system_page_development_branch_decision where active_yn='Y' and ({branch_decision_clause}) order by existing_page_skip_yn, development_stage, page_id limit 60;"),
-    "developmentRagChunks": csql_read(f"select chunk_kind, chunk_title, route_hint, page_id_hint, pattern_id_hint, quality_dimension_hint, relevance_score from system_development_rag_chunk where active_yn='Y' and ({development_rag_clause}) order by relevance_score desc, chunk_kind, chunk_title limit 80;"),
-    "builderWorkRequests": csql_read(f"select request_type, page_name, route_path, component_path, priority_score from system_builder_work_request_queue where active_yn='Y' and request_status='READY' and ({work_queue_clause}) order by priority_score desc, page_name limit 50;"),
-    "guardPolicies": csql_read("select guard_order, guard_code, guard_stage, guard_name from hermes_work_execution_guard_policy where active_yn='Y' order by guard_order;"),
-    "patternSteps": csql_read(f"select step_order, stage_code, step_title from hermes_development_pattern_step where pattern_id='{safe_pattern_id}' and active_yn='Y' order by step_order;") if pattern_id else "",
-    "patternChecks": csql_read(f"select check_order, check_type, substr(cast(command_template as varchar(1000)),1,220) from hermes_development_pattern_check where pattern_id='{safe_pattern_id}' and active_yn='Y' order by check_order;") if pattern_id else "",
-    "patternTeams": csql_read(f"select team_role, team_id from hermes_development_pattern_team_rule where pattern_id='{safe_pattern_id}' and active_yn='Y' order by team_role, team_id;") if pattern_id else "",
-    "knowledgeAssets": csql_read(f"select asset_type, asset_path, primary_team_id from hermes_project_knowledge_asset where active_yn='Y' and (primary_pattern_id='{safe_pattern_id}' or asset_path like '%hermes%' or asset_path like '%codex%') order by frst_regist_pnttm desc limit 30;") if pattern_id else "",
+    "systemAssets": psql_read(f"select asset_type, asset_name, source_path, owner_domain, owner_scope from system_asset_inventory where active_yn='Y' and ({asset_clause}) order by last_scan_at desc limit 40;"),
+    "systemTree": psql_read(f"select node_type, node_depth, node_path, owner_domain, language_hint from system_asset_tree_snapshot where active_yn='Y' and ({tree_clause}) order by node_depth, node_path limit 40;"),
+    "systemFramework": psql_read(f"select structure_type, node_name, node_path, framework_role, build_tool from system_asset_framework_structure where active_yn='Y' and ({framework_clause}) order by structure_type, node_path limit 30;"),
+    "systemCodeStructures": psql_read(f"select symbol_type, symbol_name, source_path, pattern_code, line_no from system_asset_code_structure where active_yn='Y' and ({code_clause}) order by source_path, line_no limit 50;"),
+    "developmentPatternBindings": psql_read(f"select asset_path, pattern_id, pattern_scope, confidence_score from system_asset_development_pattern_binding where active_yn='Y' and ({binding_clause}) order by confidence_score desc limit 40;"),
+    "builderPageGaps": psql_read(f"select gap_type, page_name, source_path, target_route, builder_role, priority_score from system_builder_page_gap where active_yn='Y' and gap_status='OPEN' and ({gap_clause}) order by priority_score desc, page_name limit 50;"),
+    "emptyPages": psql_read(f"select page_name, route_path, component_path, empty_type, severity_score from system_empty_page_inventory where active_yn='Y' and ({empty_clause}) order by severity_score desc, page_name limit 50;"),
+    "designArtifacts": psql_read(f"select artifact_type, title, source_path, canonical_priority, target_route_hint from system_design_artifact_registry where active_yn='Y' and ({design_clause}) order by canonical_priority desc, title limit 50;"),
+    "designReferences": psql_read(f"select reference_kind, target_page_name, target_route, target_component_path, match_confidence, usage_policy from system_design_reference_map where active_yn='Y' and ({design_ref_clause}) order by match_confidence desc, target_page_name limit 50;"),
+    "themeTokens": psql_read(f"select theme_set_id, token_group, token_name, token_value, token_role, approval_state from system_theme_token_registry where active_yn='Y' and ({theme_token_clause}) order by approval_state, token_group, token_name limit 50;"),
+    "uiComponentPatterns": psql_read(f"select pattern_family, pattern_name, owner_scope, canonical_component_path, theme_set_id from system_ui_component_pattern_registry where active_yn='Y' and ({ui_pattern_clause}) order by pattern_family, pattern_name limit 50;"),
+    "cssSelectors": psql_read(f"select selector_kind, selector_text, source_path, declaration_count from system_css_selector_registry where active_yn='Y' and ({css_selector_clause}) order by selector_kind, selector_text limit 50;"),
+    "cssDeclarations": psql_read(f"select token_group, token_name, property_name, property_value, selector_text from system_css_declaration_registry where active_yn='Y' and ({css_decl_clause}) order by token_group, property_name limit 50;"),
+    "designPatterns": psql_read(f"select pattern_layer, pattern_name, pattern_role, approval_state from system_design_pattern_registry where active_yn='Y' and ({design_memory_clause}) order by approval_state, pattern_layer, pattern_name limit 50;"),
+    "brandMemory": psql_read(f"select memory_scope, memory_name, memory_type, approval_state from system_brand_memory_registry where active_yn='Y' and ({brand_memory_clause}) order by approval_state, memory_scope, memory_name limit 50;"),
+    "uxInteractionPatterns": psql_read(f"select interaction_family, pattern_name, trigger_event, expected_feedback from system_ux_interaction_pattern_registry where active_yn='Y' and ({ux_pattern_clause}) order by interaction_family, pattern_name limit 50;"),
+    "accessibilityRules": psql_read("select rule_family, rule_name, severity_score, verification_hint from system_accessibility_rule_registry where active_yn='Y' order by severity_score desc, rule_family, rule_name limit 50;"),
+    "aiDesignRules": psql_read("select rule_stage, rule_name, required_registry, verification_evidence from system_ai_design_generation_rule where active_yn='Y' order by rule_stage, rule_name limit 50;"),
+    "platformLayers": psql_read(f"select layer_order, layer_name, layer_type, source_of_truth from system_platform_layer_registry where active_yn='Y' and ({platform_clause}) order by layer_order limit 50;"),
+    "osPackages": psql_read(f"select os_family, package_name, package_role, service_name from system_os_package_registry where active_yn='Y' and ({os_package_clause}) order by os_family, package_name limit 50;"),
+    "containerServices": psql_read(f"select service_name, compose_path, dockerfile_path, image_name, port_mapping, restart_policy from system_container_service_registry where active_yn='Y' and ({container_service_clause}) order by service_name limit 50;"),
+    "buildUnits": psql_read(f"select build_unit_name, build_unit_type, source_path, build_command, verification_command from system_build_unit_registry where active_yn='Y' and ({build_unit_clause}) order by build_unit_type, build_unit_name limit 50;"),
+    "modelLanePolicies": psql_read("select lane_id, lane_order, lane_name, preferred_model, preferred_base_url, download_policy, active_yn from hermes_model_lane_policy where project_id='carbonet' order by lane_order;"),
+    "modelCandidates": psql_read("select candidate_model_id, model_name, candidate_role, status, allowed_use, forbidden_use, benchmark_gate from hermes_model_candidate_registry where project_id='carbonet' and active_yn='Y' order by candidate_order;"),
+    "agentTeamRegistry": psql_read("select team_id, team_name, default_start_mode, primary_model, fallback_model, scope_summary from hermes_agent_team_registry where project_id='carbonet' and active_yn='Y' order by team_order;"),
+    "workKindRoutes": psql_read("select work_kind_id, work_kind_name, primary_team_ids_json, gate_team_ids_json, support_lane_json, required_preflight_json from hermes_work_kind_model_route where project_id='carbonet' and active_yn='Y' order by route_order;"),
+    "developmentPreflightRoutes": psql_read("select route_order, route_code, route_name, required_output from system_development_preflight_route where active_yn='Y' order by route_order;"),
+    "pageDesignRegistry": psql_read(f"select page_id, page_name, route_path, menu_code, implementation_status, page_archetype, builder_ready_status, priority_score from system_page_design_registry where active_yn='Y' and ({page_design_clause}) order by priority_score desc, page_id limit 50;"),
+    "pageQualityScores": psql_read(f"select page_id, route_path, implementation_status, quality_score, score_grade, completion_level, service_ready_yn, top_gap_summary from system_page_development_quality_score where active_yn='Y' and ({quality_score_clause}) order by service_ready_yn, quality_score, priority_score desc limit 50;"),
+    "pageQualityDimensions": psql_read(f"select page_id, dimension_code, raw_score, pass_yn, gap_summary from system_page_quality_dimension_score where active_yn='Y' and ({dimension_score_clause}) order by raw_score, page_id limit 80;"),
+    "developmentBranchDecisions": psql_read(f"select page_id, branch_code, development_stage, existing_page_skip_yn, selected_pattern_id, required_rag_query from system_page_development_branch_decision where active_yn='Y' and ({branch_decision_clause}) order by existing_page_skip_yn, development_stage, page_id limit 60;"),
+    "developmentRagChunks": psql_read(f"select chunk_kind, chunk_title, route_hint, page_id_hint, pattern_id_hint, quality_dimension_hint, relevance_score from system_development_rag_chunk where active_yn='Y' and ({development_rag_clause}) order by relevance_score desc, chunk_kind, chunk_title limit 80;"),
+    "builderWorkRequests": psql_read(f"select request_type, page_name, route_path, component_path, priority_score from system_builder_work_request_queue where active_yn='Y' and request_status='READY' and ({work_queue_clause}) order by priority_score desc, page_name limit 50;"),
+    "guardPolicies": psql_read("select guard_order, guard_code, guard_stage, guard_name from hermes_work_execution_guard_policy where active_yn='Y' order by guard_order;"),
+    "patternSteps": psql_read(f"select step_order, stage_code, step_title from hermes_development_pattern_step where pattern_id='{safe_pattern_id}' and active_yn='Y' order by step_order;") if pattern_id else "",
+    "patternChecks": psql_read(f"select check_order, check_type, substr(cast(command_template as varchar(1000)),1,220) from hermes_development_pattern_check where pattern_id='{safe_pattern_id}' and active_yn='Y' order by check_order;") if pattern_id else "",
+    "patternTeams": psql_read(f"select team_role, team_id from hermes_development_pattern_team_rule where pattern_id='{safe_pattern_id}' and active_yn='Y' order by team_role, team_id;") if pattern_id else "",
+    "knowledgeAssets": psql_read(f"select asset_type, asset_path, primary_team_id from hermes_project_knowledge_asset where active_yn='Y' and (primary_pattern_id='{safe_pattern_id}' or asset_path like '%hermes%' or asset_path like '%codex%') order by frst_regist_pnttm desc limit 30;") if pattern_id else "",
 }
 
 statements = [
@@ -881,7 +882,7 @@ sql_path = work_dir / f"{task_id}.sql"
 sql_path.write_text("\n".join(statements), encoding="utf-8")
 remote_sql = f"/tmp/{task_id}.sql"
 run(["kubectl", "-n", namespace, "cp", str(sql_path), f"{pod}:{remote_sql}"])
-run(["kubectl", "-n", namespace, "exec", pod, "--", "bash", "-lc", f"csql -u {db_user!r} {db_name!r} -i {remote_sql}"])
+run(["kubectl", "-n", namespace, "exec", pod, "--", "bash", "-lc", f"PGPASSWORD=postgres123 psql -U {db_user!r} -d {db_name!r} -f {remote_sql}"])
 
 event = {
     "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),

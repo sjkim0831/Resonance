@@ -30,8 +30,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://${POSTGRES_HOST:127.0.0.1}:5432/carbonet?charset=UTF-8
-    username: dba
-    password: ""
+    username: ${POSTGRES_USER:-postgres}
+    password: ${POSTGRES_PASSWORD:-}
     hikari:
       maximum-pool-size: 20
       connection-timeout: 30000

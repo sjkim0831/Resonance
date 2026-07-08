@@ -78,6 +78,8 @@ emission_prepare_cached_runtime_artifacts() {
 
   if [[ ! -f "$classpath_file" || "$ROOT_DIR/pom.xml" -nt "$classpath_file" ]]; then
     emission_info "building runtime classpath"
+    # dependency:build-classpath is a Maven-only goal; require Maven for classpath generation.
+    emission_require_cmd mvn
     mvn -q -f "$ROOT_DIR/pom.xml" -DincludeScope=runtime dependency:build-classpath "-Dmdep.outputFile=$classpath_file" >/dev/null
   else
     emission_info "reusing cached runtime classpath"

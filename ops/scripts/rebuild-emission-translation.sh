@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] rebuild-emission-translation.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/usr/bin/env bash
 # rebuild-emission-translation.sh - Rebuild emission_material_translation table from CSV
 # Usage: bash ops/scripts/rebuild-emission-translation.sh [csv_file]

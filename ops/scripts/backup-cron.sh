@@ -35,7 +35,7 @@ install_cron() {
     mkdir -p "$(dirname "$CRON_LOG")"
     touch "$CRON_LOG"
 
-    local cron_entries="# CUBRID Backup Cron Jobs - Added $(date '+%Y-%m-%d %H:%M')
+    local cron_entries="# PostgreSQL Backup Cron Jobs - Added $(date '+%Y-%m-%d %H:%M')
 # Daily backup at 2 AM
 ${BACKUP_SCHEDULE} cd ${SCRIPT_DIR} && bash ${BACKUP_SCRIPT} >> ${CRON_LOG} 2>&1
 # Weekly rotation on Sunday at 3 AM

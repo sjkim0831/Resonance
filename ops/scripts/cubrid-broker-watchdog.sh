@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# PostgreSQL 환경: postgres-patroni-0/1/2 (Patroni HA) + pg_isready 사용
+echo "[DEPRECATED] cubrid-broker-watchdog: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"

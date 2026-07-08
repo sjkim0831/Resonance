@@ -16,6 +16,7 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation("org.egovframe.rte:egovframe-rte-psl-dataaccess:5.0.0")
     compileOnly("org.springframework.boot:spring-boot-starter-jdbc")
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
@@ -26,6 +27,14 @@ dependencies {
     compileOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     compileOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
     implementation(project(":modules:resonance-builder:screenbuilder-core"))
+    implementation(project(":modules:resonance-builder:carbonet-builder-observability"))
     implementation(project(":modules:resonance-common:web-support"))
     implementation(project(":modules:resonance-common:platform-service-contracts"))
+    implementation(project(":modules:resonance-common:carbonet-contract-metadata"))
+    implementation(project(":modules:resonance-common:mapper-infra"))
+    implementation(project(":modules:resonance-common:common-auth"))
+    implementation(project(":modules:resonance-common:platform-request-contracts"))
+    // carbonet-common-core depends on this module — using compileOnly to
+    // avoid circular dependency at configuration time.
+    compileOnly(project(":modules:resonance-common:carbonet-common-core"))
 }

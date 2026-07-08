@@ -46,27 +46,62 @@ JAR_FILE="${ARTIFACT_ID}-${VERSION}.jar"
 
 log "JAR 파일: $JAR_FILE"
 
+# Build tool detection
+detect_build_tool() {
+    if [[ -x "$ROOT_DIR/gradlew" ]] && [[ -f "$ROOT_DIR/settings.gradle.kts" ]]; then
+        echo "gradle"
+    else
+        echo "maven"
+    fi
+}
+BUILD_TOOL="$(detect_build_tool)"
+log "Build tool: $BUILD_TOOL"
+
 # 1. 모듈 빌드
 log "모듈 빌드 중..."
 cd "$ROOT_DIR"
-if ! mvn -pl "$MODULE_PATH" -am -Dmaven.test.skip=true package -q 2>&1; then
-    log_warn "Maven 빌드 실패 - 전체 빌드 시도..."
-    mvn -Dmaven.test.skip=true package -q 2>&1 | tail -10
+if [[ "$BUILD_TOOL" == "gradle" ]]; then
+    # 모듈 경로를 Gradle project path로 변환
+    # 예: /opt/Resonance/modules/resonance-common/carbonet-common-core
+    #   → :modules:resonance-common:carbonet-common-core
+    REL_PATH="${MODULE_PATH#$ROOT_DIR/}"
+    GRADLE_PATH=":$(echo "$REL_PATH" | tr '/' ':')"
+    if ! ./gradlew -p "$ROOT_DIR" "$GRADLE_PATH:bootJar" -x test -q 2>&1; then
+        log_warn "Gradle 빌드 실패 - jar 타겟 재시도..."
+        if ! ./gradlew -p "$ROOT_DIR" "$GRADLE_PATH:jar" -x test -q 2>&1; then
+            log_warn "Gradle jar 타겟 실패 - 전체 빌드 시도..."
+            ./gradlew -p "$ROOT_DIR" jar -x test -q 2>&1 | tail -10
+        fi
+    fi
+else
+    if ! mvn -pl "$MODULE_PATH" -am -Dmaven.test.skip=true package -q 2>&1; then
+        log_warn "Maven 빌드 실패 - 전체 빌드 시도..."
+        mvn -Dmaven.test.skip=true package -q 2>&1 | tail -10
+    fi
 fi
 
 # 2. 빌드 결과 확인
 BUILD_JAR=""
-for ext in "" ".jar"; do
-    candidate="$MODULE_PATH/target/${JAR_FILE}${ext}"
+if [[ "$BUILD_TOOL" == "gradle" ]]; then
+    # Gradle 산출 위치: build/libs/*.jar
+    candidate="$(dirname "$MODULE_PATH")/build/libs/${JAR_FILE}"
     if [[ -f "$candidate" ]]; then
         BUILD_JAR="$candidate"
-        break
+    else
+        BUILD_JAR=$(find "$MODULE_PATH/build/libs" -name "*.jar" -type f 2>/dev/null | grep -v "original\|test\|sources" | head -1)
     fi
-done
-
-if [[ -z "$BUILD_JAR" ]]; then
-    #jar 파일명이 다를 수 있음 - target에서 찾기
-    BUILD_JAR=$(find "$MODULE_PATH/target" -name "*.jar" -type f | grep -v "original\|test" | head -1)
+else
+    for ext in "" ".jar"; do
+        candidate="$MODULE_PATH/target/${JAR_FILE}${ext}"
+        if [[ -f "$candidate" ]]; then
+            BUILD_JAR="$candidate"
+            break
+        fi
+    done
+    if [[ -z "$BUILD_JAR" ]]; then
+        #jar 파일명이 다를 수 있음 - target에서 찾기
+        BUILD_JAR=$(find "$MODULE_PATH/target" -name "*.jar" -type f | grep -v "original\|test" | head -1)
+    fi
 fi
 
 if [[ -z "$BUILD_JAR" || ! -f "$BUILD_JAR" ]]; then

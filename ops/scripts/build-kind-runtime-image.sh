@@ -2,6 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 PROJECT_ID="${PROJECT_ID:-P003}"
 IMAGE_NAME="${IMAGE_NAME:-carbonet-local/carbonet-p003:latest}"
 KIND_CLUSTER="${KIND_CLUSTER:-dev}"
@@ -9,11 +13,11 @@ RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 
 cd "$ROOT_DIR"
 
-mvn -pl apps/project-runtime -am -Dmaven.test.skip=true package
+jbuild -pl apps/project-runtime -am -Dmaven.test.skip=true package
 
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
-cp apps/project-runtime/target/project-runtime.jar "$RELEASE_DIR/project-runtime.jar"
+cp "$(jbooted project-runtime)" "$RELEASE_DIR/project-runtime.jar"
 
 if compgen -G "projects/carbonet-adapter/target/*.jar" >/dev/null; then
   cp projects/carbonet-adapter/target/*.jar "$RELEASE_DIR/lib/" || true
@@ -25,7 +29,8 @@ fi
 
 cp -R "$RELEASE_DIR/config/." "$RELEASE_DIR/ops/config/" 2>/dev/null || true
 
-docker build   --build-arg PROJECT_ID="$PROJECT_ID"   -f ops/docker/Dockerfile.project-runtime   -t "$IMAGE_NAME"   "$RELEASE_DIR"
+docker build --build-arg PROJECT_ID="$PROJECT_ID" \
+  -f ops/docker/Dockerfile.runtime -t "$IMAGE_NAME" "$RELEASE_DIR"
 
 if command -v kind >/dev/null 2>&1; then
   kind load docker-image "$IMAGE_NAME" --name "$KIND_CLUSTER"

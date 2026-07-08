@@ -10,11 +10,13 @@ import java.sql.SQLException;
 
 public class CubridClobStringTypeHandler extends BaseTypeHandler<String> {
 
+    @Deprecated
+    public CubridClobStringTypeHandler() {}
+
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType) throws SQLException {
         String value = parameter == null ? "" : parameter;
-        // CUBRID in this runtime rejects SerialClob host variables for CLOB columns.
-        // Bind plain strings so observability inserts do not fail under member-management traffic.
+        // CUBRID is removed. PostgreSQL uses TEXT natively; this handler is kept for backward compatibility.
         ps.setString(i, value);
     }
 

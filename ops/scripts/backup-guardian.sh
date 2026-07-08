@@ -6,10 +6,9 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC
 
 NAMESPACE="carbonet-prod"
 DB_NAME="carbonet"
-POD="cubrid-carbonet-0"
-LOG_DB="/opt/Resonance/var/lib/cubrid_operations.db"
-LOG_FILE="/opt/Resonance/var/log/backup-guardian.log"
-BACKUP_DIR="/opt/Resonance/data/cubrid/backup"
+POD="postgres-patroni-0"
+LOG_DB="/opt/Resonance/var/lib/pg_operations.db"
+BACKUP_DIR="/opt/Resonance/var/postgres-backups"
 RETENTION_DAYS=7
 
 EXPECTED_SCHEMA=140000
@@ -78,18 +77,14 @@ do_create() {
     local timestamp=$(date +%Y%m%d)
     local backup_path="$BACKUP_DIR/${DB_NAME}-live-unload-$timestamp"
     
-    mkdir -p "$backup_path/unloaddb"
-    
-    run "/home/cubrid/CUBRID/bin/cubrid server stop $DB_NAME 2>&1 | tail -1 || true"
-    sleep 2
-    
-    run "export CUBRID=/home/cubrid/CUBRID; export PATH=\$CUBRID/bin:\$PATH; export CUBRID_DATABASES=/var/lib/cubrid/databases; mkdir -p /tmp/backup; cd /tmp/backup; cubrid unloaddb -u dba -S ${DB_NAME} 2>&1 | tail -5"
-    
-    kubectl cp "$NAMESPACE/$POD:/tmp/backup/unloaddb" "$backup_path/unloaddb" 2>&1 | tail -2
-    
-    run "export CUBRID=/home/cubrid/CUBRID; export PATH=\$CUBRID/bin:\$PATH; export CUBRID_DATABASES=/var/lib/cubrid/databases; cubrid server start $DB_NAME 2>&1 | tail -2"
-    
-    if [ -f "$backup_path/unloaddb/${DB_NAME}_schema" ]; then
+    mkdir -p "$backup_path"
+
+    local backup_file="/tmp/carbonet_backup_$(date +%Y%m%d_%H%M%S).dump"
+    run "pg_dump -U postgres -d ${DB_NAME} -Fc -f $backup_file" 2>&1 | tail -5
+
+    kubectl cp "$NAMESPACE/$POD:$backup_file" "$backup_path/carbonet_backup.dump" 2>&1 | tail -2
+
+    if [ -f "$backup_path/carbonet_backup.dump" ]; then
         log_ok "백업 완료: $backup_path"
         local size=$(du -sm "$backup_path" 2>/dev/null | cut -f1)
         python3 << PYEOF

@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] resonance-k8s-build-deploy-80-comprehensive.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/usr/bin/env bash
 #===============================================================================
 # Comprehensive Build-Deploy Script with Production-Ready Features
@@ -36,6 +40,10 @@ export RESONANCE_SUDO_PASSWORD="${RESONANCE_SUDO_PASSWORD:-qwer1234}"
 SCRIPT_VERSION="2.0.0-comprehensive"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 
 # Core settings
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
@@ -43,7 +51,7 @@ DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 PROJECT_ID="${PROJECT_ID:-P003}"
-CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
+CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_USER="${DB_USER:-dba}"
 
@@ -864,7 +872,8 @@ build_image() {
     --cache-from "type=registry,ref=$IMAGE_NAME" \
     --cache-from "type=registry,ref=${IMAGE_NAME%-*}:*" \
     --build-arg SERVER_PORT=8080 \
-    -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" \
+    \
+    -f "$ROOT_DIR/ops/docker/Dockerfile.runtime" \
     -t "$IMAGE_NAME" \
     "$RELEASE_DIR"
   

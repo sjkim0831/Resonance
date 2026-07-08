@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] cubrid-101-chaos.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/bin/bash
 # CUBRID 101 CHAOS SCENARIOS - 상황별 테스트 자동화
 # 데이터 유실 없이 모든 상황 테스트

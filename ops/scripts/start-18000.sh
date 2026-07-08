@@ -107,12 +107,12 @@ fi
 
 rotate_large_log_if_needed "$LOG_FILE" "$LOG_ROTATE_MAX_BYTES"
 
-DB_HOST="${CUBRID_HOST:-127.0.0.1}"
-DB_PORT="${CUBRID_PORT:-33000}"
-DB_NAME="${CUBRID_DB:-carbonet}"
-DB_USER="${CUBRID_USER:-dba}"
-DB_PASSWORD="${CUBRID_PASSWORD:-}"
-DB_URL="jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}?charset=UTF-8"
+DB_HOST="${POSTGRES_HOST:-127.0.0.1}"
+DB_PORT="${POSTGRES_PORT:-5432}"
+DB_NAME="${POSTGRES_DB:-carbonet}"
+DB_USER="${POSTGRES_USER:-carbonet_app}"
+DB_PASSWORD="${POSTGRES_PASSWORD:-postgres123}"
+DB_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}?charset=UTF-8"
 
 require_env "TOKEN_ACCESS_SECRET"
 require_env "TOKEN_REFRESH_SECRET"

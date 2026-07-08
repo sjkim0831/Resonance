@@ -4,6 +4,10 @@ set -euo pipefail
 export RESONANCE_SUDO_PASSWORD="${RESONANCE_SUDO_PASSWORD:-qwer1234}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 
@@ -91,7 +95,8 @@ build_docker_image() {
         --build-arg BUILDKIT_INLINE_CACHE=1 \
         --cache-from=registry.local/carbonet-runtime:base \
         -t "$IMAGE_TAG" \
-        -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" \
+        \
+    -f "$ROOT_DIR/ops/docker/Dockerfile.runtime" \
         . 2>&1 | tail -5; then
         log_ok "Docker image built"
     else

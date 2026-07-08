@@ -5,6 +5,10 @@ set -euo pipefail
 # Usage: bash ops/scripts/build-independent-runtimes.sh
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 
 echo "[build-independent-runtimes] building project-runtime..."
 mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package

@@ -20,6 +20,10 @@ EOF
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 
 echo "[build-restart-18000] frontend build started"
 (cd "$ROOT_DIR/projects/carbonet-frontend/source" && npm run build)

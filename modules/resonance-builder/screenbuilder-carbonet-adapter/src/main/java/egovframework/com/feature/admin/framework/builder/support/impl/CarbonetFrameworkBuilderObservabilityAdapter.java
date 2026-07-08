@@ -5,14 +5,15 @@ import egovframework.com.common.trace.UiPageComponentDetailVO;
 import egovframework.com.common.trace.UiPageManifestVO;
 import egovframework.com.feature.admin.framework.builder.support.CarbonetFrameworkBuilderObservabilitySource;
 import egovframework.com.framework.builder.support.FrameworkBuilderObservabilityPort;
-import lombok.RequiredArgsConstructor;
-
 import java.util.List;
 
-@RequiredArgsConstructor
 public class CarbonetFrameworkBuilderObservabilityAdapter implements FrameworkBuilderObservabilityPort {
 
     private final CarbonetFrameworkBuilderObservabilitySource carbonetFrameworkBuilderObservabilitySource;
+
+    public CarbonetFrameworkBuilderObservabilityAdapter(CarbonetFrameworkBuilderObservabilitySource carbonetFrameworkBuilderObservabilitySource) {
+        this.carbonetFrameworkBuilderObservabilitySource = carbonetFrameworkBuilderObservabilitySource;
+    }
 
     @Override
     public List<UiPageManifestVO> selectUiPageManifestList() throws Exception {

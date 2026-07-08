@@ -3,26 +3,30 @@ set -euo pipefail
 
 # GitOps Database Migration Script
 # Applies versioned SQL migrations from db/migrations/ or ops/db/carbonet/
-# Works with CUBRID using kubectl exec
+# Works with PostgreSQL using kubectl exec postgres-patroni-0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DB_NAMESPACE="carbonet-prod"
-DB_POD="cubrid-carbonet-0"
+DB_POD="postgres-patroni-0"
 DB_NAME="carbonet"
+DB_USER="postgres"
+DB_PASSWORD="${POSTGRES_PASSWORD:-postgres123}"
+DB_PORT="5432"
 HISTORY_TABLE="db_migration_history"
 
-CSQL_CMD="kubectl exec $DB_POD -n $DB_NAMESPACE -- csql -u dba $DB_NAME"
+PSQL_CMD="kubectl exec $DB_POD -n $DB_NAMESPACE -- psql -U $DB_USER -d $DB_NAME -p $DB_PORT"
 
 log_info() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [INFO] $*"; }
 log_error() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [ERROR] $*" >&2; }
 
-run_csql() {
-    kubectl exec "$DB_POD" -n "$DB_NAMESPACE" -- csql -u dba "$DB_NAME" -c "$1" 2>/dev/null
+run_psql() {
+    kubectl exec "$DB_POD" -n "$DB_NAMESPACE" -- \
+        PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" -c "$1" 2>/dev/null
 }
 
 ensure_history_table() {
-    run_csql "
+    run_psql "
 CREATE TABLE IF NOT EXISTS db_migration_history (
     version VARCHAR(50) NOT NULL PRIMARY KEY,
     description VARCHAR(255),
@@ -30,7 +34,7 @@ CREATE TABLE IF NOT EXISTS db_migration_history (
     script VARCHAR(500) NOT NULL,
     checksum VARCHAR(64) NOT NULL,
     executed_by VARCHAR(100),
-    executed_at DATETIME DEFAULT CURRENT_DATETIME,
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     success INTEGER DEFAULT 0,
     error_message VARCHAR(2000)
 );" >/dev/null 2>&1 || true
@@ -39,14 +43,14 @@ CREATE TABLE IF NOT EXISTS db_migration_history (
 
 get_current_version() {
     local version
-    version=$(run_csql "SELECT COALESCE(MAX(version), '0') FROM db_migration_history WHERE success = 1;" 2>/dev/null | grep -v "^==" | grep -v "^$" | head -1 | tr -d ' ')
+    version=$(run_psql "SELECT COALESCE(MAX(version), '0') FROM db_migration_history WHERE success = 1;" 2>/dev/null | grep -v "^==" | grep -v "^$" | grep -v "MAX" | head -1 | tr -d ' ')
     echo "${version:-0}"
 }
 
 is_applied() {
     local version="$1"
     local count
-    count=$(run_csql "SELECT COUNT(*) FROM db_migration_history WHERE version = '$version' AND success = 1;" 2>/dev/null | grep -v "^==" | grep -v "^$" | head -1 | tr -d ' ')
+    count=$(run_psql "SELECT COUNT(*) FROM db_migration_history WHERE version = '$version' AND success = 1;" 2>/dev/null | grep -v "^==" | grep -v "^$" | grep -v "count" | head -1 | tr -d ' ')
     echo "${count:-0}"
 }
 
@@ -54,19 +58,19 @@ record_start() {
     local version="$1"
     local script="$2"
     local checksum="$3"
-    run_csql "INSERT INTO db_migration_history (version, script, checksum, executed_by, executed_at, success)
-VALUES ('$version', '$script', '$checksum', '${USER:-unknown}', CURRENT_DATETIME, 0);" >/dev/null 2>&1 || true
+    run_psql "INSERT INTO db_migration_history (version, script, checksum, executed_by, executed_at, success)
+VALUES ('$version', '$script', '$checksum', '${USER:-unknown}', CURRENT_TIMESTAMP, 0);" >/dev/null 2>&1 || true
 }
 
 record_success() {
     local version="$1"
-    run_csql "UPDATE db_migration_history SET success = 1 WHERE version = '$version';" >/dev/null 2>&1 || true
+    run_psql "UPDATE db_migration_history SET success = 1 WHERE version = '$version';" >/dev/null 2>&1 || true
 }
 
 record_failure() {
     local version="$1"
     local error="$2"
-    run_csql "UPDATE db_migration_history SET success = 0, error_message = '$(echo "$error" | head -c 2000 | sed "s/'/''/g")' WHERE version = '$version';" >/dev/null 2>&1 || true
+    run_psql "UPDATE db_migration_history SET success = 0, error_message = '$(echo "$error" | head -c 2000 | sed "s/'/''/g")' WHERE version = '$version';" >/dev/null 2>&1 || true
 }
 
 apply_migration() {
@@ -90,8 +94,9 @@ apply_migration() {
 
     local output
     local error
-    if output=$(run_csql "$sql_content" 2>&1); then
-        if echo "$output" | grep -qiE "error|syntax|unable|cannot"; then
+    if output=$(echo "$sql_content" | kubectl exec "$DB_POD" -n "$DB_NAMESPACE" -- \
+        PGPASSWORD="$DB_PASSWORD" psql -U "$DB_USER" -d "$DB_NAME" -p "$DB_PORT" 2>&1); then
+        if echo "$output" | grep -qiE "error|syntax|unable|cannot|psql:"; then
             error=$(echo "$output" | tail -10 | tr '\n' ' ')
             log_error "Migration failed: ${error:0:500}"
             record_failure "$version" "$error"
@@ -144,7 +149,7 @@ main() {
     log_info "Starting database migration"
 
     if ! kubectl get pod "$DB_POD" -n "$DB_NAMESPACE" >/dev/null 2>&1; then
-        log_error "CUBRID pod not found: $DB_POD"
+        log_error "PostgreSQL pod not found: $DB_POD"
         exit 1
     fi
 
@@ -192,8 +197,7 @@ main() {
     fi
 
     if [[ $applied -gt 0 ]]; then
-        log_info "마이그레이션 성공 - Baseline 업데이트..."
-        /opt/Resonance/ops/scripts/cubrid-verify.sh update-baseline >/dev/null 2>&1 || true
+        log_info "마이그레이션 성공"
     fi
 }
 

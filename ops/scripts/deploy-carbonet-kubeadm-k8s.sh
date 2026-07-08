@@ -2,10 +2,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
 PROJECT_ID="${PROJECT_ID:-P003}"
 SERVICE_NODE_PORT="${SERVICE_NODE_PORT:-80}"
-CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
+CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_USER="${DB_USER:-dba}"
 DB_PASSWORD="${DB_PASSWORD:-}"
@@ -177,7 +181,8 @@ build_image() {
     --build-arg PROJECT_ID="$PROJECT_ID" \
     --build-arg BUILDKIT_INLINE_CACHE=1 \
     --cache-from "type=registry,ref=registry.local/carbonet-runtime:2026.06.18-*" \
-    -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" \
+    \
+    -f "$ROOT_DIR/ops/docker/Dockerfile.runtime" \
     -t "$IMAGE_NAME" \
     "$RELEASE_DIR"
   sudo docker save "$IMAGE_NAME" | sudo ctr -n k8s.io images import - >/dev/null

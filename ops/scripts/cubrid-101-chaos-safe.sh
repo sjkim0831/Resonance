@@ -1,3 +1,7 @@
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+echo "[DEPRECATED] cubrid-101-chaos-safe.sh: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 #!/bin/bash
 # CUBRID 101 CHAOS TESTER - SAFE MODE (실제 파일 삭제 안 함)
 # 시뮬레이션만 수행, 실제 데이터 유실 없음

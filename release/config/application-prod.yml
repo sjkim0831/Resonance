@@ -4,12 +4,12 @@ spring:
   datasource:
     common:
       driver-class-name: org.postgresql.Driver
-      url: jdbc:postgresql://localhost:5432/carbonet_common?charset=utf-8
+      url: jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/carbonet_common?charset=utf-8
       username: carbonet_common
       password: change-me
     project:
       driver-class-name: org.postgresql.Driver
-      url: jdbc:postgresql://localhost:5432/carbonet_p_template?charset=utf-8
+      url: jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/carbonet_p_template?charset=utf-8
       username: carbonet_project
       password: change-me
 

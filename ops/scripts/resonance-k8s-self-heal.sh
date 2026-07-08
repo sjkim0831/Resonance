@@ -99,26 +99,22 @@ ensure_cluster_addons() {
   rollout_if_not_ready kube-flannel daemonset kube-flannel-ds 180s
 }
 
-ensure_cubrid() {
-  if ! kubectl -n "$NAMESPACE" wait --for=condition=Ready pod/cubrid-carbonet-0 --timeout=20s >/dev/null 2>&1; then
-    log 'cubrid pod not ready, deleting for statefulset recreation'
-    kubectl -n "$NAMESPACE" delete pod cubrid-carbonet-0 --grace-period=30 --ignore-not-found=true || true
-    kubectl -n "$NAMESPACE" wait --for=condition=Ready pod/cubrid-carbonet-0 --timeout=300s || true
+ensure_postgres() {
+  if ! kubectl -n "$NAMESPACE" wait --for=condition=Ready pod/postgres-patroni-0 --timeout=20s >/dev/null 2>&1; then
+    log 'postgres-patroni-0 pod not ready, retrying...'
+    sleep 10
+    kubectl -n "$NAMESPACE" wait --for=condition=Ready pod/postgres-patroni-0 --timeout=120s || true
   fi
-  if ! kubectl -n "$NAMESPACE" exec cubrid-carbonet-0 -- bash -lc 'cubrid server status carbonet >/dev/null && cubrid broker status >/dev/null' >/dev/null 2>&1; then
-    log 'cubrid service unhealthy, restarting inside pod'
-    kubectl -n "$NAMESPACE" exec cubrid-carbonet-0 -- bash -lc 'cubrid service restart || true; cubrid server start carbonet || true; cubrid broker restart || true' || true
+  if ! kubectl -n "$NAMESPACE" exec postgres-patroni-0 -- bash -lc 'pg_isready -h localhost -p 5432 -U postgres' >/dev/null 2>&1; then
+    log 'PostgreSQL service unhealthy, checking patroni...'
+    kubectl -n "$NAMESPACE" exec postgres-patroni-0 -- bash -lc 'patronictl list' 2>&1 | head -5 || true
   fi
 }
 
 ensure_db_compatibility() {
-  if ! kubectl -n "$NAMESPACE" exec cubrid-carbonet-0 -- bash -lc 'csql -u dba carbonet -c "SHOW COLUMNS FROM ACCESS_EVENT;" | grep -qi "project_id"' >/dev/null 2>&1; then
+  if ! kubectl -n "$NAMESPACE" exec postgres-patroni-0 -- bash -lc 'psql -U postgres -d carbonet -c "SELECT column_name FROM information_schema.columns WHERE table_name = '\''access_event'\'' AND column_name = '\''project_id'\'';"' 2>/dev/null | grep -q "project_id"; then
     log 'patching ACCESS_EVENT.PROJECT_ID compatibility column'
-    kubectl -n "$NAMESPACE" exec cubrid-carbonet-0 -- bash -lc 'cat >/tmp/access_event_project_id.sql <<SQL
-ALTER TABLE ACCESS_EVENT ADD COLUMN PROJECT_ID VARCHAR(40) DEFAULT '\''carbonet'\'';
-CREATE INDEX IDX_ACCESS_EVENT_PROJECT ON ACCESS_EVENT(PROJECT_ID);
-SQL
-csql -u dba carbonet -i /tmp/access_event_project_id.sql' || true
+    kubectl -n "$NAMESPACE" exec postgres-patroni-0 -- bash -lc 'psql -U postgres -d carbonet -c "ALTER TABLE access_event ADD COLUMN IF NOT EXISTS project_id VARCHAR(40) DEFAULT '\''carbonet'\''; CREATE INDEX IF NOT EXISTS idx_access_event_project ON access_event(project_id);"' >/dev/null 2>&1 || true
   fi
 }
 
@@ -251,7 +247,7 @@ main() {
   log 'start'
   ensure_system_services
   ensure_cluster_addons
-  ensure_cubrid
+  ensure_postgres
   ensure_db_compatibility
   ensure_runtime
   prune_images

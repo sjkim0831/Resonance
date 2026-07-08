@@ -48,15 +48,29 @@ public class BackupConfigManagementService {
     private static final long GIT_PUSH_TIMEOUT_SECONDS = 900L;
     private static final String SAFE_BACKUP_ROOT_PATH = "/tmp/carbonet-backup";
     private static final String ALLOWED_INTERNAL_BACKUP_ROOT = "var/backup-bundle";
+
+    @Deprecated
     private static final String SQL_BACKUP_ROOT = "/opt/util/cubrid/11.2/backup/sql";
+    @Deprecated
     private static final String PHYSICAL_BACKUP_ROOT = "/opt/util/cubrid/11.2/backup/physical";
+    @Deprecated
     private static final String PITR_ARCHIVE_ROOT = "/opt/util/cubrid/11.2/data/com";
+    @Deprecated
     private static final String CUBRID_STACK_DIR = "/opt/util/cubrid";
+    @Deprecated
     private static final String CUBRID_COMPOSE_FILE = "/opt/util/cubrid/docker-compose.yml";
+    @Deprecated
     private static final String CUBRID_DOCKER_SERVICE = "cubrid";
+    @Deprecated
     private static final String HOST_BACKUP_MOUNT_ROOT = "/opt/util/cubrid/11.2/backup";
+    @Deprecated
     private static final String CONTAINER_BACKUP_MOUNT_ROOT = "/opt/util/cubrid/backup";
+    @Deprecated
     private static final String PHYSICAL_RESTORE_STAGING_ROOT = "/opt/util/cubrid/11.2/backup/.restore-staging";
+
+    private static final String POSTGRES_BACKUP_ROOT = "/opt/Resonance/var/postgres-backups-ha";
+    private static final String POSTGRES_DUMP_COMMAND = "/opt/Resonance/ops/scripts/migrate-db.sh";
+
     private static final int VERSION_HISTORY_LIMIT = 20;
     private static final int MAX_JOB_LOG_LINES = 200;
     private static final List<String> GIT_CLEANUP_PATHS = Arrays.asList(
@@ -404,10 +418,10 @@ public class BackupConfigManagementService {
         settings.gitTagPrefix = "backup";
         settings.dbEnabled = "Y";
         settings.dbHost = "127.0.0.1";
-        settings.dbPort = "33000";
+        settings.dbPort = "5432";
         settings.dbName = projectRuntimeContext.getProjectId();
-        settings.dbUser = "dba";
-        settings.dbDumpCommand = "/opt/util/cubrid/11.2/scripts/backup_sql.sh";
+        settings.dbUser = "postgres";
+        settings.dbDumpCommand = POSTGRES_DUMP_COMMAND;
         settings.dbSchemaScope = "FULL";
         settings.dbPromotionDataPolicy = "CONTROLLED_REFERENCE_ONLY";
         settings.dbDiffExecutionPreset = "PATCH_WITH_DIFF";
@@ -501,11 +515,9 @@ public class BackupConfigManagementService {
     private String sanitizeDbDumpCommand(String command) {
         String normalized = safe(command);
         if (normalized.isEmpty()) {
-            return "/opt/util/cubrid/11.2/scripts/backup_sql.sh";
+            return POSTGRES_DUMP_COMMAND;
         }
-        return "/opt/util/cubrid/11.2/scripts/backup_sql.sh".equals(normalized)
-                ? normalized
-                : "/opt/util/cubrid/11.2/scripts/backup_sql.sh";
+        return POSTGRES_DUMP_COMMAND;
     }
 
     private List<Map<String, String>> buildSummary(BackupSettings settings, BackupConfigDocument document, boolean isEn) {
@@ -911,7 +923,7 @@ public class BackupConfigManagementService {
     private String executeDatabaseBackup(BackupSettings settings, boolean isEn, Consumer<String> logger) throws Exception {
         logger.accept(isEn ? "Starting database backup command." : "DB 백업 명령을 시작합니다.");
         sanitizeDbDumpCommand(safe(settings.dbDumpCommand));
-        ProcessBuilder builder = new ProcessBuilder("/opt/util/cubrid/11.2/scripts/backup_sql.sh");
+        ProcessBuilder builder = new ProcessBuilder("pg_dump", "-h", settings.dbHost, "-p", settings.dbPort, "-U", settings.dbUser, "-d", settings.dbName, "-Fc", "-f", "backup.dump");
         builder.directory(Paths.get(".").toAbsolutePath().normalize().toFile());
         builder.redirectErrorStream(true);
         Map<String, String> environment = builder.environment();
@@ -1155,11 +1167,11 @@ public class BackupConfigManagementService {
                 + "echo \"backup dir: $BACKUP_DIR\"\n"
                 + "echo \"db name: $DB_NAME\"\n"
                 + (restorePoint == null ? "" : "echo \"restore point: " + restorePoint.format(TIME_FORMAT) + "\"\n")
-                + buildDockerComposeExecCommand("cubrid server stop " + shellQuote(dbName) + " || true", sudoPassword, useSudoForDocker)
-                + buildDockerComposeExecCommand("cubrid restoredb -u -B " + shellQuote(containerBackupDir) + timestampArg + " " + shellQuote(dbName), sudoPassword, useSudoForDocker)
-                + buildDockerComposeExecCommand("cubrid server start " + shellQuote(dbName), sudoPassword, useSudoForDocker)
+                + buildDockerComposeExecCommand("pg_ctl -D $PGDATA stop || true", sudoPassword, useSudoForDocker)
+                + buildDockerComposeExecCommand("pg_restore -h localhost -U postgres -d " + shellQuote(dbName) + " " + shellQuote(containerBackupDir), sudoPassword, useSudoForDocker)
+                + buildDockerComposeExecCommand("pg_ctl -D $PGDATA start", sudoPassword, useSudoForDocker)
                 + "sleep 2\n"
-                + buildDockerComposeExecCommand("csql -u dba " + shellQuote(dbName) + " -c \"select count(*) from db_class;\"", sudoPassword, useSudoForDocker);
+                + buildDockerComposeExecCommand("psql -U postgres -d " + shellQuote(dbName) + " -c \"SELECT COUNT(*) FROM pg_class;\"", sudoPassword, useSudoForDocker);
     }
 
     private String shellQuote(String value) {
@@ -1170,14 +1182,14 @@ public class BackupConfigManagementService {
         logger.accept(safe(sudoPassword).isEmpty()
                 ? (isEn ? "Checking restore runtime access." : "복구 작업용 실행 권한을 확인합니다.")
                 : (isEn ? "Checking sudo password for restore operations." : "복구 작업용 sudo 비밀번호를 확인합니다."));
-        List<String> directDockerCommand = Arrays.asList("docker", "compose", "-f", CUBRID_COMPOSE_FILE, "ps", CUBRID_DOCKER_SERVICE);
+        List<String> directDockerCommand = Arrays.asList("kubectl", "-n", "carbonet-prod", "exec", "postgres-patroni-0", "--", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "postgres");
         CommandResult directDockerResult = runRestoreAccessCommand(directDockerCommand, "", isEn, logger);
         if (directDockerResult.exitCode == 0) {
             return new RestorePrivilegeAccess(false);
         }
         ProcessBuilder builder = safe(sudoPassword).isEmpty()
-                ? new ProcessBuilder("sudo", "-n", "docker", "compose", "-f", CUBRID_COMPOSE_FILE, "ps", CUBRID_DOCKER_SERVICE)
-                : new ProcessBuilder("sudo", "-S", "-k", "-p", "", "docker", "compose", "-f", CUBRID_COMPOSE_FILE, "ps", CUBRID_DOCKER_SERVICE);
+                ? new ProcessBuilder("kubectl", "-n", "carbonet-prod", "exec", "postgres-patroni-0", "--", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "postgres")
+                : new ProcessBuilder("sudo", "-S", "-k", "-p", "", "kubectl", "-n", "carbonet-prod", "exec", "postgres-patroni-0", "--", "pg_isready", "-h", "localhost", "-p", "5432", "-U", "postgres");
         builder.directory(Paths.get(".").toAbsolutePath().normalize().toFile());
         builder.redirectErrorStream(true);
         CommandResult result = executeProcess(builder, sudoInput(sudoPassword), COMMAND_TIMEOUT_SECONDS,
@@ -1231,21 +1243,19 @@ public class BackupConfigManagementService {
                         + "if [[ -n \"$TRIGGER_FILE\" ]]; then TRIGGER_FILE_CONT=\"$CONTAINER_BACKUP_DIR/$(basename \"$TRIGGER_FILE\")\"; fi\n"
                         + "echo \"backup dir: $BACKUP_DIR\"\n"
                         + "echo \"db name: $DB_NAME\"\n"
-                        + buildDockerComposeExecCommand("cubrid server stop " + shellQuote(dbName) + " || true", sudoPassword, useSudoForDocker)
-                        + buildDockerComposeExecCommand("cubrid deletedb -d " + shellQuote(dbName) + " || true", sudoPassword, useSudoForDocker)
-                        + buildDockerComposeExecCommand("cubrid createdb --replace --server-name localhost -F \"$CUBRID_DATABASES/com\" -L \"$CUBRID_DATABASES/com\" -B \"$CUBRID_DATABASES/com/lob\" " + shellQuote(dbName) + " " + shellQuote(dbLocale), sudoPassword, useSudoForDocker)
-                        + buildDockerComposeExecCommand("cubrid server start " + shellQuote(dbName), sudoPassword, useSudoForDocker)
+                        + buildDockerComposeExecCommand("pg_ctl -D $PGDATA stop || true", sudoPassword, useSudoForDocker)
+                        + buildDockerComposeExecCommand("dropdb -h localhost -U postgres " + shellQuote(dbName) + " || true", sudoPassword, useSudoForDocker)
+                        + buildDockerComposeExecCommand("createdb -h localhost -U postgres -O postgres " + shellQuote(dbName), sudoPassword, useSudoForDocker)
+                        + buildDockerComposeExecCommand("pg_ctl -D $PGDATA start", sudoPassword, useSudoForDocker)
                         + "sleep 2\n"
-                        + "LOAD_CMD='cubrid loaddb -C -u dba --no-statistics -s \"$SCHEMA_FILE_CONT\"'\n"
+                        + "LOAD_CMD='pg_restore -h localhost -U postgres -d " + shellQuote(dbName) + "'\n"
                         + "if [[ -n \"$OBJECT_FILE_CONT\" ]]; then LOAD_CMD=\"$LOAD_CMD -d \\\"$OBJECT_FILE_CONT\\\"\"; fi\n"
                         + "if [[ -n \"$INDEX_FILE_CONT\" ]]; then LOAD_CMD=\"$LOAD_CMD -i \\\"$INDEX_FILE_CONT\\\"\"; fi\n"
                         + "if [[ -n \"$TRIGGER_FILE_CONT\" ]]; then LOAD_CMD=\"$LOAD_CMD --trigger-file \\\"$TRIGGER_FILE_CONT\\\"\"; fi\n"
                         + "LOAD_CMD=\"$LOAD_CMD " + dbName + "\"\n"
                         + buildDockerComposeExecCommand("eval \"$LOAD_CMD\"", sudoPassword, useSudoForDocker)
-                        + buildDockerComposeExecCommand("cubrid broker restart", sudoPassword, useSudoForDocker)
-                        + buildDockerComposeExecCommand("cubrid server restart " + shellQuote(dbName) + " || { cubrid server stop " + shellQuote(dbName) + " || true; cubrid server start " + shellQuote(dbName) + "; }", sudoPassword, useSudoForDocker)
                         + "sleep 2\n"
-                        + buildDockerComposeExecCommand("csql -u dba " + shellQuote(dbName) + " -c \"select count(*) from db_class;\"", sudoPassword, useSudoForDocker));
+                        + buildDockerComposeExecCommand("psql -U postgres -d " + shellQuote(dbName) + " -c \"SELECT COUNT(*) FROM pg_class;\"", sudoPassword, useSudoForDocker));
     }
 
     private String sudoInput(String sudoPassword) {
@@ -1253,8 +1263,7 @@ public class BackupConfigManagementService {
     }
 
     private String buildDockerComposeExecCommand(String innerCommand, String sudoPassword, boolean useSudoForDocker) {
-        String dockerCommand = "docker compose -f " + shellQuote(CUBRID_COMPOSE_FILE)
-                + " exec -T " + CUBRID_DOCKER_SERVICE + " sh -lc " + shellQuote(innerCommand);
+        String dockerCommand = "kubectl -n carbonet-prod exec postgres-patroni-0 -- sh -lc " + shellQuote(innerCommand);
         if (!useSudoForDocker) {
             return dockerCommand + "\n";
         }

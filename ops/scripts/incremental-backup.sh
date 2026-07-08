@@ -5,10 +5,10 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
-POD_NAME="cubrid-carbonet-0"
+POD_NAME="postgres-patroni-0"
 DB_NAME="${DB_NAME:-carbonet}"
-DB_PATH="/var/lib/cubrid/databases"
-BACKUP_DIR="${BACKUP_DIR:-/opt/Resonance/data/cubrid/backups}"
+DB_PATH="/var/lib/postgresql/data"
+BACKUP_DIR="${BACKUP_DIR:-/opt/Resonance/var/postgres-backups-ha}"
 TRACK_DIR="${BACKUP_DIR}/.tracking"
 MARKER_FILE="${TRACK_DIR}/last_backup.mark"
 

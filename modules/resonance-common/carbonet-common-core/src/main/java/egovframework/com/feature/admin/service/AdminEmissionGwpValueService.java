@@ -674,7 +674,7 @@ public class AdminEmissionGwpValueService {
         }
         List<Map<String, String>> cards = new ArrayList<>();
         cards.add(summaryCard(isEn ? "DB Rows" : "DB 행 수", String.valueOf(rows.size()),
-                isEn ? "Loaded from CUBRID-backed management table" : "CUBRID 기반 관리 테이블 적재 행 수"));
+                isEn ? "Loaded from PostgreSQL-backed management table" : "PostgreSQL 기반 관리 테이블 적재 행 수"));
         cards.add(summaryCard(isEn ? "AR6 Rows" : "AR6 포함", String.valueOf(ar6Count),
                 isEn ? "Rows carrying AR6 values" : "AR6 값이 있는 행 수"));
         cards.add(summaryCard(isEn ? "Revision Shift" : "개정 차이 행", String.valueOf(changedRows),
@@ -926,8 +926,8 @@ public class AdminEmissionGwpValueService {
         List<Map<String, String>> notes = new ArrayList<>();
         notes.add(noteRow(
                 isEn ? "DB is the runtime source" : "실행 기준은 DB",
-                isEn ? "The management page now seeds and reads from the CUBRID table ADMIN_EMISSION_GWP_VALUE instead of a local JSON working file."
-                        : "관리 화면은 이제 로컬 JSON 작업 파일이 아니라 CUBRID 테이블 ADMIN_EMISSION_GWP_VALUE를 기준으로 시드·조회합니다."));
+                isEn ? "The management page now seeds and reads from the PostgreSQL table ADMIN_EMISSION_GWP_VALUE instead of a local JSON working file."
+                        : "관리 화면은 이제 로컬 JSON 작업 파일이 아니라 PostgreSQL 테이블 ADMIN_EMISSION_GWP_VALUE를 기준으로 시드·조회합니다."));
         notes.add(noteRow(
                 isEn ? "PDF structure is preserved" : "PDF 표 구조 유지",
                 isEn ? "The table keeps the official section breaks and the 100-year horizon header grouping from the source PDF."

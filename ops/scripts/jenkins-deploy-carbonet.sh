@@ -21,6 +21,10 @@ EOF
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 BRANCH="${BRANCH:-main}"
 REPO_URL="${REPO_URL:-https://github.com/sjkim0831/2026_carbonet.git}"
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-${TMPDIR:-/tmp}}"

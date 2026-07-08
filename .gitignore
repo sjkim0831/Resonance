@@ -11,10 +11,23 @@ node_modules/
 dist/
 build/
 .vite/
-playwright-report/
+.playwright-report/
 test-results/
 coverage/
 .nyc_output/
+
+# Gradle / Resonance build tool cache
+.gradle/
+.gradletasknamecache
+
+# Resonance frontend built artifacts (built from source/ — Vite output)
+projects/carbonet-frontend/target/
+projects/carbonet-frontend/src/main/resources/static/react-app/assets/
+projects/carbonet-frontend/src/main/resources/static/react-app/.vite/
+projects/carbonet-frontend/src/main/resources/static/react-app/index.html
+apps/carbonet-app/src/main/resources/static/react-app/assets/
+apps/carbonet-app/src/main/resources/static/react-app/.vite/
+apps/carbonet-app/src/main/resources/static/react-app/index.html
 
 # Local Codex runtime
 .codex/

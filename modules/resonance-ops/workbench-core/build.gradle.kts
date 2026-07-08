@@ -19,4 +19,8 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
     compileOnly("org.springframework.boot:spring-boot-starter-web")
+    implementation(project(":modules:resonance-common:platform-request-contracts"))
+    implementation(project(":modules:resonance-common:platform-service-contracts"))
+    implementation(project(":modules:resonance-common:stable-execution-gate"))
+    compileOnly(project(":modules:resonance-common:carbonet-common-core"))
 }

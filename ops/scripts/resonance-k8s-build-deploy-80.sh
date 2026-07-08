@@ -13,7 +13,7 @@ DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 PROJECT_ID="${PROJECT_ID:-P003}"
-CUBRID_HOST="${CUBRID_HOST:-cubrid-carbonet.${NAMESPACE}.svc.cluster.local}"
+CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
 IMAGE_NAME="${IMAGE_NAME:-registry.local/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-kubeadm)}"
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
@@ -29,10 +29,29 @@ OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/
 FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
 MAVEN_DIR="$ROOT_DIR/apps/project-runtime"
 
+PRIMARY_APP="project-runtime"
+
 NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-4096}"
 MAVEN_OPTS="${MAVEN_OPTS:--Xmx2g -Xms512m}"
 MAX_RETRIES=3
 RETRY_DELAY=20
+
+# Build tool detection (Gradle wins if both present)
+if [[ -x "$ROOT_DIR/gradlew" ]] && [[ -f "$ROOT_DIR/settings.gradle.kts" ]]; then
+    BUILD_TOOL="gradle"
+    GRADLE_BIN=("$ROOT_DIR/gradlew" "-p" "$ROOT_DIR")
+    PROJECT_BUILD_CMD() {
+        "${GRADLE_BIN[@]}" ":apps:$PRIMARY_APP:bootJar" -x test -q
+    }
+    JAR_OUTPUT_PATH() { echo "$ROOT_DIR/apps/$PRIMARY_APP/build/libs/$PRIMARY_APP.jar"; }
+else
+    BUILD_TOOL="maven"
+    PROJECT_BUILD_CMD() {
+        MAVEN_OPTS="$MAVEN_OPTS" mvn -q -pl "apps/$PRIMARY_APP" -am -Dmaven.test.skip=true -T 1C package
+    }
+    JAR_OUTPUT_PATH() { echo "$ROOT_DIR/apps/$PRIMARY_APP/target/$PRIMARY_APP.jar"; }
+fi
+log "Build tool: $BUILD_TOOL"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 
@@ -126,8 +145,8 @@ validate_frontend() {
 }
 
 validate_maven() {
-  local jar="$MAVEN_DIR/target/project-runtime.jar"
-  [[ -f "$jar" && $(stat -c%s "$jar" 2>/dev/null || echo 0) -gt 1000000 ]] || rollback_and_fail "MAVEN_BUILD_FAILED" "JAR missing or corrupt"
+  local jar="$(JAR_OUTPUT_PATH)"
+  [[ -f "$jar" && $(stat -c%s "$jar" 2>/dev/null || echo 0) -gt 1000000 ]] || rollback_and_fail "BUILD_FAILED" "JAR missing or corrupt"
 }
 
 validate_overlay() {
@@ -177,23 +196,27 @@ sync_overlay() {
 }
 
 build_maven() {
-  log_step "Build Maven"
+  log_step "Build App ($BUILD_TOOL)"
   [[ "${SKIP_MAVEN:-false}" == "true" ]] && { log "Skipped"; return; }
   root_cmd rm -rf "$MAVEN_DIR/target/classes/static"
-  MAVEN_OPTS="$MAVEN_OPTS" mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T 1C package
+  if ! PROJECT_BUILD_CMD; then
+    log_error "Build failed ($BUILD_TOOL)"
+    exit 1
+  fi
   validate_maven
-  log_success "Maven built"
+  log_success "$BUILD_TOOL built"
 }
 
 build_image() {
   log_step "Build Image"
   [[ "${SKIP_IMAGE_BUILD:-false}" == "true" ]] && { log "Skipped"; return; }
   rm -rf "$RELEASE_DIR" && mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config"
-  cp "$MAVEN_DIR/target/project-runtime.jar" "$RELEASE_DIR/"
+  cp "$(JAR_OUTPUT_PATH)" "$RELEASE_DIR/"
   [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]] && cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
   root_cmd docker build --build-arg PROJECT_ID="$PROJECT_ID" --build-arg BUILDKIT_INLINE_CACHE=1 \
     --cache-from "type=registry,ref=$IMAGE_NAME" --cache-from "type=registry,ref=${IMAGE_NAME%-*}:*" \
-    -f "$ROOT_DIR/ops/docker/Dockerfile.project-runtime" -t "$IMAGE_NAME" "$RELEASE_DIR"
+    \
+    -f "$ROOT_DIR/ops/docker/Dockerfile.runtime" -t "$IMAGE_NAME" "$RELEASE_DIR"
   root_cmd sh -c 'docker save "$1" | ctr -n k8s.io images import - >/dev/null' _ "$IMAGE_NAME"
   log_success "Image built"
 }

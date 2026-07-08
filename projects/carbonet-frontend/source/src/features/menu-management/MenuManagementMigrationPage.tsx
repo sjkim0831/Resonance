@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { refreshAdminMenuTree } from "../../lib/api/adminShell";
-import { postFormUrlEncoded } from "../../lib/api/core";
+import { postFormUrlEncoded, postLocalizedValidatedJson } from "../../lib/api/core";
 import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
@@ -150,6 +150,13 @@ function EditableMenuItem({
   const [editUrl, setEditUrl] = useState(node.url || "");
   const en = isEnglish();
 
+  useEffect(() => {
+    if (!editing) {
+      setEditLabel(node.label);
+      setEditUrl(node.url || "");
+    }
+  }, [editing, node.label, node.url]);
+
   const chipClass = node.code.length === 4
     ? "bg-blue-50 text-[var(--kr-gov-blue)]"
     : node.code.length === 6
@@ -157,7 +164,7 @@ function EditableMenuItem({
     : "bg-green-50 text-[#196c2e]";
 
   const handleSave = () => {
-    onUpdate(node.code, editLabel, editUrl);
+    onUpdate(node.code, editLabel.trim(), editUrl.trim());
     setEditing(false);
   };
 
@@ -256,6 +263,14 @@ function EditableMenuItem({
               </button>
               <button
                 type="button"
+                onClick={() => setEditing(true)}
+                className="p-1 text-gray-500 hover:text-blue-600"
+                title={en ? "Edit menu name and URL" : "메뉴명/경로 수정"}
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   const builderUrl = buildLocalizedPath(
                     `/admin/system/builder-studio?menuCode=${node.code}&pageId=${node.code}&menuTitle=${encodeURIComponent(node.label)}&menuUrl=${encodeURIComponent(node.url || "")}`,
@@ -266,7 +281,7 @@ function EditableMenuItem({
                 className="p-1 text-gray-500 hover:text-blue-600"
                 title={en ? "Open Builder" : "빌더 열기"}
               >
-                <span className="material-symbols-outlined text-[18px]">edit</span>
+                <span className="material-symbols-outlined text-[18px]">build</span>
               </button>
               <button
                 type="button"
@@ -513,59 +528,332 @@ type DependentScreenPopupProps = {
   menuCode: string;
   menuLabel: string;
   dependentScreenCode: string;
-  menuCodeRows: Array<{ code: string; label: string }>;
+  menuCodeRows: MenuCodeRow[];
   onSave: (menuCode: string, dependentScreenCode: string) => void;
   onClose: () => void;
 };
 
+type MenuCodeRow = {
+  code: string;
+  label: string;
+  url: string;
+  useAt: string;
+  expsrAt: string;
+};
+
+function buildMenuPath(code: string, rowMap: Map<string, MenuCodeRow>) {
+  const segments: MenuCodeRow[] = [];
+  for (const size of [4, 6, 8]) {
+    if (code.length >= size) {
+      const row = rowMap.get(code.slice(0, size));
+      if (row) {
+        segments.push(row);
+      }
+    }
+  }
+  return segments;
+}
+
 function DependentScreenSelectPopup({ menuCode, menuLabel, dependentScreenCode, menuCodeRows, onSave, onClose }: DependentScreenPopupProps) {
   const en = isEnglish();
   const [selectedCode, setSelectedCode] = useState(dependentScreenCode);
+  const [screenSearch, setScreenSearch] = useState("");
+  const [topCategoryCode, setTopCategoryCode] = useState("");
+  const [middleCategoryCode, setMiddleCategoryCode] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "inactive">("all");
+  const [sortMode, setSortMode] = useState<"path" | "code" | "name" | "url">("path");
+
+  const menuRowMap = useMemo(() => {
+    return new Map(menuCodeRows.map((row) => [row.code, row]));
+  }, [menuCodeRows]);
+
+  const selectedScreen = useMemo(() => {
+    return selectedCode ? menuRowMap.get(selectedCode) || null : null;
+  }, [menuRowMap, selectedCode]);
+
+  const topCategoryOptions = useMemo(() => {
+    const usedTopCodes = new Set(menuCodeRows.filter((row) => row.code.length === 8).map((row) => row.code.slice(0, 4)));
+    return menuCodeRows
+      .filter((row) => row.code.length === 4 && usedTopCodes.has(row.code))
+      .sort((left, right) => left.label.localeCompare(right.label, en ? "en" : "ko"));
+  }, [menuCodeRows, en]);
+
+  const middleCategoryOptions = useMemo(() => {
+    const usedMiddleCodes = new Set(
+      menuCodeRows
+        .filter((row) => row.code.length === 8 && (!topCategoryCode || row.code.startsWith(topCategoryCode)))
+        .map((row) => row.code.slice(0, 6))
+    );
+    return menuCodeRows
+      .filter((row) => row.code.length === 6 && usedMiddleCodes.has(row.code))
+      .sort((left, right) => {
+        const leftPath = buildMenuPath(left.code, menuRowMap).map((item) => item.label).join(" > ");
+        const rightPath = buildMenuPath(right.code, menuRowMap).map((item) => item.label).join(" > ");
+        return leftPath.localeCompare(rightPath, en ? "en" : "ko");
+      });
+  }, [menuCodeRows, menuRowMap, topCategoryCode, en]);
 
   const availableScreens = useMemo(() => {
+    const keyword = screenSearch.trim().toLowerCase();
     return menuCodeRows.filter((row) => {
       if (row.code.length !== 8) return false;
       if (row.code === menuCode) return false;
-      return true;
+      if (topCategoryCode && !row.code.startsWith(topCategoryCode)) return false;
+      if (middleCategoryCode && !row.code.startsWith(middleCategoryCode)) return false;
+      if (statusFilter === "active" && (row.useAt !== "Y" || row.expsrAt === "N")) return false;
+      if (statusFilter === "hidden" && (row.useAt !== "Y" || row.expsrAt !== "N")) return false;
+      if (statusFilter === "inactive" && row.useAt === "Y") return false;
+      if (!keyword) return true;
+      const pathText = buildMenuPath(row.code, menuRowMap).map((item) => item.label).join(" > ");
+      return [row.code, row.label, row.url, pathText].join(" ").toLowerCase().includes(keyword);
+    }).sort((left, right) => {
+      const leftPath = buildMenuPath(left.code, menuRowMap).map((item) => item.label).join(" > ");
+      const rightPath = buildMenuPath(right.code, menuRowMap).map((item) => item.label).join(" > ");
+      if (sortMode === "code") return left.code.localeCompare(right.code);
+      if (sortMode === "name") return left.label.localeCompare(right.label, en ? "en" : "ko");
+      if (sortMode === "url") return left.url.localeCompare(right.url);
+      return leftPath.localeCompare(rightPath, en ? "en" : "ko");
     });
-  }, [menuCodeRows, menuCode]);
+  }, [menuCodeRows, menuCode, menuRowMap, screenSearch, topCategoryCode, middleCategoryCode, statusFilter, sortMode, en]);
+
+  const selectedPath = useMemo(() => {
+    if (!selectedScreen) return [];
+    return buildMenuPath(selectedScreen.code, menuRowMap);
+  }, [menuRowMap, selectedScreen]);
+
+  const targetPath = useMemo(() => {
+    return buildMenuPath(menuCode, menuRowMap);
+  }, [menuCode, menuRowMap]);
+
+  const screenGroupLabel = (screen: MenuCodeRow) => {
+    const path = buildMenuPath(screen.code, menuRowMap);
+    const parentPath = path.slice(0, -1).map((item) => item.label).join(" > ");
+    return parentPath || (en ? "Top level" : "최상위");
+  };
+
+  const screenPathLabel = (screen: MenuCodeRow) => {
+    const path = buildMenuPath(screen.code, menuRowMap);
+    return path.map((item) => item.label).join(" > ") || screen.label;
+  };
+
+  const groupedScreens = useMemo(() => {
+    return availableScreens.reduce<Array<{ group: string; items: MenuCodeRow[] }>>((groups, screen) => {
+      const group = screenGroupLabel(screen);
+      const last = groups[groups.length - 1];
+      if (last && last.group === group) {
+        last.items.push(screen);
+      } else {
+        groups.push({ group, items: [screen] });
+      }
+      return groups;
+    }, []);
+  }, [availableScreens, menuRowMap, en]);
+
+  const statusLabel = (screen: MenuCodeRow) => {
+    if (screen.useAt !== "Y") return en ? "Inactive" : "비활성";
+    if (screen.expsrAt === "N") return en ? "Hidden" : "숨김";
+    return en ? "Active" : "활성";
+  };
+
+  const statusClass = (screen: MenuCodeRow) => {
+    if (screen.useAt !== "Y") return "bg-gray-100 text-gray-600";
+    if (screen.expsrAt === "N") return "bg-amber-50 text-[#8a5a00]";
+    return "bg-green-50 text-green-700";
+  };
+
+  const clearFilters = () => {
+    setScreenSearch("");
+    setTopCategoryCode("");
+    setMiddleCategoryCode("");
+    setStatusFilter("all");
+    setSortMode("path");
+  };
 
   const handleSave = () => {
     onSave(menuCode, selectedCode);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border)] bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border)] bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-[var(--kr-gov-border)] px-4 py-3">
           <h3 className="font-semibold">{en ? "Screen Mapping" : "화면 매핑"}</h3>
           <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
-        <div className="p-4 space-y-4">
-          <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-3">
-            <p className="text-sm text-[var(--kr-gov-text-secondary)]">
-              <span className="font-semibold">{menuCode}</span>
-              {menuLabel && <span className="ml-2 text-gray-600">/ {menuLabel}</span>}
-            </p>
-          </div>
-          <div>
-            <label className="gov-label">{en ? "Select Dependent Screen" : "종속 화면 선택"}</label>
-            <select
-              className="gov-select w-full"
-              value={selectedCode}
-              onChange={(e) => setSelectedCode(e.target.value)}
+        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
+          <section className="space-y-3 overflow-y-auto">
+            <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-surface-subtle)] p-3">
+              <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Target menu" : "매핑 대상 메뉴"}</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--kr-gov-text-primary)]">
+                {menuCode}
+                {menuLabel && <span className="ml-2 text-gray-600">/ {menuLabel}</span>}
+              </p>
+              {targetPath.length > 0 && (
+                <p className="mt-2 text-xs text-gray-600">{targetPath.map((item) => item.label).join(" > ")}</p>
+              )}
+            </div>
+            <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] p-3">
+              <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Selected screen" : "선택된 화면"}</p>
+              {selectedScreen ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm font-semibold text-[var(--kr-gov-text-primary)]">{screenPathLabel(selectedScreen)}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedPath.map((item) => (
+                      <span key={item.code} className="gov-chip bg-blue-50 text-[var(--kr-gov-blue)] text-xs">
+                        {item.code} {item.label}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="break-all text-xs text-gray-500">{selectedScreen.url || (en ? "No URL" : "URL 없음")}</p>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">{en ? "No screen will be mapped." : "매핑을 해제합니다."}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedCode("")}
+              className={`gov-btn w-full ${selectedCode ? "gov-btn-outline" : "gov-btn-primary"}`}
             >
-              <option value="">{en ? "(None)" : "(없음)"}</option>
-              {availableScreens.map((screen) => (
-                <option key={screen.code} value={screen.code}>{screen.code} - {screen.label}</option>
+              {en ? "Clear mapping" : "매핑 해제"}
+            </button>
+          </section>
+          <section className="flex min-h-0 flex-col">
+            <label className="gov-label">{en ? "Select Dependent Screen" : "종속 화면 선택"}</label>
+            <div className="relative mb-3">
+              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400">search</span>
+              <input
+                className="gov-input w-full pl-9"
+                value={screenSearch}
+                onChange={(e) => setScreenSearch(e.target.value)}
+                placeholder={en ? "Search by menu path, screen name, code, or URL" : "메뉴 경로, 화면명, 코드, URL로 검색"}
+              />
+            </div>
+            <div className="mb-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Top category" : "대분류"}</span>
+                <select
+                  className="gov-select w-full"
+                  value={topCategoryCode}
+                  onChange={(event) => {
+                    setTopCategoryCode(event.target.value);
+                    setMiddleCategoryCode("");
+                  }}
+                >
+                  <option value="">{en ? "All top menus" : "전체 대메뉴"}</option>
+                  {topCategoryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Middle category" : "중분류"}</span>
+                <select
+                  className="gov-select w-full"
+                  value={middleCategoryCode}
+                  onChange={(event) => setMiddleCategoryCode(event.target.value)}
+                >
+                  <option value="">{en ? "All middle menus" : "전체 중메뉴"}</option>
+                  {middleCategoryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>{buildMenuPath(item.code, menuRowMap).map((pathItem) => pathItem.label).join(" > ")}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Status" : "상태"}</span>
+                <select
+                  className="gov-select w-full"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+                >
+                  <option value="all">{en ? "All status" : "전체 상태"}</option>
+                  <option value="active">{en ? "Active only" : "활성만"}</option>
+                  <option value="hidden">{en ? "Hidden only" : "숨김만"}</option>
+                  <option value="inactive">{en ? "Inactive only" : "비활성만"}</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Sort" : "정렬"}</span>
+                <select
+                  className="gov-select w-full"
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value as typeof sortMode)}
+                >
+                  <option value="path">{en ? "Menu path" : "메뉴 경로순"}</option>
+                  <option value="code">{en ? "Code" : "코드순"}</option>
+                  <option value="name">{en ? "Screen name" : "화면명순"}</option>
+                  <option value="url">{en ? "URL" : "URL순"}</option>
+                </select>
+              </label>
+            </div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1">
+                <span className="gov-chip bg-gray-100 text-gray-700 text-xs">
+                  {en ? `${availableScreens.length} screens` : `화면 ${availableScreens.length}개`}
+                </span>
+                {topCategoryCode && (
+                  <span className="gov-chip bg-blue-50 text-[var(--kr-gov-blue)] text-xs">
+                    {menuRowMap.get(topCategoryCode)?.label || topCategoryCode}
+                  </span>
+                )}
+                {middleCategoryCode && (
+                  <span className="gov-chip bg-blue-50 text-[var(--kr-gov-blue)] text-xs">
+                    {buildMenuPath(middleCategoryCode, menuRowMap).map((item) => item.label).join(" > ")}
+                  </span>
+                )}
+              </div>
+              <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 text-xs font-bold text-[var(--kr-gov-blue)] hover:underline">
+                <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+                {en ? "Reset filters" : "필터 초기화"}
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)]">
+              {groupedScreens.length === 0 ? (
+                <div className="p-6 text-center text-sm text-gray-500">
+                  {en ? "No screen matches the search." : "검색 조건에 맞는 화면이 없습니다."}
+                </div>
+              ) : groupedScreens.map((group) => (
+                <div key={group.group} className="border-b border-[var(--kr-gov-border-light)] last:border-b-0">
+                  <div className="sticky top-0 z-10 border-b border-[var(--kr-gov-border-light)] bg-gray-50 px-3 py-2 text-xs font-bold text-gray-600">
+                    {group.group}
+                  </div>
+                  <div className="divide-y divide-[var(--kr-gov-border-light)]">
+                    {group.items.map((screen) => {
+                      const checked = selectedCode === screen.code;
+                      return (
+                        <button
+                          key={screen.code}
+                          type="button"
+                          onClick={() => setSelectedCode(screen.code)}
+                          className={`w-full px-3 py-3 text-left transition hover:bg-blue-50 ${checked ? "bg-blue-50 ring-1 ring-inset ring-[var(--kr-gov-blue)]" : "bg-white"}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className={`material-symbols-outlined mt-0.5 text-[20px] ${checked ? "text-[var(--kr-gov-blue)]" : "text-gray-400"}`}>
+                              {checked ? "radio_button_checked" : "radio_button_unchecked"}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-semibold text-[var(--kr-gov-text-primary)]">{screen.label}</span>
+                                <span className="gov-chip bg-gray-100 text-gray-700 text-xs">{screen.code}</span>
+                                <span className={`gov-chip text-xs ${statusClass(screen)}`}>{statusLabel(screen)}</span>
+                              </div>
+                              <p className="mt-1 text-xs text-gray-600">{screenPathLabel(screen)}</p>
+                              <p className="mt-1 break-all text-xs text-gray-500">{screen.url || (en ? "No URL" : "URL 없음")}</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              {en ? "Select a screen to map. Leave empty to remove mapping." : "매핑할 화면을 선택하세요. 비워두면 매핑이 해제됩니다."}
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              {en ? "Screens are grouped by parent menu so the ownership path is visible before saving." : "저장 전에 어느 상위 메뉴에 속한 화면인지 볼 수 있도록 부모 메뉴별로 묶어 표시합니다."}
             </p>
-          </div>
+          </section>
         </div>
         <div className="flex justify-end gap-2 border-t border-[var(--kr-gov-border)] px-4 py-3">
           <button type="button" onClick={onClose} className="gov-btn gov-btn-outline">
@@ -615,7 +903,10 @@ export function MenuManagementMigrationPage() {
   }, [allGroupMenuOptions]);
   const menuCodeRows = useMemo(() => rows.map((row: Record<string, unknown>) => ({
     code: stringOf(row, "code").toUpperCase(),
-    label: stringOf(row, "label") || stringOf(row, "codeNm") || stringOf(row, "code")
+    label: stringOf(row, "label") || stringOf(row, "codeNm") || stringOf(row, "code"),
+    url: stringOf(row, "url") || stringOf(row, "menuUrl"),
+    useAt: stringOf(row, "useAt") || "Y",
+    expsrAt: stringOf(row, "expsrAt") || "Y"
   })), [rows]);
 
   const filteredTreeData = useMemo(() => {
@@ -715,22 +1006,55 @@ export function MenuManagementMigrationPage() {
   const handleUpdateMenu = async (code: string, label: string, url: string) => {
     setActionError("");
     setActionMessage("");
-    const body = new URLSearchParams();
-    body.set("menuType", menuType);
-    body.set("code", code);
-    body.set("codeNm", label);
-    body.set("menuUrl", url);
+    const sourceRow = rows.find((row) => stringOf(row, "code").toUpperCase() === code);
+    const normalizedLabel = label.trim();
+    const normalizedUrl = url.trim();
+    const fallbackNameEn = stringOf(sourceRow || {}, "codeDc") || normalizedLabel;
+    const fallbackIcon = stringOf(sourceRow || {}, "menuIcon") || "menu";
+    const fallbackUseAt = stringOf(sourceRow || {}, "useAt") || "Y";
+    if (!normalizedLabel || !normalizedUrl) {
+      setActionError(en ? "Menu name and URL are required." : "메뉴명과 경로는 필수입니다.");
+      return;
+    }
     try {
-      await postFormUrlEncoded(
-        buildLocalizedPath("/admin/system/menu/update-page", "/en/admin/system/menu/update-page"),
-        body
+      await postLocalizedValidatedJson(
+        "/admin/system/runtime-command/execute",
+        "/en/admin/system/runtime-command/execute",
+        {
+          commandId: "admin.menu.updatePage",
+          params: {
+            menuType,
+            code,
+            codeNm: normalizedLabel,
+            codeDc: fallbackNameEn,
+            menuUrl: normalizedUrl,
+            menuIcon: fallbackIcon,
+            useAt: fallbackUseAt,
+            searchKeyword,
+            searchUrl: ""
+          }
+        },
+        en ? "Failed to update menu." : "메뉴 수정에 실패했습니다."
       );
       refreshAdminMenuTree();
+      setTreeData((prev) => updateNodeMenuBasics(prev, code, normalizedLabel, normalizedUrl));
       setActionMessage(en ? "Menu updated successfully." : "메뉴가 수정되었습니다.");
-      window.location.reload();
+      await pageState.reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to update menu.");
     }
+  };
+
+  const updateNodeMenuBasics = (nodes: MenuNode[], code: string, label: string, url: string): MenuNode[] => {
+    return nodes.map((node) => {
+      if (node.code === code) {
+        return { ...node, label, url };
+      }
+      if (node.children.length > 0) {
+        return { ...node, children: updateNodeMenuBasics(node.children, code, label, url) };
+      }
+      return node;
+    });
   };
 
   const handleDeleteMenu = async (code: string) => {
@@ -757,18 +1081,16 @@ export function MenuManagementMigrationPage() {
     setActionError("");
     setActionMessage("");
     const newExpsrAt = currentExpsrAt === "Y" ? "N" : "Y";
-    const body = new URLSearchParams();
-    body.set("menuType", menuType);
-    body.set("menuCode", code);
-    body.set("expsrAt", newExpsrAt);
     try {
-      const response = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
-        buildLocalizedPath("/admin/system/menu/toggle-exposure", "/en/admin/system/menu/toggle-exposure"),
-        body
+      await postLocalizedValidatedJson(
+        "/admin/system/runtime-command/execute",
+        "/en/admin/system/runtime-command/execute",
+        {
+          commandId: "admin.menu.toggleExposure",
+          params: { menuType, menuCode: code, expsrAt: newExpsrAt }
+        },
+        en ? "Failed to toggle visibility." : "메뉴 노출 설정에 실패했습니다."
       );
-      if (response && response.success === false) {
-        throw new Error(response.message || "Failed");
-      }
       refreshAdminMenuTree();
       setTreeData((prev) => updateNodeExpsrAt(prev, code, newExpsrAt));
       setActionMessage(en ? `Menu ${newExpsrAt === "Y" ? "visible" : "hidden"}` : `메뉴가 ${newExpsrAt === "Y" ? "보임" : "안보임"}으로 설정되었습니다.`);
@@ -810,18 +1132,16 @@ export function MenuManagementMigrationPage() {
   const handleDependentScreenSave = async (menuCode: string, dependentScreenCode: string) => {
     setActionError("");
     setActionMessage("");
-    const body = new URLSearchParams();
-    body.set("menuType", menuType);
-    body.set("menuCode", menuCode);
-    body.set("dependentScreenCode", dependentScreenCode);
     try {
-      const response = await postFormUrlEncoded<{ success?: boolean; message?: string }>(
-        buildLocalizedPath("/admin/system/menu/update-dependent-screen", "/en/admin/system/menu/update-dependent-screen"),
-        body
+      await postLocalizedValidatedJson(
+        "/admin/system/runtime-command/execute",
+        "/en/admin/system/runtime-command/execute",
+        {
+          commandId: "admin.menu.updateDependentScreen",
+          params: { menuType, menuCode, dependentScreenCode }
+        },
+        en ? "Failed to update dependent screen." : "종속 화면 저장에 실패했습니다."
       );
-      if (response && response.success === false) {
-        throw new Error(response.message || "Failed");
-      }
       refreshAdminMenuTree();
       setTreeData((prev) => updateNodeDependentScreen(prev, menuCode, dependentScreenCode));
       setDependentScreenPopup(null);

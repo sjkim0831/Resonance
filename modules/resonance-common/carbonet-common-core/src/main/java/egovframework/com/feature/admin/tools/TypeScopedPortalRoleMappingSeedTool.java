@@ -18,8 +18,8 @@ public class TypeScopedPortalRoleMappingSeedTool {
 
     public static void main(String[] args) throws Exception {
         boolean dryRun = Boolean.parseBoolean(property("authority.seed.dry-run", "false"));
-        String jdbcUrl = property("authority.seed.jdbc.url", "jdbc:cubrid:127.0.0.1:33000:carbonet:::?charset=UTF-8");
-        String jdbcUser = property("authority.seed.jdbc.user", "dba");
+        String jdbcUrl = property("authority.seed.jdbc.url", "jdbc:postgresql://127.0.0.1:5432/carbonet?charset=UTF-8");
+        String jdbcUser = property("authority.seed.jdbc.user", "postgres");
         String jdbcPassword = property("authority.seed.jdbc.password", "");
 
         try (Connection connection = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)) {

@@ -104,10 +104,10 @@ public class PlatformOperationsInventoryController {
 
     private List<Map<String, String>> logSources() {
         List<Map<String, String>> rows = new ArrayList<>();
-        rows.add(logSource("K8S_DOCTOR", "/opt/Resonance/var/ai-runtime/k8s-ops-doctor-events.jsonl", "Kubernetes/CUBRID doctor event log"));
+        rows.add(logSource("K8S_DOCTOR", "/opt/Resonance/var/ai-runtime/k8s-ops-doctor-events.jsonl", "Kubernetes/PostgreSQL doctor event log"));
         rows.add(logSource("NODE_EXPORTER", "/var/lib/prometheus/node-exporter/resonance_k8s.prom", "Prometheus textfile metrics"));
         rows.add(logSource("APP_STDOUT", "kubectl logs deploy/carbonet-runtime", "Application runtime logs"));
-        rows.add(logSource("CUBRID_BROKER", "/home/cubrid/CUBRID/log/broker", "CUBRID broker sql/error/access logs"));
+        rows.add(logSource("POSTGRES_LOG", "/var/log/postgresql", "PostgreSQL server logs"));
         rows.add(logSource("DB_PATCH", "DB_PATCH_HISTORY", "Database patch execution history"));
         return rows;
     }
@@ -122,7 +122,7 @@ public class PlatformOperationsInventoryController {
 
     private List<Map<String, String>> aiHangar() {
         List<Map<String, String>> rows = new ArrayList<>();
-        rows.add(aiItem("tiny-log-classifier", "Planned", "Classify CUBRID, Kubernetes, build, disk, and memory incidents before runbook selection."));
+        rows.add(aiItem("tiny-log-classifier", "Planned", "Classify PostgreSQL, Kubernetes, build, disk, and memory incidents before runbook selection."));
         rows.add(aiItem("runbook-selector", "Ready for rules", "Use deterministic rules first; tiny model may rank matching runbooks after enough incidents are stored."));
         rows.add(aiItem("codex-escalation", "Ready", "Keep deep analysis and code changes under Codex/operator approval."));
         rows.add(aiItem("training-store", "Planned", "Persist failure logs, selected runbook, result, and operator correction for later tuning."));
@@ -156,9 +156,9 @@ public class PlatformOperationsInventoryController {
 
     private List<Map<String, String>> automationChecklist() {
         List<Map<String, String>> rows = new ArrayList<>();
-        rows.add(check("Kubernetes start", "Required", "kubelet/containerd must start CUBRID and runtime workloads automatically."));
+        rows.add(check("Kubernetes start", "Required", "kubelet/containerd must start PostgreSQL (Patroni) and runtime workloads automatically."));
         rows.add(check("Web service start", "Applied outside app", "carbonet-runtime deployment keeps two ready pods behind port 80."));
-        rows.add(check("DB start", "Applied outside app", "CUBRID StatefulSet starts broker ports 33000 and 33001."));
+        rows.add(check("DB start", "Applied outside app", "PostgreSQL/Patroni pod starts on port 5432 (postgres-haproxyClusterIP)."));
         rows.add(check("Build deploy", "Guarded", "Automatic backend redeploy is disabled until source fingerprint loop is corrected."));
         rows.add(check("Recovery evidence", "Applied", "Doctor writes metrics and JSONL events for broker/runtime health."));
         return rows;

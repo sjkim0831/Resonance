@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# DEPRECATED: CUBRID 제거됨 — 사용 금지
+# PostgreSQL 환경: postgres-patroni-0/1/2 (Patroni HA)
+echo "[DEPRECATED] cubrid-autofix: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 # cubrid-autofix.sh - CUBRID 자동 복구 및 로깅 시스템
 # Usage: kubectl exec cubrid-carbonet-0 -- /scripts/cubrid-autofix.sh [diagnose|fix|start|status]
 set -o pipefail

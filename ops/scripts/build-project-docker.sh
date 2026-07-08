@@ -14,7 +14,7 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID"
-DOCKERFILE="$ROOT_DIR/ops/docker/Dockerfile.project-runtime"
+DOCKERFILE="$ROOT_DIR/ops/docker/Dockerfile.runtime"
 
 if [ ! -d "$RELEASE_DIR" ]; then
     echo "[docker-build] Error: Release directory not found: $RELEASE_DIR"

@@ -1,4 +1,9 @@
 #!/bin/bash
+# DEPRECATED: CUBRID 제거됨 — databases.txt는 PostgreSQL에 사용되지 않습니다.
+# PostgreSQL은 pg_hba.conf, pg_ident.conf 등의 파일을 사용합니다.
+echo "[DEPRECATED] databases-txt-guardian: CUBRID는 제거됨. 이 스크립트는 더 이상 사용되지 않습니다."
+exit 1
+
 # databases.txt GUARDIAN - 항상 보존
 POD="cubrid-carbonet-0"
 NS="carbonet-prod"

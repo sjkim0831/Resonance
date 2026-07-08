@@ -1,5 +1,6 @@
 package egovframework.com.platform.admin.system.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -8,21 +9,32 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.sql.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 @Controller
 @RequestMapping("/admin/api")
 @RequiredArgsConstructor
 @Slf4j
 public class AdminSystemManagementController {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @GetMapping("/kubernetes/cluster-status")
     @ResponseBody
@@ -317,6 +329,7 @@ public class AdminSystemManagementController {
         return usage;
     }
 
+    @Deprecated
     @GetMapping("/cubrid/status")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getCubridStatus() {
@@ -324,7 +337,7 @@ public class AdminSystemManagementController {
         try {
             status.put("dbName", "carbonet");
             status.put("host", "127.0.0.1");
-            status.put("port", 33000);
+            status.put("port", 5432);
             status.put("status", "online");
             status.put("pagesize", "16KB");
             status.put("logPagesize", "16KB");
@@ -333,12 +346,13 @@ public class AdminSystemManagementController {
             status.put("activeUsers", 2);
             return ResponseEntity.ok(status);
         } catch (Exception e) {
-            log.error("Failed to get CUBRID status", e);
+            log.error("Failed to get PostgreSQL status", e);
             status.put("error", e.getMessage());
             return ResponseEntity.ok(status);
         }
     }
 
+    @Deprecated
     @GetMapping("/cubrid/tables")
     @ResponseBody
     public ResponseEntity<List<Map<String, Object>>> getCubridTables() {
@@ -361,11 +375,12 @@ public class AdminSystemManagementController {
             }
             return ResponseEntity.ok(tables);
         } catch (Exception e) {
-            log.error("Failed to get CUBRID tables", e);
+            log.error("Failed to get PostgreSQL tables", e);
             return ResponseEntity.ok(tables);
         }
     }
 
+    @Deprecated
     @PostMapping("/cubrid/query")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> executeCubridQuery(@RequestBody Map<String, String> request) {
@@ -393,7 +408,7 @@ public class AdminSystemManagementController {
             result.put("executionTime", "15ms");
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.error("Failed to execute CUBRID query", e);
+            log.error("Failed to execute PostgreSQL query", e);
             result.put("error", e.getMessage());
             return ResponseEntity.ok(result);
         }
@@ -633,6 +648,715 @@ public class AdminSystemManagementController {
         return ResponseEntity.ok(roles);
     }
 
+    @GetMapping("/cron-monitoring/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getCronMonitoringStatus() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        List<Map<String, Object>> cronJobs = new ArrayList<>();
+        List<Map<String, Object>> jobs = new ArrayList<>();
+        List<Map<String, Object>> warningEvents = new ArrayList<>();
+
+        try {
+            Map<String, Object> cronJson = readKubernetesJson("/apis/batch/v1/cronjobs");
+            Map<String, Object> jobJson = readKubernetesJson("/apis/batch/v1/jobs");
+            Map<String, Object> eventJson = readKubernetesJson("/api/v1/events");
+
+            for (Object item : asList(cronJson.get("items"))) {
+                Map<String, Object> cron = asMap(item);
+                Map<String, Object> metadata = asMap(cron.get("metadata"));
+                Map<String, Object> spec = asMap(cron.get("spec"));
+                Map<String, Object> status = asMap(cron.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                String namespace = text(metadata.get("namespace"));
+                String name = text(metadata.get("name"));
+                row.put("namespace", namespace);
+                row.put("name", name);
+                row.put("schedule", text(spec.get("schedule")));
+                row.put("timezone", blankToDash(text(spec.get("timeZone"))));
+                row.put("suspend", Boolean.TRUE.equals(spec.get("suspend")));
+                row.put("concurrencyPolicy", blankToDash(text(spec.get("concurrencyPolicy"))));
+                row.put("active", asList(status.get("active")).size());
+                row.put("lastScheduleTime", blankToDash(text(status.get("lastScheduleTime"))));
+                row.put("lastSuccessfulTime", blankToDash(text(status.get("lastSuccessfulTime"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                row.put("successfulHistory", numberText(spec.get("successfulJobsHistoryLimit")));
+                row.put("failedHistory", numberText(spec.get("failedJobsHistoryLimit")));
+                row.put("startingDeadlineSeconds", numberText(spec.get("startingDeadlineSeconds")));
+                row.put("containers", extractCronContainers(spec));
+                row.put("health", Boolean.TRUE.equals(spec.get("suspend")) ? "SUSPENDED" : "ACTIVE");
+                cronJobs.add(row);
+            }
+
+            for (Object item : asList(jobJson.get("items"))) {
+                Map<String, Object> job = asMap(item);
+                Map<String, Object> metadata = asMap(job.get("metadata"));
+                Map<String, Object> spec = asMap(job.get("spec"));
+                Map<String, Object> status = asMap(job.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", text(metadata.get("name")));
+                row.put("cronJob", ownerCronJobName(metadata));
+                row.put("status", jobStatus(status));
+                row.put("active", numberText(status.get("active")));
+                row.put("succeeded", numberText(status.get("succeeded")));
+                row.put("failed", numberText(status.get("failed")));
+                row.put("parallelism", numberText(spec.get("parallelism")));
+                row.put("completions", numberText(spec.get("completions")));
+                row.put("backoffLimit", numberText(spec.get("backoffLimit")));
+                row.put("startTime", blankToDash(text(status.get("startTime"))));
+                row.put("completionTime", blankToDash(text(status.get("completionTime"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                jobs.add(row);
+            }
+            jobs.sort((left, right) -> text(right.get("createdAt")).compareTo(text(left.get("createdAt"))));
+
+            for (Object item : asList(eventJson.get("items"))) {
+                Map<String, Object> event = asMap(item);
+                Map<String, Object> involved = asMap(event.get("involvedObject"));
+                String type = text(event.get("type"));
+                String reason = text(event.get("reason"));
+                String name = text(involved.get("name"));
+                if (!"Warning".equalsIgnoreCase(type)) {
+                    continue;
+                }
+                if (!name.contains("cron") && !name.contains("backup") && !reason.toLowerCase(Locale.ROOT).contains("backoff")) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(event.get("metadata") instanceof Map ? asMap(event.get("metadata")).get("namespace") : ""));
+                row.put("type", type);
+                row.put("reason", reason);
+                row.put("objectKind", text(involved.get("kind")));
+                row.put("objectName", name);
+                row.put("message", text(event.get("message")));
+                row.put("lastTimestamp", firstNonBlank(text(event.get("lastTimestamp")), text(event.get("eventTime")), text(event.get("metadata") instanceof Map ? asMap(event.get("metadata")).get("creationTimestamp") : "")));
+                warningEvents.add(row);
+            }
+            warningEvents.sort((left, right) -> text(right.get("lastTimestamp")).compareTo(text(left.get("lastTimestamp"))));
+
+            long failedJobs = jobs.stream().filter(row -> "Failed".equals(row.get("status"))).count();
+            long completeJobs = jobs.stream().filter(row -> "Complete".equals(row.get("status"))).count();
+            long activeJobs = jobs.stream().filter(row -> "Running".equals(row.get("status"))).count();
+            long suspendedCronJobs = cronJobs.stream().filter(row -> Boolean.TRUE.equals(row.get("suspend"))).count();
+
+            response.put("summary", Arrays.asList(
+                    summary("CronJobs", String.valueOf(cronJobs.size()), "Kubernetes CronJob resources"),
+                    summary("Active Jobs", String.valueOf(activeJobs), "Currently running Job resources"),
+                    summary("Failed Jobs", String.valueOf(failedJobs), "Historical or retained failed Jobs"),
+                    summary("Warning Events", String.valueOf(warningEvents.size()), "Recent warning events related to cron/backup")
+            ));
+            response.put("health", failedJobs > 0 || !warningEvents.isEmpty() ? "WARN" : "NORMAL");
+            response.put("cronJobs", cronJobs);
+            response.put("jobs", jobs.size() > 80 ? jobs.subList(0, 80) : jobs);
+            response.put("warningEvents", warningEvents.size() > 40 ? warningEvents.subList(0, 40) : warningEvents);
+            response.put("completeJobs", completeJobs);
+            response.put("suspendedCronJobs", suspendedCronJobs);
+            response.put("generatedAt", Instant.now().toString());
+            response.put("source", "Kubernetes in-cluster API: cronjobs, jobs, events");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to build cron monitoring status", e);
+            response.put("error", e.getMessage());
+            response.put("summary", Collections.emptyList());
+            response.put("cronJobs", cronJobs);
+            response.put("jobs", jobs);
+            response.put("warningEvents", warningEvents);
+            response.put("generatedAt", Instant.now().toString());
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    @GetMapping("/batch-monitoring/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getBatchMonitoringStatus() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        List<Map<String, Object>> jobs = new ArrayList<>();
+        List<Map<String, Object>> cronJobs = new ArrayList<>();
+        List<Map<String, Object>> pods = new ArrayList<>();
+        List<Map<String, Object>> workloads = new ArrayList<>();
+        List<Map<String, Object>> warningEvents = new ArrayList<>();
+
+        try {
+            Map<String, Object> jobJson = readKubernetesJson("/apis/batch/v1/jobs");
+            Map<String, Object> cronJson = readKubernetesJson("/apis/batch/v1/cronjobs");
+            Map<String, Object> podJson = readKubernetesJson("/api/v1/pods");
+            Map<String, Object> deployJson = readKubernetesJson("/apis/apps/v1/deployments");
+            Map<String, Object> statefulSetJson = readKubernetesJson("/apis/apps/v1/statefulsets");
+            Map<String, Object> eventJson = readKubernetesJson("/api/v1/events");
+
+            for (Object item : asList(jobJson.get("items"))) {
+                Map<String, Object> job = asMap(item);
+                Map<String, Object> metadata = asMap(job.get("metadata"));
+                Map<String, Object> spec = asMap(job.get("spec"));
+                Map<String, Object> status = asMap(job.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", text(metadata.get("name")));
+                row.put("owner", ownerCronJobName(metadata));
+                row.put("status", jobStatus(status));
+                row.put("active", numberText(status.get("active")));
+                row.put("succeeded", numberText(status.get("succeeded")));
+                row.put("failed", numberText(status.get("failed")));
+                row.put("parallelism", numberText(spec.get("parallelism")));
+                row.put("completions", numberText(spec.get("completions")));
+                row.put("backoffLimit", numberText(spec.get("backoffLimit")));
+                row.put("startTime", blankToDash(text(status.get("startTime"))));
+                row.put("completionTime", blankToDash(text(status.get("completionTime"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                jobs.add(row);
+            }
+            jobs.sort((left, right) -> text(right.get("createdAt")).compareTo(text(left.get("createdAt"))));
+
+            for (Object item : asList(cronJson.get("items"))) {
+                Map<String, Object> cron = asMap(item);
+                Map<String, Object> metadata = asMap(cron.get("metadata"));
+                Map<String, Object> spec = asMap(cron.get("spec"));
+                Map<String, Object> status = asMap(cron.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", text(metadata.get("name")));
+                row.put("schedule", text(spec.get("schedule")));
+                row.put("suspend", Boolean.TRUE.equals(spec.get("suspend")));
+                row.put("active", asList(status.get("active")).size());
+                row.put("lastScheduleTime", blankToDash(text(status.get("lastScheduleTime"))));
+                row.put("lastSuccessfulTime", blankToDash(text(status.get("lastSuccessfulTime"))));
+                row.put("containers", extractCronContainers(spec));
+                cronJobs.add(row);
+            }
+
+            for (Object item : asList(podJson.get("items"))) {
+                Map<String, Object> pod = asMap(item);
+                Map<String, Object> metadata = asMap(pod.get("metadata"));
+                Map<String, Object> spec = asMap(pod.get("spec"));
+                Map<String, Object> status = asMap(pod.get("status"));
+                String name = text(metadata.get("name"));
+                String namespace = text(metadata.get("namespace"));
+                if (!isBatchRelated(namespace, name)) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", namespace);
+                row.put("name", name);
+                row.put("phase", blankToDash(text(status.get("phase"))));
+                row.put("ready", podReady(status));
+                row.put("restarts", podRestarts(status));
+                row.put("node", blankToDash(text(spec.get("nodeName"))));
+                row.put("podIP", blankToDash(text(status.get("podIP"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                row.put("owner", podOwner(metadata));
+                pods.add(row);
+            }
+            pods.sort((left, right) -> text(right.get("createdAt")).compareTo(text(left.get("createdAt"))));
+
+            collectWorkloads(workloads, deployJson, "Deployment");
+            collectWorkloads(workloads, statefulSetJson, "StatefulSet");
+
+            for (Object item : asList(eventJson.get("items"))) {
+                Map<String, Object> event = asMap(item);
+                Map<String, Object> involved = asMap(event.get("involvedObject"));
+                String type = text(event.get("type"));
+                String reason = text(event.get("reason"));
+                String name = text(involved.get("name"));
+                String namespace = text(event.get("metadata") instanceof Map ? asMap(event.get("metadata")).get("namespace") : "");
+                if (!"Warning".equalsIgnoreCase(type) || !isBatchRelated(namespace, name + " " + reason + " " + text(event.get("message")))) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", namespace);
+                row.put("reason", reason);
+                row.put("objectKind", text(involved.get("kind")));
+                row.put("objectName", name);
+                row.put("message", text(event.get("message")));
+                row.put("lastTimestamp", firstNonBlank(text(event.get("lastTimestamp")), text(event.get("eventTime")), text(event.get("metadata") instanceof Map ? asMap(event.get("metadata")).get("creationTimestamp") : "")));
+                warningEvents.add(row);
+            }
+            warningEvents.sort((left, right) -> text(right.get("lastTimestamp")).compareTo(text(left.get("lastTimestamp"))));
+
+            long failedJobs = jobs.stream().filter(row -> "Failed".equals(row.get("status"))).count();
+            long runningJobs = jobs.stream().filter(row -> "Running".equals(row.get("status"))).count();
+            long completeJobs = jobs.stream().filter(row -> "Complete".equals(row.get("status"))).count();
+            long unhealthyPods = pods.stream().filter(row -> !"Running".equals(row.get("phase")) && !"Succeeded".equals(row.get("phase"))).count();
+
+            response.put("summary", Arrays.asList(
+                    summary("Jobs", String.valueOf(jobs.size()), "Kubernetes Job resources"),
+                    summary("Running Jobs", String.valueOf(runningJobs), "Currently active batch executions"),
+                    summary("Failed Jobs", String.valueOf(failedJobs), "Retained failed batch executions"),
+                    summary("Warning Events", String.valueOf(warningEvents.size()), "Batch-related Kubernetes warning events")
+            ));
+            response.put("health", failedJobs > 0 || unhealthyPods > 0 || !warningEvents.isEmpty() ? "WARN" : "NORMAL");
+            response.put("jobs", jobs.size() > 100 ? jobs.subList(0, 100) : jobs);
+            response.put("cronJobs", cronJobs);
+            response.put("pods", pods.size() > 100 ? pods.subList(0, 100) : pods);
+            response.put("workloads", workloads);
+            response.put("warningEvents", warningEvents.size() > 60 ? warningEvents.subList(0, 60) : warningEvents);
+            response.put("completeJobs", completeJobs);
+            response.put("unhealthyPods", unhealthyPods);
+            response.put("generatedAt", Instant.now().toString());
+            response.put("source", "Kubernetes in-cluster API: jobs, cronjobs, pods, deployments, statefulsets, events");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to build batch monitoring status", e);
+            response.put("error", e.getMessage());
+            response.put("summary", Collections.emptyList());
+            response.put("jobs", jobs);
+            response.put("cronJobs", cronJobs);
+            response.put("pods", pods);
+            response.put("workloads", workloads);
+            response.put("warningEvents", warningEvents);
+            response.put("generatedAt", Instant.now().toString());
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    @GetMapping("/git-build-monitoring/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getGitBuildMonitoringStatus() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        List<Map<String, Object>> gitRows = new ArrayList<>();
+        List<Map<String, Object>> buildRows = new ArrayList<>();
+        List<Map<String, Object>> deploymentRows = new ArrayList<>();
+        List<Map<String, Object>> recentCommits = new ArrayList<>();
+        List<Map<String, Object>> changedFiles = new ArrayList<>();
+
+        try {
+            Path repository = detectRepositoryRoot();
+            Map<String, Object> deployJson = readKubernetesJson("/apis/apps/v1/namespaces/carbonet-prod/deployments/carbonet-runtime");
+            Map<String, Object> podJson = readKubernetesJson("/api/v1/namespaces/carbonet-prod/pods");
+
+            String branch = commandOrDash(repository, Arrays.asList("git", "branch", "--show-current"));
+            String head = commandOrDash(repository, Arrays.asList("git", "rev-parse", "--short=12", "HEAD"));
+            String fullHead = commandOrDash(repository, Arrays.asList("git", "rev-parse", "HEAD"));
+            String remote = commandOrDash(repository, Arrays.asList("git", "config", "--get", "remote.origin.url"));
+            String upstream = commandOrDash(repository, Arrays.asList("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"));
+            String aheadBehind = commandOrDash(repository, Arrays.asList("git", "rev-list", "--left-right", "--count", "HEAD...@{u}"));
+            String status = commandOrDash(repository, Arrays.asList("git", "status", "--short"));
+            String lastCommitAt = commandOrDash(repository, Arrays.asList("git", "log", "-1", "--format=%cI"));
+            String lastCommitSubject = commandOrDash(repository, Arrays.asList("git", "log", "-1", "--format=%s"));
+            Map<String, Object> hostGitStatus = readOptionalJson(Path.of("/app/backend-metadata/git-build-monitoring-status.json"));
+            if (!hostGitStatus.isEmpty()) {
+                branch = firstNonBlank(text(hostGitStatus.get("branch")), branch);
+                head = firstNonBlank(text(hostGitStatus.get("headShort")), head);
+                fullHead = firstNonBlank(text(hostGitStatus.get("head")), fullHead);
+                remote = firstNonBlank(text(hostGitStatus.get("remote")), remote);
+                upstream = firstNonBlank(text(hostGitStatus.get("upstream")), upstream);
+                aheadBehind = firstNonBlank(text(hostGitStatus.get("aheadBehind")), aheadBehind);
+                status = firstNonBlank(text(hostGitStatus.get("statusText")), status);
+                lastCommitAt = firstNonBlank(text(hostGitStatus.get("lastCommitAt")), lastCommitAt);
+                lastCommitSubject = firstNonBlank(text(hostGitStatus.get("lastCommitSubject")), lastCommitSubject);
+            }
+
+            gitRows.add(summary("Branch", blankToDash(branch), "Current local branch"));
+            gitRows.add(summary("HEAD", blankToDash(head), blankToDash(lastCommitSubject)));
+            gitRows.add(summary("Upstream", blankToDash(upstream), "Configured tracking branch"));
+            gitRows.add(summary("Ahead/Behind", parseAheadBehind(aheadBehind), "Local commits ahead / behind upstream"));
+
+            for (String line : commandLines(repository, Arrays.asList("git", "log", "--oneline", "-8"))) {
+                int split = line.indexOf(' ');
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("hash", split > 0 ? line.substring(0, split) : line);
+                row.put("subject", split > 0 ? line.substring(split + 1) : "");
+                recentCommits.add(row);
+            }
+            if (hostGitStatus.get("recentCommits") instanceof List<?>) {
+                recentCommits.clear();
+                for (Object item : asList(hostGitStatus.get("recentCommits"))) {
+                    recentCommits.add(asMap(item));
+                }
+            }
+
+            for (String line : commandLines(repository, Arrays.asList("git", "status", "--short"))) {
+                if (line.isBlank()) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("status", line.length() >= 2 ? line.substring(0, 2).trim() : "");
+                row.put("path", line.length() > 3 ? line.substring(3) : line);
+                changedFiles.add(row);
+                if (changedFiles.size() >= 80) {
+                    break;
+                }
+            }
+            if (hostGitStatus.get("changedFiles") instanceof List<?>) {
+                changedFiles.clear();
+                for (Object item : asList(hostGitStatus.get("changedFiles"))) {
+                    changedFiles.add(asMap(item));
+                }
+            }
+
+            Map<String, Object> deploySpec = asMap(deployJson.get("spec"));
+            Map<String, Object> deployStatus = asMap(deployJson.get("status"));
+            Map<String, Object> template = asMap(deploySpec.get("template"));
+            Map<String, Object> podSpec = asMap(template.get("spec"));
+            String runtimeImage = "-";
+            for (Object containerObject : asList(podSpec.get("containers"))) {
+                Map<String, Object> container = asMap(containerObject);
+                if ("carbonet-runtime".equals(text(container.get("name")))) {
+                    runtimeImage = blankToDash(text(container.get("image")));
+                    break;
+                }
+            }
+            deploymentRows.add(summary("Runtime Image", runtimeImage, "Deployment carbonet-runtime image"));
+            deploymentRows.add(summary("Ready Replicas", numberText(deployStatus.get("readyReplicas")) + "/" + numberText(deployStatus.get("replicas")), "Kubernetes deployment readiness"));
+            deploymentRows.add(summary("Updated Replicas", numberText(deployStatus.get("updatedReplicas")), "Replicas using the latest template"));
+            deploymentRows.add(summary("Observed Generation", numberText(deployStatus.get("observedGeneration")), "Kubernetes rollout generation"));
+
+            for (Object item : asList(podJson.get("items"))) {
+                Map<String, Object> pod = asMap(item);
+                Map<String, Object> metadata = asMap(pod.get("metadata"));
+                String name = text(metadata.get("name"));
+                if (!name.startsWith("carbonet-runtime-")) {
+                    continue;
+                }
+                Map<String, Object> podStatus = asMap(pod.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", name);
+                row.put("phase", blankToDash(text(podStatus.get("phase"))));
+                row.put("ready", podReady(podStatus));
+                row.put("restarts", podRestarts(podStatus));
+                row.put("podIP", blankToDash(text(podStatus.get("podIP"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                deploymentRows.add(row);
+            }
+
+            buildRows.add(summary("Repository", firstNonBlank(text(hostGitStatus.get("repository")), repository == null ? "not mounted" : repository.toString()), hostGitStatus.isEmpty() ? "Repository visible to runtime process" : "Host-generated Git metadata"));
+            buildRows.add(summary("Working Tree", status.isBlank() || "-".equals(status) ? "clean/unknown" : "dirty", status.isBlank() || "-".equals(status) ? "No visible uncommitted source changes" : "Uncommitted changes detected"));
+            buildRows.add(summary("Last Commit At", blankToDash(lastCommitAt), "Git commit timestamp"));
+            buildRows.add(summary("Remote", scrubRemote(remote), "origin remote"));
+            buildRows.add(summary("Metadata Generated", blankToDash(text(hostGitStatus.get("generatedAt"))), hostGitStatus.isEmpty() ? "No host metadata file" : "Host Git metadata timestamp"));
+            buildRows.add(summary("Overlay Marker", fileFingerprint("/app/react-app-overlay/.resonance-build.json"), "Frontend overlay build marker"));
+            buildRows.add(summary("Index HTML", fileFingerprint("/app/react-app-overlay/index.html"), "Served React index file"));
+            buildRows.add(summary("Runtime Manifest", fileFingerprint("/app/config/manifest.json"), "Runtime manifest mounted into container"));
+
+            long dirtyFiles = changedFiles.size();
+            boolean gitUnavailable = hostGitStatus.isEmpty() && (repository == null || "-".equals(head));
+            String health = dirtyFiles > 0 ? "WARN" : "NORMAL";
+            response.put("summary", Arrays.asList(
+                    summary("HEAD", blankToDash(head), blankToDash(branch)),
+                    summary("Runtime Image", runtimeImage, "Current deployed image"),
+                    summary("Changed Files", String.valueOf(dirtyFiles), "Visible git status rows"),
+                    summary("Git Visibility", gitUnavailable ? "PARTIAL" : "READY", hostGitStatus.isEmpty() ? (repository == null ? "Repository is not mounted in runtime" : "Repository is readable") : "Host Git metadata is readable")
+            ));
+            response.put("health", health);
+            response.put("git", gitRows);
+            response.put("build", buildRows);
+            response.put("deployment", deploymentRows);
+            response.put("recentCommits", recentCommits);
+            response.put("changedFiles", changedFiles);
+            response.put("branch", blankToDash(branch));
+            response.put("head", blankToDash(head));
+            response.put("fullHead", blankToDash(fullHead));
+            response.put("runtimeImage", runtimeImage);
+            response.put("generatedAt", Instant.now().toString());
+            response.put("source", hostGitStatus.isEmpty() ? "Git repository when mounted, Kubernetes deployment/pods, runtime overlay files" : "Host Git metadata, Kubernetes deployment/pods, runtime overlay files");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to build git/build monitoring status", e);
+            response.put("error", e.getMessage());
+            response.put("summary", Collections.emptyList());
+            response.put("git", gitRows);
+            response.put("build", buildRows);
+            response.put("deployment", deploymentRows);
+            response.put("recentCommits", recentCommits);
+            response.put("changedFiles", changedFiles);
+            response.put("generatedAt", Instant.now().toString());
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    private Map<String, Object> summary(String title, String value, String description) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("title", title);
+        row.put("value", value);
+        row.put("description", description);
+        return row;
+    }
+
+    private Map<String, Object> readKubernetesJson(String path) throws Exception {
+        String host = firstNonBlank(System.getenv("KUBERNETES_SERVICE_HOST"), "kubernetes.default.svc");
+        String port = firstNonBlank(System.getenv("KUBERNETES_SERVICE_PORT_HTTPS"), System.getenv("KUBERNETES_SERVICE_PORT"), "443");
+        String token = Files.readString(Path.of("/var/run/secrets/kubernetes.io/serviceaccount/token")).trim();
+        URL url = new URL("https://" + host + ":" + port + path);
+        HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+        connection.setSSLSocketFactory(kubernetesSslContext().getSocketFactory());
+        connection.setRequestProperty("Authorization", "Bearer " + token);
+        connection.setRequestProperty("Accept", "application/json");
+        connection.setConnectTimeout(5000);
+        connection.setReadTimeout(15000);
+        int status = connection.getResponseCode();
+        InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+        String output;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+            output = reader.lines().collect(Collectors.joining("\n"));
+        }
+        if (status >= 400) {
+            throw new IllegalStateException("Kubernetes API " + path + " returned HTTP " + status + ": " + output);
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parsed = OBJECT_MAPPER.readValue(output, Map.class);
+        return parsed;
+    }
+
+    private SSLContext kubernetesSslContext() throws Exception {
+        CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+        Certificate certificate;
+        try (InputStream stream = Files.newInputStream(Path.of("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"))) {
+            certificate = certificateFactory.generateCertificate(stream);
+        }
+        KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        keyStore.load(null, null);
+        keyStore.setCertificateEntry("kubernetes-ca", certificate);
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init(keyStore);
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+        return sslContext;
+    }
+
+    private String extractCronContainers(Map<String, Object> spec) {
+        Map<String, Object> jobTemplate = asMap(spec.get("jobTemplate"));
+        Map<String, Object> jobSpec = asMap(jobTemplate.get("spec"));
+        Map<String, Object> template = asMap(jobSpec.get("template"));
+        Map<String, Object> podSpec = asMap(template.get("spec"));
+        List<String> containers = new ArrayList<>();
+        for (Object item : asList(podSpec.get("containers"))) {
+            Map<String, Object> container = asMap(item);
+            String name = text(container.get("name"));
+            String image = text(container.get("image"));
+            containers.add(firstNonBlank(name, "-") + " / " + firstNonBlank(image, "-"));
+        }
+        return containers.isEmpty() ? "-" : String.join(", ", containers);
+    }
+
+    private String ownerCronJobName(Map<String, Object> metadata) {
+        for (Object ownerObject : asList(metadata.get("ownerReferences"))) {
+            Map<String, Object> owner = asMap(ownerObject);
+            if ("CronJob".equals(text(owner.get("kind")))) {
+                return text(owner.get("name"));
+            }
+        }
+        return "-";
+    }
+
+    private String jobStatus(Map<String, Object> status) {
+        for (Object conditionObject : asList(status.get("conditions"))) {
+            Map<String, Object> condition = asMap(conditionObject);
+            if (!"True".equals(text(condition.get("status")))) {
+                continue;
+            }
+            String type = text(condition.get("type"));
+            if ("Complete".equalsIgnoreCase(type)) {
+                return "Complete";
+            }
+            if ("Failed".equalsIgnoreCase(type)) {
+                return "Failed";
+            }
+        }
+        if (positive(status.get("active"))) {
+            return "Running";
+        }
+        return "Unknown";
+    }
+
+    private boolean positive(Object value) {
+        try {
+            return Integer.parseInt(numberText(value)) > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> asMap(Object value) {
+        return value instanceof Map<?, ?> ? (Map<String, Object>) value : Collections.emptyMap();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> asList(Object value) {
+        return value instanceof List<?> ? (List<Object>) value : Collections.emptyList();
+    }
+
+    private String text(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String numberText(Object value) {
+        if (value == null) {
+            return "0";
+        }
+        return String.valueOf(value);
+    }
+
+    private String blankToDash(String value) {
+        return value == null || value.isBlank() ? "-" : value;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "-";
+    }
+
+    private boolean isBatchRelated(String namespace, String value) {
+        String normalized = (firstNonBlank(namespace, "") + " " + firstNonBlank(value, "")).toLowerCase(Locale.ROOT);
+        return normalized.contains("batch")
+                || normalized.contains("job")
+                || normalized.contains("cron")
+                || normalized.contains("backup")
+                || normalized.contains("postgres-carbonet")
+                || normalized.contains("scheduler")
+                || normalized.contains("worker")
+                || normalized.contains("queue")
+                || normalized.contains("carbonet-prod")
+                || normalized.contains("default");
+    }
+
+    private String podReady(Map<String, Object> status) {
+        int ready = 0;
+        int total = 0;
+        for (Object containerObject : asList(status.get("containerStatuses"))) {
+            total++;
+            Map<String, Object> container = asMap(containerObject);
+            if (Boolean.TRUE.equals(container.get("ready"))) {
+                ready++;
+            }
+        }
+        return ready + "/" + total;
+    }
+
+    private int podRestarts(Map<String, Object> status) {
+        int restarts = 0;
+        for (Object containerObject : asList(status.get("containerStatuses"))) {
+            Object restartCount = asMap(containerObject).get("restartCount");
+            if (restartCount instanceof Number number) {
+                restarts += number.intValue();
+            }
+        }
+        return restarts;
+    }
+
+    private String podOwner(Map<String, Object> metadata) {
+        List<String> owners = new ArrayList<>();
+        for (Object ownerObject : asList(metadata.get("ownerReferences"))) {
+            Map<String, Object> owner = asMap(ownerObject);
+            owners.add(firstNonBlank(text(owner.get("kind")), "-") + "/" + firstNonBlank(text(owner.get("name")), "-"));
+        }
+        return owners.isEmpty() ? "-" : String.join(", ", owners);
+    }
+
+    private void collectWorkloads(List<Map<String, Object>> workloads, Map<String, Object> json, String kind) {
+        for (Object item : asList(json.get("items"))) {
+            Map<String, Object> workload = asMap(item);
+            Map<String, Object> metadata = asMap(workload.get("metadata"));
+            Map<String, Object> status = asMap(workload.get("status"));
+            String namespace = text(metadata.get("namespace"));
+            String name = text(metadata.get("name"));
+            if (!isBatchRelated(namespace, name)) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("kind", kind);
+            row.put("namespace", namespace);
+            row.put("name", name);
+            row.put("ready", numberText(status.get("readyReplicas")) + "/" + numberText(status.get("replicas")));
+            row.put("available", numberText(status.get("availableReplicas")));
+            row.put("updated", numberText(status.get("updatedReplicas")));
+            row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+            workloads.add(row);
+        }
+    }
+
+    private Path detectRepositoryRoot() {
+        List<Path> candidates = Arrays.asList(
+                Path.of("/opt/Resonance"),
+                Path.of("/app/repository"),
+                Path.of(System.getProperty("user.dir", "."))
+        );
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate.resolve(".git"))) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private String commandOrDash(Path directory, List<String> command) {
+        List<String> lines = commandLines(directory, command);
+        return lines.isEmpty() ? "-" : String.join("\n", lines).trim();
+    }
+
+    private List<String> commandLines(Path directory, List<String> command) {
+        if (directory == null) {
+            return Collections.emptyList();
+        }
+        try {
+            Process process = new ProcessBuilder(command)
+                    .directory(directory.toFile())
+                    .redirectErrorStream(true)
+                    .start();
+            boolean finished = process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return Collections.emptyList();
+            }
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                return reader.lines().filter(line -> !line.isBlank()).collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.debug("Command failed: {}", command, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private String parseAheadBehind(String value) {
+        if (value == null || value.isBlank() || "-".equals(value)) {
+            return "-";
+        }
+        String[] parts = value.trim().split("\\s+");
+        if (parts.length < 2) {
+            return value;
+        }
+        return parts[0] + " / " + parts[1];
+    }
+
+    private String scrubRemote(String remote) {
+        if (remote == null || remote.isBlank() || "-".equals(remote)) {
+            return "-";
+        }
+        return remote.replaceAll("https://[^/@]+@", "https://***@");
+    }
+
+    private String fileFingerprint(String pathValue) {
+        try {
+            Path path = Path.of(pathValue);
+            if (!Files.exists(path)) {
+                return "missing";
+            }
+            long size = Files.size(path);
+            Instant modified = Files.getLastModifiedTime(path).toInstant();
+            return size + " bytes, " + modified;
+        } catch (Exception e) {
+            return "unreadable";
+        }
+    }
+
+    private Map<String, Object> readOptionalJson(Path path) {
+        if (!Files.exists(path)) {
+            return Collections.emptyMap();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = OBJECT_MAPPER.readValue(Files.readString(path), Map.class);
+            return parsed;
+        } catch (Exception e) {
+            log.warn("Failed to read optional JSON metadata: {}", path, e);
+            return Collections.emptyMap();
+        }
+    }
+
     private String executeCommand(String command) {
         try {
             Process process = Runtime.getRuntime().exec(command);
@@ -646,6 +1370,26 @@ public class AdminSystemManagementController {
             return output.toString();
         } catch (Exception e) {
             log.warn("Failed to execute command: {}", command, e);
+            return null;
+        }
+    }
+
+    private String executeCommand(List<String> command) {
+        try {
+            Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            StringBuilder output = new StringBuilder();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append('\n');
+            }
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                log.warn("Command exited with {}: {}", exitCode, String.join(" ", command));
+            }
+            return output.toString();
+        } catch (Exception e) {
+            log.warn("Failed to execute command: {}", String.join(" ", command), e);
             return null;
         }
     }

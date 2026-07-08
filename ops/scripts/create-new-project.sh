@@ -12,6 +12,10 @@ if [ -z "$PROJECT_ID" ]; then
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/build.sh
+source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
+init_build_tool
 TEMPLATE_DIR="$ROOT_DIR/projects/project-template"
 TEMPLATE_ADAPTER_DIR="$ROOT_DIR/projects/project-template-adapter"
 NEW_PROJECT_DIR="$ROOT_DIR/projects/$PROJECT_ID-runtime"
