@@ -10,7 +10,7 @@ import { ROUTE_SOURCE_INVENTORY, type RouteSourceInventoryRow } from './routeSou
 
 
 type BuilderAgentId = 'HERMES' | 'KILO';
-type BuilderWorkspaceTab = 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'page-quality' | 'environment-audit';
+type BuilderWorkspaceTab = 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'full-stack-workbench' | 'page-quality' | 'environment-audit';
 
 type BuilderTargetContext = {
   menuCode: string;
@@ -37,6 +37,16 @@ type SavedBuilderSection = {
   savedAt: string;
 };
 
+type FrontendCandidate = {
+  id: string;
+  title: string;
+  source: 'original' | 'generated' | 'uploaded';
+  summary: string;
+  confidence: number;
+  html: string;
+  createdAt: string;
+};
+
 type CapturedPreviewElement = {
   selector: string;
   tagName: string;
@@ -53,6 +63,7 @@ type CapturedPreviewElement = {
 };
 
 const SECTION_STORAGE_KEY = 'carbonet:builder:saved-sections';
+const FRONTEND_CANDIDATE_STORAGE_KEY = 'carbonet:builder:frontend-candidates';
 const BUILDER_AGENT_OPTIONS: Array<{ id: BuilderAgentId; label: string; description: string; modelNote: string }> = [
   { id: 'HERMES', label: 'HERMES', description: '기존 Hermes 작업 흐름으로 화면 수정 요청을 전달합니다.', modelNote: '현재 로컬 모델 설정은 추후 비중국 모델로 교체 예정' },
   { id: 'KILO', label: 'KILO', description: 'Kilo 에이전트 작업 큐로 넘길 요청 형식을 생성합니다.', modelNote: '현재 모델 설정은 추후 Mixtral/Gemma 계열로 교체 예정' },
@@ -103,6 +114,7 @@ function readInitialBuilderTab(): BuilderWorkspaceTab {
   if (tab === 'sections' || window.location.pathname.endsWith('/section-management')) return 'sections';
   if (tab === 'builder-canvas') return 'builder-canvas';
   if (tab === 'asset-registry') return 'asset-registry';
+  if (tab === 'full-stack-workbench') return 'full-stack-workbench';
   if (tab === 'page-quality') return 'page-quality';
   if (tab === 'environment-audit') return 'environment-audit';
   return 'target-preview';
@@ -127,6 +139,78 @@ function loadSavedSections(): SavedBuilderSection[] {
 function persistSavedSections(sections: SavedBuilderSection[]) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(sections));
+}
+
+function defaultFrontendCandidates(target: BuilderTargetContext): FrontendCandidate[] {
+  const now = new Date().toISOString();
+  const title = target.menuTitle || target.pageId || '대상 화면';
+  const path = target.menuUrl || '/admin/system/menu';
+  return [
+    {
+      id: 'original-runtime',
+      title: '현재 운영 원본',
+      source: 'original',
+      summary: '현재 라우트와 소스 추적 정보를 기준으로 운영 화면을 그대로 가져옵니다.',
+      confidence: 96,
+      html: `<main data-builder-template="original"><h1>${title}</h1><p>${path}</p></main>`,
+      createdAt: now,
+    },
+    {
+      id: 'generated-admin-density',
+      title: '관리자 고밀도 목록형',
+      source: 'generated',
+      summary: '검색, 필터, 표, 상세 패널을 우선 배치하는 운영 관리자 화면 후보입니다.',
+      confidence: 91,
+      html: `<section data-builder-template="admin-density"><header><h1>${title}</h1></header><form><input placeholder="검색어" /><button>검색</button></form><table><thead><tr><th>항목</th><th>상태</th><th>관리</th></tr></thead><tbody><tr><td>Sample</td><td>READY</td><td>수정</td></tr></tbody></table></section>`,
+      createdAt: now,
+    },
+    {
+      id: 'generated-dashboard',
+      title: '모니터링 대시보드형',
+      source: 'generated',
+      summary: '수치 카드, 상태 요약, 최근 이벤트를 한 화면에 보여주는 후보입니다.',
+      confidence: 88,
+      html: `<section data-builder-template="dashboard"><h1>${title}</h1><div><article>정상</article><article>주의</article><article>최근 변경</article></div></section>`,
+      createdAt: now,
+    },
+    {
+      id: 'generated-form-master-detail',
+      title: '마스터-상세 편집형',
+      source: 'generated',
+      summary: '목록 선택 후 우측 상세 편집/저장으로 이어지는 화면 후보입니다.',
+      confidence: 86,
+      html: `<section data-builder-template="master-detail"><aside>목록</aside><main><h1>${title}</h1><label>이름<input /></label><label>경로<input value="${path}" /></label><button>저장</button></main></section>`,
+      createdAt: now,
+    },
+    {
+      id: 'generated-ai-assisted',
+      title: 'AI 수정 최적화형',
+      source: 'generated',
+      summary: '모든 주요 영역에 selector와 data 속성을 부여해 AI가 정확히 수정하기 쉬운 후보입니다.',
+      confidence: 84,
+      html: `<section data-page-id="${target.pageId || 'page'}" data-builder-template="ai-assisted"><header data-surface-id="title"><h1>${title}</h1></header><div data-surface-id="content">AI 수정 대상 영역</div></section>`,
+      createdAt: now,
+    },
+  ];
+}
+
+function loadFrontendCandidates(target: BuilderTargetContext): FrontendCandidate[] {
+  if (typeof window === 'undefined') return defaultFrontendCandidates(target);
+  try {
+    const raw = window.localStorage.getItem(FRONTEND_CANDIDATE_STORAGE_KEY);
+    const saved = raw ? JSON.parse(raw) as FrontendCandidate[] : [];
+    const defaults = defaultFrontendCandidates(target);
+    const savedIds = new Set(saved.map(item => item.id));
+    return [...defaults.filter(item => !savedIds.has(item.id)), ...saved].slice(0, 20);
+  } catch {
+    return defaultFrontendCandidates(target);
+  }
+}
+
+function persistFrontendCandidates(candidates: FrontendCandidate[]) {
+  if (typeof window === 'undefined') return;
+  const uploadedAndGenerated = candidates.filter(item => item.source === 'uploaded');
+  window.localStorage.setItem(FRONTEND_CANDIDATE_STORAGE_KEY, JSON.stringify(uploadedAndGenerated.slice(0, 15)));
 }
 
 function buildDesignClassName(current: string, updates: Record<string, string>) {
@@ -323,6 +407,11 @@ export function BuilderStudioPage() {
   const [previewContextRequest, setPreviewContextRequest] = useState<{ x: number; y: number; selector: string; note: string; element?: CapturedPreviewElement } | null>(null);
   const [designDraft, setDesignDraft] = useState({ padding: '16', radius: '8', gap: '12', width: '100', fontSize: '14', shadow: 'sm' });
   const [savedSections, setSavedSections] = useState<SavedBuilderSection[]>(() => loadSavedSections());
+  const [frontendCandidates, setFrontendCandidates] = useState<FrontendCandidate[]>(() => loadFrontendCandidates(readBuilderTargetContext()));
+  const [selectedFrontendCandidateId, setSelectedFrontendCandidateId] = useState('original-runtime');
+  const [fullStackMode, setFullStackMode] = useState<'frontend-only' | 'metadata-api' | 'java-core' | 'db-migration'>('frontend-only');
+  const [changedFileDraft, setChangedFileDraft] = useState('');
+  const [rollbackPoints, setRollbackPoints] = useState<Array<{ id: string; label: string; candidateId: string; createdAt: string }>>([]);
   const [builderToast, setBuilderToast] = useState('');
   const [pageQualityFilter, setPageQualityFilter] = useState<PageCompletenessInventoryRow['status'] | 'all'>('all');
 
@@ -332,8 +421,10 @@ export function BuilderStudioPage() {
 
   useEffect(() => {
     function syncTargetContext() {
-      setTargetContext(readBuilderTargetContext());
+      const nextTarget = readBuilderTargetContext();
+      setTargetContext(nextTarget);
       setManagedAssetContext(readManagedAssetContext());
+      setFrontendCandidates(loadFrontendCandidates(nextTarget));
     }
     window.addEventListener('popstate', syncTargetContext);
     window.addEventListener('carbonet:navigation', syncTargetContext);
@@ -601,6 +692,69 @@ export function BuilderStudioPage() {
     window.setTimeout(() => setBuilderToast(''), 3500);
   }
 
+  const selectedFrontendCandidate = frontendCandidates.find(item => item.id === selectedFrontendCandidateId) || frontendCandidates[0];
+
+  function handleFrontendCandidateUpload(file: File | null) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const html = String(reader.result || '');
+      const candidate: FrontendCandidate = {
+        id: `uploaded-${Date.now()}`,
+        title: file.name.replace(/\.html?$/i, '') || '업로드 HTML',
+        source: 'uploaded',
+        summary: '업로드한 HTML을 AI가 현재 프레임워크 구조에 맞춰 React/메타데이터 자산으로 변환합니다.',
+        confidence: 80,
+        html,
+        createdAt: new Date().toISOString(),
+      };
+      const next = [candidate, ...frontendCandidates].slice(0, 20);
+      setFrontendCandidates(next);
+      persistFrontendCandidates(next);
+      setSelectedFrontendCandidateId(candidate.id);
+      showToast('HTML 후보를 업로드하고 선택했습니다.');
+    };
+    reader.readAsText(file);
+  }
+
+  function createRollbackPoint(label: string) {
+    const point = {
+      id: `rollback-${Date.now()}`,
+      label,
+      candidateId: selectedFrontendCandidate?.id || 'original-runtime',
+      createdAt: new Date().toISOString(),
+    };
+    setRollbackPoints([point, ...rollbackPoints].slice(0, 12));
+    showToast('롤백 지점을 만들었습니다.');
+  }
+
+  function requestFullStackChange(executeNow: boolean) {
+    const compilePlan = fullStackMode === 'frontend-only'
+      ? 'frontend overlay sync + selected React chunk rebuild; Java build not required'
+      : fullStackMode === 'metadata-api'
+        ? 'metadata/API contract update first; changed frontend files only; Java avoided unless controller signature changes'
+        : fullStackMode === 'java-core'
+          ? 'project-core changed Java files incremental compile, test targeted classes, rolling restart only when class reload cannot apply'
+          : 'DB migration dry-run, transactional DDL/DML guard, backup/rollback SQL required';
+    const changedFiles = changedFileDraft.split('\n').map(item => item.trim()).filter(Boolean);
+    setAiPrompt([
+      `빌더 전체 개발 요청을 수행해줘.`,
+      `mode=${fullStackMode}`,
+      `compilePlan=${compilePlan}`,
+      `menuTitle=${targetContext.menuTitle}`,
+      `menuUrl=${targetContext.menuUrl}`,
+      `routeSource=${targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}`,
+      `frontendCandidate=${selectedFrontendCandidate ? JSON.stringify({ id: selectedFrontendCandidate.id, title: selectedFrontendCandidate.title, source: selectedFrontendCandidate.source, summary: selectedFrontendCandidate.summary, html: selectedFrontendCandidate.html.slice(0, 5000) }) : '-'}`,
+      `changedFiles=${changedFiles.length ? changedFiles.join(', ') : 'auto-detect changed files only'}`,
+      `rollbackPolicy=before applying, create git diff snapshot and runtime rollback point; after applying, verify page and allow candidate rollback`,
+      `requirements=front/back/db asset registry must be updated; only changed files should be compiled or rebuilt where possible`,
+    ].join('\n'));
+    setShowAiPanel(true);
+    if (executeNow) {
+      window.setTimeout(() => { void submitBuilderAgentRequest(true); }, 0);
+    }
+  }
+
   function handlePreviewContextMenu(e: React.MouseEvent<HTMLElement>) {
     if (!contextCaptureEnabled) return;
     e.preventDefault();
@@ -643,6 +797,9 @@ export function BuilderStudioPage() {
       `componentType=${selectedNode?.componentType || '-'}`,
       `className=${String(selectedNode?.props?.className || '')}`,
       `designDraft=${JSON.stringify(designDraft)}`,
+      `selectedFrontendCandidate=${selectedFrontendCandidate ? JSON.stringify({ id: selectedFrontendCandidate.id, title: selectedFrontendCandidate.title, source: selectedFrontendCandidate.source, summary: selectedFrontendCandidate.summary, htmlPreview: selectedFrontendCandidate.html.slice(0, 2000) }) : '-'}`,
+      `fullStackMode=${fullStackMode}`,
+      `changedFileCompilePlan=${changedFileDraft.split('\n').map(item => item.trim()).filter(Boolean).join(', ') || 'auto-detect changed files only'}`,
       `requiredPathPolicy=controller/service/mapper/frontend path must follow route family and pageId consistently`,
       `designPolicy=theme-management and component-management first; direct CSS only when local and minimal`,
     ].join('\n');
@@ -902,6 +1059,7 @@ export function BuilderStudioPage() {
             ['builder-canvas', '빌더 캔버스'],
             ['sections', '섹션 보관함'],
             ['asset-registry', '자산 레지스트리'],
+            ['full-stack-workbench', '전체 개발'],
             ['page-quality', '페이지 완성도'],
             ['environment-audit', '환경 기능 확인'],
           ].map(([id, label]) => (
@@ -1101,6 +1259,128 @@ export function BuilderStudioPage() {
                   <li>자바/API/DB 변경은 project-core 빌드 대상인지 표시해야 합니다.</li>
                   <li>화면만 바뀌는 경우 오버레이 무재배포 경로를 사용합니다.</li>
                 </ul>
+              </section>
+            </aside>
+          </div>
+        </div>
+      ) : null}
+
+      {activeWorkspaceTab === 'full-stack-workbench' ? (
+        <div className="flex-1 overflow-auto bg-slate-50 p-6">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">전체 개발 워크벤치</h2>
+              <p className="mt-1 text-sm text-slate-500">프론트 후보 선택, HTML 업로드, 백엔드/API/DB 변경 계획, 변경 파일 기준 컴파일과 롤백을 한 번에 관리합니다.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => createRollbackPoint(`${targetContext.menuTitle || '화면'} 변경 전`)} className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700">롤백 지점 생성</button>
+              <button type="button" onClick={() => requestFullStackChange(false)} className="rounded bg-slate-800 px-3 py-2 text-sm font-bold text-white">AI 요청 작성</button>
+              <button type="button" onClick={() => requestFullStackChange(true)} className="rounded bg-blue-700 px-3 py-2 text-sm font-bold text-white">즉시 수정 요청</button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_420px]">
+            <section className="space-y-4">
+              <div className="rounded border bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">Frontend Candidates</p>
+                    <h3 className="mt-1 font-black text-slate-900">프론트 원본 + 추천 후보 + 업로드 HTML</h3>
+                  </div>
+                  <label className="cursor-pointer rounded border border-blue-200 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50">
+                    HTML 업로드
+                    <input type="file" accept=".html,.htm,text/html" className="hidden" onChange={e => handleFrontendCandidateUpload(e.target.files?.[0] || null)} />
+                  </label>
+                </div>
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  {frontendCandidates.map(candidate => (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      onClick={() => setSelectedFrontendCandidateId(candidate.id)}
+                      className={`rounded border p-4 text-left shadow-sm ${selectedFrontendCandidateId === candidate.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-200'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-black uppercase text-slate-500">{candidate.source}</p>
+                          <h4 className="mt-1 font-black text-slate-900">{candidate.title}</h4>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{candidate.confidence}%</span>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-500">{candidate.summary}</p>
+                      <p className="mt-3 line-clamp-2 break-all font-mono text-xs text-slate-400">{candidate.html}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Selected Preview</p>
+                <h3 className="mt-1 font-black text-slate-900">{selectedFrontendCandidate?.title || '선택 후보 없음'}</h3>
+                <div className="mt-3 max-h-[280px] overflow-auto rounded border bg-slate-950 p-3">
+                  <pre className="whitespace-pre-wrap break-all text-xs leading-5 text-slate-100">{selectedFrontendCandidate?.html || ''}</pre>
+                </div>
+              </div>
+            </section>
+
+            <aside className="space-y-4">
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Change Scope</p>
+                <h3 className="mt-1 font-black text-slate-900">변경 범위와 즉시 반영 방식</h3>
+                <div className="mt-3 grid gap-2">
+                  {[
+                    ['frontend-only', '프론트/HTML만', '오버레이 동기화와 변경 청크 중심으로 즉시 반영'],
+                    ['metadata-api', '메타데이터/API', '공통 메타데이터와 API 계약 우선, Java 변경 최소화'],
+                    ['java-core', 'Java project-core', '변경 Java 파일 중심 증분 컴파일 후 필요 시 롤링 재시작'],
+                    ['db-migration', 'DB 변경 포함', '사전 백업, dry-run, 롤백 SQL을 포함해 적용'],
+                  ].map(([id, label, desc]) => (
+                    <label key={id} className={`rounded border p-3 ${fullStackMode === id ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
+                      <span className="flex items-center gap-2 text-sm font-black text-slate-900">
+                        <input type="radio" checked={fullStackMode === id} onChange={() => setFullStackMode(id as typeof fullStackMode)} />
+                        {label}
+                      </span>
+                      <span className="mt-1 block text-xs text-slate-500">{desc}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Changed Files</p>
+                <h3 className="mt-1 font-black text-slate-900">변경 파일만 컴파일/검증</h3>
+                <textarea
+                  value={changedFileDraft}
+                  onChange={e => setChangedFileDraft(e.target.value)}
+                  placeholder={'자동 감지 가능. 직접 지정 시 한 줄에 하나씩 입력\nprojects/carbonet-frontend/source/src/features/...\nproject-core/src/main/java/...'}
+                  className="mt-3 min-h-[130px] w-full rounded border border-slate-300 px-3 py-2 font-mono text-xs"
+                />
+                <ul className="mt-3 space-y-1 text-xs text-slate-500">
+                  <li>프론트는 선택 후보를 React/빌더 메타데이터로 변환 후 변경 청크만 재생성합니다.</li>
+                  <li>Java는 트랜잭션/서비스/컨트롤러 변경 시 project-core 기준 증분 컴파일 대상으로 표시합니다.</li>
+                  <li>DB는 migration, rollback SQL, 적용 전 백업 여부를 AI 요청에 포함합니다.</li>
+                </ul>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Rollback</p>
+                <h3 className="mt-1 font-black text-slate-900">선택 후보/변경 전 상태 복구</h3>
+                <div className="mt-3 space-y-2">
+                  {rollbackPoints.map(point => (
+                    <button
+                      key={point.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedFrontendCandidateId(point.candidateId);
+                        showToast('선택 후보를 롤백 지점으로 되돌렸습니다.');
+                      }}
+                      className="w-full rounded border border-slate-200 px-3 py-2 text-left text-xs hover:border-blue-200"
+                    >
+                      <span className="block font-black text-slate-900">{point.label}</span>
+                      <span className="block text-slate-500">{new Date(point.createdAt).toLocaleString()} · {point.candidateId}</span>
+                    </button>
+                  ))}
+                  {rollbackPoints.length === 0 ? <p className="rounded border border-dashed p-4 text-center text-xs text-slate-400">아직 생성된 롤백 지점이 없습니다.</p> : null}
+                </div>
               </section>
             </aside>
           </div>
