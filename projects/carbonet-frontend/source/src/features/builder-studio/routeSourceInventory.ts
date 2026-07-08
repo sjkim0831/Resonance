@@ -1105,6 +1105,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-survey-report-verify",
+    "label": "리포트 진위확인",
+    "group": "admin",
+    "koPath": "/admin/emission/survey-report-verify",
+    "enPath": "/en/admin/emission/survey-report-verify",
+    "exportName": "EmissionSurveyReportVerifyPage",
+    "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
+    "effectiveExportName": "AdminPageShell",
+    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-validate",
     "label": "검증 관리",
     "group": "admin",

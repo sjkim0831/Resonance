@@ -20,6 +20,142 @@ function formatNumber(value: number, digits = 2) {
   });
 }
 
+const REPORT_VERIFICATION_STORAGE_KEY = "carbonet:emission-survey-report-verification:v1";
+const REPORT_VERIFY_BEGIN = "CARBONET_REPORT_VERIFY_BEGIN";
+const REPORT_VERIFY_END = "CARBONET_REPORT_VERIFY_END";
+
+type ReportVerificationPayload = {
+  version: 1;
+  certificateId: string;
+  issuedAt: string;
+  reportTitle: string;
+  productName: string;
+  generatedAt: string;
+  totalEmission: number;
+  rowCount: number;
+  calculatedRowCount: number;
+  warningCount: number;
+  payloadHash: string;
+  integrityCode: string;
+  verificationUrl: string;
+};
+
+type ReportVerificationRecord = ReportVerificationPayload & {
+  source: "browser-print";
+};
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
+}
+
+async function sha256Hex(value: string) {
+  const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(buffer)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function base64UrlEncode(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlDecode(value: string) {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function canonicalReportForVerification(report: EmissionSurveyReportPayload) {
+  return {
+    generatedAt: report.generatedAt,
+    productName: report.productName,
+    pageTitle: report.pageTitle,
+    classification: report.classification,
+    calculationScope: report.calculationScope,
+    summary: report.summary,
+    normalization: report.normalization,
+    sectionSummaries: report.sectionSummaries,
+    rows: report.rows.map((row) => ({
+      rowId: row.rowId,
+      sectionCode: row.sectionCode,
+      materialName: row.materialName,
+      amount: row.amount,
+      originalAmount: row.originalAmount,
+      unit: row.unit,
+      emissionFactor: row.emissionFactor,
+      totalEmission: row.totalEmission,
+      calculated: row.calculated
+    }))
+  };
+}
+
+function loadReportVerificationRecords() {
+  try {
+    const raw = window.localStorage.getItem(REPORT_VERIFICATION_STORAGE_KEY) || "[]";
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as ReportVerificationRecord[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveReportVerificationRecord(record: ReportVerificationRecord) {
+  const records = loadReportVerificationRecords().filter((item) => item.certificateId !== record.certificateId);
+  window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify([record, ...records].slice(0, 100)));
+}
+
+function verificationPayloadToBlock(payload: ReportVerificationPayload) {
+  return `${REPORT_VERIFY_BEGIN}\n${base64UrlEncode(JSON.stringify(payload))}\n${REPORT_VERIFY_END}`;
+}
+
+function extractVerificationPayload(raw: string): ReportVerificationPayload | null {
+  const blockMatch = raw.match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_-]+)\s*CARBONET_REPORT_VERIFY_END/);
+  const inlineMatch = raw.match(/CARBONET-VERIFY:([A-Za-z0-9_-]+)/);
+  const encoded = blockMatch?.[1] || inlineMatch?.[1] || "";
+  if (!encoded) {
+    return null;
+  }
+  try {
+    return JSON.parse(base64UrlDecode(encoded)) as ReportVerificationPayload;
+  } catch {
+    return null;
+  }
+}
+
+async function buildReportVerificationRecord(report: EmissionSurveyReportPayload): Promise<ReportVerificationRecord> {
+  const issuedAt = new Date().toISOString();
+  const payloadHash = await sha256Hex(stableStringify(canonicalReportForVerification(report)));
+  const certificateId = `CRN-${issuedAt.slice(0, 10).replace(/-/g, "")}-${payloadHash.slice(0, 12).toUpperCase()}`;
+  const integrityCode = (await sha256Hex(`${certificateId}|${payloadHash}|${report.summary.totalEmission}|CARBONET`)).slice(0, 24).toUpperCase();
+  return {
+    version: 1,
+    source: "browser-print",
+    certificateId,
+    issuedAt,
+    reportTitle: report.pageTitle,
+    productName: report.productName,
+    generatedAt: report.generatedAt,
+    totalEmission: report.summary.totalEmission,
+    rowCount: report.summary.rowCount,
+    calculatedRowCount: report.summary.calculatedRowCount,
+    warningCount: report.summary.warningCount,
+    payloadHash,
+    integrityCode,
+    verificationUrl: `${window.location.origin}${buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify")}?certificateId=${encodeURIComponent(certificateId)}`
+  };
+}
+
 function formatPercent(value: number, digits = 1) {
   return `${formatNumber(value, digits)}%`;
 }
@@ -912,6 +1048,9 @@ export function EmissionSurveyReportPrintPage() {
   });
   const [draftSectionShares, setDraftSectionShares] = useState<Record<string, number>>({});
   const [sectionShareMessage, setSectionShareMessage] = useState("");
+  const [verificationRecord, setVerificationRecord] = useState<ReportVerificationRecord | null>(null);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationBusy, setVerificationBusy] = useState(false);
 
   const chartSections = useMemo(
     () => (effectiveReport?.sectionSummaries || []).filter((section) => section.totalEmission > 0 || section.sharePercent > 0),
@@ -1254,13 +1393,25 @@ export function EmissionSurveyReportPrintPage() {
       return nextReport;
     });
   };
-  const handlePrintDocument = () => {
+  const handlePrintDocument = async () => {
+    if (!effectiveReport) {
+      return;
+    }
+    setVerificationBusy(true);
+    setVerificationMessage("");
+    const record = await buildReportVerificationRecord(effectiveReport);
+    saveReportVerificationRecord(record);
+    setVerificationRecord(record);
+    setVerificationBusy(false);
+    setVerificationMessage(en ? "Verification record saved. Print or save this page as PDF." : "진위 식별 정보가 저장되었습니다. 이 화면을 인쇄하거나 PDF로 저장하세요.");
     const originalTitle = document.title;
-    document.title = " ";
-    window.print();
     window.setTimeout(() => {
-      document.title = originalTitle;
-    }, 500);
+      document.title = " ";
+      window.print();
+      window.setTimeout(() => {
+        document.title = originalTitle;
+      }, 500);
+    }, 100);
   };
   const handleCopyChart = async (type: "bar" | "pie") => {
     try {
@@ -1283,11 +1434,19 @@ export function EmissionSurveyReportPrintPage() {
         </button>
         <div className="flex items-center gap-3">
           <button
-            className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white"
+            className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:bg-slate-500"
+            disabled={verificationBusy}
             onClick={handlePrintDocument}
             type="button"
           >
-            {en ? "Print / Save PDF" : "인쇄 / PDF 저장"}
+            {verificationBusy ? (en ? "Preparing..." : "인증정보 생성 중...") : (en ? "Save Verification And Print / PDF" : "인증정보 저장 후 인쇄 / PDF 저장")}
+          </button>
+          <button
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
+            onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify"))}
+            type="button"
+          >
+            {en ? "Verify PDF" : "진위확인"}
           </button>
           {englishMaterialNameLoading ? (
             <span className="text-xs font-bold text-slate-600">
@@ -1310,6 +1469,12 @@ export function EmissionSurveyReportPrintPage() {
               Material and product names will update automatically. This notice is hidden when printing or saving as PDF.
             </p>
           </div>
+        </div>
+      ) : null}
+
+      {verificationMessage ? (
+        <div className="print-hidden mx-auto mb-4 max-w-5xl rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-900 shadow-sm">
+          {verificationMessage}
         </div>
       ) : null}
 
@@ -1527,8 +1692,219 @@ export function EmissionSurveyReportPrintPage() {
             </table>
           </div>
         </section>
+        <section className="print-card mx-8 mb-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                {en ? "Authenticity Evidence" : "진위 식별 정보"}
+              </p>
+              <h2 className="mt-1 text-xl font-black text-slate-950">
+                {en ? "Carbonet Report Certificate" : "Carbonet 리포트 인증서"}
+              </h2>
+              <p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-slate-600">
+                {en
+                  ? "This report stores three verification signals: certificate ID, SHA-256 report fingerprint, and a machine-readable verification block embedded in this print/PDF."
+                  : "이 리포트는 인증서 ID, SHA-256 리포트 지문, PDF 내 기계 판독용 검증 블록의 3가지 방식으로 진위 여부를 식별합니다."}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-right">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">{en ? "Status" : "상태"}</p>
+              <p className="mt-1 text-sm font-black text-emerald-900">{verificationRecord ? (en ? "Issued" : "발급됨") : (en ? "Prepare before print" : "인쇄 전 발급 필요")}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-emerald-100 bg-white p-3">
+              <p className="text-[11px] font-black text-slate-500">{en ? "Certificate ID" : "인증서 ID"}</p>
+              <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{verificationRecord?.certificateId || "-"}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-white p-3">
+              <p className="text-[11px] font-black text-slate-500">{en ? "Report Fingerprint" : "리포트 지문"}</p>
+              <p className="mt-1 break-all font-mono text-xs font-black text-slate-950">{verificationRecord?.payloadHash || "-"}</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-100 bg-white p-3">
+              <p className="text-[11px] font-black text-slate-500">{en ? "Integrity Code" : "무결성 코드"}</p>
+              <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{verificationRecord?.integrityCode || "-"}</p>
+            </div>
+          </div>
+          {verificationRecord ? (
+            <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-white p-3">
+              <p className="text-[11px] font-black text-slate-500">{en ? "Verification URL" : "진위확인 URL"}</p>
+              <p className="mt-1 break-all font-mono text-[11px] font-bold text-slate-700">{verificationRecord.verificationUrl}</p>
+              <p className="mt-3 text-[11px] font-black text-slate-500">{en ? "Machine-readable block" : "기계 판독용 블록"}</p>
+              <pre className="mt-1 whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-3 font-mono text-[8px] leading-4 text-emerald-100">
+                {verificationPayloadToBlock(verificationRecord)}
+              </pre>
+              <p className="mt-2 break-all font-mono text-[8px] leading-4 text-slate-500">CARBONET-VERIFY:{base64UrlEncode(JSON.stringify(verificationRecord))}</p>
+            </div>
+          ) : null}
+        </section>
       </article>
     </main>
+  );
+}
+
+export function EmissionSurveyReportVerifyPage() {
+  const en = isEnglish();
+  const [manualBlock, setManualBlock] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
+  const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
+  const [resultTone, setResultTone] = useState<"info" | "success" | "warning">("info");
+
+  const matchedRecord = useMemo(() => {
+    if (!payload) {
+      return null;
+    }
+    return loadReportVerificationRecords().find((record) => (
+      record.certificateId === payload.certificateId
+      && record.payloadHash === payload.payloadHash
+      && record.integrityCode === payload.integrityCode
+    )) || null;
+  }, [payload]);
+
+  const evaluatePayload = (nextPayload: ReportVerificationPayload | null, sourceLabel: string) => {
+    if (!nextPayload) {
+      setPayload(null);
+      setResultTone("warning");
+      setResultMessage(en
+        ? `No Carbonet verification block was found in ${sourceLabel}. If the browser compressed PDF text, paste the block printed on the last page.`
+        : `${sourceLabel}에서 Carbonet 검증 블록을 찾지 못했습니다. 브라우저가 PDF 텍스트를 압축했다면 마지막 페이지의 검증 블록을 붙여넣으세요.`);
+      return;
+    }
+    const records = loadReportVerificationRecords();
+    const exact = records.some((record) => (
+      record.certificateId === nextPayload.certificateId
+      && record.payloadHash === nextPayload.payloadHash
+      && record.integrityCode === nextPayload.integrityCode
+    ));
+    const sameId = records.some((record) => record.certificateId === nextPayload.certificateId);
+    setPayload(nextPayload);
+    if (exact) {
+      setResultTone("success");
+      setResultMessage(en ? "Authenticity verified against the local issued-record registry." : "로컬 발급 이력과 일치하여 진위 확인이 완료되었습니다.");
+      return;
+    }
+    setResultTone("warning");
+    setResultMessage(sameId
+      ? (en ? "Certificate ID exists, but fingerprint or integrity code does not match." : "인증서 ID는 존재하지만 리포트 지문 또는 무결성 코드가 일치하지 않습니다.")
+      : (en ? "Verification block is readable, but no matching local issued record exists on this browser." : "검증 블록은 읽었지만 이 브라우저의 발급 이력에서 일치하는 기록을 찾지 못했습니다."));
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    setFileName(file.name);
+    const buffer = await file.arrayBuffer();
+    const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+    const latinText = new TextDecoder("latin1", { fatal: false }).decode(buffer);
+    evaluatePayload(extractVerificationPayload(`${utf8Text}\n${latinText}`), file.name);
+  };
+
+  const handleManualVerify = () => {
+    evaluatePayload(extractVerificationPayload(manualBlock), en ? "manual input" : "수동 입력값");
+  };
+
+  const toneClass = resultTone === "success"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+    : resultTone === "warning"
+      ? "border-amber-200 bg-amber-50 text-amber-950"
+      : "border-sky-200 bg-sky-50 text-sky-950";
+
+  return (
+    <AdminPageShell
+      breadcrumbs={[
+        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
+        { label: en ? "Emissions / Survey" : "배출/설문" },
+        { label: en ? "Report Authenticity" : "리포트 진위확인" }
+      ]}
+      title={en ? "Emission Survey Report Authenticity" : "배출 설문 리포트 진위확인"}
+      subtitle={en ? "Upload a downloaded certificate PDF and verify the certificate ID, report fingerprint, and integrity block." : "다운로드한 인증서 PDF를 업로드하여 인증서 ID, 리포트 지문, 무결성 블록을 확인합니다."}
+    >
+      <AdminWorkspacePageFrame>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{en ? "PDF Verification" : "PDF 검증"}</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Upload Certificate PDF" : "인증서 PDF 업로드"}</h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                  {en ? "Use the PDF saved from the report print screen. The verification block printed on the last page is read automatically when the PDF keeps text data." : "리포트 출력 화면에서 저장한 PDF를 사용하세요. PDF에 텍스트 데이터가 남아 있으면 마지막 페이지의 검증 블록을 자동으로 읽습니다."}
+                </p>
+              </div>
+              <MemberButton onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-print?lang=ko", "/en/admin/emission/survey-report-print?lang=en"))} type="button" variant="secondary">
+                {en ? "Open Report Print" : "리포트 출력 열기"}
+              </MemberButton>
+            </div>
+            <label className="mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50">
+              <span className="text-base font-black text-slate-900">{fileName || (en ? "Choose PDF file" : "PDF 파일 선택")}</span>
+              <span className="mt-2 text-sm font-semibold text-slate-500">{en ? "PDF files are preferred. Text-based saved PDFs can be verified automatically." : "PDF 파일 권장. 텍스트 기반 저장 PDF는 자동 검증됩니다."}</span>
+              <input accept="application/pdf,.pdf" className="sr-only" onChange={handleFileChange} type="file" />
+            </label>
+
+            <div className="mt-5">
+              <label className="text-sm font-black text-slate-800" htmlFor="manual-verification-block">
+                {en ? "Manual verification block" : "수동 검증 블록"}
+              </label>
+              <textarea
+                className="mt-2 min-h-36 w-full rounded-2xl border border-slate-300 bg-white p-4 font-mono text-xs text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                id="manual-verification-block"
+                onChange={(event) => setManualBlock(event.target.value)}
+                placeholder={`${REPORT_VERIFY_BEGIN}\n...\n${REPORT_VERIFY_END}`}
+                value={manualBlock}
+              />
+              <div className="mt-3 flex justify-end">
+                <MemberButton onClick={handleManualVerify} type="button">
+                  {en ? "Verify Block" : "검증 블록 확인"}
+                </MemberButton>
+              </div>
+            </div>
+          </section>
+
+          <aside className="space-y-4">
+            <section className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
+              <p className="text-xs font-black uppercase tracking-[0.16em] opacity-80">{en ? "Verification Result" : "검증 결과"}</p>
+              <h2 className="mt-2 text-xl font-black">
+                {resultTone === "success" ? (en ? "Valid" : "정상") : resultTone === "warning" ? (en ? "Needs Review" : "확인 필요") : (en ? "Waiting" : "대기")}
+              </h2>
+              <p className="mt-2 text-sm font-bold leading-6">{resultMessage}</p>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Three Verification Signals" : "3가지 식별 방식"}</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  [en ? "Certificate ID" : "인증서 ID", payload?.certificateId || "-"],
+                  [en ? "SHA-256 Fingerprint" : "SHA-256 리포트 지문", payload?.payloadHash || "-"],
+                  [en ? "Integrity Code" : "무결성 코드", payload?.integrityCode || "-"]
+                ].map(([label, value]) => (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-3" key={label}>
+                    <p className="text-[11px] font-black text-slate-500">{label}</p>
+                    <p className="mt-1 break-all font-mono text-xs font-black text-slate-950">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Record" : "발급 이력"}</p>
+              {matchedRecord ? (
+                <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
+                  <p>{en ? "Issued at" : "발급일시"}: {new Date(matchedRecord.issuedAt).toLocaleString()}</p>
+                  <p>{en ? "Product" : "제품"}: {matchedRecord.productName || "-"}</p>
+                  <p>{en ? "Total emission" : "총 배출량"}: {formatNumber(matchedRecord.totalEmission, 4)} kg CO2e</p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
+                  {en ? "No matching local issued record has been selected yet." : "아직 일치하는 로컬 발급 이력이 선택되지 않았습니다."}
+                </p>
+              )}
+            </section>
+          </aside>
+        </div>
+      </AdminWorkspacePageFrame>
+    </AdminPageShell>
   );
 }
 

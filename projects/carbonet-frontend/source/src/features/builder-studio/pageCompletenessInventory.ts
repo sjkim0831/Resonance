@@ -1841,11 +1841,12 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "routeIds": [
       "emission-survey-lca-summary-print",
       "emission-survey-report",
-      "emission-survey-report-print"
+      "emission-survey-report-print",
+      "emission-survey-report-verify"
     ],
-    "routeCount": 3,
+    "routeCount": 4,
     "status": "implemented",
-    "lineCount": 2192,
+    "lineCount": 2543,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
