@@ -468,6 +468,7 @@ export function BuilderStudioPage() {
   const [savedSections, setSavedSections] = useState<SavedBuilderSection[]>(() => loadSavedSections());
   const [frontendCandidates, setFrontendCandidates] = useState<FrontendCandidate[]>(() => loadFrontendCandidates(readBuilderTargetContext()));
   const [selectedFrontendCandidateId, setSelectedFrontendCandidateId] = useState('original-runtime');
+  const [showCandidatePreview, setShowCandidatePreview] = useState(false);
   const [fullStackMode, setFullStackMode] = useState<'frontend-only' | 'metadata-api' | 'java-core' | 'db-migration'>('frontend-only');
   const [changedFileDraft, setChangedFileDraft] = useState('');
   const [rollbackPoints, setRollbackPoints] = useState<Array<{ id: string; label: string; candidateId: string; createdAt: string; nodes?: BuilderNode[] }>>([]);
@@ -1539,10 +1540,11 @@ export function BuilderStudioPage() {
                     <p className="mt-3 line-clamp-3 break-all font-mono text-xs text-slate-400">{candidate.html}</p>
                   </button>
                   <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); setShowCandidatePreview(true); }} className="rounded border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50">팝업 미리보기</button>
                     <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('review', false, candidate); }} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">AI 검토</button>
                     <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('apply', false, candidate); }} className="rounded border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">AI 반영 요청</button>
                     <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); void applySelectedFrontendCandidateToCanvas(candidate); }} className="rounded border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">빌더 적용</button>
-                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('apply', true, candidate); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white">즉시 요청</button>
+                    <button type="button" onClick={() => { setSelectedFrontendCandidateId(candidate.id); requestFrontendCandidateAi('apply', true, candidate); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white md:col-span-2">즉시 요청</button>
                   </div>
                 </article>
               ))}
@@ -1557,6 +1559,7 @@ export function BuilderStudioPage() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => createRollbackPoint('수동 롤백 지점')} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">롤백 지점</button>
+                  <button type="button" onClick={() => setShowCandidatePreview(true)} className="rounded border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700">팝업 미리보기</button>
                   <button type="button" onClick={() => { void applySelectedFrontendCandidateToCanvas(); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white">선택 화면 적용</button>
                 </div>
               </section>
@@ -2037,6 +2040,36 @@ export function BuilderStudioPage() {
           </div>
         </aside>
       </div> : null}
+
+      {showCandidatePreview ? (
+        <div className="fixed inset-0 z-[1500] bg-slate-950/70 p-4 backdrop-blur-sm" onClick={() => setShowCandidatePreview(false)}>
+          <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded border border-slate-200 bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 border-b bg-white px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-black uppercase text-blue-700">UI Preview</p>
+                <h3 className="truncate text-base font-black text-slate-900">{selectedFrontendCandidate?.title || '선택 후보 없음'}</h3>
+                <p className="truncate text-xs text-slate-500">{selectedFrontendCandidate?.summary || '미리 볼 UI 후보를 선택하세요.'}</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={() => { void applySelectedFrontendCandidateToCanvas(); setShowCandidatePreview(false); }} className="rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white">빌더 적용</button>
+                <button type="button" onClick={() => setShowCandidatePreview(false)} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">닫기</button>
+              </div>
+            </div>
+            {selectedFrontendCandidate?.html ? (
+              <iframe
+                title={`${selectedFrontendCandidate.title} popup preview`}
+                srcDoc={selectedFrontendCandidate.html}
+                sandbox=""
+                className="min-h-0 flex-1 bg-white"
+              />
+            ) : (
+              <div className="flex flex-1 items-center justify-center bg-slate-50 text-sm font-bold text-slate-400">
+                미리 볼 HTML 후보가 없습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {builderToast ? (
         <div className="fixed bottom-5 left-1/2 z-[1600] -translate-x-1/2 rounded border bg-white px-5 py-3 text-sm font-bold text-slate-800 shadow-xl">
