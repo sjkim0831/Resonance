@@ -65,6 +65,7 @@ type CapturedPreviewElement = {
 type BuilderMenuGroup = 'home' | 'admin';
 type BuilderLayoutRegion = 'content' | 'header' | 'footer';
 type BuilderEditorView = 'design' | 'source';
+type BuilderToolPanel = 'theme' | 'components' | 'sections';
 
 const SECTION_STORAGE_KEY = 'carbonet:builder:saved-sections';
 const FRONTEND_CANDIDATE_STORAGE_KEY = 'carbonet:builder:frontend-candidates';
@@ -553,6 +554,8 @@ export function BuilderStudioPage() {
   const [selectedMenuGroup, setSelectedMenuGroup] = useState<BuilderMenuGroup>(() => readBuilderTargetContext().menuUrl.startsWith('/admin') ? 'admin' : 'home');
   const [selectedLayoutRegion, setSelectedLayoutRegion] = useState<BuilderLayoutRegion>('content');
   const [editorView, setEditorView] = useState<BuilderEditorView>('design');
+  const [activeToolPanel, setActiveToolPanel] = useState<BuilderToolPanel>('components');
+  const [menuSearch, setMenuSearch] = useState('');
   const [contextCaptureEnabled, setContextCaptureEnabled] = useState(true);
   const [previewContextRequest, setPreviewContextRequest] = useState<{ x: number; y: number; selector: string; note: string; element?: CapturedPreviewElement } | null>(null);
   const [designDraft, setDesignDraft] = useState({ padding: '16', radius: '8', gap: '12', width: '100', fontSize: '14', shadow: 'sm' });
@@ -1523,6 +1526,23 @@ export function BuilderStudioPage() {
     ? components
     : components.filter(c => c.categoryCd === activeCategory);
   const menuSurfaceTree = useMemo(() => buildMenuSurfaceTree(selectedMenuGroup), [selectedMenuGroup]);
+  const filteredMenuSurfaceTree = useMemo(() => {
+    const keyword = menuSearch.trim().toLowerCase();
+    if (!keyword) return menuSurfaceTree;
+    return menuSurfaceTree
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item => [
+          item.label,
+          item.routeId,
+          item.koPath,
+          item.enPath,
+          item.sourcePath,
+          item.effectiveSourcePath,
+        ].some(value => String(value || '').toLowerCase().includes(keyword))),
+      }))
+      .filter(group => group.items.length > 0);
+  }, [menuSurfaceTree, menuSearch]);
   const selectedSourcePreview = useMemo(() => ({
     routeSource: targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-',
     exportName: targetRouteSource?.effectiveExportName || targetRouteSource?.exportName || '-',
@@ -1671,8 +1691,14 @@ export function BuilderStudioPage() {
                     </button>
                   ))}
                 </div>
+                <input
+                  value={menuSearch}
+                  onChange={e => setMenuSearch(e.target.value)}
+                  className="mt-3 w-full rounded border border-slate-200 px-3 py-2 text-xs"
+                  placeholder="메뉴명, URL, 소스 검색"
+                />
                 <div className="mt-3 max-h-[520px] space-y-3 overflow-auto pr-1">
-                  {menuSurfaceTree.map(group => (
+                  {filteredMenuSurfaceTree.map(group => (
                     <div key={group.parent}>
                       <p className="sticky top-0 bg-white py-1 text-[11px] font-black uppercase text-slate-400">{group.parent}</p>
                       <div className="space-y-1">
@@ -1693,6 +1719,9 @@ export function BuilderStudioPage() {
                       </div>
                     </div>
                   ))}
+                  {filteredMenuSurfaceTree.length === 0 ? (
+                    <p className="rounded border border-dashed p-4 text-center text-xs font-bold text-slate-400">검색된 메뉴가 없습니다.</p>
+                  ) : null}
                 </div>
               </section>
             </aside>
@@ -1732,81 +1761,95 @@ export function BuilderStudioPage() {
               </section>
 
               <section className="rounded border bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-blue-700">Design Constraints</p>
-                <h3 className="mt-1 font-black text-slate-900">테마/섹션/컴포넌트 제약</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">Toolbox</p>
+                    <h3 className="mt-1 font-black text-slate-900">컴포넌트·테마·섹션</h3>
+                  </div>
+                  <span className="rounded bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700">본문 중심</span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-1 rounded bg-slate-100 p-1">
+                  {[
+                    ['components', '컴포넌트'],
+                    ['theme', '테마'],
+                    ['sections', '섹션'],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActiveToolPanel(id as BuilderToolPanel)}
+                      className={`rounded px-2 py-1.5 text-xs font-black ${activeToolPanel === id ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                  <a href="/admin/system/theme-management" className="rounded border border-slate-200 px-2 py-3 hover:border-blue-200">
+                  <a href="/admin/system/theme-management" className="rounded border border-slate-200 px-2 py-2 hover:border-blue-200">
                     <span className="block font-black text-slate-900">Theme</span>
-                    <span className="text-slate-500">토큰 기준</span>
+                    <span className="text-slate-500">토큰</span>
                   </a>
-                  <button type="button" onClick={() => setActiveWorkspaceTab('sections')} className="rounded border border-slate-200 px-2 py-3 hover:border-blue-200">
+                  <button type="button" onClick={() => setActiveWorkspaceTab('sections')} className="rounded border border-slate-200 px-2 py-2 hover:border-blue-200">
                     <span className="block font-black text-slate-900">{savedSections.length}</span>
                     <span className="text-slate-500">섹션</span>
                   </button>
-                  <a href="/admin/system/component-management" className="rounded border border-slate-200 px-2 py-3 hover:border-blue-200">
+                  <a href="/admin/system/component-management" className="rounded border border-slate-200 px-2 py-2 hover:border-blue-200">
                     <span className="block font-black text-slate-900">{components.length}</span>
                     <span className="text-slate-500">컴포넌트</span>
                   </a>
                 </div>
-                <div className="mt-3 rounded bg-slate-50 p-3 text-xs text-slate-600">
-                  AI 추천/생성 시 테마 관리의 색상, 간격, 반경, 그림자 기준과 등록 컴포넌트/섹션 목록을 함께 전달합니다.
-                </div>
-                <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
-                  수정 범위는 페이지 본문 전용입니다. 헤더, 좌측 메뉴, 브레드크럼, 제목, 설명은 제외하고 검색/필터/그리드/리스트/폼/차트/모달 본문만 수정합니다.
-                </div>
-              </section>
+                <p className="mt-3 rounded border border-amber-200 bg-amber-50 p-2 text-[11px] font-bold text-amber-800">
+                  헤더, 좌측 메뉴, 브레드크럼, 제목, 설명은 제외하고 검색/그리드/리스트/폼/차트/모달 본문만 수정합니다.
+                </p>
 
-              <section className="rounded border bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-blue-700">Theme Toolbar</p>
-                <h3 className="mt-1 font-black text-slate-900">정규화 디자인 선택</h3>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {BUILDER_THEME_PRESETS.map(preset => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyThemePresetToSelectedNode(preset.id)}
-                      className={`rounded border p-3 text-left text-xs ${selectedThemePresetId === preset.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-200'}`}
-                    >
-                      <span className="block font-black text-slate-900">{preset.label}</span>
-                      <span className="mt-1 block text-slate-500">{preset.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded border bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-blue-700">Components</p>
-                <div className="mt-2 rounded bg-slate-50 p-2 text-xs font-bold text-slate-500">도구모음에서 컴포넌트를 끌어 가운데 캔버스 원하는 위치에 놓습니다.</div>
-                <select value={activeCategory} onChange={e => setActiveCategory(e.target.value)} className="mt-2 w-full rounded border px-3 py-2 text-sm">
-                  {categories.map(cat => <option key={cat} value={cat}>{cat === 'ALL' ? '전체' : CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]?.ko || cat}</option>)}
-                </select>
-                <div className="mt-3 max-h-64 space-y-2 overflow-auto">
-                  {filteredComponents.slice(0, 18).map(comp => (
-                    <div
-                      key={comp.componentId}
-                      draggable
-                      onDragStart={e => handleDragStart(e, comp)}
-                      className="rounded border border-slate-200 bg-slate-50 p-3 text-sm cursor-grab hover:border-blue-300"
-                    >
-                      <p className="font-black text-slate-900">{comp.componentNm}</p>
-                      <p className="text-xs text-slate-500">{COMPONENT_TYPE_LABELS[comp.componentType]?.ko || comp.componentType}</p>
+                {activeToolPanel === 'components' ? (
+                  <div className="mt-3">
+                    <select value={activeCategory} onChange={e => setActiveCategory(e.target.value)} className="w-full rounded border px-3 py-2 text-sm">
+                      {categories.map(cat => <option key={cat} value={cat}>{cat === 'ALL' ? '전체' : CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]?.ko || cat}</option>)}
+                    </select>
+                    <div className="mt-3 max-h-[420px] space-y-2 overflow-auto pr-1">
+                      {filteredComponents.slice(0, 18).map(comp => (
+                        <div
+                          key={comp.componentId}
+                          draggable
+                          onDragStart={e => handleDragStart(e, comp)}
+                          className="cursor-grab rounded border border-slate-200 bg-slate-50 p-3 text-sm hover:border-blue-300"
+                        >
+                          <p className="font-black text-slate-900">{comp.componentNm}</p>
+                          <p className="text-xs text-slate-500">{COMPONENT_TYPE_LABELS[comp.componentType]?.ko || comp.componentType}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </section>
+                  </div>
+                ) : null}
 
-              <section className="rounded border bg-white p-4 shadow-sm">
-                <p className="text-xs font-black uppercase text-blue-700">Section Library</p>
-                <h3 className="mt-1 font-black text-slate-900">저장 섹션 불러오기</h3>
-                <div className="mt-3 max-h-48 space-y-2 overflow-auto">
-                  {savedSections.slice(0, 8).map(section => (
-                    <button key={section.id} type="button" onClick={() => insertSavedSection(section)} className="w-full rounded border border-slate-200 p-3 text-left text-xs hover:border-blue-200">
-                      <span className="block font-black text-slate-900">{section.name}</span>
-                      <span className="text-slate-500">{section.node.componentType} · {section.sourcePageId || 'common'}</span>
-                    </button>
-                  ))}
-                  {savedSections.length === 0 ? <p className="rounded border border-dashed p-3 text-center text-xs text-slate-400">저장 섹션 없음</p> : null}
-                </div>
+                {activeToolPanel === 'theme' ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {BUILDER_THEME_PRESETS.map(preset => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => applyThemePresetToSelectedNode(preset.id)}
+                        className={`rounded border p-3 text-left text-xs ${selectedThemePresetId === preset.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-200'}`}
+                      >
+                        <span className="block font-black text-slate-900">{preset.label}</span>
+                        <span className="mt-1 block text-slate-500">{preset.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {activeToolPanel === 'sections' ? (
+                  <div className="mt-3 max-h-[420px] space-y-2 overflow-auto pr-1">
+                    {savedSections.slice(0, 8).map(section => (
+                      <button key={section.id} type="button" onClick={() => insertSavedSection(section)} className="w-full rounded border border-slate-200 p-3 text-left text-xs hover:border-blue-200">
+                        <span className="block font-black text-slate-900">{section.name}</span>
+                        <span className="text-slate-500">{section.node.componentType} · {section.sourcePageId || 'common'}</span>
+                      </button>
+                    ))}
+                    {savedSections.length === 0 ? <p className="rounded border border-dashed p-3 text-center text-xs text-slate-400">저장 섹션 없음</p> : null}
+                  </div>
+                ) : null}
               </section>
             </aside>
 
@@ -1817,20 +1860,28 @@ export function BuilderStudioPage() {
                     <p className="text-xs font-black uppercase text-blue-700">SDUI Editor</p>
                     <h3 className="font-black text-slate-900">{targetContext.menuTitle} · {selectedLayoutRegion === 'header' ? '헤더' : selectedLayoutRegion === 'footer' ? '푸터' : '본문'}</h3>
                   </div>
-                  <div className="flex rounded border border-slate-200 bg-slate-50 p-1">
-                    {[
-                      ['design', '디자인'],
-                      ['source', '소스'],
-                    ].map(([id, label]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setEditorView(id as BuilderEditorView)}
-                        className={`rounded px-3 py-1.5 text-xs font-black ${editorView === id ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex rounded border border-slate-200 bg-slate-50 p-1">
+                      {[
+                        ['design', '디자인'],
+                        ['source', '소스'],
+                      ].map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setEditorView(id as BuilderEditorView)}
+                          className={`rounded px-3 py-1.5 text-xs font-black ${editorView === id ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      <button type="button" onClick={() => requestUnifiedWorkspaceAi('recommend', false)} className="rounded border border-indigo-200 px-2.5 py-1.5 text-xs font-bold text-indigo-700">AI 시안</button>
+                      <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="rounded border border-slate-300 px-2.5 py-1.5 text-xs font-bold text-slate-700">AI 수정</button>
+                      <button type="button" onClick={saveSelectedNodeAsSection} className="rounded border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-700">섹션 저장</button>
+                      <button type="button" onClick={handleSave} disabled={isSaving} className="rounded bg-blue-700 px-2.5 py-1.5 text-xs font-bold text-white disabled:opacity-50">저장</button>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1847,7 +1898,7 @@ export function BuilderStudioPage() {
                     <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="rounded bg-slate-800 px-3 py-2 text-xs font-bold text-white">선택 요소 수정</button>
                   </div>
                 </div>
-                <div className="relative h-[420px] bg-white">
+                <div className="relative h-[360px] bg-white">
                   <iframe ref={previewFrameRef} title="unified-builder-target-preview" src={previewUrl} className="h-full w-full" onLoad={attachPreviewInspector} />
                   {previewContextRequest ? (
                     <div className="absolute left-4 top-4 z-20 max-w-sm rounded border border-blue-200 bg-white p-3 text-xs shadow-xl">
@@ -1877,7 +1928,7 @@ export function BuilderStudioPage() {
                 <div
                   onDragOver={handleDragOver}
                   onDrop={e => handleDrop(e, null, 'root')}
-                  className="mt-4 min-h-[260px] rounded border-2 border-dashed border-slate-200 bg-slate-50 p-4"
+                  className="mt-4 min-h-[220px] rounded border-2 border-dashed border-slate-200 bg-slate-50 p-4"
                 >
                   {currentScreen?.nodes.filter(n => n.parentNodeId === null && String(n.props?.layoutRegion || 'content') === selectedLayoutRegion).map(node => (
                     <NodeRenderer
