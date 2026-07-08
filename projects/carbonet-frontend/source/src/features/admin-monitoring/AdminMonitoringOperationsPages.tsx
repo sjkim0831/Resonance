@@ -110,6 +110,37 @@ type BatchMonitoringPayload = {
   source: string;
   error?: string;
 };
+type GitBuildMetric = { title: string; value: string; description: string };
+type GitCommitRow = { hash: string; subject: string };
+type GitChangedFileRow = { status: string; path: string };
+type GitDeploymentRow = {
+  title?: string;
+  value?: string;
+  description?: string;
+  namespace?: string;
+  name?: string;
+  phase?: string;
+  ready?: string;
+  restarts?: number;
+  podIP?: string;
+  createdAt?: string;
+};
+type GitBuildMonitoringPayload = {
+  summary: GitBuildMetric[];
+  health: "NORMAL" | "WARN" | string;
+  git: GitBuildMetric[];
+  build: GitBuildMetric[];
+  deployment: GitDeploymentRow[];
+  recentCommits: GitCommitRow[];
+  changedFiles: GitChangedFileRow[];
+  branch: string;
+  head: string;
+  fullHead: string;
+  runtimeImage: string;
+  generatedAt: string;
+  source: string;
+  error?: string;
+};
 
 function statusClass(status: MonitorRow["status"]) {
   switch (status) {
@@ -793,5 +824,219 @@ export function BatchMonitoringPage() {
 }
 
 export function GitBuildMonitoringPage() {
-  return <MonitoringOperationsPage kind="git" />;
+  const en = isEnglish();
+  const [payload, setPayload] = useState<GitBuildMonitoringPayload | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const load = async () => {
+    try {
+      setError(null);
+      const response = await fetch("/admin/api/git-build-monitoring/status", {
+        credentials: "include",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      setPayload(data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = setInterval(() => { void load(); }, 30000);
+    return () => clearInterval(timer);
+  }, [autoRefresh]);
+
+  const summary = payload?.summary?.length ? payload.summary : [
+    { title: "HEAD", value: payload?.head ?? "-", description: payload?.branch ?? "Current revision" },
+    { title: "Runtime Image", value: payload?.runtimeImage ?? "-", description: "Current deployed image" },
+    { title: "Changed Files", value: String(payload?.changedFiles?.length ?? 0), description: "Visible git status rows" },
+    { title: "Health", value: payload?.health ?? "UNKNOWN", description: "Git/build monitoring state" }
+  ];
+  const health = payload?.health ?? "UNKNOWN";
+  const gitRows = payload?.git ?? [];
+  const buildRows = payload?.build ?? [];
+  const deploymentRows = payload?.deployment ?? [];
+  const commits = payload?.recentCommits ?? [];
+  const changedFiles = payload?.changedFiles ?? [];
+  const podRows = deploymentRows.filter((row) => row.name);
+  const deploymentMetrics = deploymentRows.filter((row) => row.title);
+
+  return (
+    <AdminPageShell
+      breadcrumbs={[
+        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
+        { label: en ? "System" : "시스템" },
+        { label: en ? "Monitoring" : "모니터링" },
+        { label: en ? "Git/Build" : "Git/빌드" }
+      ]}
+      title={en ? "Git/Build Monitoring" : "Git/빌드 모니터링"}
+      subtitle={en ? "Check source revision, working tree state, runtime image, rollout, and frontend overlay freshness." : "소스 리비전, 작업트리 상태, 런타임 이미지, 롤아웃, 프론트 오버레이 신선도를 확인합니다."}
+      sidebarVariant="system"
+      actions={
+        <div className="flex flex-wrap items-center gap-3">
+          {lastUpdated && <span className="text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Updated" : "갱신"}: {lastUpdated.toLocaleTimeString()}</span>}
+          <label className="flex items-center gap-1.5 text-sm text-[var(--kr-gov-text-secondary)]">
+            <input className="gov-checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} type="checkbox" />
+            {en ? "Auto-refresh (30s)" : "자동 새로고침 (30초)"}
+          </label>
+          <button className="gov-btn gov-btn-outline" onClick={() => void load()} type="button">{en ? "Refresh" : "새로고침"}</button>
+        </div>
+      }
+    >
+      <AdminWorkspacePageFrame>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            {error && <PageStatusNotice tone="warning">{en ? "Failed to load live git/build data." : "실시간 Git/빌드 데이터를 불러오지 못했습니다."} ({error})</PageStatusNotice>}
+            {payload?.error && <PageStatusNotice tone="warning">{payload.error}</PageStatusNotice>}
+            <PageStatusNotice tone={health === "WARN" ? "warning" : "info"}>
+              {health === "WARN"
+                ? (en ? "Uncommitted source changes or build freshness warnings are visible below." : "커밋되지 않은 소스 변경 또는 빌드 신선도 경고가 아래에 표시됩니다.")
+                : (en ? "Git/build state is currently within the expected range." : "현재 Git/빌드 상태는 정상 범위입니다.")}
+            </PageStatusNotice>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {summary.map((item) => (
+                <SummaryMetricCard key={item.title} title={item.title} value={item.value} description={item.description} />
+              ))}
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SummaryMetricCard title={en ? "Branch" : "브랜치"} value={payload?.branch ?? "-"} description={en ? "Current source branch" : "현재 소스 브랜치"} />
+              <SummaryMetricCard title={en ? "HEAD" : "HEAD"} value={payload?.head ?? "-"} description={payload?.fullHead ?? "-"} />
+              <SummaryMetricCard title={en ? "Runtime Image" : "런타임 이미지"} value={payload?.runtimeImage ?? "-"} description={en ? "Kubernetes deployment image" : "Kubernetes Deployment 이미지"} />
+              <SummaryMetricCard title={en ? "Generated At" : "생성 시각"} value={formatTime(payload?.generatedAt ?? "-")} description={payload?.source ?? "Git/build API"} />
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Git State" : "Git 상태"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Branch, upstream, HEAD, and ahead/behind state are shown when the repository is visible to runtime." : "런타임에서 저장소가 보이는 경우 브랜치, upstream, HEAD, ahead/behind 상태를 표시합니다."}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
+                {gitRows.map((row) => (
+                  <SummaryMetricCard key={row.title} title={row.title} value={row.value} description={row.description} />
+                ))}
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Build Freshness" : "빌드 신선도"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Repository visibility, working tree, overlay marker, index file, and runtime manifest fingerprints are shown." : "저장소 가시성, 작업트리, 오버레이 마커, index 파일, 런타임 manifest 지문을 표시합니다."}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
+                {buildRows.map((row) => (
+                  <SummaryMetricCard key={row.title} title={row.title} value={row.value} description={row.description} />
+                ))}
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Deployment State" : "배포 상태"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Deployment image, rollout generation, ready replicas, and runtime pods are collected from Kubernetes." : "Deployment 이미지, 롤아웃 세대, ready replica, 런타임 Pod를 Kubernetes에서 수집합니다."}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
+                {deploymentMetrics.map((row) => (
+                  <SummaryMetricCard key={row.title} title={row.title ?? "-"} value={row.value ?? "-"} description={row.description ?? "-"} />
+                ))}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Namespace", "Pod", "Phase", "Ready", "Restarts", "IP", "Created"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {podRows.map((row) => (
+                      <tr key={`${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${cronStatusClass(row.phase ?? "-")}`}>{row.phase}</span></td>
+                        <td className="px-4 py-3">{row.ready}</td>
+                        <td className="px-4 py-3">{row.restarts}</td>
+                        <td className="px-4 py-3">{row.podIP}</td>
+                        <td className="px-4 py-3">{formatTime(row.createdAt ?? "-")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="gov-card overflow-hidden">
+                <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                  <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Recent Commits" : "최근 커밋"}</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <CronTableHeader labels={["Hash", "Subject"]} />
+                    <tbody className="divide-y divide-gray-100">
+                      {commits.map((row) => (
+                        <tr key={row.hash}>
+                          <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.hash}</td>
+                          <td className="px-4 py-3 text-[var(--kr-gov-text-secondary)]">{row.subject}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="gov-card overflow-hidden">
+                <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                  <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Changed Files" : "변경 파일"}</h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <CronTableHeader labels={["Status", "Path"]} />
+                    <tbody className="divide-y divide-gray-100">
+                      {changedFiles.length === 0 ? (
+                        <tr><td className="px-4 py-6 text-center text-[var(--kr-gov-text-secondary)]" colSpan={2}>{en ? "No visible changed files." : "표시 가능한 변경 파일이 없습니다."}</td></tr>
+                      ) : changedFiles.map((row, index) => (
+                        <tr key={`${row.path}-${index}`}>
+                          <td className="px-4 py-3 font-mono font-bold">{row.status}</td>
+                          <td className="px-4 py-3 font-mono text-[13px] text-[var(--kr-gov-text-secondary)]">{row.path}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Version Build Check Procedure" : "버전 선택 빌드 확인 절차"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Use an isolated worktree for historical builds so main and current deployment are not disturbed." : "과거 버전 빌드는 main과 현재 운영 배포를 건드리지 않도록 격리 worktree에서 확인합니다."}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2 xl:grid-cols-4">
+                <SummaryMetricCard title="1. fetch" value="git fetch --all --tags" description={en ? "Update branch/tag metadata first." : "브랜치/태그 메타데이터를 먼저 갱신합니다."} />
+                <SummaryMetricCard title="2. worktree" value="git worktree add" description={en ? "Checkout the selected commit into an isolated directory." : "선택 커밋을 격리 디렉터리에 체크아웃합니다."} />
+                <SummaryMetricCard title="3. build" value="./gradlew / npm run build" description={en ? "Build there without touching main." : "main을 건드리지 않고 그 위치에서 빌드합니다."} />
+                <SummaryMetricCard title="4. smoke" value="separate image/tag" description={en ? "Run as a separate tag or temporary namespace." : "별도 이미지 태그나 임시 namespace로 확인합니다."} />
+              </div>
+            </section>
+          </>
+        )}
+      </AdminWorkspacePageFrame>
+    </AdminPageShell>
+  );
 }

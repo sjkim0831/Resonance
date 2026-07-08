@@ -908,6 +908,137 @@ public class AdminSystemManagementController {
         }
     }
 
+    @GetMapping("/git-build-monitoring/status")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getGitBuildMonitoringStatus() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        List<Map<String, Object>> gitRows = new ArrayList<>();
+        List<Map<String, Object>> buildRows = new ArrayList<>();
+        List<Map<String, Object>> deploymentRows = new ArrayList<>();
+        List<Map<String, Object>> recentCommits = new ArrayList<>();
+        List<Map<String, Object>> changedFiles = new ArrayList<>();
+
+        try {
+            Path repository = detectRepositoryRoot();
+            Map<String, Object> deployJson = readKubernetesJson("/apis/apps/v1/namespaces/carbonet-prod/deployments/carbonet-runtime");
+            Map<String, Object> podJson = readKubernetesJson("/api/v1/namespaces/carbonet-prod/pods");
+
+            String branch = commandOrDash(repository, Arrays.asList("git", "branch", "--show-current"));
+            String head = commandOrDash(repository, Arrays.asList("git", "rev-parse", "--short=12", "HEAD"));
+            String fullHead = commandOrDash(repository, Arrays.asList("git", "rev-parse", "HEAD"));
+            String remote = commandOrDash(repository, Arrays.asList("git", "config", "--get", "remote.origin.url"));
+            String upstream = commandOrDash(repository, Arrays.asList("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"));
+            String aheadBehind = commandOrDash(repository, Arrays.asList("git", "rev-list", "--left-right", "--count", "HEAD...@{u}"));
+            String status = commandOrDash(repository, Arrays.asList("git", "status", "--short"));
+            String lastCommitAt = commandOrDash(repository, Arrays.asList("git", "log", "-1", "--format=%cI"));
+            String lastCommitSubject = commandOrDash(repository, Arrays.asList("git", "log", "-1", "--format=%s"));
+
+            gitRows.add(summary("Branch", blankToDash(branch), "Current local branch"));
+            gitRows.add(summary("HEAD", blankToDash(head), blankToDash(lastCommitSubject)));
+            gitRows.add(summary("Upstream", blankToDash(upstream), "Configured tracking branch"));
+            gitRows.add(summary("Ahead/Behind", parseAheadBehind(aheadBehind), "Local commits ahead / behind upstream"));
+
+            for (String line : commandLines(repository, Arrays.asList("git", "log", "--oneline", "-8"))) {
+                int split = line.indexOf(' ');
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("hash", split > 0 ? line.substring(0, split) : line);
+                row.put("subject", split > 0 ? line.substring(split + 1) : "");
+                recentCommits.add(row);
+            }
+
+            for (String line : commandLines(repository, Arrays.asList("git", "status", "--short"))) {
+                if (line.isBlank()) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("status", line.length() >= 2 ? line.substring(0, 2).trim() : "");
+                row.put("path", line.length() > 3 ? line.substring(3) : line);
+                changedFiles.add(row);
+                if (changedFiles.size() >= 80) {
+                    break;
+                }
+            }
+
+            Map<String, Object> deploySpec = asMap(deployJson.get("spec"));
+            Map<String, Object> deployStatus = asMap(deployJson.get("status"));
+            Map<String, Object> template = asMap(deploySpec.get("template"));
+            Map<String, Object> podSpec = asMap(template.get("spec"));
+            String runtimeImage = "-";
+            for (Object containerObject : asList(podSpec.get("containers"))) {
+                Map<String, Object> container = asMap(containerObject);
+                if ("carbonet-runtime".equals(text(container.get("name")))) {
+                    runtimeImage = blankToDash(text(container.get("image")));
+                    break;
+                }
+            }
+            deploymentRows.add(summary("Runtime Image", runtimeImage, "Deployment carbonet-runtime image"));
+            deploymentRows.add(summary("Ready Replicas", numberText(deployStatus.get("readyReplicas")) + "/" + numberText(deployStatus.get("replicas")), "Kubernetes deployment readiness"));
+            deploymentRows.add(summary("Updated Replicas", numberText(deployStatus.get("updatedReplicas")), "Replicas using the latest template"));
+            deploymentRows.add(summary("Observed Generation", numberText(deployStatus.get("observedGeneration")), "Kubernetes rollout generation"));
+
+            for (Object item : asList(podJson.get("items"))) {
+                Map<String, Object> pod = asMap(item);
+                Map<String, Object> metadata = asMap(pod.get("metadata"));
+                String name = text(metadata.get("name"));
+                if (!name.startsWith("carbonet-runtime-")) {
+                    continue;
+                }
+                Map<String, Object> podStatus = asMap(pod.get("status"));
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("namespace", text(metadata.get("namespace")));
+                row.put("name", name);
+                row.put("phase", blankToDash(text(podStatus.get("phase"))));
+                row.put("ready", podReady(podStatus));
+                row.put("restarts", podRestarts(podStatus));
+                row.put("podIP", blankToDash(text(podStatus.get("podIP"))));
+                row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
+                deploymentRows.add(row);
+            }
+
+            buildRows.add(summary("Repository", repository == null ? "not mounted" : repository.toString(), "Repository visible to runtime process"));
+            buildRows.add(summary("Working Tree", status.isBlank() || "-".equals(status) ? "clean/unknown" : "dirty", status.isBlank() || "-".equals(status) ? "No visible uncommitted source changes" : "Uncommitted changes detected"));
+            buildRows.add(summary("Last Commit At", blankToDash(lastCommitAt), "Git commit timestamp"));
+            buildRows.add(summary("Remote", scrubRemote(remote), "origin remote"));
+            buildRows.add(summary("Overlay Marker", fileFingerprint("/app/react-app-overlay/.resonance-build.json"), "Frontend overlay build marker"));
+            buildRows.add(summary("Index HTML", fileFingerprint("/app/react-app-overlay/index.html"), "Served React index file"));
+            buildRows.add(summary("Runtime Manifest", fileFingerprint("/app/config/manifest.json"), "Runtime manifest mounted into container"));
+
+            long dirtyFiles = changedFiles.size();
+            boolean gitUnavailable = repository == null || "-".equals(head);
+            String health = dirtyFiles > 0 ? "WARN" : "NORMAL";
+            response.put("summary", Arrays.asList(
+                    summary("HEAD", blankToDash(head), blankToDash(branch)),
+                    summary("Runtime Image", runtimeImage, "Current deployed image"),
+                    summary("Changed Files", String.valueOf(dirtyFiles), "Visible git status rows"),
+                    summary("Git Visibility", gitUnavailable ? "PARTIAL" : "READY", repository == null ? "Repository is not mounted in runtime" : "Repository is readable")
+            ));
+            response.put("health", health);
+            response.put("git", gitRows);
+            response.put("build", buildRows);
+            response.put("deployment", deploymentRows);
+            response.put("recentCommits", recentCommits);
+            response.put("changedFiles", changedFiles);
+            response.put("branch", blankToDash(branch));
+            response.put("head", blankToDash(head));
+            response.put("fullHead", blankToDash(fullHead));
+            response.put("runtimeImage", runtimeImage);
+            response.put("generatedAt", Instant.now().toString());
+            response.put("source", "Git repository when mounted, Kubernetes deployment/pods, runtime overlay files");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to build git/build monitoring status", e);
+            response.put("error", e.getMessage());
+            response.put("summary", Collections.emptyList());
+            response.put("git", gitRows);
+            response.put("build", buildRows);
+            response.put("deployment", deploymentRows);
+            response.put("recentCommits", recentCommits);
+            response.put("changedFiles", changedFiles);
+            response.put("generatedAt", Instant.now().toString());
+            return ResponseEntity.ok(response);
+        }
+    }
+
     private Map<String, Object> summary(String title, String value, String description) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("title", title);
@@ -1110,6 +1241,80 @@ public class AdminSystemManagementController {
             row.put("updated", numberText(status.get("updatedReplicas")));
             row.put("createdAt", blankToDash(text(metadata.get("creationTimestamp"))));
             workloads.add(row);
+        }
+    }
+
+    private Path detectRepositoryRoot() {
+        List<Path> candidates = Arrays.asList(
+                Path.of("/opt/Resonance"),
+                Path.of("/app/repository"),
+                Path.of(System.getProperty("user.dir", "."))
+        );
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate.resolve(".git"))) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private String commandOrDash(Path directory, List<String> command) {
+        List<String> lines = commandLines(directory, command);
+        return lines.isEmpty() ? "-" : String.join("\n", lines).trim();
+    }
+
+    private List<String> commandLines(Path directory, List<String> command) {
+        if (directory == null) {
+            return Collections.emptyList();
+        }
+        try {
+            Process process = new ProcessBuilder(command)
+                    .directory(directory.toFile())
+                    .redirectErrorStream(true)
+                    .start();
+            boolean finished = process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return Collections.emptyList();
+            }
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                return reader.lines().filter(line -> !line.isBlank()).collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.debug("Command failed: {}", command, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private String parseAheadBehind(String value) {
+        if (value == null || value.isBlank() || "-".equals(value)) {
+            return "-";
+        }
+        String[] parts = value.trim().split("\\s+");
+        if (parts.length < 2) {
+            return value;
+        }
+        return parts[0] + " / " + parts[1];
+    }
+
+    private String scrubRemote(String remote) {
+        if (remote == null || remote.isBlank() || "-".equals(remote)) {
+            return "-";
+        }
+        return remote.replaceAll("https://[^/@]+@", "https://***@");
+    }
+
+    private String fileFingerprint(String pathValue) {
+        try {
+            Path path = Path.of(pathValue);
+            if (!Files.exists(path)) {
+                return "missing";
+            }
+            long size = Files.size(path);
+            Instant modified = Files.getLastModifiedTime(path).toInstant();
+            return size + " bytes, " + modified;
+        } catch (Exception e) {
+            return "unreadable";
         }
     }
 
