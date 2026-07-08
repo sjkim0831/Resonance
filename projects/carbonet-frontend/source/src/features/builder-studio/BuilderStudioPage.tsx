@@ -66,6 +66,43 @@ const SECTION_STORAGE_KEY = 'carbonet:builder:saved-sections';
 const FRONTEND_CANDIDATE_STORAGE_KEY = 'carbonet:builder:frontend-candidates';
 const SERVER_SECTION_COLLECTION = 'saved-sections';
 const SERVER_FRONTEND_CANDIDATE_COLLECTION = 'frontend-candidates';
+const BUILDER_CONTENT_SCOPE_POLICY = {
+  editScope: 'content-only',
+  excludeSelectors: [
+    'header',
+    'nav',
+    'aside',
+    '[role="banner"]',
+    '[role="navigation"]',
+    '[data-layout="header"]',
+    '[data-layout="sidebar"]',
+    '[data-testid*="breadcrumb"]',
+    '.breadcrumb',
+    '.breadcrumbs',
+    '.page-title',
+    '.page-description',
+    '.global-layout',
+  ],
+  includeSelectors: [
+    'main',
+    '[role="main"]',
+    '[data-page-content]',
+    '[data-surface-id]',
+    '.page-content',
+    '.content',
+    '.search-section',
+    '.filter-section',
+    '.toolbar',
+    '.data-grid',
+    'table',
+    '.list',
+    '.card-list',
+    'form',
+    '.chart',
+    '.modal-body',
+  ],
+  rule: '헤더, 좌측 메뉴, 브레드크럼, 페이지 제목, 페이지 설명, 공통 레이아웃은 수정하지 않고 검색/필터/툴바/그리드/리스트/폼/차트/모달 본문만 수정합니다.',
+};
 const BUILDER_AGENT_OPTIONS: Array<{ id: BuilderAgentId; label: string; description: string; modelNote: string }> = [
   { id: 'HERMES', label: 'HERMES', description: '기존 Hermes 작업 흐름으로 화면 수정 요청을 전달합니다.', modelNote: '현재 로컬 모델 설정은 추후 비중국 모델로 교체 예정' },
   { id: 'KILO', label: 'KILO', description: 'Kilo 에이전트 작업 큐로 넘길 요청 형식을 생성합니다.', modelNote: '현재 모델 설정은 추후 Mixtral/Gemma 계열로 교체 예정' },
@@ -655,10 +692,14 @@ export function BuilderStudioPage() {
   }), []);
 
   function buildPreviewInspectorScript() {
+    const includeSelectors = JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY.includeSelectors);
+    const excludeSelectors = JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY.excludeSelectors);
     return `
       (function () {
         if (window.__carbonetBuilderInspectorInstalled) return;
         window.__carbonetBuilderInspectorInstalled = true;
+        var includeSelectors = ${includeSelectors};
+        var excludeSelectors = ${excludeSelectors};
         var style = document.createElement('style');
         style.setAttribute('data-carbonet-builder-inspector', 'true');
         style.textContent = '[data-carbonet-builder-hover="true"]{outline:2px solid #2563eb !important;outline-offset:2px !important;cursor:crosshair !important;}';
@@ -695,12 +736,41 @@ export function BuilderStudioPage() {
           }
           return parts.join(' > ') || el.tagName.toLowerCase();
         }
+        function matchesAny(el, selectors) {
+          if (!el || !el.matches) return false;
+          for (var i = 0; i < selectors.length; i += 1) {
+            try {
+              if (el.matches(selectors[i])) return true;
+            } catch (ignore) {}
+          }
+          return false;
+        }
+        function closestAny(el, selectors) {
+          var current = el;
+          while (current && current.nodeType === 1 && current !== document.documentElement) {
+            if (matchesAny(current, selectors)) return current;
+            current = current.parentElement;
+          }
+          return null;
+        }
+        function resolveEditableElement(el) {
+          if (!el || el.nodeType !== 1) return null;
+          if (closestAny(el, excludeSelectors)) {
+            var fallback = document.querySelector('[data-page-content], main, [role="main"], .page-content, .content');
+            return fallback || null;
+          }
+          var included = closestAny(el, includeSelectors);
+          return included ? el : null;
+        }
         function payloadFromEvent(event) {
           var el = event.target && event.target.nodeType === 1 ? event.target : (event.target && event.target.parentElement);
+          if (!el) return null;
+          el = resolveEditableElement(el);
           if (!el) return null;
           var rect = el.getBoundingClientRect();
           return {
             type: 'carbonet:builder-preview-context',
+            editScope: 'content-only',
             selector: selectorOf(el),
             tagName: el.tagName.toLowerCase(),
             id: el.id || '',
@@ -848,6 +918,10 @@ export function BuilderStudioPage() {
       `menuTitle=${targetContext.menuTitle}`,
       `menuUrl=${targetContext.menuUrl}`,
       `routeSource=${targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}`,
+      `editScope=${BUILDER_CONTENT_SCOPE_POLICY.editScope}`,
+      `excludeSelectors=${BUILDER_CONTENT_SCOPE_POLICY.excludeSelectors.join(', ')}`,
+      `includeSelectors=${BUILDER_CONTENT_SCOPE_POLICY.includeSelectors.join(', ')}`,
+      `contentScopeRule=${BUILDER_CONTENT_SCOPE_POLICY.rule}`,
       `candidate=${candidate ? JSON.stringify({ id: candidate.id, title: candidate.title, source: candidate.source, summary: candidate.summary, confidence: candidate.confidence, html: candidate.html.slice(0, 8000) }) : '-'}`,
       'requirements=프론트 파일 경로, 컨트롤러/API/DB 필요 여부, 변경 파일, 검증 방법, 롤백 방법을 반드시 포함해줘.',
       'applyPolicy=선택 후보를 바로 적용할 수 있으면 변경 파일만 수정하고, Java 변경은 project-core 기준으로 분리해줘.',
@@ -898,6 +972,7 @@ export function BuilderStudioPage() {
       `selectedNode=${selectedNodeSummary ? JSON.stringify(selectedNodeSummary) : '-'}`,
       `managedAsset=${JSON.stringify(managedAssetContext)}`,
       `selectedCandidate=${selectedFrontendCandidate ? JSON.stringify({ id: selectedFrontendCandidate.id, title: selectedFrontendCandidate.title, source: selectedFrontendCandidate.source, summary: selectedFrontendCandidate.summary, html: selectedFrontendCandidate.html.slice(0, 8000) }) : '-'}`,
+      `contentScopePolicy=${JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY)}`,
       `themeComponentSectionConstraints=${JSON.stringify({ designSurfaces, components: componentSummary, sections: sectionSummary })}`,
       `assetRegistry=${JSON.stringify(assetRows.slice(0, 24).map(row => ({ group: row.group, title: row.title, status: row.status, owner: row.owner, path: row.path })))}`,
       'designPolicy=테마 관리의 색상/간격/반경/그림자 기준을 우선 사용하고, 컴포넌트 관리에 등록된 컴포넌트 타입과 기본 클래스를 우선 사용해줘.',
@@ -1031,6 +1106,7 @@ export function BuilderStudioPage() {
       `menuTitle=${targetContext.menuTitle}`,
       `menuUrl=${targetContext.menuUrl}`,
       `routeSource=${targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}`,
+      `contentScopePolicy=${JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY)}`,
       `frontendCandidate=${selectedFrontendCandidate ? JSON.stringify({ id: selectedFrontendCandidate.id, title: selectedFrontendCandidate.title, source: selectedFrontendCandidate.source, summary: selectedFrontendCandidate.summary, html: selectedFrontendCandidate.html.slice(0, 5000) }) : '-'}`,
       `changedFiles=${changedFiles.length ? changedFiles.join(', ') : 'auto-detect changed files only'}`,
       `rollbackPolicy=before applying, create git diff snapshot and runtime rollback point; after applying, verify page and allow candidate rollback`,
@@ -1055,11 +1131,20 @@ export function BuilderStudioPage() {
   }
 
   async function submitBuilderAgentRequest(executeNow: boolean) {
-    const instruction = (previewContextRequest?.note || aiPrompt || '').trim();
-    if (!instruction) {
+    const rawInstruction = (previewContextRequest?.note || aiPrompt || '').trim();
+    if (!rawInstruction) {
       showToast('수정 요청 내용을 먼저 입력하세요.');
       return;
     }
+    const contentScopeBlock = [
+      `editScope=${BUILDER_CONTENT_SCOPE_POLICY.editScope}`,
+      `excludeSelectors=${BUILDER_CONTENT_SCOPE_POLICY.excludeSelectors.join(', ')}`,
+      `includeSelectors=${BUILDER_CONTENT_SCOPE_POLICY.includeSelectors.join(', ')}`,
+      `contentScopeRule=${BUILDER_CONTENT_SCOPE_POLICY.rule}`,
+    ].join('\n');
+    const instruction = rawInstruction.includes('editScope=content-only')
+      ? rawInstruction
+      : `${contentScopeBlock}\n\n${rawInstruction}`;
     const agent = BUILDER_AGENT_OPTIONS.find(item => item.id === selectedAgent) || BUILDER_AGENT_OPTIONS[0];
     const summary = `${agent.id} 화면 수정 요청 - ${targetContext.menuTitle || currentScreen?.menuNm || '빌더 화면'}`;
     const technicalContext = [
@@ -1072,6 +1157,7 @@ export function BuilderStudioPage() {
       `menuUrl=${targetContext.menuUrl || currentScreen?.menuUrl || ''}`,
       `previewSelector=${previewContextRequest?.selector || '-'}`,
       `previewElement=${previewContextRequest?.element ? JSON.stringify(previewContextRequest.element) : '-'}`,
+      `contentScopePolicy=${JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY)}`,
       `managedAsset=${JSON.stringify(managedAssetContext)}`,
       `sourceRouteCandidates=frontend route ${targetContext.menuUrl || currentScreen?.menuUrl || ''}; pageId ${targetContext.pageId || currentScreen?.pageId || ''}; menuCode ${targetContext.menuCode || currentScreen?.menuCode || ''}`,
       `assetRegistry=${JSON.stringify(assetRows.map(row => ({ id: row.id, group: row.group, path: row.path, status: row.status })))}`,
@@ -1406,6 +1492,9 @@ export function BuilderStudioPage() {
                 <div className="mt-3 rounded bg-slate-50 p-3 text-xs text-slate-600">
                   AI 추천/생성 시 테마 관리의 색상, 간격, 반경, 그림자 기준과 등록 컴포넌트/섹션 목록을 함께 전달합니다.
                 </div>
+                <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                  수정 범위는 페이지 본문 전용입니다. 헤더, 좌측 메뉴, 브레드크럼, 제목, 설명은 제외하고 검색/필터/그리드/리스트/폼/차트/모달 본문만 수정합니다.
+                </div>
               </section>
 
               <section className="rounded border bg-white p-4 shadow-sm">
@@ -1435,6 +1524,7 @@ export function BuilderStudioPage() {
                   <div>
                     <p className="text-xs font-black uppercase text-blue-700">Live Screen</p>
                     <h3 className="font-black text-slate-900">대상 화면을 불러오고 우클릭/선택 요소를 수정합니다</h3>
+                    <p className="mt-1 text-xs font-bold text-amber-700">캡처/AI 요청은 페이지 콘텐츠 영역만 대상으로 합니다.</p>
                   </div>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => requestUnifiedWorkspaceAi('recommend', false)} className="rounded border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700">AI 시안 5개</button>
