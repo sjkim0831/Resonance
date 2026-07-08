@@ -151,6 +151,7 @@ export function SrWorkbenchMigrationPage() {
   const [approvalComment, setApprovalComment] = useState("");
   const [generatedDirection, setGeneratedDirection] = useState("");
   const [selectedStackItemIds, setSelectedStackItemIds] = useState<string[]>([]);
+  const [targetPreviewVisible, setTargetPreviewVisible] = useState(true);
   const [errorMessage, setError] = useState("");
   const [message, setMessage] = useState("");
   
@@ -257,10 +258,22 @@ export function SrWorkbenchMigrationPage() {
   }
 
   async function reloadPage() {
+    setError("");
+    setMessage("");
     await Promise.all([
       workbenchState.reload(),
       commandPageState.reload()
     ]);
+    setMessage(en ? "Target screen metadata has been reloaded." : "대상 화면 메타데이터를 다시 불러왔습니다.");
+  }
+
+  function openTargetScreen() {
+    const routePath = page?.routePath || "";
+    if (!routePath) {
+      setError(en ? "No target screen route is available." : "대상 화면 경로가 없습니다.");
+      return;
+    }
+    window.open(routePath, "_blank", "noopener,noreferrer");
   }
 
   function handleGenerate() {
@@ -599,6 +612,40 @@ export function SrWorkbenchMigrationPage() {
         </article>
       </section>
 
+      <section className="gov-card overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-[var(--kr-gov-border-light)] px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Target Screen Preview" : "대상 화면 미리보기"}</h3>
+            <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
+              {en
+                ? "Load the selected route itself here. The draft controls below load metadata used for SR generation."
+                : "선택한 라우트의 실제 화면을 여기에서 불러옵니다. 아래 SR 초안 영역은 SR 생성용 메타데이터를 불러옵니다."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="gov-btn gov-btn-outline" onClick={() => setTargetPreviewVisible((current) => !current)} type="button">
+              {targetPreviewVisible ? (en ? "Hide Preview" : "미리보기 닫기") : (en ? "Load Target Screen" : "대상 화면 불러오기")}
+            </button>
+            <button className="gov-btn gov-btn-outline-blue" onClick={openTargetScreen} type="button">
+              {en ? "Open New Tab" : "새 탭으로 열기"}
+            </button>
+          </div>
+        </div>
+        {targetPreviewVisible ? (
+          page?.routePath ? (
+            <iframe
+              className="h-[420px] w-full bg-white"
+              src={page.routePath}
+              title={en ? "Target screen preview" : "대상 화면 미리보기"}
+            />
+          ) : (
+            <div className="px-5 py-8 text-sm text-[var(--kr-gov-text-secondary)]">
+              {en ? "No target screen route is available." : "대상 화면 경로가 없습니다."}
+            </div>
+          )
+        ) : null}
+      </section>
+
       <section className="gov-card" data-help-id="sr-ticket-draft">
         <div className="mb-6 flex flex-col gap-2 border-b border-[var(--kr-gov-border-light)] pb-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -613,7 +660,7 @@ export function SrWorkbenchMigrationPage() {
             onClick={() => reloadPage().catch(() => undefined)}
             type="button"
           >
-            {loading ? (en ? "Loading..." : "불러오는 중...") : (en ? "Reload Screen" : "대상 화면 불러오기")}
+            {loading ? (en ? "Loading..." : "불러오는 중...") : (en ? "Reload Metadata" : "메타데이터 새로고침")}
           </button>
         </div>
 
