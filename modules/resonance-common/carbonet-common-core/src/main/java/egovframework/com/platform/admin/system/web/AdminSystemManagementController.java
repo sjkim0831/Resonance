@@ -932,6 +932,18 @@ public class AdminSystemManagementController {
             String status = commandOrDash(repository, Arrays.asList("git", "status", "--short"));
             String lastCommitAt = commandOrDash(repository, Arrays.asList("git", "log", "-1", "--format=%cI"));
             String lastCommitSubject = commandOrDash(repository, Arrays.asList("git", "log", "-1", "--format=%s"));
+            Map<String, Object> hostGitStatus = readOptionalJson(Path.of("/app/backend-metadata/git-build-monitoring-status.json"));
+            if (!hostGitStatus.isEmpty()) {
+                branch = firstNonBlank(text(hostGitStatus.get("branch")), branch);
+                head = firstNonBlank(text(hostGitStatus.get("headShort")), head);
+                fullHead = firstNonBlank(text(hostGitStatus.get("head")), fullHead);
+                remote = firstNonBlank(text(hostGitStatus.get("remote")), remote);
+                upstream = firstNonBlank(text(hostGitStatus.get("upstream")), upstream);
+                aheadBehind = firstNonBlank(text(hostGitStatus.get("aheadBehind")), aheadBehind);
+                status = firstNonBlank(text(hostGitStatus.get("statusText")), status);
+                lastCommitAt = firstNonBlank(text(hostGitStatus.get("lastCommitAt")), lastCommitAt);
+                lastCommitSubject = firstNonBlank(text(hostGitStatus.get("lastCommitSubject")), lastCommitSubject);
+            }
 
             gitRows.add(summary("Branch", blankToDash(branch), "Current local branch"));
             gitRows.add(summary("HEAD", blankToDash(head), blankToDash(lastCommitSubject)));
@@ -945,6 +957,12 @@ public class AdminSystemManagementController {
                 row.put("subject", split > 0 ? line.substring(split + 1) : "");
                 recentCommits.add(row);
             }
+            if (hostGitStatus.get("recentCommits") instanceof List<?>) {
+                recentCommits.clear();
+                for (Object item : asList(hostGitStatus.get("recentCommits"))) {
+                    recentCommits.add(asMap(item));
+                }
+            }
 
             for (String line : commandLines(repository, Arrays.asList("git", "status", "--short"))) {
                 if (line.isBlank()) {
@@ -956,6 +974,12 @@ public class AdminSystemManagementController {
                 changedFiles.add(row);
                 if (changedFiles.size() >= 80) {
                     break;
+                }
+            }
+            if (hostGitStatus.get("changedFiles") instanceof List<?>) {
+                changedFiles.clear();
+                for (Object item : asList(hostGitStatus.get("changedFiles"))) {
+                    changedFiles.add(asMap(item));
                 }
             }
 
@@ -995,22 +1019,23 @@ public class AdminSystemManagementController {
                 deploymentRows.add(row);
             }
 
-            buildRows.add(summary("Repository", repository == null ? "not mounted" : repository.toString(), "Repository visible to runtime process"));
+            buildRows.add(summary("Repository", firstNonBlank(text(hostGitStatus.get("repository")), repository == null ? "not mounted" : repository.toString()), hostGitStatus.isEmpty() ? "Repository visible to runtime process" : "Host-generated Git metadata"));
             buildRows.add(summary("Working Tree", status.isBlank() || "-".equals(status) ? "clean/unknown" : "dirty", status.isBlank() || "-".equals(status) ? "No visible uncommitted source changes" : "Uncommitted changes detected"));
             buildRows.add(summary("Last Commit At", blankToDash(lastCommitAt), "Git commit timestamp"));
             buildRows.add(summary("Remote", scrubRemote(remote), "origin remote"));
+            buildRows.add(summary("Metadata Generated", blankToDash(text(hostGitStatus.get("generatedAt"))), hostGitStatus.isEmpty() ? "No host metadata file" : "Host Git metadata timestamp"));
             buildRows.add(summary("Overlay Marker", fileFingerprint("/app/react-app-overlay/.resonance-build.json"), "Frontend overlay build marker"));
             buildRows.add(summary("Index HTML", fileFingerprint("/app/react-app-overlay/index.html"), "Served React index file"));
             buildRows.add(summary("Runtime Manifest", fileFingerprint("/app/config/manifest.json"), "Runtime manifest mounted into container"));
 
             long dirtyFiles = changedFiles.size();
-            boolean gitUnavailable = repository == null || "-".equals(head);
+            boolean gitUnavailable = hostGitStatus.isEmpty() && (repository == null || "-".equals(head));
             String health = dirtyFiles > 0 ? "WARN" : "NORMAL";
             response.put("summary", Arrays.asList(
                     summary("HEAD", blankToDash(head), blankToDash(branch)),
                     summary("Runtime Image", runtimeImage, "Current deployed image"),
                     summary("Changed Files", String.valueOf(dirtyFiles), "Visible git status rows"),
-                    summary("Git Visibility", gitUnavailable ? "PARTIAL" : "READY", repository == null ? "Repository is not mounted in runtime" : "Repository is readable")
+                    summary("Git Visibility", gitUnavailable ? "PARTIAL" : "READY", hostGitStatus.isEmpty() ? (repository == null ? "Repository is not mounted in runtime" : "Repository is readable") : "Host Git metadata is readable")
             ));
             response.put("health", health);
             response.put("git", gitRows);
@@ -1023,7 +1048,7 @@ public class AdminSystemManagementController {
             response.put("fullHead", blankToDash(fullHead));
             response.put("runtimeImage", runtimeImage);
             response.put("generatedAt", Instant.now().toString());
-            response.put("source", "Git repository when mounted, Kubernetes deployment/pods, runtime overlay files");
+            response.put("source", hostGitStatus.isEmpty() ? "Git repository when mounted, Kubernetes deployment/pods, runtime overlay files" : "Host Git metadata, Kubernetes deployment/pods, runtime overlay files");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Failed to build git/build monitoring status", e);
@@ -1315,6 +1340,20 @@ public class AdminSystemManagementController {
             return size + " bytes, " + modified;
         } catch (Exception e) {
             return "unreadable";
+        }
+    }
+
+    private Map<String, Object> readOptionalJson(Path path) {
+        if (!Files.exists(path)) {
+            return Collections.emptyMap();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = OBJECT_MAPPER.readValue(Files.readString(path), Map.class);
+            return parsed;
+        } catch (Exception e) {
+            log.warn("Failed to read optional JSON metadata: {}", path, e);
+            return Collections.emptyMap();
         }
     }
 
