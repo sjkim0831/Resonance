@@ -10,6 +10,9 @@ type BuilderNavItem = {
 };
 
 const BUILDER_GOVERNANCE_NAV_ITEMS: BuilderNavItem[] = [
+  { id: "builder-studio", labelKo: "빌더 스튜디오", labelEn: "Builder Studio", koPath: "/admin/system/builder-studio", enPath: "/en/admin/system/builder-studio", icon: "draw" },
+  { id: "section-management", labelKo: "섹션 관리", labelEn: "Sections", koPath: "/admin/system/section-management", enPath: "/en/admin/system/section-management", icon: "view_agenda" },
+  { id: "component-management", labelKo: "컴포넌트 관리", labelEn: "Components", koPath: "/admin/system/component-management", enPath: "/en/admin/system/component-management", icon: "widgets" },
   { id: "full-stack-management", labelKo: "풀스택 관리", labelEn: "Full Stack", koPath: "/admin/system/full-stack-management", enPath: "/en/admin/system/full-stack-management", icon: "hub" },
   { id: "platform-studio", labelKo: "플랫폼 스튜디오", labelEn: "Platform Studio", koPath: "/admin/system/platform-studio", enPath: "/en/admin/system/platform-studio", icon: "dashboard_customize" },
   { id: "screen-elements-management", labelKo: "화면 요소 관리", labelEn: "Screen Elements", koPath: "/admin/system/screen-elements-management", enPath: "/en/admin/system/screen-elements-management", icon: "crop_landscape" },

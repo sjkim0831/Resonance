@@ -2,8 +2,27 @@ import { useState, useEffect } from 'react';
 import type { BuilderComponent } from './types/builder';
 import * as api from './api/builderApi';
 import { COMPONENT_TYPE_LABELS, CATEGORY_LABELS } from './types/builder';
+import { isEnglish } from '../../lib/navigation/runtime';
+import { BuilderGovernanceNav } from '../builder-governance/BuilderGovernanceNav';
+
+function buildComponentBuilderUrl(component: BuilderComponent) {
+  const query = new URLSearchParams();
+  query.set('menuCode', 'component-management');
+  query.set('pageId', 'component-management');
+  query.set('menuTitle', '컴포넌트 관리');
+  query.set('menuUrl', '/admin/system/component-management');
+  query.set('assetType', 'component');
+  query.set('assetId', component.componentId);
+  query.set('assetLabel', component.componentNm || component.componentId);
+  query.set('selector', component.defaultClassNm || component.componentType);
+  query.set('sourcePath', 'features/builder-studio/ComponentManagementPage.tsx');
+  query.set('focus', 'component-management');
+  query.set('tab', 'asset-registry');
+  return `/admin/system/builder-studio?${query.toString()}`;
+}
 
 export function ComponentManagementPage() {
+  const en = isEnglish();
   const [components, setComponents] = useState<BuilderComponent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +81,7 @@ export function ComponentManagementPage() {
 
   return (
     <div className="p-6">
+      <BuilderGovernanceNav activeId="component-management" en={en} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">컴포넌트 관리</h1>
         <button
@@ -136,6 +156,12 @@ export function ComponentManagementPage() {
                     >
                       수정
                     </button>
+                    <a
+                      href={buildComponentBuilderUrl(comp)}
+                      className="text-indigo-600 hover:text-indigo-800 text-sm"
+                    >
+                      빌더 수정
+                    </a>
                     <button
                       onClick={() => handleDelete(comp.componentId)}
                       className="text-red-600 hover:text-red-800 text-sm"
