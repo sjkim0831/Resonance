@@ -24,6 +24,18 @@ export function AdminMenuPlaceholderPage() {
     || (en
       ? "This page is connected for menu access, but the detailed business screen has not been migrated yet."
       : "메뉴 접근을 위해 연결된 화면이며, 상세 업무 화면은 아직 React로 완전히 이관되지 않았습니다.");
+  const builderHref = buildLocalizedPath(
+    `/admin/system/builder-studio?menuCode=${encodeURIComponent(code)}&pageId=${encodeURIComponent(code)}&menuTitle=${encodeURIComponent(title)}&menuUrl=${encodeURIComponent(url)}`,
+    `/en/admin/system/builder-studio?menuCode=${encodeURIComponent(code)}&pageId=${encodeURIComponent(code)}&menuTitle=${encodeURIComponent(title)}&menuUrl=${encodeURIComponent(url)}`
+  );
+  const screenManagementHref = buildLocalizedPath(
+    `/admin/system/screen-management?searchKeyword=${encodeURIComponent(code || title || url)}`,
+    `/en/admin/system/screen-management?searchKeyword=${encodeURIComponent(code || title || url)}`
+  );
+  const pageQualityHref = buildLocalizedPath(
+    "/admin/system/builder-studio?tab=page-quality",
+    "/en/admin/system/builder-studio?tab=page-quality"
+  );
 
   return (
     <AdminPageShell
@@ -57,6 +69,11 @@ export function AdminMenuPlaceholderPage() {
             <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)] mb-2">{en ? "Linked URL" : "연결 URL"}</p>
             <p className="font-bold break-all">{url || "-"}</p>
           </div>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <a className="gov-btn justify-center" href={builderHref}>{en ? "Build in Builder" : "빌더로 구축"}</a>
+          <a className="gov-btn gov-btn-ghost justify-center" href={screenManagementHref}>{en ? "Open Screen Management" : "화면 관리에서 연결"}</a>
+          <a className="gov-btn gov-btn-ghost justify-center" href={pageQualityHref}>{en ? "Page Quality" : "페이지 완성도 보기"}</a>
         </div>
       </section>
     </AdminPageShell>

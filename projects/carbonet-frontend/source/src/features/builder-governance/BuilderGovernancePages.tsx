@@ -1163,21 +1163,39 @@ const KIND_META: Record<PageKind, { id: string; titleKo: string; titleEn: string
     titleKo: "CSS 관리",
     titleEn: "CSS Management",
     icon: "css",
-    rows: []
+    rows: [
+      { name: "gov-card", lane: "layout", status: "ACTIVE", owner: "theme-management", output: "border/background/padding token binding" },
+      { name: "gov-input", lane: "form", status: "ACTIVE", owner: "component-management", output: "input/select/textarea field baseline" },
+      { name: "data-table", lane: "data", status: "ACTIVE", owner: "component-management", output: "table header/cell density baseline" },
+      { name: "builder-inspector-outline", lane: "builder", status: "READY", owner: "builder-studio", output: "right click DOM capture highlight" },
+      { name: "screen-overlay-marker", lane: "deployless", status: "READY", owner: "screen-overlay-apply", output: "no-redeploy freshness verification" }
+    ]
   },
   patterns: {
     id: "development-pattern-management",
     titleKo: "개발 패턴 관리",
     titleEn: "Development Pattern Management",
     icon: "schema",
-    rows: []
+    rows: [
+      { name: "Route Family Contract", lane: "frontend", status: "ACTIVE", owner: "app/routes/families", output: "routeId/pageId/menuCode/source ownership" },
+      { name: "Builder Asset Registry", lane: "builder", status: "ACTIVE", owner: "builder-studio", output: "route/source/component/theme/API/controller/DB inventory" },
+      { name: "Section First Composition", lane: "design", status: "READY", owner: "section-management", output: "search/list/detail/action panel reuse" },
+      { name: "Runtime Command Gateway", lane: "project-core", status: "ACTIVE", owner: "runtime-command", output: "metadata command without framework redeploy" },
+      { name: "Screen Overlay Apply", lane: "deployless", status: "ACTIVE", owner: "ops/scripts", output: "React build assets applied without pod delete" }
+    ]
   },
   agents: {
     id: "ai-developer-team",
     titleKo: "AI 개발팀",
     titleEn: "AI Developer Team",
     icon: "groups",
-    rows: []
+    rows: [
+      { name: "HERMES", lane: "local-agent", status: "ACTIVE", owner: "ai-operations", output: "right-click context request and SR workbench stack" },
+      { name: "KILO", lane: "remote-agent", status: "READY", owner: "ai-operations", output: "agent selection target for implementation tasks" },
+      { name: "Model Policy", lane: "governance", status: "READY", owner: "ai-models", output: "replace disallowed model providers with approved alternatives" },
+      { name: "Preflight Scope", lane: "quality", status: "ACTIVE", owner: "builder-studio", output: "asset registry and route trace attached to every request" },
+      { name: "Post-change Verify", lane: "quality", status: "READY", owner: "screen-overlay-apply", output: "build/overlay/health/freshness evidence" }
+    ]
   }
 };
 

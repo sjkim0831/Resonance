@@ -29,6 +29,14 @@ export function HomeMenuPlaceholderPage() {
     || (en
       ? "This shared screen keeps legacy database menu entries reachable until the detailed service page is migrated."
       : "기존 DB 메뉴를 접근 가능하게 유지하는 공통 화면이며, 상세 서비스 페이지 이관 전까지 사용됩니다.");
+  const builderHref = buildLocalizedPath(
+    `/admin/system/builder-studio?menuCode=${encodeURIComponent(code)}&pageId=${encodeURIComponent(code)}&menuTitle=${encodeURIComponent(title)}&menuUrl=${encodeURIComponent(url)}`,
+    `/en/admin/system/builder-studio?menuCode=${encodeURIComponent(code)}&pageId=${encodeURIComponent(code)}&menuTitle=${encodeURIComponent(title)}&menuUrl=${encodeURIComponent(url)}`
+  );
+  const pageQualityHref = buildLocalizedPath(
+    "/admin/system/builder-studio?tab=page-quality",
+    "/en/admin/system/builder-studio?tab=page-quality"
+  );
 
   return (
     <div className="bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
@@ -71,6 +79,10 @@ export function HomeMenuPlaceholderPage() {
               <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)] mb-2">{en ? "Mapped URL" : "연결 URL"}</p>
               <p className="font-bold break-all">{url || "-"}</p>
             </div>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <a className="gov-btn justify-center" href={builderHref}>{en ? "Build in Builder" : "빌더로 구축"}</a>
+            <a className="gov-btn gov-btn-ghost justify-center" href={pageQualityHref}>{en ? "Page Quality" : "페이지 완성도 보기"}</a>
           </div>
         </section>
       </main>
