@@ -702,7 +702,14 @@ export function BuilderStudioPage() {
         var excludeSelectors = ${excludeSelectors};
         var style = document.createElement('style');
         style.setAttribute('data-carbonet-builder-inspector', 'true');
-        style.textContent = '[data-carbonet-builder-hover="true"]{outline:2px solid #2563eb !important;outline-offset:2px !important;cursor:crosshair !important;}';
+        style.textContent = [
+          '[data-carbonet-builder-hover="true"]{outline:2px solid #2563eb !important;outline-offset:2px !important;cursor:crosshair !important;}',
+          'header,nav,aside,[role="banner"],[role="navigation"],[data-layout="header"],[data-layout="sidebar"],[data-testid*="breadcrumb"],.breadcrumb,.breadcrumbs,.page-title,.page-description,.global-layout{display:none !important;}',
+          'html,body,#root{min-height:100% !important;background:#fff !important;}',
+          'body{margin:0 !important;overflow:auto !important;}',
+          'main,[role="main"],[data-page-content],.page-content{display:block !important;width:100% !important;max-width:none !important;margin:0 !important;padding-top:0 !important;}',
+          '[data-carbonet-builder-content-root="true"]{display:block !important;width:100% !important;max-width:none !important;margin:0 !important;}'
+        ].join('\\n');
         document.head.appendChild(style);
         var hovered = null;
         function esc(value) {
@@ -762,6 +769,34 @@ export function BuilderStudioPage() {
           var included = closestAny(el, includeSelectors);
           return included ? el : null;
         }
+        function markContentOnlyPreviewRoot() {
+          var root = document.querySelector('[data-page-content], main, [role="main"], .page-content, .content');
+          if (!root) return;
+          root.setAttribute('data-carbonet-builder-content-root', 'true');
+          var parent = root.parentElement;
+          var depth = 0;
+          while (parent && parent !== document.body && depth < 4) {
+            if (parent.children && parent.children.length > 1) {
+              for (var i = 0; i < parent.children.length; i += 1) {
+                var child = parent.children[i];
+                if (child !== root && !child.contains(root) && !root.contains(child)) {
+                  if (matchesAny(child, excludeSelectors) || child.tagName === 'HEADER' || child.tagName === 'NAV' || child.tagName === 'ASIDE') {
+                    child.setAttribute('data-carbonet-builder-preview-hidden', 'true');
+                  }
+                }
+              }
+            }
+            parent.style.setProperty('grid-template-columns', '1fr', 'important');
+            parent.style.setProperty('max-width', 'none', 'important');
+            parent.style.setProperty('width', '100%', 'important');
+            root = parent;
+            parent = parent.parentElement;
+            depth += 1;
+          }
+          var hidden = document.querySelectorAll('[data-carbonet-builder-preview-hidden="true"]');
+          for (var j = 0; j < hidden.length; j += 1) hidden[j].style.setProperty('display', 'none', 'important');
+        }
+        markContentOnlyPreviewRoot();
         function payloadFromEvent(event) {
           var el = event.target && event.target.nodeType === 1 ? event.target : (event.target && event.target.parentElement);
           if (!el) return null;
@@ -1523,7 +1558,7 @@ export function BuilderStudioPage() {
                 <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
                   <div>
                     <p className="text-xs font-black uppercase text-blue-700">Live Screen</p>
-                    <h3 className="font-black text-slate-900">대상 화면을 불러오고 우클릭/선택 요소를 수정합니다</h3>
+                    <h3 className="font-black text-slate-900">대상 화면의 본문만 불러오고 우클릭/선택 요소를 수정합니다</h3>
                     <p className="mt-1 text-xs font-bold text-amber-700">캡처/AI 요청은 페이지 콘텐츠 영역만 대상으로 합니다.</p>
                   </div>
                   <div className="flex gap-2">
