@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import {
+  addSrWorkbenchStackItem,
   clearSrWorkbenchStack,
   approveSrTicket,
   removeSrWorkbenchStackItem,
@@ -145,6 +146,8 @@ export function SrWorkbenchMigrationPage() {
   const [targetId, setTargetId] = useState("");
   const [summary, setSummary] = useState("");
   const [instruction, setInstruction] = useState("");
+  const [stackSummary, setStackSummary] = useState("");
+  const [stackInstruction, setStackInstruction] = useState("");
   const [approvalComment, setApprovalComment] = useState("");
   const [generatedDirection, setGeneratedDirection] = useState("");
   const [selectedStackItemIds, setSelectedStackItemIds] = useState<string[]>([]);
@@ -382,6 +385,54 @@ export function SrWorkbenchMigrationPage() {
       await refreshTickets();
     } catch (err) {
       setError(err instanceof Error ? err.message : (en ? "Failed to create SR ticket from stack." : "스택 기반 SR 티켓 발행 중 오류가 발생했습니다."));
+    }
+  }
+
+  async function handleAddManualStackItem() {
+    if (!stackSummary.trim() && !stackInstruction.trim()) {
+      setError(en ? "Enter an SR requirement summary or instruction first." : "SR 요구사항 요약 또는 상세 지시를 먼저 입력하세요.");
+      return;
+    }
+    setError("");
+    setMessage("");
+    try {
+      const now = Date.now().toString(36);
+      const manualSummary = stackSummary.trim() || (en ? "Manual SR requirement" : "수동 SR 요구사항");
+      const manualInstruction = stackInstruction.trim() || manualSummary;
+      const technicalContext = [
+        "manual-sr-workbench-entry",
+        `pageId=${page?.pageId || selectedPageId || "-"}`,
+        `route=${page?.routePath || "-"}`,
+        `surface=${selectedSurface?.label || "-"}`,
+        `event=${selectedEvent?.label || "-"}`,
+        `target=${selectedTarget?.label || "-"}`
+      ].join("\n");
+      const response = await addSrWorkbenchStackItem({
+        pageId: page?.pageId || selectedPageId || "",
+        pageLabel: page?.label || selectedPageId || "",
+        routePath: page?.routePath || "",
+        menuCode: page?.menuCode || "",
+        menuLookupUrl: page?.menuLookupUrl || "",
+        surfaceId: selectedSurface?.surfaceId || "manual",
+        surfaceLabel: selectedSurface?.label || (en ? "Manual requirement" : "수동 요구사항"),
+        selector: selectedSurface?.selector || "",
+        componentId: selectedSurface?.componentId || "",
+        eventId: selectedEvent?.eventId || "manual-sr-request",
+        eventLabel: selectedEvent?.label || (en ? "Manual SR request" : "수동 SR 요청"),
+        targetId: selectedTarget?.targetId || "manual",
+        targetLabel: selectedTarget?.label || (en ? "Manual change target" : "수동 변경 대상"),
+        summary: manualSummary,
+        instruction: manualInstruction,
+        technicalContext,
+        traceId: `manual-sr-${now}`,
+        requestId: `manual-req-${now}`
+      });
+      setMessage(response.message);
+      setStackSummary("");
+      setStackInstruction("");
+      await refreshTickets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : (en ? "Failed to add manual SR requirement." : "수동 SR 요구사항 추가 중 오류가 발생했습니다."));
     }
   }
 
@@ -634,15 +685,52 @@ export function SrWorkbenchMigrationPage() {
       </section>
 
       <section className="gov-card">
+        <div className="mb-6 rounded-[var(--kr-gov-radius)] border border-blue-100 bg-blue-50 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h3 className="text-base font-black text-[var(--kr-gov-text-primary)]">{en ? "Add SR Requirement Directly" : "SR 요구사항 직접 추가"}</h3>
+              <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
+                {en
+                  ? "Add a requirement to the workbench stack without using right-click capture, then convert it into an SR ticket or AI execution request."
+                  : "우클릭 캡처 없이 요구사항을 워크벤치 스택에 직접 쌓고, 이후 SR 티켓 또는 AI 실행 요청으로 전환합니다."}
+              </p>
+            </div>
+            <MemberButton onClick={() => handleAddManualStackItem().catch(() => undefined)} type="button" variant="primary">
+              {en ? "Add To Stack" : "스택에 추가"}
+            </MemberButton>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <label className="block">
+              <span className="gov-label">{en ? "Requirement Summary" : "요구사항 요약"}</span>
+              <input
+                className="gov-input"
+                value={stackSummary}
+                onChange={(event) => setStackSummary(event.target.value)}
+                placeholder={en ? "Example: improve Git version selection UI" : "예: Git 버전 선택 UI 개선"}
+              />
+            </label>
+            <label className="block">
+              <span className="gov-label">{en ? "Detailed Instruction" : "상세 지시"}</span>
+              <textarea
+                className="gov-input min-h-[96px] py-3"
+                rows={3}
+                value={stackInstruction}
+                onChange={(event) => setStackInstruction(event.target.value)}
+                placeholder={en ? "Describe expected UI, data, API, validation, and deployment behavior." : "기대 UI, 데이터, API, 검증, 배포 동작을 구체적으로 적어주세요."}
+              />
+            </label>
+          </div>
+        </div>
+
         <GridToolbar
           actions={<MemberButton onClick={() => handleClearStack().catch(() => undefined)} type="button" variant="secondary">{en ? "Clear Stack" : "스택 비우기"}</MemberButton>}
-          meta={en ? "Right-click selections accumulate here and can be converted into one SR ticket." : "우클릭으로 모은 컨텍스트를 여기서 확인하고 하나의 SR 티켓으로 발행할 수 있습니다."}
+          meta={en ? "Right-click captures and direct SR requirements accumulate here and can be converted into one SR ticket." : "우클릭으로 모은 컨텍스트와 직접 추가한 SR 요구사항을 여기서 확인하고 하나의 SR 티켓으로 발행할 수 있습니다."}
           title={en ? "Workbench Stack" : "워크벤치 스택"}
         />
 
         {(workbench?.stackItems || []).length === 0 ? (
           <div className="rounded-[var(--kr-gov-radius)] border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-sm text-[var(--kr-gov-text-secondary)]">
-            {en ? "No stacked context yet. Use right-click on a page element to collect it." : "아직 쌓인 컨텍스트가 없습니다. 페이지 요소에서 우클릭으로 스택에 추가하세요."}
+            {en ? "No stacked context yet. Use right-click on a page element or add an SR requirement directly above." : "아직 쌓인 컨텍스트가 없습니다. 페이지 요소에서 우클릭하거나 위 입력폼에서 SR 요구사항을 직접 추가하세요."}
           </div>
         ) : (
           <div className="space-y-3">
