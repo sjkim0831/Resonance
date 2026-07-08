@@ -830,6 +830,10 @@ export function GitBuildMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [selectedVersionHash, setSelectedVersionHash] = useState("");
+  const [compareBaseHash, setCompareBaseHash] = useState("");
+  const [promotionMode, setPromotionMode] = useState<"preview" | "isolated-build" | "deploy">("preview");
+  const [promotionMessage, setPromotionMessage] = useState("");
 
   const load = async () => {
     try {
@@ -875,6 +879,32 @@ export function GitBuildMonitoringPage() {
   const changedFiles = payload?.changedFiles ?? [];
   const podRows = deploymentRows.filter((row) => row.name);
   const deploymentMetrics = deploymentRows.filter((row) => row.title);
+  const selectedVersion = commits.find((row) => row.hash === selectedVersionHash) ?? commits[0];
+  const compareBaseVersion = commits.find((row) => row.hash === compareBaseHash) ?? commits[1] ?? commits[0];
+  const selectedVersionIndex = selectedVersion ? commits.findIndex((row) => row.hash === selectedVersion.hash) : -1;
+  const compareBaseIndex = compareBaseVersion ? commits.findIndex((row) => row.hash === compareBaseVersion.hash) : -1;
+  const versionDistance = selectedVersionIndex >= 0 && compareBaseIndex >= 0 ? Math.abs(compareBaseIndex - selectedVersionIndex) : 0;
+  const versionApplyCommand = selectedVersion
+    ? `git worktree add /opt/Resonance-worktrees/${selectedVersion.hash} ${selectedVersion.hash} && npm run build && deploy tag ${selectedVersion.hash}`
+    : "-";
+  const promotionSteps = [
+    { title: en ? "1. Select" : "1. 선택", value: selectedVersion?.hash ?? "-", description: selectedVersion?.subject ?? (en ? "Choose a commit first." : "먼저 커밋을 선택합니다.") },
+    { title: en ? "2. Compare" : "2. 비교", value: compareBaseVersion?.hash ?? "-", description: en ? `${versionDistance} commit distance from selected version` : `선택 버전과 ${versionDistance}개 커밋 거리` },
+    { title: en ? "3. Build" : "3. 빌드", value: promotionMode === "deploy" ? "release" : promotionMode, description: en ? "Build in an isolated worktree before touching main." : "main을 건드리기 전에 격리 worktree에서 빌드합니다." },
+    { title: en ? "4. Promote" : "4. 반영", value: promotionMode === "deploy" ? "manual approval" : "blocked", description: en ? "Production deployment must be a final single-version decision." : "운영 반영은 최종 1개 버전 승인 후 진행해야 합니다." }
+  ];
+  const requestVersionAction = (action: "diff" | "build" | "deploy") => {
+    const version = selectedVersion?.hash ?? "-";
+    const base = compareBaseVersion?.hash ?? "-";
+    const label = action === "diff" ? "Diff" : action === "build" ? "격리 빌드" : "최종 배포";
+    setPromotionMessage(`${label} 요청 준비: ${base} → ${version}. 실제 실행을 위해서는 /admin/api/git-build-monitoring/${action} 백엔드 API와 승인 로그 저장이 필요합니다.`);
+  };
+
+  useEffect(() => {
+    if (!commits.length) return;
+    setSelectedVersionHash((current) => current || commits[0]?.hash || "");
+    setCompareBaseHash((current) => current || commits[1]?.hash || commits[0]?.hash || "");
+  }, [commits]);
 
   return (
     <AdminPageShell
@@ -977,6 +1007,99 @@ export function GitBuildMonitoringPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Version Promotion Workbench" : "버전 반영 작업실"}</h2>
+                    <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
+                      {en
+                        ? "Select a commit, compare the visible change scope, then request an isolated build or final deployment."
+                        : "커밋을 선택해 변경 범위를 화면에서 확인하고, 격리 빌드 또는 최종 배포 요청으로 이어갑니다."}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">
+                    {en ? "Do not auto-promote every version to production" : "모든 버전 운영 자동 반영 금지"}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-5 p-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-slate-500">{en ? "Target version" : "반영 대상 버전"}</span>
+                      <select
+                        className="mt-2 w-full rounded border border-[var(--kr-gov-border-light)] bg-white px-3 py-2 text-sm font-bold text-[var(--kr-gov-text-primary)]"
+                        value={selectedVersion?.hash ?? ""}
+                        onChange={(event) => setSelectedVersionHash(event.target.value)}
+                      >
+                        {commits.map((row) => (
+                          <option key={row.hash} value={row.hash}>{row.hash} · {row.subject}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-slate-500">{en ? "Compare base" : "비교 기준"}</span>
+                      <select
+                        className="mt-2 w-full rounded border border-[var(--kr-gov-border-light)] bg-white px-3 py-2 text-sm font-bold text-[var(--kr-gov-text-primary)]"
+                        value={compareBaseVersion?.hash ?? ""}
+                        onChange={(event) => setCompareBaseHash(event.target.value)}
+                      >
+                        {commits.map((row) => (
+                          <option key={row.hash} value={row.hash}>{row.hash} · {row.subject}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    {[
+                      ["preview", en ? "Diff preview" : "Diff 미리보기", en ? "Read-only comparison first" : "먼저 읽기 전용 비교"],
+                      ["isolated-build", en ? "Isolated build" : "격리 빌드", en ? "Build in worktree/tag" : "worktree/tag로 빌드"],
+                      ["deploy", en ? "Final deploy" : "최종 배포", en ? "Requires manual approval" : "수동 승인 필요"]
+                    ].map(([id, title, description]) => (
+                      <button
+                        key={id}
+                        className={`rounded border p-3 text-left text-sm ${promotionMode === id ? "border-blue-500 bg-blue-50 text-blue-800" : "border-[var(--kr-gov-border-light)] bg-white text-[var(--kr-gov-text-secondary)] hover:border-blue-200"}`}
+                        onClick={() => setPromotionMode(id as "preview" | "isolated-build" | "deploy")}
+                        type="button"
+                      >
+                        <span className="block font-black">{title}</span>
+                        <span className="mt-1 block text-xs">{description}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="rounded border border-[var(--kr-gov-border-light)] bg-slate-50 p-4">
+                    <h3 className="font-black text-[var(--kr-gov-text-primary)]">{en ? "Selected change scope" : "선택 변경 범위"}</h3>
+                    <p className="mt-2 text-sm text-[var(--kr-gov-text-secondary)]">
+                      {selectedVersion
+                        ? `${selectedVersion.hash} · ${selectedVersion.subject}`
+                        : (en ? "No commit is available." : "사용 가능한 커밋이 없습니다.")}
+                    </p>
+                    <p className="mt-2 font-mono text-xs text-slate-500">{versionApplyCommand}</p>
+                    {promotionMessage ? (
+                      <div className="mt-3 rounded border border-blue-200 bg-blue-50 p-3 text-xs font-bold text-blue-800">{promotionMessage}</div>
+                    ) : null}
+                    <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <button className="gov-btn gov-btn-outline" onClick={() => requestVersionAction("diff")} type="button">{en ? "Open diff request" : "Diff 조회 요청"}</button>
+                      <button className="gov-btn gov-btn-primary" onClick={() => requestVersionAction(promotionMode === "deploy" ? "deploy" : "build")} type="button">{promotionMode === "deploy" ? (en ? "Request final approval" : "최종 승인 요청") : (en ? "Request isolated build" : "격리 빌드 요청")}</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {promotionSteps.map((item) => (
+                      <SummaryMetricCard key={item.title} title={item.title} value={item.value} description={item.description} />
+                    ))}
+                  </div>
+                  <PageStatusNotice tone="warning">
+                    {en
+                      ? "Trying all 10 versions by deploying each one to main is technically possible but operationally unsafe. Use isolated worktrees or temporary tags for every candidate, then deploy only the final selected version."
+                      : "10개 버전을 전부 main에 하나씩 반영하고 빌드/배포하는 것은 기술적으로는 가능하지만 운영상 위험합니다. 모든 후보는 격리 worktree나 임시 태그로 검증하고, 최종 선택한 1개 버전만 운영에 배포해야 합니다."}
+                  </PageStatusNotice>
+                </div>
               </div>
             </section>
 
