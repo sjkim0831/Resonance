@@ -70,17 +70,28 @@ const BUILDER_AGENT_OPTIONS: Array<{ id: BuilderAgentId; label: string; descript
 ];
 
 const ENVIRONMENT_BUILDER_SURFACES = [
-  { id: 'screen-management', title: '화면 관리', route: '/admin/system/screen-management', status: '화면/라우트/메뉴 연결의 기준 데이터 확인' },
-  { id: 'screen-flow-management', title: '화면 흐름 관리', route: '/admin/system/screen-flow-management', status: '프론트 이벤트와 API 흐름 추적' },
-  { id: 'screen-menu-assignment-management', title: '화면-메뉴 귀속 관리', route: '/admin/system/screen-menu-assignment-management', status: '메뉴별 대상 화면 매핑' },
-  { id: 'theme-management', title: '테마 관리', route: '/admin/system/theme-management', status: '토큰, 색상, 컴포넌트 스타일 등록' },
-  { id: 'component-management', title: '컴포넌트 관리', route: '/admin/system/component-management', status: '재사용 컴포넌트 등록/수정' },
-  { id: 'module', title: '모듈 관리', route: '/admin/system/module', status: '화면 기능 모듈 경계 관리' },
-  { id: 'function-management', title: '기능 관리', route: '/admin/system/feature-management', status: '기능 단위 권한/동작 카탈로그' },
-  { id: 'api-management', title: 'API 관리', route: '/admin/system/api-management', status: 'API 경로와 화면 이벤트 연결' },
-  { id: 'controller-management', title: '컨트롤러 관리', route: '/admin/system/controller-management', status: 'Java 표준 구조 경로 기준화' },
-  { id: 'column-management', title: '컬럼 관리', route: '/admin/system/column-management', status: '테이블 컬럼/입력 요소 연결' },
-  { id: 'section-management', title: '섹션 관리', route: '/admin/system/section-management', status: '빌더 내 1차 섹션 보관함으로 제공' },
+  { id: 'builder-studio', title: '빌더 스튜디오', route: '/admin/system/builder-studio', layer: 'builder', assetType: 'builder-workspace', status: '화면 수정, AI 요청, 프론트/백엔드/DB 작업 허브', readiness: 'complete' },
+  { id: 'platform-studio', title: '플랫폼 스튜디오', route: '/admin/system/platform-studio', layer: 'governance', assetType: 'platform-page', status: '화면 요소부터 DB 컬럼까지 연결된 공통 자산 편집', readiness: 'complete' },
+  { id: 'full-stack-management', title: '풀스택 관리', route: '/admin/system/full-stack-management', layer: 'governance', assetType: 'full-stack-registry', status: '프론트, 이벤트, API, 컨트롤러, DB 자산 통합 관리', readiness: 'managed' },
+  { id: 'screen-management', title: '화면 관리', route: '/admin/system/screen-management', layer: 'page', assetType: 'screen', status: '화면/라우트/메뉴 연결의 기준 데이터 확인', readiness: 'managed' },
+  { id: 'screen-flow-management', title: '화면 흐름 관리', route: '/admin/system/screen-flow-management', layer: 'page', assetType: 'screen-flow', status: '프론트 이벤트와 API 흐름 추적', readiness: 'managed' },
+  { id: 'screen-menu-assignment-management', title: '화면-메뉴 귀속 관리', route: '/admin/system/screen-menu-assignment-management', layer: 'page', assetType: 'menu-screen-binding', status: '메뉴별 대상 화면 매핑', readiness: 'managed' },
+  { id: 'screen-elements-management', title: '화면 요소 관리', route: '/admin/system/screen-elements-management', layer: 'ui', assetType: 'surface', status: 'DOM selector, 컴포넌트, 레이아웃 영역 관리', readiness: 'managed' },
+  { id: 'theme-management', title: '테마 관리', route: '/admin/system/theme-management', layer: 'design', assetType: 'theme', status: '토큰, 색상, 컴포넌트 스타일 등록', readiness: 'managed' },
+  { id: 'component-management', title: '컴포넌트 관리', route: '/admin/system/component-management', layer: 'design', assetType: 'component', status: '재사용 컴포넌트 등록/수정', readiness: 'managed' },
+  { id: 'section-management', title: '섹션 관리', route: '/admin/system/section-management', layer: 'design', assetType: 'section', status: '모든 페이지의 섹션 보관/재사용/AI 수정', readiness: 'managed' },
+  { id: 'module', title: '모듈 관리', route: '/admin/system/module', layer: 'backend', assetType: 'module', status: '화면 기능 모듈 경계 관리', readiness: 'needs-review' },
+  { id: 'event-management', title: '이벤트 관리', route: '/admin/system/event-management', layer: 'behavior', assetType: 'event', status: '클릭, 변경, 제출 이벤트와 함수 연결', readiness: 'managed' },
+  { id: 'function-console', title: '함수 콘솔', route: '/admin/system/function-console', layer: 'behavior', assetType: 'function', status: '프론트 함수, 파라미터, 결과 스펙 관리', readiness: 'managed' },
+  { id: 'function-management', title: '기능 관리', route: '/admin/system/feature-management', layer: 'behavior', assetType: 'feature', status: '기능 단위 권한/동작 카탈로그', readiness: 'needs-review' },
+  { id: 'api-management', title: 'API 관리', route: '/admin/system/api-management', layer: 'backend', assetType: 'api', status: 'API 경로와 화면 이벤트 연결', readiness: 'managed' },
+  { id: 'controller-management', title: '컨트롤러 관리', route: '/admin/system/controller-management', layer: 'backend', assetType: 'controller', status: 'Java 컨트롤러/서비스/매퍼 경로 기준화', readiness: 'managed' },
+  { id: 'db-table-management', title: 'DB 테이블 관리', route: '/admin/system/db-table-management', layer: 'data', assetType: 'db-table', status: '테이블, 스키마, 연관 API 관리', readiness: 'managed' },
+  { id: 'column-management', title: '컬럼 관리', route: '/admin/system/column-management', layer: 'data', assetType: 'column', status: '테이블 컬럼/입력 요소 연결', readiness: 'managed' },
+  { id: 'automation-studio', title: '자동화 스튜디오', route: '/admin/system/automation-studio', layer: 'ops', assetType: 'automation', status: '빌드, 검증, AI 작업 자동화 연결', readiness: 'managed' },
+  { id: 'verification-asset-management', title: '검증 자산 관리', route: '/admin/system/verification-asset-management', layer: 'ops', assetType: 'verification-asset', status: '테스트 계정, 데이터셋, baseline 검증 자산 관리', readiness: 'managed' },
+  { id: 'asset-deficiency-queue', title: '자산 보강 큐', route: '/admin/system/asset-deficiency-queue', layer: 'ops', assetType: 'asset-gap', status: '이름만 있는 화면과 누락 자산 보강 큐', readiness: 'managed' },
+  { id: 'new-page', title: '새 페이지 생성', route: '/admin/system/new-page', layer: 'builder', assetType: 'new-page', status: '컨트롤러/프론트/메타데이터 경로 일관 생성', readiness: 'needs-review' },
 ];
 
 function readBuilderTargetContext(): BuilderTargetContext {
@@ -257,6 +268,34 @@ function pageCompletenessClassName(status: PageCompletenessInventoryRow['status'
   return 'bg-emerald-100 text-emerald-700';
 }
 
+function environmentReadinessLabel(readiness: string) {
+  if (readiness === 'complete') return '완성';
+  if (readiness === 'managed') return '관리중';
+  return '점검';
+}
+
+function environmentReadinessClassName(readiness: string) {
+  if (readiness === 'complete') return 'bg-emerald-100 text-emerald-700';
+  if (readiness === 'managed') return 'bg-blue-100 text-blue-700';
+  return 'bg-amber-100 text-amber-700';
+}
+
+function buildEnvironmentBuilderUrl(item: typeof ENVIRONMENT_BUILDER_SURFACES[number]) {
+  const query = new URLSearchParams();
+  query.set('menuCode', item.id);
+  query.set('pageId', item.id);
+  query.set('menuTitle', item.title);
+  query.set('menuUrl', item.route);
+  query.set('assetType', item.assetType);
+  query.set('assetId', item.id);
+  query.set('assetLabel', item.title);
+  query.set('selector', item.route);
+  query.set('sourcePath', 'features/builder-studio/BuilderStudioPage.tsx');
+  query.set('focus', item.id);
+  query.set('tab', 'asset-registry');
+  return `/admin/system/builder-studio?${query.toString()}`;
+}
+
 function findTargetRouteTrace(menuUrl: string): RouteOwnershipTrace | null {
   return findRouteOwnershipTraceByPath(menuUrl) || findRouteOwnershipTraceByPath(normalizePreviewUrl(menuUrl));
 }
@@ -373,6 +412,18 @@ function buildBuilderAssetRows(params: {
     detail,
     actionPath: path,
   }));
+  ENVIRONMENT_BUILDER_SURFACES.forEach((item) => {
+    rows.push({
+      id: `environment-${item.id}`,
+      group: '환경 중메뉴',
+      title: item.title,
+      status: item.readiness === 'needs-review' ? 'needs-link' : 'managed',
+      owner: item.layer,
+      path: item.route,
+      detail: `${item.assetType} / ${item.status}`,
+      actionPath: buildEnvironmentBuilderUrl(item),
+    });
+  });
   rows.push({
     id: 'route-inventory',
     group: '전체 페이지',
@@ -555,6 +606,12 @@ export function BuilderStudioPage() {
     delegated: PAGE_COMPLETENESS_INVENTORY.filter(row => row.status === 'delegated').length,
     placeholder: PAGE_COMPLETENESS_INVENTORY.filter(row => row.status === 'placeholder-managed').length,
     thin: PAGE_COMPLETENESS_INVENTORY.filter(row => row.status === 'thin').length,
+  }), []);
+  const environmentSummary = useMemo(() => ({
+    total: ENVIRONMENT_BUILDER_SURFACES.length,
+    complete: ENVIRONMENT_BUILDER_SURFACES.filter(item => item.readiness === 'complete').length,
+    managed: ENVIRONMENT_BUILDER_SURFACES.filter(item => item.readiness === 'managed').length,
+    needsReview: ENVIRONMENT_BUILDER_SURFACES.filter(item => item.readiness === 'needs-review').length,
   }), []);
 
   function buildPreviewInspectorScript() {
@@ -1529,6 +1586,70 @@ export function BuilderStudioPage() {
       ) : null}
 
       {activeWorkspaceTab === 'environment-audit' ? (
+        <div className="flex-1 overflow-auto bg-slate-50 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-black">시스템 환경 기능 확인</h2>
+              <p className="mt-1 text-sm text-slate-500">빌더 화면 개발에 필요한 환경 중메뉴 기능을 한 곳에서 확인하고 바로 수정합니다.</p>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="rounded border bg-white px-3 py-2"><p className="font-black text-slate-900">{environmentSummary.total}</p><p className="text-slate-500">전체</p></div>
+              <div className="rounded border bg-white px-3 py-2"><p className="font-black text-emerald-700">{environmentSummary.complete}</p><p className="text-slate-500">완성</p></div>
+              <div className="rounded border bg-white px-3 py-2"><p className="font-black text-blue-700">{environmentSummary.managed}</p><p className="text-slate-500">관리중</p></div>
+              <div className="rounded border bg-white px-3 py-2"><p className="font-black text-amber-700">{environmentSummary.needsReview}</p><p className="text-slate-500">점검</p></div>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {ENVIRONMENT_BUILDER_SURFACES.map(item => (
+              <article key={item.id} className="rounded border bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">{item.layer} / {item.id}</p>
+                    <h3 className="mt-1 font-black text-slate-900">{item.title}</h3>
+                  </div>
+                  <span className={`rounded px-2 py-1 text-xs font-black ${environmentReadinessClassName(item.readiness)}`}>{environmentReadinessLabel(item.readiness)}</span>
+                </div>
+                <p className="mt-2 text-sm text-slate-500">{item.status}</p>
+                <p className="mt-3 break-all text-xs font-mono text-slate-400">{item.route}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <a href={item.route} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">화면 열기</a>
+                  <a href={buildEnvironmentBuilderUrl(item)} className="rounded border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">빌더 수정</a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAiPanel(true);
+                      setAiPrompt([
+                        '시스템 환경 중메뉴 화면을 완성형 빌더 자산으로 보강해줘.',
+                        `menuId=${item.id}`,
+                        `title=${item.title}`,
+                        `route=${item.route}`,
+                        `layer=${item.layer}`,
+                        `assetType=${item.assetType}`,
+                        `readiness=${item.readiness}`,
+                        `status=${item.status}`,
+                        '필수: 화면 UI, 실제 데이터/메타데이터, 빌더 수정 링크, 프론트/백엔드/DB 자산 연결, 롤백/검증 경로를 포함해줘.',
+                      ].join('\n'));
+                    }}
+                    className="rounded border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50"
+                  >
+                    AI 보강
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="mt-5 rounded border bg-white p-4 shadow-sm">
+            <h3 className="font-black text-slate-900">완전한 빌더 완성 기준</h3>
+            <div className="mt-3 grid gap-2 text-sm text-slate-600 md:grid-cols-2 xl:grid-cols-3">
+              {['페이지', '화면 요소', '섹션', '컴포넌트', '테마', '이벤트', '함수', 'API', '컨트롤러', 'DB', '자동화', '롤백/검증'].map(item => (
+                <div key={item} className="rounded border border-slate-100 bg-slate-50 px-3 py-2 font-bold">{item}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {false ? (
         <div className="flex-1 overflow-auto bg-slate-50 p-6">
           <h2 className="text-xl font-black">시스템 환경 기능 확인</h2>
           <p className="mt-1 text-sm text-slate-500">빌더 화면 개발에 필요한 환경 중메뉴 기능을 한 곳에서 확인합니다.</p>
