@@ -3,6 +3,7 @@ import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
+import { GIT_VERSION_INVENTORY } from "./gitVersionInventory";
 
 type MonitorRow = {
   name: string;
@@ -876,13 +877,20 @@ export function GitBuildMonitoringPage() {
   const buildRows = payload?.build ?? [];
   const deploymentRows = payload?.deployment ?? [];
   const commits = payload?.recentCommits ?? [];
+  const versionOptions: GitCommitRow[] = useMemo(() => commits.length
+    ? commits
+    : GIT_VERSION_INVENTORY.length
+      ? GIT_VERSION_INVENTORY
+      : payload?.head
+      ? [{ hash: payload.head, subject: payload.fullHead ? `현재 HEAD (${payload.fullHead})` : "현재 HEAD" }]
+      : [], [commits, payload?.fullHead, payload?.head]);
   const changedFiles = payload?.changedFiles ?? [];
   const podRows = deploymentRows.filter((row) => row.name);
   const deploymentMetrics = deploymentRows.filter((row) => row.title);
-  const selectedVersion = commits.find((row) => row.hash === selectedVersionHash) ?? commits[0];
-  const compareBaseVersion = commits.find((row) => row.hash === compareBaseHash) ?? commits[1] ?? commits[0];
-  const selectedVersionIndex = selectedVersion ? commits.findIndex((row) => row.hash === selectedVersion.hash) : -1;
-  const compareBaseIndex = compareBaseVersion ? commits.findIndex((row) => row.hash === compareBaseVersion.hash) : -1;
+  const selectedVersion = versionOptions.find((row) => row.hash === selectedVersionHash) ?? versionOptions[0];
+  const compareBaseVersion = versionOptions.find((row) => row.hash === compareBaseHash) ?? versionOptions[1] ?? versionOptions[0];
+  const selectedVersionIndex = selectedVersion ? versionOptions.findIndex((row) => row.hash === selectedVersion.hash) : -1;
+  const compareBaseIndex = compareBaseVersion ? versionOptions.findIndex((row) => row.hash === compareBaseVersion.hash) : -1;
   const versionDistance = selectedVersionIndex >= 0 && compareBaseIndex >= 0 ? Math.abs(compareBaseIndex - selectedVersionIndex) : 0;
   const versionApplyCommand = selectedVersion
     ? `git worktree add /opt/Resonance-worktrees/${selectedVersion.hash} ${selectedVersion.hash} && npm run build && deploy tag ${selectedVersion.hash}`
@@ -901,10 +909,10 @@ export function GitBuildMonitoringPage() {
   };
 
   useEffect(() => {
-    if (!commits.length) return;
-    setSelectedVersionHash((current) => current || commits[0]?.hash || "");
-    setCompareBaseHash((current) => current || commits[1]?.hash || commits[0]?.hash || "");
-  }, [commits]);
+    if (!versionOptions.length) return;
+    setSelectedVersionHash((current) => current || versionOptions[0]?.hash || "");
+    setCompareBaseHash((current) => current || versionOptions[1]?.hash || versionOptions[0]?.hash || "");
+  }, [versionOptions]);
 
   return (
     <AdminPageShell
@@ -1036,7 +1044,7 @@ export function GitBuildMonitoringPage() {
                         value={selectedVersion?.hash ?? ""}
                         onChange={(event) => setSelectedVersionHash(event.target.value)}
                       >
-                        {commits.map((row) => (
+                        {versionOptions.map((row) => (
                           <option key={row.hash} value={row.hash}>{row.hash} · {row.subject}</option>
                         ))}
                       </select>
@@ -1048,12 +1056,19 @@ export function GitBuildMonitoringPage() {
                         value={compareBaseVersion?.hash ?? ""}
                         onChange={(event) => setCompareBaseHash(event.target.value)}
                       >
-                        {commits.map((row) => (
+                        {versionOptions.map((row) => (
                           <option key={row.hash} value={row.hash}>{row.hash} · {row.subject}</option>
                         ))}
                       </select>
                     </label>
                   </div>
+                  {!commits.length ? (
+                    <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                      {en
+                        ? "The status API did not return recentCommits, so the build-time Git inventory is used as the selectable fallback. The backend should add live git log rows for always-current version selection."
+                        : "상태 API가 recentCommits를 내려주지 않아 빌드 시점 Git 인벤토리를 선택 가능한 fallback으로 표시합니다. 항상 최신 버전 선택을 위해서는 백엔드에서 live git log 목록을 내려줘야 합니다."}
+                    </div>
+                  ) : null}
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                     {[
                       ["preview", en ? "Diff preview" : "Diff 미리보기", en ? "Read-only comparison first" : "먼저 읽기 전용 비교"],
