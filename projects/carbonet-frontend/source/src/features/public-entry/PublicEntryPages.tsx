@@ -225,15 +225,23 @@ export function PublicLoginPage() {
     }
     setSubmitting(true);
     try {
-      const body = await postJsonWithSession<LoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
+      let body = await postJsonWithSession<LoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
         userId: nextUserId.trim(),
         userPw: nextUserPw,
         userSe: "ENT",
         autoLogin: nextAutoLogin
       });
       if (body.status === "loginFailure") {
-        window.alert(body.errors || (en ? "Login failed." : "로그인에 실패했습니다."));
-        return;
+        body = await postJsonWithSession<LoginResponse>(buildLocalizedPath("/signin/actionLogin", "/en/signin/actionLogin"), {
+          userId: nextUserId.trim(),
+          userPw: nextUserPw,
+          userSe: "USR",
+          autoLogin: nextAutoLogin
+        });
+        if (body.status === "loginFailure") {
+          window.alert(body.errors || (en ? "Login failed." : "로그인에 실패했습니다."));
+          return;
+        }
       }
 
       if (nextSaveId) {
@@ -250,9 +258,12 @@ export function PublicLoginPage() {
       invalidateFrontendSessionCache();
       window.sessionStorage.setItem("loginUserId", body.userId || nextUserId.trim());
       window.sessionStorage.setItem("loginUserSe", body.userSe || "ENT");
-      navigate(body.certified === false
-        ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
-        : buildLocalizedPath("/home", "/en/home"));
+      const redirectUrl = body.userSe === "USR"
+        ? buildLocalizedPath("/admin/", "/en/admin/")
+        : body.certified === false
+          ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
+          : buildLocalizedPath("/home", "/en/home");
+      navigate(redirectUrl);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "로그인 요청 중 오류가 발생했습니다.");
     } finally {
