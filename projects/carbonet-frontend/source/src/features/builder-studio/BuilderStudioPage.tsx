@@ -103,6 +103,36 @@ const BUILDER_CONTENT_SCOPE_POLICY = {
   ],
   rule: '헤더, 좌측 메뉴, 브레드크럼, 페이지 제목, 페이지 설명, 공통 레이아웃은 수정하지 않고 검색/필터/툴바/그리드/리스트/폼/차트/모달 본문만 수정합니다.',
 };
+const BUILDER_THEME_PRESETS = [
+  {
+    id: 'workbench',
+    label: '업무형',
+    description: '조용한 관리 화면, 검색/그리드 중심',
+    className: 'rounded border border-slate-200 bg-white p-4 shadow-sm',
+    design: { padding: '16', radius: '6', gap: '12', width: '100', fontSize: '14', shadow: 'sm' },
+  },
+  {
+    id: 'dense',
+    label: '고밀도',
+    description: '반복 업무용 좁은 간격과 작은 글자',
+    className: 'rounded border border-slate-200 bg-white p-3 shadow-none text-sm',
+    design: { padding: '12', radius: '4', gap: '8', width: '100', fontSize: '13', shadow: 'none' },
+  },
+  {
+    id: 'focus',
+    label: '강조형',
+    description: '중요 섹션과 요약 위젯',
+    className: 'rounded border border-blue-200 bg-blue-50 p-4 shadow-sm',
+    design: { padding: '16', radius: '8', gap: '12', width: '100', fontSize: '14', shadow: 'sm' },
+  },
+  {
+    id: 'form',
+    label: '폼형',
+    description: '등록/수정 화면 입력 영역',
+    className: 'rounded border border-slate-200 bg-white p-5 shadow-sm',
+    design: { padding: '20', radius: '8', gap: '16', width: '100', fontSize: '14', shadow: 'sm' },
+  },
+] as const;
 const BUILDER_AGENT_OPTIONS: Array<{ id: BuilderAgentId; label: string; description: string; modelNote: string }> = [
   { id: 'HERMES', label: 'HERMES', description: '기존 Hermes 작업 흐름으로 화면 수정 요청을 전달합니다.', modelNote: '현재 로컬 모델 설정은 추후 비중국 모델로 교체 예정' },
   { id: 'KILO', label: 'KILO', description: 'Kilo 에이전트 작업 큐로 넘길 요청 형식을 생성합니다.', modelNote: '현재 모델 설정은 추후 Mixtral/Gemma 계열로 교체 예정' },
@@ -503,6 +533,8 @@ export function BuilderStudioPage() {
   const [contextCaptureEnabled, setContextCaptureEnabled] = useState(true);
   const [previewContextRequest, setPreviewContextRequest] = useState<{ x: number; y: number; selector: string; note: string; element?: CapturedPreviewElement } | null>(null);
   const [designDraft, setDesignDraft] = useState({ padding: '16', radius: '8', gap: '12', width: '100', fontSize: '14', shadow: 'sm' });
+  const [selectedThemePresetId, setSelectedThemePresetId] = useState<(typeof BUILDER_THEME_PRESETS)[number]['id']>('workbench');
+  const [eventDraft, setEventDraft] = useState({ eventId: '', functionName: '', apiPath: '', method: 'GET' });
   const [savedSections, setSavedSections] = useState<SavedBuilderSection[]>(() => loadSavedSections());
   const [frontendCandidates, setFrontendCandidates] = useState<FrontendCandidate[]>(() => loadFrontendCandidates(readBuilderTargetContext()));
   const [selectedFrontendCandidateId, setSelectedFrontendCandidateId] = useState('original-runtime');
@@ -705,6 +737,7 @@ export function BuilderStudioPage() {
         style.textContent = [
           '[data-carbonet-builder-hover="true"]{outline:2px solid #2563eb !important;outline-offset:2px !important;cursor:crosshair !important;}',
           'header,nav,aside,[role="banner"],[role="navigation"],[data-layout="header"],[data-layout="sidebar"],[data-testid*="breadcrumb"],.breadcrumb,.breadcrumbs,.page-title,.page-description,.global-layout{display:none !important;}',
+          '[data-carbonet-builder-floating-hidden="true"]{display:none !important;}',
           'html,body,#root{min-height:100% !important;background:#fff !important;}',
           'body{margin:0 !important;overflow:auto !important;}',
           'main,[role="main"],[data-page-content],.page-content{display:block !important;width:100% !important;max-width:none !important;margin:0 !important;padding-top:0 !important;}',
@@ -796,7 +829,27 @@ export function BuilderStudioPage() {
           var hidden = document.querySelectorAll('[data-carbonet-builder-preview-hidden="true"]');
           for (var j = 0; j < hidden.length; j += 1) hidden[j].style.setProperty('display', 'none', 'important');
         }
+        function hideFloatingChrome() {
+          var contentRoot = document.querySelector('[data-carbonet-builder-content-root="true"], [data-page-content], main, [role="main"], .page-content, .content');
+          var nodes = document.body ? document.body.querySelectorAll('*') : [];
+          var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+          for (var i = 0; i < nodes.length; i += 1) {
+            var el = nodes[i];
+            if (contentRoot && contentRoot.contains(el)) continue;
+            var style = window.getComputedStyle(el);
+            if (style.position !== 'fixed' && style.position !== 'sticky') continue;
+            var rect = el.getBoundingClientRect();
+            var nearTop = rect.top <= 96;
+            var nearBottom = viewportHeight && rect.bottom >= viewportHeight - 96;
+            var wide = rect.width >= Math.min(480, window.innerWidth * 0.45);
+            if ((nearTop || nearBottom) && wide) {
+              el.setAttribute('data-carbonet-builder-floating-hidden', 'true');
+              el.style.setProperty('display', 'none', 'important');
+            }
+          }
+        }
         markContentOnlyPreviewRoot();
+        hideFloatingChrome();
         function payloadFromEvent(event) {
           var el = event.target && event.target.nodeType === 1 ? event.target : (event.target && event.target.parentElement);
           if (!el) return null;
@@ -1008,7 +1061,7 @@ export function BuilderStudioPage() {
       `managedAsset=${JSON.stringify(managedAssetContext)}`,
       `selectedCandidate=${selectedFrontendCandidate ? JSON.stringify({ id: selectedFrontendCandidate.id, title: selectedFrontendCandidate.title, source: selectedFrontendCandidate.source, summary: selectedFrontendCandidate.summary, html: selectedFrontendCandidate.html.slice(0, 8000) }) : '-'}`,
       `contentScopePolicy=${JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY)}`,
-      `themeComponentSectionConstraints=${JSON.stringify({ designSurfaces, components: componentSummary, sections: sectionSummary })}`,
+      `themeComponentSectionConstraints=${JSON.stringify({ selectedThemePresetId, eventDraft, designSurfaces, themePresets: BUILDER_THEME_PRESETS, components: componentSummary, sections: sectionSummary })}`,
       `assetRegistry=${JSON.stringify(assetRows.slice(0, 24).map(row => ({ group: row.group, title: row.title, status: row.status, owner: row.owner, path: row.path })))}`,
       'designPolicy=테마 관리의 색상/간격/반경/그림자 기준을 우선 사용하고, 컴포넌트 관리에 등록된 컴포넌트 타입과 기본 클래스를 우선 사용해줘.',
       'sectionPolicy=섹션 관리에 저장된 섹션을 재사용할 수 있으면 먼저 제안하고, 새 섹션이 필요하면 section-management에 등록 가능한 단위로 나눠줘.',
@@ -1295,6 +1348,37 @@ export function BuilderStudioPage() {
     showToast('선택 요소 디자인 수치를 적용했습니다. 저장/발행하면 빌더 화면에 반영됩니다.');
   }
 
+  function applyThemePresetToSelectedNode(presetId = selectedThemePresetId) {
+    if (!selectedNode) {
+      showToast('테마를 적용할 노드를 먼저 선택하세요.');
+      return;
+    }
+    const preset = BUILDER_THEME_PRESETS.find(item => item.id === presetId) || BUILDER_THEME_PRESETS[0];
+    setSelectedThemePresetId(preset.id);
+    setDesignDraft(preset.design);
+    handleUpdateNodeProps(selectedNode.nodeId, {
+      className: buildDesignClassName(String(selectedNode.props?.className || ''), {
+        theme: preset.className,
+      }),
+      themePreset: preset.id,
+    });
+    showToast(`${preset.label} 테마를 선택 요소에 적용했습니다.`);
+  }
+
+  function applyEventDraftToSelectedNode() {
+    if (!selectedNode) {
+      showToast('이벤트를 연결할 노드를 먼저 선택하세요.');
+      return;
+    }
+    handleUpdateNodeProps(selectedNode.nodeId, {
+      eventId: eventDraft.eventId,
+      functionName: eventDraft.functionName,
+      apiPath: eventDraft.apiPath,
+      apiMethod: eventDraft.method,
+    });
+    showToast('선택 요소에 이벤트/함수 연결 정보를 적용했습니다.');
+  }
+
   async function saveSelectedNodeAsSection() {
     if (!selectedNode) {
       showToast('보관할 섹션 노드를 먼저 선택하세요.');
@@ -1533,7 +1617,26 @@ export function BuilderStudioPage() {
               </section>
 
               <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Theme Toolbar</p>
+                <h3 className="mt-1 font-black text-slate-900">정규화 디자인 선택</h3>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {BUILDER_THEME_PRESETS.map(preset => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyThemePresetToSelectedNode(preset.id)}
+                      className={`rounded border p-3 text-left text-xs ${selectedThemePresetId === preset.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-200'}`}
+                    >
+                      <span className="block font-black text-slate-900">{preset.label}</span>
+                      <span className="mt-1 block text-slate-500">{preset.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
                 <p className="text-xs font-black uppercase text-blue-700">Components</p>
+                <div className="mt-2 rounded bg-slate-50 p-2 text-xs font-bold text-slate-500">도구모음에서 컴포넌트를 끌어 가운데 캔버스 원하는 위치에 놓습니다.</div>
                 <select value={activeCategory} onChange={e => setActiveCategory(e.target.value)} className="mt-2 w-full rounded border px-3 py-2 text-sm">
                   {categories.map(cat => <option key={cat} value={cat}>{cat === 'ALL' ? '전체' : CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]?.ko || cat}</option>)}
                 </select>
@@ -1549,6 +1652,20 @@ export function BuilderStudioPage() {
                       <p className="text-xs text-slate-500">{COMPONENT_TYPE_LABELS[comp.componentType]?.ko || comp.componentType}</p>
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Section Library</p>
+                <h3 className="mt-1 font-black text-slate-900">저장 섹션 불러오기</h3>
+                <div className="mt-3 max-h-48 space-y-2 overflow-auto">
+                  {savedSections.slice(0, 8).map(section => (
+                    <button key={section.id} type="button" onClick={() => insertSavedSection(section)} className="w-full rounded border border-slate-200 p-3 text-left text-xs hover:border-blue-200">
+                      <span className="block font-black text-slate-900">{section.name}</span>
+                      <span className="text-slate-500">{section.node.componentType} · {section.sourcePageId || 'common'}</span>
+                    </button>
+                  ))}
+                  {savedSections.length === 0 ? <p className="rounded border border-dashed p-3 text-center text-xs text-slate-400">저장 섹션 없음</p> : null}
                 </div>
               </section>
             </aside>
@@ -1636,6 +1753,47 @@ export function BuilderStudioPage() {
                     className="min-h-[84px] w-full rounded border px-3 py-2 font-mono text-xs"
                     placeholder="테마/컴포넌트 기준 className"
                   />
+                </div>
+                <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-black text-slate-700">디자인 수치</p>
+                    <button type="button" onClick={applyDesignDraftToSelectedNode} className="rounded bg-blue-700 px-2 py-1 text-xs font-bold text-white">적용</button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {[
+                      ['padding', '여백', '0', '48'],
+                      ['radius', '반경', '0', '32'],
+                      ['gap', '간격', '0', '40'],
+                      ['width', '너비', '20', '100'],
+                      ['fontSize', '글자', '11', '24'],
+                    ].map(([key, label, min, max]) => (
+                      <label key={key} className="text-[11px] font-bold text-slate-600">
+                        {label}: {designDraft[key as keyof typeof designDraft]}
+                        <input type="range" min={min} max={max} value={designDraft[key as keyof typeof designDraft]} onChange={e => setDesignDraft({ ...designDraft, [key]: e.target.value })} className="w-full" />
+                      </label>
+                    ))}
+                  </div>
+                  <select value={designDraft.shadow} onChange={e => setDesignDraft({ ...designDraft, shadow: e.target.value })} className="mt-2 w-full rounded border px-2 py-1 text-xs">
+                    <option value="none">그림자 없음</option>
+                    <option value="sm">작은 그림자</option>
+                    <option value="lg">큰 그림자</option>
+                  </select>
+                </div>
+                <div className="mt-3 rounded border border-slate-200 bg-white p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-black text-slate-700">이벤트/함수 연결</p>
+                    <button type="button" onClick={applyEventDraftToSelectedNode} className="rounded bg-slate-800 px-2 py-1 text-xs font-bold text-white">반영</button>
+                  </div>
+                  <div className="mt-2 grid gap-2">
+                    <input value={eventDraft.eventId} onChange={e => setEventDraft({ ...eventDraft, eventId: e.target.value })} className="rounded border px-2 py-1.5 text-xs" placeholder="eventId 예: search-click" />
+                    <input value={eventDraft.functionName} onChange={e => setEventDraft({ ...eventDraft, functionName: e.target.value })} className="rounded border px-2 py-1.5 text-xs" placeholder="functionName 예: searchMembers" />
+                    <div className="grid grid-cols-[90px_minmax(0,1fr)] gap-2">
+                      <select value={eventDraft.method} onChange={e => setEventDraft({ ...eventDraft, method: e.target.value })} className="rounded border px-2 py-1.5 text-xs">
+                        {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(method => <option key={method} value={method}>{method}</option>)}
+                      </select>
+                      <input value={eventDraft.apiPath} onChange={e => setEventDraft({ ...eventDraft, apiPath: e.target.value })} className="rounded border px-2 py-1.5 text-xs" placeholder="/api/..." />
+                    </div>
+                  </div>
                 </div>
                 <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="mt-3 w-full rounded bg-slate-800 px-3 py-2 text-xs font-bold text-white">선택 정보로 AI 요청</button>
               </section>
