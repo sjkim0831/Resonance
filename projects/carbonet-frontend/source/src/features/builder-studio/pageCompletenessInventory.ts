@@ -625,7 +625,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 2,
     "status": "implemented",
-    "lineCount": 1316,
+    "lineCount": 1381,
     "reason": "외부 런타임을 감싸는 관리형 화면이며 상태/조치 UI를 제공합니다.",
     "hasAsyncData": false,
     "hasForm": true,

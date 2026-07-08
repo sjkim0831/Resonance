@@ -520,6 +520,33 @@ function buildDirection(page: ScreenCommandPagePayload["page"] | undefined, edit
   ].join("\n");
 }
 
+function buildBuilderStudioUrl(params: {
+  menuCode: string;
+  pageId: string;
+  menuTitle: string;
+  menuUrl: string;
+  assetType?: string;
+  assetId?: string;
+  assetLabel?: string;
+  selector?: string;
+  sourcePath?: string;
+  focus?: string;
+}) {
+  const query = new URLSearchParams();
+  query.set("menuCode", params.menuCode || "");
+  query.set("pageId", params.pageId || params.menuCode || "");
+  query.set("menuTitle", params.menuTitle || params.pageId || params.menuCode || "");
+  query.set("menuUrl", params.menuUrl || "");
+  if (params.assetType) query.set("assetType", params.assetType);
+  if (params.assetId) query.set("assetId", params.assetId);
+  if (params.assetLabel) query.set("assetLabel", params.assetLabel);
+  if (params.selector) query.set("selector", params.selector);
+  if (params.sourcePath) query.set("sourcePath", params.sourcePath);
+  if (params.focus) query.set("focus", params.focus);
+  query.set("tab", params.assetType ? "asset-registry" : "target-preview");
+  return `/admin/system/builder-studio?${query.toString()}`;
+}
+
 export function PlatformStudioMigrationPage() {
   const en = isEnglish();
   const [menuType, setMenuType] = useState(new URLSearchParams(window.location.search).get("menuType") || "ADMIN");
@@ -920,6 +947,38 @@ export function PlatformStudioMigrationPage() {
     setActionMessage(en ? "Selected resources copied to the registry editor." : "선택 자원을 레지스트리 편집기에 반영했습니다.");
   }
 
+  function builderUrlFor(asset?: { type?: string; id?: string; label?: string; selector?: string; sourcePath?: string }) {
+    return buildBuilderStudioUrl({
+      menuCode: selectedMenuCode || stringOf(selectedSummary, "menuCode"),
+      pageId: pageId || stringOf(selectedSummary, "pageId") || selectedMenuCode,
+      menuTitle: commandDetail?.label || stringOf(selectedSummary, "menuNm") || selectedMenuCode,
+      menuUrl: commandDetail?.routePath || commandDetail?.menuLookupUrl || stringOf(selectedSummary, "menuUrl"),
+      assetType: asset?.type || focus,
+      assetId: asset?.id || "",
+      assetLabel: asset?.label || "",
+      selector: asset?.selector || "",
+      sourcePath: asset?.sourcePath || governanceOverview.source || "",
+      focus,
+    });
+  }
+
+  function selectedBuilderAsset() {
+    const surface = (commandDetail?.surfaces || []).find((item) => targetSelection.surfaceIds.includes(item.surfaceId));
+    const event = (commandDetail?.events || []).find((item) => targetSelection.eventIds.includes(item.eventId));
+    const api = (commandDetail?.apis || []).find((item) => derivedSelection.apis.includes(item.apiId));
+    const schema = (commandDetail?.schemas || []).find((item) => derivedSelection.schemas.includes(item.schemaId));
+    if (focus === "surfaces" && surface) return { type: "surface", id: surface.surfaceId, label: surface.label, selector: surface.selector };
+    if ((focus === "events" || focus === "functions") && event) return { type: focus === "functions" ? "function" : "event", id: focus === "functions" ? event.frontendFunction : event.eventId, label: event.label, selector: event.triggerSelector };
+    if ((focus === "apis" || focus === "controllers") && api) return { type: focus === "controllers" ? "controller" : "api", id: api.apiId, label: `${api.method} ${api.endpoint}`, selector: api.endpoint };
+    if ((focus === "db" || focus === "columns") && schema) return { type: focus === "columns" ? "column" : "schema", id: focus === "columns" ? (derivedSelection.columns[0] || schema.schemaId) : schema.schemaId, label: schema.tableName, selector: schema.tableName };
+    return {
+      type: focus,
+      id: surface?.surfaceId || event?.eventId || api?.apiId || schema?.schemaId || selectedMenuCode,
+      label: surface?.label || event?.label || api?.label || schema?.label || stringOf(selectedSummary, "menuNm"),
+      selector: surface?.selector || event?.triggerSelector || api?.endpoint || schema?.tableName || "",
+    };
+  }
+
   return (
     <AdminPageShell
       breadcrumbs={[
@@ -1014,6 +1073,9 @@ export function PlatformStudioMigrationPage() {
                 <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{stringOf(selectedSummary, "menuCode")} / {stringOf(selectedSummary, "menuUrl") || "-"}</p>
               </div>
               <div className="flex items-center gap-2">
+                <a className="gov-btn gov-btn-primary" href={builderUrlFor()}>
+                  {en ? "Open Builder" : "빌더에서 수정"}
+                </a>
                 <button className="gov-btn gov-btn-outline" type="button" onClick={() => { void toggleVisibility("Y"); }}>{en ? "Show" : "보이기"}</button>
                 <button className="gov-btn gov-btn-outline" type="button" onClick={() => { void toggleVisibility("N"); }}>{en ? "Hide" : "숨기기"}</button>
               </div>
@@ -1124,7 +1186,12 @@ export function PlatformStudioMigrationPage() {
                 <h3 className="text-lg font-bold">{en ? "Target Picker" : "수정 대상 선택"}</h3>
                 <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Point to the exact surface, event, API, schema, and DB resources before saving or creating an SR ticket." : "저장이나 SR 생성 전에 정확한 화면 요소, 이벤트, API, 스키마, DB 자원을 지목합니다."}</p>
               </div>
-              <button className="gov-btn gov-btn-outline" type="button" onClick={importSelectionToRegistry}>{en ? "Copy To Registry" : "레지스트리에 반영"}</button>
+              <div className="flex flex-wrap gap-2">
+                <a className="gov-btn gov-btn-primary" href={builderUrlFor(selectedBuilderAsset())}>
+                  {en ? "Edit Selection In Builder" : "선택 자산 빌더 수정"}
+                </a>
+                <button className="gov-btn gov-btn-outline" type="button" onClick={importSelectionToRegistry}>{en ? "Copy To Registry" : "레지스트리에 반영"}</button>
+              </div>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               <div>
@@ -1261,7 +1328,7 @@ export function PlatformStudioMigrationPage() {
             </div>
             <div className="table-wrap">
               <table className="data-table">
-                <thead><tr><th>{en ? "Type" : "유형"}</th><th>{en ? "Id / Label" : "ID / 라벨"}</th><th>{en ? "Connection" : "연결"}</th></tr></thead>
+                <thead><tr><th>{en ? "Type" : "유형"}</th><th>{en ? "Id / Label" : "ID / 라벨"}</th><th>{en ? "Connection" : "연결"}</th><th>{en ? "Builder" : "빌더"}</th></tr></thead>
                 <tbody>
                   {(focus === "events" ? (commandDetail?.events || []).map((item) => ({ type: "event", id: item.eventId, label: item.label, extra: `${item.frontendFunction} / ${(item.apiIds || []).join(", ")}` })) :
                     focus === "functions" ? (commandDetail?.events || []).map((item) => ({ type: "function", id: item.frontendFunction, label: item.label, extra: `${(item.functionInputs || []).length} in / ${(item.functionOutputs || []).length} out` })) :
@@ -1278,6 +1345,20 @@ export function PlatformStudioMigrationPage() {
                       <td>{row.type}</td>
                       <td><strong>{row.id}</strong><div className="text-[var(--kr-gov-text-secondary)]">{row.label}</div></td>
                       <td>{row.extra || "-"}</td>
+                      <td>
+                        <a
+                          className="gov-btn gov-btn-outline"
+                          href={builderUrlFor({
+                            type: row.type,
+                            id: row.id,
+                            label: row.label,
+                            selector: row.extra,
+                            sourcePath: governanceOverview.source,
+                          })}
+                        >
+                          {en ? "Edit" : "수정"}
+                        </a>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

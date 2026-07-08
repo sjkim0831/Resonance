@@ -19,6 +19,15 @@ type BuilderTargetContext = {
   menuUrl: string;
 };
 
+type BuilderManagedAssetContext = {
+  assetType: string;
+  assetId: string;
+  assetLabel: string;
+  selector: string;
+  sourcePath: string;
+  focus: string;
+};
+
 type SavedBuilderSection = {
   id: string;
   name: string;
@@ -72,6 +81,18 @@ function readBuilderTargetContext(): BuilderTargetContext {
     pageId,
     menuTitle: params.get('menuTitle') || params.get('title') || pageId || '대상 화면',
     menuUrl: menuUrl || '/admin/system/menu',
+  };
+}
+
+function readManagedAssetContext(): BuilderManagedAssetContext {
+  const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
+  return {
+    assetType: params.get('assetType') || '',
+    assetId: params.get('assetId') || '',
+    assetLabel: params.get('assetLabel') || '',
+    selector: params.get('selector') || '',
+    sourcePath: params.get('sourcePath') || '',
+    focus: params.get('focus') || '',
   };
 }
 
@@ -165,6 +186,7 @@ function findTargetRouteSource(trace: RouteOwnershipTrace | null, menuUrl: strin
 
 function buildBuilderAssetRows(params: {
   targetContext: BuilderTargetContext;
+  managedAsset: BuilderManagedAssetContext;
   currentScreen: BuilderScreen | null;
   selectedNode: BuilderNode | null;
   components: BuilderComponent[];
@@ -172,9 +194,21 @@ function buildBuilderAssetRows(params: {
   targetTrace: RouteOwnershipTrace | null;
   targetSource: RouteSourceInventoryRow | null;
 }): BuilderAssetRow[] {
-  const { targetContext, currentScreen, selectedNode, components, savedSections, targetTrace, targetSource } = params;
+  const { targetContext, managedAsset, currentScreen, selectedNode, components, savedSections, targetTrace, targetSource } = params;
   const rows: BuilderAssetRow[] = [];
   const routeRows = listRouteOwnershipTraces();
+  if (managedAsset.assetId || managedAsset.assetType) {
+    rows.push({
+      id: 'managed-target-asset',
+      group: '관리 대상',
+      title: managedAsset.assetLabel || managedAsset.assetId || '선택 자산',
+      status: 'managed',
+      owner: managedAsset.focus || managedAsset.assetType || 'platform-studio',
+      path: managedAsset.sourcePath || managedAsset.selector || targetContext.menuUrl || '-',
+      detail: `type=${managedAsset.assetType || '-'} id=${managedAsset.assetId || '-'} selector=${managedAsset.selector || '-'}`,
+      actionPath: `/admin/system/builder-studio?menuCode=${encodeURIComponent(targetContext.menuCode)}&pageId=${encodeURIComponent(targetContext.pageId)}&menuTitle=${encodeURIComponent(targetContext.menuTitle)}&menuUrl=${encodeURIComponent(targetContext.menuUrl)}&assetType=${encodeURIComponent(managedAsset.assetType)}&assetId=${encodeURIComponent(managedAsset.assetId)}&assetLabel=${encodeURIComponent(managedAsset.assetLabel)}&selector=${encodeURIComponent(managedAsset.selector)}&sourcePath=${encodeURIComponent(managedAsset.sourcePath)}&focus=${encodeURIComponent(managedAsset.focus)}&tab=asset-registry`,
+    });
+  }
   rows.push({
     id: 'target-route',
     group: '화면/라우트',
@@ -282,6 +316,7 @@ export function BuilderStudioPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [targetContext, setTargetContext] = useState<BuilderTargetContext>(() => readBuilderTargetContext());
+  const [managedAssetContext, setManagedAssetContext] = useState<BuilderManagedAssetContext>(() => readManagedAssetContext());
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<BuilderWorkspaceTab>(() => readInitialBuilderTab());
   const [selectedAgent, setSelectedAgent] = useState<BuilderAgentId>('HERMES');
   const [contextCaptureEnabled, setContextCaptureEnabled] = useState(true);
@@ -298,6 +333,7 @@ export function BuilderStudioPage() {
   useEffect(() => {
     function syncTargetContext() {
       setTargetContext(readBuilderTargetContext());
+      setManagedAssetContext(readManagedAssetContext());
     }
     window.addEventListener('popstate', syncTargetContext);
     window.addEventListener('carbonet:navigation', syncTargetContext);
@@ -418,7 +454,7 @@ export function BuilderStudioPage() {
   const previewUrl = useMemo(() => normalizePreviewUrl(targetContext.menuUrl), [targetContext.menuUrl]);
   const targetRouteTrace = useMemo(() => findTargetRouteTrace(targetContext.menuUrl), [targetContext.menuUrl]);
   const targetRouteSource = useMemo(() => findTargetRouteSource(targetRouteTrace, targetContext.menuUrl), [targetRouteTrace, targetContext.menuUrl]);
-  const assetRows = useMemo(() => buildBuilderAssetRows({ targetContext, currentScreen, selectedNode, components, savedSections, targetTrace: targetRouteTrace, targetSource: targetRouteSource }), [targetContext, currentScreen, selectedNode, components, savedSections, targetRouteTrace, targetRouteSource]);
+  const assetRows = useMemo(() => buildBuilderAssetRows({ targetContext, managedAsset: managedAssetContext, currentScreen, selectedNode, components, savedSections, targetTrace: targetRouteTrace, targetSource: targetRouteSource }), [targetContext, managedAssetContext, currentScreen, selectedNode, components, savedSections, targetRouteTrace, targetRouteSource]);
   const pageQualityRows = useMemo(() => PAGE_COMPLETENESS_INVENTORY.filter(row => pageQualityFilter === 'all' || row.status === pageQualityFilter), [pageQualityFilter]);
   const pageQualitySummary = useMemo(() => ({
     total: PAGE_COMPLETENESS_INVENTORY.length,
@@ -595,6 +631,7 @@ export function BuilderStudioPage() {
       `menuUrl=${targetContext.menuUrl || currentScreen?.menuUrl || ''}`,
       `previewSelector=${previewContextRequest?.selector || '-'}`,
       `previewElement=${previewContextRequest?.element ? JSON.stringify(previewContextRequest.element) : '-'}`,
+      `managedAsset=${JSON.stringify(managedAssetContext)}`,
       `sourceRouteCandidates=frontend route ${targetContext.menuUrl || currentScreen?.menuUrl || ''}; pageId ${targetContext.pageId || currentScreen?.pageId || ''}; menuCode ${targetContext.menuCode || currentScreen?.menuCode || ''}`,
       `assetRegistry=${JSON.stringify(assetRows.map(row => ({ id: row.id, group: row.group, path: row.path, status: row.status })))}`,
       `pageCompleteness=${JSON.stringify({ total: pageQualitySummary.total, thin: pageQualitySummary.thin, placeholder: pageQualitySummary.placeholder, delegated: pageQualitySummary.delegated })}`,
@@ -868,6 +905,13 @@ export function BuilderStudioPage() {
               <p className="text-xs font-black uppercase text-blue-700">Target Screen</p>
               <h2 className="mt-1 text-lg font-black text-slate-900">{targetContext.menuTitle}</h2>
               <p className="mt-1 break-all text-sm text-slate-500">{targetContext.menuCode || '-'} · {targetContext.pageId || '-'} · {targetContext.menuUrl}</p>
+              {managedAssetContext.assetId || managedAssetContext.assetType ? (
+                <div className="mt-3 rounded border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+                  <p className="font-black">관리 대상 자산</p>
+                  <p className="mt-1 break-all">{managedAssetContext.assetType || 'asset'} · {managedAssetContext.assetLabel || managedAssetContext.assetId}</p>
+                  <p className="mt-1 break-all font-mono text-blue-700">{managedAssetContext.selector || managedAssetContext.sourcePath || '-'}</p>
+                </div>
+              ) : null}
             </div>
             <div className="rounded border bg-white p-3 text-xs text-slate-600">
               <p className="font-black text-slate-900">수정 기준</p>
@@ -942,7 +986,7 @@ export function BuilderStudioPage() {
               <p className="mt-1 text-sm text-slate-500">화면 수정 시 빠지면 안 되는 라우트, 소스, 컴포넌트, 섹션, 테마, API, 컨트롤러, DB 자산을 한 곳에서 관리합니다.</p>
             </div>
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              {['화면/라우트', '컴포넌트', '동작/데이터', '전체 페이지'].map(group => (
+              {['관리 대상', '화면/라우트', '컴포넌트', '동작/데이터'].map(group => (
                 <div key={group} className="rounded border bg-white px-3 py-2">
                   <p className="font-black text-slate-900">{assetRows.filter(row => row.group === group).length}</p>
                   <p className="text-slate-500">{group}</p>
@@ -985,6 +1029,29 @@ export function BuilderStudioPage() {
               </table>
             </div>
             <aside className="space-y-3">
+              {managedAssetContext.assetId || managedAssetContext.assetType ? (
+                <section className="rounded border border-blue-200 bg-blue-50 p-4 shadow-sm">
+                  <p className="text-xs font-black uppercase text-blue-700">Managed Asset</p>
+                  <h3 className="mt-1 font-black text-slate-900">{managedAssetContext.assetLabel || managedAssetContext.assetId || managedAssetContext.assetType}</h3>
+                  <div className="mt-3 space-y-2 text-xs text-slate-700">
+                    <p><b>type</b> {managedAssetContext.assetType || '-'}</p>
+                    <p><b>id</b> {managedAssetContext.assetId || '-'}</p>
+                    <p><b>focus</b> {managedAssetContext.focus || '-'}</p>
+                    <p className="break-all"><b>selector</b> {managedAssetContext.selector || '-'}</p>
+                    <p className="break-all"><b>source</b> {managedAssetContext.sourcePath || '-'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAiPanel(true);
+                      setAiPrompt(`관리 대상 자산을 기준으로 대상 화면을 수정해줘.\nassetType=${managedAssetContext.assetType}\nassetId=${managedAssetContext.assetId}\nassetLabel=${managedAssetContext.assetLabel}\nselector=${managedAssetContext.selector}\nsourcePath=${managedAssetContext.sourcePath}\nmenuUrl=${targetContext.menuUrl}`);
+                    }}
+                    className="mt-3 w-full rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white"
+                  >
+                    이 자산 기준 AI 수정
+                  </button>
+                </section>
+              ) : null}
               <section className="rounded border bg-white p-4 shadow-sm">
                 <p className="text-xs font-black uppercase text-blue-700">Target Trace</p>
                 <h3 className="mt-1 font-black text-slate-900">{targetRouteTrace?.routeLabel || targetContext.menuTitle}</h3>
