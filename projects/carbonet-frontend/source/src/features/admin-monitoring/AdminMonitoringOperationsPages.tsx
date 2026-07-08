@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
@@ -21,6 +22,61 @@ type MonitorPageCopy = {
   notice: string;
 };
 
+type CronSummary = { title: string; value: string; description: string };
+type CronJobRow = {
+  namespace: string;
+  name: string;
+  schedule: string;
+  timezone: string;
+  suspend: boolean;
+  concurrencyPolicy: string;
+  active: number;
+  lastScheduleTime: string;
+  lastSuccessfulTime: string;
+  createdAt: string;
+  successfulHistory: string;
+  failedHistory: string;
+  startingDeadlineSeconds: string;
+  containers: string;
+  health: string;
+};
+type KubernetesJobRow = {
+  namespace: string;
+  name: string;
+  cronJob: string;
+  status: string;
+  active: string;
+  succeeded: string;
+  failed: string;
+  parallelism: string;
+  completions: string;
+  backoffLimit: string;
+  startTime: string;
+  completionTime: string;
+  createdAt: string;
+};
+type CronWarningEvent = {
+  namespace: string;
+  type: string;
+  reason: string;
+  objectKind: string;
+  objectName: string;
+  message: string;
+  lastTimestamp: string;
+};
+type CronMonitoringPayload = {
+  summary: CronSummary[];
+  health: "NORMAL" | "WARN" | string;
+  cronJobs: CronJobRow[];
+  jobs: KubernetesJobRow[];
+  warningEvents: CronWarningEvent[];
+  completeJobs: number;
+  suspendedCronJobs: number;
+  generatedAt: string;
+  source: string;
+  error?: string;
+};
+
 function statusClass(status: MonitorRow["status"]) {
   switch (status) {
     case "NORMAL":
@@ -31,6 +87,29 @@ function statusClass(status: MonitorRow["status"]) {
     default:
       return "bg-slate-100 text-slate-700";
   }
+}
+
+function cronStatusClass(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("complete") || normalized.includes("active") || normalized.includes("normal")) return "bg-emerald-100 text-emerald-700";
+  if (normalized.includes("fail") || normalized.includes("warn")) return "bg-rose-100 text-rose-700";
+  if (normalized.includes("suspend") || normalized.includes("unknown")) return "bg-amber-100 text-amber-700";
+  return "bg-slate-100 text-slate-700";
+}
+
+function formatTime(value: string) {
+  if (!value || value === "-") return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
+function CronTableHeader({ labels }: { labels: string[] }) {
+  return (
+    <thead className="bg-slate-50 text-left text-xs font-black uppercase tracking-[0.08em] text-slate-500">
+      <tr>{labels.map((label) => <th className="px-4 py-3" key={label}>{label}</th>)}</tr>
+    </thead>
+  );
 }
 
 const COPIES: Record<"cron" | "db" | "batch" | "git", { ko: MonitorPageCopy; en: MonitorPageCopy }> = {
@@ -248,7 +327,190 @@ function MonitoringOperationsPage({ kind }: { kind: keyof typeof COPIES }) {
 }
 
 export function CronMonitoringPage() {
-  return <MonitoringOperationsPage kind="cron" />;
+  const en = isEnglish();
+  const [payload, setPayload] = useState<CronMonitoringPayload | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const load = async () => {
+    try {
+      setError(null);
+      const response = await fetch("/admin/api/cron-monitoring/status", {
+        credentials: "include",
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      setPayload(data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const timer = setInterval(() => { void load(); }, 30000);
+    return () => clearInterval(timer);
+  }, [autoRefresh]);
+
+  const cronJobs = payload?.cronJobs ?? [];
+  const jobs = payload?.jobs ?? [];
+  const warningEvents = payload?.warningEvents ?? [];
+  const failedJobs = useMemo(() => jobs.filter((job) => job.status === "Failed").length, [jobs]);
+  const completeJobs = payload?.completeJobs ?? jobs.filter((job) => job.status === "Complete").length;
+  const runningJobs = jobs.filter((job) => job.status === "Running").length;
+  const health = payload?.health ?? (failedJobs > 0 || warningEvents.length > 0 ? "WARN" : "NORMAL");
+  const summary = payload?.summary?.length ? payload.summary : [
+    { title: "CronJobs", value: String(cronJobs.length), description: "Kubernetes CronJob resources" },
+    { title: "Active Jobs", value: String(runningJobs), description: "Currently running Job resources" },
+    { title: "Failed Jobs", value: String(failedJobs), description: "Historical or retained failed Jobs" },
+    { title: "Warning Events", value: String(warningEvents.length), description: "Recent warning events related to cron/backup" }
+  ];
+
+  return (
+    <AdminPageShell
+      breadcrumbs={[
+        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
+        { label: en ? "System" : "시스템" },
+        { label: en ? "Monitoring" : "모니터링" },
+        { label: en ? "Cron" : "크론" }
+      ]}
+      title={en ? "Kubernetes Cron Monitoring" : "Kubernetes 크론 모니터링"}
+      subtitle={en ? "Live CronJob, Job, backup schedule, and warning event state from the current cluster." : "현재 클러스터의 CronJob, Job, 백업 스케줄, Warning 이벤트 상태를 실시간으로 확인합니다."}
+      sidebarVariant="system"
+      actions={
+        <div className="flex flex-wrap items-center gap-3">
+          {lastUpdated && <span className="text-xs text-[var(--kr-gov-text-secondary)]">{en ? "Updated" : "갱신"}: {lastUpdated.toLocaleTimeString()}</span>}
+          <label className="flex items-center gap-1.5 text-sm text-[var(--kr-gov-text-secondary)]">
+            <input className="gov-checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} type="checkbox" />
+            {en ? "Auto-refresh (30s)" : "자동 새로고침 (30초)"}
+          </label>
+          <button className="gov-btn gov-btn-outline" onClick={() => void load()} type="button">{en ? "Refresh" : "새로고침"}</button>
+        </div>
+      }
+    >
+      <AdminWorkspacePageFrame>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            {error && <PageStatusNotice tone="warning">{en ? "Failed to load live cron data." : "실시간 크론 데이터를 불러오지 못했습니다."} ({error})</PageStatusNotice>}
+            {payload?.error && <PageStatusNotice tone="warning">{payload.error}</PageStatusNotice>}
+            <PageStatusNotice tone={health === "WARN" ? "warning" : "info"}>
+              {health === "WARN"
+                ? (en ? "Warning state detected. Check failed backup jobs and warning events below." : "경고 상태가 감지되었습니다. 아래 실패 백업 Job과 Warning 이벤트를 확인하십시오.")
+                : (en ? "Cron resources are currently normal." : "현재 크론 리소스는 정상 범위입니다.")}
+            </PageStatusNotice>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {summary.map((item) => (
+                <SummaryMetricCard key={item.title} title={item.title} value={item.value} description={item.description} />
+              ))}
+            </section>
+
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SummaryMetricCard title={en ? "Cluster Health" : "클러스터 상태"} value={health} description={payload?.source ?? "kubectl"} />
+              <SummaryMetricCard title={en ? "Completed Jobs" : "완료 Job"} value={String(completeJobs)} description={en ? "Retained successful jobs" : "보존 중인 성공 Job"} />
+              <SummaryMetricCard title={en ? "Suspended CronJobs" : "중지 CronJob"} value={String(payload?.suspendedCronJobs ?? 0)} description={en ? "CronJobs with suspend=true" : "suspend=true 리소스"} />
+              <SummaryMetricCard title={en ? "Generated At" : "생성 시각"} value={formatTime(payload?.generatedAt ?? "-")} description={en ? "Backend collection timestamp" : "백엔드 수집 시각"} />
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "CronJob Resources" : "CronJob 리소스"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Schedules, suspend state, last schedule, last success, and container image are shown from Kubernetes." : "Kubernetes에서 읽은 스케줄, 중지 여부, 최근 실행/성공 시각, 컨테이너 이미지를 표시합니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Namespace", "Name", "Schedule", "Suspend", "Active", "Last Schedule", "Last Success", "Concurrency", "Container / Image"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {cronJobs.map((row) => (
+                      <tr key={`${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3 font-mono text-[13px]">{row.schedule}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${cronStatusClass(row.suspend ? "SUSPENDED" : "ACTIVE")}`}>{row.suspend ? "SUSPENDED" : "ACTIVE"}</span></td>
+                        <td className="px-4 py-3">{row.active}</td>
+                        <td className="px-4 py-3">{formatTime(row.lastScheduleTime)}</td>
+                        <td className="px-4 py-3">{formatTime(row.lastSuccessfulTime)}</td>
+                        <td className="px-4 py-3">{row.concurrencyPolicy}</td>
+                        <td className="px-4 py-3 text-[var(--kr-gov-text-secondary)]">{row.containers}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Recent Kubernetes Jobs" : "최근 Kubernetes Job"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Newest jobs are listed first. Failed backup jobs remain visible for diagnosis." : "최신 Job을 먼저 표시합니다. 실패한 백업 Job은 원인 점검을 위해 남겨 보여줍니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Namespace", "Job", "CronJob", "Status", "Succeeded", "Failed", "Backoff", "Started", "Completed"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {jobs.map((row) => (
+                      <tr key={`${row.namespace}-${row.name}`}>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px] font-bold">{row.name}</td>
+                        <td className="px-4 py-3">{row.cronJob}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${cronStatusClass(row.status)}`}>{row.status}</span></td>
+                        <td className="px-4 py-3">{row.succeeded}</td>
+                        <td className="px-4 py-3">{row.failed}</td>
+                        <td className="px-4 py-3">{row.backoffLimit}</td>
+                        <td className="px-4 py-3">{formatTime(row.startTime)}</td>
+                        <td className="px-4 py-3">{formatTime(row.completionTime)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="gov-card overflow-hidden">
+              <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+                <h2 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{en ? "Warning Events" : "Warning 이벤트"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Cron or backup-related Kubernetes warning events are collected for quick incident review." : "크론/백업 관련 Kubernetes Warning 이벤트를 모아 장애 검토에 바로 사용할 수 있게 표시합니다."}</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <CronTableHeader labels={["Time", "Namespace", "Object", "Reason", "Message"]} />
+                  <tbody className="divide-y divide-gray-100">
+                    {warningEvents.length === 0 ? (
+                      <tr><td className="px-4 py-6 text-center text-[var(--kr-gov-text-secondary)]" colSpan={5}>{en ? "No warning events." : "Warning 이벤트가 없습니다."}</td></tr>
+                    ) : warningEvents.map((row, index) => (
+                      <tr key={`${row.objectName}-${row.reason}-${index}`}>
+                        <td className="px-4 py-3">{formatTime(row.lastTimestamp)}</td>
+                        <td className="px-4 py-3">{row.namespace}</td>
+                        <td className="px-4 py-3 font-mono text-[13px]">{row.objectKind}/{row.objectName}</td>
+                        <td className="px-4 py-3"><span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-700">{row.reason}</span></td>
+                        <td className="px-4 py-3 text-[var(--kr-gov-text-secondary)]">{row.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+      </AdminWorkspacePageFrame>
+    </AdminPageShell>
+  );
 }
 
 export function DbMonitoringPage() {
