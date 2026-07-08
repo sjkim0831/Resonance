@@ -62,6 +62,10 @@ type CapturedPreviewElement = {
   rect: { x: number; y: number; width: number; height: number };
 };
 
+type BuilderMenuGroup = 'home' | 'admin';
+type BuilderLayoutRegion = 'content' | 'header' | 'footer';
+type BuilderEditorView = 'design' | 'source';
+
 const SECTION_STORAGE_KEY = 'carbonet:builder:saved-sections';
 const FRONTEND_CANDIDATE_STORAGE_KEY = 'carbonet:builder:frontend-candidates';
 const SERVER_SECTION_COLLECTION = 'saved-sections';
@@ -383,6 +387,22 @@ function findTargetRouteSource(trace: RouteOwnershipTrace | null, menuUrl: strin
     || null;
 }
 
+function buildMenuSurfaceTree(group: BuilderMenuGroup) {
+  const sourceGroup = group === 'admin' ? 'admin' : 'home';
+  const rows = ROUTE_SOURCE_INVENTORY
+    .filter(row => group === 'admin' ? row.group === 'admin' : row.group !== 'admin')
+    .slice()
+    .sort((a, b) => `${a.koPath || a.enPath}`.localeCompare(`${b.koPath || b.enPath}`));
+  const grouped = new Map<string, RouteSourceInventoryRow[]>();
+  rows.forEach(row => {
+    const path = row.koPath || row.enPath || `/${sourceGroup}/${row.routeId}`;
+    const parts = path.split('/').filter(Boolean);
+    const parent = parts.length > 2 ? parts.slice(0, -1).join(' / ') : (parts[0] || sourceGroup);
+    grouped.set(parent, [...(grouped.get(parent) || []), row]);
+  });
+  return Array.from(grouped.entries()).map(([parent, items]) => ({ parent, items }));
+}
+
 function buildBuilderAssetRows(params: {
   targetContext: BuilderTargetContext;
   managedAsset: BuilderManagedAssetContext;
@@ -530,6 +550,9 @@ export function BuilderStudioPage() {
   const [managedAssetContext, setManagedAssetContext] = useState<BuilderManagedAssetContext>(() => readManagedAssetContext());
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<BuilderWorkspaceTab>(() => readInitialBuilderTab());
   const [selectedAgent, setSelectedAgent] = useState<BuilderAgentId>('HERMES');
+  const [selectedMenuGroup, setSelectedMenuGroup] = useState<BuilderMenuGroup>(() => readBuilderTargetContext().menuUrl.startsWith('/admin') ? 'admin' : 'home');
+  const [selectedLayoutRegion, setSelectedLayoutRegion] = useState<BuilderLayoutRegion>('content');
+  const [editorView, setEditorView] = useState<BuilderEditorView>('design');
   const [contextCaptureEnabled, setContextCaptureEnabled] = useState(true);
   const [previewContextRequest, setPreviewContextRequest] = useState<{ x: number; y: number; selector: string; note: string; element?: CapturedPreviewElement } | null>(null);
   const [designDraft, setDesignDraft] = useState({ padding: '16', radius: '8', gap: '12', width: '100', fontSize: '14', shadow: 'sm' });
@@ -665,6 +688,8 @@ export function BuilderStudioPage() {
         ...component.defaultProps,
         className: component.defaultClassNm,
         label: component.componentNm,
+        menuGroup: selectedMenuGroup,
+        layoutRegion: selectedLayoutRegion,
       },
     };
 
@@ -726,17 +751,23 @@ export function BuilderStudioPage() {
   function buildPreviewInspectorScript() {
     const includeSelectors = JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY.includeSelectors);
     const excludeSelectors = JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY.excludeSelectors);
+    const hiddenChromeSelector = selectedLayoutRegion === 'header'
+      ? 'nav,aside,footer,[role="navigation"],[data-layout="sidebar"],[data-testid*="breadcrumb"],.breadcrumb,.breadcrumbs,.page-title,.page-description,.global-layout'
+      : selectedLayoutRegion === 'footer'
+        ? 'header,nav,aside,[role="banner"],[role="navigation"],[data-layout="header"],[data-layout="sidebar"],[data-testid*="breadcrumb"],.breadcrumb,.breadcrumbs,.page-title,.page-description,.global-layout'
+        : 'header,nav,aside,footer,[role="banner"],[role="navigation"],[data-layout="header"],[data-layout="sidebar"],[data-testid*="breadcrumb"],.breadcrumb,.breadcrumbs,.page-title,.page-description,.global-layout';
     return `
       (function () {
         if (window.__carbonetBuilderInspectorInstalled) return;
         window.__carbonetBuilderInspectorInstalled = true;
         var includeSelectors = ${includeSelectors};
         var excludeSelectors = ${excludeSelectors};
+        var selectedLayoutRegion = ${JSON.stringify(selectedLayoutRegion)};
         var style = document.createElement('style');
         style.setAttribute('data-carbonet-builder-inspector', 'true');
         style.textContent = [
           '[data-carbonet-builder-hover="true"]{outline:2px solid #2563eb !important;outline-offset:2px !important;cursor:crosshair !important;}',
-          'header,nav,aside,[role="banner"],[role="navigation"],[data-layout="header"],[data-layout="sidebar"],[data-testid*="breadcrumb"],.breadcrumb,.breadcrumbs,.page-title,.page-description,.global-layout{display:none !important;}',
+          ${JSON.stringify(hiddenChromeSelector + '{display:none !important;}')},
           '[data-carbonet-builder-floating-hidden="true"]{display:none !important;}',
           'html,body,#root{min-height:100% !important;background:#fff !important;}',
           'body{margin:0 !important;overflow:auto !important;}',
@@ -842,6 +873,8 @@ export function BuilderStudioPage() {
             var nearTop = rect.top <= 96;
             var nearBottom = viewportHeight && rect.bottom >= viewportHeight - 96;
             var wide = rect.width >= Math.min(480, window.innerWidth * 0.45);
+            if (selectedLayoutRegion === 'header' && nearTop) continue;
+            if (selectedLayoutRegion === 'footer' && nearBottom) continue;
             if ((nearTop || nearBottom) && wide) {
               el.setAttribute('data-carbonet-builder-floating-hidden', 'true');
               el.style.setProperty('display', 'none', 'important');
@@ -901,6 +934,8 @@ export function BuilderStudioPage() {
     try {
       const doc = frame.contentDocument;
       if (!doc?.documentElement) return;
+      frame.contentWindow && Function('win', 'win.__carbonetBuilderInspectorInstalled=false')(frame.contentWindow);
+      doc.querySelectorAll('[data-carbonet-builder-inspector="true"]').forEach(node => node.remove());
       const script = doc.createElement('script');
       script.textContent = buildPreviewInspectorScript();
       doc.documentElement.appendChild(script);
@@ -944,6 +979,12 @@ export function BuilderStudioPage() {
     window.addEventListener('message', handlePreviewMessage);
     return () => window.removeEventListener('message', handlePreviewMessage);
   }, [targetContext.menuCode, targetContext.pageId]);
+
+  useEffect(() => {
+    if (activeWorkspaceTab === 'unified-workspace' || activeWorkspaceTab === 'target-preview') {
+      window.setTimeout(() => attachPreviewInspector(), 50);
+    }
+  }, [selectedLayoutRegion, activeWorkspaceTab, previewUrl]);
 
   function showToast(message: string) {
     setBuilderToast(message);
@@ -1005,6 +1046,8 @@ export function BuilderStudioPage() {
       `pageId=${targetContext.pageId}`,
       `menuTitle=${targetContext.menuTitle}`,
       `menuUrl=${targetContext.menuUrl}`,
+      `menuGroup=${selectedMenuGroup}`,
+      `layoutRegion=${selectedLayoutRegion}`,
       `routeSource=${targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-'}`,
       `editScope=${BUILDER_CONTENT_SCOPE_POLICY.editScope}`,
       `excludeSelectors=${BUILDER_CONTENT_SCOPE_POLICY.excludeSelectors.join(', ')}`,
@@ -1100,6 +1143,8 @@ export function BuilderStudioPage() {
         html: candidate.html,
         candidateId: candidate.id,
         source: candidate.source,
+        menuGroup: selectedMenuGroup,
+        layoutRegion: selectedLayoutRegion,
       },
     };
     const nextNodes = existingIndex >= 0
@@ -1218,6 +1263,28 @@ export function BuilderStudioPage() {
     });
   }
 
+  function selectMenuSurface(row: RouteSourceInventoryRow) {
+    const nextTarget: BuilderTargetContext = {
+      menuCode: row.routeId,
+      pageId: row.routeId,
+      menuTitle: row.label,
+      menuUrl: row.koPath || row.enPath || targetContext.menuUrl,
+    };
+    setTargetContext(nextTarget);
+    setSelectedMenuGroup(row.group === 'admin' ? 'admin' : 'home');
+    setPreviewContextRequest(null);
+    setSelectedNode(null);
+    setFrontendCandidates(loadFrontendCandidates(nextTarget));
+    void loadServerBuilderAssets(nextTarget);
+    const query = new URLSearchParams(window.location.search);
+    query.set('menuCode', nextTarget.menuCode);
+    query.set('pageId', nextTarget.pageId);
+    query.set('menuTitle', nextTarget.menuTitle);
+    query.set('menuUrl', nextTarget.menuUrl);
+    query.set('tab', 'unified-workspace');
+    window.history.replaceState(null, '', `${window.location.pathname}?${query.toString()}`);
+  }
+
   async function submitBuilderAgentRequest(executeNow: boolean) {
     const rawInstruction = (previewContextRequest?.note || aiPrompt || '').trim();
     if (!rawInstruction) {
@@ -1243,6 +1310,8 @@ export function BuilderStudioPage() {
       `pageId=${targetContext.pageId || currentScreen?.pageId || ''}`,
       `menuTitle=${targetContext.menuTitle || currentScreen?.menuNm || ''}`,
       `menuUrl=${targetContext.menuUrl || currentScreen?.menuUrl || ''}`,
+      `menuGroup=${selectedMenuGroup}`,
+      `layoutRegion=${selectedLayoutRegion}`,
       `previewSelector=${previewContextRequest?.selector || '-'}`,
       `previewElement=${previewContextRequest?.element ? JSON.stringify(previewContextRequest.element) : '-'}`,
       `contentScopePolicy=${JSON.stringify(BUILDER_CONTENT_SCOPE_POLICY)}`,
@@ -1453,6 +1522,14 @@ export function BuilderStudioPage() {
   const filteredComponents = activeCategory === 'ALL'
     ? components
     : components.filter(c => c.categoryCd === activeCategory);
+  const menuSurfaceTree = useMemo(() => buildMenuSurfaceTree(selectedMenuGroup), [selectedMenuGroup]);
+  const selectedSourcePreview = useMemo(() => ({
+    routeSource: targetRouteSource?.effectiveSourcePath || targetRouteSource?.sourcePath || '-',
+    exportName: targetRouteSource?.effectiveExportName || targetRouteSource?.exportName || '-',
+    routeFamily: targetRouteSource?.routeFamilyFile || '-',
+    layoutRegion: selectedLayoutRegion,
+    currentNodes: (currentScreen?.nodes || []).filter(node => String(node.props?.layoutRegion || 'content') === selectedLayoutRegion),
+  }), [targetRouteSource, selectedLayoutRegion, currentScreen]);
 
   if (isLoading) {
     return (
@@ -1574,7 +1651,51 @@ export function BuilderStudioPage() {
 
       {activeWorkspaceTab === 'unified-workspace' ? (
         <div className="flex-1 overflow-auto bg-slate-50 p-5">
-          <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)_380px]">
+          <div className="grid gap-4 xl:grid-cols-[260px_280px_minmax(0,1fr)_360px]">
+            <aside className="space-y-4">
+              <section className="rounded border bg-white p-4 shadow-sm">
+                <p className="text-xs font-black uppercase text-blue-700">Menu Tree</p>
+                <h2 className="mt-1 font-black text-slate-900">홈/관리자 메뉴</h2>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {[
+                    ['home', '홈 메뉴'],
+                    ['admin', '관리자 메뉴'],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setSelectedMenuGroup(id as BuilderMenuGroup)}
+                      className={`rounded px-3 py-2 text-xs font-black ${selectedMenuGroup === id ? 'bg-blue-700 text-white' : 'border border-slate-200 text-slate-700 hover:border-blue-200'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 max-h-[520px] space-y-3 overflow-auto pr-1">
+                  {menuSurfaceTree.map(group => (
+                    <div key={group.parent}>
+                      <p className="sticky top-0 bg-white py-1 text-[11px] font-black uppercase text-slate-400">{group.parent}</p>
+                      <div className="space-y-1">
+                        {group.items.map(item => {
+                          const selected = targetContext.menuUrl === item.koPath || targetContext.pageId === item.routeId;
+                          return (
+                            <button
+                              key={`${item.group}-${item.routeId}`}
+                              type="button"
+                              onClick={() => selectMenuSurface(item)}
+                              className={`w-full rounded px-3 py-2 text-left text-xs ${selected ? 'bg-blue-50 font-black text-blue-700 ring-1 ring-blue-200' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                              <span className="block truncate">{item.label}</span>
+                              <span className="block truncate font-mono text-[10px] text-slate-400">{item.koPath || item.enPath}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </aside>
             <aside className="space-y-4">
               <section className="rounded border bg-white p-4 shadow-sm">
                 <p className="text-xs font-black uppercase text-blue-700">Target</p>
@@ -1588,6 +1709,25 @@ export function BuilderStudioPage() {
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button type="button" onClick={attachPreviewInspector} className="rounded border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700">요소 캡처</button>
                   <button type="button" onClick={() => setActiveWorkspaceTab('target-preview')} className="rounded border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">전체 미리보기</button>
+                </div>
+                <div className="mt-3 rounded bg-slate-50 p-2">
+                  <p className="text-[11px] font-black text-slate-500">편집 영역</p>
+                  <div className="mt-2 grid grid-cols-3 gap-1">
+                    {[
+                      ['header', '헤더'],
+                      ['content', '본문'],
+                      ['footer', '푸터'],
+                    ].map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setSelectedLayoutRegion(id as BuilderLayoutRegion)}
+                        className={`rounded px-2 py-1.5 text-xs font-black ${selectedLayoutRegion === id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </section>
 
@@ -1671,7 +1811,31 @@ export function BuilderStudioPage() {
             </aside>
 
             <main className="space-y-4">
-              <section className="overflow-hidden rounded border bg-white shadow-sm">
+              <section className="rounded border bg-white p-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-blue-700">SDUI Editor</p>
+                    <h3 className="font-black text-slate-900">{targetContext.menuTitle} · {selectedLayoutRegion === 'header' ? '헤더' : selectedLayoutRegion === 'footer' ? '푸터' : '본문'}</h3>
+                  </div>
+                  <div className="flex rounded border border-slate-200 bg-slate-50 p-1">
+                    {[
+                      ['design', '디자인'],
+                      ['source', '소스'],
+                    ].map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setEditorView(id as BuilderEditorView)}
+                        className={`rounded px-3 py-1.5 text-xs font-black ${editorView === id ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {editorView === 'design' ? <section className="overflow-hidden rounded border bg-white shadow-sm">
                 <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
                   <div>
                     <p className="text-xs font-black uppercase text-blue-700">Live Screen</p>
@@ -1697,9 +1861,9 @@ export function BuilderStudioPage() {
                     </div>
                   ) : null}
                 </div>
-              </section>
+              </section> : null}
 
-              <section className="rounded border bg-white p-4 shadow-sm">
+              {editorView === 'design' ? <section className="rounded border bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase text-blue-700">Builder Canvas</p>
@@ -1715,7 +1879,7 @@ export function BuilderStudioPage() {
                   onDrop={e => handleDrop(e, null, 'root')}
                   className="mt-4 min-h-[260px] rounded border-2 border-dashed border-slate-200 bg-slate-50 p-4"
                 >
-                  {currentScreen?.nodes.filter(n => n.parentNodeId === null).map(node => (
+                  {currentScreen?.nodes.filter(n => n.parentNodeId === null && String(n.props?.layoutRegion || 'content') === selectedLayoutRegion).map(node => (
                     <NodeRenderer
                       key={node.nodeId}
                       node={node}
@@ -1727,11 +1891,41 @@ export function BuilderStudioPage() {
                       onDragOver={handleDragOver}
                     />
                   ))}
-                  {!currentScreen?.nodes.length ? (
+                  {!currentScreen?.nodes.filter(n => n.parentNodeId === null && String(n.props?.layoutRegion || 'content') === selectedLayoutRegion).length ? (
                     <div className="flex h-40 items-center justify-center rounded bg-white text-sm font-bold text-slate-400">왼쪽 컴포넌트를 끌어오거나 UI 후보를 적용하세요.</div>
                   ) : null}
                 </div>
-              </section>
+              </section> : null}
+
+              {editorView === 'source' ? (
+                <section className="rounded border bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase text-blue-700">Source View</p>
+                      <h3 className="font-black text-slate-900">디자인 대상 소스와 SDUI 노드</h3>
+                    </div>
+                    <button type="button" onClick={() => requestUnifiedWorkspaceAi('modify', false)} className="rounded bg-slate-800 px-3 py-2 text-xs font-bold text-white">소스 기준 AI 요청</button>
+                  </div>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    <div className="rounded border border-slate-200 bg-slate-950 p-3">
+                      <p className="text-xs font-black uppercase text-blue-300">Route Source</p>
+                      <pre className="mt-2 max-h-[460px] overflow-auto whitespace-pre-wrap break-all text-xs leading-5 text-slate-100">{JSON.stringify(selectedSourcePreview, null, 2)}</pre>
+                    </div>
+                    <div className="rounded border border-slate-200 bg-slate-950 p-3">
+                      <p className="text-xs font-black uppercase text-blue-300">Selected Element</p>
+                      <pre className="mt-2 max-h-[460px] overflow-auto whitespace-pre-wrap break-all text-xs leading-5 text-slate-100">{JSON.stringify({
+                        menuGroup: selectedMenuGroup,
+                        layoutRegion: selectedLayoutRegion,
+                        target: targetContext,
+                        selectedNode,
+                        previewContextRequest,
+                        eventDraft,
+                        designDraft,
+                      }, null, 2)}</pre>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
             </main>
 
             <aside className="space-y-4">
