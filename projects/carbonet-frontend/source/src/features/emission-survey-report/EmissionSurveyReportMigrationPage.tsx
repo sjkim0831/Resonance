@@ -1813,6 +1813,8 @@ export function EmissionSurveyReportVerifyPage() {
   const en = isEnglish();
   const [manualBlock, setManualBlock] = useState("");
   const [fileName, setFileName] = useState("");
+  const [uploadedVerificationText, setUploadedVerificationText] = useState("");
+  const [uploadedPayloadFound, setUploadedPayloadFound] = useState(false);
   const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
   const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning">("info");
@@ -1865,11 +1867,19 @@ export function EmissionSurveyReportVerifyPage() {
     const buffer = await file.arrayBuffer();
     const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
     const latinText = new TextDecoder("latin1", { fatal: false }).decode(buffer);
-    evaluatePayload(extractVerificationPayload(`${utf8Text}\n${latinText}`), file.name);
+    const combinedText = `${utf8Text}\n${latinText}`;
+    const nextPayload = extractVerificationPayload(combinedText);
+    setUploadedVerificationText(combinedText);
+    setUploadedPayloadFound(Boolean(nextPayload));
+    evaluatePayload(nextPayload, file.name);
   };
 
   const handleManualVerify = () => {
-    evaluatePayload(extractVerificationPayload(manualBlock), en ? "manual input" : "수동 입력값");
+    const sourceText = manualBlock.trim() || uploadedVerificationText;
+    const sourceLabel = manualBlock.trim()
+      ? (en ? "manual input" : "수동 입력값")
+      : (fileName || (en ? "uploaded PDF" : "업로드 PDF"));
+    evaluatePayload(extractVerificationPayload(sourceText), sourceLabel);
   };
 
   const toneClass = resultTone === "success"
@@ -1908,6 +1918,13 @@ export function EmissionSurveyReportVerifyPage() {
               <span className="mt-2 text-sm font-semibold text-slate-500">{en ? "PDF files are preferred. Text-based saved PDFs can be verified automatically." : "PDF 파일 권장. 텍스트 기반 저장 PDF는 자동 검증됩니다."}</span>
               <input accept="application/pdf,.pdf" className="sr-only" onChange={handleFileChange} type="file" />
             </label>
+            {fileName ? (
+              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${uploadedPayloadFound ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                {uploadedPayloadFound
+                  ? (en ? "Verification data was found in the uploaded PDF. The button below can verify it again." : "업로드한 PDF에서 검증 데이터를 찾았습니다. 아래 버튼으로 다시 확인할 수 있습니다.")
+                  : (en ? "The uploaded PDF was read, but the verification block was not found. Paste the block from the last report page below if needed." : "업로드한 PDF는 읽었지만 검증 블록을 찾지 못했습니다. 필요하면 리포트 마지막 페이지의 검증 블록을 아래에 붙여넣으세요.")}
+              </div>
+            ) : null}
 
             <div className="mt-5">
               <label className="text-sm font-black text-slate-800" htmlFor="manual-verification-block">
@@ -1922,7 +1939,7 @@ export function EmissionSurveyReportVerifyPage() {
               />
               <div className="mt-3 flex justify-end">
                 <MemberButton onClick={handleManualVerify} type="button">
-                  {en ? "Verify Block" : "검증 블록 확인"}
+                  {en ? "Verify Uploaded PDF / Block" : "업로드 PDF / 검증 블록 확인"}
                 </MemberButton>
               </div>
             </div>
