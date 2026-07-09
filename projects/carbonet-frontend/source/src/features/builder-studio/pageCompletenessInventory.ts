@@ -1463,9 +1463,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionDataHistoryMigrationPage"
     ],
     "routeIds": [
+      "emission-audit-log",
       "emission-data-history"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 376,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1505,9 +1506,11 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionDefinitionStudioMigrationPage"
     ],
     "routeIds": [
-      "emission-definition-studio"
+      "emission-calculation-rule",
+      "emission-definition-studio",
+      "emission-input-template"
     ],
-    "routeCount": 1,
+    "routeCount": 3,
     "status": "implemented",
     "lineCount": 2242,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1526,9 +1529,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionEcoinventAdminMigrationPage"
     ],
     "routeIds": [
-      "emission-ecoinvent-admin"
+      "emission-ecoinvent-admin",
+      "emission-factor-management"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 596,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1673,9 +1677,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionProjectListMigrationPage"
     ],
     "routeIds": [
+      "emission-my-tasks",
       "emission-project-list"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 1187,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1715,9 +1720,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionReportSubmitMigrationPage"
     ],
     "routeIds": [
+      "emission-evidence",
       "emission-report-submit"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 744,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1757,9 +1763,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionResultListMigrationPage"
     ],
     "routeIds": [
+      "emission-result",
       "emission-result-list"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 376,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1820,9 +1827,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionSurveyAdminDataMigrationPage"
     ],
     "routeIds": [
+      "emission-evidence-management",
       "emission-survey-admin-data"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 1395,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1859,18 +1867,19 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "EmissionSurveyLcaSummaryPrintPage",
       "EmissionSurveyReportMigrationPage",
+      "EmissionSurveyLcaSummaryPrintPage",
       "EmissionSurveyReportPrintPage",
       "EmissionSurveyReportVerifyPage"
     ],
     "routeIds": [
+      "emission-report-template",
       "emission-survey-lca-summary-print",
       "emission-survey-report",
       "emission-survey-report-print",
       "emission-survey-report-verify"
     ],
-    "routeCount": 4,
+    "routeCount": 5,
     "status": "implemented",
     "lineCount": 2895,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1889,9 +1898,11 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionValidateMigrationPage"
     ],
     "routeIds": [
-      "emission-validate"
+      "emission-approval-workflow",
+      "emission-validate",
+      "emission-validation-rule"
     ],
-    "routeCount": 1,
+    "routeCount": 3,
     "status": "implemented",
     "lineCount": 448,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1994,9 +2005,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "ExternalConnectionListMigrationPage"
     ],
     "routeIds": [
+      "emission-system-link",
       "external-connection-list"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 561,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",

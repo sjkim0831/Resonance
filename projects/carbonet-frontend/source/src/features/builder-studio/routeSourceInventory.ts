@@ -877,6 +877,42 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
+    "routeId": "emission-approval-workflow",
+    "label": "승인 워크플로우 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/approval-workflow",
+    "enPath": "/en/admin/emission/approval-workflow",
+    "exportName": "EmissionValidateMigrationPage",
+    "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
+    "effectiveExportName": "EmissionValidateMigrationPage",
+    "effectiveSourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-audit-log",
+    "label": "감사 로그",
+    "group": "admin",
+    "koPath": "/admin/emission/audit-log",
+    "enPath": "/en/admin/emission/audit-log",
+    "exportName": "EmissionDataHistoryMigrationPage",
+    "sourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
+    "effectiveExportName": "EmissionDataHistoryMigrationPage",
+    "effectiveSourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-calculation-rule",
+    "label": "산정식 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/calculation-rule",
+    "enPath": "/en/admin/emission/calculation-rule",
+    "exportName": "EmissionDefinitionStudioMigrationPage",
+    "sourcePath": "features/emission-definition-studio/index.ts",
+    "effectiveExportName": "EmissionDefinitionStudioMigrationPage",
+    "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-dashboard",
     "label": "탄소 배출 대시보드",
     "group": "home",
@@ -902,7 +938,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-data-input",
-    "label": "데이터 입력",
+    "label": "활동자료 입력",
     "group": "home",
     "koPath": "/emission/data_input",
     "enPath": "/en/emission/data_input",
@@ -937,6 +973,42 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-evidence",
+    "label": "증빙 자료함",
+    "group": "home",
+    "koPath": "/emission/evidence",
+    "enPath": "/en/emission/evidence",
+    "exportName": "EmissionReportSubmitMigrationPage",
+    "sourcePath": "features/emission-report-submit/EmissionReportSubmitMigrationPage.tsx",
+    "effectiveExportName": "EmissionReportSubmitMigrationPage",
+    "effectiveSourcePath": "features/emission-report-submit/EmissionReportSubmitMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-evidence-management",
+    "label": "증빙 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/evidence-management",
+    "enPath": "/en/admin/emission/evidence-management",
+    "exportName": "EmissionSurveyAdminDataMigrationPage",
+    "sourcePath": "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx",
+    "effectiveExportName": "EmissionSurveyAdminDataMigrationPage",
+    "effectiveSourcePath": "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-factor-management",
+    "label": "배출계수 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/factor-management",
+    "enPath": "/en/admin/emission/factor-management",
+    "exportName": "EmissionEcoinventAdminMigrationPage",
+    "sourcePath": "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
+    "effectiveExportName": "EmissionEcoinventAdminMigrationPage",
+    "effectiveSourcePath": "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-gwp-values",
     "label": "GWP 값 관리",
     "group": "admin",
@@ -950,7 +1022,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-home-validate",
-    "label": "산정 검증",
+    "label": "검증·보정",
     "group": "home",
     "koPath": "/emission/validate",
     "enPath": "/en/emission/validate",
@@ -958,6 +1030,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/emission-home-validate/EmissionHomeValidateMigrationPage.tsx",
     "effectiveExportName": "EmissionHomeValidateMigrationPage",
     "effectiveSourcePath": "features/emission-home-validate/EmissionHomeValidateMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-input-template",
+    "label": "입력 템플릿 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/input-template",
+    "enPath": "/en/admin/emission/input-template",
+    "exportName": "EmissionDefinitionStudioMigrationPage",
+    "sourcePath": "features/emission-definition-studio/index.ts",
+    "effectiveExportName": "EmissionDefinitionStudioMigrationPage",
+    "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1009,8 +1093,20 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-my-tasks",
+    "label": "내 배출 업무",
+    "group": "home",
+    "koPath": "/emission/my-tasks",
+    "enPath": "/en/emission/my-tasks",
+    "exportName": "EmissionProjectListMigrationPage",
+    "sourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
+    "effectiveExportName": "EmissionProjectListMigrationPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-project-list",
-    "label": "배출 관제 홈",
+    "label": "배출량 관리",
     "group": "home",
     "koPath": "/emission/project_list",
     "enPath": "/en/emission/project_list",
@@ -1045,6 +1141,30 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-report-template",
+    "label": "보고서 템플릿 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/report-template",
+    "enPath": "/en/admin/emission/report-template",
+    "exportName": "EmissionSurveyReportMigrationPage",
+    "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
+    "effectiveExportName": "EmissionSurveyReportMigrationPage",
+    "effectiveSourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-result",
+    "label": "산정 결과 조회",
+    "group": "home",
+    "koPath": "/emission/result",
+    "enPath": "/en/emission/result",
+    "exportName": "EmissionResultListMigrationPage",
+    "sourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
+    "effectiveExportName": "EmissionResultListMigrationPage",
+    "effectiveSourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-result-detail",
     "label": "결과 상세",
     "group": "admin",
@@ -1058,7 +1178,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-result-list",
-    "label": "배출 결과 목록",
+    "label": "산정 결과 관리",
     "group": "admin",
     "koPath": "/admin/emission/result_list",
     "enPath": "/en/admin/emission/result_list",
@@ -1070,7 +1190,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-simulate",
-    "label": "시뮬레이션",
+    "label": "배출량 산정",
     "group": "home",
     "koPath": "/emission/simulate",
     "enPath": "/en/emission/simulate",
@@ -1082,7 +1202,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-site-management",
-    "label": "배출지 관리",
+    "label": "배출지·배출원 원장",
     "group": "admin",
     "koPath": "/admin/emission/site-management",
     "enPath": "/en/admin/emission/site-management",
@@ -1165,11 +1285,35 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-system-link",
+    "label": "외부 시스템 연계",
+    "group": "admin",
+    "koPath": "/admin/emission/system-link",
+    "enPath": "/en/admin/emission/system-link",
+    "exportName": "ExternalConnectionListMigrationPage",
+    "sourcePath": "features/external-connection-list/ExternalConnectionListMigrationPage.tsx",
+    "effectiveExportName": "ExternalConnectionListMigrationPage",
+    "effectiveSourcePath": "features/external-connection-list/ExternalConnectionListMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-validate",
     "label": "검증 관리",
     "group": "admin",
     "koPath": "/admin/emission/validate",
     "enPath": "/en/admin/emission/validate",
+    "exportName": "EmissionValidateMigrationPage",
+    "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
+    "effectiveExportName": "EmissionValidateMigrationPage",
+    "effectiveSourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-validation-rule",
+    "label": "검증 규칙 관리",
+    "group": "admin",
+    "koPath": "/admin/emission/validation-rule",
+    "enPath": "/en/admin/emission/validation-rule",
     "exportName": "EmissionValidateMigrationPage",
     "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
     "effectiveExportName": "EmissionValidateMigrationPage",
