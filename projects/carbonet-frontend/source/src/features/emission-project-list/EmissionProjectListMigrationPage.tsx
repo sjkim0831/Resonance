@@ -250,6 +250,38 @@ function EmissionProjectListInlineStyles() {
         outline: 3px solid var(--kr-gov-focus);
         outline-offset: 2px;
       }
+      .krds-band {
+        background:
+          linear-gradient(180deg, rgba(0, 55, 139, 0.04), rgba(255, 255, 255, 0)),
+          #ffffff;
+        border-bottom: 1px solid var(--kr-gov-border-light);
+      }
+      .krds-section {
+        border: 1px solid var(--kr-gov-border-light);
+        border-radius: var(--kr-gov-radius);
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+      .krds-step {
+        position: relative;
+        border: 1px solid #d8e3f4;
+        border-radius: var(--kr-gov-radius);
+        background: #ffffff;
+      }
+      .krds-step:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -18px;
+        width: 18px;
+        height: 1px;
+        background: #9fb7dc;
+      }
+      @media (max-width: 1023px) {
+        .krds-step:not(:last-child)::after {
+          display: none;
+        }
+      }
       .home-brand-copy { min-width: 0; }
       .home-brand-title {
         margin: 0 !important;
@@ -643,54 +675,82 @@ export function EmissionProjectListMigrationPage() {
         </div>
 
         <main id="main-content">
-          <section className="bg-slate-900 py-10 relative overflow-hidden border-b border-slate-800" data-help-id="emission-project-hero">
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <svg height="100%" width="100%">
-                <pattern height="60" id="dots" patternUnits="userSpaceOnUse" width="60">
-                  <circle cx="2" cy="2" fill="white" r="1" />
-                </pattern>
-                <rect fill="url(#dots)" height="100%" width="100%" />
-              </svg>
+          <section className="krds-band py-6" data-help-id="emission-project-workflow-summary">
+            <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
+              <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--kr-gov-blue)]">
+                    {en ? "Carbon Emission Management Workflow" : "탄소배출량 관리 워크플로우"}
+                  </p>
+                  <h1 className="mt-1 text-2xl font-black text-[var(--kr-gov-text-primary)] lg:text-3xl">
+                    {en ? "Manage site data, calculation, reporting, and verification in one flow" : "배출지 자료부터 산정, 보고, 검증까지 한 흐름으로 관리"}
+                  </h1>
+                </div>
+                <a className="inline-flex w-fit items-center gap-2 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-blue)] bg-white px-4 py-2 text-sm font-black text-[var(--kr-gov-blue)] hover:bg-blue-50" href={buildLocalizedPath("/emission/index", "/en/emission/index")}>
+                  <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                  {en ? "Open emission dashboard" : "탄소 배출 대시보드"}
+                </a>
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:gap-5">
+                {workflowSteps.map((step, index) => (
+                  <a className="krds-step p-4 transition hover:border-[var(--kr-gov-blue)] hover:bg-blue-50/40" href={step.href} key={`summary-${step.title}`}>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--kr-gov-blue)] text-sm font-black text-white">{index + 1}</span>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${step.statusClass}`}>{step.status}</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="material-symbols-outlined mt-0.5 text-[22px] text-[var(--kr-gov-blue)]">{step.icon}</span>
+                      <div>
+                        <h2 className="text-base font-black text-gray-900">{step.title}</h2>
+                        <p className="mt-1 text-xs leading-5 text-[var(--kr-gov-text-secondary)]">{step.description}</p>
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
             </div>
+          </section>
+
+          <section className="bg-white py-10 relative overflow-hidden border-b border-[var(--kr-gov-border-light)]" data-help-id="emission-project-hero">
             <div className="max-w-[1440px] mx-auto px-4 lg:px-8 relative z-10">
               <div className="flex flex-col xl:flex-row gap-8 items-start">
                 <div className="xl:w-1/4">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                      <span className="material-symbols-outlined text-white text-[28px]">auto_awesome</span>
+                    <div className="w-12 h-12 rounded-[var(--kr-gov-radius)] bg-blue-50 border border-blue-100 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[var(--kr-gov-blue)] text-[28px]">auto_awesome</span>
                     </div>
                     <div>
-                      <h2 className="text-2xl font-black text-white">{en ? "Update Assistant" : "업데이트 비서"}</h2>
-                      <p className="text-indigo-400 text-xs font-bold flex items-center gap-1 uppercase tracking-widest">
-                        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" /> Intelligent Assistant
+                      <h2 className="text-2xl font-black text-[var(--kr-gov-text-primary)]">{en ? "Update Assistant" : "업데이트 비서"}</h2>
+                      <p className="text-[var(--kr-gov-blue)] text-xs font-bold flex items-center gap-1 uppercase tracking-widest">
+                        <span className="w-1.5 h-1.5 bg-[var(--kr-gov-blue)] rounded-full animate-pulse" /> Intelligent Assistant
                       </p>
                     </div>
                   </div>
-                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                  <p className="text-[var(--kr-gov-text-secondary)] text-sm leading-relaxed mb-6">
                     {en
-                      ? <>AI analyzed emission data in real time and detected pending update tasks. <br className="hidden xl:block" /><strong className="text-white">4 priority tasks</strong> are waiting.</>
-                      : <>AI가 배출지 데이터를 실시간 분석하여 필요한 업데이트 업무를 감지했습니다. <br className="hidden xl:block" /><strong className="text-white">4개의 우선 업무</strong>가 대기 중입니다.</>}
+                      ? <>AI analyzed emission data in real time and detected pending update tasks. <br className="hidden xl:block" /><strong className="text-[var(--kr-gov-text-primary)]">4 priority tasks</strong> are waiting.</>
+                      : <>AI가 배출지 데이터를 실시간 분석하여 필요한 업데이트 업무를 감지했습니다. <br className="hidden xl:block" /><strong className="text-[var(--kr-gov-text-primary)]">4개의 우선 업무</strong>가 대기 중입니다.</>}
                   </p>
-                  <button className="w-full py-3 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm font-bold transition-all flex items-center justify-center gap-2" type="button">
+                  <button className="w-full py-3 bg-[var(--kr-gov-blue)] hover:bg-[var(--kr-gov-blue-hover)] border border-[var(--kr-gov-blue)] rounded-[var(--kr-gov-radius)] text-white text-sm font-bold transition-all flex items-center justify-center gap-2" type="button">
                     <span className="material-symbols-outlined text-sm">checklist</span>
                     {en ? "View Full Workflow" : "전체 워크플로우 보기"}
                   </button>
                 </div>
                 <div className="xl:w-3/4 w-full">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-[var(--kr-gov-text-secondary)] uppercase tracking-widest mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined text-[16px]">priority_high</span>
                     {en ? "Your Update Queue (Priority Order)" : "Your Update Queue (우선순위순)"}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-help-id="emission-project-queue">
                     {queueItems.map((item) => (
-                      <div className="bg-white/5 backdrop-blur-md border border-white/10 p-5 rounded-r-lg group hover:bg-white/10 transition-all cursor-pointer relative overflow-hidden border-l-4" key={item.title} style={{ borderLeftColor: item.level === "CRITICAL" ? "#ef4444" : item.level === "REQUIRED" ? "#f97316" : item.level === "VERIFICATION" ? "#3b82f6" : "#10b981" }}>
+                      <div className="bg-white border border-[var(--kr-gov-border-light)] p-5 rounded-[var(--kr-gov-radius)] group hover:border-[var(--kr-gov-blue)] hover:shadow-sm transition-all cursor-pointer relative overflow-hidden border-l-4" key={item.title} style={{ borderLeftColor: item.level === "CRITICAL" ? "#ef4444" : item.level === "REQUIRED" ? "#f97316" : item.level === "VERIFICATION" ? "#3b82f6" : "#10b981" }}>
                         <div className="flex justify-between items-start mb-3">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.levelClass}`}>{item.level}</span>
-                          <span className="text-[10px] font-bold text-slate-500 tracking-tighter">{item.due}</span>
+                          <span className="text-[10px] font-bold text-gray-500 tracking-tighter">{item.due}</span>
                         </div>
-                        <h4 className="text-white font-bold text-sm mb-1">{item.title}</h4>
-                        <p className="text-slate-400 text-[11px] mb-4">{item.description}</p>
-                        <a className="inline-flex items-center text-[11px] font-bold text-indigo-400 hover:text-indigo-300 gap-1 mt-auto" href={getQueueHref(item)}>
+                        <h4 className="text-gray-900 font-bold text-sm mb-1">{item.title}</h4>
+                        <p className="text-gray-500 text-[11px] mb-4">{item.description}</p>
+                        <a className="inline-flex items-center text-[11px] font-bold text-[var(--kr-gov-blue)] hover:underline gap-1 mt-auto" href={getQueueHref(item)}>
                           {item.cta} <span className="material-symbols-outlined text-[14px]">{item.icon}</span>
                         </a>
                       </div>
@@ -701,19 +761,19 @@ export function EmissionProjectListMigrationPage() {
             </div>
           </section>
 
-          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 -mt-8 relative z-20" data-help-id="emission-project-admin-linkage">
-            <div className="bg-white shadow-2xl rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center border border-gray-100">
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-8 relative z-20" data-help-id="emission-project-admin-linkage">
+            <div className="krds-section p-4 flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-1 w-full">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
                 <input
-                  className="w-full pl-12 pr-4 h-14 border-none bg-gray-50 rounded-lg focus:ring-2 focus:ring-[var(--kr-gov-blue)] text-sm"
+                  className="w-full pl-12 pr-4 h-14 border border-[var(--kr-gov-border-light)] bg-white rounded-[var(--kr-gov-radius)] focus:ring-2 focus:ring-[var(--kr-gov-blue)] text-sm"
                   onChange={(event) => setSearchKeyword(event.target.value)}
                   placeholder={en ? "Search by facility code, emission site name, or process..." : "시설 코드, 배출지 명칭, 또는 관리 중인 특정 프로세스를 입력하세요..."}
                   value={searchKeyword}
                 />
               </div>
               <div className="flex gap-2 w-full md:w-auto">
-                <a className="flex-1 md:flex-none px-6 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-[var(--kr-gov-blue-hover)] transition-colors" href={adminSiteManagementHref}>
+                <a className="flex-1 md:flex-none px-6 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-[var(--kr-gov-radius)] flex items-center justify-center gap-2 hover:bg-[var(--kr-gov-blue-hover)] transition-colors" href={adminSiteManagementHref}>
                   <span className="material-symbols-outlined text-[20px]">add</span>
                   {en ? "Register New Emission Site" : "신규 배출지 등록"}
                 </a>
