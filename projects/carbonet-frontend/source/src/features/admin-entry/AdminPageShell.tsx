@@ -87,6 +87,45 @@ function handleGovSymbolError(event: SyntheticEvent<HTMLImageElement>) {
   image.src = GOV_SYMBOL_FALLBACK;
 }
 
+function hideLegacyAdminChromeOutsideReactRoot() {
+  const root = document.getElementById("root");
+  if (!root) {
+    return;
+  }
+
+  let current: Element | null = root;
+  while (current?.parentElement && current.parentElement !== document.documentElement) {
+    const parent: HTMLElement = current.parentElement;
+    Array.from(parent.children).forEach((child: Element) => {
+      if (child === current || child.contains(root) || root.contains(child)) {
+        return;
+      }
+      const tagName = child.tagName.toLowerCase();
+      const marker = `${child.id || ""} ${child.className || ""}`.toLowerCase();
+      const looksLikeLegacyChrome = tagName === "header"
+        || tagName === "nav"
+        || tagName === "aside"
+        || marker.includes("gnb")
+        || marker.includes("lnb")
+        || marker.includes("sidebar")
+        || marker.includes("admin-header")
+        || marker.includes("admin_header")
+        || marker.includes("header-wrap")
+        || marker.includes("header_wrap")
+        || marker.includes("left-menu")
+        || marker.includes("left_menu");
+      if (!looksLikeLegacyChrome) {
+        return;
+      }
+      const element = child as HTMLElement;
+      element.dataset.carbonetHiddenLegacyAdminChrome = "true";
+      element.setAttribute("aria-hidden", "true");
+      element.style.display = "none";
+    });
+    current = parent;
+  }
+}
+
 function readStoredAdminSessionExpireAt() {
   const stored = window.sessionStorage.getItem(ADMIN_SESSION_STORAGE_KEY) || "";
   const parsed = Number.parseInt(stored, 10);
@@ -491,16 +530,6 @@ export function AdminPageShell({
   const [showDeferredChrome, setShowDeferredChrome] = useState(false);
   const [initialMenuTree] = useState(() => readAdminMenuTreeSnapshot());
   const [bootstrappedSession] = useState<FrontendSession | null>(() => readFrontendSessionSnapshot());
-  const embeddedInLegacyAdminShell = typeof document !== "undefined" && (() => {
-    const root = document.getElementById("root");
-    if (!root) {
-      return false;
-    }
-    if (root.closest("#main-content")) {
-      return true;
-    }
-    return !!root.closest(".js-admin-layout-shell");
-  })();
   const currentPath = `${window.location.pathname}${window.location.search}`;
   const hasInitialMenuTree = Boolean(initialMenuTree && Object.keys(initialMenuTree).length);
   const menuState = useAsyncValue(fetchAdminMenuTree, [], {
@@ -546,6 +575,10 @@ export function AdminPageShell({
     () => simulatorPayload?.adminAccountOptions.find((option) => option.emplyrId === selectedSimulatorEmplyrId) || null,
     [selectedSimulatorEmplyrId, simulatorPayload?.adminAccountOptions]
   );
+
+  useLayoutEffect(() => {
+    hideLegacyAdminChromeOutsideReactRoot();
+  }, []);
 
   function syncSimulatorSelection(payload: AdminSessionSimulationPayload, options?: { keepAccount?: boolean; keepRole?: boolean }) {
     const keepAccount = Boolean(options?.keepAccount);
@@ -861,30 +894,6 @@ export function AdminPageShell({
       window.cancelAnimationFrame(rafId);
     };
   }, []);
-
-  if (embeddedInLegacyAdminShell) {
-    return (
-      <>
-        {children}
-        {loading ? (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/25 px-4 backdrop-blur-[2px]">
-            <div className="min-w-[18rem] rounded-[calc(var(--kr-gov-radius)+6px)] border border-slate-200 bg-white/95 px-6 py-5 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-              <div className="flex items-center gap-4">
-                <div className="relative h-10 w-10 shrink-0">
-                  <span className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
-                  <span className="absolute inset-0 animate-spin rounded-full border-[3px] border-transparent border-t-[var(--kr-gov-blue)] border-r-[var(--kr-gov-blue)]" />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-[var(--kr-gov-text-primary)]">{en ? "Preparing screen" : "화면 준비 중"}</p>
-                  <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{resolvedLoadingLabel}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </>
-    );
-  }
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-[#f8f9fa] text-[var(--kr-gov-text-primary)]">
