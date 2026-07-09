@@ -19,19 +19,19 @@ export type PageCompletenessInventoryRow = {
 export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   {
     "sourcePath": "features/access-history/AccessHistoryMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/access-history/AccessHistoryMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/access-history/AccessHistoryMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AccessHistoryMigrationPage"
     ],
     "routeIds": [
       "access-history"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 785,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -40,54 +40,56 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/admin-account-create/AdminAccountCreateMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-account-create/AdminAccountCreateMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-account-create/AdminAccountCreateMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AdminAccountCreateMigrationPage"
     ],
     "routeIds": [
       "admin-create"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 600,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/admin-list/AdminListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-list/AdminListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-list/AdminListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AdminListMigrationPage"
     ],
     "routeIds": [
       "admin-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 249,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-monitoring/AdminMonitoringOperationsPages.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BatchMonitoringPage",
+      "CronMonitoringPage",
+      "GitBuildMonitoringPage"
     ],
     "routeIds": [
       "batch-monitoring",
@@ -96,357 +98,357 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 3,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1130,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/admin-monitoring/MonitoringDashboardPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-monitoring/MonitoringDashboardPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-monitoring/MonitoringDashboardPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "MonitoringDashboardPage"
     ],
     "routeIds": [
       "admin-monitoring-dashboard"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 981,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/admin-permissions/AdminPermissionMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-permissions/AdminPermissionMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-permissions/AdminPermissionMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AdminPermissionMigrationPage"
     ],
     "routeIds": [
       "admin-permission"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 240,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/admin-placeholder/AdminMenuPlaceholderPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-placeholder/AdminMenuPlaceholderPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-placeholder/AdminMenuPlaceholderPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AdminMenuPlaceholderPage"
     ],
     "routeIds": [
       "admin-menu-placeholder"
     ],
     "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "status": "placeholder-managed",
+    "lineCount": 78,
+    "reason": "메뉴 접근과 메타데이터 표시는 가능하며, 상세 업무 화면 이관은 빌더에서 추적합니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
-    "hasBuilderLink": false
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/admin-sitemap/AdminSitemapMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/admin-sitemap/AdminSitemapMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/admin-sitemap/AdminSitemapMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AdminSitemapMigrationPage"
     ],
     "routeIds": [
       "admin-sitemap"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 112,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiAgentsPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiAgentsPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiAgentsPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiAgentsPage"
     ],
     "routeIds": [
       "ai-agents"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 52,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiDashboardPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiDashboardPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiDashboardPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiDashboardPage"
     ],
     "routeIds": [
       "ai-dashboard"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 69,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiLogsPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiLogsPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiLogsPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiLogsPage"
     ],
     "routeIds": [
       "ai-logs"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 53,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiModelsPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiModelsPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiModelsPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiModelsPage"
     ],
     "routeIds": [
       "ai-models"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 56,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiObservabilityPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiObservabilityPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiObservabilityPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiObservabilityPage"
     ],
     "routeIds": [
       "ai-observability"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 323,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiQualityPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiQualityPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiQualityPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiQualityPage"
     ],
     "routeIds": [
       "ai-quality"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 53,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiRagPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiRagPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiRagPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiRagPage"
     ],
     "routeIds": [
       "ai-rag"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 294,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ai-management/AiTrainingPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ai-management/AiTrainingPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ai-management/AiTrainingPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AiTrainingPage"
     ],
     "routeIds": [
       "ai-training"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 270,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/api-management/ApiManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/platform-studio/PlatformStudioMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PlatformStudioMigrationPage"
     ],
     "routeIds": [
       "api-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1548,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
+    "hasTable": true,
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/asset-deficiency-queue/AssetDeficiencyQueueMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/asset-inventory/AssetGapMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/asset-inventory/AssetGapMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AssetGapMigrationPage"
     ],
     "routeIds": [
       "asset-deficiency-queue"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 229,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/auth-change/AuthChangeMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/auth-change/AuthChangeMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/auth-change/AuthChangeMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AuthChangeMigrationPage"
     ],
     "routeIds": [
       "auth-change"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 259,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/auth-groups/AuthGroupMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/auth-groups/AuthGroupMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/auth-groups/AuthGroupMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "AuthGroupMigrationPage"
     ],
     "routeIds": [
       "auth-group"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1771,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/backup-config/BackupConfigMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BackupConfigMigrationPage"
     ],
     "routeIds": [
       "backup-config",
@@ -455,91 +457,91 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 3,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1386,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/banner-edit/BannerEditMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/banner-edit/BannerEditMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/banner-edit/BannerEditMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BannerEditMigrationPage"
     ],
     "routeIds": [
       "banner-edit"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 165,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/banner-list/BannerListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/banner-list/BannerListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/banner-list/BannerListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BannerListMigrationPage"
     ],
     "routeIds": [
       "banner-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 331,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/batch-management/BatchManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/batch-management/BatchManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/batch-management/BatchManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BatchManagementMigrationPage"
     ],
     "routeIds": [
       "batch-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 506,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/blocklist/BlocklistMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/blocklist/BlocklistMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/blocklist/BlocklistMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BlocklistMigrationPage"
     ],
     "routeIds": [
       "blocklist"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 975,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -548,54 +550,54 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/board-add/BoardAddMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/board-add/BoardAddMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/board-add/BoardAddMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BoardAddMigrationPage"
     ],
     "routeIds": [
       "board-add"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 498,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/board-list/BoardListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/board-list/BoardListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/board-list/BoardListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "BoardListMigrationPage"
     ],
     "routeIds": [
       "board-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 322,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
-    "effectiveSourcePath": "features/admin-ui/common.tsx",
+    "effectiveSourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
     "effectiveSourcePaths": [
-      "features/admin-ui/common.tsx"
+      "features/builder-governance/BuilderGovernancePages.tsx"
     ],
     "effectiveExportNames": [
-      "AdminSearchBar"
+      "ThemeManagementMigrationPage"
     ],
     "routeIds": [
       "theme",
@@ -603,12 +605,12 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 2,
     "status": "implemented",
-    "lineCount": 616,
-    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
-    "hasAsyncData": false,
+    "lineCount": 1193,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
     "hasForm": true,
     "hasTable": true,
-    "hasBuilderLink": false
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/builder-studio/BuilderStudioPage.tsx",
@@ -676,44 +678,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/certificate-approve/CertificateApproveMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-approve/CertificateApproveMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-approve/CertificateApproveMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificateApproveMigrationPage"
     ],
     "routeIds": [
       "certificate-approve"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 285,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/certificate-audit-log/CertificateAuditLogMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-audit-log/CertificateAuditLogMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-audit-log/CertificateAuditLogMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificateAuditLogMigrationPage"
     ],
     "routeIds": [
       "certificate-audit-log"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 434,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -739,65 +741,65 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/certificate-objection-list/CertificateObjectionListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-objection-list/CertificateObjectionListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-objection-list/CertificateObjectionListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificateObjectionListMigrationPage"
     ],
     "routeIds": [
       "certificate-objection-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 384,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/certificate-pending/CertificatePendingMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-pending/CertificatePendingMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-pending/CertificatePendingMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificatePendingMigrationPage"
     ],
     "routeIds": [
       "certificate-pending"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 312,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/certificate-rec-check/CertificateRecCheckMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-rec-check/CertificateRecCheckMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-rec-check/CertificateRecCheckMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificateRecCheckMigrationPage"
     ],
     "routeIds": [
       "certificate-rec-check"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 371,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -865,44 +867,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/certificate-review/CertificateReviewMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-review/CertificateReviewMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-review/CertificateReviewMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificateReviewMigrationPage"
     ],
     "routeIds": [
       "certificate-review"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 348,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/certificate-statistics/CertificateStatisticsMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/certificate-statistics/CertificateStatisticsMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/certificate-statistics/CertificateStatisticsMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CertificateStatisticsMigrationPage"
     ],
     "routeIds": [
       "certificate-statistics"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 291,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1033,103 +1035,103 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/column-management/ColumnManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/platform-studio/PlatformStudioMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PlatformStudioMigrationPage"
     ],
     "routeIds": [
       "column-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1548,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
+    "hasTable": true,
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/company-account/CompanyAccountMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/company-account/CompanyAccountMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/company-account/CompanyAccountMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CompanyAccountMigrationPage"
     ],
     "routeIds": [
       "company-account"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 353,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/company-approve/CompanyApproveMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/company-approve/CompanyApproveMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/company-approve/CompanyApproveMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CompanyApproveMigrationPage"
     ],
     "routeIds": [
       "company-approve"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 254,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/company-detail/CompanyDetailMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/company-detail/CompanyDetailMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/company-detail/CompanyDetailMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CompanyDetailMigrationPage"
     ],
     "routeIds": [
       "company-detail"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 226,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/company-list/CompanyListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/company-list/CompanyListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/company-list/CompanyListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "CompanyListMigrationPage"
     ],
     "routeIds": [
       "company-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 241,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1138,106 +1140,106 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/controller-management/ControllerManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/platform-studio/PlatformStudioMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PlatformStudioMigrationPage"
     ],
     "routeIds": [
       "controller-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1548,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
+    "hasTable": true,
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/db-monitoring/DbMonitoringPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "DbMonitoringPage"
     ],
     "routeIds": [
       "db-monitoring"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 580,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/db-promotion-policy/DbPromotionPolicyMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/db-promotion-policy/DbPromotionPolicyMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/db-promotion-policy/DbPromotionPolicyMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "DbPromotionPolicyMigrationPage"
     ],
     "routeIds": [
       "db-promotion-policy"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 273,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/db-sync-deploy/DbSyncDeployMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/db-sync-deploy/DbSyncDeployMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/db-sync-deploy/DbSyncDeployMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "DbSyncDeployMigrationPage"
     ],
     "routeIds": [
       "db-sync-deploy"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 488,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/dept-role-mapping/DeptRoleMappingMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/dept-role-mapping/DeptRoleMappingMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/dept-role-mapping/DeptRoleMappingMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "DeptRoleMappingMigrationPage"
     ],
     "routeIds": [
       "dept-role"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 170,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
@@ -1432,23 +1434,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionDataHistoryMigrationPage"
     ],
     "routeIds": [
       "emission-data-history"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 348,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1474,65 +1476,65 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-definition-studio/index.ts",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionDefinitionStudioMigrationPage"
     ],
     "routeIds": [
       "emission-definition-studio"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 2242,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
     "hasTable": false,
-    "hasBuilderLink": false
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionEcoinventAdminMigrationPage"
     ],
     "routeIds": [
       "emission-ecoinvent-admin"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 596,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/emission-gwp-values/EmissionGwpValuesMigrationPage.tsx",
-    "effectiveSourcePath": "features/emission-gwp-values/react.tsx",
+    "effectiveSourcePath": "features/emission-gwp-values/EmissionGwpValuesMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/emission-gwp-values/react.tsx"
+      "features/emission-gwp-values/EmissionGwpValuesMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "Fragment"
+      "EmissionGwpValuesMigrationPage"
     ],
     "routeIds": [
       "emission-gwp-values"
     ],
     "routeCount": 1,
-    "status": "missing",
-    "lineCount": 0,
-    "reason": "라우트 loader 대상 파일을 찾을 수 없습니다.",
-    "hasAsyncData": false,
-    "hasForm": false,
-    "hasTable": false,
+    "status": "implemented",
+    "lineCount": 1698,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1579,23 +1581,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-lci-classification/EmissionLciClassificationMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-lci-classification/EmissionLciClassificationMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-lci-classification/EmissionLciClassificationMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionLciClassificationMigrationPage"
     ],
     "routeIds": [
       "emission-lci-classification"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 376,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1621,23 +1623,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-management/EmissionManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/emission-management/react.tsx",
+    "effectiveSourcePath": "features/emission-management/EmissionManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/emission-management/react.tsx"
+      "features/emission-management/EmissionManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "Fragment"
+      "EmissionManagementMigrationPage"
     ],
     "routeIds": [
       "emission-management"
     ],
     "routeCount": 1,
-    "status": "missing",
-    "lineCount": 0,
-    "reason": "라우트 loader 대상 파일을 찾을 수 없습니다.",
-    "hasAsyncData": false,
-    "hasForm": false,
-    "hasTable": false,
+    "status": "implemented",
+    "lineCount": 4234,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1705,44 +1707,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-result-detail/EmissionResultDetailMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-result-detail/EmissionResultDetailMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-result-detail/EmissionResultDetailMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionResultDetailMigrationPage"
     ],
     "routeIds": [
       "emission-result-detail"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 321,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-result-list/EmissionResultListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionResultListMigrationPage"
     ],
     "routeIds": [
       "emission-result-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 376,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1768,61 +1770,61 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-site-management/EmissionSiteManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-site-management/EmissionSiteManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-site-management/EmissionSiteManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionSiteManagementMigrationPage"
     ],
     "routeIds": [
       "emission-site-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 204,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx",
-    "effectiveSourcePath": "features/emission-survey-admin-data/react.tsx",
+    "effectiveSourcePath": "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/emission-survey-admin-data/react.tsx"
+      "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "Fragment"
+      "EmissionSurveyAdminDataMigrationPage"
     ],
     "routeIds": [
       "emission-survey-admin-data"
     ],
     "routeCount": 1,
-    "status": "missing",
-    "lineCount": 0,
-    "reason": "라우트 loader 대상 파일을 찾을 수 없습니다.",
-    "hasAsyncData": false,
-    "hasForm": false,
-    "hasTable": false,
+    "status": "implemented",
+    "lineCount": 1395,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/emission-survey-admin/EmissionSurveyAdminMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-survey-admin/EmissionSurveyAdminMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-survey-admin/EmissionSurveyAdminMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionSurveyAdminMigrationPage"
     ],
     "routeIds": [
       "emission-survey-admin"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 2828,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1831,12 +1833,15 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionSurveyLcaSummaryPrintPage",
+      "EmissionSurveyReportMigrationPage",
+      "EmissionSurveyReportPrintPage",
+      "EmissionSurveyReportVerifyPage"
     ],
     "routeIds": [
       "emission-survey-lca-summary-print",
@@ -1846,49 +1851,49 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 4,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 2895,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/emission-validate/EmissionValidateMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "EmissionValidateMigrationPage"
     ],
     "routeIds": [
       "emission-validate"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 420,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/error-log/ErrorLogMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/error-log/ErrorLogMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/error-log/ErrorLogMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ErrorLogMigrationPage"
     ],
     "routeIds": [
       "error-log"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 303,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1897,36 +1902,57 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/event-management/EventManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/platform-studio/PlatformStudioMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PlatformStudioMigrationPage"
     ],
     "routeIds": [
       "event-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1548,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": true
+  },
+  {
+    "sourcePath": "features/external-connection-add/ExternalConnectionAddMigrationPage.tsx",
+    "effectiveSourcePath": "features/external-connection-add/ExternalConnectionAddMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/external-connection-add/ExternalConnectionAddMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ExternalConnectionAddMigrationPage"
+    ],
+    "routeIds": [
+      "external-connection-add"
+    ],
+    "routeCount": 1,
+    "status": "delegated",
+    "lineCount": 4,
+    "reason": "라우트는 공통 구현으로 위임됩니다. 위임 대상 화면의 기능으로 관리합니다.",
+    "hasAsyncData": false,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
-    "sourcePath": "features/external-connection-add/ExternalConnectionAddMigrationPage.tsx",
+    "sourcePath": "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx",
     "effectiveSourcePath": "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx",
     "effectiveSourcePaths": [
       "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "ExternalConnectionFormMigrationPage"
+      "ExternalConnectionEditMigrationPage"
     ],
     "routeIds": [
-      "external-connection-add"
+      "external-connection-edit"
     ],
     "routeCount": 1,
     "status": "implemented",
@@ -1938,276 +1964,255 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
-    "sourcePath": "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "external-connection-edit"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
     "sourcePath": "features/external-connection-list/ExternalConnectionListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-connection-list/ExternalConnectionListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-connection-list/ExternalConnectionListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalConnectionListMigrationPage"
     ],
     "routeIds": [
       "external-connection-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 561,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-keys/ExternalKeysMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-keys/ExternalKeysMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-keys/ExternalKeysMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalKeysMigrationPage"
     ],
     "routeIds": [
       "external-keys"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 492,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-logs/ExternalLogsMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-logs/ExternalLogsMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-logs/ExternalLogsMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalLogsMigrationPage"
     ],
     "routeIds": [
       "external-logs"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 226,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-maintenance/ExternalMaintenanceMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-maintenance/ExternalMaintenanceMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-maintenance/ExternalMaintenanceMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalMaintenanceMigrationPage"
     ],
     "routeIds": [
       "external-maintenance"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 358,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-monitoring/ExternalMonitoringMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-monitoring/ExternalMonitoringMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-monitoring/ExternalMonitoringMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalMonitoringMigrationPage"
     ],
     "routeIds": [
       "external-monitoring"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 234,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-retry/ExternalRetryMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-retry/ExternalRetryMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-retry/ExternalRetryMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalRetryMigrationPage"
     ],
     "routeIds": [
       "external-retry"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 232,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-schema/ExternalSchemaMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-schema/ExternalSchemaMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-schema/ExternalSchemaMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalSchemaMigrationPage"
     ],
     "routeIds": [
       "external-schema"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 514,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-sync/ExternalSyncMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-sync/ExternalSyncMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-sync/ExternalSyncMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalSyncMigrationPage"
     ],
     "routeIds": [
       "external-sync"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 326,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-usage/ExternalUsageMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-usage/ExternalUsageMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-usage/ExternalUsageMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalUsageMigrationPage"
     ],
     "routeIds": [
       "external-usage"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 180,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/external-webhooks/ExternalWebhooksMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/external-webhooks/ExternalWebhooksMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/external-webhooks/ExternalWebhooksMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ExternalWebhooksMigrationPage"
     ],
     "routeIds": [
       "external-webhooks"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 313,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/faq-management/FaqManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/faq-management/FaqManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/faq-management/FaqManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "FaqManagementMigrationPage"
     ],
     "routeIds": [
       "faq-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 376,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/file-management/FileManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/file-management/FileManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/file-management/FileManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "FileManagementMigrationPage"
     ],
     "routeIds": [
       "file-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 682,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -2233,65 +2238,65 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/function-console/FunctionConsoleMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/platform-studio/PlatformStudioMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PlatformStudioMigrationPage"
     ],
     "routeIds": [
       "function-console"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1548,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
+    "hasTable": true,
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/function-management/FunctionManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/function-management/FunctionManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/function-management/FunctionManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "FunctionManagementMigrationPage"
     ],
     "routeIds": [
       "function-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 273,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/hermes-workflow/HermesWorkflowMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/hermes-workflow/HermesWorkflowMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/hermes-workflow/HermesWorkflowMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "HermesWorkflowMigrationPage"
     ],
     "routeIds": [
       "hermes-workflow"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 315,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -2317,24 +2322,24 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "HomePageWorkbenchMigrationPage"
     ],
     "routeIds": [
       "home-page-workbench"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 277,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": true,
     "hasTable": false,
-    "hasBuilderLink": false
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/home-placeholder/HomeMenuPlaceholderPage.tsx",
@@ -2359,23 +2364,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/ip-whitelist/IpWhitelistMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/ip-whitelist/IpWhitelistMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/ip-whitelist/IpWhitelistMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "IpWhitelistMigrationPage"
     ],
     "routeIds": [
       "ip-whitelist"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 603,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -2548,19 +2553,61 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/login-history/LoginHistoryMigrationPage.tsx",
-    "effectiveSourcePath": "features/security-history/LoginHistorySharedPage.tsx",
+    "effectiveSourcePath": "features/login-history/LoginHistoryMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/security-history/LoginHistorySharedPage.tsx"
+      "features/login-history/LoginHistoryMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "LoginHistorySharedPage"
+      "LoginHistoryMigrationPage"
     ],
     "routeIds": [
       "login-history"
     ],
     "routeCount": 1,
+    "status": "delegated",
+    "lineCount": 23,
+    "reason": "라우트는 공통 구현으로 위임됩니다. 위임 대상 화면의 기능으로 관리합니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
+    "effectiveSourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/member-approve/MemberApproveMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "MemberApproveMigrationPage"
+    ],
+    "routeIds": [
+      "member-approve"
+    ],
+    "routeCount": 1,
     "status": "implemented",
-    "lineCount": 731,
+    "lineCount": 259,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/member-detail/MemberDetailMigrationPage.tsx",
+    "effectiveSourcePath": "features/member-detail/MemberDetailMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/member-detail/MemberDetailMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "MemberDetailMigrationPage"
+    ],
+    "routeIds": [
+      "member-detail"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 303,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2568,76 +2615,36 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
-    "sourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "member-approve"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/member-detail/MemberDetailMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "member-detail"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
     "sourcePath": "features/member-edit/MemberEditMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/member-edit/MemberEditMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/member-edit/MemberEditMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "MemberEditMigrationPage"
     ],
     "routeIds": [
       "member-edit"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 351,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/member-list/MemberListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/member-list/MemberListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/member-list/MemberListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ActivateMemberListMigrationPage",
+      "MemberListMigrationPage",
+      "WithdrawnMemberListMigrationPage"
     ],
     "routeIds": [
       "member-activate",
@@ -2646,7 +2653,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 3,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 392,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2655,128 +2662,128 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/member-register/MemberRegisterMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/member-register/MemberRegisterMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/member-register/MemberRegisterMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "MemberRegisterMigrationPage"
     ],
     "routeIds": [
       "member-register"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 717,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/member-stats/MemberStatsMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/member-stats/MemberStatsMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/member-stats/MemberStatsMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "MemberStatsMigrationPage"
     ],
     "routeIds": [
       "member-stats"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 131,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
+    "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/menu-management/FaqMenuManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/menu-management/FaqMenuManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/menu-management/FaqMenuManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "FaqMenuManagementMigrationPage"
     ],
     "routeIds": [
       "faq-menu-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 397,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/menu-management/FullStackManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/menu-management/FullStackManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/menu-management/FullStackManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "FullStackManagementMigrationPage"
     ],
     "routeIds": [
       "full-stack-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1236,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
+    "hasTable": true,
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/menu-management/MenuManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/menu-management/MenuManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/menu-management/MenuManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "MenuManagementMigrationPage"
     ],
     "routeIds": [
       "menu-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1554,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
     "hasTable": false,
-    "hasBuilderLink": false
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/module-management/ModuleManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/module-management/ModuleManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/module-management/ModuleManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "ModuleManagementMigrationPage"
     ],
     "routeIds": [
       "module"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 279,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -2886,21 +2893,21 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/monitoring-share/MonitoringShareMigrationPage.tsx",
-    "effectiveSourcePath": "features/member/common.tsx",
+    "effectiveSourcePath": "features/monitoring-share/MonitoringShareMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/member/common.tsx"
+      "features/monitoring-share/MonitoringShareMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "MemberButton"
+      "MonitoringShareMigrationPage"
     ],
     "routeIds": [
       "monitoring-share"
     ],
     "routeCount": 1,
-    "status": "thin",
-    "lineCount": 30,
-    "reason": "라우트 화면으로 등록되어 있으나 데이터/폼/표/액션 신호가 부족해 보강 여부 점검이 필요합니다.",
-    "hasAsyncData": false,
+    "status": "implemented",
+    "lineCount": 666,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
     "hasForm": true,
     "hasTable": true,
     "hasBuilderLink": false
@@ -3138,23 +3145,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/new-page/index.ts",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/new-page/NewPageMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/new-page/NewPageMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "NewPageMigrationPage"
     ],
     "routeIds": [
       "new-page"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 438,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -3180,44 +3187,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/notification-center/NotificationCenterMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/notification-center/NotificationCenterMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/notification-center/NotificationCenterMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "NotificationCenterMigrationPage"
     ],
     "routeIds": [
       "notification"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 899,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/operations-center/OperationsCenterMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/operations-center/OperationsCenterMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/operations-center/OperationsCenterMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "OperationsCenterMigrationPage"
     ],
     "routeIds": [
       "monitoring-center"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1080,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -3249,44 +3256,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/page-management/PageManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/page-management/PageManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/page-management/PageManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PageManagementMigrationPage"
     ],
     "routeIds": [
       "page-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 876,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/password-reset/PasswordResetMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/password-reset/PasswordResetMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/password-reset/PasswordResetMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PasswordResetMigrationPage"
     ],
     "routeIds": [
       "password-reset"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 458,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -3438,107 +3445,107 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/performance/PerformanceMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/performance/PerformanceMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/performance/PerformanceMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PerformanceMigrationPage"
     ],
     "routeIds": [
       "performance"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 406,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/popup-edit/PopupEditMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/popup-edit/PopupEditMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/popup-edit/PopupEditMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PopupEditMigrationPage"
     ],
     "routeIds": [
       "popup-edit"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 420,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/popup-list/PopupListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/popup-list/PopupListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/popup-list/PopupListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PopupListMigrationPage"
     ],
     "routeIds": [
       "popup-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 358,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/post-list/PostListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/post-list/PostListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/post-list/PostListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "PostListMigrationPage"
     ],
     "routeIds": [
       "post-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 316,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/qna-category/QnaCategoryMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/qna-category/QnaCategoryMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/qna-category/QnaCategoryMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "QnaCategoryMigrationPage"
     ],
     "routeIds": [
       "qna-category"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 521,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -3564,187 +3571,19 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/refund-list/RefundListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/refund-list/RefundListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/refund-list/RefundListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "RefundListMigrationPage"
     ],
     "routeIds": [
       "refund-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/refund-process/RefundProcessMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "refund-process"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/scheduler-management/SchedulerManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "scheduler-management"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/screen-builder/ScreenBuilderDashboardPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "screen-builder-dashboard"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/screen-management/ScreenFlowManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "screen-flow-management"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/screen-management/ScreenManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "screen-management"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "screen-menu-assignment-management"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/security-audit/SecurityAuditMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
-    "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
-    ],
-    "effectiveExportNames": [
-      "AdminPageShell"
-    ],
-    "routeIds": [
-      "security-audit"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/security-history/MemberSecurityHistoryMigrationPage.tsx",
-    "effectiveSourcePath": "features/security-history/LoginHistorySharedPage.tsx",
-    "effectiveSourcePaths": [
-      "features/security-history/LoginHistorySharedPage.tsx"
-    ],
-    "effectiveExportNames": [
-      "LoginHistorySharedPage"
-    ],
-    "routeIds": [
-      "member-security-history"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 731,
+    "lineCount": 269,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -3752,16 +3591,163 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
-    "sourcePath": "features/security-history/SecurityHistoryMigrationPage.tsx",
-    "effectiveSourcePath": "features/security-history/SystemSecurityHistoryMigrationPage.tsx",
+    "sourcePath": "features/refund-process/RefundProcessMigrationPage.tsx",
+    "effectiveSourcePath": "features/refund-process/RefundProcessMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/security-history/SystemSecurityHistoryMigrationPage.tsx"
+      "features/refund-process/RefundProcessMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "SystemSecurityHistoryMigrationPage"
+      "RefundProcessMigrationPage"
     ],
     "routeIds": [
-      "security-history"
+      "refund-process"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 377,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/scheduler-management/SchedulerManagementMigrationPage.tsx",
+    "effectiveSourcePath": "features/scheduler-management/SchedulerManagementMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/scheduler-management/SchedulerManagementMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "SchedulerManagementMigrationPage"
+    ],
+    "routeIds": [
+      "scheduler-management"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 152,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/screen-builder/ScreenBuilderDashboardPage.tsx",
+    "effectiveSourcePath": "features/screen-builder/ScreenBuilderDashboardPage.tsx",
+    "effectiveSourcePaths": [
+      "features/screen-builder/ScreenBuilderDashboardPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ScreenBuilderDashboardPage"
+    ],
+    "routeIds": [
+      "screen-builder-dashboard"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 299,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": true
+  },
+  {
+    "sourcePath": "features/screen-management/ScreenFlowManagementMigrationPage.tsx",
+    "effectiveSourcePath": "features/screen-management/ScreenFlowManagementMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/screen-management/ScreenFlowManagementMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ScreenFlowManagementMigrationPage"
+    ],
+    "routeIds": [
+      "screen-flow-management"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 435,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/screen-management/ScreenManagementMigrationPage.tsx",
+    "effectiveSourcePath": "features/screen-management/ScreenManagementMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/screen-management/ScreenManagementMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ScreenManagementMigrationPage"
+    ],
+    "routeIds": [
+      "screen-management"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 473,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": true
+  },
+  {
+    "sourcePath": "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx",
+    "effectiveSourcePath": "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ScreenMenuAssignmentManagementMigrationPage"
+    ],
+    "routeIds": [
+      "screen-menu-assignment-management"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 573,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/security-audit/SecurityAuditMigrationPage.tsx",
+    "effectiveSourcePath": "features/security-audit/SecurityAuditMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/security-audit/SecurityAuditMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "SecurityAuditMigrationPage"
+    ],
+    "routeIds": [
+      "security-audit"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 757,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/security-history/MemberSecurityHistoryMigrationPage.tsx",
+    "effectiveSourcePath": "features/security-history/MemberSecurityHistoryMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/security-history/MemberSecurityHistoryMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "MemberSecurityHistoryMigrationPage"
+    ],
+    "routeIds": [
+      "member-security-history"
     ],
     "routeCount": 1,
     "status": "delegated",
@@ -3773,129 +3759,150 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
-    "sourcePath": "features/security-monitoring/SecurityMonitoringMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "sourcePath": "features/security-history/SecurityHistoryMigrationPage.tsx",
+    "effectiveSourcePath": "features/security-history/SecurityHistoryMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/security-history/SecurityHistoryMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SecurityHistoryMigrationPage"
+    ],
+    "routeIds": [
+      "security-history"
+    ],
+    "routeCount": 1,
+    "status": "delegated",
+    "lineCount": 12,
+    "reason": "라우트는 공통 구현으로 위임됩니다. 위임 대상 화면의 기능으로 관리합니다.",
+    "hasAsyncData": false,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/security-monitoring/SecurityMonitoringMigrationPage.tsx",
+    "effectiveSourcePath": "features/security-monitoring/SecurityMonitoringMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/security-monitoring/SecurityMonitoringMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "SecurityMonitoringMigrationPage"
     ],
     "routeIds": [
       "security-monitoring"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 1691,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/security-policy/SecurityPolicyMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/security-policy/SecurityPolicyMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/security-policy/SecurityPolicyMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SecurityPolicyMigrationPage"
     ],
     "routeIds": [
       "security-policy"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 2039,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/sensor-add/SensorAddMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/sensor-add/SensorAddMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/sensor-add/SensorAddMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SensorAddMigrationPage"
     ],
     "routeIds": [
       "sensor-add"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 339,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": true,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/sensor-edit/SensorEditMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/sensor-edit/SensorEditMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/sensor-edit/SensorEditMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SensorEditMigrationPage"
     ],
     "routeIds": [
       "sensor-edit"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 422,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": true,
     "hasTable": false,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/sensor-list/SensorListMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/sensor-list/SensorListMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/sensor-list/SensorListMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SensorListMigrationPage"
     ],
     "routeIds": [
       "sensor-list"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 574,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/settlement-calendar/SettlementCalendarMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/settlement-calendar/SettlementCalendarMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/settlement-calendar/SettlementCalendarMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SettlementCalendarMigrationPage"
     ],
     "routeIds": [
       "settlement-calendar"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 326,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -3963,12 +3970,12 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/system-code/SystemCodeSimplePage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "SystemCodeMigrationPage"
     ],
     "routeIds": [
       "system-code-inquiry",
@@ -3982,7 +3989,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 8,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 356,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -3991,65 +3998,65 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/system-infra/InfraManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "InfraManagementMigrationPage"
     ],
     "routeIds": [
       "infra"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "lineCount": 346,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/tag-management/TagManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/tag-management/TagManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/tag-management/TagManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "TagManagementMigrationPage"
     ],
     "routeIds": [
       "tag-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 369,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/trade-approve/TradeApproveMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/trade-approve/TradeApproveMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/trade-approve/TradeApproveMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "TradeApproveMigrationPage"
     ],
     "routeIds": [
       "trade-approve"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 433,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -4117,23 +4124,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/trade-duplicate/TradeDuplicateMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/trade-duplicate/TradeDuplicateMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/trade-duplicate/TradeDuplicateMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "TradeDuplicateMigrationPage"
     ],
     "routeIds": [
       "trade-duplicate"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 344,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -4201,23 +4208,23 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/trade-reject/TradeRejectMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/trade-reject/TradeRejectMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/trade-reject/TradeRejectMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "TradeRejectMigrationPage"
     ],
     "routeIds": [
       "trade-reject"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 352,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -4264,44 +4271,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/trade-statistics/TradeStatisticsMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/trade-statistics/TradeStatisticsMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/trade-statistics/TradeStatisticsMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "TradeStatisticsMigrationPage"
     ],
     "routeIds": [
       "trade-statistics"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 279,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/verification-asset-management/VerificationAssetManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/environment-management/VerificationAssetManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/environment-management/VerificationAssetManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "VerificationAssetManagementMigrationPage"
     ],
     "routeIds": [
       "verification-asset-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 378,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -4327,44 +4334,44 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/virtual-issue/VirtualIssueMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/virtual-issue/VirtualIssueMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/virtual-issue/VirtualIssueMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "VirtualIssueMigrationPage"
     ],
     "routeIds": [
       "virtual-issue"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 379,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
     "sourcePath": "features/wbs-management/WbsManagementMigrationPage.tsx",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePath": "features/wbs-management/WbsManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
-      "features/admin-entry/AdminPageShell.tsx"
+      "features/wbs-management/WbsManagementMigrationPage.tsx"
     ],
     "effectiveExportNames": [
-      "AdminPageShell"
+      "WbsManagementMigrationPage"
     ],
     "routeIds": [
       "wbs-management"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1206,
+    "lineCount": 571,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": false,
+    "hasTable": true,
     "hasBuilderLink": false
   }
 ];

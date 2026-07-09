@@ -81,6 +81,15 @@ function resolveReExportTarget(filePath, exportName, visited = new Set()) {
   visited.add(key);
   const source = fs.readFileSync(filePath, "utf8").trim();
 
+  const escapedExportName = exportName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hasDirectNamedExport = new RegExp(
+    `export\\s+(function|const|let|var|class)\\s+${escapedExportName}\\b`
+  ).test(source);
+  const hasDefaultExport = exportName === "default" && /export\s+default\b/.test(source);
+  if (hasDirectNamedExport || hasDefaultExport) {
+    return { filePath, exportName };
+  }
+
   const namedPattern = /export\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
   for (const match of source.matchAll(namedPattern)) {
     const spec = match[1];

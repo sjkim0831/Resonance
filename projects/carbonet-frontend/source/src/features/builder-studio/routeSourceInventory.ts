@@ -20,8 +20,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/access_history",
     "exportName": "AccessHistoryMigrationPage",
     "sourcePath": "features/access-history/AccessHistoryMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AccessHistoryMigrationPage",
+    "effectiveSourcePath": "features/access-history/AccessHistoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -32,8 +32,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/admin_account",
     "exportName": "AdminAccountCreateMigrationPage",
     "sourcePath": "features/admin-account-create/AdminAccountCreateMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AdminAccountCreateMigrationPage",
+    "effectiveSourcePath": "features/admin-account-create/AdminAccountCreateMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -44,8 +44,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/admin_list",
     "exportName": "AdminListMigrationPage",
     "sourcePath": "features/admin-list/AdminListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AdminListMigrationPage",
+    "effectiveSourcePath": "features/admin-list/AdminListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -56,8 +56,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/placeholder",
     "exportName": "AdminMenuPlaceholderPage",
     "sourcePath": "features/admin-placeholder/AdminMenuPlaceholderPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AdminMenuPlaceholderPage",
+    "effectiveSourcePath": "features/admin-placeholder/AdminMenuPlaceholderPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -68,8 +68,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/monitoring-dashboard",
     "exportName": "MonitoringDashboardPage",
     "sourcePath": "features/admin-monitoring/MonitoringDashboardPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MonitoringDashboardPage",
+    "effectiveSourcePath": "features/admin-monitoring/MonitoringDashboardPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -80,8 +80,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/admin_account/permissions",
     "exportName": "AdminPermissionMigrationPage",
     "sourcePath": "features/admin-permissions/AdminPermissionMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AdminPermissionMigrationPage",
+    "effectiveSourcePath": "features/admin-permissions/AdminPermissionMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -92,8 +92,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/sitemap",
     "exportName": "AdminSitemapMigrationPage",
     "sourcePath": "features/admin-sitemap/AdminSitemapMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AdminSitemapMigrationPage",
+    "effectiveSourcePath": "features/admin-sitemap/AdminSitemapMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -104,8 +104,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/agents",
     "exportName": "AiAgentsPage",
     "sourcePath": "features/ai-management/AiAgentsPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiAgentsPage",
+    "effectiveSourcePath": "features/ai-management/AiAgentsPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -116,8 +116,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/dashboard",
     "exportName": "AiDashboardPage",
     "sourcePath": "features/ai-management/AiDashboardPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiDashboardPage",
+    "effectiveSourcePath": "features/ai-management/AiDashboardPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -140,8 +140,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/logs",
     "exportName": "AiLogsPage",
     "sourcePath": "features/ai-management/AiLogsPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiLogsPage",
+    "effectiveSourcePath": "features/ai-management/AiLogsPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -152,8 +152,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/models",
     "exportName": "AiModelsPage",
     "sourcePath": "features/ai-management/AiModelsPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiModelsPage",
+    "effectiveSourcePath": "features/ai-management/AiModelsPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -164,8 +164,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/observability",
     "exportName": "AiObservabilityPage",
     "sourcePath": "features/ai-management/AiObservabilityPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiObservabilityPage",
+    "effectiveSourcePath": "features/ai-management/AiObservabilityPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -176,8 +176,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/quality",
     "exportName": "AiQualityPage",
     "sourcePath": "features/ai-management/AiQualityPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiQualityPage",
+    "effectiveSourcePath": "features/ai-management/AiQualityPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -188,8 +188,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/rag",
     "exportName": "AiRagPage",
     "sourcePath": "features/ai-management/AiRagPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiRagPage",
+    "effectiveSourcePath": "features/ai-management/AiRagPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -200,8 +200,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/ai/training",
     "exportName": "AiTrainingPage",
     "sourcePath": "features/ai-management/AiTrainingPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AiTrainingPage",
+    "effectiveSourcePath": "features/ai-management/AiTrainingPage.tsx",
     "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
   },
   {
@@ -212,8 +212,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/api-management",
     "exportName": "ApiManagementMigrationPage",
     "sourcePath": "features/api-management/ApiManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PlatformStudioMigrationPage",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -224,8 +224,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/asset-deficiency-queue",
     "exportName": "AssetDeficiencyQueueMigrationPage",
     "sourcePath": "features/asset-deficiency-queue/AssetDeficiencyQueueMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AssetGapMigrationPage",
+    "effectiveSourcePath": "features/asset-inventory/AssetGapMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -236,8 +236,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/auth-change",
     "exportName": "AuthChangeMigrationPage",
     "sourcePath": "features/auth-change/AuthChangeMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AuthChangeMigrationPage",
+    "effectiveSourcePath": "features/auth-change/AuthChangeMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -248,8 +248,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/auth/group",
     "exportName": "AuthGroupMigrationPage",
     "sourcePath": "features/auth-groups/AuthGroupMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "AuthGroupMigrationPage",
+    "effectiveSourcePath": "features/auth-groups/AuthGroupMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -260,8 +260,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/backup_config",
     "exportName": "BackupConfigMigrationPage",
     "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BackupConfigMigrationPage",
+    "effectiveSourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -272,8 +272,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/backup",
     "exportName": "BackupConfigMigrationPage",
     "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BackupConfigMigrationPage",
+    "effectiveSourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -284,8 +284,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/banner_edit",
     "exportName": "BannerEditMigrationPage",
     "sourcePath": "features/banner-edit/BannerEditMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BannerEditMigrationPage",
+    "effectiveSourcePath": "features/banner-edit/BannerEditMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -296,8 +296,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/banner_list",
     "exportName": "BannerListMigrationPage",
     "sourcePath": "features/banner-list/BannerListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BannerListMigrationPage",
+    "effectiveSourcePath": "features/banner-list/BannerListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -308,8 +308,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/batch",
     "exportName": "BatchManagementMigrationPage",
     "sourcePath": "features/batch-management/BatchManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BatchManagementMigrationPage",
+    "effectiveSourcePath": "features/batch-management/BatchManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -320,8 +320,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/batch-monitoring",
     "exportName": "BatchMonitoringPage",
     "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BatchMonitoringPage",
+    "effectiveSourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -332,8 +332,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/blocklist",
     "exportName": "BlocklistMigrationPage",
     "sourcePath": "features/blocklist/BlocklistMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BlocklistMigrationPage",
+    "effectiveSourcePath": "features/blocklist/BlocklistMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -344,8 +344,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/board_add",
     "exportName": "BoardAddMigrationPage",
     "sourcePath": "features/board-add/BoardAddMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BoardAddMigrationPage",
+    "effectiveSourcePath": "features/board-add/BoardAddMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -356,8 +356,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/board_list",
     "exportName": "BoardListMigrationPage",
     "sourcePath": "features/board-list/BoardListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BoardListMigrationPage",
+    "effectiveSourcePath": "features/board-list/BoardListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -392,8 +392,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/approve",
     "exportName": "CertificateApproveMigrationPage",
     "sourcePath": "features/certificate-approve/CertificateApproveMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificateApproveMigrationPage",
+    "effectiveSourcePath": "features/certificate-approve/CertificateApproveMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -404,8 +404,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/audit-log",
     "exportName": "CertificateAuditLogMigrationPage",
     "sourcePath": "features/certificate-audit-log/CertificateAuditLogMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificateAuditLogMigrationPage",
+    "effectiveSourcePath": "features/certificate-audit-log/CertificateAuditLogMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -428,8 +428,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/objection_list",
     "exportName": "CertificateObjectionListMigrationPage",
     "sourcePath": "features/certificate-objection-list/CertificateObjectionListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificateObjectionListMigrationPage",
+    "effectiveSourcePath": "features/certificate-objection-list/CertificateObjectionListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -440,8 +440,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/pending_list",
     "exportName": "CertificatePendingMigrationPage",
     "sourcePath": "features/certificate-pending/CertificatePendingMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificatePendingMigrationPage",
+    "effectiveSourcePath": "features/certificate-pending/CertificatePendingMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -452,8 +452,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/rec_check",
     "exportName": "CertificateRecCheckMigrationPage",
     "sourcePath": "features/certificate-rec-check/CertificateRecCheckMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificateRecCheckMigrationPage",
+    "effectiveSourcePath": "features/certificate-rec-check/CertificateRecCheckMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -500,8 +500,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/review",
     "exportName": "CertificateReviewMigrationPage",
     "sourcePath": "features/certificate-review/CertificateReviewMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificateReviewMigrationPage",
+    "effectiveSourcePath": "features/certificate-review/CertificateReviewMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -512,8 +512,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/certificate/statistics",
     "exportName": "CertificateStatisticsMigrationPage",
     "sourcePath": "features/certificate-statistics/CertificateStatisticsMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CertificateStatisticsMigrationPage",
+    "effectiveSourcePath": "features/certificate-statistics/CertificateStatisticsMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -596,8 +596,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/column-management",
     "exportName": "ColumnManagementMigrationPage",
     "sourcePath": "features/column-management/ColumnManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PlatformStudioMigrationPage",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -608,8 +608,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/company_account",
     "exportName": "CompanyAccountMigrationPage",
     "sourcePath": "features/company-account/CompanyAccountMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CompanyAccountMigrationPage",
+    "effectiveSourcePath": "features/company-account/CompanyAccountMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -620,8 +620,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/company-approve",
     "exportName": "CompanyApproveMigrationPage",
     "sourcePath": "features/company-approve/CompanyApproveMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CompanyApproveMigrationPage",
+    "effectiveSourcePath": "features/company-approve/CompanyApproveMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -632,8 +632,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/company_detail",
     "exportName": "CompanyDetailMigrationPage",
     "sourcePath": "features/company-detail/CompanyDetailMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CompanyDetailMigrationPage",
+    "effectiveSourcePath": "features/company-detail/CompanyDetailMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -644,8 +644,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/company_list",
     "exportName": "CompanyListMigrationPage",
     "sourcePath": "features/company-list/CompanyListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CompanyListMigrationPage",
+    "effectiveSourcePath": "features/company-list/CompanyListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -668,8 +668,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/controller-management",
     "exportName": "ControllerManagementMigrationPage",
     "sourcePath": "features/controller-management/ControllerManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PlatformStudioMigrationPage",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -680,8 +680,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/cron-monitoring",
     "exportName": "CronMonitoringPage",
     "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "CronMonitoringPage",
+    "effectiveSourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -692,8 +692,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/db-monitoring",
     "exportName": "DbMonitoringPage",
     "sourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "DbMonitoringPage",
+    "effectiveSourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -704,8 +704,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/db-promotion-policy",
     "exportName": "DbPromotionPolicyMigrationPage",
     "sourcePath": "features/db-promotion-policy/DbPromotionPolicyMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "DbPromotionPolicyMigrationPage",
+    "effectiveSourcePath": "features/db-promotion-policy/DbPromotionPolicyMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -716,8 +716,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/db-sync-deploy",
     "exportName": "DbSyncDeployMigrationPage",
     "sourcePath": "features/db-sync-deploy/DbSyncDeployMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "DbSyncDeployMigrationPage",
+    "effectiveSourcePath": "features/db-sync-deploy/DbSyncDeployMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -728,8 +728,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/dept-role-mapping",
     "exportName": "DeptRoleMappingMigrationPage",
     "sourcePath": "features/dept-role-mapping/DeptRoleMappingMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "DeptRoleMappingMigrationPage",
+    "effectiveSourcePath": "features/dept-role-mapping/DeptRoleMappingMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -848,8 +848,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/data_history",
     "exportName": "EmissionDataHistoryMigrationPage",
     "sourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionDataHistoryMigrationPage",
+    "effectiveSourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -872,8 +872,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/definition-studio",
     "exportName": "EmissionDefinitionStudioMigrationPage",
     "sourcePath": "features/emission-definition-studio/index.ts",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionDefinitionStudioMigrationPage",
+    "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -884,8 +884,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/ecoinvent",
     "exportName": "EmissionEcoinventAdminMigrationPage",
     "sourcePath": "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionEcoinventAdminMigrationPage",
+    "effectiveSourcePath": "features/emission-ecoinvent-admin/EmissionEcoinventAdminMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -896,8 +896,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/gwp-values",
     "exportName": "EmissionGwpValuesMigrationPage",
     "sourcePath": "features/emission-gwp-values/EmissionGwpValuesMigrationPage.tsx",
-    "effectiveExportName": "Fragment",
-    "effectiveSourcePath": "features/emission-gwp-values/react.tsx",
+    "effectiveExportName": "EmissionGwpValuesMigrationPage",
+    "effectiveSourcePath": "features/emission-gwp-values/EmissionGwpValuesMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -944,8 +944,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/lci-classification",
     "exportName": "EmissionLciClassificationMigrationPage",
     "sourcePath": "features/emission-lci-classification/EmissionLciClassificationMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionLciClassificationMigrationPage",
+    "effectiveSourcePath": "features/emission-lci-classification/EmissionLciClassificationMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -956,8 +956,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/management",
     "exportName": "EmissionManagementMigrationPage",
     "sourcePath": "features/emission-management/EmissionManagementMigrationPage.tsx",
-    "effectiveExportName": "Fragment",
-    "effectiveSourcePath": "features/emission-management/react.tsx",
+    "effectiveExportName": "EmissionManagementMigrationPage",
+    "effectiveSourcePath": "features/emission-management/EmissionManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1004,8 +1004,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/result_detail",
     "exportName": "EmissionResultDetailMigrationPage",
     "sourcePath": "features/emission-result-detail/EmissionResultDetailMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionResultDetailMigrationPage",
+    "effectiveSourcePath": "features/emission-result-detail/EmissionResultDetailMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1016,8 +1016,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/result_list",
     "exportName": "EmissionResultListMigrationPage",
     "sourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionResultListMigrationPage",
+    "effectiveSourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1040,8 +1040,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/site-management",
     "exportName": "EmissionSiteManagementMigrationPage",
     "sourcePath": "features/emission-site-management/EmissionSiteManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionSiteManagementMigrationPage",
+    "effectiveSourcePath": "features/emission-site-management/EmissionSiteManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1052,8 +1052,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/survey-admin",
     "exportName": "EmissionSurveyAdminMigrationPage",
     "sourcePath": "features/emission-survey-admin/EmissionSurveyAdminMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionSurveyAdminMigrationPage",
+    "effectiveSourcePath": "features/emission-survey-admin/EmissionSurveyAdminMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1064,8 +1064,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/survey-admin-data",
     "exportName": "EmissionSurveyAdminDataMigrationPage",
     "sourcePath": "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx",
-    "effectiveExportName": "Fragment",
-    "effectiveSourcePath": "features/emission-survey-admin-data/react.tsx",
+    "effectiveExportName": "EmissionSurveyAdminDataMigrationPage",
+    "effectiveSourcePath": "features/emission-survey-admin-data/EmissionSurveyAdminDataMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1076,8 +1076,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/survey-report-lca-summary",
     "exportName": "EmissionSurveyLcaSummaryPrintPage",
     "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionSurveyLcaSummaryPrintPage",
+    "effectiveSourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1088,8 +1088,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/survey-report",
     "exportName": "EmissionSurveyReportMigrationPage",
     "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionSurveyReportMigrationPage",
+    "effectiveSourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1100,8 +1100,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/survey-report-print",
     "exportName": "EmissionSurveyReportPrintPage",
     "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionSurveyReportPrintPage",
+    "effectiveSourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1112,8 +1112,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/survey-report-verify",
     "exportName": "EmissionSurveyReportVerifyPage",
     "sourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionSurveyReportVerifyPage",
+    "effectiveSourcePath": "features/emission-survey-report/EmissionSurveyReportMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1124,8 +1124,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/emission/validate",
     "exportName": "EmissionValidateMigrationPage",
     "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "EmissionValidateMigrationPage",
+    "effectiveSourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1136,8 +1136,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/error-log",
     "exportName": "ErrorLogMigrationPage",
     "sourcePath": "features/error-log/ErrorLogMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ErrorLogMigrationPage",
+    "effectiveSourcePath": "features/error-log/ErrorLogMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1148,8 +1148,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/event-management",
     "exportName": "EventManagementMigrationPage",
     "sourcePath": "features/event-management/EventManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PlatformStudioMigrationPage",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1160,8 +1160,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/connection_add",
     "exportName": "ExternalConnectionAddMigrationPage",
     "sourcePath": "features/external-connection-add/ExternalConnectionAddMigrationPage.tsx",
-    "effectiveExportName": "ExternalConnectionFormMigrationPage",
-    "effectiveSourcePath": "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx",
+    "effectiveExportName": "ExternalConnectionAddMigrationPage",
+    "effectiveSourcePath": "features/external-connection-add/ExternalConnectionAddMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1172,8 +1172,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/connection_edit",
     "exportName": "ExternalConnectionEditMigrationPage",
     "sourcePath": "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalConnectionEditMigrationPage",
+    "effectiveSourcePath": "features/external-connection-edit/ExternalConnectionEditMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1184,8 +1184,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/connection_list",
     "exportName": "ExternalConnectionListMigrationPage",
     "sourcePath": "features/external-connection-list/ExternalConnectionListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalConnectionListMigrationPage",
+    "effectiveSourcePath": "features/external-connection-list/ExternalConnectionListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1196,8 +1196,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/keys",
     "exportName": "ExternalKeysMigrationPage",
     "sourcePath": "features/external-keys/ExternalKeysMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalKeysMigrationPage",
+    "effectiveSourcePath": "features/external-keys/ExternalKeysMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1208,8 +1208,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/logs",
     "exportName": "ExternalLogsMigrationPage",
     "sourcePath": "features/external-logs/ExternalLogsMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalLogsMigrationPage",
+    "effectiveSourcePath": "features/external-logs/ExternalLogsMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1220,8 +1220,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/maintenance",
     "exportName": "ExternalMaintenanceMigrationPage",
     "sourcePath": "features/external-maintenance/ExternalMaintenanceMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalMaintenanceMigrationPage",
+    "effectiveSourcePath": "features/external-maintenance/ExternalMaintenanceMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1232,8 +1232,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/monitoring",
     "exportName": "ExternalMonitoringMigrationPage",
     "sourcePath": "features/external-monitoring/ExternalMonitoringMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalMonitoringMigrationPage",
+    "effectiveSourcePath": "features/external-monitoring/ExternalMonitoringMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1244,8 +1244,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/retry",
     "exportName": "ExternalRetryMigrationPage",
     "sourcePath": "features/external-retry/ExternalRetryMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalRetryMigrationPage",
+    "effectiveSourcePath": "features/external-retry/ExternalRetryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1256,8 +1256,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/schema",
     "exportName": "ExternalSchemaMigrationPage",
     "sourcePath": "features/external-schema/ExternalSchemaMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalSchemaMigrationPage",
+    "effectiveSourcePath": "features/external-schema/ExternalSchemaMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1268,8 +1268,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/sync",
     "exportName": "ExternalSyncMigrationPage",
     "sourcePath": "features/external-sync/ExternalSyncMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalSyncMigrationPage",
+    "effectiveSourcePath": "features/external-sync/ExternalSyncMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1280,8 +1280,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/usage",
     "exportName": "ExternalUsageMigrationPage",
     "sourcePath": "features/external-usage/ExternalUsageMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalUsageMigrationPage",
+    "effectiveSourcePath": "features/external-usage/ExternalUsageMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1292,8 +1292,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/external/webhooks",
     "exportName": "ExternalWebhooksMigrationPage",
     "sourcePath": "features/external-webhooks/ExternalWebhooksMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ExternalWebhooksMigrationPage",
+    "effectiveSourcePath": "features/external-webhooks/ExternalWebhooksMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1304,8 +1304,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/faq_list",
     "exportName": "FaqManagementMigrationPage",
     "sourcePath": "features/faq-management/FaqManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "FaqManagementMigrationPage",
+    "effectiveSourcePath": "features/faq-management/FaqManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -1316,8 +1316,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/menu",
     "exportName": "FaqMenuManagementMigrationPage",
     "sourcePath": "features/menu-management/FaqMenuManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "FaqMenuManagementMigrationPage",
+    "effectiveSourcePath": "features/menu-management/FaqMenuManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1328,8 +1328,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/file",
     "exportName": "FileManagementMigrationPage",
     "sourcePath": "features/file-management/FileManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "FileManagementMigrationPage",
+    "effectiveSourcePath": "features/file-management/FileManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -1352,8 +1352,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/full-stack-management",
     "exportName": "FullStackManagementMigrationPage",
     "sourcePath": "features/menu-management/FullStackManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "FullStackManagementMigrationPage",
+    "effectiveSourcePath": "features/menu-management/FullStackManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1364,8 +1364,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/function-console",
     "exportName": "FunctionConsoleMigrationPage",
     "sourcePath": "features/function-console/FunctionConsoleMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PlatformStudioMigrationPage",
+    "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1376,8 +1376,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/feature-management",
     "exportName": "FunctionManagementMigrationPage",
     "sourcePath": "features/function-management/FunctionManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "FunctionManagementMigrationPage",
+    "effectiveSourcePath": "features/function-management/FunctionManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1388,8 +1388,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/git-build-monitoring",
     "exportName": "GitBuildMonitoringPage",
     "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "GitBuildMonitoringPage",
+    "effectiveSourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1400,8 +1400,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/hermes-workflow",
     "exportName": "HermesWorkflowMigrationPage",
     "sourcePath": "features/hermes-workflow/HermesWorkflowMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "HermesWorkflowMigrationPage",
+    "effectiveSourcePath": "features/hermes-workflow/HermesWorkflowMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1436,8 +1436,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/home-page-workbench",
     "exportName": "HomePageWorkbenchMigrationPage",
     "sourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "HomePageWorkbenchMigrationPage",
+    "effectiveSourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1448,8 +1448,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/infra",
     "exportName": "InfraManagementMigrationPage",
     "sourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "InfraManagementMigrationPage",
+    "effectiveSourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1472,8 +1472,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/ip_whitelist",
     "exportName": "IpWhitelistMigrationPage",
     "sourcePath": "features/ip-whitelist/IpWhitelistMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "IpWhitelistMigrationPage",
+    "effectiveSourcePath": "features/ip-whitelist/IpWhitelistMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1580,8 +1580,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/login_history",
     "exportName": "LoginHistoryMigrationPage",
     "sourcePath": "features/login-history/LoginHistoryMigrationPage.tsx",
-    "effectiveExportName": "LoginHistorySharedPage",
-    "effectiveSourcePath": "features/security-history/LoginHistorySharedPage.tsx",
+    "effectiveExportName": "LoginHistoryMigrationPage",
+    "effectiveSourcePath": "features/login-history/LoginHistoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1592,8 +1592,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/activate",
     "exportName": "ActivateMemberListMigrationPage",
     "sourcePath": "features/member-list/MemberListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ActivateMemberListMigrationPage",
+    "effectiveSourcePath": "features/member-list/MemberListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1604,8 +1604,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/approve",
     "exportName": "MemberApproveMigrationPage",
     "sourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MemberApproveMigrationPage",
+    "effectiveSourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1616,8 +1616,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/detail",
     "exportName": "MemberDetailMigrationPage",
     "sourcePath": "features/member-detail/MemberDetailMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MemberDetailMigrationPage",
+    "effectiveSourcePath": "features/member-detail/MemberDetailMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1628,8 +1628,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/edit",
     "exportName": "MemberEditMigrationPage",
     "sourcePath": "features/member-edit/MemberEditMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MemberEditMigrationPage",
+    "effectiveSourcePath": "features/member-edit/MemberEditMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1640,8 +1640,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/list",
     "exportName": "MemberListMigrationPage",
     "sourcePath": "features/member-list/MemberListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MemberListMigrationPage",
+    "effectiveSourcePath": "features/member-list/MemberListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1652,8 +1652,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/register",
     "exportName": "MemberRegisterMigrationPage",
     "sourcePath": "features/member-register/MemberRegisterMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MemberRegisterMigrationPage",
+    "effectiveSourcePath": "features/member-register/MemberRegisterMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1664,8 +1664,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/security",
     "exportName": "MemberSecurityHistoryMigrationPage",
     "sourcePath": "features/security-history/MemberSecurityHistoryMigrationPage.tsx",
-    "effectiveExportName": "LoginHistorySharedPage",
-    "effectiveSourcePath": "features/security-history/LoginHistorySharedPage.tsx",
+    "effectiveExportName": "MemberSecurityHistoryMigrationPage",
+    "effectiveSourcePath": "features/security-history/MemberSecurityHistoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1676,8 +1676,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/stats",
     "exportName": "MemberStatsMigrationPage",
     "sourcePath": "features/member-stats/MemberStatsMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MemberStatsMigrationPage",
+    "effectiveSourcePath": "features/member-stats/MemberStatsMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1688,8 +1688,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/withdrawn",
     "exportName": "WithdrawnMemberListMigrationPage",
     "sourcePath": "features/member-list/MemberListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "WithdrawnMemberListMigrationPage",
+    "effectiveSourcePath": "features/member-list/MemberListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -1700,8 +1700,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/menu",
     "exportName": "MenuManagementMigrationPage",
     "sourcePath": "features/menu-management/MenuManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "MenuManagementMigrationPage",
+    "effectiveSourcePath": "features/menu-management/MenuManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1712,8 +1712,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/module",
     "exportName": "ModuleManagementMigrationPage",
     "sourcePath": "features/module-management/ModuleManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ModuleManagementMigrationPage",
+    "effectiveSourcePath": "features/module-management/ModuleManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1736,8 +1736,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/monitoring/center",
     "exportName": "OperationsCenterMigrationPage",
     "sourcePath": "features/operations-center/OperationsCenterMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "OperationsCenterMigrationPage",
+    "effectiveSourcePath": "features/operations-center/OperationsCenterMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1796,8 +1796,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/monitoring/share",
     "exportName": "MonitoringShareMigrationPage",
     "sourcePath": "features/monitoring-share/MonitoringShareMigrationPage.tsx",
-    "effectiveExportName": "MemberButton",
-    "effectiveSourcePath": "features/member/common.tsx",
+    "effectiveExportName": "MonitoringShareMigrationPage",
+    "effectiveSourcePath": "features/monitoring-share/MonitoringShareMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1952,8 +1952,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/new-page",
     "exportName": "NewPageMigrationPage",
     "sourcePath": "features/new-page/index.ts",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "NewPageMigrationPage",
+    "effectiveSourcePath": "features/new-page/NewPageMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -1976,8 +1976,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/notification",
     "exportName": "NotificationCenterMigrationPage",
     "sourcePath": "features/notification-center/NotificationCenterMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "NotificationCenterMigrationPage",
+    "effectiveSourcePath": "features/notification-center/NotificationCenterMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2000,8 +2000,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/page-management",
     "exportName": "PageManagementMigrationPage",
     "sourcePath": "features/page-management/PageManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PageManagementMigrationPage",
+    "effectiveSourcePath": "features/page-management/PageManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2012,8 +2012,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/member/reset_password",
     "exportName": "PasswordResetMigrationPage",
     "sourcePath": "features/password-reset/PasswordResetMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PasswordResetMigrationPage",
+    "effectiveSourcePath": "features/password-reset/PasswordResetMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -2108,8 +2108,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/performance",
     "exportName": "PerformanceMigrationPage",
     "sourcePath": "features/performance/PerformanceMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PerformanceMigrationPage",
+    "effectiveSourcePath": "features/performance/PerformanceMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2120,8 +2120,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/popup_edit",
     "exportName": "PopupEditMigrationPage",
     "sourcePath": "features/popup-edit/PopupEditMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PopupEditMigrationPage",
+    "effectiveSourcePath": "features/popup-edit/PopupEditMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -2132,8 +2132,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/popup_list",
     "exportName": "PopupListMigrationPage",
     "sourcePath": "features/popup-list/PopupListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PopupListMigrationPage",
+    "effectiveSourcePath": "features/popup-list/PopupListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -2144,8 +2144,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/post_list",
     "exportName": "PostListMigrationPage",
     "sourcePath": "features/post-list/PostListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "PostListMigrationPage",
+    "effectiveSourcePath": "features/post-list/PostListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -2156,8 +2156,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/qna",
     "exportName": "QnaCategoryMigrationPage",
     "sourcePath": "features/qna-category/QnaCategoryMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "QnaCategoryMigrationPage",
+    "effectiveSourcePath": "features/qna-category/QnaCategoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -2180,8 +2180,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/payment/refund_list",
     "exportName": "RefundListMigrationPage",
     "sourcePath": "features/refund-list/RefundListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "RefundListMigrationPage",
+    "effectiveSourcePath": "features/refund-list/RefundListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2192,8 +2192,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/payment/refund_process",
     "exportName": "RefundProcessMigrationPage",
     "sourcePath": "features/refund-process/RefundProcessMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "RefundProcessMigrationPage",
+    "effectiveSourcePath": "features/refund-process/RefundProcessMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2204,8 +2204,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/restore",
     "exportName": "BackupConfigMigrationPage",
     "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "BackupConfigMigrationPage",
+    "effectiveSourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2216,8 +2216,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/scheduler",
     "exportName": "SchedulerManagementMigrationPage",
     "sourcePath": "features/scheduler-management/SchedulerManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SchedulerManagementMigrationPage",
+    "effectiveSourcePath": "features/scheduler-management/SchedulerManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2228,8 +2228,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/screen-builder-dashboard",
     "exportName": "ScreenBuilderDashboardPage",
     "sourcePath": "features/screen-builder/ScreenBuilderDashboardPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ScreenBuilderDashboardPage",
+    "effectiveSourcePath": "features/screen-builder/ScreenBuilderDashboardPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2240,8 +2240,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/screen-flow-management",
     "exportName": "ScreenFlowManagementMigrationPage",
     "sourcePath": "features/screen-management/ScreenFlowManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ScreenFlowManagementMigrationPage",
+    "effectiveSourcePath": "features/screen-management/ScreenFlowManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2252,8 +2252,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/screen-management",
     "exportName": "ScreenManagementMigrationPage",
     "sourcePath": "features/screen-management/ScreenManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ScreenManagementMigrationPage",
+    "effectiveSourcePath": "features/screen-management/ScreenManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2264,8 +2264,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/screen-menu-assignment-management",
     "exportName": "ScreenMenuAssignmentManagementMigrationPage",
     "sourcePath": "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "ScreenMenuAssignmentManagementMigrationPage",
+    "effectiveSourcePath": "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2288,8 +2288,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/security-audit",
     "exportName": "SecurityAuditMigrationPage",
     "sourcePath": "features/security-audit/SecurityAuditMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SecurityAuditMigrationPage",
+    "effectiveSourcePath": "features/security-audit/SecurityAuditMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2300,8 +2300,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/security",
     "exportName": "SecurityHistoryMigrationPage",
     "sourcePath": "features/security-history/SecurityHistoryMigrationPage.tsx",
-    "effectiveExportName": "SystemSecurityHistoryMigrationPage",
-    "effectiveSourcePath": "features/security-history/SystemSecurityHistoryMigrationPage.tsx",
+    "effectiveExportName": "SecurityHistoryMigrationPage",
+    "effectiveSourcePath": "features/security-history/SecurityHistoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2312,8 +2312,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/security-monitoring",
     "exportName": "SecurityMonitoringMigrationPage",
     "sourcePath": "features/security-monitoring/SecurityMonitoringMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SecurityMonitoringMigrationPage",
+    "effectiveSourcePath": "features/security-monitoring/SecurityMonitoringMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2324,8 +2324,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/security-policy",
     "exportName": "SecurityPolicyMigrationPage",
     "sourcePath": "features/security-policy/SecurityPolicyMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SecurityPolicyMigrationPage",
+    "effectiveSourcePath": "features/security-policy/SecurityPolicyMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2336,8 +2336,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/monitoring/sensor_add",
     "exportName": "SensorAddMigrationPage",
     "sourcePath": "features/sensor-add/SensorAddMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SensorAddMigrationPage",
+    "effectiveSourcePath": "features/sensor-add/SensorAddMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2348,8 +2348,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/monitoring/sensor_edit",
     "exportName": "SensorEditMigrationPage",
     "sourcePath": "features/sensor-edit/SensorEditMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SensorEditMigrationPage",
+    "effectiveSourcePath": "features/sensor-edit/SensorEditMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2360,8 +2360,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/monitoring/sensor_list",
     "exportName": "SensorListMigrationPage",
     "sourcePath": "features/sensor-list/SensorListMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SensorListMigrationPage",
+    "effectiveSourcePath": "features/sensor-list/SensorListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2372,8 +2372,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/payment/settlement",
     "exportName": "SettlementCalendarMigrationPage",
     "sourcePath": "features/settlement-calendar/SettlementCalendarMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SettlementCalendarMigrationPage",
+    "effectiveSourcePath": "features/settlement-calendar/SettlementCalendarMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2420,8 +2420,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2432,8 +2432,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/class",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2444,8 +2444,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/detail",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2456,8 +2456,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/group",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2468,8 +2468,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/register",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2480,8 +2480,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/register/class",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2492,8 +2492,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/register/detail",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2504,8 +2504,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/code/register/group",
     "exportName": "SystemCodeMigrationPage",
     "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "SystemCodeMigrationPage",
+    "effectiveSourcePath": "features/system-code/SystemCodeSimplePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2528,8 +2528,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/content/tag",
     "exportName": "TagManagementMigrationPage",
     "sourcePath": "features/tag-management/TagManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "TagManagementMigrationPage",
+    "effectiveSourcePath": "features/tag-management/TagManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
@@ -2540,8 +2540,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/theme",
     "exportName": "ThemeManagementMigrationPage",
     "sourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
-    "effectiveExportName": "AdminSearchBar",
-    "effectiveSourcePath": "features/admin-ui/common.tsx",
+    "effectiveExportName": "ThemeManagementMigrationPage",
+    "effectiveSourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2552,8 +2552,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/theme-management",
     "exportName": "ThemeManagementMigrationPage",
     "sourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
-    "effectiveExportName": "AdminSearchBar",
-    "effectiveSourcePath": "features/admin-ui/common.tsx",
+    "effectiveExportName": "ThemeManagementMigrationPage",
+    "effectiveSourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2564,8 +2564,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/trade/approve",
     "exportName": "TradeApproveMigrationPage",
     "sourcePath": "features/trade-approve/TradeApproveMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "TradeApproveMigrationPage",
+    "effectiveSourcePath": "features/trade-approve/TradeApproveMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2612,8 +2612,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/trade/duplicate",
     "exportName": "TradeDuplicateMigrationPage",
     "sourcePath": "features/trade-duplicate/TradeDuplicateMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "TradeDuplicateMigrationPage",
+    "effectiveSourcePath": "features/trade-duplicate/TradeDuplicateMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2660,8 +2660,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/trade/reject",
     "exportName": "TradeRejectMigrationPage",
     "sourcePath": "features/trade-reject/TradeRejectMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "TradeRejectMigrationPage",
+    "effectiveSourcePath": "features/trade-reject/TradeRejectMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2696,8 +2696,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/trade/statistics",
     "exportName": "TradeStatisticsMigrationPage",
     "sourcePath": "features/trade-statistics/TradeStatisticsMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "TradeStatisticsMigrationPage",
+    "effectiveSourcePath": "features/trade-statistics/TradeStatisticsMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2708,8 +2708,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/verification-asset-management",
     "exportName": "VerificationAssetManagementMigrationPage",
     "sourcePath": "features/verification-asset-management/VerificationAssetManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "VerificationAssetManagementMigrationPage",
+    "effectiveSourcePath": "features/environment-management/VerificationAssetManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -2720,8 +2720,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/payment/virtual_issue",
     "exportName": "VirtualIssueMigrationPage",
     "sourcePath": "features/virtual-issue/VirtualIssueMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "VirtualIssueMigrationPage",
+    "effectiveSourcePath": "features/virtual-issue/VirtualIssueMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
@@ -2732,8 +2732,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/admin/system/wbs-management",
     "exportName": "WbsManagementMigrationPage",
     "sourcePath": "features/wbs-management/WbsManagementMigrationPage.tsx",
-    "effectiveExportName": "AdminPageShell",
-    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveExportName": "WbsManagementMigrationPage",
+    "effectiveSourcePath": "features/wbs-management/WbsManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   }
 ];
