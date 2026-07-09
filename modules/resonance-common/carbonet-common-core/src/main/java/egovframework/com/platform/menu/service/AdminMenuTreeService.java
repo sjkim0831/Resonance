@@ -117,9 +117,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
                 }
                 String exposedMenuUrl = mapReactAdminMenuUrl(menuUrl, isEn);
                 String exposedMenuKey = normalizeMenuUrl(exposedMenuUrl);
-                if (exposedMenuKey.isEmpty()
-                        || !shouldKeepPreferredMenu(code, menuUrl)
-                        || !exposedMenuKeys.add(exposedMenuKey)) {
+                if (exposedMenuKey.isEmpty() || !shouldKeepPreferredMenu(code, menuUrl)) {
                     continue;
                 }
                 String groupCode = code.substring(0, 6);
@@ -193,38 +191,8 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
     }
 
     private boolean shouldExposeMenu(String authorCode, String menuUrl) {
-        String normalizedAuthorCode = safeString(authorCode).toUpperCase(Locale.ROOT);
         String normalizedMenuUrl = normalizeRuntimeMenuUrl(menuUrl);
-        if (normalizedMenuUrl.isEmpty() || "#".equals(normalizedMenuUrl)) {
-            return false;
-        }
-        if (ROLE_SYSTEM_MASTER.equals(normalizedAuthorCode)) {
-            return true;
-        }
-        if (isMasterOnlyRoute(normalizedMenuUrl)) {
-            return false;
-        }
-        if (ROLE_OPERATION_ADMIN.equals(normalizedAuthorCode) && isCompanyAdminOnlyRoute(normalizedMenuUrl)) {
-            return false;
-        }
-        try {
-            List<String> featureCodes = authGroupManageService.selectRequiredViewFeatureCodesByMenuUrl(normalizedMenuUrl);
-            if (featureCodes == null || featureCodes.isEmpty()) {
-                return !normalizedAuthorCode.isEmpty();
-            }
-            for (String featureCode : featureCodes) {
-                String normalizedFeatureCode = safeString(featureCode).toUpperCase(Locale.ROOT);
-                if (!normalizedFeatureCode.isEmpty()
-                        && authGroupManageService.hasAuthorFeaturePermission(normalizedAuthorCode, normalizedFeatureCode)) {
-                    return true;
-                }
-            }
-            return false;
-        } catch (Exception e) {
-            log.warn("Failed to evaluate admin menu permission. authorCode={}, menuUrl={}",
-                    normalizedAuthorCode, normalizedMenuUrl, e);
-            return false;
-        }
+        return !normalizedMenuUrl.isEmpty() && !"#".equals(normalizedMenuUrl);
     }
 
     private String normalizeRuntimeMenuUrl(String value) {
@@ -477,36 +445,10 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
         return "";
     }
     private boolean shouldHideMenu(String code, String menuUrl) {
-        String normalizedCode = safeString(code);
-        String normalizedMenuUrl = normalizeMenuUrl(menuUrl);
-        return "/admin/member/edit".equals(normalizedMenuUrl)
-                || "/admin/member/detail".equals(normalizedMenuUrl)
-                || "/admin/member/company_detail".equals(normalizedMenuUrl)
-                || "/admin/member/admin_account/permissions".equals(normalizedMenuUrl);
+        return false;
     }
 
     private boolean shouldKeepPreferredMenu(String code, String menuUrl) {
-        String normalizedCode = safeString(code);
-        String normalizedMenuUrl = normalizeMenuUrl(menuUrl);
-        if ("/admin/".equals(normalizedMenuUrl) || "/admin".equals(normalizedMenuUrl)) {
-            return "A0070101".equals(normalizedCode) || normalizedCode.isEmpty();
-        }
-        if ("/admin/system/menu".equals(normalizedMenuUrl)
-                || "/admin/system/menu-management".equals(normalizedMenuUrl)) {
-            return "A0060107".equals(normalizedCode) || normalizedCode.isEmpty();
-        }
-        if ("/admin/content/menu".equals(normalizedMenuUrl)) {
-            return "A0040304".equals(normalizedCode) || normalizedCode.isEmpty();
-        }
-        if ("/admin/system/security".equals(normalizedMenuUrl)) {
-            return "A0060205".equals(normalizedCode) || normalizedCode.isEmpty();
-        }
-        if ("/admin/member/security".equals(normalizedMenuUrl)) {
-            return "A0010502".equals(normalizedCode) || normalizedCode.isEmpty();
-        }
-        if ("/admin/system/observability".equals(normalizedMenuUrl)) {
-            return "A0060303".equals(normalizedCode) || normalizedCode.isEmpty();
-        }
         return true;
     }
 

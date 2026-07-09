@@ -14,7 +14,17 @@ import type {
 import { normalizeAdminEmissionMenuTree } from "./menuNormalization";
 
 const FRONTEND_SESSION_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}frontend-session`;
-const ADMIN_MENU_TREE_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v2`;
+const ADMIN_MENU_TREE_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v3`;
+const LEGACY_ADMIN_MENU_TREE_STORAGE_KEYS = [
+  `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v2`,
+  `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree`,
+  "carbonet:admin-menu-tree"
+];
+
+function removeLegacyAdminMenuTreeCaches() {
+  LEGACY_ADMIN_MENU_TREE_STORAGE_KEYS.forEach((key) => removeSessionStorageCache(key));
+}
+
 const ADMIN_MENU_TREE_REFRESH_EVENT = "carbonet:admin-menu-tree:refresh";
 const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -51,6 +61,7 @@ export function getAdminMenuTreeRefreshEventName() {
 }
 
 export function invalidateFrontendSessionCache() {
+  removeLegacyAdminMenuTreeCaches();
   frontendSessionCache = null;
   frontendSessionPromise = null;
   adminMenuTreeCache = null;
@@ -60,16 +71,10 @@ export function invalidateFrontendSessionCache() {
 }
 
 export function readAdminMenuTreeSnapshot(): AdminMenuTreePayload | null {
+  removeLegacyAdminMenuTreeCaches();
   const bootstrappedMenuTree = readBootstrap<AdminMenuTreePayload>("adminMenuTree");
   if (bootstrappedMenuTree) {
     const menuTree = normalizeAdminEmissionMenuTree(bootstrappedMenuTree);
-    adminMenuTreeCache = menuTree;
-    writeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY, menuTree, SESSION_CACHE_TTL_MS);
-    return menuTree;
-  }
-  const storedMenuTree = readSessionStorageCache<AdminMenuTreePayload>(ADMIN_MENU_TREE_STORAGE_KEY);
-  if (storedMenuTree) {
-    const menuTree = normalizeAdminEmissionMenuTree(storedMenuTree);
     adminMenuTreeCache = menuTree;
     return menuTree;
   }
@@ -162,7 +167,8 @@ export async function resetAdminSessionSimulator(session: FrontendSession): Prom
 }
 
 export async function fetchAdminMenuTree(): Promise<AdminMenuTreePayload> {
-  const cachedMenuTree = readAdminMenuTreeSnapshot();
+  removeLegacyAdminMenuTreeCaches();
+  readAdminMenuTreeSnapshot();
   if (!adminMenuTreePromise) {
     adminMenuTreePromise = fetchJson<AdminMenuTreePayload>(buildLocalizedPath("/admin/system/menu-data", "/en/admin/system/menu-data"), {
       cache: "no-store",
@@ -170,14 +176,9 @@ export async function fetchAdminMenuTree(): Promise<AdminMenuTreePayload> {
     }).then((payload) => {
         const menuTree = normalizeAdminEmissionMenuTree(payload);
         adminMenuTreeCache = menuTree;
-        writeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY, menuTree, SESSION_CACHE_TTL_MS);
         return menuTree;
       })
       .catch((error) => {
-        if (cachedMenuTree) {
-          adminMenuTreeCache = cachedMenuTree;
-          return cachedMenuTree;
-        }
         throw error;
       })
       .finally(() => {

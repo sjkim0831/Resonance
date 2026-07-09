@@ -49,7 +49,7 @@ public class CodexProvisioningServiceImpl implements CodexProvisioningService {
         response.setActorId(actorId);
 
         ensurePage(codeId, normalizedRequest.getPage(), actorId, response);
-        ensureFeatures(codeId, normalizedRequest.getPage(), normalizedRequest.getFeatures(), response);
+        ensureFeatures(codeId, normalizedRequest.getPage(), normalizedRequest.getFeatures(), actorId, response);
         ensureCommonCodeGroups(normalizedRequest.getCommonCodeGroups(), actorId, response);
         ensureAuthors(normalizedRequest.getAuthors(), actorId, response);
 
@@ -75,6 +75,10 @@ public class CodexProvisioningServiceImpl implements CodexProvisioningService {
         String pageCode = upper(page.getCode());
         if (pageCode.length() != 8) {
             throw new IllegalArgumentException("Page code must be an 8-character menu code.");
+        }
+        if (isSystemBootstrapAdminMenuMutation(codeId, actorId)) {
+            response.addResult("page", pageCode, "SKIPPED", "Runtime bootstrap cannot mutate the normalized admin menu registry.");
+            return;
         }
 
         String domainCode = defaultValue(upper(page.getDomainCode()), pageCode.substring(0, 4));
@@ -122,7 +126,7 @@ public class CodexProvisioningServiceImpl implements CodexProvisioningService {
     }
 
     private void ensureFeatures(String codeId, CodexProvisionRequest.PageRequest page,
-                                List<CodexProvisionRequest.FeatureRequest> features,
+                                List<CodexProvisionRequest.FeatureRequest> features, String actorId,
                                 CodexProvisionResponse response) {
         if (features == null || features.isEmpty()) {
             response.addResult("feature", "", "SKIPPED", "No feature payload was provided.");
@@ -140,6 +144,11 @@ public class CodexProvisioningServiceImpl implements CodexProvisioningService {
                 throw new IllegalArgumentException("Feature menuCode and featureCode are required.");
             }
             if (adminCodeManageMapper.countDetailCode(detailCountParams(codeId, menuCode)) == 0) {
+                if (isSystemBootstrapAdminMenuMutation(codeId, actorId)) {
+                    response.addResult("feature", featureCode, "SKIPPED",
+                            "Runtime bootstrap cannot create a feature for an unmanaged admin menu code: " + menuCode);
+                    continue;
+                }
                 throw new IllegalArgumentException("Feature menu code does not exist: " + menuCode);
             }
             if (menuFeatureManageMapper.countFeatureCode(featureCountParams(featureCode)) > 0) {
@@ -319,6 +328,11 @@ public class CodexProvisioningServiceImpl implements CodexProvisioningService {
         AdminMenuFeatureCommandDTO params = new AdminMenuFeatureCommandDTO();
         params.setFeatureCode(featureCode);
         return params;
+    }
+
+    private boolean isSystemBootstrapAdminMenuMutation(String codeId, String actorId) {
+        return "AMENU1".equalsIgnoreCase(safeString(codeId))
+                && "SYSTEM_BOOTSTRAP".equalsIgnoreCase(safeString(actorId));
     }
 
     private String resolveCodeId(String menuType) {

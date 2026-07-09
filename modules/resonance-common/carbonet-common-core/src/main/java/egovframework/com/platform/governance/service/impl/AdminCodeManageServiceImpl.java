@@ -163,6 +163,9 @@ public class AdminCodeManageServiceImpl extends EgovAbstractServiceImpl implemen
  
      @Override
      public void insertPageManagement(String codeId, String code, String codeNm, String codeDc, String menuUrl, String menuIcon, String useAt, String registerId) {
+         if (isSystemBootstrapAdminMenuMutation(codeId, registerId)) {
+             return;
+         }
          AdminCodeCommandDTO params = new AdminCodeCommandDTO();
          params.setCodeId(codeId);
          params.setCode(code);
@@ -178,6 +181,9 @@ public class AdminCodeManageServiceImpl extends EgovAbstractServiceImpl implemen
  
      @Override
      public void updatePageManagement(String code, String codeNm, String codeDc, String menuUrl, String menuIcon, String useAt, String updaterId) {
+         if (isSystemBootstrapAdminMenuMutation("AMENU1", updaterId)) {
+             return;
+         }
          AdminCodeCommandDTO params = new AdminCodeCommandDTO();
          params.setCode(code);
          params.setCodeNm(codeNm);
@@ -189,6 +195,12 @@ public class AdminCodeManageServiceImpl extends EgovAbstractServiceImpl implemen
          adminCodeManageMapper.updatePageManagementNames(params);
          adminCodeManageMapper.updatePageManagementUseAt(params);
          adminCodeManageMapper.updatePageManagementMenu(params);
+     }
+ 
+
+     private boolean isSystemBootstrapAdminMenuMutation(String codeId, String actorId) {
+         return "AMENU1".equalsIgnoreCase(codeId == null ? "" : codeId.trim())
+                 && "SYSTEM_BOOTSTRAP".equalsIgnoreCase(actorId == null ? "" : actorId.trim());
      }
  
      @Override

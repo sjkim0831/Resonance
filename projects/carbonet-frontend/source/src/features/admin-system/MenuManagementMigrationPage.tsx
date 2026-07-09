@@ -237,17 +237,19 @@ export function MenuManagementMigrationPage() {
   const rawRows = useMemo(() => (page?.menuRows || []) as Array<Record<string, unknown>>, [page?.menuRows]);
   const rows = useMemo(() => {
     if (menuType === "ADMIN") {
-      return standardAdminRows;
+      return rawRows.length > 0 ? rawRows : standardAdminRows;
     }
     if (menuType === "USER") {
-      return standardHomeRows;
+      return rawRows.length > 0 ? rawRows : standardHomeRows;
     }
     return rawRows;
   }, [menuType, rawRows, standardAdminRows, standardHomeRows]);
   const menuTypes = ((page?.menuTypes || []) as Array<Record<string, unknown>>);
   const groupMenuOptions = useMemo(() => (
     menuType === "ADMIN" || menuType === "USER"
-      ? buildStandardGroupOptions(rows)
+      ? (((page?.groupMenuOptions || []) as Array<Record<string, string>>).length > 0
+        ? ((page?.groupMenuOptions || []) as Array<Record<string, string>>)
+        : buildStandardGroupOptions(rows))
       : ((page?.groupMenuOptions || []) as Array<Record<string, string>>)
   ), [menuType, page?.groupMenuOptions, rows]);
   const iconOptions = ((page?.iconOptions || []) as string[]);
