@@ -753,9 +753,6 @@ export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | nu
 }
 
 export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): AdminMenuTreePayload {
-  const nextTree: AdminMenuTreePayload = { ...(payload || {}) };
-  Object.entries(ADMIN_DOMAIN_OVERRIDES).forEach(([domainKey, domain]) => {
-    nextTree[domainKey] = domain;
-  });
-  return nextTree;
+  void payload;
+  return { ...ADMIN_DOMAIN_OVERRIDES };
 }
