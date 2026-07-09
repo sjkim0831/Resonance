@@ -2478,22 +2478,25 @@ function EditableNumber({
     }
   }, [digits, focused, value]);
   return (
-    <input
-      className={`print:border-0 print:bg-transparent print:p-0 ${className}`.trim()}
-      inputMode="decimal"
-      onBlur={() => {
-        setFocused(false);
-        onCommit(parseEditableNumber(draft));
-      }}
-      onChange={(event) => setDraft(event.target.value)}
-      onFocus={() => setFocused(true)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.currentTarget.blur();
-        }
-      }}
-      value={draft}
-    />
+    <>
+      <input
+        className={`print-input-control print:border-0 print:bg-transparent print:p-0 ${className}`.trim()}
+        inputMode="decimal"
+        onBlur={() => {
+          setFocused(false);
+          onCommit(parseEditableNumber(draft));
+        }}
+        onChange={(event) => setDraft(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+        }}
+        value={draft}
+      />
+      <span className={`print-input-text ${className}`.trim()}>{draft || formatNumber(value, digits)}</span>
+    </>
   );
 }
 
