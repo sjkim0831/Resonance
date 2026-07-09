@@ -707,52 +707,16 @@ export function getNormalizedAdminMenuTree(): AdminMenuTreePayload {
   return JSON.parse(JSON.stringify(ADMIN_DOMAIN_OVERRIDES)) as AdminMenuTreePayload;
 }
 
-function normalizePath(url: string | undefined) {
-  return String(url || "").replace(/^\/en(?=\/)/, "").split("?")[0].replace(/\/+$/, "") || "/";
-}
-
-function getHomeMenuKey(menu: HomeMenuRecord) {
-  const url = normalizePath(menu.url);
-  const label = String(menu.label || "").toLowerCase();
-  if (url.startsWith("/monitoring") || label.includes("monitoring") || label.includes("모니터링")) return "monitoring";
-  if (url.startsWith("/co2") || label.includes("mrv") || label.includes("탄소시장")) return "co2";
-  if (url.startsWith("/emission") || label.includes("emission") || label.includes("탄소 배출") || label.includes("배출")) return "emission";
-  if (url.startsWith("/trade") || label.includes("trade") || label.includes("거래")) return "trade";
-  if (url.startsWith("/payment") || label.includes("payment") || label.includes("결제")) return "payment";
-  if (url.startsWith("/certificate") || label.includes("certificate") || label.includes("인증")) return "certificate";
-  if (url.startsWith("/edu") || label.includes("education") || label.includes("교육")) return "edu";
-  if (url.startsWith("/support") || url === "/sitemap" || label.includes("support") || label.includes("고객지원")) return "support";
-  if (url.startsWith("/mtn") || label.includes("service") || label.includes("운영")) return "mtn";
-  if (url.startsWith("/mypage") || label.includes("my page") || label.includes("마이페이지")) return "mypage";
-  return "";
+export function getNormalizedHomeMenu(isEn = false): HomeMenuRecord[] {
+  const menus = isEn ? HOME_MENU_EN : HOME_MENU_KO;
+  return JSON.parse(JSON.stringify(menus)) as HomeMenuRecord[];
 }
 
 export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | null | undefined>(payload: T): T {
   if (!payload) {
     return payload;
   }
-  const desiredMenus = payload.isEn ? HOME_MENU_EN : HOME_MENU_KO;
-  const desiredByKey = new Map(desiredMenus.map((menu) => [getHomeMenuKey(menu), menu]));
-  const usedKeys = new Set<string>();
-  const sourceMenu = (payload.homeMenu || []) as HomeMenuRecord[];
-  const nextMenu = sourceMenu.length
-    ? sourceMenu.map((menu) => {
-        const key = getHomeMenuKey(menu);
-        const replacement = key ? desiredByKey.get(key) : null;
-        if (replacement) {
-          usedKeys.add(key);
-          return replacement;
-        }
-        return menu;
-      })
-    : [];
-  for (const desired of desiredMenus) {
-    const key = getHomeMenuKey(desired);
-    if (key && !usedKeys.has(key)) {
-      nextMenu.push(desired);
-      usedKeys.add(key);
-    }
-  }
+  const nextMenu = getNormalizedHomeMenu(Boolean(payload.isEn));
   return { ...payload, homeMenu: nextMenu as Array<Record<string, unknown>> } as T;
 }
 

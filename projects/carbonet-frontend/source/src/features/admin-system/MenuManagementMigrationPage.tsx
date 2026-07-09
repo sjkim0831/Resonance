@@ -4,7 +4,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { refreshAdminMenuTree } from "../../lib/api/adminShell";
 import { postFormUrlEncoded } from "../../lib/api/core";
-import { getNormalizedAdminMenuTree } from "../../lib/api/menuNormalization";
+import { getNormalizedAdminMenuTree, getNormalizedHomeMenu } from "../../lib/api/menuNormalization";
 import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
@@ -77,7 +77,53 @@ function buildStandardAdminMenuRows(en: boolean) {
   return rows;
 }
 
-function buildStandardAdminGroupOptions(rows: Array<Record<string, unknown>>) {
+function buildStandardHomeMenuRows(en: boolean) {
+  const rows: Array<Record<string, unknown>> = [];
+  getNormalizedHomeMenu(en).forEach((menu, menuIndex) => {
+    const menuCode = `U${String(menuIndex + 1).padStart(3, "0")}`;
+    rows.push({
+      code: menuCode,
+      codeNm: menu.label || menuCode,
+      codeDc: menu.label || menuCode,
+      menuUrl: menu.url || "",
+      menuIcon: "web",
+      sortOrdr: menuIndex + 1,
+      useAt: "Y",
+      expsrAt: "Y",
+      standardSource: en ? "Normalized home menu" : "신규 표준 홈 메뉴"
+    });
+    (menu.sections || []).forEach((section, sectionIndex) => {
+      const sectionCode = `${menuCode}${String(sectionIndex + 1).padStart(2, "0")}`;
+      rows.push({
+        code: sectionCode,
+        codeNm: section.label || sectionCode,
+        codeDc: section.label || sectionCode,
+        menuUrl: "",
+        menuIcon: "folder_open",
+        sortOrdr: sectionIndex + 1,
+        useAt: "Y",
+        expsrAt: "Y",
+        standardSource: en ? "Normalized home menu" : "신규 표준 홈 메뉴"
+      });
+      (section.items || []).forEach((item, itemIndex) => {
+        rows.push({
+          code: `${sectionCode}${String(itemIndex + 1).padStart(2, "0")}`,
+          codeNm: item.label || `${sectionCode}${itemIndex + 1}`,
+          codeDc: item.label || `${sectionCode}${itemIndex + 1}`,
+          menuUrl: item.url || "",
+          menuIcon: "chevron_right",
+          sortOrdr: itemIndex + 1,
+          useAt: "Y",
+          expsrAt: "Y",
+          standardSource: en ? "Normalized home menu" : "신규 표준 홈 메뉴"
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+function buildStandardGroupOptions(rows: Array<Record<string, unknown>>) {
   return rows
     .filter((row) => {
       const code = stringOf(row, "code");
@@ -160,8 +206,8 @@ function validateCreateForm(params: {
   if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) {
     return en ? "Admin menu URL must start with /admin/." : "관리자 메뉴 URL은 /admin/으로 시작해야 합니다.";
   }
-  if (menuType === "USER" && !menuUrl.startsWith("/home/")) {
-    return en ? "Home menu URL must start with /home/." : "홈 메뉴 URL은 /home/으로 시작해야 합니다.";
+  if (menuType === "USER" && menuUrl.startsWith("/admin/")) {
+    return en ? "Home menu URL must not start with /admin/." : "홈 메뉴 URL은 /admin/으로 시작할 수 없습니다.";
   }
   return "";
 }
@@ -187,12 +233,21 @@ export function MenuManagementMigrationPage() {
   const page = pageState.value;
 
   const standardAdminRows = useMemo(() => buildStandardAdminMenuRows(en), [en]);
+  const standardHomeRows = useMemo(() => buildStandardHomeMenuRows(en), [en]);
   const rawRows = useMemo(() => (page?.menuRows || []) as Array<Record<string, unknown>>, [page?.menuRows]);
-  const rows = useMemo(() => (menuType === "ADMIN" ? standardAdminRows : rawRows), [menuType, rawRows, standardAdminRows]);
+  const rows = useMemo(() => {
+    if (menuType === "ADMIN") {
+      return standardAdminRows;
+    }
+    if (menuType === "USER") {
+      return standardHomeRows;
+    }
+    return rawRows;
+  }, [menuType, rawRows, standardAdminRows, standardHomeRows]);
   const menuTypes = ((page?.menuTypes || []) as Array<Record<string, unknown>>);
   const groupMenuOptions = useMemo(() => (
-    menuType === "ADMIN"
-      ? buildStandardAdminGroupOptions(rows)
+    menuType === "ADMIN" || menuType === "USER"
+      ? buildStandardGroupOptions(rows)
       : ((page?.groupMenuOptions || []) as Array<Record<string, string>>)
   ), [menuType, page?.groupMenuOptions, rows]);
   const iconOptions = ((page?.iconOptions || []) as string[]);
@@ -226,7 +281,7 @@ export function MenuManagementMigrationPage() {
     },
     {
       key: "menuRoot" as BuilderInstallBindingKey,
-      ready: menuType === "ADMIN" ? menuUrl.startsWith("/admin/") : menuUrl.startsWith("/home/"),
+      ready: menuType === "ADMIN" ? menuUrl.startsWith("/admin/") : (menuUrl.startsWith("/") && !menuUrl.startsWith("/admin/")),
       detail: menuUrl || "-"
     },
     {
@@ -263,7 +318,7 @@ export function MenuManagementMigrationPage() {
     },
     {
       key: "menu-root-resolvable" as BuilderInstallValidatorCheckKey,
-      ready: menuType === "ADMIN" ? menuUrl.startsWith("/admin/") : menuUrl.startsWith("/home/"),
+      ready: menuType === "ADMIN" ? menuUrl.startsWith("/admin/") : (menuUrl.startsWith("/") && !menuUrl.startsWith("/admin/")),
       detail: menuUrl || "-"
     },
     {
