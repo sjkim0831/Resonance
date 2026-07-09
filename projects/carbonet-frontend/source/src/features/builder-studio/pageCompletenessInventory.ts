@@ -1846,7 +1846,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 4,
     "status": "implemented",
-    "lineCount": 2543,
+    "lineCount": 2895,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2314,6 +2314,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
+    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "effectiveSourcePaths": [
+      "features/admin-entry/AdminPageShell.tsx"
+    ],
+    "effectiveExportNames": [
+      "AdminPageShell"
+    ],
+    "routeIds": [
+      "home-page-workbench"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 193,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
+    "hasForm": true,
+    "hasTable": false,
+    "hasBuilderLink": true
   },
   {
     "sourcePath": "features/home-placeholder/HomeMenuPlaceholderPage.tsx",

@@ -1429,6 +1429,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
+    "routeId": "home-page-workbench",
+    "label": "홈 페이지 작업대",
+    "group": "admin",
+    "koPath": "/admin/system/home-page-workbench",
+    "enPath": "/en/admin/system/home-page-workbench",
+    "exportName": "HomePageWorkbenchMigrationPage",
+    "sourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
+    "effectiveExportName": "AdminPageShell",
+    "effectiveSourcePath": "features/admin-entry/AdminPageShell.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
     "routeId": "infra",
     "label": "인프라",
     "group": "admin",
