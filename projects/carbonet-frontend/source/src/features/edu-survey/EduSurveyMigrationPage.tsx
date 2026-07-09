@@ -63,9 +63,10 @@ export function EduSurveyMigrationPage() {
   const en = isEnglish();
   const [selectedOption, setSelectedOption] = useState("good");
   const [comment, setComment] = useState("");
+  const [surveyState, setSurveyState] = useState<"editing" | "saved" | "submitted">("editing");
 
-  const progressPercent = 30;
-  const remainingQuestions = 7;
+  const progressPercent = surveyState === "submitted" ? 100 : surveyState === "saved" ? 60 : 30;
+  const remainingQuestions = surveyState === "submitted" ? 0 : surveyState === "saved" ? 4 : 7;
 
   const selectedSummary = useMemo(
     () => OPTIONS.find((option) => option.id === selectedOption),
@@ -86,7 +87,7 @@ export function EduSurveyMigrationPage() {
     userLabel: en ? "Learner" : "학습자",
     userName: en ? "Researcher Lee" : "이현장 연구원님",
     heroTitle: en ? "Survey Progress" : "설문 진행 현황",
-    heroMeta: "Question 3 of 10",
+    heroMeta: surveyState === "submitted" ? (en ? "Survey completed" : "설문 완료") : surveyState === "saved" ? "Question 6 of 10" : "Question 3 of 10",
     progressLabel: en ? `Progress ${progressPercent}%` : `진행률 ${progressPercent}%`,
     remainingLabel: en ? `${remainingQuestions} questions left` : `${remainingQuestions}문항 남음`,
     mandatory: en ? "Mandatory" : "필수",
@@ -102,6 +103,9 @@ export function EduSurveyMigrationPage() {
     previous: en ? "Previous Step" : "이전 단계",
     saveLater: en ? "Save for Later" : "나중에 이어하기",
     next: en ? "Next Question" : "다음 문항",
+    submittedTitle: en ? "Survey submitted" : "설문 제출 완료",
+    submittedBody: en ? "Your feedback has been saved. You can now issue or review the completion certificate." : "응답이 저장되었습니다. 이제 이수증을 발급하거나 확인할 수 있습니다.",
+    certificateCta: en ? "Go to certificate" : "이수증 발급으로 이동",
     guideTitle: en ? "Survey Guide" : "설문 안내",
     guideBody: en
       ? "Responses are processed anonymously and used as baseline data for improving future training programs."
@@ -250,20 +254,34 @@ export function EduSurveyMigrationPage() {
               </div>
 
               <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-8 sm:flex-row sm:items-center sm:justify-between">
-                <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-500 transition hover:bg-slate-50" type="button">
+                <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-500 transition hover:bg-slate-50" onClick={() => navigate(buildLocalizedPath("/edu/progress", "/en/edu/progress"))} type="button">
                   <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                   {copy.previous}
                 </button>
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <button className="rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50" type="button">
+                  <button className="rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50" onClick={() => setSurveyState("saved")} type="button">
                     {copy.saveLater}
                   </button>
-                  <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700" type="button">
+                  <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700" onClick={() => setSurveyState("submitted")} type="button">
                     {copy.next}
                     <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </button>
                 </div>
               </div>
+              {surveyState === "submitted" ? (
+                <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-emerald-600">verified</span>
+                    <div className="flex-1">
+                      <h4 className="text-base font-black text-emerald-900">{copy.submittedTitle}</h4>
+                      <p className="mt-1 text-sm leading-6 text-emerald-800">{copy.submittedBody}</p>
+                      <button className="mt-4 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700" onClick={() => navigate(buildLocalizedPath("/edu/certificate", "/en/edu/certificate"))} type="button">
+                        {copy.certificateCta}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </article>
 
             <aside className="space-y-5">
