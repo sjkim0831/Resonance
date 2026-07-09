@@ -3,8 +3,10 @@ import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
-import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { readBootstrappedEmissionResultDetailPageData, readBootstrappedHomePayload } from "../../lib/api/bootstrap";
+import { fetchEmissionResultDetailPage } from "../../lib/api/emission";
+import type { EmissionResultDetailPagePayload } from "../../lib/api/emissionTypes";
+import { buildLocalizedPath, getNavigationEventName, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HeaderBrand, HeaderMobileMenu } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import type { HomeMenuItem, HomePayload } from "../home-entry/homeEntryTypes";
@@ -12,6 +14,26 @@ import type { HomeMenuItem, HomePayload } from "../home-entry/homeEntryTypes";
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
 const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
+
+function readString(value: unknown) {
+  return String(value || "");
+}
+
+function appendResultId(pathKo: string, pathEn: string, resultId: string) {
+  const href = buildLocalizedPath(pathKo, pathEn);
+  if (!resultId) {
+    return href;
+  }
+  const glue = href.includes("?") ? "&" : "?";
+  return `${href}${glue}resultId=${encodeURIComponent(resultId)}`;
+}
+
+function matchesInitialResultDetailPayload(payload: EmissionResultDetailPagePayload | null, resultId: string) {
+  if (!payload || !resultId) {
+    return false;
+  }
+  return readString(payload.resultId) === readString(resultId);
+}
 
 type StepItem = {
   label: string;
@@ -343,12 +365,25 @@ export function EmissionReportSubmitMigrationPage() {
   const sharedContent = LOCALIZED_CONTENT[en ? "en" : "ko"];
   const session = useFrontendSession();
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const resultId = getSearchParam("resultId");
+  const initialResultDetail = useMemo(() => readBootstrappedEmissionResultDetailPageData(), []);
+  const canUseInitialResultDetail = matchesInitialResultDetailPayload(initialResultDetail, resultId);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
     [en],
     {
       initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined
+    }
+  );
+  const resultState = useAsyncValue<EmissionResultDetailPagePayload>(
+    () => fetchEmissionResultDetailPage(resultId),
+    [resultId],
+    {
+      enabled: Boolean(resultId),
+      initialValue: canUseInitialResultDetail ? initialResultDetail : null,
+      skipInitialLoad: canUseInitialResultDetail,
       onError: () => undefined
     }
   );
@@ -372,6 +407,21 @@ export function EmissionReportSubmitMigrationPage() {
 
   const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
   const homeMenu = payload.homeMenu || [];
+  const resultDetail = resultState.value;
+  const resultFound = Boolean(resultDetail?.found);
+  const siteRows = ((resultDetail?.siteRows as Array<Record<string, unknown>> | undefined) || []);
+  const evidenceRows = ((resultDetail?.evidenceRows as Array<Record<string, unknown>> | undefined) || []);
+  const reportMeta = {
+    projectName: readString(resultDetail?.projectName) || (en ? "Unselected emission result" : "선택된 산정 결과 없음"),
+    companyName: readString(resultDetail?.companyName) || "-",
+    reportPeriod: readString(resultDetail?.reportPeriod) || "-",
+    totalEmission: readString(resultDetail?.totalEmission) || "-",
+    formulaVersion: readString(resultDetail?.formulaVersion) || "-",
+    verificationStatus: readString(resultDetail?.verificationStatusLabel) || "-",
+    calculatedAt: readString(resultDetail?.calculatedAt) || "-",
+    evidenceCount: String(Number(resultDetail?.evidenceCount || evidenceRows.length || 0)),
+    siteCount: String(Number(resultDetail?.siteCount || siteRows.length || 0))
+  };
 
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-report-submit", {
@@ -386,6 +436,15 @@ export function EmissionReportSubmitMigrationPage() {
       hasStepIndicator: true
     });
   }, [content.facilities.length, content.stepItems.length, en, homeMenu.length, mobileMenuOpen]);
+
+  useEffect(() => {
+    logGovernanceScope("COMPONENT", "emission-report-submit-result-context", {
+      resultId,
+      found: resultFound,
+      siteCount: siteRows.length,
+      evidenceCount: evidenceRows.length
+    });
+  }, [evidenceRows.length, resultFound, resultId, siteRows.length]);
 
   return (
     <>
@@ -412,8 +471,8 @@ export function EmissionReportSubmitMigrationPage() {
               <ReportSubmitDesktopNav en={en} homeMenu={homeMenu} />
               <div className="ml-auto flex items-center gap-3 shrink-0">
                 <div className="hidden xl:flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/emission/report_submit")}>KO</button>
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate("/en/emission/report_submit")}>EN</button>
+                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate(appendResultId("/emission/report_submit", "/emission/report_submit", resultId))}>KO</button>
+                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate(appendResultId("/en/emission/report_submit", "/en/emission/report_submit", resultId))}>EN</button>
                 </div>
                 <span className="hidden xl:inline text-sm font-medium mr-2">{content.managerLabel}</span>
                 <button type="button" className="hidden xl:inline-flex gov-btn border border-[var(--kr-gov-border-light)] text-[var(--kr-gov-text-secondary)] hover:bg-gray-50 text-sm py-1.5 px-4" onClick={() => void session.logout()}>{content.logout}</button>
@@ -464,7 +523,7 @@ export function EmissionReportSubmitMigrationPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm bg-blue-50 text-[var(--kr-gov-blue)] px-4 py-2 rounded-[var(--kr-gov-radius)] font-medium">
                   <span className="material-symbols-outlined text-[18px]">info</span>
-                  {content.draftSaved}
+                  {resultId ? (en ? `Result linked: ${resultId}` : `산정 결과 연결됨: ${resultId}`) : content.draftSaved}
                 </div>
               </div>
             </div>
@@ -487,6 +546,41 @@ export function EmissionReportSubmitMigrationPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
+                <section className="bg-white p-8 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] shadow-sm" data-help-id="emission-report-submit-result-context">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--kr-gov-text-secondary)]">
+                        {resultId || (en ? "Draft without linked result" : "산정 결과 미연결 초안")}
+                      </p>
+                      <h3 className="mt-2 text-2xl font-bold text-[var(--kr-gov-text-primary)]">{reportMeta.projectName}</h3>
+                      <p className="mt-2 text-sm text-[var(--kr-gov-text-secondary)]">{reportMeta.companyName}</p>
+                    </div>
+                    <div className="rounded-[var(--kr-gov-radius)] border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-[var(--kr-gov-blue)]">
+                      {resultState.loading ? (en ? "Loading result context" : "산정 결과 불러오는 중") : reportMeta.verificationStatus}
+                    </div>
+                  </div>
+                  {resultId && !resultState.loading && !resultFound ? (
+                    <div className="mt-5 rounded-[var(--kr-gov-radius)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      {en ? "The linked result was not found. You can continue drafting, but submit after selecting a valid result." : "연결된 산정 결과를 찾지 못했습니다. 초안 작성은 가능하지만, 유효한 결과를 선택한 뒤 제출하십시오."}
+                    </div>
+                  ) : null}
+                  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {[
+                      [en ? "Report Period" : "보고 기간", reportMeta.reportPeriod],
+                      [en ? "Total Emission" : "총 배출량", reportMeta.totalEmission],
+                      [en ? "Emission Sites" : "배출지 수", reportMeta.siteCount],
+                      [en ? "Evidence Files" : "증빙 파일", reportMeta.evidenceCount],
+                      [en ? "Formula Version" : "산정식 버전", reportMeta.formulaVersion],
+                      [en ? "Calculated At" : "산정 일시", reportMeta.calculatedAt]
+                    ].map(([label, value]) => (
+                      <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-slate-50 px-4 py-3" key={label}>
+                        <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{label}</p>
+                        <p className="mt-2 text-sm font-bold text-[var(--kr-gov-text-primary)]">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
                 <section className="bg-white p-8 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] shadow-sm" data-help-id="emission-report-submit-scope1">
                   <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                     <span className="w-1.5 h-6 bg-[var(--kr-gov-blue)] rounded-full" />
@@ -557,14 +651,42 @@ export function EmissionReportSubmitMigrationPage() {
                   </div>
                 </section>
 
+                <section className="bg-white p-8 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] shadow-sm" data-help-id="emission-report-submit-review-package">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <span className="w-1.5 h-6 bg-[var(--kr-gov-blue)] rounded-full" />
+                    {en ? "Submission Package" : "제출 패키지"}
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {[
+                      [en ? "Calculation basis" : "산정 근거", resultFound ? (en ? "Linked" : "연결됨") : (en ? "Needs selection" : "선택 필요"), "fact_check"],
+                      [en ? "Evidence files" : "증빙 파일", `${reportMeta.evidenceCount}${en ? " files" : "건"}`, "attach_file"],
+                      [en ? "Site coverage" : "배출지 범위", `${reportMeta.siteCount}${en ? " sites" : "개 배출지"}`, "domain"],
+                      [en ? "External review handoff" : "외부 검증 인계", resultFound ? (en ? "Ready" : "준비됨") : (en ? "Blocked" : "보류"), "verified"]
+                    ].map(([label, value, icon]) => (
+                      <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] p-4" key={label}>
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">{icon}</span>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{label}</p>
+                            <p className="mt-1 text-xs font-medium text-[var(--kr-gov-text-secondary)]">{value}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-5 rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[var(--kr-gov-text-secondary)]">
+                    {en ? "Saving a draft keeps the current report package in place; the next step opens the verification queue with the linked result." : "임시 저장은 현재 보고서 패키지를 유지하고, 다음 단계는 연결된 산정 결과를 검증 대기열로 전달합니다."}
+                  </div>
+                </section>
+
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pt-4" data-help-id="emission-report-submit-actions">
-                  <button className="gov-btn border border-[var(--kr-gov-border-light)] text-[var(--kr-gov-text-secondary)] hover:bg-white px-8 h-14 bg-white shadow-sm" type="button" onClick={() => navigate(buildLocalizedPath("/emission/project_list", "/en/emission/project_list"))}>
+                  <button className="gov-btn border border-[var(--kr-gov-border-light)] text-[var(--kr-gov-text-secondary)] hover:bg-white px-8 h-14 bg-white shadow-sm" type="button" onClick={() => navigate(appendResultId("/admin/emission/result_detail", "/en/admin/emission/result_detail", resultId))}>
                     <span className="material-symbols-outlined">arrow_back</span>
                     {content.previousStep}
                   </button>
                   <div className="flex gap-3 self-end">
                     <button className="gov-btn border border-[var(--kr-gov-blue)] text-[var(--kr-gov-blue)] hover:bg-blue-50 px-8 h-14 bg-white" type="button">{content.saveDraft}</button>
-                    <button className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] px-10 h-14 shadow-lg" type="button" onClick={() => navigate(buildLocalizedPath("/emission/validate", "/en/emission/validate"))}>
+                    <button className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] px-10 h-14 shadow-lg" type="button" onClick={() => navigate(appendResultId("/emission/validate", "/en/emission/validate", resultId))}>
                       {content.nextStep}
                       <span className="material-symbols-outlined">arrow_forward</span>
                     </button>

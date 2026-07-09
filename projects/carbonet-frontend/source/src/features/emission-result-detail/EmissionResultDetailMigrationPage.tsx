@@ -341,10 +341,10 @@ export function EmissionResultDetailMigrationPage() {
               <MemberLinkButton href={resultScopedHref("/admin/emission/validate", "/en/admin/emission/validate", resultId, returnUrl)} icon="rule" variant="secondary">
                 {en ? "Verification Queue" : "검증 대기열"}
               </MemberLinkButton>
-              <MemberLinkButton href={resultScopedHref("/admin/emission/report-submit", "/en/admin/emission/report-submit", resultId, returnUrl)} icon="description" variant="secondary">
+              <MemberLinkButton href={resultScopedHref("/emission/report_submit", "/en/emission/report_submit", resultId, returnUrl)} icon="description" variant="secondary">
                 {en ? "Prepare Report" : "보고서 작성"}
               </MemberLinkButton>
-              <MemberLinkButton href={resultScopedHref("/admin/emission/data-history", "/en/admin/emission/data-history", resultId, returnUrl)} icon="manage_search" variant="secondary">
+              <MemberLinkButton href={resultScopedHref("/admin/emission/data_history", "/en/admin/emission/data_history", resultId, returnUrl)} icon="manage_search" variant="secondary">
                 {en ? "Audit Trail" : "감사 이력"}
               </MemberLinkButton>
             </section>
