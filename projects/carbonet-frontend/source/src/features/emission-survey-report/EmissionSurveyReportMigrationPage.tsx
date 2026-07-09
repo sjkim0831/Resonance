@@ -1594,7 +1594,12 @@ export function EmissionSurveyReportPrintPage() {
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           margin: [8, 8, 8, 8],
-          pagebreak: { mode: ["css", "legacy"], avoid: [".print-break", ".print-card"] }
+          pagebreak: {
+            mode: ["css", "legacy"],
+            before: [".pdf-page-start"],
+            after: [".pdf-page-end"],
+            avoid: [".pdf-avoid", ".print-break", ".print-card", ".pdf-table-row"]
+          }
         };
       const worker = html2pdf()
         .set(pdfOptions)
@@ -1642,7 +1647,7 @@ export function EmissionSurveyReportPrintPage() {
   return (
     <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
+        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}.pdf-page-start{break-before:page;page-break-before:always}.pdf-page-end{break-after:page;page-break-after:always}.pdf-avoid,.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr,.pdf-table-row{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-page{break-after:page;page-break-after:always}.pdf-download-mode .pdf-page-start{break-before:page;page-break-before:always}.pdf-download-mode .pdf-page-end{break-after:page;page-break-after:always}.pdf-download-mode .pdf-avoid,.pdf-download-mode .print-break,.pdf-download-mode .print-card,.pdf-download-mode .pdf-table-row{break-inside:avoid;page-break-inside:avoid}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
         <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
@@ -1723,7 +1728,7 @@ export function EmissionSurveyReportPrintPage() {
         </header>
 
         <div className="px-8 py-7">
-        <section className="print-card print-soft-bg mt-7 rounded-3xl border border-amber-200 bg-[linear-gradient(135deg,#fffbeb,#fff7ed)] p-5">
+        <section className="pdf-avoid print-card print-soft-bg mt-7 rounded-3xl border border-amber-200 bg-[linear-gradient(135deg,#fffbeb,#fff7ed)] p-5">
           <div className="flex flex-wrap justify-between gap-3 items-start">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Normalization Base" : "정규화 기준"}</p>
@@ -1769,7 +1774,7 @@ export function EmissionSurveyReportPrintPage() {
           </div>
         </section>
 
-        <section className="print-card mt-7 rounded-3xl border border-slate-200 bg-white p-5">
+        <section className="pdf-avoid print-card mt-7 rounded-3xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Emission Detail" : "배출량 상세"}</p>
@@ -1795,7 +1800,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
 
         <section className="print-page grid gap-4 px-8 py-7 lg:grid-cols-2">
-          <div className="print-card print-soft-bg rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="pdf-avoid print-card print-soft-bg rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black">{en ? "Section Contribution Bars" : "섹션별 탄소배출 기여 그래프"}</h2>
@@ -1824,7 +1829,7 @@ export function EmissionSurveyReportPrintPage() {
             </div>
             <div className="mt-4 space-y-3">
               {chartSections.map((section, index) => (
-                <div className="print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
+                <div className="pdf-table-row print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
                   <div className="grid grid-cols-[minmax(0,1fr)_150px] items-start gap-3 text-sm font-black">
                     <span className="min-w-0 whitespace-normal leading-5">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
 	                    <span className="font-mono text-right leading-5 text-slate-950">
@@ -1861,7 +1866,7 @@ export function EmissionSurveyReportPrintPage() {
           />
         </section>
 
-        <section className="print-card print-table mx-8 mb-7 overflow-hidden rounded-3xl border border-slate-200 bg-white print:overflow-hidden">
+        <section className="pdf-page-start print-card print-table mx-8 mb-7 overflow-hidden rounded-3xl border border-slate-200 bg-white print:overflow-hidden">
           <div className="border-b border-slate-200 px-4 py-3">
             <h2 className="text-lg font-black">{en ? "Detailed Calculation Inventory" : "상세 계산 결과표"}</h2>
           </div>
@@ -1887,7 +1892,7 @@ export function EmissionSurveyReportPrintPage() {
                     sectionCode={group.sectionCode}
                   />
                 ))}
-                <tr className="print-break">
+                <tr className="pdf-table-row print-break">
                   <td className="print-total-cell print-total-label print-total-box-cell rounded-b-3xl bg-white px-5 py-5" colSpan={4}>
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">
@@ -2652,7 +2657,7 @@ function PrintOutputAllocationTable({
             const massShareEmission = sourceTotalEmission * massShare;
             const perTonEmission = outputQuantityTotal > 0 ? (sourceTotalEmission / outputQuantityTotal) * massShare : totalEmission * massShare;
             return (
-              <tr className="border-b border-amber-100 align-middle" key={row.rowId}>
+              <tr className="pdf-table-row border-b border-amber-100 align-middle" key={row.rowId}>
                 <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
                   {groupLabel(row, en)}
                 </td>
@@ -2745,13 +2750,13 @@ function PrintSectionRows({
 
   return (
     <>
-      <tr className="bg-blue-50">
+      <tr className="pdf-table-row bg-blue-50">
         <td className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" colSpan={4}>
           {sectionLabel(sectionCode, group.sectionLabel, en)}
         </td>
       </tr>
       {group.rows.map((row) => (
-        <tr className="border-b border-slate-100 align-top" key={row.rowId}>
+        <tr className="pdf-table-row border-b border-slate-100 align-top" key={row.rowId}>
           <td className="w-[40%] px-3 py-2">
             {editable ? (
               <EditableText
@@ -2830,7 +2835,7 @@ function SectionContributionPieCard({
 }) {
   const pieSlices = buildPieSlices(sections);
   return (
-    <div className="rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="pdf-avoid rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="mt-1 text-lg font-black tracking-[-0.03em] text-slate-950">{title}</h3>
@@ -2859,7 +2864,7 @@ function SectionContributionPieCard({
         </div>
         <div className="space-y-2">
           {sections.map((section, index) => (
-            <div className="print-break grid grid-cols-[minmax(0,1fr)_112px] items-center gap-3 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
+            <div className="pdf-table-row print-break grid grid-cols-[minmax(0,1fr)_112px] items-center gap-3 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
                 <span className="min-w-0 whitespace-normal text-xs font-bold leading-4 text-slate-700">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
