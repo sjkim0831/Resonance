@@ -318,10 +318,10 @@ function nextAnimationFrame() {
 type ReportPdfDesignVariant = "classic" | "modern" | "line" | "dark";
 
 const REPORT_PDF_DESIGN_OPTIONS: Array<{ id: ReportPdfDesignVariant; label: string; enLabel: string }> = [
-  { id: "classic", label: "시안 1 표준 공문", enLabel: "Draft 1 Official Standard" },
-  { id: "modern", label: "시안 2 기관 보고", enLabel: "Draft 2 Agency Memo" },
-  { id: "line", label: "시안 3 결재 문서", enLabel: "Draft 3 Approval Form" },
-  { id: "dark", label: "시안 4 압축 공문", enLabel: "Draft 4 Compact Official" }
+  { id: "classic", label: "시안 1 청색 기관형", enLabel: "Draft 1 Blue Agency" },
+  { id: "modern", label: "시안 2 정책 보고형", enLabel: "Draft 2 Policy Report" },
+  { id: "line", label: "시안 3 결재 공문형", enLabel: "Draft 3 Approval Memo" },
+  { id: "dark", label: "시안 4 압축 보고형", enLabel: "Draft 4 Compact Agency" }
 ];
 
 function buildReportPdfFileName(report: EmissionSurveyReportPayload, design: ReportPdfDesignVariant = "classic") {
@@ -1623,6 +1623,7 @@ export function EmissionSurveyReportPrintPage() {
         };
         setPage: (page: number) => void;
         setDrawColor: (r: number, g: number, b: number) => void;
+        setFillColor: (r: number, g: number, b: number) => void;
         setFontSize: (size: number) => void;
         setLineWidth: (width: number) => void;
         setTextColor: (r: number, g: number, b: number) => void;
@@ -1632,14 +1633,23 @@ export function EmissionSurveyReportPrintPage() {
       }) => {
         const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
+        const headerPalette: Record<ReportPdfDesignVariant, { fill: [number, number, number]; line: [number, number, number]; text: [number, number, number] }> = {
+          classic: { fill: [38, 56, 79], line: [169, 182, 198], text: [255, 255, 255] },
+          modern: { fill: [244, 248, 252], line: [31, 79, 122], text: [15, 23, 42] },
+          line: { fill: [255, 255, 255], line: [17, 24, 39], text: [17, 24, 39] },
+          dark: { fill: [246, 248, 251], line: [32, 50, 74], text: [15, 23, 42] }
+        };
+        const palette = headerPalette[design];
         for (let page = 1; page <= pageCount; page += 1) {
           pdf.setPage(page);
-          pdf.setDrawColor(32, 50, 74);
-          pdf.setLineWidth(0.35);
-          pdf.rect(6, 6, pageWidth - 12, pageHeight - 12, "S");
-          pdf.setLineWidth(0.12);
-          pdf.rect(8, 8, pageWidth - 16, pageHeight - 16, "S");
+          pdf.setFillColor(...palette.fill);
+          pdf.rect(8, 6, pageWidth - 16, 6, "F");
+          pdf.setDrawColor(...palette.line);
+          pdf.setLineWidth(0.22);
+          pdf.rect(8, 12.6, pageWidth - 16, 0.01, "S");
+          pdf.setFontSize(6);
+          pdf.setTextColor(...palette.text);
+          pdf.text(`${record.reportTitle || "Carbonet Emission Survey Report"} · ${record.certificateId}`, 10, 10);
         }
         pdf.setPage(pageCount);
         pdf.setFontSize(1);
@@ -1878,6 +1888,89 @@ export function EmissionSurveyReportPrintPage() {
           .pdf-download-mode.pdf-design-dark.print-sheet{
             border-color:#20324a!important;
             box-shadow:inset 0 0 0 1px #94a3b8!important;
+          }
+          .pdf-download-mode.print-sheet,
+          .pdf-download-mode .print-sheet{
+            border:0!important;
+            border-radius:0!important;
+            box-shadow:none!important;
+            padding:0!important;
+          }
+          .pdf-download-mode .print-report-hero{
+            position:relative!important;
+            overflow:hidden!important;
+          }
+          .pdf-download-mode .print-report-hero::before{
+            content:""!important;
+            display:block!important;
+            position:absolute!important;
+            left:0!important;
+            right:0!important;
+            top:0!important;
+            height:8px!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-report-hero{
+            border:1px solid #c1ccd9!important;
+            border-radius:3px!important;
+            padding:18px 16px 14px!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-report-hero::before{
+            background:#26384f!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-card{
+            border-color:#c9d3df!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-soft-bg,
+          .pdf-download-mode.pdf-design-classic .print-total-value{
+            background:#f7f9fb!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-report-hero{
+            border:1px solid #c8d7e6!important;
+            border-radius:3px!important;
+            padding:18px 16px 14px!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-report-hero::before{
+            background:#1f4f7a!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-card{
+            border-color:#c5d6e6!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-soft-bg,
+          .pdf-download-mode.pdf-design-modern .print-total-value{
+            background:#f6f9fc!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-report-hero{
+            border:1px solid #9ca3af!important;
+            border-bottom:3px double #374151!important;
+            border-radius:0!important;
+            padding:18px 16px 14px!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-report-hero::before{
+            background:#374151!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-card{
+            border:1px solid #c7cdd4!important;
+            border-radius:0!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-soft-bg,
+          .pdf-download-mode.pdf-design-line .print-total-value{
+            background:#fafafa!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-report-hero{
+            border:1px solid #c6ced8!important;
+            border-radius:3px!important;
+            padding:16px 14px 12px!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-report-hero::before{
+            background:#20324a!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-card,
+          .pdf-download-mode.pdf-design-dark .pdf-table-page{
+            border-color:#ccd3dc!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-soft-bg,
+          .pdf-download-mode.pdf-design-dark .print-total-value{
+            background:#f8fafc!important;
           }
         `}
       </style>
