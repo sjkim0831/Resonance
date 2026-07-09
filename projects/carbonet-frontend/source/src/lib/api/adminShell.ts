@@ -14,7 +14,7 @@ import type {
 import { normalizeAdminEmissionMenuTree } from "./menuNormalization";
 
 const FRONTEND_SESSION_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}frontend-session`;
-const ADMIN_MENU_TREE_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree`;
+const ADMIN_MENU_TREE_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v2`;
 const ADMIN_MENU_TREE_REFRESH_EVENT = "carbonet:admin-menu-tree:refresh";
 const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
 

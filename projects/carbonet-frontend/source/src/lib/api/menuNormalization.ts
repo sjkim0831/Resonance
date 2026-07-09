@@ -743,6 +743,5 @@ export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | nu
 }
 
 export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): AdminMenuTreePayload {
-  void payload;
-  return getNormalizedAdminMenuTree();
+  return payload;
 }
