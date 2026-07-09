@@ -186,6 +186,7 @@ export function prefetchRoutePageData(route: MigrationPageId, search = ""): Prom
     case "emission-data-history":
       return fetchEmissionDataHistoryPage({
         pageIndex: params.get("pageIndex") ? Number(params.get("pageIndex")) : undefined,
+        resultId: params.get("resultId") || "",
         searchKeyword: params.get("searchKeyword") || "",
         changeType: params.get("changeType") || "",
         changeTarget: params.get("changeTarget") || ""

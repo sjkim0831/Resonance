@@ -551,6 +551,7 @@ export type EmissionDataHistoryPagePayload = Record<string, unknown> & {
   pageIndex?: number;
   pageSize?: number;
   totalPages?: number;
+  resultId?: string;
   searchKeyword?: string;
   changeType?: string;
   changeTarget?: string;

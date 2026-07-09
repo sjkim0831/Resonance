@@ -291,7 +291,7 @@ export async function fetchEmissionResultDetailPage(resultId: string) {
   );
 }
 
-export async function fetchEmissionDataHistoryPage(params?: { pageIndex?: number; searchKeyword?: string; changeType?: string; changeTarget?: string; }) {
+export async function fetchEmissionDataHistoryPage(params?: { pageIndex?: number; resultId?: string; searchKeyword?: string; changeType?: string; changeTarget?: string; }) {
   return fetchLocalizedPageJson<EmissionDataHistoryPagePayload>(
     "/admin/emission/data_history/page-data",
     "/en/admin/emission/data_history/page-data",

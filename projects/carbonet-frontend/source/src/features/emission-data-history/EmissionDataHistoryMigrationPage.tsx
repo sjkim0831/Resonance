@@ -12,6 +12,7 @@ import { stringOf } from "../admin-system/adminSystemShared";
 
 type Filters = {
   pageIndex: number;
+  resultId: string;
   searchKeyword: string;
   changeType: string;
   changeTarget: string;
@@ -19,6 +20,7 @@ type Filters = {
 
 const DEFAULT_FILTERS: Filters = {
   pageIndex: 1,
+  resultId: "",
   searchKeyword: "",
   changeType: "",
   changeTarget: ""
@@ -50,6 +52,7 @@ function readInitialFilters(): Filters {
   const search = new URLSearchParams(window.location.search);
   return {
     pageIndex: Number(search.get("pageIndex") || "1") || 1,
+    resultId: search.get("resultId") || "",
     searchKeyword: search.get("searchKeyword") || "",
     changeType: search.get("changeType") || "",
     changeTarget: search.get("changeTarget") || ""
@@ -58,6 +61,7 @@ function readInitialFilters(): Filters {
 
 function sameFilters(left: Filters, right: Filters) {
   return left.pageIndex === right.pageIndex
+    && left.resultId === right.resultId
     && left.searchKeyword === right.searchKeyword
     && left.changeType === right.changeType
     && left.changeTarget === right.changeTarget;
@@ -109,6 +113,7 @@ function matchesInitialHistoryPayload(payload: EmissionDataHistoryPagePayload | 
     return false;
   }
   return Number(payload.pageIndex || 1) === filters.pageIndex
+    && String(payload.resultId || "") === filters.resultId
     && String(payload.searchKeyword || "") === filters.searchKeyword
     && String(payload.changeType || "") === filters.changeType
     && String(payload.changeTarget || "") === filters.changeTarget;
@@ -122,12 +127,13 @@ export function EmissionDataHistoryMigrationPage() {
   const canUseInitialPayload = matchesInitialHistoryPayload(initialPayload, initial);
   const [filters, setFilters] = useState(initial);
   const [draft, setDraft] = useState(initial);
-  const pageState = useAsyncValue<EmissionDataHistoryPagePayload>(() => fetchEmissionDataHistoryPage(filters), [filters.pageIndex, filters.searchKeyword, filters.changeType, filters.changeTarget], {
+  const pageState = useAsyncValue<EmissionDataHistoryPagePayload>(() => fetchEmissionDataHistoryPage(filters), [filters.pageIndex, filters.resultId, filters.searchKeyword, filters.changeType, filters.changeTarget], {
     initialValue: canUseInitialPayload ? initialPayload : null,
     skipInitialLoad: canUseInitialPayload,
     onSuccess(payload) {
       const next = {
         pageIndex: Number(payload.pageIndex || 1),
+        resultId: String(payload.resultId || filters.resultId || ""),
         searchKeyword: String(payload.searchKeyword || ""),
         changeType: String(payload.changeType || ""),
         changeTarget: String(payload.changeTarget || "")
@@ -161,6 +167,9 @@ export function EmissionDataHistoryMigrationPage() {
     if (returnUrl) {
       search.set("returnUrl", returnUrl);
     }
+    if (filters.resultId) {
+      search.set("resultId", filters.resultId);
+    }
     if (filters.searchKeyword) {
       search.set("searchKeyword", filters.searchKeyword);
     }
@@ -192,6 +201,7 @@ export function EmissionDataHistoryMigrationPage() {
     logGovernanceScope("PAGE", "emission-data-history", {
       language: en ? "en" : "ko",
       pageIndex: currentPage,
+      resultId: filters.resultId,
       searchKeyword: filters.searchKeyword,
       changeType: filters.changeType,
       changeTarget: filters.changeTarget,
@@ -202,7 +212,7 @@ export function EmissionDataHistoryMigrationPage() {
       totalPages,
       currentPage
     });
-  }, [currentPage, en, filters.changeTarget, filters.changeType, filters.searchKeyword, rows.length, totalPages]);
+  }, [currentPage, en, filters.changeTarget, filters.changeType, filters.resultId, filters.searchKeyword, rows.length, totalPages]);
 
   function resolveMetaLabel(meta: Record<string, Record<string, unknown>>, code: string, fallback: string) {
     if (!code) {
@@ -231,6 +241,13 @@ export function EmissionDataHistoryMigrationPage() {
     >
       <AdminWorkspacePageFrame>
         {pageState.error ? <PageStatusNotice tone="error">{pageState.error}</PageStatusNotice> : null}
+        {filters.resultId ? (
+          <PageStatusNotice tone="info">
+            {en
+              ? `Audit ledger is scoped to emission result ${filters.resultId}.`
+              : `${filters.resultId} 산정 결과 기준으로 감사 이력을 추적합니다.`}
+          </PageStatusNotice>
+        ) : null}
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-4" data-help-id="emission-data-history-summary">
           {summaryCards.map((card, index) => (
@@ -297,14 +314,25 @@ export function EmissionDataHistoryMigrationPage() {
                 </button>
               </div>
             </div>
+            <div className="md:col-span-4">
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]" htmlFor="resultId">{en ? "Emission Result ID" : "산정 결과 ID"}</label>
+              <div className="flex flex-col gap-2 md:flex-row">
+                <AdminInput className="flex-1" id="resultId" placeholder={en ? "Scope audit rows to a result ID" : "특정 산정 결과 ID로 감사 이력 좁히기"} value={draft.resultId} onChange={(event) => setDraft((current) => ({ ...current, resultId: event.target.value }))} />
+                {draft.resultId ? (
+                  <a className="gov-btn gov-btn-secondary inline-flex items-center justify-center" href={withReturnUrl(`${buildLocalizedPath("/admin/emission/result_detail", "/en/admin/emission/result_detail")}?resultId=${encodeURIComponent(draft.resultId)}`, returnUrl)}>
+                    {en ? "Open Result Detail" : "결과 상세 열기"}
+                  </a>
+                ) : null}
+              </div>
+            </div>
           </form>
         </CollectionResultPanel>
 
         {!isDefaultFilters(filters) ? (
           <PageStatusNotice tone="warning">
             {en
-              ? `Filtered results are shown for ${resolveMetaLabel(changeTypeMeta, filters.changeType, "all change types")} / ${resolveMetaLabel(changeTargetMeta, filters.changeTarget, "all targets")}${filters.searchKeyword ? ` / keyword "${filters.searchKeyword}"` : ""}.`
-              : `${resolveMetaLabel(changeTypeMeta, filters.changeType, "전체 변경 유형")}, ${resolveMetaLabel(changeTargetMeta, filters.changeTarget, "전체 대상 항목")}${filters.searchKeyword ? `, 검색어 "${filters.searchKeyword}"` : ""} 조건으로 필터링된 결과입니다.`}
+              ? `Filtered results are shown for ${filters.resultId ? `result ${filters.resultId} / ` : ""}${resolveMetaLabel(changeTypeMeta, filters.changeType, "all change types")} / ${resolveMetaLabel(changeTargetMeta, filters.changeTarget, "all targets")}${filters.searchKeyword ? ` / keyword "${filters.searchKeyword}"` : ""}.`
+              : `${filters.resultId ? `${filters.resultId} 결과, ` : ""}${resolveMetaLabel(changeTypeMeta, filters.changeType, "전체 변경 유형")}, ${resolveMetaLabel(changeTargetMeta, filters.changeTarget, "전체 대상 항목")}${filters.searchKeyword ? `, 검색어 "${filters.searchKeyword}"` : ""} 조건으로 필터링된 결과입니다.`}
           </PageStatusNotice>
         ) : null}
 
