@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   UserGovernmentBar,
   UserLanguageToggle,
@@ -76,6 +77,13 @@ const ACTION_ITEMS = {
 
 export function EduCertificateMigrationPage() {
   const en = isEnglish();
+  const [actionMessage, setActionMessage] = useState("");
+  const [showQr, setShowQr] = useState(false);
+
+  const setDownloadMessage = (label: string) => {
+    setShowQr(false);
+    setActionMessage(en ? `${label} request has been prepared.` : `${label} 요청이 준비되었습니다.`);
+  };
 
   const copy = {
     skip: en ? "Skip to main content" : "본문 바로가기",
@@ -122,6 +130,8 @@ export function EduCertificateMigrationPage() {
     pdfAction: en ? "Certificate PDF" : "수료증 PDF",
     qrAction: en ? "Mobile Verification QR" : "모바일 확인 QR",
     verifyAction: en ? "Open Verification Site" : "진위 확인 사이트 연결",
+    qrGuide: en ? "Mobile verification QR is ready. Scan this code at the verification desk." : "모바일 확인 QR이 준비되었습니다. 검증 데스크에서 이 코드를 스캔하세요.",
+    verifyGuide: en ? "The certificate verification route is connected to the certificate verification center." : "수료증 진위 확인은 인증서 진위 확인 센터로 연결됩니다.",
     historyTitle: en ? "Previous Completion History" : "이전 이수 내역",
     searchPlaceholder: en ? "Search by course or issue number" : "과정명 또는 발급번호 검색",
     historyCourse: en ? "Course" : "과정명",
@@ -191,7 +201,7 @@ export function EduCertificateMigrationPage() {
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{copy.userRole}</p>
                   <p className="mt-2 text-lg font-black text-slate-900">{copy.userName}</p>
                 </div>
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200" type="button">
+                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200" onClick={() => navigate(buildLocalizedPath("/edu/progress", "/en/edu/progress"))} type="button">
                   <span className="material-symbols-outlined text-[20px]">notifications</span>
                 </button>
               </div>
@@ -215,7 +225,7 @@ export function EduCertificateMigrationPage() {
                   </div>
                 ))}
               </div>
-              <button className="mt-8 w-full rounded-xl bg-blue-50 py-3 text-xs font-black text-blue-700 transition hover:bg-blue-100" type="button">
+              <button className="mt-8 w-full rounded-xl bg-blue-50 py-3 text-xs font-black text-blue-700 transition hover:bg-blue-100" onClick={() => navigate(buildLocalizedPath("/edu/progress", "/en/edu/progress"))} type="button">
                 {copy.continueLearning}
               </button>
             </section>
@@ -225,7 +235,7 @@ export function EduCertificateMigrationPage() {
               <p className="mt-4 text-sm leading-6 text-slate-300">{copy.verifyBody}</p>
               <div className="mt-6 space-y-2">
                 {ACTION_ITEMS[en ? "en" : "ko"].map((item) => (
-                  <button className="flex w-full items-center justify-between rounded-xl bg-slate-700/60 p-3 text-left text-xs font-bold transition hover:bg-slate-700" key={item} type="button">
+                  <button className="flex w-full items-center justify-between rounded-xl bg-slate-700/60 p-3 text-left text-xs font-bold transition hover:bg-slate-700" key={item} onClick={() => navigate(item.includes("전송") || item.includes("Share") ? buildLocalizedPath("/edu/my_course", "/en/edu/my_course") : buildLocalizedPath("/certificate/rec_check", "/en/certificate/rec_check"))} type="button">
                     <span>{item}</span>
                     <span className="material-symbols-outlined text-[18px]">verified_user</span>
                   </button>
@@ -241,11 +251,11 @@ export function EduCertificateMigrationPage() {
                 <p className="mt-2 text-sm text-slate-500">{copy.lockerBody}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50" type="button">
+                <button className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50" onClick={() => setDownloadMessage(copy.printAll)} type="button">
                   <span className="material-symbols-outlined text-[16px]">print</span>
                   {copy.printAll}
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-xl bg-[var(--kr-gov-blue)] px-4 py-2 text-xs font-bold text-white transition hover:bg-[var(--kr-gov-blue-hover)]" type="button">
+                <button className="inline-flex items-center gap-2 rounded-xl bg-[var(--kr-gov-blue)] px-4 py-2 text-xs font-bold text-white transition hover:bg-[var(--kr-gov-blue-hover)]" onClick={() => setDownloadMessage(copy.downloadBundle)} type="button">
                   <span className="material-symbols-outlined text-[16px]">download</span>
                   {copy.downloadBundle}
                 </button>
@@ -312,18 +322,31 @@ export function EduCertificateMigrationPage() {
                   </div>
 
                   <div className="mt-8 space-y-3">
-                    <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50" type="button">
+                    <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50" onClick={() => setDownloadMessage(copy.pdfAction)} type="button">
                       <span className="material-symbols-outlined text-[18px]">download</span>
                       {copy.pdfAction}
                     </button>
-                    <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50" type="button">
+                    <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50" onClick={() => { setShowQr(true); setActionMessage(copy.qrGuide); }} type="button">
                       <span className="material-symbols-outlined text-[18px]">qr_code</span>
                       {copy.qrAction}
                     </button>
-                    <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-xs font-bold text-white transition hover:bg-slate-800" type="button">
+                    <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 text-xs font-bold text-white transition hover:bg-slate-800" onClick={() => navigate(buildLocalizedPath("/certificate/rec_check", "/en/certificate/rec_check"))} type="button">
                       <span className="material-symbols-outlined text-[18px]">verified</span>
                       {copy.verifyAction}
                     </button>
+                    {showQr ? (
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+                        <div className="mx-auto grid h-28 w-28 grid-cols-5 gap-1 rounded-xl bg-slate-900 p-3">
+                          {Array.from({ length: 25 }).map((_, index) => (
+                            <span className={`rounded-[2px] ${index % 2 === 0 || index % 7 === 0 ? "bg-white" : "bg-slate-900"}`} key={index} />
+                          ))}
+                        </div>
+                        <p className="mt-3 text-[11px] font-bold text-slate-500">A82-F91-C24</p>
+                      </div>
+                    ) : null}
+                    {actionMessage ? (
+                      <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-bold leading-5 text-blue-800">{actionMessage}</p>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -366,8 +389,8 @@ export function EduCertificateMigrationPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-3">
-                            <button className="text-[11px] font-bold text-[var(--kr-gov-blue)] hover:underline" type="button">{copy.print}</button>
-                            <button className="text-[11px] font-bold text-[var(--kr-gov-blue)] hover:underline" type="button">{copy.download}</button>
+                            <button className="text-[11px] font-bold text-[var(--kr-gov-blue)] hover:underline" onClick={() => setDownloadMessage(`${copy.print} ${row.code}`)} type="button">{copy.print}</button>
+                            <button className="text-[11px] font-bold text-[var(--kr-gov-blue)] hover:underline" onClick={() => setDownloadMessage(`${copy.download} ${row.code}`)} type="button">{copy.download}</button>
                           </div>
                         </td>
                       </tr>
