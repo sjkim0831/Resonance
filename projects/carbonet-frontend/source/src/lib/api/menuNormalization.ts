@@ -683,6 +683,28 @@ const ADMIN_DOMAIN_OVERRIDES: AdminMenuTreePayload = {
       ] }
     ]
   },
+  A007: {
+    label: "운영",
+    labelEn: "Operations",
+    summary: "관리자 운영 홈, 운영센터, 작업 요청, 자산 점검, 버전·복구 실행 흐름을 관리합니다.",
+    groups: [
+      { title: "운영 관제", titleEn: "Operations Control", icon: "dashboard", links: [
+        { code: "AMENU_OPERATIONS_DASHBOARD", text: "운영 대시보드", tEn: "Operations Dashboard", u: "/admin/", icon: "dashboard" },
+        { code: "AMENU_OPERATIONS_CENTER", text: "운영센터", tEn: "Operations Center", u: "/admin/monitoring/center", icon: "hub" },
+        { code: "AMENU_SR_WORKBENCH", text: "SR 작업대", tEn: "SR Workbench", u: "/admin/system/sr-workbench", icon: "assignment" }
+      ] },
+      { title: "운영 자산", titleEn: "Operations Assets", icon: "inventory_2", links: [
+        { code: "AMENU_ASSET_INVENTORY", text: "자산 인벤토리", tEn: "Asset Inventory", u: "/admin/system/asset-inventory", icon: "inventory_2" },
+        { code: "AMENU_ASSET_DEFICIENCY", text: "자산 미흡 큐", tEn: "Asset Deficiency Queue", u: "/admin/system/asset-deficiency-queue", icon: "playlist_add_check" },
+        { code: "AMENU_VERIFICATION_ASSET", text: "검증 자산 관리", tEn: "Verification Asset Management", u: "/admin/system/verification-asset-management", icon: "fact_check" }
+      ] },
+      { title: "버전·복구", titleEn: "Version & Recovery", icon: "settings_backup_restore", links: [
+        { code: "AMENU_OPERATIONS_VERSION_MANAGEMENT", text: "프로젝트 버전 관리", tEn: "Project Version Management", u: "/admin/system/version-management", icon: "commit" },
+        { code: "AMENU_REPAIR_WORKBENCH", text: "복구 작업대", tEn: "Repair Workbench", u: "/admin/system/repair-workbench", icon: "healing" },
+        { code: "AMENU_CODEX_PROVISION", text: "Codex 실행 관리", tEn: "Codex Provision", u: "/admin/system/codex-provision", icon: "terminal" }
+      ] }
+    ]
+  },
   A190: {
     label: "AI 운영",
     labelEn: "AI Operations",
