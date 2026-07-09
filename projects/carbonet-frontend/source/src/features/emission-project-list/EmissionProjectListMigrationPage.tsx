@@ -17,6 +17,16 @@ const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
 const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
 
+type QueueItem = {
+  level: string;
+  levelClass: string;
+  due: string;
+  title: string;
+  description: string;
+  cta: string;
+  icon: string;
+};
+
 type SiteCard = {
   status: string;
   statusClass: string;
@@ -46,6 +56,25 @@ type GeneralSite = {
   actionClass: string;
 };
 
+type OperationalMetric = {
+  title: string;
+  value: string;
+  delta: string;
+  toneClass: string;
+  icon: string;
+  href: string;
+};
+
+type WorkflowStep = {
+  title: string;
+  description: string;
+  status: string;
+  statusClass: string;
+  progress: string;
+  icon: string;
+  href: string;
+};
+
 type RegistryRow = {
   id: string;
   site: string;
@@ -59,6 +88,30 @@ type RegistryRow = {
   href: string;
 };
 
+type RelatedFunctionGroup = {
+  title: string;
+  description: string;
+  icon: string;
+  accentClass: string;
+  items: Array<{
+    label: string;
+    href: string;
+    note: string;
+    status: string;
+    action: string;
+  }>;
+};
+
+type NextHomePageProposal = {
+  order: string;
+  title: string;
+  href: string;
+  reason: string;
+  mergeHint: string;
+  metric: string;
+  action: string;
+};
+
 function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget;
   if (image.dataset.fallbackApplied === "1") {
@@ -67,6 +120,19 @@ function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
   }
   image.dataset.fallbackApplied = "1";
   image.src = GOV_SYMBOL_FALLBACK;
+}
+
+function getQueueHref(item: QueueItem) {
+  if (item.icon === "open_in_new" || item.title.includes("Energy") || item.title.includes("에너지")) {
+    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+  }
+  if (item.icon === "fact_check" || item.title.includes("Verification") || item.title.includes("검증")) {
+    return buildLocalizedPath("/emission/validate", "/en/emission/validate");
+  }
+  if (item.icon === "trending_down" || item.title.includes("analysis") || item.title.includes("분석")) {
+    return buildLocalizedPath("/co2/analysis", "/en/co2/analysis");
+  }
+  return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
 }
 
 function getSiteActionHref(label: string) {
@@ -248,6 +314,18 @@ export function EmissionProjectListMigrationPage() {
     "/en/admin/emission/site-management"
   );
 
+  const queueItems = useMemo<QueueItem[]>(() => en ? [
+    { level: "CRITICAL", levelClass: "bg-red-500/20 text-red-400", due: "D-2", title: "Ulsan Site 3: Supplement Document", description: "Missing supporting files detected after emission-factor recalculation.", cta: "Start update", icon: "arrow_forward" },
+    { level: "REQUIRED", levelClass: "bg-orange-500/20 text-orange-400", due: "D-5", title: "Pohang Site 1: Energy Data", description: "August week-2 power statement must be reconciled and confirmed.", cta: "Open data input", icon: "open_in_new" },
+    { level: "VERIFICATION", levelClass: "bg-blue-500/20 text-blue-400", due: "D-12", title: "Gwangyang Site 2: Verification", description: "QA checklist is 85% complete and 3 items remain.", cta: "Open checklist", icon: "fact_check" },
+    { level: "INSIGHT", levelClass: "bg-emerald-500/20 text-emerald-400", due: "TODAY", title: "Emission target variance", description: "Current trend is moving outside this year's reduction target range.", cta: "Open analysis report", icon: "trending_down" }
+  ] : [
+    { level: "CRITICAL", levelClass: "bg-red-500/20 text-red-400", due: "D-2", title: "울산 제3: 보완 서류 제출", description: "공정 배출계수 재산정 로직에 따른 증빙 서류 누락 탐지", cta: "업데이트 시작", icon: "arrow_forward" },
+    { level: "REQUIRED", levelClass: "bg-orange-500/20 text-orange-400", due: "D-5", title: "포항 제1: 에너지 데이터", description: "8월 2주차 전력 사용량 고지서 대조 및 최종 확정 필요", cta: "데이터 입력기", icon: "open_in_new" },
+    { level: "VERIFICATION", levelClass: "bg-blue-500/20 text-blue-400", due: "D-12", title: "광양 제2: 검증 준비", description: "품질 보증 체크리스트 85% 완료. 마지막 3개 항목 확인", cta: "체크리스트 열기", icon: "fact_check" },
+    { level: "INSIGHT", levelClass: "bg-emerald-500/20 text-emerald-400", due: "TODAY", title: "배출 목표 분석 확인", description: "현재 배출 트렌드가 올해 감축 목표 범위를 벗어남", cta: "분석 리포트", icon: "trending_down" }
+  ], [en]);
+
   const dedicatedSites = useMemo<SiteCard[]>(() => en ? [
     {
       status: "Normal Operation", statusClass: "bg-emerald-100 text-emerald-700 border border-emerald-200", id: "PH-001", title: "Pohang Hot Rolling Mill 1",
@@ -310,6 +388,30 @@ export function EmissionProjectListMigrationPage() {
     { id: "PJ-088", title: "파주 전산센터", value: "890 tCO2", status: "정상", statusClass: "text-emerald-600", action: "데이터 상세", actionClass: "border-gray-200 text-gray-600 hover:bg-gray-50" }
   ], [en]);
 
+  const operationalMetrics = useMemo<OperationalMetric[]>(() => en ? [
+    { title: "Managed Emission Sites", value: "21", delta: "+3 this month", toneClass: "text-[var(--kr-gov-blue)] bg-blue-50", icon: "domain", href: adminSiteManagementHref },
+    { title: "Data Completeness", value: "91.4%", delta: "5 sites need attention", toneClass: "text-emerald-700 bg-emerald-50", icon: "task_alt", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "Verification Queue", value: "7", delta: "2 high priority", toneClass: "text-orange-700 bg-orange-50", icon: "rule", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") },
+    { title: "Report Packages", value: "14", delta: "4 ready to submit", toneClass: "text-indigo-700 bg-indigo-50", icon: "description", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit") }
+  ] : [
+    { title: "관리 배출지", value: "21", delta: "이번 달 +3개", toneClass: "text-[var(--kr-gov-blue)] bg-blue-50", icon: "domain", href: adminSiteManagementHref },
+    { title: "데이터 완전성", value: "91.4%", delta: "5개소 점검 필요", toneClass: "text-emerald-700 bg-emerald-50", icon: "task_alt", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "검증 대기열", value: "7", delta: "고우선 2건", toneClass: "text-orange-700 bg-orange-50", icon: "rule", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") },
+    { title: "보고서 패키지", value: "14", delta: "제출 가능 4건", toneClass: "text-indigo-700 bg-indigo-50", icon: "description", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit") }
+  ], [adminSiteManagementHref, en]);
+
+  const workflowSteps = useMemo<WorkflowStep[]>(() => en ? [
+    { title: "Site Registry", description: "Register emission sites, process tags, owners, and expected source categories.", status: "Governed", statusClass: "bg-blue-100 text-blue-700", progress: "100%", icon: "inventory_2", href: adminSiteManagementHref },
+    { title: "Activity Data Input", description: "Collect fuel, electricity, process, transport, and evidence data by period.", status: "5 pending", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "Simulation & Calculation", description: "Run factor mapping, GWP conversion, site aggregation, and variance checks.", status: "Ready", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate") },
+    { title: "Report & Verification", description: "Create report packages, submit to verification queue, and track audit evidence.", status: "7 in queue", statusClass: "bg-indigo-100 text-indigo-700", progress: "64%", icon: "verified", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
+  ] : [
+    { title: "배출지 원장", description: "배출지, 공정 태그, 담당자, 예상 배출원 분류를 등록합니다.", status: "관리 중", statusClass: "bg-blue-100 text-blue-700", progress: "100%", icon: "inventory_2", href: adminSiteManagementHref },
+    { title: "활동자료 입력", description: "기간별 연료, 전력, 공정, 운송, 증빙 데이터를 수집합니다.", status: "5건 대기", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "시뮬레이션·산정", description: "배출계수 매핑, GWP 변환, 배출지 집계, 편차 검사를 수행합니다.", status: "실행 가능", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate") },
+    { title: "보고서·검증", description: "보고서 패키지를 만들고 검증 큐에 제출한 뒤 감사 증적을 추적합니다.", status: "7건 진행", statusClass: "bg-indigo-100 text-indigo-700", progress: "64%", icon: "verified", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
+  ], [adminSiteManagementHref, en]);
+
   const registryRows = useMemo<RegistryRow[]>(() => en ? [
     { id: "PH-001", site: "Pohang Hot Rolling Mill 1", scope: "Scope 1", process: "Stationary combustion", emission: "2,341 tCO2", completeness: "100%", status: "Normal", owner: "Site Admin", due: "2025.08.20", href: siteQueryHref("/emission/data_input", "/en/emission/data_input", "PH-001") },
     { id: "US-042", site: "Ulsan Chemical Base 3", scope: "Scope 1", process: "Industrial process", emission: "4,812 tCO2", completeness: "65%", status: "Evidence missing", owner: "Verifier", due: "2025.08.16", href: siteQueryHref("/emission/report_submit", "/en/emission/report_submit", "US-042") },
@@ -324,6 +426,114 @@ export function EmissionProjectListMigrationPage() {
     { id: "IC-005", site: "인천 물류센터", scope: "Scope 2", process: "전력 사용", emission: "452 tCO2", completeness: "100%", status: "정상", owner: "물류 담당", due: "2025.08.25", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "IC-005") },
     { id: "DJ-021", site: "대전 R&D 캠퍼스", scope: "Scope 3", process: "출장·이동", emission: "210 tCO2", completeness: "40%", status: "입력 대기", owner: "연구소 관리자", due: "2025.08.18", href: siteQueryHref("/emission/data_input", "/en/emission/data_input", "DJ-021") },
     { id: "PJ-088", site: "파주 전산센터", scope: "Scope 2", process: "데이터센터 전력", emission: "890 tCO2", completeness: "100%", status: "정상", owner: "IT 설비", due: "2025.08.23", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "PJ-088") }
+  ], [en]);
+
+  const relatedFunctionGroups = useMemo<RelatedFunctionGroup[]>(() => en ? [
+    {
+      title: "Site & Activity Data",
+      description: "Check whether each site has enough monthly data and evidence to move forward.",
+      icon: "hub",
+      accentClass: "border-blue-200 bg-blue-50/60 text-blue-700",
+      items: [
+        { label: "Data Input", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), note: "5 sites still need monthly activity data or evidence.", status: "Action needed", action: "Enter data" },
+        { label: "Site Management", href: adminSiteManagementHref, note: "Add, close, or change the owner of emission sites.", status: "Admin", action: "Manage sites" },
+        { label: "Data History", href: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history"), note: "Review who changed key values before submission.", status: "Audit", action: "View history" }
+      ]
+    },
+    {
+      title: "Calculation & Verification",
+      description: "Run calculations, inspect result differences, and hand off items to verification.",
+      icon: "rule_settings",
+      accentClass: "border-emerald-200 bg-emerald-50/60 text-emerald-700",
+      items: [
+        { label: "Simulation", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), note: "Run factor mapping and variance checks before reporting.", status: "Ready", action: "Run simulation" },
+        { label: "Result List", href: buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list"), note: "Compare calculated results by site and period.", status: "Admin", action: "Review results" },
+        { label: "Verification", href: buildLocalizedPath("/emission/validate", "/en/emission/validate"), note: "7 items are waiting for verifier review.", status: "In queue", action: "Open queue" }
+      ]
+    },
+    {
+      title: "Reports & Analysis",
+      description: "Turn approved data into reports, LCA views, and reduction decisions.",
+      icon: "summarize",
+      accentClass: "border-indigo-200 bg-indigo-50/60 text-indigo-700",
+      items: [
+        { label: "Report Submit", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit"), note: "4 report packages are ready for final submission.", status: "Ready", action: "Prepare report" },
+        { label: "LCA Analysis", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), note: "Analyze product and process-level contribution.", status: "Analysis", action: "Open LCA" },
+        { label: "Reduction Scenario", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), note: "Check reduction options, cost, and expected effect.", status: "Planning", action: "Plan reduction" },
+        { label: "Report Export", href: buildLocalizedPath("/monitoring/export", "/en/monitoring/export"), note: "Download external report and evidence package.", status: "Export", action: "Export" }
+      ]
+    },
+    {
+      title: "MRV & Market Linkage",
+      description: "Confirm traceability after reporting and connect validated data to MRV and credits.",
+      icon: "account_tree",
+      accentClass: "border-slate-200 bg-slate-50 text-slate-700",
+      items: [
+        { label: "Monitoring Dashboard", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), note: "View executive KPIs, alerts, and site trends.", status: "Monitor", action: "Open dashboard" },
+        { label: "MRV Information", href: buildLocalizedPath("/co2/search", "/en/co2/search"), note: "Search MRV records and linked evidence.", status: "MRV", action: "Search MRV" },
+        { label: "Integrity Tracking", href: buildLocalizedPath("/co2/integrity", "/en/co2/integrity"), note: "Check traceability and duplicate-risk signals.", status: "Trace", action: "Check integrity" },
+        { label: "Carbon Credit", href: buildLocalizedPath("/co2/credit", "/en/co2/credit"), note: "Review credit conversion and market handoff status.", status: "Credit", action: "View credits" }
+      ]
+    }
+  ] : [
+    {
+      title: "배출지·활동자료",
+      description: "각 배출지가 이번 달 산정에 필요한 자료와 증빙을 갖췄는지 확인합니다.",
+      icon: "hub",
+      accentClass: "border-blue-200 bg-blue-50/60 text-blue-700",
+      items: [
+        { label: "데이터 입력", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), note: "5개 배출지의 월별 활동자료 또는 증빙 보완이 필요합니다.", status: "처리 필요", action: "입력하기" },
+        { label: "배출지 관리", href: adminSiteManagementHref, note: "배출지 추가, 폐쇄, 담당자 변경은 관리자 화면에서 처리합니다.", status: "관리자", action: "배출지 관리" },
+        { label: "데이터 변경 이력", href: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history"), note: "제출 전 주요 값의 변경자와 변경 사유를 확인합니다.", status: "감사", action: "이력 확인" }
+      ]
+    },
+    {
+      title: "산정·검증",
+      description: "입력된 자료로 산정을 실행하고, 결과 차이를 확인한 뒤 검증으로 넘깁니다.",
+      icon: "rule_settings",
+      accentClass: "border-emerald-200 bg-emerald-50/60 text-emerald-700",
+      items: [
+        { label: "시뮬레이션", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), note: "배출계수 매핑과 편차 검사를 보고서 작성 전에 실행합니다.", status: "실행 가능", action: "산정 실행" },
+        { label: "산정 결과 목록", href: buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list"), note: "배출지·기간별 산정 결과를 비교하고 상세로 이동합니다.", status: "관리자", action: "결과 검토" },
+        { label: "산정 검증", href: buildLocalizedPath("/emission/validate", "/en/emission/validate"), note: "검증자 검토를 기다리는 항목이 7건 있습니다.", status: "검증 대기", action: "검증 열기" }
+      ]
+    },
+    {
+      title: "보고서·분석",
+      description: "승인 가능한 데이터를 보고서, LCA, 감축 의사결정 자료로 전환합니다.",
+      icon: "summarize",
+      accentClass: "border-indigo-200 bg-indigo-50/60 text-indigo-700",
+      items: [
+        { label: "배출량 보고서 작성", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit"), note: "제출 가능한 보고서 패키지 4건을 최종 확인합니다.", status: "제출 준비", action: "보고서 작성" },
+        { label: "LCA 분석", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), note: "제품·공정 단위의 탄소 기여도를 분석합니다.", status: "분석", action: "LCA 보기" },
+        { label: "감축 시나리오", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), note: "감축 옵션, 비용, 예상 효과를 검토합니다.", status: "계획", action: "감축 계획" },
+        { label: "분석 리포트 내보내기", href: buildLocalizedPath("/monitoring/export", "/en/monitoring/export"), note: "외부 제출용 보고서와 증빙 묶음을 내려받습니다.", status: "내보내기", action: "내보내기" }
+      ]
+    },
+    {
+      title: "MRV·시장 연계",
+      description: "보고 이후 추적성과 무결성을 확인하고 MRV·크레딧 화면으로 연결합니다.",
+      icon: "account_tree",
+      accentClass: "border-slate-200 bg-slate-50 text-slate-700",
+      items: [
+        { label: "통합 대시보드", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), note: "경영진용 KPI, 경보, 배출지 추이를 확인합니다.", status: "모니터링", action: "대시보드" },
+        { label: "MRV 정보", href: buildLocalizedPath("/co2/search", "/en/co2/search"), note: "MRV 기록과 연결 증빙을 검색합니다.", status: "MRV", action: "MRV 검색" },
+        { label: "무결성 추적", href: buildLocalizedPath("/co2/integrity", "/en/co2/integrity"), note: "추적성과 중복 위험 신호를 확인합니다.", status: "추적", action: "무결성 확인" },
+        { label: "탄소 크레딧", href: buildLocalizedPath("/co2/credit", "/en/co2/credit"), note: "크레딧 전환과 시장 연계 상태를 검토합니다.", status: "크레딧", action: "크레딧 보기" }
+      ]
+    }
+  ], [adminSiteManagementHref, en]);
+
+  const nextHomePageProposals = useMemo<NextHomePageProposal[]>(() => en ? [
+    { order: "01", title: "Run Calculation", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), reason: "5 sites can move to calculation after evidence is completed.", mergeHint: "Recommended before report creation", metric: "88% ready", action: "Open simulation" },
+    { order: "02", title: "Inspect LCA Impact", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), reason: "Use calculated data to identify high-impact products and processes.", mergeHint: "Useful for product-level decisions", metric: "12 products", action: "Open LCA" },
+    { order: "03", title: "Plan Reductions", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), reason: "Convert variance and LCA findings into reduction scenarios.", mergeHint: "Cost and effect review", metric: "3 options", action: "Plan" },
+    { order: "04", title: "Share Monitoring", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), reason: "After approval, share KPIs, alerts, and monthly trends.", mergeHint: "Executive view", metric: "21 sites", action: "Monitor" }
+  ] : [
+    { order: "01", title: "산정 실행", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), reason: "증빙 보완이 끝난 5개 배출지를 바로 산정 단계로 넘길 수 있습니다.", mergeHint: "보고서 작성 전 권장", metric: "88% 준비", action: "시뮬레이션" },
+    { order: "02", title: "LCA 영향 확인", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), reason: "산정 결과로 영향이 큰 제품과 공정을 먼저 확인합니다.", mergeHint: "제품 단위 의사결정", metric: "12개 제품", action: "LCA 보기" },
+    { order: "03", title: "감축 계획 수립", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), reason: "편차와 LCA 결과를 감축 시나리오로 전환합니다.", mergeHint: "비용·효과 검토", metric: "3개 옵션", action: "계획하기" },
+    { order: "04", title: "모니터링 공유", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), reason: "승인 이후 KPI, 경보, 월별 추이를 공유합니다.", mergeHint: "경영진 화면", metric: "21개 배출지", action: "모니터링" }
   ], [en]);
 
   const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
@@ -355,13 +565,16 @@ export function EmissionProjectListMigrationPage() {
       isLoggedIn: Boolean(payload.isLoggedIn)
     });
     logGovernanceScope("COMPONENT", "emission-project-dashboard", {
+      queueCount: queueItems.length,
       dedicatedSiteCount: dedicatedSites.length,
       filteredDedicatedSiteCount: filteredDedicatedSites.length,
       generalSiteCount: generalSites.length,
       filteredGeneralSiteCount: filteredGeneralSites.length,
-      registryRowCount: filteredRegistryRows.length
+      registryRowCount: filteredRegistryRows.length,
+      relatedGroupCount: relatedFunctionGroups.length,
+      nextProposalCount: nextHomePageProposals.length
     });
-  }, [dedicatedSites.length, en, filteredDedicatedSites.length, filteredGeneralSites.length, filteredRegistryRows.length, generalSites.length, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, searchKeyword]);
+  }, [dedicatedSites.length, en, filteredDedicatedSites.length, filteredGeneralSites.length, filteredRegistryRows.length, generalSites.length, homeMenu.length, mobileMenuOpen, nextHomePageProposals.length, payload.isLoggedIn, queueItems.length, relatedFunctionGroups.length, searchKeyword]);
 
   return (
     <>
@@ -430,37 +643,229 @@ export function EmissionProjectListMigrationPage() {
         </div>
 
         <main id="main-content">
-          <section className="border-b border-gray-200 bg-white" data-help-id="emission-project-admin-linkage">
-            <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-8">
-              <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--kr-gov-blue)]">{en ? "Emission Sites" : "배출지 관리"}</p>
-                  <h1 className="mt-1 text-3xl font-black tracking-tight text-gray-900">{en ? "Emission Site Registry" : "배출지별 업무 관리"}</h1>
-                  <p className="mt-2 text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
-                    {en ? "Search, inspect, and manage site-level emission input, evidence, calculation, and verification status." : "배출지별 입력, 증빙, 산정, 검증 상태를 검색하고 관리합니다."}
+          <section className="bg-slate-900 py-10 relative overflow-hidden border-b border-slate-800" data-help-id="emission-project-hero">
+            <div className="absolute inset-0 opacity-10 pointer-events-none">
+              <svg height="100%" width="100%">
+                <pattern height="60" id="dots" patternUnits="userSpaceOnUse" width="60">
+                  <circle cx="2" cy="2" fill="white" r="1" />
+                </pattern>
+                <rect fill="url(#dots)" height="100%" width="100%" />
+              </svg>
+            </div>
+            <div className="max-w-[1440px] mx-auto px-4 lg:px-8 relative z-10">
+              <div className="flex flex-col xl:flex-row gap-8 items-start">
+                <div className="xl:w-1/4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                      <span className="material-symbols-outlined text-white text-[28px]">auto_awesome</span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-black text-white">{en ? "Update Assistant" : "업데이트 비서"}</h2>
+                      <p className="text-indigo-400 text-xs font-bold flex items-center gap-1 uppercase tracking-widest">
+                        <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" /> Intelligent Assistant
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    {en
+                      ? <>AI analyzed emission data in real time and detected pending update tasks. <br className="hidden xl:block" /><strong className="text-white">4 priority tasks</strong> are waiting.</>
+                      : <>AI가 배출지 데이터를 실시간 분석하여 필요한 업데이트 업무를 감지했습니다. <br className="hidden xl:block" /><strong className="text-white">4개의 우선 업무</strong>가 대기 중입니다.</>}
                   </p>
+                  <button className="w-full py-3 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-white text-sm font-bold transition-all flex items-center justify-center gap-2" type="button">
+                    <span className="material-symbols-outlined text-sm">checklist</span>
+                    {en ? "View Full Workflow" : "전체 워크플로우 보기"}
+                  </button>
                 </div>
-                <a className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-black text-gray-700 hover:bg-gray-50" href={buildLocalizedPath("/emission/index", "/en/emission/index")}>
-                  <span className="material-symbols-outlined text-[16px]">dashboard</span>
-                  {en ? "Back to dashboard" : "대시보드로 이동"}
+                <div className="xl:w-3/4 w-full">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">priority_high</span>
+                    {en ? "Your Update Queue (Priority Order)" : "Your Update Queue (우선순위순)"}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-help-id="emission-project-queue">
+                    {queueItems.map((item) => (
+                      <div className="bg-white/5 backdrop-blur-md border border-white/10 p-5 rounded-r-lg group hover:bg-white/10 transition-all cursor-pointer relative overflow-hidden border-l-4" key={item.title} style={{ borderLeftColor: item.level === "CRITICAL" ? "#ef4444" : item.level === "REQUIRED" ? "#f97316" : item.level === "VERIFICATION" ? "#3b82f6" : "#10b981" }}>
+                        <div className="flex justify-between items-start mb-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.levelClass}`}>{item.level}</span>
+                          <span className="text-[10px] font-bold text-slate-500 tracking-tighter">{item.due}</span>
+                        </div>
+                        <h4 className="text-white font-bold text-sm mb-1">{item.title}</h4>
+                        <p className="text-slate-400 text-[11px] mb-4">{item.description}</p>
+                        <a className="inline-flex items-center text-[11px] font-bold text-indigo-400 hover:text-indigo-300 gap-1 mt-auto" href={getQueueHref(item)}>
+                          {item.cta} <span className="material-symbols-outlined text-[14px]">{item.icon}</span>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 -mt-8 relative z-20" data-help-id="emission-project-admin-linkage">
+            <div className="bg-white shadow-2xl rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center border border-gray-100">
+              <div className="relative flex-1 w-full">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
+                <input
+                  className="w-full pl-12 pr-4 h-14 border-none bg-gray-50 rounded-lg focus:ring-2 focus:ring-[var(--kr-gov-blue)] text-sm"
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  placeholder={en ? "Search by facility code, emission site name, or process..." : "시설 코드, 배출지 명칭, 또는 관리 중인 특정 프로세스를 입력하세요..."}
+                  value={searchKeyword}
+                />
+              </div>
+              <div className="flex gap-2 w-full md:w-auto">
+                <a className="flex-1 md:flex-none px-6 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-[var(--kr-gov-blue-hover)] transition-colors" href={adminSiteManagementHref}>
+                  <span className="material-symbols-outlined text-[20px]">add</span>
+                  {en ? "Register New Emission Site" : "신규 배출지 등록"}
                 </a>
               </div>
-              <div className="bg-white shadow-sm rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center border border-gray-100">
-                <div className="relative flex-1 w-full">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
-                  <input
-                    className="w-full pl-12 pr-4 h-14 border-none bg-gray-50 rounded-lg focus:ring-2 focus:ring-[var(--kr-gov-blue)] text-sm"
-                    onChange={(event) => setSearchKeyword(event.target.value)}
-                    placeholder={en ? "Search by facility code, emission site name, or process..." : "시설 코드, 배출지 명칭, 또는 관리 중인 특정 프로세스를 입력하세요..."}
-                    value={searchKeyword}
-                  />
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-10" data-help-id="emission-project-operational-metrics">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {operationalMetrics.map((metric) => (
+                <a className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md" href={metric.href} key={metric.title}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-gray-400">{metric.title}</p>
+                      <p className="mt-3 text-3xl font-black tracking-tight text-gray-900">{metric.value}</p>
+                      <p className="mt-2 text-xs font-bold text-gray-500">{metric.delta}</p>
+                    </div>
+                    <span className={`material-symbols-outlined rounded-xl p-3 ${metric.toneClass}`}>{metric.icon}</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-10" data-help-id="emission-project-workflow">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900">{en ? "Emission Management Workflow" : "배출량 관리 워크플로우"}</h2>
+                  <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Move from site registry to evidence, calculation, report, and verification without losing context." : "배출지 등록부터 증빙, 산정, 보고서, 검증까지 문맥을 유지하며 이동합니다."}</p>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                  <a className="flex-1 md:flex-none px-6 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-[var(--kr-gov-blue-hover)] transition-colors" href={adminSiteManagementHref}>
-                    <span className="material-symbols-outlined text-[20px]">add</span>
-                    {en ? "Register New Emission Site" : "신규 배출지 등록"}
+                <a className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-xs font-black text-gray-600 hover:bg-gray-50" href={buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list")}>
+                  <span className="material-symbols-outlined text-[16px]">analytics</span>
+                  {en ? "Open Result List" : "산정 결과 목록"}
+                </a>
+              </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                {workflowSteps.map((step, index) => (
+                  <a className="group rounded-xl border border-gray-100 bg-slate-50 p-5 transition hover:border-[var(--kr-gov-blue)] hover:bg-white" href={step.href} key={step.title}>
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[var(--kr-gov-blue)] shadow-sm">
+                        <span className="material-symbols-outlined">{step.icon}</span>
+                      </span>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${step.statusClass}`}>{step.status}</span>
+                    </div>
+                    <p className="text-xs font-black text-gray-400">STEP {index + 1}</p>
+                    <h3 className="mt-1 font-black text-gray-900 group-hover:text-[var(--kr-gov-blue)]">{step.title}</h3>
+                    <p className="mt-2 min-h-[54px] text-xs leading-5 text-gray-500">{step.description}</p>
+                    <div className="mt-4">
+                      <div className="mb-1 flex justify-between text-[11px] font-bold text-gray-400">
+                        <span>{en ? "Completion" : "완료율"}</span>
+                        <span>{step.progress}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white">
+                        <div className="h-full rounded-full bg-[var(--kr-gov-blue)]" style={{ width: step.progress }} />
+                      </div>
+                    </div>
                   </a>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-10" data-help-id="emission-project-related-functions">
+            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--kr-gov-blue)]">{en ? "Action Center" : "업무 바로가기"}</p>
+                <h2 className="mt-1 text-2xl font-black text-gray-900">{en ? "What you can do next" : "다음에 처리할 배출 업무"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
+                  {en
+                    ? "Open the right screen from each task group and request admin support only when master data or approval is required."
+                    : "업무 그룹별로 필요한 화면을 바로 열고, 마스터 데이터나 승인 처리가 필요할 때만 관리자 화면으로 이동합니다."}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 hover:bg-gray-50" href={adminSiteManagementHref}>
+                  <span className="material-symbols-outlined text-[16px]">domain_add</span>
+                  {en ? "Admin: Sites" : "관리자: 배출지"}
+                </a>
+                <a className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 hover:bg-gray-50" href={buildLocalizedPath("/admin/emission/validate", "/en/admin/emission/validate")}>
+                  <span className="material-symbols-outlined text-[16px]">verified</span>
+                  {en ? "Admin: Verification" : "관리자: 검증"}
+                </a>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+              {relatedFunctionGroups.map((group) => (
+                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm" key={group.title}>
+                  <div className="mb-4 flex items-start gap-3">
+                    <div className={`flex w-full items-start gap-3 border-b p-5 ${group.accentClass}`}>
+                      <span className="material-symbols-outlined rounded-xl bg-white/80 p-3">{group.icon}</span>
+                      <div>
+                        <h3 className="font-black">{group.title}</h3>
+                        <p className="mt-1 text-xs leading-5 opacity-80">{group.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-2">
+                    {group.items.map((item) => (
+                      <a className="group flex min-h-[132px] flex-col rounded-xl border border-gray-100 bg-slate-50 p-4 transition hover:border-[var(--kr-gov-blue)] hover:bg-white hover:shadow-sm" href={item.href} key={`${group.title}-${item.label}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-black text-gray-900">{item.label}</span>
+                          <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[10px] font-black text-gray-500 shadow-sm">{item.status}</span>
+                        </div>
+                        <p className="mt-2 flex-1 text-[12px] leading-5 text-gray-500">{item.note}</p>
+                        <span className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[var(--kr-gov-blue)]">
+                          {item.action}
+                          <span className="material-symbols-outlined text-[15px] transition group-hover:translate-x-0.5">arrow_forward</span>
+                        </span>
+                      </a>
+                    ))}
+                  </div>
                 </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-8" data-help-id="emission-project-next-home-plan">
+            <div className="rounded-2xl border border-indigo-100 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-700">{en ? "Recommended Flow" : "추천 처리 순서"}</p>
+                  <h2 className="mt-1 text-2xl font-black text-gray-900">{en ? "Finish this month’s emission work" : "이번 달 배출 업무 완료 경로"}</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {en
+                      ? "Follow this order when activity data is mostly ready and you need to move toward reporting."
+                      : "활동자료가 어느 정도 준비된 뒤 보고서까지 진행할 때 권장되는 순서입니다."}
+                  </p>
+                </div>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">
+                  <span className="material-symbols-outlined text-[16px]">playlist_add_check</span>
+                  {en ? "Guided workflow" : "업무 흐름 안내"}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+                {nextHomePageProposals.map((proposal) => (
+                  <a className="rounded-xl border border-gray-100 bg-gradient-to-b from-white to-indigo-50/40 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md" href={proposal.href} key={proposal.order}>
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="rounded-lg bg-indigo-100 px-2.5 py-1 text-xs font-black text-indigo-700">{proposal.order}</span>
+                      <span className="rounded-full bg-white px-2 py-1 text-[11px] font-black text-indigo-700 shadow-sm">{proposal.metric}</span>
+                    </div>
+                    <h3 className="font-black text-gray-900">{proposal.title}</h3>
+                    <p className="mt-2 min-h-[54px] text-xs leading-5 text-gray-500">{proposal.reason}</p>
+                    <div className="mt-3 rounded-lg border border-indigo-100 bg-white p-3">
+                      <p className="text-[11px] font-bold leading-5 text-slate-600">{proposal.mergeHint}</p>
+                      <span className="mt-2 inline-flex items-center gap-1 text-xs font-black text-indigo-700">
+                        {proposal.action}
+                        <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+                      </span>
+                    </div>
+                  </a>
+                ))}
               </div>
             </div>
           </section>
