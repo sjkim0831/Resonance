@@ -172,6 +172,19 @@ function saveReportVerificationRecord(record: ReportVerificationRecord) {
   window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify([record, ...records].slice(0, 100)));
 }
 
+function base64UrlEncode(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function verificationPayloadToBlock(payload: ReportVerificationPayload) {
+  return `${REPORT_VERIFY_BEGIN}\n${base64UrlEncode(JSON.stringify(payload))}\n${REPORT_VERIFY_END}`;
+}
+
 function extractVerificationPayload(raw: string): ReportVerificationPayload | null {
   const blockMatch = raw.match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_-]+)\s*CARBONET_REPORT_VERIFY_END/);
   const inlineMatch = raw.match(/CARBONET-VERIFY:([A-Za-z0-9_-]+)/);
@@ -1568,7 +1581,7 @@ export function EmissionSurveyReportPrintPage() {
   return (
     <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}}"}
+        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
         <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
@@ -1581,7 +1594,7 @@ export function EmissionSurveyReportPrintPage() {
             onClick={handlePrintDocument}
             type="button"
           >
-            {verificationBusy ? (en ? "Preparing..." : "인증정보 생성 중...") : (en ? "Save Verification And Print / PDF" : "인증정보 저장 후 인쇄 / PDF 저장")}
+            {verificationBusy ? (en ? "Preparing..." : "인증정보 생성 중...") : (en ? "Save Verification And Download PDF" : "인증정보 저장 후 PDF 다운로드")}
           </button>
           <button
             className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
@@ -1870,6 +1883,9 @@ export function EmissionSurveyReportPrintPage() {
           </div>
           {verificationRecord ? (
             <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-white p-3">
+              <pre aria-hidden="true" className="pdf-machine-readable">
+                {verificationPayloadToBlock(verificationRecord)}
+              </pre>
               <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">
                 {en ? "Upload Verification" : "업로드 검증"}
               </p>
