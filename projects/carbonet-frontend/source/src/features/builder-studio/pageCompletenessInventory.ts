@@ -1872,7 +1872,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 420,
+    "lineCount": 448,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,

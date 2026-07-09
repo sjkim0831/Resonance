@@ -92,6 +92,36 @@ function withReturnUrl(targetUrl: string, returnUrl: string) {
   }
 }
 
+function getDefaultActionLinks(en: boolean) {
+  return [
+    {
+      icon: "analytics",
+      label: en ? "Open Result Detail" : "산정 결과 상세",
+      url: buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail")
+    },
+    {
+      icon: "description",
+      label: en ? "Prepare Report" : "보고서 작성",
+      url: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit")
+    },
+    {
+      icon: "history",
+      label: en ? "Data History" : "데이터 이력",
+      url: buildLocalizedPath("/emission/data_history", "/en/emission/data_history")
+    },
+    {
+      icon: "tune",
+      label: en ? "Back to Simulation" : "시뮬레이션으로 이동",
+      url: buildLocalizedPath("/emission/simulate", "/en/emission/simulate")
+    }
+  ];
+}
+
+function getRowDetailHref(row: Record<string, unknown>, returnUrl: string) {
+  const detailUrl = stringOf(row, "detailUrl") || buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
+  return withReturnUrl(detailUrl, returnUrl);
+}
+
 function readInitialFilters(): Filters {
   if (typeof window === "undefined") {
     return {
@@ -152,7 +182,7 @@ export function EmissionValidateMigrationPage() {
   const selectedResult = (page?.selectedResult || null) as Record<string, unknown> | null;
   const priorityLegend = (page?.priorityLegend || []) as Array<Record<string, unknown>>;
   const policyRows = (page?.policyRows || []) as Array<Record<string, unknown>>;
-  const actionLinks = (page?.actionLinks || []) as Array<Record<string, unknown>>;
+  const actionLinks = ((page?.actionLinks || []).length > 0 ? page?.actionLinks : getDefaultActionLinks(en)) as Array<Record<string, unknown>>;
   const currentPage = Number(page?.pageIndex || 1);
   const totalPages = Number(page?.totalPages || 1);
 
@@ -385,8 +415,8 @@ export function EmissionValidateMigrationPage() {
                       <td className="px-6 py-4">{stringOf(row, "assignee")}</td>
                       <td className="px-6 py-4 text-[13px] leading-6 text-[var(--kr-gov-text-secondary)]">{stringOf(row, "priorityReason")}</td>
                       <td className="px-6 py-4 text-center">
-                        <a className="inline-flex rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]" href={withReturnUrl(stringOf(row, "detailUrl"), returnUrl)}>
-                          {stringOf(row, "actionLabel")}
+                        <a className="inline-flex rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]" href={getRowDetailHref(row, returnUrl)}>
+                          {stringOf(row, "actionLabel") || (en ? "Open" : "열기")}
                         </a>
                       </td>
                     </tr>
