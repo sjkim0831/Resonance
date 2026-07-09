@@ -315,14 +315,14 @@ function nextAnimationFrame() {
   return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
-function buildReportPdfFileName(report: EmissionSurveyReportPayload) {
+function buildReportPdfFileName(report: EmissionSurveyReportPayload, draft = false) {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const name = (report.productName || report.pageTitle || "emission-survey-report")
     .replace(/[\\/:*?"<>|]+/g, " ")
     .replace(/\s+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-  return `${name || "emission-survey-report"}-${date}.pdf`;
+  return `${name || "emission-survey-report"}${draft ? "-design-draft" : ""}-${date}.pdf`;
 }
 
 function formatPercent(value: number, digits = 1) {
@@ -1222,6 +1222,7 @@ export function EmissionSurveyReportPrintPage() {
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
+  const [pdfProposalMode, setPdfProposalMode] = useState(false);
 
   const chartSections = useMemo(
     () => (effectiveReport?.sectionSummaries || []).filter((section) => section.totalEmission > 0 || section.sharePercent > 0),
@@ -1564,7 +1565,7 @@ export function EmissionSurveyReportPrintPage() {
       return nextReport;
     });
   };
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = async (draft = false) => {
     if (!effectiveReport) {
       return;
     }
@@ -1574,6 +1575,7 @@ export function EmissionSurveyReportPrintPage() {
       const record = await buildReportVerificationRecord(effectiveReport);
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
+      setPdfProposalMode(draft);
       setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
@@ -1584,7 +1586,7 @@ export function EmissionSurveyReportPrintPage() {
       const module = await import("html2pdf.js");
       const html2pdf = module.default || module;
       const pdfOptions: Record<string, unknown> = {
-          filename: buildReportPdfFileName(effectiveReport),
+          filename: buildReportPdfFileName(effectiveReport, draft),
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: {
             backgroundColor: "#ffffff",
@@ -1631,6 +1633,7 @@ export function EmissionSurveyReportPrintPage() {
       setVerificationMessage(en ? "PDF download failed. Please try again." : "PDF 다운로드에 실패했습니다. 다시 시도하세요.");
     } finally {
       setPdfDownloadMode(false);
+      setPdfProposalMode(false);
       setVerificationBusy(false);
     }
   };
@@ -1670,6 +1673,48 @@ export function EmissionSurveyReportPrintPage() {
           .pdf-download-mode .pdf-table-page .print-input-text{
             white-space:normal!important;
           }
+          .pdf-download-mode.pdf-proposal-mode .print-report-hero{
+            background:#ffffff!important;
+            color:#0f172a!important;
+            border:1px solid #cbd5e1!important;
+            border-top:10px solid #1f4f7a!important;
+            border-radius:4px!important;
+            margin:0 0 12px!important;
+            padding:18px!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-report-hero *,
+          .pdf-download-mode.pdf-proposal-mode .print-report-title,
+          .pdf-download-mode.pdf-proposal-mode .print-report-title-tag{
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-report-hero-deco{
+            display:none!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-report-total-card{
+            background:#f6f9fc!important;
+            border:1px solid #b8c7d8!important;
+            box-shadow:none!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-report-total-card *{
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-card{
+            border-color:#cbd5e1!important;
+            border-radius:6px!important;
+            box-shadow:none!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-soft-bg,
+          .pdf-download-mode.pdf-proposal-mode .print-total-value{
+            background:#f8fafc!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .print-total-cell{
+            background:#f1f5f9!important;
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-proposal-mode .pdf-table-page thead,
+          .pdf-download-mode.pdf-proposal-mode .pdf-table-page tr.bg-blue-50{
+            background:#eef4fa!important;
+          }
         `}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
@@ -1680,10 +1725,18 @@ export function EmissionSurveyReportPrintPage() {
           <button
             className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:bg-slate-500"
             disabled={verificationBusy}
-            onClick={handleDownloadPdf}
+            onClick={() => handleDownloadPdf(false)}
             type="button"
           >
             {verificationBusy ? (en ? "Preparing PDF..." : "PDF 생성 중...") : (en ? "Download PDF" : "PDF 다운로드")}
+          </button>
+          <button
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-800 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500"
+            disabled={verificationBusy}
+            onClick={() => handleDownloadPdf(true)}
+            type="button"
+          >
+            {verificationBusy && pdfProposalMode ? (en ? "Preparing Draft..." : "시안 생성 중...") : (en ? "Design Draft PDF" : "디자인 시안 PDF")}
           </button>
           <button
             className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
@@ -1722,7 +1775,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
       ) : null}
 
-      <article className={`print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? "pdf-download-mode" : ""}`} ref={reportArticleRef}>
+      <article className={`print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? `pdf-download-mode${pdfProposalMode ? " pdf-proposal-mode" : ""}` : ""}`} ref={reportArticleRef}>
         <div className="print-page">
         <header className="print-ink-bg print-report-hero relative overflow-hidden bg-slate-950 px-8 py-8 text-white">
           <div className="print-report-hero-deco absolute -right-20 -top-28 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
