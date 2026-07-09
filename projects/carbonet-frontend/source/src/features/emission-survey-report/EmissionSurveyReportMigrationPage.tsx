@@ -1870,12 +1870,13 @@ export function EmissionSurveyReportPrintPage() {
           </div>
           {verificationRecord ? (
             <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-white p-3">
-              <p className="text-[11px] font-black text-slate-500">{en ? "Verification URL" : "진위확인 URL"}</p>
-              <p className="mt-1 break-all font-mono text-[11px] font-bold text-slate-700">{verificationRecord.verificationUrl}</p>
-              <p className="mt-3 text-[11px] font-semibold leading-5 text-slate-500">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">
+                {en ? "Upload Verification" : "업로드 검증"}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">
                 {en
-                  ? "Upload this saved PDF on the authenticity page. The visible certificate signals are used for verification."
-                  : "저장한 PDF를 진위확인 페이지에 업로드하면 화면에 표시된 인증 신호로 진위 여부를 확인합니다."}
+                  ? "Upload this saved PDF on the authenticity page. No login route is embedded in the PDF."
+                  : "저장한 PDF를 진위확인 페이지에 업로드하세요. PDF에는 로그인 경로를 포함하지 않습니다."}
               </p>
             </div>
           ) : null}
