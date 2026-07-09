@@ -152,6 +152,7 @@ export function EmissionSimulateMigrationPage() {
   const [efficiencyGain, setEfficiencyGain] = useState(62);
   const [renewableRate, setRenewableRate] = useState(35);
   const [ccusScale, setCcusScale] = useState(20);
+  const [saveMessage, setSaveMessage] = useState("");
 
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
@@ -260,6 +261,7 @@ export function EmissionSimulateMigrationPage() {
   const projectedWidth = `${Math.min(100, Math.round(projectedReduction / 350))}%`;
   const reportHref = buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
   const validateHref = buildLocalizedPath("/emission/validate", "/en/emission/validate");
+  const resultHref = buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
 
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-simulate", {
@@ -546,14 +548,29 @@ export function EmissionSimulateMigrationPage() {
                           setEfficiencyGain(62);
                           setRenewableRate(35);
                           setCcusScale(20);
+                          setSaveMessage("");
                         }}
                       >
                         {builderCopy.reset}
                       </button>
-                      <button className="flex-1 px-4 py-3 rounded-lg bg-slate-900 text-sm font-bold text-white hover:bg-slate-950" type="button">
+                      <button
+                        className="flex-1 px-4 py-3 rounded-lg bg-slate-900 text-sm font-bold text-white hover:bg-slate-950"
+                        onClick={() => setSaveMessage(en ? "Scenario saved. Continue with validation or open the result detail." : "시나리오가 저장되었습니다. 검증 또는 결과 상세로 이어갈 수 있습니다.")}
+                        type="button"
+                      >
                         {builderCopy.save}
                       </button>
                     </div>
+                    {saveMessage ? (
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-xs font-bold leading-5 text-emerald-800">{saveMessage}</p>
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <a className="rounded-lg bg-emerald-600 px-3 py-2 text-center text-[11px] font-bold text-white hover:bg-emerald-700" href={validateHref}>{en ? "Validate" : "검증"}</a>
+                          <a className="rounded-lg bg-slate-900 px-3 py-2 text-center text-[11px] font-bold text-white hover:bg-slate-950" href={resultHref}>{en ? "Result" : "결과"}</a>
+                          <a className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-[11px] font-bold text-slate-700 hover:bg-slate-50" href={reportHref}>{en ? "Report" : "보고서"}</a>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </section>
               </aside>
@@ -586,9 +603,9 @@ export function EmissionSimulateMigrationPage() {
               </div>
               <div className="flex flex-col items-start gap-4 lg:items-end">
                 <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-slate-500">
-                  <a href="#">{en ? "Data retention policy" : "데이터 보관 지침"}</a>
-                  <a href="#">{en ? "System guide" : "시스템 가이드라인"}</a>
-                  <a href="#">{en ? "No unauthorized analysis" : "분석 변환물 금지"}</a>
+                  <a href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Data retention policy" : "데이터 보관 지침"}</a>
+                  <a href={buildLocalizedPath("/support/post_list", "/en/support/post_list")}>{en ? "System guide" : "시스템 가이드라인"}</a>
+                  <a href={buildLocalizedPath("/emission/data_history", "/en/emission/data_history")}>{en ? "No unauthorized analysis" : "분석 변환물 금지"}</a>
                 </nav>
                 <img alt={content.waAlt} className="h-10 w-auto" src={WA_MARK} />
               </div>
