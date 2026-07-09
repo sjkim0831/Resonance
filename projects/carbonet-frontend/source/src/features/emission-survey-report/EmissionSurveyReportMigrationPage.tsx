@@ -1221,6 +1221,7 @@ export function EmissionSurveyReportPrintPage() {
   const [verificationRecord, setVerificationRecord] = useState<ReportVerificationRecord | null>(null);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
+  const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
 
   const chartSections = useMemo(
     () => (effectiveReport?.sectionSummaries || []).filter((section) => section.totalEmission > 0 || section.sharePercent > 0),
@@ -1573,6 +1574,7 @@ export function EmissionSurveyReportPrintPage() {
       const record = await buildReportVerificationRecord(effectiveReport);
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
+      setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
       const element = reportArticleRef.current;
@@ -1623,6 +1625,7 @@ export function EmissionSurveyReportPrintPage() {
       console.error(error);
       setVerificationMessage(en ? "PDF download failed. Please try again." : "PDF 다운로드에 실패했습니다. 다시 시도하세요.");
     } finally {
+      setPdfDownloadMode(false);
       setVerificationBusy(false);
     }
   };
@@ -1639,7 +1642,7 @@ export function EmissionSurveyReportPrintPage() {
   return (
     <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
+        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page}.print-page:last-child{break-after:auto}.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
         <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
@@ -1691,7 +1694,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
       ) : null}
 
-      <article className="print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)]" ref={reportArticleRef}>
+      <article className={`print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? "pdf-download-mode" : ""}`} ref={reportArticleRef}>
         <div className="print-page">
         <header className="print-ink-bg print-report-hero relative overflow-hidden bg-slate-950 px-8 py-8 text-white">
           <div className="print-report-hero-deco absolute -right-20 -top-28 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
@@ -1821,12 +1824,12 @@ export function EmissionSurveyReportPrintPage() {
             </div>
             <div className="mt-4 space-y-3">
               {chartSections.map((section, index) => (
-                <div key={section.sectionCode}>
-                  <div className="flex justify-between gap-3 text-sm font-black">
-                    <span>{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
-	                    <span className="font-mono">
+                <div className="print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
+                  <div className="grid grid-cols-[minmax(0,1fr)_150px] items-start gap-3 text-sm font-black">
+                    <span className="min-w-0 whitespace-normal leading-5">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
+	                    <span className="font-mono text-right leading-5 text-slate-950">
                       <EditableNumber
-                        className="inline-block w-24 bg-transparent text-right font-mono font-black"
+                        className="inline-block w-24 bg-transparent text-right font-mono font-black leading-5"
                         onCommit={(value) => updateSectionEmission(section.sectionCode, value)}
                         value={section.totalEmission}
                       /> kg CO2e
@@ -1835,9 +1838,9 @@ export function EmissionSurveyReportPrintPage() {
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-white">
                     <div className="h-full rounded-full" style={{ backgroundColor: sectionSolidColor(index), width: `${Math.max(4, Math.min(section.sharePercent, 100))}%` }} />
                   </div>
-	                  <p className="mt-1 text-xs font-bold text-slate-500">
+	                  <p className="mt-1 flex min-h-5 items-center justify-end text-xs font-bold leading-5 text-slate-500">
                     <EditableNumber
-                      className="inline-block w-16 bg-transparent font-mono font-bold text-slate-500"
+                      className="inline-block w-16 bg-transparent text-right font-mono font-bold leading-5 text-slate-500"
                       digits={1}
                       onCommit={(value) => updateDraftSectionShare(section.sectionCode, value)}
                       value={sectionShareInputs[section.sectionCode] ?? section.sharePercent}
@@ -1905,7 +1908,7 @@ export function EmissionSurveyReportPrintPage() {
             </table>
           </div>
         </section>
-        <section className="print-card mx-8 mb-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+        <section className="pdf-hidden print-card mx-8 mb-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
@@ -1955,6 +1958,11 @@ export function EmissionSurveyReportPrintPage() {
             </div>
           ) : null}
         </section>
+        {verificationRecord ? (
+          <pre aria-hidden="true" className="pdf-machine-readable">
+            {verificationPayloadToBlock(verificationRecord)}
+          </pre>
+        ) : null}
       </article>
     </main>
   );
@@ -2848,17 +2856,17 @@ function SectionContributionPieCard({
         </div>
         <div className="space-y-2">
           {sections.map((section, index) => (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
+            <div className="print-break grid grid-cols-[minmax(0,1fr)_112px] items-center gap-3 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
-                <span className="truncate text-xs font-bold text-slate-700">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
+                <span className="min-w-0 whitespace-normal text-xs font-bold leading-4 text-slate-700">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
               </div>
-              <div className="shrink-0 text-right">
-                <p className="text-xs font-black text-slate-950">
+              <div className="text-right">
+                <p className="min-h-5 whitespace-nowrap text-xs font-black leading-5 text-slate-950">
                   {onSectionShareChange ? (
                     <>
                       <EditableNumber
-                        className="inline-block w-14 bg-transparent text-right font-mono font-black"
+                        className="inline-block w-14 bg-transparent text-right font-mono font-black leading-5"
                         digits={1}
                         onCommit={(value) => onSectionShareChange(section.sectionCode, value)}
                         value={sectionShareInputs[section.sectionCode] ?? section.sharePercent}
@@ -2866,10 +2874,10 @@ function SectionContributionPieCard({
                     </>
                   ) : formatPercent(section.sharePercent)}
                 </p>
-                <p className="text-[10px] font-bold text-slate-500">
+                <p className="min-h-4 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
                   {onSectionEmissionChange ? (
                     <EditableNumber
-                      className="inline-block w-20 bg-transparent text-right font-mono font-bold text-slate-500"
+                      className="inline-block w-20 bg-transparent text-right font-mono font-bold leading-4 text-slate-500"
                       onCommit={(value) => onSectionEmissionChange(section.sectionCode, value)}
                       value={section.totalEmission}
                     />
