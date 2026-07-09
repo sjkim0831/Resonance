@@ -66,6 +66,41 @@ function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
   image.src = GOV_SYMBOL_FALLBACK;
 }
 
+function getQueueNextHref(card: QueueCard) {
+  if (card.variant === "upload") {
+    return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
+  }
+  if (card.variant === "energy") {
+    return buildLocalizedPath("/emission/simulate", "/en/emission/simulate");
+  }
+  if (card.variant === "checklist") {
+    return buildLocalizedPath("/emission/validate", "/en/emission/validate");
+  }
+  return buildLocalizedPath("/co2/analysis", "/en/co2/analysis");
+}
+
+function getSiteActionHref(label: string) {
+  if (label.includes("상세") || label.includes("Detail")) {
+    return buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
+  }
+  if (label.includes("산정") || label.includes("Logic")) {
+    return buildLocalizedPath("/emission/simulate", "/en/emission/simulate");
+  }
+  if (label.includes("소견") || label.includes("Note")) {
+    return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
+  }
+  if (label.includes("이력") || label.includes("History")) {
+    return buildLocalizedPath("/emission/data_history", "/en/emission/data_history");
+  }
+  if (label.includes("검증") || label.includes("Verification")) {
+    return buildLocalizedPath("/emission/validate", "/en/emission/validate");
+  }
+  if (label.includes("보고서") || label.includes("Report")) {
+    return buildLocalizedPath("/emission/result_list", "/en/emission/result_list");
+  }
+  return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+}
+
 function EmissionDataInputInlineStyles() {
   return (
     <style>{`
@@ -180,6 +215,7 @@ export function EmissionDataInputMigrationPage() {
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
     [en],
@@ -208,7 +244,6 @@ export function EmissionDataInputMigrationPage() {
 
   const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
   const homeMenu = payload.homeMenu || [];
-  const localePath = buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
   const adminSiteManagementHref = buildLocalizedPath("/admin/emission/site-management", "/en/admin/emission/site-management");
 
   const queueCards = useMemo<QueueCard[]>(() => en ? [
@@ -304,7 +339,7 @@ export function EmissionDataInputMigrationPage() {
             <span className="material-symbols-outlined text-indigo-400 transition-transform group-hover:scale-110">upload</span>
             <span className="text-[11px] text-slate-400">{en ? "Select PDF or Image (Max 20MB)" : "PDF 또는 이미지 파일 선택 (Max 20MB)"}</span>
           </button>
-          <button className="mt-3 w-full rounded-md bg-indigo-600 py-2 text-[11px] font-bold text-white hover:bg-indigo-700" type="button">{card.actionLabel}</button>
+          <button className="mt-3 w-full rounded-md bg-indigo-600 py-2 text-[11px] font-bold text-white hover:bg-indigo-700" onClick={() => { setSaveMessage(en ? `${card.title} saved. Continue to the next step.` : `${card.title} 저장 완료. 다음 단계로 이어갈 수 있습니다.`); navigate(getQueueNextHref(card)); }} type="button">{card.actionLabel}</button>
         </div>
       );
     }
@@ -321,7 +356,7 @@ export function EmissionDataInputMigrationPage() {
               <input className="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500" type="date" />
             </div>
           </div>
-          <button className="w-full rounded-md bg-indigo-600 py-2 text-[11px] font-bold text-white hover:bg-indigo-700" type="button">{card.actionLabel}</button>
+          <button className="w-full rounded-md bg-indigo-600 py-2 text-[11px] font-bold text-white hover:bg-indigo-700" onClick={() => { setSaveMessage(en ? `${card.title} confirmed.` : `${card.title} 확정 완료.`); navigate(getQueueNextHref(card)); }} type="button">{card.actionLabel}</button>
         </div>
       );
     }
@@ -338,14 +373,14 @@ export function EmissionDataInputMigrationPage() {
               <span className="text-[11px] text-slate-300 group-hover:text-white">{en ? "Verify emission activity evidence photos" : "배출 활동 근거 사진 대조 완료"}</span>
             </label>
           </div>
-          <button className="w-full rounded-md bg-indigo-600 py-2 text-[11px] font-bold text-white hover:bg-indigo-700" type="button">{card.actionLabel}</button>
+          <button className="w-full rounded-md bg-indigo-600 py-2 text-[11px] font-bold text-white hover:bg-indigo-700" onClick={() => { setSaveMessage(en ? `${card.title} checklist saved.` : `${card.title} 체크리스트 저장 완료.`); navigate(getQueueNextHref(card)); }} type="button">{card.actionLabel}</button>
         </div>
       );
     }
     return (
       <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/50 p-4">
         <textarea className="mb-2 w-full rounded border border-slate-600 bg-slate-800 px-2 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500" placeholder={en ? "Enter site action plan briefly..." : "현장 조치 계획을 간단히 입력하세요..."} rows={2} />
-        <button className="w-full rounded-md bg-emerald-600 py-2 text-[11px] font-bold text-white hover:bg-emerald-700" type="button">{card.actionLabel}</button>
+        <button className="w-full rounded-md bg-emerald-600 py-2 text-[11px] font-bold text-white hover:bg-emerald-700" onClick={() => { setSaveMessage(en ? `${card.title} opinion submitted.` : `${card.title} 의견 등록 완료.`); navigate(getQueueNextHref(card)); }} type="button">{card.actionLabel}</button>
       </div>
     );
   }
@@ -428,6 +463,11 @@ export function EmissionDataInputMigrationPage() {
                       <div className="h-full bg-indigo-400" style={{ width: "75%" }} />
                     </div>
                   </div>
+                  {saveMessage ? (
+                    <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-900/30 p-4 text-xs font-bold leading-5 text-emerald-200">
+                      {saveMessage}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="w-full lg:w-3/4">
                   <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500"><span className="material-symbols-outlined text-[16px]">view_kanban</span>{en ? "Your Update Queue" : "Your Update Queue (대기 중인 입력 과업)"}</h3>
@@ -493,7 +533,7 @@ export function EmissionDataInputMigrationPage() {
                       <span className={`material-symbols-outlined text-[18px] ${site.noticeIconClass}`}>{site.noticeIcon}</span>
                       <span className="text-[11px] font-bold text-slate-800">{site.notice}</span>
                     </div>
-                    {site.noticeLink ? <a className="text-[10px] font-black text-indigo-600 underline" href={localePath}>{site.noticeLink}</a> : null}
+                    {site.noticeLink ? <a className="text-[10px] font-black text-indigo-600 underline" href={getSiteActionHref(site.noticeLink)}>{site.noticeLink}</a> : null}
                   </div>
                   <div className="flex-1 space-y-8 p-6">
                     <div className="flex items-end justify-between">
@@ -512,7 +552,7 @@ export function EmissionDataInputMigrationPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       {site.actions.map((action) => (
-                        <a className={`group flex flex-col items-center justify-center rounded-xl p-4 transition-all ${action.solid ? `${action.solidClass || "bg-orange-600"} text-white` : `bg-gray-50 ${action.hoverClass || "hover:bg-blue-600"}`}`} href={localePath} key={action.label}>
+                        <a className={`group flex flex-col items-center justify-center rounded-xl p-4 transition-all ${action.solid ? `${action.solidClass || "bg-orange-600"} text-white` : `bg-gray-50 ${action.hoverClass || "hover:bg-blue-600"}`}`} href={getSiteActionHref(action.label)} key={action.label}>
                           <span className={`material-symbols-outlined mb-1 ${action.solid ? "text-white" : "text-gray-400 group-hover:text-white"}`}>{action.icon}</span>
                           <span className={`text-[12px] font-bold ${action.solid ? "text-white" : "text-gray-600 group-hover:text-white"}`}>{action.label}</span>
                         </a>
@@ -551,7 +591,7 @@ export function EmissionDataInputMigrationPage() {
                       <div className="flex justify-between"><span className="text-gray-500">{en ? "Emission" : "배출량"}</span><span className="font-bold">{site.emission}</span></div>
                       <div className="flex justify-between"><span className="text-gray-500">{en ? "Status" : "상태"}</span><span className={`font-bold ${site.statusClass}`}>{site.status}</span></div>
                     </div>
-                    <button className={`w-full rounded border py-2.5 text-xs font-bold ${site.actionClass}`} type="button">{site.actionLabel}</button>
+                    <button className={`w-full rounded border py-2.5 text-xs font-bold ${site.actionClass}`} onClick={() => navigate(getSiteActionHref(site.actionLabel))} type="button">{site.actionLabel}</button>
                   </div>
                 </div>
               ))}
@@ -636,9 +676,9 @@ export function EmissionDataInputMigrationPage() {
                 <address className="not-italic text-sm leading-relaxed text-gray-500">{en ? "(04551) 110 Sejong-daero, Jung-gu, Seoul | Site Management Support Team: 02-1234-5678" : "(04551) 서울특별시 중구 세종대로 110 | 현장 관리 지원팀: 02-1234-5678"}<br />{en ? "This platform is optimized for enterprise greenhouse-gas site management." : "본 플랫폼은 기업의 온실가스 감축 현장 관리를 위해 최적화되었습니다."}</address>
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                <a className="text-[var(--kr-gov-blue)] hover:underline" href="#">{en ? "Privacy Policy" : "개인정보처리방침"}</a>
-                <a className="text-gray-600 hover:underline" href="#">{en ? "Terms of Use" : "이용약관"}</a>
-                <a className="text-gray-600 hover:underline" href="#">{en ? "Manual Download" : "매뉴얼 다운로드"}</a>
+                <a className="text-[var(--kr-gov-blue)] hover:underline" href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Privacy Policy" : "개인정보처리방침"}</a>
+                <a className="text-gray-600 hover:underline" href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Terms of Use" : "이용약관"}</a>
+                <a className="text-gray-600 hover:underline" href={buildLocalizedPath("/support/post_list", "/en/support/post_list")}>{en ? "Manual Download" : "매뉴얼 다운로드"}</a>
               </div>
             </div>
             <div className="mt-8 flex flex-col items-center justify-between gap-6 md:flex-row">
