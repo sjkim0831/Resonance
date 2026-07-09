@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -309,6 +309,20 @@ async function buildReportVerificationRecord(report: EmissionSurveyReportPayload
     integrityCode,
     verificationUrl: `${window.location.origin}${buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify")}?certificateId=${encodeURIComponent(certificateId)}`
   };
+}
+
+function nextAnimationFrame() {
+  return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+}
+
+function buildReportPdfFileName(report: EmissionSurveyReportPayload) {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const name = (report.productName || report.pageTitle || "emission-survey-report")
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return `${name || "emission-survey-report"}-${date}.pdf`;
 }
 
 function formatPercent(value: number, digits = 1) {
@@ -1190,6 +1204,7 @@ export function EmissionSurveyReportMigrationPage() {
 
 export function EmissionSurveyReportPrintPage() {
   const report = useMemo(() => loadEmissionSurveyReportSession(), []);
+  const reportArticleRef = useRef<HTMLElement | null>(null);
   const [draftReport, setDraftReport] = useState<EmissionSurveyReportPayload | null>(report);
   const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
   const language = new URLSearchParams(window.location.search).get("lang");
@@ -1554,19 +1569,62 @@ export function EmissionSurveyReportPrintPage() {
     }
     setVerificationBusy(true);
     setVerificationMessage("");
-    const record = await buildReportVerificationRecord(effectiveReport);
-    saveReportVerificationRecord(record);
-    setVerificationRecord(record);
-    setVerificationBusy(false);
-    setVerificationMessage(en ? "Verification record saved. Save this report as a PDF file." : "진위 식별 정보가 저장되었습니다. 이 리포트를 PDF 파일로 저장하세요.");
-    const originalTitle = document.title;
-    window.setTimeout(() => {
-      document.title = " ";
-      window.print();
-      window.setTimeout(() => {
-        document.title = originalTitle;
-      }, 500);
-    }, 100);
+    try {
+      const record = await buildReportVerificationRecord(effectiveReport);
+      saveReportVerificationRecord(record);
+      setVerificationRecord(record);
+      await nextAnimationFrame();
+      await nextAnimationFrame();
+      const element = reportArticleRef.current;
+      if (!element) {
+        throw new Error("Report element is not ready.");
+      }
+      const module = await import("html2pdf.js");
+      const html2pdf = module.default || module;
+      const pdfOptions: Record<string, unknown> = {
+          filename: buildReportPdfFileName(effectiveReport),
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true,
+            windowWidth: element.scrollWidth
+          },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          margin: [8, 8, 8, 8],
+          pagebreak: { mode: ["css", "legacy"], avoid: [".print-break", ".print-card"] }
+        };
+      const worker = html2pdf()
+        .set(pdfOptions)
+        .from(element)
+        .toPdf();
+      await worker.get("pdf").then((pdf: {
+        internal: { getNumberOfPages: () => number };
+        setPage: (page: number) => void;
+        setFontSize: (size: number) => void;
+        setTextColor: (r: number, g: number, b: number) => void;
+        text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
+        setProperties?: (properties: Record<string, string>) => void;
+      }) => {
+        pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
+        pdf.setFontSize(1);
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(verificationPayloadToBlock(record), 1, 1, { maxWidth: 1 });
+        pdf.setProperties?.({
+          title: record.reportTitle || "Carbonet Emission Survey Report",
+          subject: "Carbonet verified emission survey report",
+          keywords: `carbonet,verification,${record.certificateId}`,
+          creator: "Carbonet"
+        });
+      });
+      await worker.save();
+      setVerificationMessage(en ? "PDF file downloaded with hidden verification data." : "숨김 검증 정보가 포함된 PDF 파일을 다운로드했습니다.");
+    } catch (error) {
+      console.error(error);
+      setVerificationMessage(en ? "PDF download failed. Please try again." : "PDF 다운로드에 실패했습니다. 다시 시도하세요.");
+    } finally {
+      setVerificationBusy(false);
+    }
   };
   const handleCopyChart = async (type: "bar" | "pie") => {
     try {
@@ -1633,7 +1691,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
       ) : null}
 
-      <article className="print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)]">
+      <article className="print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)]" ref={reportArticleRef}>
         <div className="print-page">
         <header className="print-ink-bg print-report-hero relative overflow-hidden bg-slate-950 px-8 py-8 text-white">
           <div className="print-report-hero-deco absolute -right-20 -top-28 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
