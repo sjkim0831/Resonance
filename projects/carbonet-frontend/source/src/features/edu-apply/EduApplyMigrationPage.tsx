@@ -39,6 +39,8 @@ type SessionOption = {
   scheduleEn: string;
 };
 
+type ApplicationState = "draft" | "saved" | "submitted";
+
 const STEPS: StepItem[] = [
   { value: "01", label: "과정 선택", labelEn: "Course", state: "complete" },
   { value: "02", label: "신청 정보", labelEn: "Applicant", state: "active" },
@@ -120,10 +122,22 @@ export function EduApplyMigrationPage() {
   const [selectedCourseId, setSelectedCourseId] = useState(COURSES[0]?.id ?? "");
   const [selectedSessionId, setSelectedSessionId] = useState(SESSIONS[0]?.id ?? "");
   const [deliveryMode, setDeliveryMode] = useState("offline");
+  const [applicationState, setApplicationState] = useState<ApplicationState>("draft");
   const selectedCourse = COURSES.find((course) => course.id === selectedCourseId) ?? COURSES[0];
   const selectedSession = SESSIONS.find((session) => session.id === selectedSessionId) ?? SESSIONS[0];
   const applyPath = buildLocalizedPath("/edu/apply", "/en/edu/apply");
   const listPath = buildLocalizedPath("/edu/course_list", "/en/edu/course_list");
+  const myCoursePath = buildLocalizedPath("/edu/my_course", "/en/edu/my_course");
+  const progressPath = buildLocalizedPath("/edu/progress", "/en/edu/progress");
+  const visibleSteps = STEPS.map((step, index) => {
+    if (applicationState === "submitted") {
+      return { ...step, state: "complete" as StepState };
+    }
+    if (applicationState === "saved" && index <= 2) {
+      return { ...step, state: index === 2 ? "active" as StepState : "complete" as StepState };
+    }
+    return step;
+  });
 
   const copy = {
     skip: en ? "Skip to main content" : "본문 바로가기",
@@ -139,11 +153,19 @@ export function EduApplyMigrationPage() {
     heroTitle: en ? "Training Application Workflow" : "교육 신청 워크플로우",
     heroSummary: en ? "Finalize the course, select a session, and submit the applicant profile for approval in one guided flow." : "신청 대상 과정 확정, 회차 선택, 신청자 정보 입력을 한 번에 완료하는 가이드형 접수 화면입니다.",
     statusLabel: en ? "Application status" : "신청 상태",
-    statusValue: en ? "Draft in progress" : "임시저장 진행 중",
+    statusValue: applicationState === "submitted"
+      ? (en ? "Application submitted" : "신청 접수 완료")
+      : applicationState === "saved"
+        ? (en ? "Draft saved for review" : "검토 단계 임시저장")
+        : (en ? "Draft in progress" : "임시저장 진행 중"),
     deadlineLabel: en ? "Deadline" : "접수 마감",
     deadlineValue: en ? "April 18, 2026 18:00" : "2026.04.18 18:00",
     stepsTitle: en ? "Current step" : "현재 진행 단계",
-    stepCounter: en ? "Step 2 of 4" : "총 4단계 중 2단계",
+    stepCounter: applicationState === "submitted"
+      ? (en ? "Step 4 of 4" : "총 4단계 중 4단계")
+      : applicationState === "saved"
+        ? (en ? "Step 3 of 4" : "총 4단계 중 3단계")
+        : (en ? "Step 2 of 4" : "총 4단계 중 2단계"),
     courseSectionTitle: en ? "Select a course" : "신청 과정 선택",
     courseSectionBody: en ? "Choose one priority course from the recommended list. The application summary updates immediately." : "추천 과정 중 우선 신청할 1개 과정을 선택하면 우측 신청 요약이 즉시 갱신됩니다.",
     formSectionTitle: en ? "Applicant information" : "신청자 정보",
@@ -176,6 +198,9 @@ export function EduApplyMigrationPage() {
     cancelLabel: en ? "Back to catalog" : "목록으로 돌아가기",
     draftLabel: en ? "Save draft" : "임시저장",
     submitLabel: en ? "Submit application" : "신청서 제출",
+    submittedGuide: en ? "Application has been submitted. You can continue from My Classroom after approval." : "신청서가 접수되었습니다. 승인 후 나의 강의실에서 이어서 진행할 수 있습니다.",
+    goClassroom: en ? "Go to My Classroom" : "나의 강의실로 이동",
+    viewProgress: en ? "View progress dashboard" : "진도 현황 보기",
     footerOrg: en ? "Edu Innovation Support Division" : "교육혁신지원단",
     footerAddress: en ? "(04551) 110 Sejong-daero, Jung-gu, Seoul | Help Desk: 1588-1234" : "(04551) 서울특별시 중구 세종대로 110 | 학습지원센터 1588-1234",
     footerServiceLine: en ? "This platform supports the training of carbon-neutrality specialists across public and industrial sectors." : "본 플랫폼은 공공과 산업 현장의 탄소중립 전문인력 양성을 지원합니다.",
@@ -251,7 +276,7 @@ export function EduApplyMigrationPage() {
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{copy.stepsTitle}</p>
             <h3 className="mt-2 text-2xl font-black text-slate-900">{copy.stepCounter}</h3>
             <div className="mt-6 grid gap-3 md:grid-cols-4">
-              {STEPS.map((step) => (
+              {visibleSteps.map((step) => (
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-5" key={step.value}>
                   <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-black ${stepClassName(step.state)}`}>
                     {step.state === "complete" ? <span className="material-symbols-outlined text-[18px]">check</span> : step.value}
@@ -260,6 +285,14 @@ export function EduApplyMigrationPage() {
                 </div>
               ))}
             </div>
+            {applicationState === "submitted" ? (
+              <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800 sm:flex-row sm:items-center sm:justify-between">
+                <span>{copy.submittedGuide}</span>
+                <button className="rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700" onClick={() => navigate(myCoursePath)} type="button">
+                  {copy.goClassroom}
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -378,8 +411,11 @@ export function EduApplyMigrationPage() {
         <section className="mx-auto max-w-7xl px-4 pb-10 lg:px-8" data-help-id="edu-apply-actions">
           <div className="flex flex-col gap-3 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:justify-end">
             <HomeButton onClick={() => navigate(listPath)} variant="secondary">{copy.cancelLabel}</HomeButton>
-            <HomeButton variant="info">{copy.draftLabel}</HomeButton>
-            <HomeButton variant="primary">{copy.submitLabel}</HomeButton>
+            <HomeButton onClick={() => setApplicationState("saved")} variant="info">{copy.draftLabel}</HomeButton>
+            <HomeButton onClick={() => setApplicationState("submitted")} variant="primary">{copy.submitLabel}</HomeButton>
+            {applicationState === "submitted" ? (
+              <HomeButton onClick={() => navigate(progressPath)} variant="secondary">{copy.viewProgress}</HomeButton>
+            ) : null}
           </div>
         </section>
       </main>
