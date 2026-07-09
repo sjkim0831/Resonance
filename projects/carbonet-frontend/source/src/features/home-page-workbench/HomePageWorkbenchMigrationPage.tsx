@@ -26,6 +26,16 @@ const STATUS_LABELS: Record<WorkStatus, { ko: string; en: string }> = {
   deferred: { ko: "보류", en: "Deferred" }
 };
 
+const DEFAULT_NEXT_PAGE_IDEAS: Record<string, string> = {
+  "교육/자격": "교육 이수 현황 통합, 수료증 검증, 자격 갱신 안내",
+  "가입/온보딩": "가입 심사 진행 현황, 반려 사유 보완, 기업 담당자 초대",
+  "마이페이지/회원": "내 기업 권한, 알림 이력, 보안 설정 통합",
+  "고객지원/민원": "공지/FAQ/Q&A 통합 검색, 문의 등록, 처리 이력",
+  "배출/탄소": "배출 프로젝트 개요, 데이터 입력 가이드, 검증 체크리스트",
+  "거래/정산": "거래 요약, 정산 상태, 증빙 다운로드",
+  "홈 공통": "홈 대시보드, 사이트맵, 사용자 안내"
+};
+
 function readRecords(): Record<string, WorkRecord> {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -109,6 +119,48 @@ export function HomePageWorkbenchMigrationPage() {
     return acc;
   }, { unchecked: 0, empty: 0, thin: 0, expanding: 0, done: 0, deferred: 0 });
 
+  const groupPlans = useMemo(() => {
+    return groups.map((group) => {
+      const groupRows = rows.filter((row) => row.sectionGroup === group);
+      const pending = groupRows.filter((row) => row.status !== "done" && row.status !== "deferred");
+      const ideas = Array.from(new Set(groupRows.flatMap((row) => row.nextPageIdea.split(/\n|,/).map((idea) => idea.trim()).filter(Boolean))));
+      return {
+        group,
+        total: groupRows.length,
+        pending: pending.length,
+        emptyOrThin: groupRows.filter((row) => row.status === "empty" || row.status === "thin").length,
+        ideas: ideas.length ? ideas : [DEFAULT_NEXT_PAGE_IDEAS[group] || DEFAULT_NEXT_PAGE_IDEAS["홈 공통"]]
+      };
+    });
+  }, [groups, rows]);
+
+  function exportPlan() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      summary,
+      groups: groupPlans,
+      rows: rows.map((row) => ({
+        routeId: row.routeId,
+        label: row.label,
+        path: row.koPath,
+        status: row.status,
+        sectionGroup: row.sectionGroup,
+        proposedMenuName: row.proposedMenuName,
+        nextPageIdea: row.nextPageIdea,
+        memo: row.memo,
+        commitHash: row.commitHash,
+        sourcePath: row.effectiveSourcePath
+      }))
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `home-page-workbench-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   function updateRecord(routeId: string, patch: Partial<WorkRecord>) {
     setRecords((current) => {
       const route = rows.find((item) => item.routeId === routeId);
@@ -165,6 +217,43 @@ export function HomePageWorkbenchMigrationPage() {
             <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={() => navigate(buildLocalizedPath("/admin/system/menu?menuType=USER", "/en/admin/system/menu?menuType=USER"))} type="button">
               {en ? "Open Menu Admin" : "메뉴 관리 열기"}
             </button>
+          </div>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-black text-slate-950">{en ? "Grouped Work Board" : "유사 페이지 묶음 보드"}</h3>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{en ? "Use this board to decide which pages should be expanded together or split into a new menu." : "함께 확장하거나 새 메뉴로 분리할 후보를 섹션 그룹별로 누적합니다."}</p>
+              </div>
+              <button className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-black text-slate-700" onClick={exportPlan} type="button">
+                {en ? "Export Plan" : "작업 목록 내보내기"}
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {groupPlans.map((plan) => (
+                <article className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={plan.group}>
+                  <div className="flex items-center justify-between gap-3">
+                    <strong className="text-sm text-slate-950">{plan.group}</strong>
+                    <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-600">{plan.pending}/{plan.total}</span>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">{en ? "Empty or thin" : "내용 없음/기능 부족"}: {plan.emptyOrThin}</p>
+                  <ul className="mt-3 space-y-1 text-xs font-semibold text-slate-600">
+                    {plan.ideas.slice(0, 3).map((idea) => <li key={idea}>- {idea}</li>)}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <h3 className="text-base font-black text-slate-950">{en ? "Operating Rule" : "작업 운영 기준"}</h3>
+            <div className="mt-3 space-y-3 text-sm font-semibold text-slate-600">
+              <p>{en ? "1. Mark empty or thin pages first, then group related pages before changing menu names." : "1. 내용 없음/기능 부족 페이지를 먼저 표시하고, 메뉴명 변경 전 연관 페이지를 먼저 묶습니다."}</p>
+              <p>{en ? "2. Keep the proposed name and next page candidate before using Menu Admin or Builder." : "2. 메뉴 관리나 빌더 반영 전 제안 메뉴명과 추가 페이지 후보를 남깁니다."}</p>
+              <p>{en ? "3. Record the commit hash after each completed page so later admin-page work can start from verified evidence." : "3. 페이지 완료 후 커밋 해시를 남겨 이후 관리자 페이지 작업의 근거로 사용합니다."}</p>
+            </div>
           </div>
         </section>
 
