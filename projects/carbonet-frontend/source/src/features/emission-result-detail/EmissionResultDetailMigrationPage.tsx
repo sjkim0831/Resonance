@@ -83,6 +83,13 @@ function matchesInitialResultDetailPayload(payload: EmissionResultDetailPagePayl
   return readString(payload.resultId) === readString(resultId);
 }
 
+function resultScopedHref(pathKo: string, pathEn: string, resultId: string, returnUrl: string) {
+  const href = buildLocalizedPath(pathKo, pathEn);
+  const queryGlue = href.includes("?") ? "&" : "?";
+  const scopedHref = resultId ? `${href}${queryGlue}resultId=${encodeURIComponent(resultId)}` : href;
+  return withReturnUrl(scopedHref, returnUrl);
+}
+
 export function EmissionResultDetailMigrationPage() {
   const en = isEnglish();
   const resultId = getSearchParam("resultId");
@@ -329,6 +336,18 @@ export function EmissionResultDetailMigrationPage() {
               }}
               title={en ? "Next review actions" : "다음 검토 작업"}
             />
+
+            <section className="grid grid-cols-1 gap-3 md:grid-cols-3" data-help-id="emission-result-detail-next-links">
+              <MemberLinkButton href={resultScopedHref("/admin/emission/validate", "/en/admin/emission/validate", resultId, returnUrl)} icon="rule" variant="secondary">
+                {en ? "Verification Queue" : "검증 대기열"}
+              </MemberLinkButton>
+              <MemberLinkButton href={resultScopedHref("/admin/emission/report-submit", "/en/admin/emission/report-submit", resultId, returnUrl)} icon="description" variant="secondary">
+                {en ? "Prepare Report" : "보고서 작성"}
+              </MemberLinkButton>
+              <MemberLinkButton href={resultScopedHref("/admin/emission/data-history", "/en/admin/emission/data-history", resultId, returnUrl)} icon="manage_search" variant="secondary">
+                {en ? "Audit Trail" : "감사 이력"}
+              </MemberLinkButton>
+            </section>
           </>
         ) : null}
       </AdminWorkspacePageFrame>
