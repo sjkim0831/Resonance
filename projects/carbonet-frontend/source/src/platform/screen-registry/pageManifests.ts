@@ -972,6 +972,19 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "EduContentCompliance", instanceKey: "edu-content-compliance", layoutZone: "actions", propsSummary: ["complianceRate", "recommendation"] }
     ]
   },
+  "emission-dashboard": {
+    pageId: "emission-dashboard",
+    routePath: "/emission/index",
+    menuCode: "H0010100",
+    domainCode: "home",
+    layoutVersion: "v1",
+    designTokenVersion: "krds-current",
+    components: [
+      { componentId: "EmissionDashboardHero", instanceKey: "emission-dashboard-hero", layoutZone: "header", propsSummary: ["overallProgress", "needsAction", "readyCount"] },
+      { componentId: "EmissionDashboardEightSections", instanceKey: "emission-index-eight-section-dashboard", layoutZone: "content", propsSummary: ["sections", "metric", "progress", "adminLinks"] },
+      { componentId: "EmissionDashboardQuickActions", instanceKey: "emission-dashboard-quick-actions", layoutZone: "actions", propsSummary: ["continueTask", "dataInput", "reportSubmit"] }
+    ]
+  },
   "emission-project-list": {
     pageId: "emission-project-list",
     routePath: "/emission/project_list",

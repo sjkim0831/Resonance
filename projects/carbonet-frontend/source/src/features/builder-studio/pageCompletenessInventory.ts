@@ -1433,6 +1433,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/emission-dashboard/EmissionDashboardPage.tsx",
+    "effectiveSourcePath": "features/emission-dashboard/EmissionDashboardPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-dashboard/EmissionDashboardPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionDashboardPage"
+    ],
+    "routeIds": [
+      "emission-dashboard"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 547,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
     "effectiveSourcePath": "features/emission-data-history/EmissionDataHistoryMigrationPage.tsx",
     "effectiveSourcePaths": [

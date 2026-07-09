@@ -841,6 +841,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
+    "routeId": "emission-dashboard",
+    "label": "탄소 배출 대시보드",
+    "group": "home",
+    "koPath": "/emission/index",
+    "enPath": "/en/emission/index",
+    "exportName": "EmissionDashboardPage",
+    "sourcePath": "features/emission-dashboard/EmissionDashboardPage.tsx",
+    "effectiveExportName": "EmissionDashboardPage",
+    "effectiveSourcePath": "features/emission-dashboard/EmissionDashboardPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-data-history",
     "label": "데이터 변경 이력",
     "group": "admin",
