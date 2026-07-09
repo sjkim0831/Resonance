@@ -177,6 +177,12 @@ const SUB_NAV_ITEMS = [
   { id: "testimonials", label: "수강생 후기", labelEn: "Reviews" }
 ];
 
+const courseListHref = () => buildLocalizedPath("/edu/course_list", "/en/edu/course_list");
+const applyHref = () => buildLocalizedPath("/edu/apply", "/en/edu/apply");
+const myCourseHref = () => buildLocalizedPath("/edu/my_course", "/en/edu/my_course");
+const progressHref = () => buildLocalizedPath("/edu/progress", "/en/edu/progress");
+const inquiryHref = () => buildLocalizedPath("/mtn/my_inquiry", "/en/mtn/my_inquiry");
+
 function SectionTitle(props: { id: string; title: string }) {
   return (
     <h3 className="mb-6 flex scroll-mt-36 items-center gap-2 text-2xl font-black" id={props.id}>
@@ -287,16 +293,16 @@ export function EduCourseDetailMigrationPage() {
               </a>
             </div>
             <nav className="ml-12 hidden h-full flex-1 items-center space-x-1 xl:flex" data-help-id="edu-course-detail-primary-nav">
-              <a className="flex h-full items-center border-b-4 border-transparent px-4 text-[15px] font-bold text-gray-500 transition-all hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/edu/course_list", "/en/edu/course_list")}>{copy.navList}</a>
+              <a className="flex h-full items-center border-b-4 border-transparent px-4 text-[15px] font-bold text-gray-500 transition-all hover:text-[var(--kr-gov-blue)]" href={courseListHref()}>{copy.navList}</a>
               <a className="flex h-full items-center border-b-4 border-[var(--kr-gov-blue)] px-4 text-[15px] font-bold text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/edu/course_detail", "/en/edu/course_detail")}>{copy.navDetail}</a>
-              <a className="flex h-full items-center border-b-4 border-transparent px-4 text-[15px] font-bold text-gray-500 transition-all hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/mypage", "/en/mypage")}>{copy.navClassroom}</a>
+              <a className="flex h-full items-center border-b-4 border-transparent px-4 text-[15px] font-bold text-gray-500 transition-all hover:text-[var(--kr-gov-blue)]" href={myCourseHref()}>{copy.navClassroom}</a>
             </nav>
             <div className="flex items-center gap-4">
               <div className="mr-2 hidden text-right md:flex md:flex-col md:items-end">
                 <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{copy.managerName}</span>
                 <span className="text-[10px] font-bold text-indigo-600">{copy.managerStatus}</span>
               </div>
-              <button className="rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200" type="button">
+              <button className="rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200" onClick={() => navigate(progressHref())} type="button">
                 <span className="material-symbols-outlined text-gray-600">notifications</span>
               </button>
             </div>
@@ -318,7 +324,7 @@ export function EduCourseDetailMigrationPage() {
             <span className="hidden text-lg font-black text-[var(--kr-gov-blue)] md:block">{copy.price}</span>
             <button
               className="flex items-center gap-2 rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-6 py-2.5 font-bold text-white transition-all hover:bg-[var(--kr-gov-blue-hover)]"
-              onClick={() => navigate(buildLocalizedPath("/edu/apply", "/en/edu/apply"))}
+              onClick={() => navigate(applyHref())}
               type="button"
             >
               {copy.applyCta}
@@ -352,7 +358,7 @@ export function EduCourseDetailMigrationPage() {
               <p className="max-w-lg text-slate-300">{copy.heroBody}</p>
             </div>
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-              <button className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[var(--kr-gov-blue)] shadow-xl" type="button">
+              <button className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-[var(--kr-gov-blue)] shadow-xl" onClick={() => navigate(progressHref())} type="button">
                 <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
               </button>
             </div>
@@ -482,7 +488,7 @@ export function EduCourseDetailMigrationPage() {
                 </div>
               ))}
             </div>
-            <button className="mt-6 w-full rounded-xl border border-dashed border-gray-300 py-4 text-sm font-bold text-gray-400 transition-all hover:border-indigo-600 hover:bg-white hover:text-indigo-600" type="button">
+            <button className="mt-6 w-full rounded-xl border border-dashed border-gray-300 py-4 text-sm font-bold text-gray-400 transition-all hover:border-indigo-600 hover:bg-white hover:text-indigo-600" onClick={() => navigate(courseListHref())} type="button">
               {copy.reviewAll}
             </button>
           </section>
@@ -508,12 +514,12 @@ export function EduCourseDetailMigrationPage() {
                 <div className="space-y-3">
                   <button
                     className="w-full rounded-xl bg-[var(--kr-gov-blue)] py-4 font-black text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-[var(--kr-gov-blue-hover)]"
-                    onClick={() => navigate(buildLocalizedPath("/edu/apply", "/en/edu/apply"))}
+                    onClick={() => navigate(applyHref())}
                     type="button"
                   >
                     {copy.payNow}
                   </button>
-                  <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-bold text-gray-700 transition-all hover:bg-gray-50" type="button">
+                  <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-4 font-bold text-gray-700 transition-all hover:bg-gray-50" onClick={() => navigate(myCourseHref())} type="button">
                     <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
                     {copy.addCart}
                   </button>
@@ -526,7 +532,7 @@ export function EduCourseDetailMigrationPage() {
               <div className="relative z-10">
                 <h4 className="mb-2 text-lg font-black text-white">{copy.groupBenefitTitle}</h4>
                 <p className="mb-4 text-xs leading-relaxed text-slate-400">{copy.groupBenefitBody}</p>
-                <a className="inline-flex items-center text-xs font-bold text-indigo-400 transition-all hover:gap-2" href={buildLocalizedPath("/mtn/my_inquiry", "/en/mtn/my_inquiry")}>
+                <a className="inline-flex items-center text-xs font-bold text-indigo-400 transition-all hover:gap-2" href={inquiryHref()}>
                   {copy.groupBenefitCta}
                   <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </a>
@@ -553,7 +559,7 @@ export function EduCourseDetailMigrationPage() {
             </div>
             <div className="flex gap-8 text-sm font-bold text-gray-500">
               {copy.footerLinks.map((item) => (
-                <a className="hover:text-[var(--kr-gov-blue)]" href="#" key={item}>{item}</a>
+                <button className="hover:text-[var(--kr-gov-blue)]" key={item} onClick={() => navigate(item.includes("Guide") || item.includes("가이드") ? courseListHref() : inquiryHref())} type="button">{item}</button>
               ))}
             </div>
           </div>
