@@ -703,6 +703,10 @@ const ADMIN_DOMAIN_OVERRIDES: AdminMenuTreePayload = {
   }
 };
 
+export function getNormalizedAdminMenuTree(): AdminMenuTreePayload {
+  return JSON.parse(JSON.stringify(ADMIN_DOMAIN_OVERRIDES)) as AdminMenuTreePayload;
+}
+
 function normalizePath(url: string | undefined) {
   return String(url || "").replace(/^\/en(?=\/)/, "").split("?")[0].replace(/\/+$/, "") || "/";
 }
@@ -754,5 +758,5 @@ export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | nu
 
 export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): AdminMenuTreePayload {
   void payload;
-  return { ...ADMIN_DOMAIN_OVERRIDES };
+  return getNormalizedAdminMenuTree();
 }

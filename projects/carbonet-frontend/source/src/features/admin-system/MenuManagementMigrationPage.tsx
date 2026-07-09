@@ -4,6 +4,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { refreshAdminMenuTree } from "../../lib/api/adminShell";
 import { postFormUrlEncoded } from "../../lib/api/core";
+import { getNormalizedAdminMenuTree } from "../../lib/api/menuNormalization";
 import { fetchMenuManagementPage } from "../../lib/api/platform";
 import type { MenuManagementPagePayload } from "../../lib/api/platformTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
@@ -30,6 +31,63 @@ type MenuSnapshot = {
   sortOrdr: number;
   expsrAt: string;
 };
+
+function buildStandardAdminMenuRows(en: boolean) {
+  const rows: Array<Record<string, unknown>> = [];
+  const menuTree = getNormalizedAdminMenuTree();
+  Object.entries(menuTree).forEach(([domainCode, domain], domainIndex) => {
+    rows.push({
+      code: domainCode,
+      codeNm: domain.label || domainCode,
+      codeDc: domain.labelEn || domain.label || domainCode,
+      menuUrl: "",
+      menuIcon: "dashboard",
+      sortOrdr: domainIndex + 1,
+      useAt: "Y",
+      expsrAt: "Y"
+    });
+    (domain.groups || []).forEach((group, groupIndex) => {
+      const groupCode = `${domainCode}${String(groupIndex + 1).padStart(2, "0")}`;
+      rows.push({
+        code: groupCode,
+        codeNm: group.title || groupCode,
+        codeDc: group.titleEn || group.title || groupCode,
+        menuUrl: "",
+        menuIcon: group.icon || "folder_open",
+        sortOrdr: groupIndex + 1,
+        useAt: "Y",
+        expsrAt: "Y"
+      });
+      (group.links || []).forEach((link, linkIndex) => {
+        rows.push({
+          code: `${groupCode}${String(linkIndex + 1).padStart(2, "0")}`,
+          codeNm: link.text || link.tEn || link.code || `${groupCode}${linkIndex + 1}`,
+          codeDc: link.tEn || link.text || link.code || `${groupCode}${linkIndex + 1}`,
+          menuUrl: link.u || "",
+          menuIcon: link.icon || "chevron_right",
+          sortOrdr: linkIndex + 1,
+          useAt: "Y",
+          expsrAt: "Y",
+          standardMenuCode: link.code || "",
+          standardSource: en ? "Normalized admin menu" : "신규 표준 관리자 메뉴"
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+function buildStandardAdminGroupOptions(rows: Array<Record<string, unknown>>) {
+  return rows
+    .filter((row) => {
+      const code = stringOf(row, "code");
+      return code.length === 4 || code.length === 6;
+    })
+    .map((row) => ({
+      value: stringOf(row, "code"),
+      label: `${stringOf(row, "code")} ${stringOf(row, "codeNm")}`
+    }));
+}
 
 function readMenuTypeFromLocation() {
   return new URLSearchParams(window.location.search).get("menuType") || "ADMIN";
@@ -128,9 +186,15 @@ export function MenuManagementMigrationPage() {
   const pageState = useAsyncValue<MenuManagementPagePayload>(() => fetchMenuManagementPage(menuType), [menuType]);
   const page = pageState.value;
 
-  const rows = useMemo(() => (page?.menuRows || []) as Array<Record<string, unknown>>, [page?.menuRows]);
+  const standardAdminRows = useMemo(() => buildStandardAdminMenuRows(en), [en]);
+  const rawRows = useMemo(() => (page?.menuRows || []) as Array<Record<string, unknown>>, [page?.menuRows]);
+  const rows = useMemo(() => (menuType === "ADMIN" ? standardAdminRows : rawRows), [menuType, rawRows, standardAdminRows]);
   const menuTypes = ((page?.menuTypes || []) as Array<Record<string, unknown>>);
-  const groupMenuOptions = ((page?.groupMenuOptions || []) as Array<Record<string, string>>);
+  const groupMenuOptions = useMemo(() => (
+    menuType === "ADMIN"
+      ? buildStandardAdminGroupOptions(rows)
+      : ((page?.groupMenuOptions || []) as Array<Record<string, string>>)
+  ), [menuType, page?.groupMenuOptions, rows]);
   const iconOptions = ((page?.iconOptions || []) as string[]);
   const useAtOptions = ((page?.useAtOptions || []) as string[]);
   const menuCodeRows = useMemo(() => rows.map((row) => ({ code: stringOf(row, "code").toUpperCase() })), [rows]);
