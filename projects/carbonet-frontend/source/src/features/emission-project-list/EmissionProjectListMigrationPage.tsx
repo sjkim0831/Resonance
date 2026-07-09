@@ -66,6 +66,48 @@ function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
   image.src = GOV_SYMBOL_FALLBACK;
 }
 
+function getQueueHref(item: QueueItem) {
+  if (item.icon === "open_in_new" || item.title.includes("Energy") || item.title.includes("에너지")) {
+    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+  }
+  if (item.icon === "fact_check" || item.title.includes("Verification") || item.title.includes("검증")) {
+    return buildLocalizedPath("/emission/validate", "/en/emission/validate");
+  }
+  if (item.icon === "trending_down" || item.title.includes("analysis") || item.title.includes("분석")) {
+    return buildLocalizedPath("/co2/analysis", "/en/co2/analysis");
+  }
+  return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
+}
+
+function getSiteActionHref(label: string) {
+  if (label.includes("입력") || label.includes("Input")) {
+    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+  }
+  if (label.includes("산정") || label.includes("Logic") || label.includes("Calculation")) {
+    return buildLocalizedPath("/emission/simulate", "/en/emission/simulate");
+  }
+  if (label.includes("보완") || label.includes("Document") || label.includes("Upload")) {
+    return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
+  }
+  if (label.includes("이력") || label.includes("History")) {
+    return buildLocalizedPath("/emission/data_history", "/en/emission/data_history");
+  }
+  if (label.includes("검증") || label.includes("Verification")) {
+    return buildLocalizedPath("/emission/validate", "/en/emission/validate");
+  }
+  if (label.includes("보고서") || label.includes("Report")) {
+    return buildLocalizedPath("/emission/result_list", "/en/emission/result_list");
+  }
+  return buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
+}
+
+function getGeneralSiteHref(site: GeneralSite) {
+  if (site.status.includes("대기") || site.status.includes("Pending")) {
+    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+  }
+  return buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
+}
+
 function EmissionProjectListInlineStyles() {
   return (
     <style>{`
@@ -413,7 +455,7 @@ export function EmissionProjectListMigrationPage() {
                         </div>
                         <h4 className="text-white font-bold text-sm mb-1">{item.title}</h4>
                         <p className="text-slate-400 text-[11px] mb-4">{item.description}</p>
-                        <a className="inline-flex items-center text-[11px] font-bold text-indigo-400 hover:text-indigo-300 gap-1 mt-auto" href="#">
+                        <a className="inline-flex items-center text-[11px] font-bold text-indigo-400 hover:text-indigo-300 gap-1 mt-auto" href={getQueueHref(item)}>
                           {item.cta} <span className="material-symbols-outlined text-[14px]">{item.icon}</span>
                         </a>
                       </div>
@@ -482,7 +524,7 @@ export function EmissionProjectListMigrationPage() {
                       <span className={`material-symbols-outlined text-[18px] ${site.noticeIcon === "warning" ? "text-red-600 urgent-pulse" : site.noticeIcon === "verified" ? "text-blue-600" : "text-indigo-600"}`}>{site.noticeIcon}</span>
                       <span className="text-[11px] font-bold text-slate-800">{site.notice}</span>
                     </div>
-                    <a className="text-[10px] font-black underline text-indigo-600" href="#">{site.noticeLink}</a>
+                    <a className="text-[10px] font-black underline text-indigo-600" href={getSiteActionHref(site.noticeLink)}>{site.noticeLink}</a>
                   </div>
                   <div className="p-6 space-y-8 flex-1">
                     <div className="flex justify-between items-end">
@@ -503,7 +545,7 @@ export function EmissionProjectListMigrationPage() {
                       {site.actions.map((action) => (
                         <a
                           className={`flex flex-col items-center justify-center p-4 rounded-xl group transition-all ${action.solid ? "bg-orange-600 shadow-lg shadow-orange-600/20" : "bg-gray-50 hover:bg-blue-600"}`}
-                          href="#"
+                          href={getSiteActionHref(action.label)}
                           key={action.label}
                         >
                           <span className={`material-symbols-outlined mb-1 ${action.solid ? "text-white" : "text-gray-400 group-hover:text-white"}`}>{action.icon}</span>
@@ -551,7 +593,7 @@ export function EmissionProjectListMigrationPage() {
                       <div className="flex justify-between"><span className="text-gray-500">{en ? "Emission" : "배출량"}</span><span className="font-bold">{site.value}</span></div>
                       <div className="flex justify-between"><span className="text-gray-500">{en ? "Status" : "상태"}</span><span className={`font-bold ${site.statusClass}`}>{site.status}</span></div>
                     </div>
-                    <button className={`w-full py-2.5 text-xs font-bold border rounded ${site.actionClass}`} type="button">{site.action}</button>
+                    <button className={`w-full py-2.5 text-xs font-bold border rounded ${site.actionClass}`} onClick={() => navigate(getGeneralSiteHref(site))} type="button">{site.action}</button>
                   </div>
                 </div>
               ))}
@@ -652,9 +694,9 @@ export function EmissionProjectListMigrationPage() {
                 </address>
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                <a className="text-[var(--kr-gov-blue)] hover:underline" href="#">{en ? "Privacy Policy" : "개인정보처리방침"}</a>
-                <a className="text-gray-600 hover:underline" href="#">{en ? "Terms of Use" : "이용약관"}</a>
-                <a className="text-gray-600 hover:underline" href="#">{en ? "Manual Download" : "매뉴얼 다운로드"}</a>
+                <a className="text-[var(--kr-gov-blue)] hover:underline" href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Privacy Policy" : "개인정보처리방침"}</a>
+                <a className="text-gray-600 hover:underline" href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Terms of Use" : "이용약관"}</a>
+                <a className="text-gray-600 hover:underline" href={buildLocalizedPath("/support/post_list", "/en/support/post_list")}>{en ? "Manual Download" : "매뉴얼 다운로드"}</a>
               </div>
             </div>
             <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
