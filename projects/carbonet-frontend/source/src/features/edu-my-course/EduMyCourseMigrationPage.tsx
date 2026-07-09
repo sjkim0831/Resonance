@@ -290,6 +290,16 @@ function getTrackLabel(track: CourseTrack, en: boolean) {
   return en ? "Leadership" : "리더십";
 }
 
+function getCoursePrimaryHref(course: MyCourseItem) {
+  if (course.status === "in-progress") {
+    return buildLocalizedPath("/edu/progress", "/en/edu/progress");
+  }
+  if (course.status === "scheduled") {
+    return `${buildLocalizedPath("/edu/course_detail", "/en/edu/course_detail")}?courseId=${encodeURIComponent(course.id)}`;
+  }
+  return buildLocalizedPath("/edu/certificate", "/en/edu/certificate");
+}
+
 export function EduMyCourseMigrationPage() {
   const en = isEnglish();
   const copy = COPY[en ? "en" : "ko"];
@@ -355,11 +365,14 @@ export function EduMyCourseMigrationPage() {
                 <PageStatusNotice tone="success">{copy.pageStatus}</PageStatusNotice>
               </div>
               <div className="mt-8 flex flex-wrap gap-3">
-                <HomeButton size="sm" type="button" variant="primary" icon="play_circle">
+                <HomeButton size="sm" type="button" variant="primary" icon="play_circle" onClick={() => navigate(buildLocalizedPath("/edu/progress", "/en/edu/progress"))}>
                   {copy.continueLabel}
                 </HomeButton>
                 <HomeLinkButton href={buildLocalizedPath("/edu/course_list", "/en/edu/course_list")} size="sm" variant="secondary" icon="menu_book">
                   {copy.courseListLabel}
+                </HomeLinkButton>
+                <HomeLinkButton href={buildLocalizedPath("/edu/survey", "/en/edu/survey")} size="sm" variant="secondary" icon="assignment_turned_in">
+                  {en ? "Survey" : "설문"}
                 </HomeLinkButton>
               </div>
             </div>
@@ -485,11 +498,11 @@ export function EduMyCourseMigrationPage() {
                       </div>
                     </dl>
                     <div className="mt-6 flex gap-3">
-                      <HomeButton className="flex-1" type="button" variant="primary" size="sm" icon="play_circle">
+                      <HomeButton className="flex-1" type="button" variant="primary" size="sm" icon="play_circle" onClick={() => navigate(getCoursePrimaryHref(course))}>
                         {copy.continueLabel}
                       </HomeButton>
                       {course.status === "completed" ? (
-                        <HomeButton className="flex-1" type="button" variant="secondary" size="sm" icon="workspace_premium">
+                        <HomeButton className="flex-1" type="button" variant="secondary" size="sm" icon="workspace_premium" onClick={() => navigate(buildLocalizedPath("/edu/certificate", "/en/edu/certificate"))}>
                           {copy.certificateLabel}
                         </HomeButton>
                       ) : null}
@@ -540,6 +553,9 @@ export function EduMyCourseMigrationPage() {
                     <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-indigo-600">{en ? item.badgeEn : item.badge}</p>
                     <h4 className="mt-2 text-lg font-black text-slate-900">{en ? item.titleEn : item.title}</h4>
                     <p className="mt-2 text-sm leading-6 text-slate-500">{en ? item.bodyEn : item.body}</p>
+                    <HomeButton className="mt-4" type="button" variant="secondary" size="sm" icon="arrow_forward" onClick={() => navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list"))}>
+                      {copy.courseListLabel}
+                    </HomeButton>
                   </article>
                 ))}
               </div>
@@ -556,6 +572,14 @@ export function EduMyCourseMigrationPage() {
                   </li>
                 ))}
               </ul>
+              <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                <HomeButton type="button" variant="secondary" size="sm" icon="query_stats" onClick={() => navigate(buildLocalizedPath("/edu/progress", "/en/edu/progress"))}>
+                  {en ? "Open Progress" : "진도 관리"}
+                </HomeButton>
+                <HomeButton type="button" variant="secondary" size="sm" icon="workspace_premium" onClick={() => navigate(buildLocalizedPath("/edu/certificate", "/en/edu/certificate"))}>
+                  {copy.certificateLabel}
+                </HomeButton>
+              </div>
             </div>
           </div>
         </section>
