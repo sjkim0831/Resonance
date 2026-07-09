@@ -198,14 +198,15 @@ const rows = routePageFiles.map((rel) => {
   const effectiveSourcePaths = [...new Set(entriesForSource.map((entry) => entry.effectiveSourcePath || entry.sourcePath))];
   const effectiveExportNames = [...new Set(entriesForSource.map((entry) => entry.effectiveExportName || entry.exportName))];
   const routeIds = entriesForSource.map((entry) => entry.routeId).sort((a, b) => a.localeCompare(b));
-  const filePath = path.join(srcRoot, rel);
+  const analysisRel = effectiveSourcePaths[0] || rel;
+  const filePath = path.join(srcRoot, analysisRel);
   const exists = fs.existsSync(filePath);
   const source = exists ? fs.readFileSync(filePath, "utf8") : "";
   const lineCount = source.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length;
-  const [status, reason] = classify(rel, source, lineCount, exists);
+  const [status, reason] = classify(analysisRel, source, lineCount, exists);
   return {
     sourcePath: rel,
-    effectiveSourcePath: effectiveSourcePaths[0] || rel,
+    effectiveSourcePath: analysisRel,
     effectiveSourcePaths,
     effectiveExportNames,
     routeIds,

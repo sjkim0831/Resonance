@@ -17,7 +17,7 @@ const CONTENT_SUPPORT_ROUTE_DEFINITIONS = [
   { id: "admin-menu-placeholder", label: "관리자 메뉴 플레이스홀더", group: "admin", koPath: "/admin/placeholder", enPath: "/en/admin/placeholder" },
   { id: "download-list", label: "자료실", group: "home", koPath: "/support/download_list", enPath: "/en/support/download_list" },
   { id: "notice-list", label: "공지사항", group: "home", koPath: "/support/notice_list", enPath: "/en/support/notice_list" },
-  { id: "qna-list", label: "Q&A", group: "home", koPath: "/support/qna_list", enPath: "/en/support/qna_list" },
+  { id: "qna-list", label: "지원 통합검색", group: "home", koPath: "/support/qna_list", enPath: "/en/support/qna_list" },
   { id: "sitemap", label: "사이트맵", group: "home", koPath: "/sitemap", enPath: "/en/sitemap" },
   { id: "home-menu-placeholder", label: "사용자 메뉴 플레이스홀더", group: "home", koPath: "/placeholder", enPath: "/en/placeholder" }
 ] as const satisfies RouteDefinitionsOf;

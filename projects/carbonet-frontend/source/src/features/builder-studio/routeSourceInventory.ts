@@ -2162,7 +2162,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "qna-list",
-    "label": "Q&A",
+    "label": "지원 통합검색",
     "group": "home",
     "koPath": "/support/qna_list",
     "enPath": "/en/support/qna_list",
