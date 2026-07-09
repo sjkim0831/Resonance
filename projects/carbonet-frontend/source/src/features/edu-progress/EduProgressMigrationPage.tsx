@@ -223,6 +223,16 @@ function includesKeyword(values: string[], keyword: string) {
   return values.some((value) => value.toLowerCase().includes(normalized));
 }
 
+function getActiveCourseHref(course: LocalizedCourse) {
+  if (course.progress >= 100) {
+    return buildLocalizedPath("/edu/certificate", "/en/edu/certificate");
+  }
+  if (course.id === "active-2") {
+    return buildLocalizedPath("/edu/survey", "/en/edu/survey");
+  }
+  return `${buildLocalizedPath("/edu/course_detail", "/en/edu/course_detail")}?courseId=${encodeURIComponent(course.id)}`;
+}
+
 export function EduProgressMigrationPage() {
   const en = isEnglish();
   const [query, setQuery] = useState("");
@@ -360,7 +370,7 @@ export function EduProgressMigrationPage() {
                   <span className="rounded border border-indigo-500/40 bg-indigo-500/30 px-2 py-1 font-bold text-indigo-300">{en ? "LCA expertise: 45%" : "LCA 전문성: 45%"}</span>
                 </div>
               </div>
-              <HomeButton className="w-full justify-center bg-indigo-600 hover:bg-indigo-500 focus-visible:ring-indigo-300" onClick={() => {}}>
+              <HomeButton className="w-full justify-center bg-indigo-600 hover:bg-indigo-500 focus-visible:ring-indigo-300" onClick={() => navigate(buildLocalizedPath("/edu/content", "/en/edu/content"))}>
                 <span className="material-symbols-outlined text-[18px]">trending_up</span>
                 {copy.analyzerAction}
               </HomeButton>
@@ -386,7 +396,7 @@ export function EduProgressMigrationPage() {
                         <span className="h-6 w-6 rounded-full border-2 border-slate-900 bg-gray-500" />
                         <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-slate-900 bg-gray-600 text-[8px] text-white">+12</span>
                       </div>
-                      <button className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:underline" type="button">
+                      <button className="flex items-center gap-1 text-xs font-bold text-indigo-400 group-hover:underline" onClick={() => navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list"))} type="button">
                         {en ? course.metaEn : course.meta}
                         <span className="material-symbols-outlined text-[14px]">{course.icon}</span>
                       </button>
@@ -428,7 +438,7 @@ export function EduProgressMigrationPage() {
               </h2>
               <p className="text-sm text-[var(--kr-gov-text-secondary)]">{copy.activeBody}</p>
             </div>
-            <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-500 transition-colors hover:bg-gray-50" type="button">
+            <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-500 transition-colors hover:bg-gray-50" onClick={() => navigate(buildLocalizedPath("/edu/my_course", "/en/edu/my_course"))} type="button">
               {copy.downloadAction}
             </button>
           </div>
@@ -464,7 +474,7 @@ export function EduProgressMigrationPage() {
                     </div>
                     <HomeButton
                       className={course.id === "active-2" ? "bg-orange-600 hover:bg-orange-700 focus-visible:ring-orange-300" : course.id === "active-3" ? "border border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50 focus-visible:ring-emerald-300" : "bg-gray-50 text-[var(--kr-gov-blue)] hover:bg-blue-100 focus-visible:ring-blue-200"}
-                      onClick={() => {}}
+                      onClick={() => navigate(getActiveCourseHref(course))}
                     >
                       {en ? course.actionEn : course.action}
                     </HomeButton>
@@ -479,7 +489,7 @@ export function EduProgressMigrationPage() {
               {copy.interestTitle}
               <span className="ml-2 text-sm font-normal text-gray-400">{copy.interestBody}</span>
             </h2>
-            <button className="flex items-center gap-1 text-sm font-bold text-[var(--kr-gov-blue)]" type="button">
+            <button className="flex items-center gap-1 text-sm font-bold text-[var(--kr-gov-blue)]" onClick={() => navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list"))} type="button">
               {copy.viewAll}
               <span className="material-symbols-outlined text-[16px]">chevron_right</span>
             </button>
@@ -498,12 +508,12 @@ export function EduProgressMigrationPage() {
                 <div className="mb-4 text-[11px] text-gray-400">{en ? course.metaEn : course.meta}</div>
                 <div className="flex items-center justify-between">
                   <span className="font-black text-gray-800">{course.price}</span>
-                  <button className="text-xs font-bold text-[var(--kr-gov-blue)]" type="button">{en ? course.actionEn : course.action}</button>
+                  <button className="text-xs font-bold text-[var(--kr-gov-blue)]" onClick={() => navigate(`${buildLocalizedPath("/edu/course_detail", "/en/edu/course_detail")}?courseId=${encodeURIComponent(course.id)}`)} type="button">{en ? course.actionEn : course.action}</button>
                 </div>
               </article>
             ))}
 
-            <button className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-6 transition-all hover:border-[var(--kr-gov-blue)] hover:bg-blue-50/30" type="button">
+            <button className="group flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 p-6 transition-all hover:border-[var(--kr-gov-blue)] hover:bg-blue-50/30" onClick={() => navigate(buildLocalizedPath("/edu/course_list", "/en/edu/course_list"))} type="button">
               <span className="material-symbols-outlined mb-2 text-[32px] text-gray-300 group-hover:text-[var(--kr-gov-blue)]">add_circle</span>
               <span className="text-xs font-bold text-gray-400 group-hover:text-[var(--kr-gov-blue)]">{copy.findMore}</span>
             </button>
@@ -580,7 +590,9 @@ export function EduProgressMigrationPage() {
                           <p className="text-[10px] text-gray-400">{certificate.date}</p>
                         </div>
                       </div>
-                      <span className="material-symbols-outlined text-sm text-gray-300">open_in_new</span>
+                      <button className="text-gray-300 transition hover:text-[var(--kr-gov-blue)]" onClick={() => navigate(buildLocalizedPath("/edu/certificate", "/en/edu/certificate"))} type="button">
+                        <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      </button>
                     </article>
                   ))}
                 </div>

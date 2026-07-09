@@ -1404,7 +1404,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 610,
+    "lineCount": 621,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": false,
