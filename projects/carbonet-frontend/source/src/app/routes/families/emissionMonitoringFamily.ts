@@ -21,7 +21,7 @@ const EMISSION_MONITORING_ROUTE_DEFINITIONS = [
   { id: "certificate-rec-check", label: "REC 중복 확인", group: "admin", koPath: "/admin/certificate/rec_check", enPath: "/en/admin/certificate/rec_check" },
   { id: "certificate-audit-log", label: "인증서 감사 로그", group: "admin", koPath: "/admin/certificate/audit-log", enPath: "/en/admin/certificate/audit-log" },
   { id: "certificate-objection-list", label: "이의신청 처리", group: "admin", koPath: "/admin/certificate/objection_list", enPath: "/en/admin/certificate/objection_list" },
-  { id: "emission-project-list", label: "배출량 관리", group: "home", koPath: "/emission/project_list", enPath: "/en/emission/project_list" },
+  { id: "emission-project-list", label: "배출 관제 홈", group: "home", koPath: "/emission/project_list", enPath: "/en/emission/project_list" },
   { id: "emission-reduction", label: "감축 시나리오", group: "home", koPath: "/emission/reduction", enPath: "/en/emission/reduction" },
   { id: "emission-lci", label: "LCI DB 조회", group: "home", koPath: "/emission/lci", enPath: "/en/emission/lci" },
   { id: "emission-data-input", label: "데이터 입력", group: "home", koPath: "/emission/data_input", enPath: "/en/emission/data_input" },

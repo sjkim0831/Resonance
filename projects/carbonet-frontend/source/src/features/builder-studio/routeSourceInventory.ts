@@ -962,7 +962,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-project-list",
-    "label": "배출량 관리",
+    "label": "배출 관제 홈",
     "group": "home",
     "koPath": "/emission/project_list",
     "enPath": "/en/emission/project_list",

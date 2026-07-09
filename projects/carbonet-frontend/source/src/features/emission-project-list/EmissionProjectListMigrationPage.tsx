@@ -88,6 +88,26 @@ type RegistryRow = {
   href: string;
 };
 
+type RelatedFunctionGroup = {
+  title: string;
+  description: string;
+  icon: string;
+  items: Array<{
+    label: string;
+    href: string;
+    note: string;
+    status: string;
+  }>;
+};
+
+type NextHomePageProposal = {
+  order: string;
+  title: string;
+  href: string;
+  reason: string;
+  mergeHint: string;
+};
+
 function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget;
   if (image.dataset.fallbackApplied === "1") {
@@ -404,6 +424,110 @@ export function EmissionProjectListMigrationPage() {
     { id: "PJ-088", site: "파주 전산센터", scope: "Scope 2", process: "데이터센터 전력", emission: "890 tCO2", completeness: "100%", status: "정상", owner: "IT 설비", due: "2025.08.23", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "PJ-088") }
   ], [en]);
 
+  const relatedFunctionGroups = useMemo<RelatedFunctionGroup[]>(() => en ? [
+    {
+      title: "Sites & Activity Data",
+      description: "Keep site registry, monthly activity data, and source evidence in one operational lane.",
+      icon: "hub",
+      items: [
+        { label: "Emission Control Home", href: buildLocalizedPath("/emission/project_list", "/en/emission/project_list"), note: "Current control hub", status: "Expanded" },
+        { label: "Data Input", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), note: "Fuel, power, process, transport, and evidence", status: "Expanded" },
+        { label: "Site Management", href: adminSiteManagementHref, note: "Admin source of truth for emission sites", status: "Admin" },
+        { label: "Data History", href: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history"), note: "Change evidence and audit trail", status: "Linked" }
+      ]
+    },
+    {
+      title: "Calculation & Verification",
+      description: "Move from activity data to factor mapping, result inspection, and verification queue.",
+      icon: "rule_settings",
+      items: [
+        { label: "Simulation", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), note: "Recommended next page to expand", status: "Next" },
+        { label: "Result List", href: buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list"), note: "Calculated result review and drilldown", status: "Admin" },
+        { label: "Home Verification", href: buildLocalizedPath("/emission/validate", "/en/emission/validate"), note: "Member-facing validation handoff", status: "Expanded" },
+        { label: "Admin Verification", href: buildLocalizedPath("/admin/emission/validate", "/en/admin/emission/validate"), note: "Verifier queue and approval evidence", status: "Admin" }
+      ]
+    },
+    {
+      title: "Reports & Analysis",
+      description: "Package calculated results into reports, LCA analysis, reduction scenarios, and exports.",
+      icon: "summarize",
+      items: [
+        { label: "Report Submit", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit"), note: "Report package generation and submission", status: "Expanded" },
+        { label: "LCA Analysis", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), note: "Product and process impact analysis", status: "Candidate" },
+        { label: "Reduction Scenario", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), note: "Reduction portfolio and investment options", status: "Candidate" },
+        { label: "Report Export", href: buildLocalizedPath("/monitoring/export", "/en/monitoring/export"), note: "External report and evidence export", status: "Candidate" }
+      ]
+    },
+    {
+      title: "MRV & Market Linkage",
+      description: "Connect operational emissions to monitoring, MRV search, integrity, and credit views.",
+      icon: "account_tree",
+      items: [
+        { label: "Monitoring Dashboard", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), note: "Executive monitoring surface", status: "Candidate" },
+        { label: "MRV Information", href: buildLocalizedPath("/co2/search", "/en/co2/search"), note: "Searchable MRV ledger", status: "Candidate" },
+        { label: "Integrity Tracking", href: buildLocalizedPath("/co2/integrity", "/en/co2/integrity"), note: "Traceability and anti-duplication view", status: "Candidate" },
+        { label: "Carbon Credit", href: buildLocalizedPath("/co2/credit", "/en/co2/credit"), note: "Credit conversion and market handoff", status: "Candidate" }
+      ]
+    }
+  ] : [
+    {
+      title: "배출지·활동자료",
+      description: "배출지 원장, 월별 활동자료, 증빙 수집을 하나의 운영 흐름으로 묶었습니다.",
+      icon: "hub",
+      items: [
+        { label: "배출 관제 홈", href: buildLocalizedPath("/emission/project_list", "/en/emission/project_list"), note: "현재 화면의 기준 관제 허브", status: "확장 완료" },
+        { label: "데이터 입력", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), note: "연료, 전력, 공정, 운송, 증빙 입력", status: "확장 완료" },
+        { label: "배출지 관리", href: adminSiteManagementHref, note: "관리자 기준 배출지 마스터", status: "관리자" },
+        { label: "데이터 변경 이력", href: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history"), note: "변경 증적과 감사 추적", status: "연결" }
+      ]
+    },
+    {
+      title: "산정·검증",
+      description: "활동자료에서 배출계수 매핑, 산정 결과 확인, 검증 큐까지 바로 이어집니다.",
+      icon: "rule_settings",
+      items: [
+        { label: "시뮬레이션", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), note: "다음 확장 우선 후보", status: "다음 작업" },
+        { label: "산정 결과 목록", href: buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list"), note: "산정 결과 검토와 상세 이동", status: "관리자" },
+        { label: "산정 검증", href: buildLocalizedPath("/emission/validate", "/en/emission/validate"), note: "회원 화면 기준 검증 전달", status: "확장 완료" },
+        { label: "검증 관리", href: buildLocalizedPath("/admin/emission/validate", "/en/admin/emission/validate"), note: "검증자 큐와 승인 증적", status: "관리자" }
+      ]
+    },
+    {
+      title: "보고서·분석",
+      description: "산정 결과를 보고서, LCA, 감축 시나리오, 외부 제출 자료로 패키징합니다.",
+      icon: "summarize",
+      items: [
+        { label: "배출량 보고서 작성", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit"), note: "보고서 패키지 생성과 제출", status: "확장 완료" },
+        { label: "LCA 분석", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), note: "제품·공정 영향 분석", status: "후보" },
+        { label: "감축 시나리오", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), note: "감축 포트폴리오와 투자 옵션", status: "후보" },
+        { label: "분석 리포트 내보내기", href: buildLocalizedPath("/monitoring/export", "/en/monitoring/export"), note: "외부 제출 보고서와 증빙 export", status: "후보" }
+      ]
+    },
+    {
+      title: "MRV·시장 연계",
+      description: "운영 배출 데이터를 모니터링, MRV 조회, 무결성, 크레딧 화면으로 연결합니다.",
+      icon: "account_tree",
+      items: [
+        { label: "통합 대시보드", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), note: "경영진용 모니터링 화면", status: "후보" },
+        { label: "MRV 정보", href: buildLocalizedPath("/co2/search", "/en/co2/search"), note: "검색 가능한 MRV 원장", status: "후보" },
+        { label: "무결성 추적", href: buildLocalizedPath("/co2/integrity", "/en/co2/integrity"), note: "추적성과 중복 방지 화면", status: "후보" },
+        { label: "탄소 크레딧", href: buildLocalizedPath("/co2/credit", "/en/co2/credit"), note: "크레딧 전환과 시장 연계", status: "후보" }
+      ]
+    }
+  ], [adminSiteManagementHref, en]);
+
+  const nextHomePageProposals = useMemo<NextHomePageProposal[]>(() => en ? [
+    { order: "01", title: "Simulation", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), reason: "It consumes the site and data-input flow immediately.", mergeHint: "Move remaining calculation, factor, and variance sections here." },
+    { order: "02", title: "LCA Analysis", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), reason: "It should reuse calculated emission results and product/process sections.", mergeHint: "Group product footprint, lifecycle stage, and sensitivity sections." },
+    { order: "03", title: "Reduction Scenario", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), reason: "It needs outputs from simulation and LCA to be actionable.", mergeHint: "Group reduction portfolio, cost, payback, and verification sections." },
+    { order: "04", title: "Monitoring Dashboard", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), reason: "It is the executive view after site data, calculation, and reports are stable.", mergeHint: "Merge live KPI, alerts, reduction trend, and export shortcuts." }
+  ] : [
+    { order: "01", title: "시뮬레이션", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), reason: "배출지와 데이터 입력 흐름을 바로 소비하는 산정 중심 화면입니다.", mergeHint: "남는 산정식, 계수, 편차 분석 섹션을 이 화면으로 모읍니다." },
+    { order: "02", title: "LCA 분석", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), reason: "산정 결과를 제품·공정 단위 영향 분석으로 확장해야 합니다.", mergeHint: "제품 탄소발자국, 생애주기 단계, 민감도 섹션을 묶습니다." },
+    { order: "03", title: "감축 시나리오", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), reason: "시뮬레이션과 LCA 결과가 있어야 실행 가능한 화면이 됩니다.", mergeHint: "감축 포트폴리오, 비용, 회수기간, 검증 섹션을 묶습니다." },
+    { order: "04", title: "통합 대시보드", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), reason: "입력·산정·보고가 안정된 뒤 경영진 관점으로 보여줄 화면입니다.", mergeHint: "실시간 KPI, 경보, 감축 추이, 내보내기 단축 기능을 합칩니다." }
+  ], [en]);
+
   const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
   const filteredDedicatedSites = useMemo(() => {
     if (!normalizedSearchKeyword) {
@@ -438,9 +562,11 @@ export function EmissionProjectListMigrationPage() {
       filteredDedicatedSiteCount: filteredDedicatedSites.length,
       generalSiteCount: generalSites.length,
       filteredGeneralSiteCount: filteredGeneralSites.length,
-      registryRowCount: filteredRegistryRows.length
+      registryRowCount: filteredRegistryRows.length,
+      relatedGroupCount: relatedFunctionGroups.length,
+      nextProposalCount: nextHomePageProposals.length
     });
-  }, [dedicatedSites.length, en, filteredDedicatedSites.length, filteredGeneralSites.length, filteredRegistryRows.length, generalSites.length, homeMenu.length, mobileMenuOpen, payload.isLoggedIn, queueItems.length, searchKeyword]);
+  }, [dedicatedSites.length, en, filteredDedicatedSites.length, filteredGeneralSites.length, filteredRegistryRows.length, generalSites.length, homeMenu.length, mobileMenuOpen, nextHomePageProposals.length, payload.isLoggedIn, queueItems.length, relatedFunctionGroups.length, searchKeyword]);
 
   return (
     <>
@@ -636,6 +762,83 @@ export function EmissionProjectListMigrationPage() {
                       <div className="h-2 overflow-hidden rounded-full bg-white">
                         <div className="h-full rounded-full bg-[var(--kr-gov-blue)]" style={{ width: step.progress }} />
                       </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-10" data-help-id="emission-project-related-functions">
+            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--kr-gov-blue)]">{en ? "Function Map" : "기능 재구성 지도"}</p>
+                <h2 className="mt-1 text-2xl font-black text-gray-900">{en ? "Grouped Emission Workspaces" : "연관 기능별 배출 업무 묶음"}</h2>
+                <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">
+                  {en
+                    ? "Related home and admin pages are grouped so leftover sections can be moved to the right screen."
+                    : "홈·관리자 화면의 연관 기능을 묶어, 남는 섹션이 생기면 맞는 화면으로 이식할 수 있게 정리했습니다."}
+                </p>
+              </div>
+              <a className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-slate-800" href={buildLocalizedPath("/admin/system/menu", "/en/admin/system/menu")}>
+                <span className="material-symbols-outlined text-[16px]">account_tree</span>
+                {en ? "Open Menu Management" : "메뉴 관리 열기"}
+              </a>
+            </div>
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-4">
+              {relatedFunctionGroups.map((group) => (
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm" key={group.title}>
+                  <div className="mb-4 flex items-start gap-3">
+                    <span className="material-symbols-outlined rounded-xl bg-blue-50 p-3 text-[var(--kr-gov-blue)]">{group.icon}</span>
+                    <div>
+                      <h3 className="font-black text-gray-900">{group.title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">{group.description}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {group.items.map((item) => (
+                      <a className="block rounded-xl border border-gray-100 bg-slate-50 p-3 transition hover:border-[var(--kr-gov-blue)] hover:bg-white" href={item.href} key={`${group.title}-${item.label}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-black text-gray-900">{item.label}</span>
+                          <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[10px] font-black text-gray-500 shadow-sm">{item.status}</span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-4 text-gray-500">{item.note}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-8" data-help-id="emission-project-next-home-plan">
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6">
+              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-700">{en ? "Home Menu Expansion Queue" : "홈 메뉴 확장 대기열"}</p>
+                  <h2 className="mt-1 text-2xl font-black text-gray-900">{en ? "Suggested Next Pages" : "다음 작업 추천 화면"}</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {en
+                      ? "This list is the working inventory for expanding home pages one by one."
+                      : "이 목록은 홈 메뉴를 한 페이지씩 확장할 때 이어서 확인할 작업 재고입니다."}
+                  </p>
+                </div>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-indigo-700 shadow-sm">
+                  <span className="material-symbols-outlined text-[16px]">playlist_add_check</span>
+                  {en ? "Accumulated from this screen" : "현재 화면 기준 축적"}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+                {nextHomePageProposals.map((proposal) => (
+                  <a className="rounded-xl border border-white bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md" href={proposal.href} key={proposal.order}>
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="rounded-lg bg-indigo-100 px-2.5 py-1 text-xs font-black text-indigo-700">{proposal.order}</span>
+                      <span className="material-symbols-outlined text-indigo-500">arrow_forward</span>
+                    </div>
+                    <h3 className="font-black text-gray-900">{proposal.title}</h3>
+                    <p className="mt-2 min-h-[54px] text-xs leading-5 text-gray-500">{proposal.reason}</p>
+                    <div className="mt-3 rounded-lg bg-slate-50 p-3 text-[11px] font-bold leading-5 text-slate-600">
+                      {proposal.mergeHint}
                     </div>
                   </a>
                 ))}
