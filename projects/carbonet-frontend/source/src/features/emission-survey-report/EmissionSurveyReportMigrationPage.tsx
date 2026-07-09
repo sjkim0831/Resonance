@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -315,23 +315,14 @@ function nextAnimationFrame() {
   return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
-type ReportPdfDesignVariant = "classic" | "modern" | "line" | "dark";
-
-const REPORT_PDF_DESIGN_OPTIONS: Array<{ id: ReportPdfDesignVariant; label: string; enLabel: string }> = [
-  { id: "classic", label: "시안 1 청색 기관형", enLabel: "Draft 1 Blue Agency" },
-  { id: "modern", label: "시안 2 정책 보고형", enLabel: "Draft 2 Policy Report" },
-  { id: "line", label: "시안 3 결재 공문형", enLabel: "Draft 3 Approval Memo" },
-  { id: "dark", label: "시안 4 압축 보고형", enLabel: "Draft 4 Compact Agency" }
-];
-
-function buildReportPdfFileName(report: EmissionSurveyReportPayload, design: ReportPdfDesignVariant = "classic") {
+function buildReportPdfFileName(report: EmissionSurveyReportPayload) {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const name = (report.productName || report.pageTitle || "emission-survey-report")
     .replace(/[\\/:*?"<>|]+/g, " ")
     .replace(/\s+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-  return `${name || "emission-survey-report"}-${design}-${date}.pdf`;
+  return `${name || "emission-survey-report"}-${date}.pdf`;
 }
 
 function formatPercent(value: number, digits = 1) {
@@ -1231,7 +1222,6 @@ export function EmissionSurveyReportPrintPage() {
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
-  const [pdfDesignVariant, setPdfDesignVariant] = useState<ReportPdfDesignVariant>("classic");
 
   const chartSections = useMemo(
     () => (effectiveReport?.sectionSummaries || []).filter((section) => section.totalEmission > 0 || section.sharePercent > 0),
@@ -1574,7 +1564,7 @@ export function EmissionSurveyReportPrintPage() {
       return nextReport;
     });
   };
-  const handleDownloadPdf = async (design: ReportPdfDesignVariant = "classic") => {
+  const handleDownloadPdf = async () => {
     if (!effectiveReport) {
       return;
     }
@@ -1584,7 +1574,6 @@ export function EmissionSurveyReportPrintPage() {
       const record = await buildReportVerificationRecord(effectiveReport);
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
-      setPdfDesignVariant(design);
       setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
@@ -1595,7 +1584,7 @@ export function EmissionSurveyReportPrintPage() {
       const module = await import("html2pdf.js");
       const html2pdf = module.default || module;
       const pdfOptions: Record<string, unknown> = {
-          filename: buildReportPdfFileName(effectiveReport, design),
+          filename: buildReportPdfFileName(effectiveReport),
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: {
             backgroundColor: "#ffffff",
@@ -1617,41 +1606,14 @@ export function EmissionSurveyReportPrintPage() {
         .from(element)
         .toPdf();
       await worker.get("pdf").then((pdf: {
-        internal: {
-          getNumberOfPages: () => number;
-          pageSize: { getHeight: () => number; getWidth: () => number };
-        };
+        internal: { getNumberOfPages: () => number };
         setPage: (page: number) => void;
-        setDrawColor: (r: number, g: number, b: number) => void;
-        setFillColor: (r: number, g: number, b: number) => void;
         setFontSize: (size: number) => void;
-        setLineWidth: (width: number) => void;
         setTextColor: (r: number, g: number, b: number) => void;
-        rect: (x: number, y: number, width: number, height: number, style?: string) => void;
         text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
         setProperties?: (properties: Record<string, string>) => void;
       }) => {
-        const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const headerPalette: Record<ReportPdfDesignVariant, { fill: [number, number, number]; line: [number, number, number]; text: [number, number, number] }> = {
-          classic: { fill: [38, 56, 79], line: [169, 182, 198], text: [255, 255, 255] },
-          modern: { fill: [244, 248, 252], line: [31, 79, 122], text: [15, 23, 42] },
-          line: { fill: [255, 255, 255], line: [17, 24, 39], text: [17, 24, 39] },
-          dark: { fill: [246, 248, 251], line: [32, 50, 74], text: [15, 23, 42] }
-        };
-        const palette = headerPalette[design];
-        for (let page = 1; page <= pageCount; page += 1) {
-          pdf.setPage(page);
-          pdf.setFillColor(...palette.fill);
-          pdf.rect(8, 6, pageWidth - 16, 6, "F");
-          pdf.setDrawColor(...palette.line);
-          pdf.setLineWidth(0.22);
-          pdf.rect(8, 12.6, pageWidth - 16, 0.01, "S");
-          pdf.setFontSize(6);
-          pdf.setTextColor(...palette.text);
-          pdf.text(`${record.reportTitle || "Carbonet Emission Survey Report"} · ${record.certificateId}`, 10, 10);
-        }
-        pdf.setPage(pageCount);
+        pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
         pdf.setFontSize(1);
         pdf.setTextColor(255, 255, 255);
         pdf.text(verificationPayloadToBlock(record), 1, 1, { maxWidth: 1 });
@@ -1689,21 +1651,9 @@ export function EmissionSurveyReportPrintPage() {
       </style>
       <style>
         {`
-          .pdf-download-mode{
-            background:#ffffff!important;
-            color:#111827!important;
-          }
-          .pdf-download-mode.print-sheet,
-          .pdf-download-mode .print-sheet{
-            background:#ffffff!important;
-            border:2px solid #334155!important;
-            border-radius:6px!important;
-            box-shadow:inset 0 0 0 1px #cbd5e1!important;
-            padding:10px!important;
-          }
           .pdf-download-mode .pdf-table-page{
             overflow:visible!important;
-            border-radius:4px!important;
+            border-radius:18px!important;
           }
           .pdf-download-mode .pdf-table-page.print-card{
             break-inside:auto!important;
@@ -1720,258 +1670,6 @@ export function EmissionSurveyReportPrintPage() {
           .pdf-download-mode .pdf-table-page .print-input-text{
             white-space:normal!important;
           }
-          .pdf-download-mode .print-card{
-            box-shadow:none!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-report-hero{
-            background:#ffffff!important;
-            color:#111827!important;
-            border:1px solid #26384f!important;
-            border-top:12px solid #26384f!important;
-            border-radius:4px!important;
-            margin-bottom:10px!important;
-            padding:14px!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-report-hero *,
-          .pdf-download-mode.pdf-design-classic .print-report-title,
-          .pdf-download-mode.pdf-design-classic .print-report-title-tag{
-            color:#111827!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-report-total-card{
-            background:#f5f7fa!important;
-            border:1px solid #94a3b8!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-report-total-card *{
-            color:#111827!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-card{
-            background:#ffffff!important;
-            border-color:#94a3b8!important;
-            border-radius:4px!important;
-            color:#111827!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-soft-bg,
-          .pdf-download-mode.pdf-design-classic .print-total-value{
-            background:#f5f7fa!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-report-hero{
-            background:#ffffff!important;
-            color:#0b1220!important;
-            border:1px solid #1f4f7a!important;
-            border-left:14px solid #1f4f7a!important;
-            border-radius:4px!important;
-            margin-bottom:10px!important;
-            padding:14px!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-report-hero *,
-          .pdf-download-mode.pdf-design-modern .print-report-title,
-          .pdf-download-mode.pdf-design-modern .print-report-title-tag{
-            color:#0b1220!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-report-total-card{
-            background:#f3f7fb!important;
-            border:1px solid #7a99b8!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-report-total-card *{
-            color:#0b1220!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-card{
-            background:#ffffff!important;
-            border-color:#8fa8c2!important;
-            border-radius:4px!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-soft-bg,
-          .pdf-download-mode.pdf-design-modern .print-total-value{
-            background:#f3f7fb!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-report-hero{
-            background:#ffffff!important;
-            color:#111827!important;
-            border:1.5px solid #111827!important;
-            border-top:1.5px solid #111827!important;
-            border-bottom:6px double #111827!important;
-            border-radius:0!important;
-            margin-bottom:10px!important;
-            padding:13px!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-report-hero *,
-          .pdf-download-mode.pdf-design-line .print-report-title,
-          .pdf-download-mode.pdf-design-line .print-report-title-tag{
-            color:#111827!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-report-total-card{
-            background:#f8fafc!important;
-            border:1px solid #111827!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-report-total-card *{
-            color:#111827!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-card{
-            background:#ffffff!important;
-            border:1px solid #111827!important;
-            border-radius:0!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-soft-bg,
-          .pdf-download-mode.pdf-design-line .print-total-value{
-            background:#f8fafc!important;
-          }
-          .pdf-download-mode.pdf-design-dark{
-            background:#ffffff!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-report-hero{
-            background:#ffffff!important;
-            color:#0b1220!important;
-            border:1px solid #20324a!important;
-            border-top:14px solid #20324a!important;
-            border-radius:4px!important;
-            margin-bottom:10px!important;
-            padding:12px!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-report-hero *,
-          .pdf-download-mode.pdf-design-dark .print-report-title,
-          .pdf-download-mode.pdf-design-dark .print-report-title-tag{
-            color:#0b1220!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-report-total-card{
-            background:#f4f6f8!important;
-            border:1px solid #64748b!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-report-total-card *{
-            color:#0b1220!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-card,
-          .pdf-download-mode.pdf-design-dark .pdf-table-page{
-            background:#ffffff!important;
-            border-color:#94a3b8!important;
-            border-radius:4px!important;
-            color:#0f172a!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-card{
-            padding:10px!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-soft-bg,
-          .pdf-download-mode.pdf-design-dark .print-total-value{
-            background:#f6f8fb!important;
-          }
-          .pdf-download-mode.pdf-design-dark .pdf-table-page thead,
-          .pdf-download-mode.pdf-design-dark .pdf-table-page tr.bg-blue-50{
-            background:#e9eef5!important;
-          }
-          .pdf-download-mode.pdf-design-dark .pdf-table-page td,
-          .pdf-download-mode.pdf-design-dark .pdf-table-page th,
-          .pdf-download-mode.pdf-design-dark .pdf-table-page span,
-          .pdf-download-mode.pdf-design-dark .pdf-table-page div{
-            color:#0f172a!important;
-          }
-          .pdf-download-mode.pdf-design-dark .pdf-chart-page{
-            gap:8pt!important;
-          }
-          .pdf-download-mode.pdf-design-dark .pdf-chart-page .print-card{
-            padding:9pt!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-total-cell{
-            background:#f4f6f8!important;
-            color:#0f172a!important;
-          }
-          .pdf-download-mode.pdf-design-classic.print-sheet{
-            border-color:#26384f!important;
-            box-shadow:inset 0 0 0 1px #a9b6c6!important;
-          }
-          .pdf-download-mode.pdf-design-modern.print-sheet{
-            border-color:#1f4f7a!important;
-            box-shadow:inset 0 0 0 1px #b7c9da!important;
-          }
-          .pdf-download-mode.pdf-design-line.print-sheet{
-            border-color:#111827!important;
-            box-shadow:inset 0 0 0 1px #111827!important;
-          }
-          .pdf-download-mode.pdf-design-dark.print-sheet{
-            border-color:#20324a!important;
-            box-shadow:inset 0 0 0 1px #94a3b8!important;
-          }
-          .pdf-download-mode.print-sheet,
-          .pdf-download-mode .print-sheet{
-            border:0!important;
-            border-radius:0!important;
-            box-shadow:none!important;
-            padding:0!important;
-          }
-          .pdf-download-mode .print-report-hero{
-            position:relative!important;
-            overflow:hidden!important;
-          }
-          .pdf-download-mode .print-report-hero::before{
-            content:""!important;
-            display:block!important;
-            position:absolute!important;
-            left:0!important;
-            right:0!important;
-            top:0!important;
-            height:8px!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-report-hero{
-            border:1px solid #c1ccd9!important;
-            border-radius:3px!important;
-            padding:18px 16px 14px!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-report-hero::before{
-            background:#26384f!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-card{
-            border-color:#c9d3df!important;
-          }
-          .pdf-download-mode.pdf-design-classic .print-soft-bg,
-          .pdf-download-mode.pdf-design-classic .print-total-value{
-            background:#f7f9fb!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-report-hero{
-            border:1px solid #c8d7e6!important;
-            border-radius:3px!important;
-            padding:18px 16px 14px!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-report-hero::before{
-            background:#1f4f7a!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-card{
-            border-color:#c5d6e6!important;
-          }
-          .pdf-download-mode.pdf-design-modern .print-soft-bg,
-          .pdf-download-mode.pdf-design-modern .print-total-value{
-            background:#f6f9fc!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-report-hero{
-            border:1px solid #9ca3af!important;
-            border-bottom:3px double #374151!important;
-            border-radius:0!important;
-            padding:18px 16px 14px!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-report-hero::before{
-            background:#374151!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-card{
-            border:1px solid #c7cdd4!important;
-            border-radius:0!important;
-          }
-          .pdf-download-mode.pdf-design-line .print-soft-bg,
-          .pdf-download-mode.pdf-design-line .print-total-value{
-            background:#fafafa!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-report-hero{
-            border:1px solid #c6ced8!important;
-            border-radius:3px!important;
-            padding:16px 14px 12px!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-report-hero::before{
-            background:#20324a!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-card,
-          .pdf-download-mode.pdf-design-dark .pdf-table-page{
-            border-color:#ccd3dc!important;
-          }
-          .pdf-download-mode.pdf-design-dark .print-soft-bg,
-          .pdf-download-mode.pdf-design-dark .print-total-value{
-            background:#f8fafc!important;
-          }
         `}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
@@ -1979,19 +1677,14 @@ export function EmissionSurveyReportPrintPage() {
           {en ? "Back To Report" : "리포트로 돌아가기"}
         </button>
         <div className="flex items-center gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {REPORT_PDF_DESIGN_OPTIONS.map((option) => (
-              <button
-                className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-white disabled:cursor-wait disabled:bg-slate-500"
-                disabled={verificationBusy}
-                key={option.id}
-                onClick={() => handleDownloadPdf(option.id)}
-                type="button"
-              >
-                {verificationBusy && pdfDesignVariant === option.id ? (en ? "Preparing..." : "생성 중...") : (en ? option.enLabel : option.label)}
-              </button>
-            ))}
-          </div>
+          <button
+            className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:bg-slate-500"
+            disabled={verificationBusy}
+            onClick={handleDownloadPdf}
+            type="button"
+          >
+            {verificationBusy ? (en ? "Preparing PDF..." : "PDF 생성 중...") : (en ? "Download PDF" : "PDF 다운로드")}
+          </button>
           <button
             className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
             onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify"))}
@@ -2029,7 +1722,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
       ) : null}
 
-      <article className={`print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? `pdf-download-mode pdf-design-${pdfDesignVariant}` : ""}`} ref={reportArticleRef}>
+      <article className={`print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? "pdf-download-mode" : ""}`} ref={reportArticleRef}>
         <div className="print-page">
         <header className="print-ink-bg print-report-hero relative overflow-hidden bg-slate-950 px-8 py-8 text-white">
           <div className="print-report-hero-deco absolute -right-20 -top-28 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
