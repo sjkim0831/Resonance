@@ -1548,7 +1548,7 @@ export function EmissionSurveyReportPrintPage() {
       return nextReport;
     });
   };
-  const handlePrintDocument = async () => {
+  const handleDownloadPdf = async () => {
     if (!effectiveReport) {
       return;
     }
@@ -1558,7 +1558,7 @@ export function EmissionSurveyReportPrintPage() {
     saveReportVerificationRecord(record);
     setVerificationRecord(record);
     setVerificationBusy(false);
-    setVerificationMessage(en ? "Verification record saved. Print or save this page as PDF." : "진위 식별 정보가 저장되었습니다. 이 화면을 인쇄하거나 PDF로 저장하세요.");
+    setVerificationMessage(en ? "Verification record saved. Save this report as a PDF file." : "진위 식별 정보가 저장되었습니다. 이 리포트를 PDF 파일로 저장하세요.");
     const originalTitle = document.title;
     window.setTimeout(() => {
       document.title = " ";
@@ -1591,10 +1591,10 @@ export function EmissionSurveyReportPrintPage() {
           <button
             className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:bg-slate-500"
             disabled={verificationBusy}
-            onClick={handlePrintDocument}
+            onClick={handleDownloadPdf}
             type="button"
           >
-            {verificationBusy ? (en ? "Preparing..." : "인증정보 생성 중...") : (en ? "Save Verification And Download PDF" : "인증정보 저장 후 PDF 다운로드")}
+            {verificationBusy ? (en ? "Preparing..." : "인증정보 생성 중...") : (en ? "Download PDF With Verification" : "인증정보 포함 PDF 다운로드")}
           </button>
           <button
             className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
@@ -2001,7 +2001,7 @@ export function EmissionSurveyReportVerifyPage() {
                 </p>
               </div>
               <MemberButton onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-print?lang=ko", "/en/admin/emission/survey-report-print?lang=en"))} type="button" variant="secondary">
-                {en ? "Open Report Print" : "리포트 출력 열기"}
+                {en ? "Open PDF Download" : "PDF 다운로드 화면 열기"}
               </MemberButton>
             </div>
             <label className="mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50">
