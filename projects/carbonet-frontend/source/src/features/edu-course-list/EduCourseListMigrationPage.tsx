@@ -37,6 +37,18 @@ type Recommendation = {
   metaEn: string;
 };
 
+type LearningJourneyItem = {
+  icon: string;
+  title: string;
+  titleEn: string;
+  body: string;
+  bodyEn: string;
+  hrefKo: string;
+  hrefEn: string;
+  action: string;
+  actionEn: string;
+};
+
 const RECOMMENDATIONS: Recommendation[] = [
   {
     badge: "직무 추천",
@@ -67,6 +79,75 @@ const RECOMMENDATIONS: Recommendation[] = [
     summaryEn: "A practical analysis course for identifying process improvements.",
     meta: "8시간 · 수강생 1.8k+",
     metaEn: "8h · 1.8k+ learners"
+  }
+];
+
+const LEARNING_JOURNEY: LearningJourneyItem[] = [
+  {
+    icon: "explore",
+    title: "과정 탐색",
+    titleEn: "Discover courses",
+    body: "직무, 수준, 학습 목표에 맞는 과정을 검색하고 상세 정보를 확인합니다.",
+    bodyEn: "Search courses by role, level, and learning goal, then review the details.",
+    hrefKo: "/edu/course_detail",
+    hrefEn: "/en/edu/course_detail",
+    action: "상세 화면",
+    actionEn: "Course detail"
+  },
+  {
+    icon: "edit_calendar",
+    title: "교육 신청",
+    titleEn: "Apply",
+    body: "필수 이수 과정이나 기관 맞춤 과정을 신청하고 접수 상태를 확인합니다.",
+    bodyEn: "Apply for mandatory or organization-specific courses and review intake status.",
+    hrefKo: "/edu/apply",
+    hrefEn: "/en/edu/apply",
+    action: "신청하기",
+    actionEn: "Apply now"
+  },
+  {
+    icon: "play_lesson",
+    title: "나의 교육",
+    titleEn: "My learning",
+    body: "진행 중, 예정, 완료 과정을 이어서 학습하고 최근 활동을 확인합니다.",
+    bodyEn: "Continue active, scheduled, and completed courses with recent activity.",
+    hrefKo: "/edu/my_course",
+    hrefEn: "/en/edu/my_course",
+    action: "내 과정",
+    actionEn: "My courses"
+  },
+  {
+    icon: "query_stats",
+    title: "진도 관리",
+    titleEn: "Progress",
+    body: "이수율, 남은 과제, 필수 교육 마감 일정을 한 번에 점검합니다.",
+    bodyEn: "Track completion, remaining assignments, and mandatory deadlines.",
+    hrefKo: "/edu/progress",
+    hrefEn: "/en/edu/progress",
+    action: "진도 확인",
+    actionEn: "View progress"
+  },
+  {
+    icon: "assignment_turned_in",
+    title: "설문·평가",
+    titleEn: "Survey & review",
+    body: "수강 후 설문과 평가를 제출해 수료 처리와 과정 개선에 반영합니다.",
+    bodyEn: "Submit surveys and reviews after learning for completion and course improvement.",
+    hrefKo: "/edu/survey",
+    hrefEn: "/en/edu/survey",
+    action: "설문 제출",
+    actionEn: "Submit survey"
+  },
+  {
+    icon: "workspace_premium",
+    title: "수료·자격 연계",
+    titleEn: "Certificate & qualification",
+    body: "수료증을 발급하고 직무 자격 또는 인증 트랙과 연결합니다.",
+    bodyEn: "Issue certificates and connect completion to role qualification tracks.",
+    hrefKo: "/edu/certificate",
+    hrefEn: "/en/edu/certificate",
+    action: "수료증",
+    actionEn: "Certificate"
   }
 ];
 
@@ -275,6 +356,9 @@ export function EduCourseListMigrationPage() {
     emptyBody: en ? "Try another keyword or broaden the category and level filters." : "검색어를 바꾸거나 카테고리와 난이도를 넓혀 보세요.",
     tagsTitle: en ? "Popular Tags" : "인기 태그",
     noticeTitle: en ? "Announcements" : "공지사항",
+    journeyTitle: en ? "Learning Journey" : "학습 여정",
+    journeyBody: en ? "Use the education pages as one connected workflow from discovery to certification." : "교육과정 탐색부터 신청, 수강, 진도, 설문, 수료·자격 연계까지 하나의 흐름으로 진행합니다.",
+    journeyContentButton: en ? "Qualification Link" : "자격 연계 보기",
     footerOrg: en ? "Edu Innovation Support Division" : "교육혁신지원단",
     footerAddress: en ? "(04551) 110 Sejong-daero, Jung-gu, Seoul | Help Desk: 1588-1234" : "(04551) 서울특별시 중구 세종대로 110 | 학습지원센터 1588-1234",
     footerServiceLine: en ? "This platform helps foster carbon-neutrality experts across public and industrial sectors." : "본 플랫폼은 공공과 산업 현장의 탄소중립 전문인력 양성을 지원합니다.",
@@ -525,6 +609,52 @@ export function EduCourseListMigrationPage() {
               <p className="mt-2 text-sm text-slate-500">{copy.emptyBody}</p>
             </div>
           )}
+        </section>
+
+        <section className="border-y border-slate-200 bg-slate-50" data-help-id="edu-course-list-journey">
+          <div className="mx-auto max-w-7xl px-4 py-14 lg:px-8">
+            <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--kr-gov-blue)]">{copy.journeyTitle}</p>
+                <h2 className="mt-3 text-3xl font-black text-slate-900">{copy.journeyTitle}</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">{copy.journeyBody}</p>
+              </div>
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]"
+                onClick={() => navigate(buildLocalizedPath("/edu/content", "/en/edu/content"))}
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[18px]">hub</span>
+                {copy.journeyContentButton}
+              </button>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {LEARNING_JOURNEY.map((item, index) => (
+                <article className="rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg" key={item.hrefKo}>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[var(--kr-gov-blue)]">
+                      <span className="material-symbols-outlined text-[28px]">{item.icon}</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-slate-400">{String(index + 1).padStart(2, "0")}</span>
+                        <h3 className="text-lg font-black text-slate-900">{en ? item.titleEn : item.title}</h3>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">{en ? item.bodyEn : item.body}</p>
+                    </div>
+                  </div>
+                  <button
+                    className="mt-5 inline-flex items-center gap-1 text-sm font-black text-[var(--kr-gov-blue)] transition hover:gap-2"
+                    onClick={() => navigate(buildLocalizedPath(item.hrefKo, item.hrefEn))}
+                    type="button"
+                  >
+                    {en ? item.actionEn : item.action}
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="border-t border-slate-200 bg-white">
