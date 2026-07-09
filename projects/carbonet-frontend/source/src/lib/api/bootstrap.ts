@@ -52,6 +52,7 @@ import type {
   NewPagePagePayload,
   ScreenBuilderPagePayload
 } from "./platformTypes";
+import { normalizeHomeEmissionMenu } from "./menuNormalization";
 
 export type BootstrapPayloadKey =
   | "frontendSession"
@@ -151,18 +152,19 @@ function writeHomePayloadCache(payload: BootstrappedHomePayload | null | undefin
   if (!payload) {
     return;
   }
-  writeSessionStorageCache(resolveHomePayloadStorageKey(Boolean(payload.isEn)), payload, SESSION_CACHE_TTL_MS);
+  writeSessionStorageCache(resolveHomePayloadStorageKey(Boolean(payload.isEn)), normalizeHomeEmissionMenu(payload), SESSION_CACHE_TTL_MS);
 }
 
 export function readBootstrappedHomePayload(): BootstrappedHomePayload | null {
   const bootstrappedPayload = consumeRuntimeBootstrap<BootstrappedHomePayload>("homePayload");
   if (bootstrappedPayload) {
-    writeHomePayloadCache(bootstrappedPayload);
-    return bootstrappedPayload;
+    const normalizedPayload = normalizeHomeEmissionMenu(bootstrappedPayload);
+    writeHomePayloadCache(normalizedPayload);
+    return normalizedPayload;
   }
-  return readSessionStorageCache<BootstrappedHomePayload>(
+  return normalizeHomeEmissionMenu(readSessionStorageCache<BootstrappedHomePayload>(
     resolveHomePayloadStorageKey(getRuntimeLocale() === "en")
-  );
+  ));
 }
 
 export function readBootstrappedAdminHomePageData(): AdminHomePagePayload | null {

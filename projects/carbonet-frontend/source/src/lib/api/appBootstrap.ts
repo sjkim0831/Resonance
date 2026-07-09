@@ -41,6 +41,7 @@ import type {
   HomeMenuPlaceholderPagePayload,
   SitemapPagePayload
 } from "./appBootstrapTypes";
+import { normalizeHomeEmissionMenu } from "./menuNormalization";
 const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export async function fetchSitemapPage(): Promise<SitemapPagePayload> {
@@ -64,7 +65,7 @@ export async function fetchAdminMenuPlaceholderPage(requestPath: string): Promis
 }
 
 export async function fetchHomePayload(): Promise<BootstrappedHomePayload> {
-  const payload = await fetchLocalizedPageJson<BootstrappedHomePayload>("/api/home", "/en/api/home");
+  const payload = normalizeHomeEmissionMenu(await fetchLocalizedPageJson<BootstrappedHomePayload>("/api/home", "/en/api/home"));
   writeSessionStorageCache(
     `${SESSION_STORAGE_CACHE_PREFIX}home-payload:${payload.isEn ? "en" : "ko"}`,
     payload,
