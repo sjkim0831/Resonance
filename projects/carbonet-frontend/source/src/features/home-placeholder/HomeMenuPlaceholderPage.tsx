@@ -13,6 +13,20 @@ function stringOf(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
+const QUICK_DESTINATIONS = [
+  { hrefKo: "/home", hrefEn: "/en/home", icon: "home", labelKo: "홈 대시보드", labelEn: "Home Dashboard", bodyKo: "전체 서비스 입구와 주요 업무 카드로 돌아갑니다.", bodyEn: "Return to the main service entry and task cards." },
+  { hrefKo: "/support/qna_list", hrefEn: "/en/support/qna_list", icon: "manage_search", labelKo: "지원 통합검색", labelEn: "Support Search", bodyKo: "공지, FAQ, 자료실, Q&A를 한 번에 확인합니다.", bodyEn: "Search notices, FAQ, resources, and Q&A together." },
+  { hrefKo: "/support/download_list", hrefEn: "/en/support/download_list", icon: "folder_open", labelKo: "자료실", labelEn: "Resource Center", bodyKo: "업무 매뉴얼과 제출 양식을 내려받습니다.", bodyEn: "Download manuals and submission forms." },
+  { hrefKo: "/mtn/my_inquiry", hrefEn: "/en/mtn/my_inquiry", icon: "support_agent", labelKo: "1:1 문의", labelEn: "1:1 Inquiry", bodyKo: "화면 구축 또는 메뉴 연결 문제를 문의합니다.", bodyEn: "Ask about page build or menu mapping issues." }
+];
+
+const BUILD_STEPS = [
+  { labelKo: "메뉴 목적 확인", labelEn: "Confirm menu purpose", bodyKo: "사용자 메뉴명, 연결 URL, 담당 업무를 기준으로 화면 목적을 확정합니다.", bodyEn: "Confirm the page purpose from menu name, URL, and business owner." },
+  { labelKo: "유사 화면 선택", labelEn: "Select similar page", bodyKo: "홈 페이지 작업대에서 같은 섹션의 완성 화면을 참고합니다.", bodyEn: "Use the home page workbench to reference completed pages in the same section." },
+  { labelKo: "빌더에서 화면 구성", labelEn: "Build in Builder", bodyKo: "섹션, 컴포넌트, 테마를 선택해 화면을 구성하고 반영합니다.", bodyEn: "Compose sections, components, and theme choices in Builder." },
+  { labelKo: "검증 후 커밋", labelEn: "Verify and commit", bodyKo: "빌드 검증 후 작업대에 커밋 해시와 상태를 남깁니다.", bodyEn: "Run build verification and record commit evidence in the workbench." }
+];
+
 export function HomeMenuPlaceholderPage() {
   const en = isEnglish();
   const requestPath = `${window.location.pathname}${window.location.search || ""}`;
@@ -36,6 +50,10 @@ export function HomeMenuPlaceholderPage() {
   const pageQualityHref = buildLocalizedPath(
     "/admin/system/builder-studio?tab=page-quality",
     "/en/admin/system/builder-studio?tab=page-quality"
+  );
+  const workbenchHref = buildLocalizedPath(
+    `/admin/system/home-page-workbench?keyword=${encodeURIComponent(code || title || url)}`,
+    `/en/admin/system/home-page-workbench?keyword=${encodeURIComponent(code || title || url)}`
   );
 
   return (
@@ -62,27 +80,78 @@ export function HomeMenuPlaceholderPage() {
             {pageState.error}
           </div>
         ) : null}
-        <section className="gov-card max-w-4xl mx-auto" data-help-id="home-menu-placeholder-card">
-          <div className="flex items-start gap-4">
-            <span className="material-symbols-outlined text-[42px] text-[var(--kr-gov-blue)]">{icon}</span>
-            <div>
-              <h2 className="text-3xl font-black mb-2">{title}</h2>
-              <p className="text-sm text-[var(--kr-gov-text-secondary)]">{description}</p>
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm" data-help-id="home-menu-placeholder-card">
+          <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="bg-[linear-gradient(135deg,#0f3d91,#0f172a)] p-8 text-white lg:p-10">
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined rounded-2xl bg-white/10 p-4 text-[42px] text-white">{icon}</span>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-100">{en ? "Menu Pending Workspace" : "메뉴 구축 대기 화면"}</p>
+                  <h2 className="mt-2 text-3xl font-black lg:text-4xl">{title}</h2>
+                </div>
+              </div>
+              <p className="mt-6 max-w-3xl text-sm leading-7 text-blue-50">{description}</p>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-100">{en ? "Menu Code" : "메뉴 코드"}</p>
+                  <p className="mt-2 break-all text-lg font-black">{code || "-"}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-100">{en ? "Mapped URL" : "연결 URL"}</p>
+                  <p className="mt-2 break-all text-sm font-black">{url || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 lg:p-10">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{en ? "Recommended Action" : "추천 조치"}</p>
+              <h3 className="mt-3 text-2xl font-black text-slate-950">{en ? "Complete this page from the builder pipeline." : "빌더 파이프라인으로 화면을 완성하세요."}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {en
+                  ? "The menu remains reachable while the exact UI is prepared. Use the workbench to group it with related home pages, then open Builder to apply the final page."
+                  : "정확한 UI가 준비되는 동안 메뉴 접근은 유지됩니다. 작업대에서 연관 홈 화면과 묶은 뒤 빌더에서 최종 화면을 반영하세요."}
+              </p>
+              <div className="mt-6 grid grid-cols-1 gap-3">
+                <a className="gov-btn justify-center" href={builderHref}>{en ? "Build in Builder" : "빌더로 구축"}</a>
+                <a className="gov-btn gov-btn-ghost justify-center" href={workbenchHref}>{en ? "Open Home Workbench" : "홈 페이지 작업대 열기"}</a>
+                <a className="gov-btn gov-btn-ghost justify-center" href={pageQualityHref}>{en ? "Page Quality" : "페이지 완성도 보기"}</a>
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-            <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] p-4">
-              <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)] mb-2">{en ? "Menu Code" : "메뉴 코드"}</p>
-              <p className="font-bold">{code || "-"}</p>
-            </div>
-            <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] p-4">
-              <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)] mb-2">{en ? "Mapped URL" : "연결 URL"}</p>
-              <p className="font-bold break-all">{url || "-"}</p>
+        </section>
+
+        <section className="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{en ? "Build Checklist" : "구축 체크리스트"}</p>
+            <div className="mt-5 space-y-4">
+              {BUILD_STEPS.map((step, index) => (
+                <div className="flex gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4" key={step.labelKo}>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--kr-gov-blue)] text-sm font-black text-white">{index + 1}</span>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-950">{en ? step.labelEn : step.labelKo}</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{en ? step.bodyEn : step.bodyKo}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <a className="gov-btn justify-center" href={builderHref}>{en ? "Build in Builder" : "빌더로 구축"}</a>
-            <a className="gov-btn gov-btn-ghost justify-center" href={pageQualityHref}>{en ? "Page Quality" : "페이지 완성도 보기"}</a>
+
+          <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">{en ? "Continue With Related Services" : "관련 서비스로 계속 진행"}</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {QUICK_DESTINATIONS.map((item) => (
+                <button
+                  className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                  key={item.hrefKo}
+                  onClick={() => navigate(buildLocalizedPath(item.hrefKo, item.hrefEn))}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[28px] text-[var(--kr-gov-blue)]">{item.icon}</span>
+                  <h3 className="mt-3 text-sm font-black text-slate-950">{en ? item.labelEn : item.labelKo}</h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">{en ? item.bodyEn : item.bodyKo}</p>
+                </button>
+              ))}
+            </div>
           </div>
         </section>
       </main>

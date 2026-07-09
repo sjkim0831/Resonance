@@ -2355,7 +2355,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "placeholder-managed",
-    "lineCount": 97,
+    "lineCount": 161,
     "reason": "메뉴 접근과 메타데이터 표시는 가능하며, 상세 업무 화면 이관은 빌더에서 추적합니다.",
     "hasAsyncData": true,
     "hasForm": false,
