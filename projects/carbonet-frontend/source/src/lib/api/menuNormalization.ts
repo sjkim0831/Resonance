@@ -710,9 +710,9 @@ function normalizePath(url: string | undefined) {
 function getHomeMenuKey(menu: HomeMenuRecord) {
   const url = normalizePath(menu.url);
   const label = String(menu.label || "").toLowerCase();
-  if (url.startsWith("/emission") || label.includes("emission") || label.includes("탄소")) return "emission";
   if (url.startsWith("/monitoring") || label.includes("monitoring") || label.includes("모니터링")) return "monitoring";
   if (url.startsWith("/co2") || label.includes("mrv") || label.includes("탄소시장")) return "co2";
+  if (url.startsWith("/emission") || label.includes("emission") || label.includes("탄소 배출") || label.includes("배출")) return "emission";
   if (url.startsWith("/trade") || label.includes("trade") || label.includes("거래")) return "trade";
   if (url.startsWith("/payment") || label.includes("payment") || label.includes("결제")) return "payment";
   if (url.startsWith("/certificate") || label.includes("certificate") || label.includes("인증")) return "certificate";
