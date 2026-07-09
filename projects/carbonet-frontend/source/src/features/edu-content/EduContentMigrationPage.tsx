@@ -223,6 +223,33 @@ const ROADMAP: RoadmapItem[] = [
   }
 ];
 
+function getRenewalActionHref(item: RenewalCard) {
+  if (item.id === "renew-safety") {
+    return buildLocalizedPath("/edu/certificate", "/en/edu/certificate");
+  }
+  if (item.id === "renew-auditor") {
+    return buildLocalizedPath("/edu/course_list", "/en/edu/course_list");
+  }
+  return buildLocalizedPath("/edu/progress", "/en/edu/progress");
+}
+
+function getCertificationActionHref(item: CertificationRow) {
+  if (item.statusKo.includes("갱신") || item.statusEn.includes("Renewal")) {
+    return buildLocalizedPath("/edu/apply", "/en/edu/apply");
+  }
+  return buildLocalizedPath("/edu/certificate", "/en/edu/certificate");
+}
+
+function getRoadmapActionHref(item: RoadmapItem) {
+  if (item.id === "oct") {
+    return buildLocalizedPath("/edu/apply", "/en/edu/apply");
+  }
+  if (item.id === "nov") {
+    return buildLocalizedPath("/edu/course_list", "/en/edu/course_list");
+  }
+  return buildLocalizedPath("/edu/progress", "/en/edu/progress");
+}
+
 export function EduContentMigrationPage() {
   const session = useFrontendSession();
   const en = isEnglish();
@@ -393,7 +420,7 @@ export function EduContentMigrationPage() {
                           <div className={`h-full ${item.progressClassName}`} style={{ width: `${item.progress}%` }} />
                         </div>
                       </div>
-                      <button className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-400 hover:text-indigo-300" type="button">
+                      <button className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-400 hover:text-indigo-300" onClick={() => navigate(getRenewalActionHref(item))} type="button">
                         {en ? item.actionEn : item.actionKo}
                         <span className="material-symbols-outlined text-[14px]">launch</span>
                       </button>
@@ -484,7 +511,14 @@ export function EduContentMigrationPage() {
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${item.statusClassName}`}>{en ? item.statusEn : item.statusKo}</span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button className="material-symbols-outlined text-gray-400 hover:text-[var(--kr-gov-blue)]" type="button">more_vert</button>
+                            <button
+                              aria-label={en ? `Open ${item.nameEn}` : `${item.nameKo} 열기`}
+                              className="material-symbols-outlined text-gray-400 hover:text-[var(--kr-gov-blue)]"
+                              onClick={() => navigate(getCertificationActionHref(item))}
+                              type="button"
+                            >
+                              open_in_new
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -510,7 +544,7 @@ export function EduContentMigrationPage() {
                         <h4 className="text-sm font-bold text-gray-800">{en ? item.titleEn : item.titleKo}</h4>
                         <p className="mt-1 text-xs leading-relaxed text-gray-500">{en ? item.bodyEn : item.bodyKo}</p>
                         {item.actionKo ? (
-                          <button className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline" type="button">
+                          <button className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline" onClick={() => navigate(getRoadmapActionHref(item))} type="button">
                             {en ? item.actionEn : item.actionKo}
                             <span className="material-symbols-outlined text-[14px]">launch</span>
                           </button>
