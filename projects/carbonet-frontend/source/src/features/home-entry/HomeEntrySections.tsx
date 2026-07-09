@@ -229,6 +229,119 @@ type SearchCandidate = {
   tone: "menu" | "service" | "tag";
 };
 
+type ServiceMapItem = {
+  label: string;
+  href: string;
+  parentLabel: string;
+};
+
+type ServiceMapGroup = {
+  key: string;
+  labelKo: string;
+  labelEn: string;
+  descriptionKo: string;
+  descriptionEn: string;
+  icon: string;
+  items: ServiceMapItem[];
+};
+
+type ServiceGroupDefinition = Omit<ServiceMapGroup, "items"> & {
+  matcher: (href: string) => boolean;
+};
+
+const SERVICE_GROUP_DEFINITIONS: ServiceGroupDefinition[] = [
+  {
+    key: "emission",
+    labelKo: "배출·산정",
+    labelEn: "Emission & Calculation",
+    descriptionKo: "배출 프로젝트, 데이터 입력, LCI, 감축 시나리오와 산정 검증을 묶었습니다.",
+    descriptionEn: "Emission projects, data input, LCI, reduction scenarios, and validation.",
+    icon: "factory",
+    matcher: (href: string) => href.includes("/emission/") || href.includes("/co2/")
+  },
+  {
+    key: "monitoring",
+    labelKo: "모니터링·공유",
+    labelEn: "Monitoring & Sharing",
+    descriptionKo: "대시보드, 실시간 경보, ESG 보고, 추적 리포트와 이해관계자 공유 화면입니다.",
+    descriptionEn: "Dashboards, real-time alerts, ESG reports, tracking, and stakeholder sharing.",
+    icon: "monitoring",
+    matcher: (href: string) => href.includes("/monitoring/")
+  },
+  {
+    key: "trade",
+    labelKo: "거래·정산",
+    labelEn: "Trading & Settlement",
+    descriptionKo: "거래 시장, 구매/판매, 자동 매칭, 가격 알림과 정산 리포트를 묶었습니다.",
+    descriptionEn: "Marketplace, buy/sell requests, auto matching, alerts, and settlement reports.",
+    icon: "storefront",
+    matcher: (href: string) => href.includes("/trade/")
+  },
+  {
+    key: "payment",
+    labelKo: "결제·증빙",
+    labelEn: "Payment & Evidence",
+    descriptionKo: "결제 요청, 가상계좌, 환불, 세금계산서, 영수증 관리를 한 곳에 모았습니다.",
+    descriptionEn: "Payment requests, virtual accounts, refunds, invoices, and receipts.",
+    icon: "payments",
+    matcher: (href: string) => href.includes("/payment/")
+  },
+  {
+    key: "certificate",
+    labelKo: "인증서·보고서",
+    labelEn: "Certificates & Reports",
+    descriptionKo: "인증서 신청, 보고서 작성/수정, 보고서 목록과 발급 상태를 연결합니다.",
+    descriptionEn: "Certificate applications, report creation/editing, report lists, and issuance status.",
+    icon: "verified",
+    matcher: (href: string) => href.includes("/certificate/")
+  },
+  {
+    key: "education",
+    labelKo: "교육·자격",
+    labelEn: "Education & Qualification",
+    descriptionKo: "교육과정, 나의 교육, 진도, 설문, 수료증과 자격 연계를 묶었습니다.",
+    descriptionEn: "Courses, my learning, progress, surveys, certificates, and qualifications.",
+    icon: "school",
+    matcher: (href: string) => href.includes("/edu/")
+  },
+  {
+    key: "support",
+    labelKo: "고객지원·자료",
+    labelEn: "Support & Resources",
+    descriptionKo: "공지사항, 자료실, FAQ, Q&A, 문의 내역과 사이트맵을 모았습니다.",
+    descriptionEn: "Notices, resources, FAQ, Q&A, inquiry history, and sitemap.",
+    icon: "support_agent",
+    matcher: (href: string) => href.includes("/support/") || href.includes("/mtn/") || href.includes("/sitemap")
+  },
+  {
+    key: "mypage",
+    labelKo: "마이페이지·계정",
+    labelEn: "My Page & Account",
+    descriptionKo: "프로필, 기업 정보, 담당자, 비밀번호, 알림과 수신 설정을 묶었습니다.",
+    descriptionEn: "Profile, company info, staff, password, notifications, and marketing settings.",
+    icon: "person",
+    matcher: (href: string) => href.includes("/mypage/")
+  },
+  {
+    key: "join",
+    labelKo: "가입·온보딩",
+    labelEn: "Join & Onboarding",
+    descriptionKo: "회원가입, 기업 등록, 재신청, 가입 상태 조회와 온보딩 화면입니다.",
+    descriptionEn: "Sign-up, company registration, reapply, status lookup, and onboarding.",
+    icon: "how_to_reg",
+    matcher: (href: string) => href.includes("/join/")
+  },
+  {
+    key: "entry",
+    labelKo: "로그인·공통",
+    labelEn: "Sign-in & Common",
+    descriptionKo: "로그인, 아이디/비밀번호 찾기, 권한 안내와 공통 진입 화면입니다.",
+    descriptionEn: "Login, account recovery, access guidance, and common entry pages.",
+    icon: "login",
+    matcher: (href: string) => href.includes("/signin/") || href.includes("/flutter-app") || href.includes("/placeholder")
+  }
+];
+
 function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase().replace(/#/g, "");
 }
@@ -322,6 +435,126 @@ export function CoreServiceGrid({ content }: { content: LocalizedHomeContent }) 
         </a>
       ))}
     </div>
+  );
+}
+
+function collectServiceMapItems(homeMenu: HomeMenuItem[]) {
+  const byHref = new Map<string, ServiceMapItem>();
+  homeMenu.forEach((top) => {
+    const parentLabel = top.label || "";
+    if (top.label && top.url && top.url !== "#") {
+      byHref.set(top.url, { label: top.label, href: top.url, parentLabel });
+    }
+    (top.sections || []).forEach((section) => {
+      (section.items || []).forEach((item) => {
+        if (!item.label || !item.url || item.url === "#") return;
+        byHref.set(item.url, { label: item.label, href: item.url, parentLabel: section.label || parentLabel });
+      });
+    });
+  });
+  return Array.from(byHref.values()).sort((left, right) => left.href.localeCompare(right.href));
+}
+
+function buildServiceMapGroups(homeMenu: HomeMenuItem[]) {
+  const items = collectServiceMapItems(homeMenu);
+  const groups = SERVICE_GROUP_DEFINITIONS.map((definition) => ({
+    key: definition.key,
+    labelKo: definition.labelKo,
+    labelEn: definition.labelEn,
+    descriptionKo: definition.descriptionKo,
+    descriptionEn: definition.descriptionEn,
+    icon: definition.icon,
+    items: items.filter((item) => definition.matcher(item.href))
+  }));
+  const assigned = new Set(groups.flatMap((group) => group.items.map((item) => item.href)));
+  const otherItems = items.filter((item) => !assigned.has(item.href));
+  if (otherItems.length > 0) {
+    groups.push({
+      key: "other",
+      labelKo: "기타·추가 검토",
+      labelEn: "Other & Review",
+      descriptionKo: "기존 분류에 속하지 않는 메뉴입니다. 필요 시 작업대에서 유사 화면과 재분류합니다.",
+      descriptionEn: "Menus outside the current taxonomy. Reclassify them with related pages in the workbench when needed.",
+      icon: "category",
+      items: otherItems
+    });
+  }
+  return groups.filter((group) => group.items.length > 0);
+}
+
+export function ServiceMapSection({ content, homeMenu }: { content: LocalizedHomeContent; homeMenu: HomeMenuItem[] }) {
+  const english = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
+  const [activeGroupKey, setActiveGroupKey] = useState<string>("all");
+  const groups = useMemo(() => buildServiceMapGroups(homeMenu), [homeMenu]);
+  const visibleGroups = activeGroupKey === "all" ? groups : groups.filter((group) => group.key === activeGroupKey);
+  const totalCount = groups.reduce((sum, group) => sum + group.items.length, 0);
+
+  if (groups.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="bg-white py-20 border-t border-[var(--kr-gov-border-light)]" data-help-id="home-service-map">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--kr-gov-blue)]">{english ? "Full Service Map" : "전체 서비스 맵"}</p>
+            <h2 className="mt-3 text-3xl font-bold text-[var(--kr-gov-text-primary)]">{english ? "All pages grouped by workflow" : "모든 화면을 업무 흐름별로 묶어 확인"}</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--kr-gov-text-secondary)]">
+              {english
+                ? "Every home-facing menu is organized into related sections so incomplete pages can be expanded, renamed, or merged with the right workflow."
+                : "홈 페이지의 모든 메뉴를 연관 업무군으로 묶어, 부족한 화면은 확장하고 메뉴명 변경이나 추가 화면 구성 대상을 빠르게 판단할 수 있습니다."}
+            </p>
+          </div>
+          <div className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-gray)] px-4 py-3 text-sm font-bold text-[var(--kr-gov-text-secondary)]">
+            {english ? "Mapped pages" : "분류된 화면"} <span className="ml-2 text-xl font-black text-[var(--kr-gov-blue)]">{totalCount}</span>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-2">
+          <HomeButton type="button" className="rounded-full px-4 py-2 text-sm" variant={activeGroupKey === "all" ? "primary" : "secondary"} onClick={() => setActiveGroupKey("all")}>
+            {english ? "All" : "전체"}
+          </HomeButton>
+          {groups.map((group) => (
+            <HomeButton key={group.key} type="button" className="rounded-full px-4 py-2 text-sm" variant={activeGroupKey === group.key ? "primary" : "secondary"} onClick={() => setActiveGroupKey(group.key)}>
+              {english ? group.labelEn : group.labelKo} ({group.items.length})
+            </HomeButton>
+          ))}
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          {visibleGroups.map((group) => (
+            <article className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white p-6 shadow-sm" key={group.key}>
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-blue)]">
+                  <span className="material-symbols-outlined">{group.icon}</span>
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-black text-[var(--kr-gov-text-primary)]">{english ? group.labelEn : group.labelKo}</h3>
+                    <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-black text-[var(--kr-gov-blue)]">{group.items.length}</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--kr-gov-text-secondary)]">{english ? group.descriptionEn : group.descriptionKo}</p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                {group.items.slice(0, 12).map((item) => (
+                  <a className="rounded-[var(--kr-gov-radius)] border border-slate-200 px-3 py-3 text-sm font-bold text-[var(--kr-gov-text-primary)] transition hover:border-[var(--kr-gov-blue)] hover:bg-blue-50 focus-visible" href={item.href} key={`${group.key}-${item.href}`}>
+                    <span className="block truncate">{item.label}</span>
+                    {item.parentLabel ? <span className="mt-1 block truncate text-[11px] font-semibold text-[var(--kr-gov-text-secondary)]">{item.parentLabel}</span> : null}
+                  </a>
+                ))}
+              </div>
+              {group.items.length > 12 ? (
+                <p className="mt-4 text-xs font-bold text-[var(--kr-gov-text-secondary)]">
+                  {english ? `${group.items.length - 12} more pages are available from the header menu.` : `나머지 ${group.items.length - 12}개 화면은 상단 메뉴에서 이어서 확인할 수 있습니다.`}
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

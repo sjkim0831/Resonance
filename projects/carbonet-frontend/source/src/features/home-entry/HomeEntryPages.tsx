@@ -13,6 +13,7 @@ import {
   CoreServiceGrid,
   HeroSection,
   SearchSection,
+  ServiceMapSection,
   SummarySection
 } from "./HomeEntrySections";
 import { HomePayload } from "./homeEntryTypes";
@@ -143,6 +144,7 @@ export function HomeLandingPage() {
             </div>
             <CoreServiceGrid content={content} />
           </section>
+          <ServiceMapSection content={content} homeMenu={homeMenu} />
           <div data-help-id="home-summary">
             <SummarySection content={content} />
           </div>
