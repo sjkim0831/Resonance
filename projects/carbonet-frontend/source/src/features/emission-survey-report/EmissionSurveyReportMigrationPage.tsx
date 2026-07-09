@@ -318,9 +318,9 @@ function nextAnimationFrame() {
 type ReportPdfDesignVariant = "classic" | "modern" | "line" | "dark";
 
 const REPORT_PDF_DESIGN_OPTIONS: Array<{ id: ReportPdfDesignVariant; label: string; enLabel: string }> = [
-  { id: "classic", label: "시안 1 공공 표준", enLabel: "Draft 1 Public Standard" },
-  { id: "modern", label: "시안 2 행정 보고", enLabel: "Draft 2 Agency Report" },
-  { id: "line", label: "시안 3 인증 문서", enLabel: "Draft 3 Certificate" },
+  { id: "classic", label: "시안 1 표준 공문", enLabel: "Draft 1 Official Standard" },
+  { id: "modern", label: "시안 2 기관 보고", enLabel: "Draft 2 Agency Memo" },
+  { id: "line", label: "시안 3 결재 문서", enLabel: "Draft 3 Approval Form" },
   { id: "dark", label: "시안 4 압축 공문", enLabel: "Draft 4 Compact Official" }
 ];
 
@@ -1617,14 +1617,31 @@ export function EmissionSurveyReportPrintPage() {
         .from(element)
         .toPdf();
       await worker.get("pdf").then((pdf: {
-        internal: { getNumberOfPages: () => number };
+        internal: {
+          getNumberOfPages: () => number;
+          pageSize: { getHeight: () => number; getWidth: () => number };
+        };
         setPage: (page: number) => void;
+        setDrawColor: (r: number, g: number, b: number) => void;
         setFontSize: (size: number) => void;
+        setLineWidth: (width: number) => void;
         setTextColor: (r: number, g: number, b: number) => void;
+        rect: (x: number, y: number, width: number, height: number, style?: string) => void;
         text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
         setProperties?: (properties: Record<string, string>) => void;
       }) => {
-        pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
+        const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        for (let page = 1; page <= pageCount; page += 1) {
+          pdf.setPage(page);
+          pdf.setDrawColor(32, 50, 74);
+          pdf.setLineWidth(0.35);
+          pdf.rect(6, 6, pageWidth - 12, pageHeight - 12, "S");
+          pdf.setLineWidth(0.12);
+          pdf.rect(8, 8, pageWidth - 16, pageHeight - 16, "S");
+        }
+        pdf.setPage(pageCount);
         pdf.setFontSize(1);
         pdf.setTextColor(255, 255, 255);
         pdf.text(verificationPayloadToBlock(record), 1, 1, { maxWidth: 1 });
@@ -1666,12 +1683,17 @@ export function EmissionSurveyReportPrintPage() {
             background:#ffffff!important;
             color:#111827!important;
           }
+          .pdf-download-mode.print-sheet,
           .pdf-download-mode .print-sheet{
             background:#ffffff!important;
+            border:2px solid #334155!important;
+            border-radius:6px!important;
+            box-shadow:inset 0 0 0 1px #cbd5e1!important;
+            padding:10px!important;
           }
           .pdf-download-mode .pdf-table-page{
             overflow:visible!important;
-            border-radius:14px!important;
+            border-radius:4px!important;
           }
           .pdf-download-mode .pdf-table-page.print-card{
             break-inside:auto!important;
@@ -1688,50 +1710,79 @@ export function EmissionSurveyReportPrintPage() {
           .pdf-download-mode .pdf-table-page .print-input-text{
             white-space:normal!important;
           }
+          .pdf-download-mode .print-card{
+            box-shadow:none!important;
+          }
           .pdf-download-mode.pdf-design-classic .print-report-hero{
-            background:linear-gradient(135deg,#12366a,#1d4f91 58%,#2f6f8f)!important;
-            border:1px solid #12366a!important;
+            background:#ffffff!important;
+            color:#111827!important;
+            border:1px solid #26384f!important;
+            border-top:12px solid #26384f!important;
+            border-radius:4px!important;
+            margin-bottom:10px!important;
+            padding:14px!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-report-hero *,
+          .pdf-download-mode.pdf-design-classic .print-report-title,
+          .pdf-download-mode.pdf-design-classic .print-report-title-tag{
+            color:#111827!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-report-total-card{
+            background:#f5f7fa!important;
+            border:1px solid #94a3b8!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-report-total-card *{
+            color:#111827!important;
           }
           .pdf-download-mode.pdf-design-classic .print-card{
-            border-color:#bfd0e5!important;
-            border-radius:14px!important;
+            background:#ffffff!important;
+            border-color:#94a3b8!important;
+            border-radius:4px!important;
+            color:#111827!important;
           }
           .pdf-download-mode.pdf-design-classic .print-soft-bg,
           .pdf-download-mode.pdf-design-classic .print-total-value{
-            background:#f1f6fb!important;
+            background:#f5f7fa!important;
           }
           .pdf-download-mode.pdf-design-modern .print-report-hero{
             background:#ffffff!important;
-            color:#0f172a!important;
-            border:2px solid #1f5f8b!important;
-            border-top:10px solid #1f5f8b!important;
+            color:#0b1220!important;
+            border:1px solid #1f4f7a!important;
+            border-left:14px solid #1f4f7a!important;
+            border-radius:4px!important;
+            margin-bottom:10px!important;
+            padding:14px!important;
           }
           .pdf-download-mode.pdf-design-modern .print-report-hero *,
           .pdf-download-mode.pdf-design-modern .print-report-title,
           .pdf-download-mode.pdf-design-modern .print-report-title-tag{
-            color:#0f172a!important;
+            color:#0b1220!important;
           }
           .pdf-download-mode.pdf-design-modern .print-report-total-card{
-            background:#edf6ff!important;
-            border:1px solid #8db8df!important;
+            background:#f3f7fb!important;
+            border:1px solid #7a99b8!important;
           }
           .pdf-download-mode.pdf-design-modern .print-report-total-card *{
-            color:#0f172a!important;
+            color:#0b1220!important;
           }
           .pdf-download-mode.pdf-design-modern .print-card{
-            border-color:#a9c5df!important;
-            border-radius:8px!important;
+            background:#ffffff!important;
+            border-color:#8fa8c2!important;
+            border-radius:4px!important;
           }
           .pdf-download-mode.pdf-design-modern .print-soft-bg,
           .pdf-download-mode.pdf-design-modern .print-total-value{
-            background:#f5f9fd!important;
+            background:#f3f7fb!important;
           }
           .pdf-download-mode.pdf-design-line .print-report-hero{
             background:#ffffff!important;
             color:#111827!important;
-            border:2px solid #111827!important;
-            border-left:12px solid #1b5e20!important;
-            border-radius:6px!important;
+            border:1.5px solid #111827!important;
+            border-top:1.5px solid #111827!important;
+            border-bottom:6px double #111827!important;
+            border-radius:0!important;
+            margin-bottom:10px!important;
+            padding:13px!important;
           }
           .pdf-download-mode.pdf-design-line .print-report-hero *,
           .pdf-download-mode.pdf-design-line .print-report-title,
@@ -1739,19 +1790,20 @@ export function EmissionSurveyReportPrintPage() {
             color:#111827!important;
           }
           .pdf-download-mode.pdf-design-line .print-report-total-card{
-            background:#f7faf7!important;
-            border:1px solid #1b5e20!important;
+            background:#f8fafc!important;
+            border:1px solid #111827!important;
           }
           .pdf-download-mode.pdf-design-line .print-report-total-card *{
             color:#111827!important;
           }
           .pdf-download-mode.pdf-design-line .print-card{
-            border:1.5px solid #1f2937!important;
-            border-radius:4px!important;
+            background:#ffffff!important;
+            border:1px solid #111827!important;
+            border-radius:0!important;
           }
           .pdf-download-mode.pdf-design-line .print-soft-bg,
           .pdf-download-mode.pdf-design-line .print-total-value{
-            background:#fbfdfb!important;
+            background:#f8fafc!important;
           }
           .pdf-download-mode.pdf-design-dark{
             background:#ffffff!important;
@@ -1763,7 +1815,7 @@ export function EmissionSurveyReportPrintPage() {
             border-top:14px solid #20324a!important;
             border-radius:4px!important;
             margin-bottom:10px!important;
-            padding:14px!important;
+            padding:12px!important;
           }
           .pdf-download-mode.pdf-design-dark .print-report-hero *,
           .pdf-download-mode.pdf-design-dark .print-report-title,
@@ -1785,7 +1837,7 @@ export function EmissionSurveyReportPrintPage() {
             color:#0f172a!important;
           }
           .pdf-download-mode.pdf-design-dark .print-card{
-            padding:12px!important;
+            padding:10px!important;
           }
           .pdf-download-mode.pdf-design-dark .print-soft-bg,
           .pdf-download-mode.pdf-design-dark .print-total-value{
@@ -1810,6 +1862,22 @@ export function EmissionSurveyReportPrintPage() {
           .pdf-download-mode.pdf-design-dark .print-total-cell{
             background:#f4f6f8!important;
             color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-design-classic.print-sheet{
+            border-color:#26384f!important;
+            box-shadow:inset 0 0 0 1px #a9b6c6!important;
+          }
+          .pdf-download-mode.pdf-design-modern.print-sheet{
+            border-color:#1f4f7a!important;
+            box-shadow:inset 0 0 0 1px #b7c9da!important;
+          }
+          .pdf-download-mode.pdf-design-line.print-sheet{
+            border-color:#111827!important;
+            box-shadow:inset 0 0 0 1px #111827!important;
+          }
+          .pdf-download-mode.pdf-design-dark.print-sheet{
+            border-color:#20324a!important;
+            box-shadow:inset 0 0 0 1px #94a3b8!important;
           }
         `}
       </style>
