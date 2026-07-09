@@ -993,15 +993,9 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
-      { componentId: "EmissionProjectHero", instanceKey: "emission-project-hero", layoutZone: "header", propsSummary: ["queueItems", "searchKeyword"] },
-      { componentId: "EmissionProjectQueue", instanceKey: "emission-project-queue", layoutZone: "content", propsSummary: ["queueItems", "level", "due"] },
-      { componentId: "EmissionProjectOperationalMetrics", instanceKey: "emission-project-operational-metrics", layoutZone: "content", propsSummary: ["managedSites", "dataCompleteness", "verificationQueue", "reportPackages"] },
-      { componentId: "EmissionProjectWorkflow", instanceKey: "emission-project-workflow", layoutZone: "content", propsSummary: ["siteRegistry", "activityData", "simulation", "verification"] },
-      { componentId: "EmissionProjectRelatedFunctions", instanceKey: "emission-project-related-functions", layoutZone: "content", propsSummary: ["functionGroups", "homeAndAdminLinks", "sectionRelocation"] },
-      { componentId: "EmissionProjectNextHomePlan", instanceKey: "emission-project-next-home-plan", layoutZone: "content", propsSummary: ["nextPages", "mergeHints", "expansionQueue"] },
+      { componentId: "EmissionProjectAdminLinkage", instanceKey: "emission-project-admin-linkage", layoutZone: "header", propsSummary: ["adminSiteManagementHref", "searchKeyword", "dashboardLink"] },
       { componentId: "EmissionProjectSiteCards", instanceKey: "emission-project-site-cards", layoutZone: "content", propsSummary: ["siteCards", "status", "value"] },
-      { componentId: "EmissionProjectRegistryTable", instanceKey: "emission-project-registry-table", layoutZone: "content", propsSummary: ["registryRows", "scope", "completeness", "owner"] },
-      { componentId: "EmissionProjectAdminLinkage", instanceKey: "emission-project-admin-linkage", layoutZone: "actions", propsSummary: ["adminSiteManagementHref", "session", "homeMenu"] }
+      { componentId: "EmissionProjectRegistryTable", instanceKey: "emission-project-registry-table", layoutZone: "content", propsSummary: ["registryRows", "scope", "completeness", "owner"] }
     ]
   },
   "emission-reduction": {
