@@ -56,6 +56,38 @@ type GeneralSiteCard = {
   actionClass: string;
 };
 
+type InputMetric = {
+  title: string;
+  value: string;
+  description: string;
+  icon: string;
+  toneClass: string;
+  href: string;
+};
+
+type InputStage = {
+  title: string;
+  description: string;
+  status: string;
+  statusClass: string;
+  progress: string;
+  href: string;
+  icon: string;
+};
+
+type ActivityInputRow = {
+  siteId: string;
+  siteName: string;
+  source: string;
+  period: string;
+  activityValue: string;
+  evidence: string;
+  quality: string;
+  owner: string;
+  nextAction: string;
+  href: string;
+};
+
 function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
   const image = event.currentTarget;
   if (image.dataset.fallbackApplied === "1") {
@@ -81,7 +113,7 @@ function getQueueNextHref(card: QueueCard) {
 
 function getSiteActionHref(label: string) {
   if (label.includes("상세") || label.includes("Detail")) {
-    return buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
+    return buildLocalizedPath("/admin/emission/result_detail", "/en/admin/emission/result_detail");
   }
   if (label.includes("산정") || label.includes("Logic")) {
     return buildLocalizedPath("/emission/simulate", "/en/emission/simulate");
@@ -90,15 +122,21 @@ function getSiteActionHref(label: string) {
     return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
   }
   if (label.includes("이력") || label.includes("History")) {
-    return buildLocalizedPath("/emission/data_history", "/en/emission/data_history");
+    return buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history");
   }
   if (label.includes("검증") || label.includes("Verification")) {
     return buildLocalizedPath("/emission/validate", "/en/emission/validate");
   }
   if (label.includes("보고서") || label.includes("Report")) {
-    return buildLocalizedPath("/emission/result_list", "/en/emission/result_list");
+    return buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list");
   }
   return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+}
+
+function siteScopedHref(pathKo: string, pathEn: string, siteId: string) {
+  const href = buildLocalizedPath(pathKo, pathEn);
+  const glue = href.includes("?") ? "&" : "?";
+  return `${href}${glue}siteId=${encodeURIComponent(siteId)}`;
 }
 
 function EmissionDataInputInlineStyles() {
@@ -314,6 +352,64 @@ export function EmissionDataInputMigrationPage() {
     { id: "PJ-088", title: "파주 전산센터", emission: "890 tCO2", status: "정상", statusClass: "text-emerald-600", actionLabel: "데이터 상세", actionClass: "border-gray-200 text-gray-600 hover:bg-gray-50" }
   ], [en]);
 
+  const inputMetrics = useMemo<InputMetric[]>(() => en ? [
+    { title: "Input Completion", value: "76%", description: "5 sites have pending activity data", icon: "fact_check", toneClass: "bg-blue-50 text-[var(--kr-gov-blue)]", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "Evidence Coverage", value: "82%", description: "4 evidence files need review", icon: "attach_file", toneClass: "bg-orange-50 text-orange-700", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit") },
+    { title: "Auto Scan Success", value: "18", description: "Bills and meter images parsed today", icon: "document_scanner", toneClass: "bg-emerald-50 text-emerald-700", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate") },
+    { title: "Ready for Verification", value: "7", description: "Can move to verification queue", icon: "verified", toneClass: "bg-indigo-50 text-indigo-700", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
+  ] : [
+    { title: "입력 완료율", value: "76%", description: "5개 배출지 활동자료 입력 대기", icon: "fact_check", toneClass: "bg-blue-50 text-[var(--kr-gov-blue)]", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "증빙 커버리지", value: "82%", description: "검토 필요한 증빙 파일 4건", icon: "attach_file", toneClass: "bg-orange-50 text-orange-700", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit") },
+    { title: "자동 판독 성공", value: "18", description: "오늘 고지서/계측 이미지 파싱", icon: "document_scanner", toneClass: "bg-emerald-50 text-emerald-700", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate") },
+    { title: "검증 이동 가능", value: "7", description: "검증 대기열 이동 가능 건수", icon: "verified", toneClass: "bg-indigo-50 text-indigo-700", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
+  ], [en]);
+
+  const inputStages = useMemo<InputStage[]>(() => en ? [
+    { title: "Select Site", description: "Pick site and reporting period from the managed registry.", status: "Current", statusClass: "bg-blue-100 text-blue-700", progress: "100%", href: buildLocalizedPath("/emission/project_list", "/en/emission/project_list"), icon: "domain" },
+    { title: "Enter Activity Data", description: "Input fuel, electricity, process, transport, and waste values.", status: "In progress", statusClass: "bg-orange-100 text-orange-700", progress: "76%", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), icon: "edit_square" },
+    { title: "Attach Evidence", description: "Upload bills, meter records, permits, and site photos.", status: "Review", statusClass: "bg-indigo-100 text-indigo-700", progress: "82%", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit"), icon: "upload_file" },
+    { title: "Calculate & Submit", description: "Run calculation, review variances, and send package to verification.", status: "Ready soon", statusClass: "bg-emerald-100 text-emerald-700", progress: "68%", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), icon: "calculate" }
+  ] : [
+    { title: "배출지 선택", description: "관리 원장에서 배출지와 보고 기간을 선택합니다.", status: "현재 단계", statusClass: "bg-blue-100 text-blue-700", progress: "100%", href: buildLocalizedPath("/emission/project_list", "/en/emission/project_list"), icon: "domain" },
+    { title: "활동자료 입력", description: "연료, 전력, 공정, 운송, 폐기물 값을 입력합니다.", status: "진행중", statusClass: "bg-orange-100 text-orange-700", progress: "76%", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), icon: "edit_square" },
+    { title: "증빙 첨부", description: "고지서, 계측기록, 인허가, 현장 사진을 첨부합니다.", status: "검토", statusClass: "bg-indigo-100 text-indigo-700", progress: "82%", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit"), icon: "upload_file" },
+    { title: "산정·제출", description: "산정 실행, 편차 검토 후 검증 패키지로 넘깁니다.", status: "준비중", statusClass: "bg-emerald-100 text-emerald-700", progress: "68%", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), icon: "calculate" }
+  ], [en]);
+
+  const activityInputRows = useMemo<ActivityInputRow[]>(() => en ? [
+    { siteId: "PH-001", siteName: "Pohang Hot Rolling Mill 1", source: "LNG boiler", period: "2025.08", activityValue: "128,420 Nm3", evidence: "Bill matched", quality: "Ready", owner: "Site Admin", nextAction: "Run simulation", href: siteScopedHref("/emission/simulate", "/en/emission/simulate", "PH-001") },
+    { siteId: "US-042", siteName: "Ulsan Chemical Base 3", source: "Process gas", period: "2025.08", activityValue: "Missing", evidence: "2 files missing", quality: "Blocked", owner: "Verifier", nextAction: "Upload evidence", href: siteScopedHref("/emission/report_submit", "/en/emission/report_submit", "US-042") },
+    { siteId: "GN-112", siteName: "Gwangyang Energy Center 2", source: "Purchased power", period: "2025.08", activityValue: "31,240 MWh", evidence: "Confirmed", quality: "Verifying", owner: "External reviewer", nextAction: "Open verification", href: siteScopedHref("/emission/validate", "/en/emission/validate", "GN-112") },
+    { siteId: "IC-005", siteName: "Incheon Logistics Center", source: "Utility power", period: "2025.08", activityValue: "1,084 MWh", evidence: "OCR parsed", quality: "Ready", owner: "Logistics manager", nextAction: "Result detail", href: siteScopedHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "IC-005") },
+    { siteId: "DJ-021", siteName: "Daejeon R&D Campus", source: "Business travel", period: "2025.08", activityValue: "Draft", evidence: "Pending", quality: "Input needed", owner: "R&D admin", nextAction: "Continue input", href: siteScopedHref("/emission/data_input", "/en/emission/data_input", "DJ-021") }
+  ] : [
+    { siteId: "PH-001", siteName: "포항 제1 열연공장", source: "LNG 보일러", period: "2025.08", activityValue: "128,420 Nm3", evidence: "고지서 대조", quality: "산정 가능", owner: "현장 관리자", nextAction: "시뮬레이션", href: siteScopedHref("/emission/simulate", "/en/emission/simulate", "PH-001") },
+    { siteId: "US-042", siteName: "울산 제3 화학기지", source: "공정 가스", period: "2025.08", activityValue: "미입력", evidence: "2건 누락", quality: "보류", owner: "검증 담당", nextAction: "증빙 업로드", href: siteScopedHref("/emission/report_submit", "/en/emission/report_submit", "US-042") },
+    { siteId: "GN-112", siteName: "광양 제2 에너지센터", source: "구매 전력", period: "2025.08", activityValue: "31,240 MWh", evidence: "확인 완료", quality: "검증중", owner: "외부 검토자", nextAction: "검증 열기", href: siteScopedHref("/emission/validate", "/en/emission/validate", "GN-112") },
+    { siteId: "IC-005", siteName: "인천 물류센터", source: "전력 사용", period: "2025.08", activityValue: "1,084 MWh", evidence: "OCR 판독", quality: "산정 가능", owner: "물류 담당", nextAction: "결과 상세", href: siteScopedHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "IC-005") },
+    { siteId: "DJ-021", siteName: "대전 R&D 캠퍼스", source: "출장·이동", period: "2025.08", activityValue: "초안", evidence: "대기", quality: "입력 필요", owner: "연구소 관리자", nextAction: "입력 계속", href: siteScopedHref("/emission/data_input", "/en/emission/data_input", "DJ-021") }
+  ], [en]);
+
+  const normalizedSearchKeyword = searchKeyword.trim().toLowerCase();
+  const filteredDedicatedSites = useMemo(() => {
+    if (!normalizedSearchKeyword) {
+      return dedicatedSites;
+    }
+    return dedicatedSites.filter((site) => `${site.id} ${site.title} ${site.status} ${site.notice}`.toLowerCase().includes(normalizedSearchKeyword));
+  }, [dedicatedSites, normalizedSearchKeyword]);
+  const filteredGeneralSites = useMemo(() => {
+    if (!normalizedSearchKeyword) {
+      return generalSites;
+    }
+    return generalSites.filter((site) => `${site.id} ${site.title} ${site.status}`.toLowerCase().includes(normalizedSearchKeyword));
+  }, [generalSites, normalizedSearchKeyword]);
+  const filteredActivityInputRows = useMemo(() => {
+    if (!normalizedSearchKeyword) {
+      return activityInputRows;
+    }
+    return activityInputRows.filter((row) => `${row.siteId} ${row.siteName} ${row.source} ${row.quality} ${row.owner}`.toLowerCase().includes(normalizedSearchKeyword));
+  }, [activityInputRows, normalizedSearchKeyword]);
+
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-data-input", {
       language: en ? "en" : "ko",
@@ -321,14 +417,19 @@ export function EmissionDataInputMigrationPage() {
       searchKeyword: searchKeyword.trim(),
       menuCount: homeMenu.length,
       queueCount: queueCards.length,
-      dedicatedSiteCount: dedicatedSites.length
+      dedicatedSiteCount: dedicatedSites.length,
+      filteredDedicatedSiteCount: filteredDedicatedSites.length,
+      activityInputRowCount: filteredActivityInputRows.length
     });
     logGovernanceScope("COMPONENT", "emission-data-input-dashboard", {
       queueCount: queueCards.length,
       dedicatedSiteCount: dedicatedSites.length,
-      generalSiteCount: generalSites.length
+      filteredDedicatedSiteCount: filteredDedicatedSites.length,
+      generalSiteCount: generalSites.length,
+      filteredGeneralSiteCount: filteredGeneralSites.length,
+      activityInputRowCount: filteredActivityInputRows.length
     });
-  }, [dedicatedSites.length, en, generalSites.length, homeMenu.length, mobileMenuOpen, queueCards.length, searchKeyword]);
+  }, [dedicatedSites.length, en, filteredActivityInputRows.length, filteredDedicatedSites.length, filteredGeneralSites.length, generalSites.length, homeMenu.length, mobileMenuOpen, queueCards.length, searchKeyword]);
 
   function renderQueueCardBody(card: QueueCard) {
     if (card.variant === "upload") {
@@ -501,6 +602,63 @@ export function EmissionDataInputMigrationPage() {
               </div>
             </div>
           </section>
+
+          <section className="mx-auto max-w-[1440px] px-4 pt-10 lg:px-8" data-help-id="emission-data-input-metrics">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {inputMetrics.map((metric) => (
+                <a className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md" href={metric.href} key={metric.title}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-gray-400">{metric.title}</p>
+                      <p className="mt-3 text-3xl font-black tracking-tight text-gray-900">{metric.value}</p>
+                      <p className="mt-2 text-xs font-bold leading-5 text-gray-500">{metric.description}</p>
+                    </div>
+                    <span className={`material-symbols-outlined rounded-xl p-3 ${metric.toneClass}`}>{metric.icon}</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+
+          <section className="mx-auto max-w-[1440px] px-4 pt-10 lg:px-8" data-help-id="emission-data-input-workbench">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900">{en ? "Guided Activity Data Workbench" : "활동자료 입력 워크벤치"}</h2>
+                  <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Follow the same data path for every site: select, input, attach evidence, calculate, and submit." : "모든 배출지에 동일한 입력 경로를 적용합니다: 선택, 입력, 증빙, 산정, 제출."}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-black text-gray-600 hover:bg-gray-50" onClick={() => setSaveMessage(en ? "Draft input package saved locally for this session." : "현재 세션의 입력 패키지 초안을 저장했습니다.")} type="button">{en ? "Save Draft" : "초안 저장"}</button>
+                  <a className="rounded-lg bg-[var(--kr-gov-blue)] px-4 py-2 text-xs font-black text-white hover:bg-[var(--kr-gov-blue-hover)]" href={buildLocalizedPath("/emission/simulate", "/en/emission/simulate")}>{en ? "Run Calculation" : "산정 실행"}</a>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                {inputStages.map((stage, index) => (
+                  <a className="group rounded-xl border border-gray-100 bg-slate-50 p-5 transition hover:border-[var(--kr-gov-blue)] hover:bg-white" href={stage.href} key={stage.title}>
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[var(--kr-gov-blue)] shadow-sm">
+                        <span className="material-symbols-outlined">{stage.icon}</span>
+                      </span>
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${stage.statusClass}`}>{stage.status}</span>
+                    </div>
+                    <p className="text-xs font-black text-gray-400">STEP {index + 1}</p>
+                    <h3 className="mt-1 font-black text-gray-900 group-hover:text-[var(--kr-gov-blue)]">{stage.title}</h3>
+                    <p className="mt-2 min-h-[54px] text-xs leading-5 text-gray-500">{stage.description}</p>
+                    <div className="mt-4">
+                      <div className="mb-1 flex justify-between text-[11px] font-bold text-gray-400">
+                        <span>{en ? "Progress" : "진행률"}</span>
+                        <span>{stage.progress}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white">
+                        <div className="h-full rounded-full bg-[var(--kr-gov-blue)]" style={{ width: stage.progress }} />
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+
           <section className="mx-auto max-w-[1440px] px-4 py-12 lg:px-8" data-help-id="emission-data-input-sites" id="emission-sources">
             <div className="mb-8 flex items-center justify-between">
               <div>
@@ -516,7 +674,7 @@ export function EmissionDataInputMigrationPage() {
               </div>
             </div>
             <div className="mb-16 grid grid-cols-1 gap-8 lg:grid-cols-3">
-              {dedicatedSites.map((site) => (
+              {filteredDedicatedSites.map((site) => (
                 <div className={`gov-card relative shadow-md ${site.accentClass}`} key={site.id}>
                   <div className="flex items-start justify-between border-b border-gray-100 bg-blue-50/20 p-6">
                     <div>
@@ -572,12 +730,17 @@ export function EmissionDataInputMigrationPage() {
                   </div>
                 </div>
               ))}
+              {filteredDedicatedSites.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-200 bg-white p-10 text-center text-sm font-bold text-gray-400 lg:col-span-3">
+                  {en ? "No dedicated sites match the current search." : "현재 검색어와 일치하는 핵심 관리 배출지가 없습니다."}
+                </div>
+              ) : null}
             </div>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-xl font-bold text-gray-700">{en ? "General Site Overview" : "일반 배출지 현황"}<span className="ml-2 text-sm font-normal text-gray-400">{en ? "18 sites total" : "총 18개소"}</span></h2>
             </div>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {generalSites.map((site) => (
+              {filteredGeneralSites.map((site) => (
                 <div className="gov-card transition-colors hover:border-blue-400" key={site.id}>
                   <div className="flex items-start justify-between border-b border-gray-100 p-4">
                     <div>
@@ -595,12 +758,75 @@ export function EmissionDataInputMigrationPage() {
                   </div>
                 </div>
               ))}
+              {filteredGeneralSites.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center text-xs font-bold text-gray-400 md:col-span-2 lg:col-span-4">
+                  {en ? "No general sites match the current search." : "현재 검색어와 일치하는 일반 배출지가 없습니다."}
+                </div>
+              ) : null}
               <a className="group flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 p-6 transition-all hover:border-[var(--kr-gov-blue)] hover:bg-white" href={adminSiteManagementHref}>
                 <span className="material-symbols-outlined mb-2 text-gray-300 group-hover:text-[var(--kr-gov-blue)]" style={{ fontSize: 32 }}>add_circle</span>
                 <span className="text-xs font-bold text-gray-400 group-hover:text-[var(--kr-gov-blue)]">{en ? "Register Additional Site" : "배출지 추가 등록"}</span>
               </a>
             </div>
           </section>
+
+          <section className="mx-auto max-w-[1440px] px-4 pb-12 lg:px-8" data-help-id="emission-data-input-ledger">
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-gray-100 p-6 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900">{en ? "Activity Data Ledger" : "활동자료 입력 원장"}</h2>
+                  <p className="mt-1 text-sm text-[var(--kr-gov-text-secondary)]">{en ? "Track input value, evidence state, quality gate, owner, and next action for every site." : "배출지별 입력값, 증빙 상태, 품질 게이트, 담당자, 다음 작업을 추적합니다."}</p>
+                </div>
+                <div className="flex gap-2">
+                  <a className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-black text-gray-600 hover:bg-gray-50" href={buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history")}>{en ? "Audit History" : "감사 이력"}</a>
+                  <a className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-black text-white hover:bg-[var(--kr-gov-blue)]" href={buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit")}>{en ? "Prepare Report" : "보고서 작성"}</a>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs font-black uppercase tracking-[0.08em] text-gray-500">
+                      <th className="px-6 py-4">{en ? "Site" : "배출지"}</th>
+                      <th className="px-6 py-4">{en ? "Source" : "배출원"}</th>
+                      <th className="px-6 py-4">{en ? "Period" : "기간"}</th>
+                      <th className="px-6 py-4">{en ? "Activity Value" : "활동자료 값"}</th>
+                      <th className="px-6 py-4">{en ? "Evidence" : "증빙"}</th>
+                      <th className="px-6 py-4">{en ? "Quality" : "품질"}</th>
+                      <th className="px-6 py-4">{en ? "Owner" : "담당자"}</th>
+                      <th className="px-6 py-4 text-center">{en ? "Next" : "다음 작업"}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredActivityInputRows.map((row) => (
+                      <tr className="hover:bg-slate-50/70" key={`${row.siteId}-${row.source}`}>
+                        <td className="px-6 py-4">
+                          <div className="font-black text-gray-900">{row.siteName}</div>
+                          <div className="mt-1 text-xs font-bold text-gray-400">{row.siteId}</div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{row.source}</td>
+                        <td className="px-6 py-4 font-bold text-gray-600">{row.period}</td>
+                        <td className="px-6 py-4 font-black text-gray-900">{row.activityValue}</td>
+                        <td className="px-6 py-4 text-gray-600">{row.evidence}</td>
+                        <td className="px-6 py-4">
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-black ${row.quality.includes("보류") || row.quality.includes("Blocked") || row.quality.includes("needed") || row.quality.includes("필요") ? "bg-orange-100 text-orange-700" : row.quality.includes("검증") || row.quality.includes("Verifying") ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`}>{row.quality}</span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">{row.owner}</td>
+                        <td className="px-6 py-4 text-center">
+                          <a className="inline-flex rounded-lg bg-[var(--kr-gov-blue)] px-3 py-2 text-xs font-black text-white hover:bg-[var(--kr-gov-blue-hover)]" href={row.href}>{row.nextAction}</a>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredActivityInputRows.length === 0 ? (
+                      <tr>
+                        <td className="px-6 py-10 text-center text-sm font-bold text-gray-400" colSpan={8}>{en ? "No activity input rows match the current search." : "현재 검색어와 일치하는 활동자료 입력 행이 없습니다."}</td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
           <section className="border-y border-gray-200 bg-white py-16" data-help-id="emission-data-input-report">
             <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
               <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
