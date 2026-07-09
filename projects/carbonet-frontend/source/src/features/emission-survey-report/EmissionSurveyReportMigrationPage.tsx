@@ -318,10 +318,10 @@ function nextAnimationFrame() {
 type ReportPdfDesignVariant = "classic" | "modern" | "line" | "dark";
 
 const REPORT_PDF_DESIGN_OPTIONS: Array<{ id: ReportPdfDesignVariant; label: string; enLabel: string }> = [
-  { id: "classic", label: "시안 1 클래식", enLabel: "Draft 1 Classic" },
-  { id: "modern", label: "시안 2 모던", enLabel: "Draft 2 Modern" },
-  { id: "line", label: "시안 3 라인", enLabel: "Draft 3 Line" },
-  { id: "dark", label: "시안 4 다크", enLabel: "Draft 4 Dark" }
+  { id: "classic", label: "시안 1 공공 표준", enLabel: "Draft 1 Public Standard" },
+  { id: "modern", label: "시안 2 행정 보고", enLabel: "Draft 2 Agency Report" },
+  { id: "line", label: "시안 3 인증 문서", enLabel: "Draft 3 Certificate" },
+  { id: "dark", label: "시안 4 압축 공문", enLabel: "Draft 4 Compact Official" }
 ];
 
 function buildReportPdfFileName(report: EmissionSurveyReportPayload, design: ReportPdfDesignVariant = "classic") {
@@ -1661,7 +1661,157 @@ export function EmissionSurveyReportPrintPage() {
         {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}.pdf-page-start{break-before:page;page-break-before:always}.pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-page-end{break-after:page;page-break-after:always}.pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-chart-page .print-card{padding:12pt!important}.pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-chart-page h2,.pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-avoid,.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr,.pdf-table-row{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-page{break-after:page;page-break-after:always;padding-top:0!important;padding-bottom:20pt!important}.pdf-download-mode .pdf-page-start{break-before:page;page-break-before:always;margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-table-page{margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-page-end{break-after:page;page-break-after:always}.pdf-download-mode .pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-download-mode .pdf-chart-page .print-card{padding:12pt!important}.pdf-download-mode .pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-download-mode .pdf-chart-page h2,.pdf-download-mode .pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-download-mode .pdf-avoid,.pdf-download-mode .print-break,.pdf-download-mode .print-card,.pdf-download-mode .pdf-table-row{break-inside:avoid;page-break-inside:avoid}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
       </style>
       <style>
-        {".pdf-download-mode .pdf-table-page{overflow:visible!important;border-radius:18px!important}.pdf-download-mode .pdf-table-page.print-card{break-inside:auto!important;page-break-inside:auto!important}.pdf-download-mode .pdf-table-page td{line-height:1.35!important;padding-top:7px!important;padding-bottom:7px!important}.pdf-download-mode .pdf-table-page tbody tr{min-height:30px!important}.pdf-download-mode .pdf-table-page .print-input-text{white-space:normal!important}.pdf-download-mode.pdf-design-modern .print-report-hero{background:linear-gradient(135deg,#062f4f,#0f766e)!important}.pdf-download-mode.pdf-design-modern .print-card{border-color:#99f6e4!important}.pdf-download-mode.pdf-design-modern .print-total-value,.pdf-download-mode.pdf-design-modern .print-soft-bg{background:#ecfeff!important}.pdf-download-mode.pdf-design-line .print-report-hero{background:#ffffff!important;color:#0f172a!important;border:2px solid #0f172a!important}.pdf-download-mode.pdf-design-line .print-report-hero *{color:#0f172a!important}.pdf-download-mode.pdf-design-line .print-report-total-card{background:#f8fafc!important;border:1px solid #0f172a!important}.pdf-download-mode.pdf-design-line .print-card{border:2px solid #0f172a!important;border-radius:10px!important}.pdf-download-mode.pdf-design-line .print-soft-bg{background:#ffffff!important}.pdf-download-mode.pdf-design-dark{background:#0f172a!important}.pdf-download-mode.pdf-design-dark .print-card,.pdf-download-mode.pdf-design-dark .pdf-table-page{background:#111827!important;border-color:#334155!important;color:#e5e7eb!important}.pdf-download-mode.pdf-design-dark .print-soft-bg{background:#172033!important}.pdf-download-mode.pdf-design-dark .print-report-hero{background:linear-gradient(135deg,#020617,#1e293b 55%,#14532d)!important}.pdf-download-mode.pdf-design-dark .pdf-table-page thead,.pdf-download-mode.pdf-design-dark .pdf-table-page tr.bg-blue-50{background:#1f2937!important}.pdf-download-mode.pdf-design-dark .pdf-table-page td,.pdf-download-mode.pdf-design-dark .pdf-table-page th,.pdf-download-mode.pdf-design-dark .pdf-table-page span,.pdf-download-mode.pdf-design-dark .pdf-table-page div{color:#e5e7eb!important}.pdf-download-mode.pdf-design-dark .print-total-cell{background:#111827!important;color:#e5e7eb!important}.pdf-download-mode.pdf-design-dark .print-total-value{background:#020617!important;color:#f8fafc!important}"}
+        {`
+          .pdf-download-mode{
+            background:#ffffff!important;
+            color:#111827!important;
+          }
+          .pdf-download-mode .print-sheet{
+            background:#ffffff!important;
+          }
+          .pdf-download-mode .pdf-table-page{
+            overflow:visible!important;
+            border-radius:14px!important;
+          }
+          .pdf-download-mode .pdf-table-page.print-card{
+            break-inside:auto!important;
+            page-break-inside:auto!important;
+          }
+          .pdf-download-mode .pdf-table-page td{
+            line-height:1.35!important;
+            padding-top:7px!important;
+            padding-bottom:7px!important;
+          }
+          .pdf-download-mode .pdf-table-page tbody tr{
+            min-height:30px!important;
+          }
+          .pdf-download-mode .pdf-table-page .print-input-text{
+            white-space:normal!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-report-hero{
+            background:linear-gradient(135deg,#12366a,#1d4f91 58%,#2f6f8f)!important;
+            border:1px solid #12366a!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-card{
+            border-color:#bfd0e5!important;
+            border-radius:14px!important;
+          }
+          .pdf-download-mode.pdf-design-classic .print-soft-bg,
+          .pdf-download-mode.pdf-design-classic .print-total-value{
+            background:#f1f6fb!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-report-hero{
+            background:#ffffff!important;
+            color:#0f172a!important;
+            border:2px solid #1f5f8b!important;
+            border-top:10px solid #1f5f8b!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-report-hero *,
+          .pdf-download-mode.pdf-design-modern .print-report-title,
+          .pdf-download-mode.pdf-design-modern .print-report-title-tag{
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-report-total-card{
+            background:#edf6ff!important;
+            border:1px solid #8db8df!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-report-total-card *{
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-card{
+            border-color:#a9c5df!important;
+            border-radius:8px!important;
+          }
+          .pdf-download-mode.pdf-design-modern .print-soft-bg,
+          .pdf-download-mode.pdf-design-modern .print-total-value{
+            background:#f5f9fd!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-report-hero{
+            background:#ffffff!important;
+            color:#111827!important;
+            border:2px solid #111827!important;
+            border-left:12px solid #1b5e20!important;
+            border-radius:6px!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-report-hero *,
+          .pdf-download-mode.pdf-design-line .print-report-title,
+          .pdf-download-mode.pdf-design-line .print-report-title-tag{
+            color:#111827!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-report-total-card{
+            background:#f7faf7!important;
+            border:1px solid #1b5e20!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-report-total-card *{
+            color:#111827!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-card{
+            border:1.5px solid #1f2937!important;
+            border-radius:4px!important;
+          }
+          .pdf-download-mode.pdf-design-line .print-soft-bg,
+          .pdf-download-mode.pdf-design-line .print-total-value{
+            background:#fbfdfb!important;
+          }
+          .pdf-download-mode.pdf-design-dark{
+            background:#ffffff!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-report-hero{
+            background:#ffffff!important;
+            color:#0b1220!important;
+            border:1px solid #20324a!important;
+            border-top:14px solid #20324a!important;
+            border-radius:4px!important;
+            margin-bottom:10px!important;
+            padding:14px!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-report-hero *,
+          .pdf-download-mode.pdf-design-dark .print-report-title,
+          .pdf-download-mode.pdf-design-dark .print-report-title-tag{
+            color:#0b1220!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-report-total-card{
+            background:#f4f6f8!important;
+            border:1px solid #64748b!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-report-total-card *{
+            color:#0b1220!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-card,
+          .pdf-download-mode.pdf-design-dark .pdf-table-page{
+            background:#ffffff!important;
+            border-color:#94a3b8!important;
+            border-radius:4px!important;
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-card{
+            padding:12px!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-soft-bg,
+          .pdf-download-mode.pdf-design-dark .print-total-value{
+            background:#f6f8fb!important;
+          }
+          .pdf-download-mode.pdf-design-dark .pdf-table-page thead,
+          .pdf-download-mode.pdf-design-dark .pdf-table-page tr.bg-blue-50{
+            background:#e9eef5!important;
+          }
+          .pdf-download-mode.pdf-design-dark .pdf-table-page td,
+          .pdf-download-mode.pdf-design-dark .pdf-table-page th,
+          .pdf-download-mode.pdf-design-dark .pdf-table-page span,
+          .pdf-download-mode.pdf-design-dark .pdf-table-page div{
+            color:#0f172a!important;
+          }
+          .pdf-download-mode.pdf-design-dark .pdf-chart-page{
+            gap:8pt!important;
+          }
+          .pdf-download-mode.pdf-design-dark .pdf-chart-page .print-card{
+            padding:9pt!important;
+          }
+          .pdf-download-mode.pdf-design-dark .print-total-cell{
+            background:#f4f6f8!important;
+            color:#0f172a!important;
+          }
+        `}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
         <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
