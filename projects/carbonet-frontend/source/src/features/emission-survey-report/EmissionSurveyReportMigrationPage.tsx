@@ -126,15 +126,6 @@ function sha256HexFallback(value: string) {
   return hash.map((item) => item.toString(16).padStart(8, "0")).join("");
 }
 
-function base64UrlEncode(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
 function base64UrlDecode(value: string) {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
   const binary = atob(padded);
@@ -181,10 +172,6 @@ function saveReportVerificationRecord(record: ReportVerificationRecord) {
   window.localStorage.setItem(REPORT_VERIFICATION_STORAGE_KEY, JSON.stringify([record, ...records].slice(0, 100)));
 }
 
-function verificationPayloadToBlock(payload: ReportVerificationPayload) {
-  return `${REPORT_VERIFY_BEGIN}\n${base64UrlEncode(JSON.stringify(payload))}\n${REPORT_VERIFY_END}`;
-}
-
 function extractVerificationPayload(raw: string): ReportVerificationPayload | null {
   const blockMatch = raw.match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_-]+)\s*CARBONET_REPORT_VERIFY_END/);
   const inlineMatch = raw.match(/CARBONET-VERIFY:([A-Za-z0-9_-]+)/);
@@ -197,6 +184,95 @@ function extractVerificationPayload(raw: string): ReportVerificationPayload | nu
   } catch {
     return null;
   }
+}
+
+function normalizePdfExtractedText(value: string) {
+  return value
+    .replace(/\\([()\\])/g, "$1")
+    .replace(/\\r/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\s+/g, " ");
+}
+
+function findPayloadFromVisibleVerificationFields(raw: string): ReportVerificationPayload | null {
+  const text = normalizePdfExtractedText(raw);
+  const certificateId = text.match(/CRN-\d{8}-[A-Fa-f0-9]{12}/)?.[0] || "";
+  const knownRecords = loadReportVerificationRecords();
+  if (certificateId) {
+    const exactRecord = knownRecords.find((record) => record.certificateId === certificateId);
+    if (exactRecord) {
+      return exactRecord;
+    }
+  }
+  const hashes = Array.from(new Set(text.match(/[A-Fa-f0-9]{64}/g) || []));
+  const integrityCodes = Array.from(new Set(text.match(/[A-Fa-f0-9]{24}/g) || []));
+  const matchedBySignals = knownRecords.find((record) => (
+    (!certificateId || record.certificateId === certificateId)
+    && hashes.some((hash) => hash.toLowerCase() === record.payloadHash.toLowerCase())
+    && integrityCodes.some((code) => code.toUpperCase() === record.integrityCode.toUpperCase())
+  ));
+  return matchedBySignals || null;
+}
+
+async function inflatePdfStream(streamBytes: Uint8Array) {
+  const streamApi = (window as Window & { DecompressionStream?: new(format: string) => DecompressionStream }).DecompressionStream;
+  if (!streamApi) {
+    return "";
+  }
+  try {
+    const streamBuffer = streamBytes.buffer.slice(streamBytes.byteOffset, streamBytes.byteOffset + streamBytes.byteLength) as ArrayBuffer;
+    const decompressed = new Blob([streamBuffer]).stream().pipeThrough(new streamApi("deflate"));
+    return await new Response(decompressed).text();
+  } catch {
+    return "";
+  }
+}
+
+async function extractPdfVerificationText(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const latinText = new TextDecoder("latin1", { fatal: false }).decode(buffer);
+  const candidates = [
+    new TextDecoder("utf-8", { fatal: false }).decode(buffer),
+    latinText
+  ];
+  let searchOffset = 0;
+  while (searchOffset < latinText.length) {
+    const streamStart = latinText.indexOf("stream", searchOffset);
+    if (streamStart < 0) {
+      break;
+    }
+    const streamEnd = latinText.indexOf("endstream", streamStart);
+    if (streamEnd < 0) {
+      break;
+    }
+    const dictionaryStart = Math.max(0, latinText.lastIndexOf("<<", streamStart));
+    const dictionaryText = latinText.slice(dictionaryStart, streamStart);
+    let contentStart = streamStart + "stream".length;
+    if (latinText[contentStart] === "\r" && latinText[contentStart + 1] === "\n") {
+      contentStart += 2;
+    } else if (latinText[contentStart] === "\n" || latinText[contentStart] === "\r") {
+      contentStart += 1;
+    }
+    let contentEnd = streamEnd;
+    while (contentEnd > contentStart && (bytes[contentEnd - 1] === 10 || bytes[contentEnd - 1] === 13)) {
+      contentEnd -= 1;
+    }
+    const streamBytes = bytes.slice(contentStart, contentEnd);
+    if (/\/FlateDecode\b/.test(dictionaryText)) {
+      const inflated = await inflatePdfStream(streamBytes);
+      if (inflated) {
+        candidates.push(inflated);
+      }
+    } else {
+      candidates.push(new TextDecoder("latin1", { fatal: false }).decode(streamBytes));
+    }
+    searchOffset = streamEnd + "endstream".length;
+  }
+  return candidates.join("\n");
+}
+
+function resolveVerificationPayload(raw: string): ReportVerificationPayload | null {
+  return extractVerificationPayload(raw) || findPayloadFromVisibleVerificationFields(raw);
 }
 
 async function buildReportVerificationRecord(report: EmissionSurveyReportPayload): Promise<ReportVerificationRecord> {
@@ -1796,11 +1872,11 @@ export function EmissionSurveyReportPrintPage() {
             <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-white p-3">
               <p className="text-[11px] font-black text-slate-500">{en ? "Verification URL" : "진위확인 URL"}</p>
               <p className="mt-1 break-all font-mono text-[11px] font-bold text-slate-700">{verificationRecord.verificationUrl}</p>
-              <p className="mt-3 text-[11px] font-black text-slate-500">{en ? "Machine-readable block" : "기계 판독용 블록"}</p>
-              <pre className="mt-1 whitespace-pre-wrap break-all rounded-xl bg-slate-950 p-3 font-mono text-[8px] leading-4 text-emerald-100">
-                {verificationPayloadToBlock(verificationRecord)}
-              </pre>
-              <p className="mt-2 break-all font-mono text-[8px] leading-4 text-slate-500">CARBONET-VERIFY:{base64UrlEncode(JSON.stringify(verificationRecord))}</p>
+              <p className="mt-3 text-[11px] font-semibold leading-5 text-slate-500">
+                {en
+                  ? "Upload this saved PDF on the authenticity page. The visible certificate signals are used for verification."
+                  : "저장한 PDF를 진위확인 페이지에 업로드하면 화면에 표시된 인증 신호로 진위 여부를 확인합니다."}
+              </p>
             </div>
           ) : null}
         </section>
@@ -1865,11 +1941,9 @@ export function EmissionSurveyReportVerifyPage() {
     }
     setFileName(file.name);
     const buffer = await file.arrayBuffer();
-    const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-    const latinText = new TextDecoder("latin1", { fatal: false }).decode(buffer);
-    const combinedText = `${utf8Text}\n${latinText}`;
-    const nextPayload = extractVerificationPayload(combinedText);
-    setUploadedVerificationText(combinedText);
+    const extractedText = await extractPdfVerificationText(buffer);
+    const nextPayload = resolveVerificationPayload(extractedText);
+    setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
     evaluatePayload(nextPayload, file.name);
   };
@@ -1879,7 +1953,7 @@ export function EmissionSurveyReportVerifyPage() {
     const sourceLabel = manualBlock.trim()
       ? (en ? "manual input" : "수동 입력값")
       : (fileName || (en ? "uploaded PDF" : "업로드 PDF"));
-    evaluatePayload(extractVerificationPayload(sourceText), sourceLabel);
+    evaluatePayload(resolveVerificationPayload(sourceText), sourceLabel);
   };
 
   const toneClass = resultTone === "success"
