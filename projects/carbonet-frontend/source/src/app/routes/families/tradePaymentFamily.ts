@@ -2,6 +2,7 @@ import { createRouteFamily, type PageUnitsOf, type RouteDefinitionsOf } from "..
 import { buildManifestBackedRoutePageContracts } from "./manifestBackedPageContracts";
 
 const TRADE_PAYMENT_ROUTE_DEFINITIONS = [
+  { id: "trade-index", label: "거래 대시보드", group: "home", koPath: "/trade/index", enPath: "/en/trade/index" },
   { id: "trade-list", label: "거래 목록", group: "home", koPath: "/trade/list", enPath: "/en/trade/list" },
   { id: "trade-market", label: "거래 시장", group: "home", koPath: "/trade/market", enPath: "/en/trade/market" },
   { id: "trade-report", label: "거래 리포트", group: "home", koPath: "/trade/report", enPath: "/en/trade/report" },
@@ -19,11 +20,13 @@ const TRADE_PAYMENT_ROUTE_DEFINITIONS = [
   { id: "trade-auto-order", label: "자동 매칭", group: "home", koPath: "/trade/auto_order", enPath: "/en/trade/auto_order" },
   { id: "trade-sell", label: "판매 등록", group: "home", koPath: "/trade/sell", enPath: "/en/trade/sell" },
   { id: "trade-price-alert", label: "가격 알림", group: "home", koPath: "/trade/price_alert", enPath: "/en/trade/price_alert" },
+  { id: "payment-index", label: "결제 대시보드", group: "home", koPath: "/payment/index", enPath: "/en/payment/index" },
   { id: "payment-pay", label: "결제 요청", group: "home", koPath: "/payment/pay", enPath: "/en/payment/pay" },
   { id: "payment-virtual-account", label: "가상계좌", group: "home", koPath: "/payment/virtual_account", enPath: "/en/payment/virtual_account" },
   { id: "payment-refund", label: "결제 환불", group: "home", koPath: "/payment/refund", enPath: "/en/payment/refund" },
   { id: "payment-refund-account", label: "환불 계좌", group: "home", koPath: "/payment/refund_account", enPath: "/en/payment/refund_account" },
   { id: "payment-notify", label: "세금계산서", group: "home", koPath: "/payment/notify", enPath: "/en/payment/notify" },
+  { id: "certificate-index", label: "인증서 대시보드", group: "home", koPath: "/certificate/index", enPath: "/en/certificate/index" },
   { id: "certificate-list", label: "인증서 목록", group: "home", koPath: "/certificate/list", enPath: "/en/certificate/list" },
   { id: "certificate-apply", label: "인증서 신청", group: "home", koPath: "/certificate/apply", enPath: "/en/certificate/apply" },
   { id: "certificate-report-list", label: "보고서 및 인증서 목록", group: "home", koPath: "/certificate/report_list", enPath: "/en/certificate/report_list" },
@@ -34,6 +37,7 @@ const TRADE_PAYMENT_ROUTE_DEFINITIONS = [
 ] as const satisfies RouteDefinitionsOf;
 
 const TRADE_PAYMENT_PAGE_UNITS = [
+  { id: "trade-index", exportName: "TradeIndexPage", loader: () => import("../../../features/major-menu-index/MajorMenuIndexPage") },
   { id: "trade-list", exportName: "TradeListMigrationPage", loader: () => import("../../../features/trade-list/TradeListMigrationPage") },
   { id: "trade-market", exportName: "TradeMarketMigrationPage", loader: () => import("../../../features/trade-market/TradeMarketMigrationPage") },
   { id: "trade-report", exportName: "TradeReportMigrationPage", loader: () => import("../../../features/trade-report/TradeReportMigrationPage") },
@@ -51,12 +55,14 @@ const TRADE_PAYMENT_PAGE_UNITS = [
   { id: "trade-auto-order", exportName: "TradeAutoOrderMigrationPage", loader: () => import("../../../features/trade-auto-order/TradeAutoOrderMigrationPage") },
   { id: "trade-sell", exportName: "TradeSellMigrationPage", loader: () => import("../../../features/trade-sell/TradeSellMigrationPage") },
   { id: "trade-price-alert", exportName: "TradePriceAlertMigrationPage", loader: () => import("../../../features/trade-price-alert/TradePriceAlertMigrationPage") },
+  { id: "payment-index", exportName: "PaymentIndexPage", loader: () => import("../../../features/major-menu-index/MajorMenuIndexPage") },
   { id: "payment-pay", exportName: "PaymentPayMigrationPage", loader: () => import("../../../features/payment-pay/PaymentPayMigrationPage") },
   { id: "payment-virtual-account", exportName: "PaymentVirtualAccountMigrationPage", loader: () => import("../../../features/payment-virtual-account/PaymentVirtualAccountMigrationPage") },
   { id: "payment-refund", exportName: "PaymentRefundMigrationPage", loader: () => import("../../../features/payment-refund/PaymentRefundMigrationPage") },
   { id: "payment-refund-account", exportName: "PaymentRefundAccountMigrationPage", loader: () => import("../../../features/payment-refund-account/PaymentRefundAccountMigrationPage") },
   { id: "payment-notify", exportName: "PaymentNotifyMigrationPage", loader: () => import("../../../features/payment-notify/PaymentNotifyMigrationPage") },
   { id: "payment-receipt", exportName: "PaymentReceiptMigrationPage", loader: () => import("../../../features/payment-receipt/PaymentReceiptMigrationPage") },
+  { id: "certificate-index", exportName: "CertificateIndexPage", loader: () => import("../../../features/major-menu-index/MajorMenuIndexPage") },
   { id: "certificate-list", exportName: "CertificateListMigrationPage", loader: () => import("../../../features/certificate-list/CertificateListMigrationPage") },
   { id: "certificate-apply", exportName: "CertificateApplyMigrationPage", loader: () => import("../../../features/certificate-apply/CertificateApplyMigrationPage") },
   { id: "certificate-report-list", exportName: "CertificateReportListMigrationPage", loader: () => import("../../../features/certificate-report-list/CertificateReportListMigrationPage") },

@@ -409,6 +409,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "certificate-index",
+    "label": "인증서 대시보드",
+    "group": "home",
+    "koPath": "/certificate/index",
+    "enPath": "/en/certificate/index",
+    "exportName": "CertificateIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "CertificateIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
+  },
+  {
     "routeId": "certificate-list",
     "label": "인증서 목록",
     "group": "home",
@@ -550,6 +562,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/co2-demand-list/Co2DemandListMigrationPage.tsx",
     "effectiveExportName": "Co2DemandListMigrationPage",
     "effectiveSourcePath": "features/co2-demand-list/Co2DemandListMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "co2-index",
+    "label": "MRV·탄소시장 대시보드",
+    "group": "home",
+    "koPath": "/co2/index",
+    "enPath": "/en/co2/index",
+    "exportName": "Co2IndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "Co2IndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -802,6 +826,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/edu-course-list/EduCourseListMigrationPage.tsx",
     "effectiveExportName": "EduCourseListMigrationPage",
     "effectiveSourcePath": "features/edu-course-list/EduCourseListMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
+  },
+  {
+    "routeId": "edu-index",
+    "label": "교육 대시보드",
+    "group": "home",
+    "koPath": "/edu/index",
+    "enPath": "/en/edu/index",
+    "exportName": "EduIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "EduIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
     "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
@@ -1777,6 +1813,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "monitoring-index",
+    "label": "모니터링 대시보드",
+    "group": "home",
+    "koPath": "/monitoring/index",
+    "enPath": "/en/monitoring/index",
+    "exportName": "MonitoringIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "MonitoringIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "monitoring-realtime",
     "label": "실시간 모니터링",
     "group": "home",
@@ -1835,6 +1883,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "effectiveExportName": "MonitoringTrackMigrationPage",
     "effectiveSourcePath": "features/monitoring-track/MonitoringTrackMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "mtn-index",
+    "label": "서비스 운영 대시보드",
+    "group": "home",
+    "koPath": "/mtn/index",
+    "enPath": "/en/mtn/index",
+    "exportName": "MtnIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "MtnIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
     "routeId": "mtn-status",
@@ -1906,6 +1966,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/mypage-email/MypageEmailMigrationPage.tsx",
     "effectiveExportName": "MypageEmailMigrationPage",
     "effectiveSourcePath": "features/mypage-email/MypageEmailMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
+  },
+  {
+    "routeId": "mypage-index",
+    "label": "마이페이지 대시보드",
+    "group": "home",
+    "koPath": "/mypage/index",
+    "enPath": "/en/mypage/index",
+    "exportName": "MypageIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "MypageIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
     "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
@@ -2038,6 +2110,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/payment-history/PaymentHistoryMigrationPage.tsx",
     "effectiveExportName": "PaymentHistoryMigrationPage",
     "effectiveSourcePath": "features/payment-history/PaymentHistoryMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
+  },
+  {
+    "routeId": "payment-index",
+    "label": "결제 대시보드",
+    "group": "home",
+    "koPath": "/payment/index",
+    "enPath": "/en/payment/index",
+    "exportName": "PaymentIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "PaymentIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {
@@ -2413,6 +2497,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
   },
   {
+    "routeId": "support-index",
+    "label": "고객지원 대시보드",
+    "group": "home",
+    "koPath": "/support/index",
+    "enPath": "/en/support/index",
+    "exportName": "SupportIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "SupportIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
+  },
+  {
     "routeId": "support-inquiry",
     "label": "문의 내역",
     "group": "home",
@@ -2626,6 +2722,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/trade-duplicate/TradeDuplicateMigrationPage.tsx",
     "effectiveExportName": "TradeDuplicateMigrationPage",
     "effectiveSourcePath": "features/trade-duplicate/TradeDuplicateMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
+  },
+  {
+    "routeId": "trade-index",
+    "label": "거래 대시보드",
+    "group": "home",
+    "koPath": "/trade/index",
+    "enPath": "/en/trade/index",
+    "exportName": "TradeIndexPage",
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveExportName": "TradeIndexPage",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
     "routeFamilyFile": "app/routes/families/tradePaymentFamily.ts"
   },
   {

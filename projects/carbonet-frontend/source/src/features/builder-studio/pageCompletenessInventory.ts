@@ -2594,6 +2594,43 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveSourcePath": "features/major-menu-index/MajorMenuIndexPage.tsx",
+    "effectiveSourcePaths": [
+      "features/major-menu-index/MajorMenuIndexPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "CertificateIndexPage",
+      "Co2IndexPage",
+      "EduIndexPage",
+      "MonitoringIndexPage",
+      "MtnIndexPage",
+      "MypageIndexPage",
+      "PaymentIndexPage",
+      "SupportIndexPage",
+      "TradeIndexPage"
+    ],
+    "routeIds": [
+      "certificate-index",
+      "co2-index",
+      "edu-index",
+      "monitoring-index",
+      "mtn-index",
+      "mypage-index",
+      "payment-index",
+      "support-index",
+      "trade-index"
+    ],
+    "routeCount": 9,
+    "status": "implemented",
+    "lineCount": 449,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
     "effectiveSourcePath": "features/member-approve/MemberApproveMigrationPage.tsx",
     "effectiveSourcePaths": [
