@@ -97,7 +97,7 @@ function getDefaultActionLinks(en: boolean) {
     {
       icon: "analytics",
       label: en ? "Open Result Detail" : "산정 결과 상세",
-      url: buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail")
+      url: buildLocalizedPath("/admin/emission/result_detail", "/en/admin/emission/result_detail")
     },
     {
       icon: "description",
@@ -107,7 +107,7 @@ function getDefaultActionLinks(en: boolean) {
     {
       icon: "history",
       label: en ? "Data History" : "데이터 이력",
-      url: buildLocalizedPath("/emission/data_history", "/en/emission/data_history")
+      url: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history")
     },
     {
       icon: "tune",
@@ -118,7 +118,7 @@ function getDefaultActionLinks(en: boolean) {
 }
 
 function getRowDetailHref(row: Record<string, unknown>, returnUrl: string) {
-  const detailUrl = stringOf(row, "detailUrl") || buildLocalizedPath("/emission/result_detail", "/en/emission/result_detail");
+  const detailUrl = stringOf(row, "detailUrl") || buildLocalizedPath("/admin/emission/result_detail", "/en/admin/emission/result_detail");
   return withReturnUrl(detailUrl, returnUrl);
 }
 

@@ -1,8 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { isEnglish, navigate } from "../../lib/navigation/runtime";
+import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchEmissionResultDetailPage } from "../../lib/api/emission";
+import type { EmissionResultDetailPagePayload } from "../../lib/api/emissionTypes";
+import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
+
+function readString(value: unknown) {
+  return String(value || "");
+}
+
+function appendResultId(pathKo: string, pathEn: string, resultId: string) {
+  const href = buildLocalizedPath(pathKo, pathEn);
+  if (!resultId) {
+    return href;
+  }
+  const glue = href.includes("?") ? "&" : "?";
+  return `${href}${glue}resultId=${encodeURIComponent(resultId)}`;
+}
 
 type MenuSection = {
   label: string;
@@ -128,13 +145,47 @@ function EmissionHomeValidateInlineStyles() {
 
 export function EmissionHomeValidateMigrationPage() {
   const en = isEnglish();
+  const resultId = getSearchParam("resultId");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
+  const resultState = useAsyncValue<EmissionResultDetailPagePayload>(
+    () => fetchEmissionResultDetailPage(resultId),
+    [resultId],
+    {
+      enabled: Boolean(resultId),
+      onError: () => undefined
+    }
+  );
+  const resultDetail = resultState.value;
+  const resultFound = Boolean(resultDetail?.found);
+  const siteRows = ((resultDetail?.siteRows as Array<Record<string, unknown>> | undefined) || []);
+  const evidenceRows = ((resultDetail?.evidenceRows as Array<Record<string, unknown>> | undefined) || []);
+  const validationContext = {
+    projectName: readString(resultDetail?.projectName) || (en ? "No linked emission result" : "연결된 산정 결과 없음"),
+    companyName: readString(resultDetail?.companyName) || "-",
+    reportPeriod: readString(resultDetail?.reportPeriod) || "-",
+    totalEmission: readString(resultDetail?.totalEmission) || "-",
+    verificationStatus: readString(resultDetail?.verificationStatusLabel) || (en ? "Not selected" : "미선택"),
+    resultStatus: readString(resultDetail?.resultStatusLabel) || "-",
+    evidenceCount: String(Number(resultDetail?.evidenceCount || evidenceRows.length || 0)),
+    siteCount: String(Number(resultDetail?.siteCount || siteRows.length || 0))
+  };
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
     return () => document.body.classList.remove("mobile-menu-open");
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    logGovernanceScope("PAGE", "emission-home-validate", {
+      language: en ? "en" : "ko",
+      resultId,
+      resultFound,
+      moduleSearchKeyword: searchKeyword,
+      siteCount: siteRows.length,
+      evidenceCount: evidenceRows.length
+    });
+  }, [en, evidenceRows.length, resultFound, resultId, searchKeyword, siteRows.length]);
 
   const topMenus = useMemo<TopMenu[]>(() => en ? [
     {
@@ -394,8 +445,8 @@ export function EmissionHomeValidateMigrationPage() {
               </nav>
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
                 <div className="hidden xl:flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/emission/validate")}>KO</button>
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate("/en/emission/validate")}>EN</button>
+                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate(appendResultId("/emission/validate", "/emission/validate", resultId))}>KO</button>
+                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate(appendResultId("/en/emission/validate", "/en/emission/validate", resultId))}>EN</button>
                 </div>
                 <a className="hidden xl:inline-flex items-center px-5 py-2.5 font-bold rounded-[var(--kr-gov-radius)] transition-colors outline-none bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)]" href={en ? "/en/signin/loginView" : "/signin/loginView"}>
                   {en ? "Login" : "로그인"}
@@ -418,8 +469,8 @@ export function EmissionHomeValidateMigrationPage() {
             </div>
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <button type="button" className={`rounded-[var(--kr-gov-radius)] border px-3 py-2 font-bold ${en ? "text-[var(--kr-gov-text-secondary)]" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/emission/validate")}>KO</button>
-                <button type="button" className={`rounded-[var(--kr-gov-radius)] border px-3 py-2 font-bold ${en ? "bg-[var(--kr-gov-blue)] text-white" : "text-[var(--kr-gov-text-secondary)]"}`} onClick={() => navigate("/en/emission/validate")}>EN</button>
+                <button type="button" className={`rounded-[var(--kr-gov-radius)] border px-3 py-2 font-bold ${en ? "text-[var(--kr-gov-text-secondary)]" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate(appendResultId("/emission/validate", "/emission/validate", resultId))}>KO</button>
+                <button type="button" className={`rounded-[var(--kr-gov-radius)] border px-3 py-2 font-bold ${en ? "bg-[var(--kr-gov-blue)] text-white" : "text-[var(--kr-gov-text-secondary)]"}`} onClick={() => navigate(appendResultId("/en/emission/validate", "/en/emission/validate", resultId))}>EN</button>
               </div>
               <div className="space-y-3">
                 {topMenus.map((top) => (
@@ -459,24 +510,24 @@ export function EmissionHomeValidateMigrationPage() {
                       <span className="material-symbols-outlined text-white text-[28px]">settings_suggest</span>
                     </div>
                     <div>
-                      <h2 className="text-3xl font-black text-white">{en ? "Logic Management Console" : "산정 로직 관리 콘솔"}</h2>
+                      <h2 className="text-3xl font-black text-white">{en ? "Emission Verification Hub" : "배출 산정 검증 허브"}</h2>
                       <p className="text-blue-400 text-sm font-bold flex items-center gap-2">
                         <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-                        {en ? "Currently configuring 'Ulsan Chemical Base #3' modules" : "현재 '울산 제3 화학기지' 산정 모듈 구성 중"}
+                        {resultId ? (en ? `Linked result ${resultId}` : `연결된 산정 결과 ${resultId}`) : (en ? "Select or prepare an emission result for verification" : "검증할 산정 결과를 선택하거나 준비합니다")}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-4">
                   <div className="bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-xl">
-                    <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">{en ? "Active Modules" : "활성 모듈"}</p>
-                    <p className="text-2xl font-black text-white">12 / 14</p>
+                    <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">{en ? "Evidence Files" : "증빙 파일"}</p>
+                    <p className="text-2xl font-black text-white">{validationContext.evidenceCount}</p>
                   </div>
                   <div className="bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-xl">
-                    <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">{en ? "Global Recalculation" : "전역 재산정"}</p>
-                    <button className="flex items-center gap-2 text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors" type="button">
-                      <span className="material-symbols-outlined text-[18px]">refresh</span>
-                      {en ? "Run Batch Recalculation" : "일괄 재산정 실행"}
+                    <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-widest">{en ? "Admin Queue" : "관리자 검증 큐"}</p>
+                    <button className="flex items-center gap-2 text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors" type="button" onClick={() => navigate(appendResultId("/admin/emission/validate", "/en/admin/emission/validate", resultId))}>
+                      <span className="material-symbols-outlined text-[18px]">rule</span>
+                      {en ? "Open verification queue" : "검증 대기열 열기"}
                     </button>
                   </div>
                 </div>
@@ -484,6 +535,53 @@ export function EmissionHomeValidateMigrationPage() {
             </div>
           </section>
           <section className="max-w-[1440px] mx-auto px-4 lg:px-8 py-10" data-help-id="emission-home-validate-modules">
+            <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" data-help-id="emission-home-validate-result-context">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-gray-400">
+                    {resultId || (en ? "No result selected" : "산정 결과 미선택")}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black text-gray-900">{validationContext.projectName}</h3>
+                  <p className="mt-1 text-sm font-medium text-gray-500">{validationContext.companyName}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[var(--kr-gov-blue)]">{validationContext.verificationStatus}</span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{validationContext.resultStatus}</span>
+                </div>
+              </div>
+              {resultId && !resultState.loading && !resultFound ? (
+                <div className="mt-4 rounded-[var(--kr-gov-radius)] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                  {en ? "The linked result was not found. Open the result list and select a valid result before verification." : "연결된 산정 결과를 찾지 못했습니다. 결과 목록에서 유효한 결과를 선택한 뒤 검증을 진행하십시오."}
+                </div>
+              ) : null}
+              <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-4">
+                {[
+                  [en ? "Report Period" : "보고 기간", validationContext.reportPeriod],
+                  [en ? "Total Emission" : "총 배출량", validationContext.totalEmission],
+                  [en ? "Emission Sites" : "배출지 수", validationContext.siteCount],
+                  [en ? "Evidence Files" : "증빙 파일", validationContext.evidenceCount]
+                ].map(([label, value]) => (
+                  <div className="rounded-xl border border-gray-100 bg-slate-50 px-4 py-3" key={label}>
+                    <p className="text-xs font-bold text-gray-500">{label}</p>
+                    <p className="mt-2 text-sm font-black text-gray-900">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] text-sm" type="button" onClick={() => navigate(appendResultId("/admin/emission/validate", "/en/admin/emission/validate", resultId))}>
+                  <span className="material-symbols-outlined text-[18px] align-middle">rule</span>
+                  {en ? "Open Admin Verification" : "관리자 검증 열기"}
+                </button>
+                <button className="gov-btn border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm" type="button" onClick={() => navigate(appendResultId("/admin/emission/result_detail", "/en/admin/emission/result_detail", resultId))}>
+                  <span className="material-symbols-outlined text-[18px] align-middle">analytics</span>
+                  {en ? "Result Detail" : "산정 결과 상세"}
+                </button>
+                <button className="gov-btn border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm" type="button" onClick={() => navigate(appendResultId("/admin/emission/data_history", "/en/admin/emission/data_history", resultId))}>
+                  <span className="material-symbols-outlined text-[18px] align-middle">history</span>
+                  {en ? "Audit History" : "감사 이력"}
+                </button>
+              </div>
+            </div>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
               <div>
                 <h3 className="text-xl font-black flex items-center gap-2">
@@ -614,9 +712,9 @@ export function EmissionHomeValidateMigrationPage() {
                   <div className="flex-1">
                     <h4 className="text-xl font-black mb-2">{en ? "Run Real-time Recalculation" : "실시간 재산정 실행"}</h4>
                     <p className="text-gray-500 text-sm mb-6 leading-relaxed">{en ? "Recalculate historical and current emissions with the updated logic while respecting system load." : "수정된 산정 로직을 기반으로 과거 데이터를 포함한 전체 배출량을 다시 계산합니다."}</p>
-                    <button className="gov-btn bg-slate-800 text-white flex items-center gap-2 hover:bg-slate-900" type="button">
+                    <button className="gov-btn bg-slate-800 text-white flex items-center gap-2 hover:bg-slate-900" type="button" onClick={() => navigate(appendResultId("/emission/report_submit", "/en/emission/report_submit", resultId))}>
                       <span className="material-symbols-outlined text-[18px]">play_circle</span>
-                      {en ? "Start Recalculation Workflow" : "재산정 워크플로우 시작"}
+                      {en ? "Review Report Package" : "보고서 패키지 검토"}
                     </button>
                   </div>
                 </div>
@@ -627,9 +725,9 @@ export function EmissionHomeValidateMigrationPage() {
                   <div className="flex-1">
                     <h4 className="text-xl font-black mb-2">{en ? "Verification Readiness Check" : "검증 준비도 체크"}</h4>
                     <p className="text-gray-500 text-sm mb-6 leading-relaxed">{en ? "Self-assess compliance readiness based on configured methodologies and current input data." : "현재 설정된 방법론과 데이터 입력 현황을 기반으로 외부 검증 요구사항 준수 여부를 자가 진단합니다."}</p>
-                    <button className="gov-btn bg-white border border-gray-300 text-gray-700 flex items-center gap-2 hover:bg-gray-50" type="button">
+                    <button className="gov-btn bg-white border border-gray-300 text-gray-700 flex items-center gap-2 hover:bg-gray-50" type="button" onClick={() => navigate(appendResultId("/admin/emission/validate", "/en/admin/emission/validate", resultId))}>
                       <span className="material-symbols-outlined text-[18px]">assignment_turned_in</span>
-                      {en ? "Generate Self-check Report" : "자가 진단 리포트 생성"}
+                      {en ? "Submit to Verification Queue" : "검증 대기열로 제출"}
                     </button>
                   </div>
                 </div>
