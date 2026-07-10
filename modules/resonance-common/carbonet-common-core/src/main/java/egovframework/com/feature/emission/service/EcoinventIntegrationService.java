@@ -29,7 +29,6 @@ import org.springframework.web.util.UriUtils;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
@@ -560,10 +559,31 @@ public class EcoinventIntegrationService {
             }
         }
         List<Map<String, Object>> rows = new ArrayList<>(deduped.values());
-        rows.sort(Comparator
-                .comparingInt(this::aiRecommendationPriority)
-                .thenComparingLong(row -> longValue(row.get("aiRank"), Long.MAX_VALUE))
-                .thenComparing(row -> safeObject(row.get("productName")), String.CASE_INSENSITIVE_ORDER));
+        rows.sort((left, right) -> {
+            int materialCompare = Integer.compare(aiRecommendationPriority(left), aiRecommendationPriority(right));
+            if (materialCompare != 0) {
+                return materialCompare;
+            }
+            int geographyCompare = Integer.compare(geographyRank(left.get("geography")), geographyRank(right.get("geography")));
+            if (geographyCompare != 0) {
+                return geographyCompare;
+            }
+            int periodStartCompare = compareLongDesc(periodStart(left.get("timePeriod")), periodStart(right.get("timePeriod")));
+            if (periodStartCompare != 0) {
+                return periodStartCompare;
+            }
+            int periodEndCompare = compareLongDesc(periodEnd(left.get("timePeriod")), periodEnd(right.get("timePeriod")));
+            if (periodEndCompare != 0) {
+                return periodEndCompare;
+            }
+            int originalRankCompare = Long.compare(
+                    longValue(left.get("aiRank"), Long.MAX_VALUE),
+                    longValue(right.get("aiRank"), Long.MAX_VALUE));
+            if (originalRankCompare != 0) {
+                return originalRankCompare;
+            }
+            return safeObject(left.get("productName")).compareToIgnoreCase(safeObject(right.get("productName")));
+        });
         for (int index = 0; index < rows.size(); index++) {
             rows.get(index).put("aiRank", index + 1);
         }
