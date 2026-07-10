@@ -5,6 +5,8 @@ import {
   fetchSurveyMaterialEnglishNames,
   issueSurveyReportVerification,
   verifySurveyReportDataset,
+  verifySurveyReportPhoto,
+  type ReportPhotoVerificationResponse,
   type ReportDatasetVerificationResponse
 } from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -290,6 +292,69 @@ async function extractPdfVerificationText(buffer: ArrayBuffer) {
     searchOffset = streamEnd + "endstream".length;
   }
   return candidates.join("\n");
+}
+
+async function preprocessReportPhoto(file: File) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const targetWidth = Math.min(2400, Math.max(1600, bitmap.width));
+  const scale = targetWidth / bitmap.width;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) {
+    bitmap.close();
+    throw new Error("Image preprocessing is not available.");
+  }
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < imageData.data.length; index += 4) {
+    const luminance = imageData.data[index] * 0.299 + imageData.data[index + 1] * 0.587 + imageData.data[index + 2] * 0.114;
+    const contrasted = Math.max(0, Math.min(255, (luminance - 128) * 1.35 + 128));
+    imageData.data[index] = contrasted;
+    imageData.data[index + 1] = contrasted;
+    imageData.data[index + 2] = contrasted;
+  }
+  context.putImageData(imageData, 0, 0);
+  return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Image preprocessing failed.")), "image/png"));
+}
+
+async function recognizeReportPhotos(files: File[], onProgress: (progress: number, status: string) => void) {
+  const images: Blob[] = [];
+  for (let index = 0; index < files.length; index += 1) {
+    onProgress(Math.round((index / Math.max(1, files.length)) * 10), `IMAGE ${index + 1}/${files.length}`);
+    images.push(await preprocessReportPhoto(files[index]));
+  }
+  const { createWorker, OEM } = await import("tesseract.js");
+  const texts: string[] = [];
+  const confidences: number[] = [];
+  for (const [languageIndex, language] of (["kor", "eng"] as const).entries()) {
+    const worker = await createWorker(language, OEM.LSTM_ONLY, {
+      workerPath: "/assets/react/ocr/worker.min.js",
+      corePath: "/assets/react/ocr/tesseract-core-lstm.wasm.js",
+      langPath: "/assets/react/ocr",
+      cacheMethod: "none",
+      logger: () => undefined
+    });
+    try {
+      for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
+        const base = languageIndex * images.length + imageIndex;
+        const result = await worker.recognize(images[imageIndex], {}, {
+          text: true
+        });
+        texts.push(result.data.text);
+        confidences.push(result.data.confidence);
+        onProgress(10 + Math.round(((base + 1) / (images.length * 2)) * 90), `${language.toUpperCase()} ${imageIndex + 1}/${images.length}`);
+      }
+    } finally {
+      await worker.terminate();
+    }
+  }
+  return {
+    text: texts.filter(Boolean).join("\n"),
+    confidence: confidences.length ? Math.max(...confidences) : 0
+  };
 }
 
 function resolveVerificationPayload(raw: string): ReportVerificationPayload | null {
@@ -2126,6 +2191,9 @@ export function EmissionSurveyReportVerifyPage() {
   const [uploadedPayloadFound, setUploadedPayloadFound] = useState(false);
   const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
   const [datasetVerification, setDatasetVerification] = useState<ReportDatasetVerificationResponse | null>(null);
+  const [photoVerification, setPhotoVerification] = useState<ReportPhotoVerificationResponse | null>(null);
+  const [ocrProgress, setOcrProgress] = useState<{ busy: boolean; percent: number; status: string }>({ busy: false, percent: 0, status: "" });
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning">("info");
 
@@ -2186,11 +2254,43 @@ export function EmissionSurveyReportVerifyPage() {
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
+    const file = files[0];
     if (!file) {
       return;
     }
-    setFileName(file.name);
+    setFileName(files.map((item) => item.name).join(", "));
+    setPhotoVerification(null);
+    setDatasetVerification(null);
+    if (files.every((item) => item.type.startsWith("image/"))) {
+      photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+      setPhotoPreviewUrls(files.map((item) => URL.createObjectURL(item)));
+      setUploadedPayloadFound(false);
+      setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing image" : "이미지 보정 중" });
+      setResultTone("info");
+      setResultMessage(en ? "Reading the photographed report on this device..." : "이 기기에서 촬영 리포트의 텍스트를 추출하고 있습니다...");
+      try {
+        const recognized = await recognizeReportPhotos(files, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+        setUploadedVerificationText(recognized.text);
+        const verification = await verifySurveyReportPhoto(recognized.text);
+        setPhotoVerification(verification);
+        setPayload(null);
+        setResultTone(verification.photoConsistent ? "success" : "warning");
+        setResultMessage(verification.photoConsistent
+          ? (en ? `Photo content matches an issued dataset with ${verification.confidence}% confidence.` : `촬영본 내용이 발급 데이터셋과 ${verification.confidence}% 신뢰도로 일치합니다.`)
+          : verification.status === "PHOTO_REVIEW"
+            ? (en ? `Partial match (${verification.confidence}%). Visual review is required.` : `부분 일치(${verification.confidence}%)하여 육안 검토가 필요합니다.`)
+            : (en ? `The photographed content does not match an issued dataset (${verification.confidence}%).` : `촬영본 내용이 발급 데이터셋과 충분히 일치하지 않습니다(${verification.confidence}%).`));
+      } catch (error) {
+        setResultTone("warning");
+        setResultMessage(error instanceof Error ? error.message : (en ? "Photo OCR failed." : "사진 OCR 처리에 실패했습니다."));
+      } finally {
+        setOcrProgress((current) => ({ ...current, busy: false }));
+      }
+      return;
+    }
+    photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    setPhotoPreviewUrls([]);
     const buffer = await file.arrayBuffer();
     const extractedText = await extractPdfVerificationText(buffer);
     const nextPayload = resolveVerificationPayload(extractedText);
@@ -2200,6 +2300,13 @@ export function EmissionSurveyReportVerifyPage() {
   };
 
   const handleManualVerify = () => {
+    if (photoVerification) {
+      setResultTone(photoVerification.photoConsistent ? "success" : "warning");
+      setResultMessage(photoVerification.photoConsistent
+        ? (en ? `Photo content matches an issued dataset with ${photoVerification.confidence}% confidence.` : `촬영본 내용이 발급 데이터셋과 ${photoVerification.confidence}% 신뢰도로 일치합니다.`)
+        : (en ? "The photo OCR result requires review." : "사진 OCR 결과에 대한 검토가 필요합니다."));
+      return;
+    }
     const sourceText = manualBlock.trim() || uploadedVerificationText;
     const sourceLabel = manualBlock.trim()
       ? (en ? "manual input" : "수동 입력값")
@@ -2240,12 +2347,26 @@ export function EmissionSurveyReportVerifyPage() {
             </div>
             <label className="mt-5 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center hover:border-emerald-400 hover:bg-emerald-50">
               <span className="text-base font-black text-slate-900">{fileName || (en ? "Choose PDF file" : "PDF 파일 선택")}</span>
-              <span className="mt-2 text-sm font-semibold text-slate-500">{en ? "PDF files are preferred. Text-based saved PDFs can be verified automatically." : "PDF 파일 권장. 텍스트 기반 저장 PDF는 자동 검증됩니다."}</span>
-              <input accept="application/pdf,.pdf" className="sr-only" onChange={handleFileChange} type="file" />
+              <span className="mt-2 text-sm font-semibold text-slate-500">{en ? "PDF, JPG, PNG, and WebP are supported. Photos are processed locally with Korean and English OCR." : "PDF, JPG, PNG, WebP 지원. 사진은 한글·영문 OCR로 기기 안에서 처리합니다."}</span>
+              <input accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" multiple onChange={handleFileChange} type="file" />
             </label>
+            {photoPreviewUrls.length ? (
+              <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-3">
+                {photoPreviewUrls.map((url, index) => <img alt={`${en ? "Uploaded report page" : "업로드 리포트 페이지"} ${index + 1}`} className="aspect-[3/4] w-full rounded-xl border border-slate-200 bg-slate-50 object-contain" key={url} src={url} />)}
+              </div>
+            ) : null}
+            {ocrProgress.busy ? (
+              <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                <div className="flex items-center justify-between text-sm font-black text-sky-900"><span>{en ? "OCR processing" : "OCR 처리 중"}</span><span>{ocrProgress.percent}%</span></div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-sky-100"><div className="h-full bg-sky-600 transition-all" style={{ width: `${ocrProgress.percent}%` }} /></div>
+                <p className="mt-2 text-xs font-semibold text-sky-700">{ocrProgress.status}</p>
+              </div>
+            ) : null}
             {fileName ? (
-              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${uploadedPayloadFound ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-                {uploadedPayloadFound
+              <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${uploadedPayloadFound || photoVerification?.photoConsistent ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                {photoVerification
+                  ? (en ? `Photo OCR comparison completed (${photoVerification.confidence}%).` : `사진 OCR 데이터셋 대조를 완료했습니다(${photoVerification.confidence}%).`)
+                  : uploadedPayloadFound
                   ? (en ? "Verification data was found in the uploaded PDF. The button below can verify it again." : "업로드한 PDF에서 검증 데이터를 찾았습니다. 아래 버튼으로 다시 확인할 수 있습니다.")
                   : (en ? "The uploaded PDF was read, but hidden Carbonet verification data was not found." : "업로드한 PDF는 읽었지만 숨김 Carbonet 검증 정보를 찾지 못했습니다.")}
               </div>
@@ -2294,6 +2415,21 @@ export function EmissionSurveyReportVerifyPage() {
                 ))}
               </div>
             </section>
+
+            {photoVerification ? (
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
+                <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT CONFIDENCE" : "내용 일치 신뢰도"}</span></div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
+                  <span>{en ? "Product" : "제품명"}: {photoVerification.productMatched ? "OK" : "-"}</span>
+                  <span>{en ? "Title" : "제목"}: {photoVerification.titleMatched ? "OK" : "-"}</span>
+                  <span>{en ? "Total" : "총량"}: {photoVerification.totalEmissionMatched ? "OK" : "-"}</span>
+                  <span>{en ? "Materials" : "물질명"}: {photoVerification.matchedMaterialCount || 0}/{photoVerification.materialCount || 0}</span>
+                  <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
+                </div>
+                <p className="mt-3 text-xs font-semibold leading-5 text-amber-800">{en ? "A photo verifies visible-content consistency, not the hidden digital signature. Use the original PDF for cryptographic authenticity." : "사진은 보이는 내용의 일치도를 검증하며 숨김 디지털 서명 자체를 증명하지는 않습니다. 완전한 진위 확인은 원본 PDF를 사용하세요."}</p>
+              </section>
+            ) : null}
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>

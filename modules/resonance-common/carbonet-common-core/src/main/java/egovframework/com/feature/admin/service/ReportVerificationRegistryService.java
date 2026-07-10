@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -130,6 +133,154 @@ public class ReportVerificationRegistryService {
                     ? "The uploaded report dataset does not fully match the issued record."
                     : "This document has no embedded dataset and can only use legacy tag verification.");
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> verifyOcr(Map<String, Object> request) {
+        String ocrText = required(request, "ocrText");
+        String normalizedText = normalizeText(ocrText);
+        Matcher certificateMatcher = Pattern.compile("CRN[-\\s]?\\d{8}[-\\s]?[A-Fa-f0-9]{12}").matcher(ocrText);
+        String detectedCertificateId = certificateMatcher.find()
+                ? certificateMatcher.group().replaceAll("\\s+", "").toUpperCase(Locale.ROOT)
+                : "";
+        List<Map<String, Object>> candidates = detectedCertificateId.isBlank()
+                ? jdbcTemplate.queryForList("""
+                    SELECT certificate_id, issued_at, report_title, product_name, dataset_hash,
+                           dataset_json::text AS dataset_json
+                      FROM carbonet_report_verification_registry
+                     WHERE status_code = 'ISSUED'
+                     ORDER BY issued_at DESC
+                     LIMIT 500
+                    """)
+                : jdbcTemplate.queryForList("""
+                    SELECT certificate_id, issued_at, report_title, product_name, dataset_hash,
+                           dataset_json::text AS dataset_json
+                      FROM carbonet_report_verification_registry
+                     WHERE status_code = 'ISSUED' AND certificate_id = ?
+                    """, detectedCertificateId);
+
+        Map<String, Object> best = null;
+        double bestScore = -1;
+        for (Map<String, Object> candidate : candidates) {
+            JsonNode dataset = readJson(candidate.get("dataset_json"));
+            Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
+            double candidateScore = ((Number) score.get("score")).doubleValue();
+            if (candidateScore > bestScore) {
+                bestScore = candidateScore;
+                best = new LinkedHashMap<>(candidate);
+                best.putAll(score);
+            }
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("verificationMode", "PHOTO_OCR_DATASET");
+        response.put("ocrCharacterCount", ocrText.length());
+        response.put("candidateCount", candidates.size());
+        response.put("detectedCertificateId", detectedCertificateId);
+        if (best == null) {
+            response.put("photoConsistent", false);
+            response.put("status", "NOT_FOUND");
+            response.put("confidence", 0);
+            response.put("message", "No issued report dataset could be matched to the photographed document.");
+            return response;
+        }
+
+        int confidence = (int) Math.round(bestScore);
+        String status = confidence >= 75 ? "PHOTO_CONTENT_MATCH" : confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH";
+        response.put("photoConsistent", confidence >= 75);
+        response.put("status", status);
+        response.put("confidence", confidence);
+        response.put("certificateId", best.get("certificate_id"));
+        response.put("issuedAt", best.get("issued_at"));
+        response.put("reportTitle", best.get("report_title"));
+        response.put("productName", best.get("product_name"));
+        response.put("datasetHash", best.get("dataset_hash"));
+        response.put("productMatched", best.get("productMatched"));
+        response.put("titleMatched", best.get("titleMatched"));
+        response.put("totalEmissionMatched", best.get("totalEmissionMatched"));
+        response.put("matchedMaterialCount", best.get("matchedMaterialCount"));
+        response.put("materialCount", best.get("materialCount"));
+        response.put("matchedNumberCount", best.get("matchedNumberCount"));
+        response.put("numberCount", best.get("numberCount"));
+        response.put("message", confidence >= 75
+                ? "The photographed report content is highly consistent with the issued dataset."
+                : confidence >= 60
+                    ? "The photographed report partially matches an issued dataset and requires visual review."
+                    : "The photographed report content does not sufficiently match the issued dataset.");
+        return response;
+    }
+
+    private Map<String, Object> scoreOcrCandidate(String normalizedText, JsonNode dataset) {
+        boolean productMatched = containsText(normalizedText, dataset.path("productName").asText());
+        boolean titleMatched = containsText(normalizedText, dataset.path("pageTitle").asText());
+        boolean totalMatched = containsNumber(normalizedText, dataset.path("summary").path("totalEmission"));
+        JsonNode rows = dataset.path("rows");
+        int materialCount = 0;
+        int matchedMaterialCount = 0;
+        int numberCount = 0;
+        int matchedNumberCount = 0;
+        if (rows.isArray()) {
+            for (JsonNode row : rows) {
+                String materialName = row.path("materialName").asText();
+                if (!materialName.isBlank() && materialName.length() >= 2) {
+                    materialCount++;
+                    if (containsText(normalizedText, materialName)) {
+                        matchedMaterialCount++;
+                    }
+                }
+                for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
+                    JsonNode value = row.path(field);
+                    if (value.isNumber() && Math.abs(value.asDouble()) > 0.0000001) {
+                        numberCount++;
+                        if (containsNumber(normalizedText, value)) {
+                            matchedNumberCount++;
+                        }
+                    }
+                }
+            }
+        }
+        double materialRatio = materialCount == 0 ? 0 : (double) matchedMaterialCount / materialCount;
+        double numberRatio = numberCount == 0 ? 0 : (double) matchedNumberCount / numberCount;
+        double score = (productMatched ? 30 : 0)
+                + (titleMatched ? 20 : 0)
+                + (totalMatched ? 25 : 0)
+                + Math.min(15, materialRatio * 15)
+                + Math.min(10, numberRatio * 10);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("score", Math.min(100, score));
+        result.put("productMatched", productMatched);
+        result.put("titleMatched", titleMatched);
+        result.put("totalEmissionMatched", totalMatched);
+        result.put("matchedMaterialCount", matchedMaterialCount);
+        result.put("materialCount", materialCount);
+        result.put("matchedNumberCount", matchedNumberCount);
+        result.put("numberCount", numberCount);
+        return result;
+    }
+
+    private String normalizeText(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT)
+                .replaceAll("[,，]", "")
+                .replaceAll("[^0-9a-z가-힣.]+", "");
+    }
+
+    private boolean containsText(String normalizedText, String expected) {
+        String normalizedExpected = normalizeText(expected);
+        return normalizedExpected.length() >= 2 && normalizedText.contains(normalizedExpected);
+    }
+
+    private boolean containsNumber(String normalizedText, JsonNode value) {
+        if (value == null || !value.isNumber()) {
+            return false;
+        }
+        java.math.BigDecimal number = value.decimalValue().stripTrailingZeros();
+        String plain = number.toPlainString();
+        if (normalizedText.contains(plain)) {
+            return true;
+        }
+        String roundedTwo = number.setScale(Math.min(2, Math.max(0, number.scale())), java.math.RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString();
+        return roundedTwo.length() >= 2 && normalizedText.contains(roundedTwo);
     }
 
     private Map<String, Object> load(String certificateId) {

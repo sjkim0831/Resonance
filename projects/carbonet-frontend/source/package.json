@@ -25,9 +25,12 @@
     "generate:page-completeness-inventory": "node scripts/generate-page-completeness-inventory.mjs"
   },
   "dependencies": {
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/kor": "1.0.0",
     "html2pdf.js": "^0.14.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tesseract.js": "7.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

@@ -226,6 +226,25 @@ export type ReportDatasetVerificationResponse = {
   message?: string;
 };
 
+export type ReportPhotoVerificationResponse = {
+  photoConsistent: boolean;
+  status: "PHOTO_CONTENT_MATCH" | "PHOTO_REVIEW" | "PHOTO_MISMATCH" | "NOT_FOUND";
+  verificationMode: "PHOTO_OCR_DATASET";
+  confidence: number;
+  certificateId?: string;
+  reportTitle?: string;
+  productName?: string;
+  detectedCertificateId?: string;
+  productMatched?: boolean;
+  titleMatched?: boolean;
+  totalEmissionMatched?: boolean;
+  matchedMaterialCount?: number;
+  materialCount?: number;
+  matchedNumberCount?: number;
+  numberCount?: number;
+  message?: string;
+};
+
 export async function issueSurveyReportVerification(payload: ReportVerificationDatasetPayload) {
   return postJson<{ success: boolean; status: string; certificateId: string; datasetStored: boolean; datasetHash: string }>(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/issue", "/en/admin/api/admin/emission-survey-report/issue"),
@@ -238,6 +257,14 @@ export async function verifySurveyReportDataset(payload: ReportVerificationDatas
   return postJson<ReportDatasetVerificationResponse>(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/verify", "/en/admin/api/admin/emission-survey-report/verify"),
     payload,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function verifySurveyReportPhoto(ocrText: string) {
+  return postJson<ReportPhotoVerificationResponse>(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
+    { ocrText },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }

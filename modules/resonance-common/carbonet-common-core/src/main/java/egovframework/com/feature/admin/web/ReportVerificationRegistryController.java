@@ -37,6 +37,15 @@ public class ReportVerificationRegistryController {
         return ResponseEntity.ok(reportVerificationRegistryService.verify(payload));
     }
 
+    @PostMapping({
+            "/api/admin/emission-survey-report/verify-ocr",
+            "/admin/api/admin/emission-survey-report/verify-ocr",
+            "/en/admin/api/admin/emission-survey-report/verify-ocr"
+    })
+    public ResponseEntity<Map<String, Object>> verifyOcr(@RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(reportVerificationRegistryService.verifyOcr(payload));
+    }
+
     private String resolveActorId(HttpServletRequest request) {
         try {
             String userId = currentUserContextService.resolve(request).getUserId();
