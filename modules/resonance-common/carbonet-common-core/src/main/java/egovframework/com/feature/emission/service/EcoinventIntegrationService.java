@@ -2388,16 +2388,14 @@ public class EcoinventIntegrationService {
                 .getResultList();
                 
         Set<Long> ids = new LinkedHashSet<>();
-        for (Object idObj : translationIds) {
-            Long id = longValueOrNull(idObj);
-            if (id != null) {
-                ids.add(id);
-            }
-        }
-        for (Object idObj : mappingIds) {
-            Long id = longValueOrNull(idObj);
-            if (id != null) {
-                ids.add(id);
+        List<?> primaryIds = koreanKeyword ? mappingIds : translationIds;
+        List<?> secondaryIds = koreanKeyword ? translationIds : mappingIds;
+        for (List<?> sourceIds : List.of(primaryIds, secondaryIds)) {
+            for (Object idObj : sourceIds) {
+                Long id = longValueOrNull(idObj);
+                if (id != null) {
+                    ids.add(id);
+                }
             }
         }
         return new ArrayList<>(ids);
