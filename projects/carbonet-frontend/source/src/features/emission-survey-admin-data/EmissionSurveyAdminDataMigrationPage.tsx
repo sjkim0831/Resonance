@@ -1793,33 +1793,48 @@ export function EmissionSurveyAdminDataMigrationPage() {
           description={en
             ? "Upload the DB workbook, map each row to an emission factor option, and then apply the edited dataset to DB."
             : "DB 업로드 양식을 업로드한 뒤 각 행에 대해 배출계수를 매핑하고, 수정된 데이터셋을 DB에 반영합니다."}
+          icon="upload_file"
           title={en ? "DB Workbook Upload" : "DB 양식 업로드"}
         >
           <input accept=".xlsx" className="hidden" onChange={handleUploadChange} ref={fileInputRef} type="file" />
-          <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 px-5 py-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-800">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+            <div className="md:col-span-3">
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Workbook file" : "업로드 파일"}</label>
+              <button className="flex min-h-11 w-full items-center gap-3 border border-[var(--kr-gov-border-light)] bg-white px-4 text-left hover:border-[var(--kr-gov-blue)]" onClick={() => fileInputRef.current?.click()} type="button">
+                <span className="material-symbols-outlined shrink-0 text-[20px] text-[var(--kr-gov-blue)]">description</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-800">
                   {uploadedFile ? uploadedFile.name : (en ? "No file selected" : "선택된 파일 없음")}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {uploadedFile
-                    ? (en ? "Preview is ready. Review rows before applying to DB." : "미리보기가 준비되었습니다. 행을 확인한 뒤 DB에 반영하세요.")
-                    : (en ? "Select an Excel workbook to preview rows." : "엑셀 파일을 선택하면 행 미리보기가 표시됩니다.")}
-                </p>
+                </span>
+                <span className="shrink-0 text-xs font-bold text-slate-500">.xlsx</span>
+              </button>
+            </div>
+            <div>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Save target" : "저장 대상"}</label>
+              <div className="flex min-h-11 items-center gap-2 border border-[var(--kr-gov-border-light)] bg-slate-50 px-4 text-sm font-bold text-slate-700">
+                <span className="material-symbols-outlined text-[19px] text-[var(--kr-gov-blue)]">database</span>
+                Patroni 공통 데이터셋
               </div>
-              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <MemberButton onClick={() => fileInputRef.current?.click()} type="button" variant="primary">
-                  {uploading ? (en ? "Uploading..." : "업로드 중...") : (en ? "Upload Workbook" : "엑셀 업로드")}
-                </MemberButton>
+            </div>
+            <div className="md:col-span-4">
+              <div className="flex flex-col gap-3 border-t border-[var(--kr-gov-border-light)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
+                  {uploadedFile
+                    ? (en ? "Preview is ready. Review and map rows before saving." : "파일 미리보기가 준비되었습니다. 행 검토와 매핑 후 DB에 반영하세요.")
+                    : (en ? "Select the standard Excel workbook to begin." : "표준 엑셀 양식을 선택하면 데이터 미리보기를 시작합니다.")}
+                </p>
+                <div className="flex flex-wrap items-center justify-end gap-2">
                 <MemberButton onClick={() => { window.location.href = getEmissionSurveyAdminBlankTemplateDownloadUrl(); }} title={en ? "Download the DB workbook" : "DB 업로드 양식을 다운로드합니다."} type="button" variant="secondary">
                   {en ? "Download Template" : "양식 다운로드"}
                 </MemberButton>
-                <MemberButton disabled={!uploadedFile || applying || editablePreviewSections.length === 0} onClick={() => void handleApplyUploadedFile()} type="button" variant="secondary">
+                <MemberButton icon="upload_file" onClick={() => fileInputRef.current?.click()} type="button" variant="secondary">
+                  {uploading ? (en ? "Uploading..." : "업로드 중...") : (en ? "Select Workbook" : "파일 선택")}
+                </MemberButton>
+                <MemberButton disabled={!uploadedFile || applying || editablePreviewSections.length === 0} icon="database" onClick={() => void handleApplyUploadedFile()} type="button" variant="primary">
                   {applying ? (en ? "Applying To DB..." : "DB 반영 중...") : (en ? "Apply To DB" : "DB반영")}
                 </MemberButton>
               </div>
             </div>
+          </div>
           </div>
         </CollectionResultPanel>
 
