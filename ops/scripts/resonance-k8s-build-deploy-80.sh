@@ -285,6 +285,7 @@ main() {
   notify "START" "Build deploy started" ""
   
   preflight_check
+  bash "$ROOT_DIR/ops/scripts/resonance-zero-downtime-gate.sh" pre
   
   build_frontend
   sync_overlay
@@ -295,6 +296,7 @@ main() {
   kubectl -n "$NAMESPACE" rollout status deployment/carbonet-web --timeout=300s
   ensure_pdb
   verify_runtime
+  bash "$ROOT_DIR/ops/scripts/resonance-zero-downtime-gate.sh" post
   
   printf '{"ts":"%s","projectId":"%s","gitSha":"%s","image":"%s"}\n' \
     "$(date -Iseconds)" "$PROJECT_ID" \

@@ -74,6 +74,22 @@ ensure_redis() {
   fi
 }
 
+ensure_zero_downtime() {
+  local name replicas unavailable surge
+  for name in carbonet-runtime carbonet-web; do
+    replicas=$(kubectl -n "$NAMESPACE" get deployment "$name" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)
+    unavailable=$(kubectl -n "$NAMESPACE" get deployment "$name" -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}' 2>/dev/null || true)
+    surge=$(kubectl -n "$NAMESPACE" get deployment "$name" -o jsonpath='{.spec.strategy.rollingUpdate.maxSurge}' 2>/dev/null || true)
+    if [[ ! "$replicas" =~ ^[0-9]+$ || "$replicas" -lt 2 || ( "$unavailable" != "0" && "$unavailable" != "0%" ) || -z "$surge" || "$surge" == "0" || "$surge" == "0%" ]]; then
+      log "repairing zero-downtime policy for deployment/$name"
+      kubectl -n "$NAMESPACE" patch deployment "$name" --type=merge \
+        -p '{"spec":{"replicas":2,"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxUnavailable":0,"maxSurge":1}}}}' || true
+    fi
+  done
+  kubectl -n "$NAMESPACE" patch hpa carbonet-runtime-hpa --type=merge \
+    -p '{"spec":{"minReplicas":2,"maxReplicas":3}}' >/dev/null 2>&1 || true
+}
+
 kubectl_ok() {
   kubectl get nodes >/dev/null 2>&1
 }
@@ -286,6 +302,7 @@ main() {
   ensure_postgres
   ensure_db_compatibility
   ensure_redis
+  ensure_zero_downtime
   ensure_runtime
   ensure_runtime_latency
   prune_images
