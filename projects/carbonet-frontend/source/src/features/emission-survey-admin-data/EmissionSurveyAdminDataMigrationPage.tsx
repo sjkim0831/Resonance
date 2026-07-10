@@ -677,13 +677,14 @@ function renderSectionTable(
               const useDatabaseValue = selectedSource === "DB";
               return (
                 <Fragment key={`${key}-${index}`}>
-                  <tr className={`hover:bg-gray-50/50 transition-colors ${isDeletedRow ? "bg-rose-50/60 opacity-75" : selectedSource === "DB" ? "bg-sky-50/60" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-emerald-50/40" : ""}`} key={`${key}-${index}`}>
-                    <td className="px-4 py-3 text-center text-gray-500">{index + 1}</td>
+                  <tr className={`min-h-[92px] border-b border-[var(--kr-gov-border-light)] transition-colors hover:bg-slate-50 ${isDeletedRow ? "bg-red-50/60 opacity-75" : selectedSource === "DB" ? "bg-blue-50/50" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-blue-50/30" : "bg-white"}`} key={`${key}-${index}`}>
+                    <td className="px-4 py-3 text-center align-middle text-sm font-bold text-slate-500">{index + 1}</td>
                     {visibleColumns.map((column) => {
                       const databaseValue = existingValues ? existingValues[column.key] : "";
                       const valueChanged = existingValues !== null && normalizedValue(databaseValue) !== normalizedValue(values[column.key]);
                       return (
                       <td className="px-4 py-3 align-top" key={`${key}-${index}-${column.key}`}>
+                        <div className="flex min-h-[66px] flex-col justify-start">
                         {editable ? (
                           column.key === "annualUnit" ? (
                             <AdminSelect
@@ -691,7 +692,7 @@ function renderSectionTable(
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
                                   : useDatabaseValue
-                                    ? "border-sky-200 bg-sky-50 text-slate-500 opacity-75"
+                                    ? "border-blue-200 bg-blue-50 text-slate-500 opacity-75"
                                   : !normalizedValue(values[column.key])
                                     ? "border-amber-300 bg-amber-50"
                                     : ""
@@ -713,12 +714,12 @@ function renderSectionTable(
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
                                   : useDatabaseValue
-                                    ? "border-sky-200 bg-sky-50 text-slate-500 opacity-75"
+                                    ? "border-blue-200 bg-blue-50 text-slate-500 opacity-75"
                                   : !normalizedValue(values[column.key]) ? "border-amber-300 bg-amber-50" : ""
                               }
                               disabled={isDeletedRow || useDatabaseValue}
                               onChange={(event) => options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, event.target.value)}
-                              rows={3}
+                              rows={1}
                               value={String(values[column.key] || "")}
                             />
                           ) : (
@@ -727,7 +728,7 @@ function renderSectionTable(
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
                                   : useDatabaseValue
-                                    ? "border-sky-200 bg-sky-50 text-slate-500 opacity-75"
+                                    ? "border-blue-200 bg-blue-50 text-slate-500 opacity-75"
                                   : !normalizedValue(values[column.key]) ? "border-amber-300 bg-amber-50" : ""
                               }
                               disabled={isDeletedRow || useDatabaseValue}
@@ -739,24 +740,25 @@ function renderSectionTable(
                           column.key === "annualUnit" ? displayValue(values[column.key]) : displayValue(values[column.key])
                         )}
                         {editable && existingValues ? (
-                          <p className={`mt-1.5 flex min-h-5 items-start gap-1 text-[11px] leading-4 ${valueChanged ? "font-bold text-amber-700" : "text-slate-500"}`}>
+                          <p className={`mt-1.5 flex h-5 min-w-0 items-center gap-1 overflow-hidden text-[11px] leading-4 ${valueChanged ? "font-bold text-amber-700" : "text-slate-500"}`} title={`DB 저장값: ${displayValue(databaseValue)}`}>
                             <span className="shrink-0">DB 저장값:</span>
-                            <span className="break-words">{displayValue(databaseValue)}</span>
+                            <span className="truncate">{displayValue(databaseValue)}</span>
                             {valueChanged ? <span className="shrink-0 text-amber-700">(변경)</span> : null}
                           </p>
                         ) : null}
+                        </div>
                       </td>
                     );})}
                     {showGwpMapping ? (
-                      <td className="min-w-[240px] px-4 py-3 align-top">
-                        <div className="space-y-2">
+                      <td className="min-w-[260px] px-4 py-3 align-top">
+                        <div className="grid min-h-[66px] grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                           {summary ? (
-                            <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-2 text-[11px] text-emerald-800">
-                              <div className="font-bold">{summary.mappedName}</div>
-                              <div>{summary.factorType} / {summary.factorValue}</div>
+                            <div className="min-h-10 border border-blue-200 bg-blue-50 px-2 py-2 text-[11px] text-[var(--kr-gov-blue)]">
+                              <div className="truncate font-bold" title={summary.mappedName}>{summary.mappedName}</div>
+                              <div className="truncate">{summary.factorType} / {summary.factorValue}</div>
                             </div>
                           ) : (
-                            <div className={`rounded border px-2 py-2 text-[11px] ${requiresAttention ? "border-rose-200 bg-rose-50 text-rose-700" : "border-dashed border-slate-300 bg-slate-50 text-slate-500"}`}>
+                            <div className={`min-h-10 border px-2 py-2 text-[11px] ${requiresAttention ? "border-red-200 bg-red-50 text-red-700" : "border-dashed border-slate-300 bg-slate-50 text-slate-500"}`}>
                               {requiresAttention ? "Ecoinvent 자동 매핑 값이 없습니다. 팝업에서 직접 지정하세요." : "아직 매핑되지 않았습니다."}
                             </div>
                           )}
@@ -774,30 +776,32 @@ function renderSectionTable(
                     ) : null}
                     {editable ? (
                       <td className="min-w-[210px] px-4 py-3 text-center align-top">
-                        <div className="flex flex-col items-stretch gap-2">
-                          <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full ${isDeletedRow ? "bg-rose-100 text-rose-800" : isNewRow ? "bg-emerald-100 text-emerald-700" : isIncomplete ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
+                        <div className="flex min-h-[66px] flex-col items-stretch gap-2">
+                          <div className="flex min-h-6 items-center justify-between gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1">
+                          <span className={`inline-flex whitespace-nowrap px-2 py-0.5 text-[11px] font-bold ${isDeletedRow ? "bg-red-100 text-red-800" : isNewRow ? "bg-blue-100 text-[var(--kr-gov-blue)]" : isIncomplete ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}`}>
                             {isDeletedRow ? "삭제예정" : isNewRow ? "신규" : isIncomplete ? "보정 필요" : "완료"}
                           </span>
                           {matchedExistingRow ? (
-                            <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full ${selectedSource === "DB" ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800"}`}>
+                            <span className={`inline-flex whitespace-nowrap px-2 py-0.5 text-[11px] font-bold ${selectedSource === "DB" ? "bg-blue-100 text-[var(--kr-gov-blue)]" : "bg-slate-100 text-slate-700"}`}>
                               {selectedSource === "DB" ? "DB 사용" : "업로드 사용"}
                             </span>
                           ) : null}
+                          </div>
+                          <button
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center border border-slate-300 bg-white text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => options?.onDeleteRow?.(options.sectionIndex || 0, index, rowId)}
+                            title={isDeletedRow ? "삭제 취소" : isNewRow ? "행 제거" : "행 삭제"}
+                            type="button"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">{isDeletedRow ? "undo" : "delete"}</span>
+                          </button>
+                          </div>
                           {matchedExistingRow ? (
                             <div className="grid w-full grid-cols-2 overflow-hidden border border-slate-300 bg-white" role="group" aria-label="행 반영 기준">
-                              <button className={`h-9 whitespace-nowrap px-3 text-xs font-bold ${selectedSource === "UPLOAD" ? "bg-violet-600 text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "UPLOAD")} type="button">현재 값</button>
-                              <button className={`h-9 whitespace-nowrap border-l border-slate-300 px-3 text-xs font-bold ${selectedSource === "DB" ? "bg-sky-700 text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "DB")} type="button">DB 값</button>
+                              <button className={`h-9 whitespace-nowrap px-3 text-xs font-bold ${selectedSource === "UPLOAD" ? "bg-[var(--kr-gov-blue)] text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "UPLOAD")} type="button">현재 값</button>
+                              <button className={`h-9 whitespace-nowrap border-l border-slate-300 px-3 text-xs font-bold ${selectedSource === "DB" ? "bg-slate-700 text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "DB")} type="button">DB 값</button>
                             </div>
-                          ) : null}
-                          {editable ? (
-                            <MemberButton
-                              onClick={() => options?.onDeleteRow?.(options.sectionIndex || 0, index, rowId)}
-                              size="sm"
-                              type="button"
-                              variant={isDeletedRow ? "secondary" : "secondary"}
-                            >
-                              {isDeletedRow ? "삭제 취소" : isNewRow ? "행 제거" : "행 삭제"}
-                            </MemberButton>
                           ) : null}
                         </div>
                       </td>
