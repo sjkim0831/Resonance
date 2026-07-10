@@ -305,6 +305,19 @@ export type ReportOcrComparison = {
   materialCount: number;
   matchedNumberCount: number;
   numberCount: number;
+  fieldComparisons?: Array<{
+    rowIndex: number;
+    sectionLabel?: string;
+    materialName?: string;
+    rowMatched: boolean;
+    materialMatched: boolean;
+    amountDisplay?: string;
+    amountMatched: boolean;
+    emissionFactorDisplay?: string;
+    emissionFactorMatched: boolean;
+    totalEmissionDisplay?: string;
+    totalEmissionMatched: boolean;
+  }>;
   fieldMismatches?: Array<{
     rowIndex: number;
     sectionLabel?: string;

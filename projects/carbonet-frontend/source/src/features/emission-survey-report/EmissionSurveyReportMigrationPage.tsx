@@ -2855,6 +2855,24 @@ export function EmissionSurveyReportVerifyPage() {
                                 </span>
                               ))}
                             </div>
+                            <div className="mt-3">
+                              <p className="font-black text-emerald-800">{en ? "Matched fields" : "일치 내역"} ({item.fieldComparisons?.filter((field) => field.rowMatched).length || 0})</p>
+                              <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
+                                {(item.fieldComparisons || []).filter((field) => field.rowMatched).map((field) => (
+                                  <div className="border-l-4 border-emerald-500 bg-emerald-50 p-2 text-emerald-900" key={`${item.certificateId}-matched-${field.rowIndex}-${field.materialName}`}>
+                                    <p className="font-black">#{field.rowIndex} {field.sectionLabel || "-"} / {field.materialName || "-"}</p>
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                                      <span>{en ? "Material" : "물질명"}: MATCH</span>
+                                      <span>{en ? "Amount" : "사용량"}: {field.amountDisplay || "-"}</span>
+                                      <span>{en ? "Factor" : "배출계수"}: {field.emissionFactorDisplay || "-"}</span>
+                                      <span>{en ? "Emission" : "배출량"}: {field.totalEmissionDisplay || "-"}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="mt-4 border-t border-slate-200 pt-3">
+                              <p className="font-black text-rose-800">{en ? "Mismatched fields" : "불일치 내역"} ({item.fieldMismatches?.length || 0})</p>
                             {item.fieldMismatches?.length ? (
                               <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
                                 {item.fieldMismatches.map((field) => (
@@ -2872,6 +2890,7 @@ export function EmissionSurveyReportVerifyPage() {
                             ) : (
                               <p className="mt-3 bg-emerald-50 p-2 font-bold text-emerald-800">{en ? "No field-level mismatches were found." : "필드 단위 불일치가 없습니다."}</p>
                             )}
+                            </div>
                           </div>
                         </details>
                       </td>

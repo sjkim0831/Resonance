@@ -329,7 +329,8 @@ public class ReportVerificationRegistryService {
         int matchedMaterialCount = 0;
         int numberCount = 0;
         int matchedNumberCount = 0;
-        List<Map<String, Object>> fieldComparisons = new ArrayList<>();
+        List<Map<String, Object>> allFieldComparisons = new ArrayList<>();
+        List<Map<String, Object>> fieldMismatches = new ArrayList<>();
         if (rows.isArray()) {
             for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
                 JsonNode row = rows.get(rowIndex);
@@ -354,22 +355,24 @@ public class ReportVerificationRegistryService {
                     }
                 }
                 boolean rowMatched = materialMatched && fieldMatches.values().stream().allMatch(Boolean.TRUE::equals);
+                Map<String, Object> comparison = new LinkedHashMap<>();
+                comparison.put("rowIndex", rowIndex + 1);
+                comparison.put("sectionLabel", row.path("sectionLabel").asText());
+                comparison.put("materialName", materialName);
+                comparison.put("rowMatched", rowMatched);
+                comparison.put("materialMatched", materialMatched);
+                comparison.put("amount", row.path("amount").isNumber() ? row.path("amount").numberValue() : null);
+                comparison.put("amountDisplay", displayValue(row, "amount", row.path("amount")));
+                comparison.put("amountMatched", fieldMatches.getOrDefault("amount", true));
+                comparison.put("emissionFactor", row.path("emissionFactor").isNumber() ? row.path("emissionFactor").numberValue() : null);
+                comparison.put("emissionFactorDisplay", displayValue(row, "emissionFactor", row.path("emissionFactor")));
+                comparison.put("emissionFactorMatched", fieldMatches.getOrDefault("emissionFactor", true));
+                comparison.put("totalEmission", row.path("totalEmission").isNumber() ? row.path("totalEmission").numberValue() : null);
+                comparison.put("totalEmissionDisplay", displayValue(row, "totalEmission", row.path("totalEmission")));
+                comparison.put("totalEmissionMatched", fieldMatches.getOrDefault("totalEmission", true));
+                allFieldComparisons.add(comparison);
                 if (!rowMatched) {
-                    Map<String, Object> comparison = new LinkedHashMap<>();
-                    comparison.put("rowIndex", rowIndex + 1);
-                    comparison.put("sectionLabel", row.path("sectionLabel").asText());
-                    comparison.put("materialName", materialName);
-                    comparison.put("materialMatched", materialMatched);
-                    comparison.put("amount", row.path("amount").isNumber() ? row.path("amount").numberValue() : null);
-                    comparison.put("amountDisplay", displayValue(row, "amount", row.path("amount")));
-                    comparison.put("amountMatched", fieldMatches.getOrDefault("amount", true));
-                    comparison.put("emissionFactor", row.path("emissionFactor").isNumber() ? row.path("emissionFactor").numberValue() : null);
-                    comparison.put("emissionFactorDisplay", displayValue(row, "emissionFactor", row.path("emissionFactor")));
-                    comparison.put("emissionFactorMatched", fieldMatches.getOrDefault("emissionFactor", true));
-                    comparison.put("totalEmission", row.path("totalEmission").isNumber() ? row.path("totalEmission").numberValue() : null);
-                    comparison.put("totalEmissionDisplay", displayValue(row, "totalEmission", row.path("totalEmission")));
-                    comparison.put("totalEmissionMatched", fieldMatches.getOrDefault("totalEmission", true));
-                    fieldComparisons.add(comparison);
+                    fieldMismatches.add(comparison);
                 }
             }
         }
@@ -389,7 +392,8 @@ public class ReportVerificationRegistryService {
         result.put("materialCount", materialCount);
         result.put("matchedNumberCount", matchedNumberCount);
         result.put("numberCount", numberCount);
-        result.put("fieldMismatches", fieldComparisons);
+        result.put("fieldComparisons", allFieldComparisons);
+        result.put("fieldMismatches", fieldMismatches);
         return result;
     }
 
