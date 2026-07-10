@@ -7,6 +7,11 @@ WEB_URL="${WEB_URL:-http://127.0.0.1:8080}"
 LOG_FILE="${LOG_FILE:-/var/log/resonance-k8s-self-heal.log}"
 LOCK_FILE="${LOCK_FILE:-/var/lock/resonance-k8s-self-heal.lock}"
 REBUILD_ON_FAILURE="${REBUILD_ON_FAILURE:-true}"
+LATENCY_URL="${LATENCY_URL:-${WEB_URL}/admin/system/menu}"
+LATENCY_LIMIT_SECONDS="${LATENCY_LIMIT_SECONDS:-2.0}"
+LATENCY_FAILURE_FILE="${LATENCY_FAILURE_FILE:-/run/resonance-runtime-latency.failures}"
+RUNTIME_RESTART_STAMP="${RUNTIME_RESTART_STAMP:-/run/resonance-runtime-last-restart}"
+RUNTIME_RESTART_COOLDOWN="${RUNTIME_RESTART_COOLDOWN:-600}"
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$LOCK_FILE")"
 exec >>"$LOG_FILE" 2>&1
@@ -15,6 +20,58 @@ flock -n 9 || { echo "$(date -Is) another self-heal run is active"; exit 0; }
 
 log() {
   printf '[resonance-self-heal] %s %s\n' "$(date -Is)" "$*"
+}
+
+runtime_restart_allowed() {
+  local now last=0
+  now=$(date +%s)
+  [[ -f "$RUNTIME_RESTART_STAMP" ]] && read -r last <"$RUNTIME_RESTART_STAMP" || true
+  (( now - last >= RUNTIME_RESTART_COOLDOWN ))
+}
+
+restart_runtime_for_latency() {
+  if ! runtime_restart_allowed; then
+    log 'runtime latency recovery suppressed by cooldown'
+    return 0
+  fi
+  date +%s >"$RUNTIME_RESTART_STAMP"
+  log 'runtime latency threshold exceeded twice; restarting deployment'
+  kubectl -n "$NAMESPACE" rollout restart deployment/carbonet-runtime
+  kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=300s
+}
+
+ensure_runtime_latency() {
+  local result code seconds failures=0
+  result=$(curl -sS -o /dev/null --max-time 8 -w '%{http_code} %{time_starttransfer}' "$LATENCY_URL" 2>/dev/null || printf '000 8.0')
+  read -r code seconds <<<"$result"
+  [[ -f "$LATENCY_FAILURE_FILE" ]] && read -r failures <"$LATENCY_FAILURE_FILE" || true
+
+  if [[ "$code" =~ ^(200|301|302|303|307|308)$ ]] && awk -v value="$seconds" -v limit="$LATENCY_LIMIT_SECONDS" 'BEGIN { exit !(value <= limit) }'; then
+    printf '0\n' >"$LATENCY_FAILURE_FILE"
+    log "runtime latency ok code=$code ttfb=${seconds}s"
+    return 0
+  fi
+
+  failures=$((failures + 1))
+  printf '%s\n' "$failures" >"$LATENCY_FAILURE_FILE"
+  log "runtime latency warning code=$code ttfb=${seconds}s consecutive=$failures"
+  if (( failures >= 2 )); then
+    restart_runtime_for_latency || true
+    printf '0\n' >"$LATENCY_FAILURE_FILE"
+  fi
+}
+
+ensure_redis() {
+  local unavailable
+  unavailable=$(kubectl -n "$NAMESPACE" get statefulset carbonet-redis -o jsonpath='{.status.currentReplicas} {.status.readyReplicas}' 2>/dev/null || true)
+  [[ "$unavailable" == "3 3" ]] && return 0
+
+  log "redis not ready current/ready=${unavailable:-unknown}"
+  if kubectl -n "$NAMESPACE" describe pods -l app=redis 2>/dev/null | grep -q 'current working directory is outside of container mount namespace root'; then
+    log 'redis OCI namespace failure detected; recreating stateless Redis pods'
+    kubectl -n "$NAMESPACE" delete pod -l app=redis --wait=false || true
+    kubectl -n "$NAMESPACE" rollout status statefulset/carbonet-redis --timeout=180s || true
+  fi
 }
 
 kubectl_ok() {
@@ -249,7 +306,9 @@ main() {
   ensure_cluster_addons
   ensure_postgres
   ensure_db_compatibility
+  ensure_redis
   ensure_runtime
+  ensure_runtime_latency
   prune_images
   kubectl -n "$NAMESPACE" get pods -o wide || true
   log 'done'
