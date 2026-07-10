@@ -685,7 +685,7 @@ function renderSectionTable(
               const useDatabaseValue = selectedSource === "DB";
               return (
                 <Fragment key={`${key}-${index}`}>
-                  <tr className={`min-h-[92px] border-b border-[var(--kr-gov-border-light)] transition-colors hover:bg-slate-50 ${isDeletedRow ? "bg-red-50/60 opacity-75" : selectedSource === "DB" ? "bg-blue-50/50" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-blue-50/30" : "bg-white"}`} key={`${key}-${index}`}>
+                  <tr className={`min-h-[92px] border-b border-[var(--kr-gov-border-light)] bg-white transition-colors hover:bg-slate-50 ${isDeletedRow ? "opacity-75" : ""}`} key={`${key}-${index}`}>
                     <td className="w-16 px-3 py-3 text-center align-middle text-sm font-bold text-slate-500">{index + 1}</td>
                     {visibleColumns.map((column) => {
                       const databaseValue = existingValues ? existingValues[column.key] : "";
@@ -758,7 +758,7 @@ function renderSectionTable(
                       </td>
                     );})}
                     {showGwpMapping ? (
-                      <td className="min-w-[260px] px-4 py-3 align-middle">
+                      <td className="min-w-[260px] border-x border-[var(--kr-gov-border-light)] px-4 py-3 align-middle">
                         <div className="grid min-h-[66px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                           {summary ? (
                             <div className="min-h-10 border border-blue-200 bg-blue-50 px-2 py-2 text-[11px] text-[var(--kr-gov-blue)]">
