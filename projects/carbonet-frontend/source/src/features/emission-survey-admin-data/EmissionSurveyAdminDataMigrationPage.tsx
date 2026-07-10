@@ -7,14 +7,18 @@ import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import {
   fetchEmissionGwpValuesPage,
   fetchEmissionSurveyAdminDataPage,
+  fetchChemicalMaterialSuggestions,
   fetchEcoinventDatasetPage,
   fetchEcoinventFilterOptions,
+  fetchEcoinventMappedFactors,
   fetchSurveyEcoinventAiRecommendationPage,
   getEmissionSurveyAdminBlankTemplateDownloadUrl,
   previewEmissionSurveySharedDataset,
   replaceEmissionSurveySharedDatasetSections
 } from "../../lib/api/emission";
 import type {
+  ChemicalMaterialRow,
+  EcoinventDatasetRow,
   EmissionSurveyAdminDataPagePayload,
   EmissionSurveyAdminRow,
   EmissionSurveyAdminSection
@@ -895,6 +899,9 @@ function GwpMappingModal({
   sortField,
   onSortFieldChange,
   filterOptions
+  ,chemicalRows
+  ,previousRows
+  ,onSelectChemical
 }: {
   target: MappingTarget;
   searchKeyword: string;
@@ -927,6 +934,9 @@ function GwpMappingModal({
   sortField?: SortState;
   onSortFieldChange?: (value: SortState) => void;
   filterOptions?: Record<string, string[]>;
+  chemicalRows?: ChemicalMaterialRow[];
+  previousRows?: EcoinventDatasetRow[];
+  onSelectChemical?: (row: ChemicalMaterialRow) => void;
 }) {
   const selectedCandidate = rows.find((row) => String(row.rowId || row.datasetId || "") === selectedCandidateId) || null;
   const isGwpSource = mappingSource === "GWP";
@@ -945,6 +955,8 @@ function GwpMappingModal({
   ];
   const totalPages = totalCount && pageSize ? Math.ceil(totalCount / pageSize) : 1;
   const currentPage = pageIndex || 0;
+  const visibleChemicalRows = (chemicalRows || []).slice(0, 6);
+  const visiblePreviousRows = (previousRows || []).slice(0, 3);
 
   type SortFieldType = "geography" | "timePeriod";
   type SortState = Partial<Record<SortFieldType, "asc" | "desc">>;
@@ -973,7 +985,7 @@ function GwpMappingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6">
-      <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-[var(--kr-gov-radius)] bg-white shadow-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[var(--kr-gov-radius)] bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div>
             <h3 className="text-lg font-black text-[var(--kr-gov-text-primary)]">배출계수 매핑</h3>
@@ -981,7 +993,7 @@ function GwpMappingModal({
           </div>
           <MemberButton onClick={onClose} size="sm" type="button" variant="secondary">닫기</MemberButton>
         </div>
-        <div className="grid gap-4 overflow-y-auto px-5 py-5 lg:grid-cols-[1.4fr,1fr]">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 py-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)]">
           <section className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <label className="block">
@@ -1044,6 +1056,45 @@ function GwpMappingModal({
                 <MemberButton onClick={onSearch} type="button" variant="primary">{loading ? "검색 중..." : "검색"}</MemberButton>
               </div>
             </div>
+            {!isGwpSource ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                <section className="border border-cyan-200 bg-cyan-50/60 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-black text-cyan-950">화학물질 사전 후보</p>
+                      <p className="mt-1 text-xs text-cyan-800">국문명, 영문명, CAS 번호로 검색어를 보정합니다.</p>
+                    </div>
+                    <span className="text-xs font-black text-cyan-800">{visibleChemicalRows.length}건</span>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {visibleChemicalRows.length === 0 ? <p className="bg-white/70 px-3 py-2 text-xs text-slate-500">일치하는 사전 후보가 없습니다.</p> : visibleChemicalRows.map((row) => (
+                      <button className="border border-cyan-100 bg-white px-3 py-2 text-left hover:border-cyan-500" key={String(row.id || row.casNo || row.koreanName)} onClick={() => onSelectChemical?.(row)} type="button">
+                        <span className="block text-sm font-bold text-slate-900">{String(row.koreanName || row.englishName || "-")}</span>
+                        <span className="mt-1 block text-xs text-slate-500">{String(row.englishName || "-")} · CAS {String(row.casNo || "-")}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <section className="border border-blue-200 bg-blue-50/60 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-black text-blue-950">확정 매핑 이력</p>
+                      <p className="mt-1 text-xs text-blue-800">같은 물질에 사용자가 확정한 후보를 우선합니다.</p>
+                    </div>
+                    <span className="text-xs font-black text-blue-800">{visiblePreviousRows.length}건</span>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {visiblePreviousRows.length === 0 ? <p className="bg-white/70 px-3 py-2 text-xs text-slate-500">아직 확정된 매핑 이력이 없습니다.</p> : visiblePreviousRows.map((row) => {
+                      const rowId = String(row.datasetId || "");
+                      return <button className={`border px-3 py-2 text-left ${rowId === selectedCandidateId ? "border-blue-600 bg-white" : "border-blue-100 bg-white/80 hover:border-blue-400"}`} key={rowId} onClick={() => onSelectCandidate(rowId)} type="button">
+                        <span className="block text-sm font-bold text-slate-900">{String(row.productName || "-")}</span>
+                        <span className="mt-1 block text-xs text-slate-500">{String(row.activityName || "-")} · {String(row.geography || "-")}</span>
+                      </button>;
+                    })}
+                  </div>
+                </section>
+              </div>
+            ) : null}
             <div className="rounded-[var(--kr-gov-radius)] border border-slate-200">
               {isGwpSource ? (
                 <>
@@ -1277,6 +1328,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
   const [mappingTarget, setMappingTarget] = useState<MappingTarget | null>(null);
   const [mappingSearchKeyword, setMappingSearchKeyword] = useState("");
   const [mappingRows, setMappingRows] = useState<GwpCandidateRow[]>([]);
+  const [mappingChemicalRows, setMappingChemicalRows] = useState<ChemicalMaterialRow[]>([]);
+  const [mappingPreviousRows, setMappingPreviousRows] = useState<EcoinventDatasetRow[]>([]);
   const [mappingSource, setMappingSource] = useState<"GWP" | "ECOINVENT">("ECOINVENT");
   const [gwpCatalogRows, setGwpCatalogRows] = useState<GwpCandidateRow[]>([]);
   const [mappingLoading, setMappingLoading] = useState(false);
@@ -1563,6 +1616,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
     setMappingTarget(nextTarget);
     setMappingSearchKeyword(nextKeyword);
     setMappingRows([]);
+    setMappingChemicalRows([]);
+    setMappingPreviousRows([]);
     setMappingPageIndex(0);
     setMappingTotalCount(0);
     setMappingSource(isAir ? "GWP" : "ECOINVENT");
@@ -1652,6 +1707,14 @@ export function EmissionSurveyAdminDataMigrationPage() {
           }
         }
       } else {
+        if (page === 0) {
+          const [chemicalRows, previousRows] = await Promise.all([
+            fetchChemicalMaterialSuggestions(keyword).catch(() => [] as ChemicalMaterialRow[]),
+            fetchEcoinventMappedFactors(keyword).catch(() => [] as EcoinventDatasetRow[])
+          ]);
+          setMappingChemicalRows(chemicalRows);
+          setMappingPreviousRows(previousRows);
+        }
         const hasCustomSort = mappingSortField?.geography || mappingSortField?.timePeriod;
         const serverSortField = hasCustomSort ? undefined : (Object.keys(mappingSortField || {})[0] || undefined);
         const serverSortDirection = hasCustomSort ? undefined : (Object.values(mappingSortField || {})[0] || undefined);
@@ -1692,6 +1755,13 @@ export function EmissionSurveyAdminDataMigrationPage() {
   function handlePageChange(page: number) {
     setMappingPageIndex(page);
     void handleSearchMapping(undefined, undefined, page);
+  }
+
+  function handleSelectChemical(row: ChemicalMaterialRow) {
+    const nextKeyword = String(row.englishName || row.koreanName || row.casNo || mappingSearchKeyword || "").trim();
+    setMappingSearchKeyword(nextKeyword);
+    setMappingPageIndex(0);
+    void handleSearchMapping(nextKeyword, undefined, 0);
   }
 
   function handleApplyMapping() {
@@ -1844,14 +1914,17 @@ export function EmissionSurveyAdminDataMigrationPage() {
         </section>
 
         {mappingTarget ? (
-          <GwpMappingModal
+        <GwpMappingModal
             allowArSelection={mappingTarget.allowArSelection}
             allowSourceSwitch={mappingTarget.allowArSelection}
             datasetArVersion={datasetArVersion}
             onDatasetArVersionChange={setDatasetArVersion}
             directValue={directValue}
             factorType={factorType}
-            filterOptions={mappingFilterOptions}
+          filterOptions={mappingFilterOptions}
+          chemicalRows={mappingChemicalRows}
+          previousRows={mappingPreviousRows}
+          onSelectChemical={handleSelectChemical}
             geography={mappingGeography}
             onGeographyChange={setMappingGeography}
             loading={mappingLoading}

@@ -913,16 +913,21 @@ function EcoinventFactorMappingDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6">
-      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[var(--kr-gov-radius)] bg-white shadow-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[var(--kr-gov-radius)] bg-white shadow-2xl">
         <div className="shrink-0 flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-black text-[var(--kr-gov-text-primary)]">배출계수 매핑</h3>
             <p className="mt-1 text-sm text-slate-500">대상 물질: {target.materialName || "-"}</p>
+            <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold">
+              <span className="border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">AI 추천 사용</span>
+              <span className="border border-cyan-200 bg-cyan-50 px-2 py-1 text-cyan-800">화학물질 사전 연계</span>
+              <span className="border border-blue-200 bg-blue-50 px-2 py-1 text-blue-800">확정 이력 우선</span>
+            </div>
           </div>
           <MemberButton onClick={onClose} size="sm" type="button" variant="secondary">닫기</MemberButton>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-5">
-          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.9fr)]">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)]">
           <section className="min-w-0 space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr,120px]">
               <label className="block">
