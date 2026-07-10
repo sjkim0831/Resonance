@@ -38,29 +38,13 @@ check_model() {
   fi
 }
 
-if [ -f "$MODEL_RUNTIME_FILE" ]; then
-  python3 - "$MODEL_RUNTIME_FILE" <<'PY' | while IFS=$'\t' read -r service port model; do
-import json
-import sys
+for service in codex-qwen36 resonance-shadow-qwen14 resonance-shadow-qwen3-exl2-gpu resonance-hermes-framework-qwen40-exl3; do
+  if systemctl is-active --quiet "$service"; then
+    echo "stop GPU conflict: $service"
+    "${SYSTEMCTL[@]}" stop "$service"
+  fi
+done
 
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-active_roles = (data.get("selectionPolicy") or {}).get("activeRoles") or {}
-active_ids = set(active_roles.values())
-for profile in data.get("profiles", []):
-    if profile.get("desired") != "on":
-        continue
-    service = profile.get("serviceName")
-    port = profile.get("port")
-    model = profile.get("modelAlias")
-    if service and port and model:
-        print(f"{service}\t{port}\t{model}")
-PY
-    check_model "$service" "$port" "$model"
-  done
-else
-  check_model codex-qwen36 24036 qwen3.6-40b-deck-opus-q4
-  check_model resonance-shadow-qwen7 24751 qwen2.5-coder-7b-instruct-shadow
-  check_model resonance-shadow-gemma4-e4b 24451 gemma4-e4b-gpu-shadow
-fi
+check_model resonance-shadow-gemma4-e4b 24451 gemma4-e4b-gpu-shadow
 
-echo "resonance ai model stack OK"
+echo "resonance ai model stack OK: Gemma E4B always-on"

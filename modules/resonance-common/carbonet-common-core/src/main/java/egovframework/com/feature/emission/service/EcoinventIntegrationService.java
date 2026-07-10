@@ -23,6 +23,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -79,6 +80,18 @@ public class EcoinventIntegrationService {
 
     @Value("${CARBONET_AI_OLLAMA_MODEL:${carbonet.ai.ollama.model:qwen3:0.6b}}")
     private String ollamaModel;
+
+    @Value("${CARBONET_AI_GEMMA_MAPPING_ENABLED:${carbonet.ai.gemma-mapping.enabled:true}}")
+    private boolean gemmaMappingEnabled;
+
+    @Value("${CARBONET_AI_GEMMA_BASE_URL:${carbonet.ai.gemma.base-url:http://172.16.1.232:24451/v1}}")
+    private String gemmaBaseUrl;
+
+    @Value("${CARBONET_AI_GEMMA_API_KEY:${carbonet.ai.gemma.api-key:qwer1234}}")
+    private String gemmaApiKey;
+
+    @Value("${CARBONET_AI_GEMMA_MODEL:${carbonet.ai.gemma.model:gemma4-e4b-gpu-shadow}}")
+    private String gemmaModel;
 
     private String cachedAccessToken;
     private Instant cachedAccessTokenExpiresAt = Instant.EPOCH;
@@ -639,6 +652,13 @@ public class EcoinventIntegrationService {
             terms.add(firstNonBlank(mappedSeed.getProductName(), mappedSeed.getMaterialName()));
             terms.add(firstNonBlank(mappedSeed.getActivityName(), mappedSeed.getProductName()));
         }
+        if (gemmaMappingEnabled && containsKorean(materialName)) {
+            try {
+                terms.addAll(parseAiSearchTerms(callGemmaForSearchTerms(materialName)));
+            } catch (RuntimeException ignored) {
+                // Deterministic dictionary and saved mappings remain the fallback.
+            }
+        }
         return new ArrayList<>(terms).stream()
                 .map(this::safe)
                 .filter(term -> !term.isBlank() && !containsKorean(term))
@@ -1060,6 +1080,41 @@ public class EcoinventIntegrationService {
             return "";
         }
         return String.valueOf(response.get("response"));
+    }
+
+    private String callGemmaForSearchTerms(String materialName) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(3000);
+        requestFactory.setReadTimeout(15000);
+        RestTemplate restTemplate = new RestTemplate(requestFactory);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(safe(gemmaApiKey));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", safe(gemmaModel));
+        body.put("temperature", 0);
+        body.put("max_tokens", 160);
+        body.put("chat_template_kwargs", Map.of("enable_thinking", false));
+        body.put("messages", List.of(Map.of(
+                "role", "user",
+                "content", """
+                        Return only a JSON array containing 3 concise English ecoinvent search terms for the Korean industrial material or energy label below.
+                        Keep the physical meaning, energy source, voltage, treatment, and product context. Never invent an emission factor or dataset ID.
+                        Korean label: %s
+                        """.formatted(materialName))));
+        Map<?, ?> response = restTemplate.postForObject(
+                trimTrailingSlash(gemmaBaseUrl) + "/chat/completions",
+                new HttpEntity<>(body, headers),
+                Map.class);
+        if (response == null || !(response.get("choices") instanceof List<?> choices) || choices.isEmpty()) {
+            return "";
+        }
+        Object first = choices.get(0);
+        if (!(first instanceof Map<?, ?> choice) || !(choice.get("message") instanceof Map<?, ?> message)) {
+            return "";
+        }
+        String content = safeObject(message.get("content"));
+        return content.isBlank() ? safeObject(message.get("reasoning_content")) : content;
     }
 
     private String callOllamaForMaterialEnglishName(String materialName) {

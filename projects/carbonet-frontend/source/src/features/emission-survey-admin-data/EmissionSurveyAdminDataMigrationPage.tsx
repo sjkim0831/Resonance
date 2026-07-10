@@ -9,6 +9,7 @@ import {
   fetchEmissionSurveyAdminDataPage,
   fetchEcoinventDatasetPage,
   fetchEcoinventFilterOptions,
+  fetchSurveyEcoinventAiRecommendationPage,
   getEmissionSurveyAdminBlankTemplateDownloadUrl,
   previewEmissionSurveySharedDataset,
   replaceEmissionSurveySharedDatasetSections
@@ -1111,7 +1112,7 @@ function GwpMappingModal({
                         return (
                           <div className={`grid grid-cols-[80px,1.2fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={rowId || String(row.commonName || row.productName || Math.random())}>
                             <div className="px-3 py-3 text-[11px] font-bold text-[var(--kr-gov-blue)]">
-                              {mapPriority(row, searchKeyword) === 0 ? "1순위" : mapPriority(row, searchKeyword) === 1 ? "정확 일치" : "후보"}
+                              {row.aiRecommended ? "AI 추천" : mapPriority(row, searchKeyword) === 0 ? "1순위" : mapPriority(row, searchKeyword) === 1 ? "정확 일치" : "후보"}
                             </div>
                             <div className="px-3 py-3">
                               <p className="font-bold text-slate-900">{displayValue(row.koreanName) || displayValue(row.commonName) || displayValue(row.productName)}</p>
@@ -1598,8 +1599,30 @@ export function EmissionSurveyAdminDataMigrationPage() {
       sortField: sortField || undefined,
       sortDirection: sortDirection || undefined
     });
-    const rows = (((response.data || []) as Array<Record<string, string>>)).slice();
-    const total = response.totalCount || response.count || rows.length;
+    let rows = (((response.data || []) as unknown) as GwpCandidateRow[]).slice();
+    let total = response.totalCount || response.count || rows.length;
+    if (pageIndex === 0 && /[가-힣]/.test(keyword)) {
+      try {
+        const aiResponse = await fetchSurveyEcoinventAiRecommendationPage({
+          materialName: keyword,
+          geography: geography || undefined,
+          timePeriod: timePeriod || undefined,
+          pageIndex: 1,
+          pageSize: Math.min(mappingPageSize, 20)
+        });
+        const aiRows = (((aiResponse.data || []) as unknown) as GwpCandidateRow[]).slice();
+        const seen = new Set<string>();
+        rows = [...aiRows, ...rows].filter((row) => {
+          const id = String(row.datasetId || row.rowId || "");
+          if (!id || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        }).slice(0, mappingPageSize);
+        total = Math.max(total, aiResponse.totalCount || aiResponse.count || 0);
+      } catch {
+        // Keep deterministic results when the local mapping model is unavailable.
+      }
+    }
     return { rows, total };
   }
 
