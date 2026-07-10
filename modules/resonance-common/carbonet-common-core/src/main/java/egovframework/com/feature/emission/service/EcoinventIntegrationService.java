@@ -101,7 +101,13 @@ public class EcoinventIntegrationService {
     public DatasetPage listLocalDatasetPage(Map<String, String> params) {
         ensureEcoinventTablesReady();
         ensureMaterialTranslationTableReady();
-        SearchRequest request = SearchRequest.from(params);
+        Map<String, String> resolvedParams = new LinkedHashMap<>(params == null ? Map.of() : params);
+        String requestedKeyword = safe(resolvedParams.get("keyword")).replaceAll("\\s+", "");
+        if (Set.of("재생전력", "신재생전력", "재생에너지전력").contains(requestedKeyword)) {
+            resolvedParams.put("keyword", "electricity");
+            resolvedParams.putIfAbsent("productName", "renewable energy products");
+        }
+        SearchRequest request = SearchRequest.from(resolvedParams);
         if (!request.keyword().isEmpty() && containsKorean(request.keyword())) {
             return listLocalKoreanDatasetPage(request);
         }
