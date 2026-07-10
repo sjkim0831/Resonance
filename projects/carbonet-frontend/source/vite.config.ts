@@ -4,9 +4,10 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const buildTarget = process.env.VITE_BUILD_TARGET === "classes"
+const explicitBuildTarget = process.env.VITE_OUT_DIR?.trim();
+const buildTarget = explicitBuildTarget || (process.env.VITE_BUILD_TARGET === "classes"
   ? "../target/classes/static/react-app"
-  : "../src/main/resources/static/react-app";
+  : "../src/main/resources/static/react-app");
 const mirrorTarget = process.env.VITE_BUILD_TARGET === "classes"
   ? "../src/main/resources/static/react-app"
   : "../target/classes/static/react-app";
@@ -31,7 +32,7 @@ function syncBuildOutputPlugin() {
     name: "sync-build-output",
     async closeBundle() {
       const sourceDir = path.resolve(__dirname, buildTarget);
-      const targetDirs = [
+      const targetDirs = explicitBuildTarget ? [] : [
         path.resolve(__dirname, mirrorTarget),
       ];
 
