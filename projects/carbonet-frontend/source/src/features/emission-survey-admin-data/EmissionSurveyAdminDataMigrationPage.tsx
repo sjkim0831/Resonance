@@ -617,6 +617,14 @@ function renderSectionTable(
       label: matchedColumn ? stringOf(matchedColumn, "label") || VISIBLE_COLUMN_LABELS[columnKey] : VISIBLE_COLUMN_LABELS[columnKey]
     };
   });
+  const columnWidthClass = (columnKey: string) => {
+    if (columnKey === "group") return "w-[140px] min-w-[140px]";
+    if (columnKey === "materialName") return "w-[200px] min-w-[200px]";
+    if (columnKey === "amount") return "w-[130px] min-w-[130px]";
+    if (columnKey === "annualUnit") return "w-[150px] min-w-[150px]";
+    if (columnKey === "remark") return "w-[220px] min-w-[220px]";
+    return "w-[170px] min-w-[170px]";
+  };
   return (
     <article className="gov-card scroll-mt-28 overflow-hidden" id={`survey-section-${stringOf(section as Record<string, unknown>, "sectionCode") || key}`} key={key}>
       <div className="border-b border-[var(--kr-gov-border-light)] px-5 py-4">
@@ -646,16 +654,16 @@ function renderSectionTable(
           ))}
         </div>
       ) : null}
-      <div className="overflow-x-auto">
-        <AdminTable>
-          <thead>
-            <tr className="bg-gray-50 border-y border-[var(--kr-gov-border-light)] text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">
+      <div className="overflow-x-auto border-t border-[var(--kr-gov-border-light)] bg-white">
+        <AdminTable className="min-w-max table-fixed">
+          <thead className="bg-slate-50">
+            <tr className="border-b border-[var(--kr-gov-border-light)] text-[13px] font-bold text-[var(--kr-gov-text-secondary)]">
               <th className="w-16 px-4 py-3 text-center">번호</th>
               {visibleColumns.map((column) => (
-                <th className="min-w-[160px] px-4 py-3" key={column.key}>{column.label}</th>
+                <th className={`${columnWidthClass(column.key)} border-l border-[var(--kr-gov-border-light)] px-3 py-3 text-left`} key={column.key}>{column.label}</th>
               ))}
-              {showGwpMapping ? <th className="min-w-[240px] px-4 py-3">배출계수 매핑</th> : null}
-              {editable ? <th className="min-w-[210px] px-4 py-3 text-center">상태·반영 기준</th> : null}
+              {showGwpMapping ? <th className="w-[280px] min-w-[280px] border-l border-[var(--kr-gov-border-light)] px-3 py-3 text-left">배출계수 매핑</th> : null}
+              {editable ? <th className="w-[220px] min-w-[220px] border-l border-[var(--kr-gov-border-light)] px-3 py-3 text-center">상태·반영 기준</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -678,12 +686,12 @@ function renderSectionTable(
               return (
                 <Fragment key={`${key}-${index}`}>
                   <tr className={`min-h-[92px] border-b border-[var(--kr-gov-border-light)] transition-colors hover:bg-slate-50 ${isDeletedRow ? "bg-red-50/60 opacity-75" : selectedSource === "DB" ? "bg-blue-50/50" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-blue-50/30" : "bg-white"}`} key={`${key}-${index}`}>
-                    <td className="px-4 py-3 text-center align-middle text-sm font-bold text-slate-500">{index + 1}</td>
+                    <td className="w-16 px-3 py-3 text-center align-middle text-sm font-bold text-slate-500">{index + 1}</td>
                     {visibleColumns.map((column) => {
                       const databaseValue = existingValues ? existingValues[column.key] : "";
                       const valueChanged = existingValues !== null && normalizedValue(databaseValue) !== normalizedValue(values[column.key]);
                       return (
-                      <td className="px-4 py-3 align-top" key={`${key}-${index}-${column.key}`}>
+                      <td className={`${columnWidthClass(column.key)} border-l border-[var(--kr-gov-border-light)] px-3 py-3 align-top`} key={`${key}-${index}-${column.key}`}>
                         <div className="flex min-h-[66px] flex-col justify-start">
                         {editable ? (
                           column.key === "annualUnit" ? (
@@ -759,7 +767,9 @@ function renderSectionTable(
                             </div>
                           ) : (
                             <div className={`min-h-10 border px-2 py-2 text-[11px] ${requiresAttention ? "border-red-200 bg-red-50 text-red-700" : "border-dashed border-slate-300 bg-slate-50 text-slate-500"}`}>
-                              {requiresAttention ? "Ecoinvent 자동 매핑 값이 없습니다. 팝업에서 직접 지정하세요." : "아직 매핑되지 않았습니다."}
+                              {requiresAttention ? (
+                                <><span className="block">Ecoinvent 자동 매핑 값이 없습니다.</span><span className="mt-1 block">팝업에서 직접 지정하세요.</span></>
+                              ) : "아직 매핑되지 않았습니다."}
                             </div>
                           )}
                           <MemberButton
