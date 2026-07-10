@@ -294,7 +294,7 @@ async function extractPdfVerificationText(buffer: ArrayBuffer) {
   return candidates.join("\n");
 }
 
-async function preprocessReportPhoto(file: File) {
+async function preprocessReportPhoto(file: Blob) {
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   const targetWidth = Math.min(2400, Math.max(1600, bitmap.width));
   const scale = targetWidth / bitmap.width;
@@ -320,7 +320,7 @@ async function preprocessReportPhoto(file: File) {
   return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Image preprocessing failed.")), "image/png"));
 }
 
-async function recognizeReportPhotos(files: File[], onProgress: (progress: number, status: string) => void) {
+async function recognizeReportPhotos(files: Blob[], onProgress: (progress: number, status: string) => void) {
   const images: Blob[] = [];
   for (let index = 0; index < files.length; index += 1) {
     onProgress(Math.round((index / Math.max(1, files.length)) * 10), `IMAGE ${index + 1}/${files.length}`);
@@ -355,6 +355,37 @@ async function recognizeReportPhotos(files: File[], onProgress: (progress: numbe
     text: texts.filter(Boolean).join("\n"),
     confidence: confidences.length ? Math.max(...confidences) : 0
   };
+}
+
+async function renderReportPdfPages(file: File, onProgress: (progress: number, status: string) => void) {
+  const pdfjs = await import("pdfjs-dist");
+  const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pages: Blob[] = [];
+  for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+    onProgress(Math.round((pageNumber / pdfDocument.numPages) * 8), `PDF ${pageNumber}/${pdfDocument.numPages}`);
+    const page = await pdfDocument.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) {
+      throw new Error("PDF page rendering is not available.");
+    }
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+      (value) => value ? resolve(value) : reject(new Error("PDF page image could not be created.")),
+      "image/png"
+    ));
+    pages.push(blob);
+    page.cleanup();
+  }
+  await pdfDocument.destroy();
+  return pages;
 }
 
 function resolveVerificationPayload(raw: string): ReportVerificationPayload | null {
@@ -2253,6 +2284,31 @@ export function EmissionSurveyReportVerifyPage() {
       : (en ? "Verification block is readable, but no matching local issued record exists on this browser." : "검증 블록은 읽었지만 이 브라우저의 발급 이력에서 일치하는 기록을 찾지 못했습니다."));
   };
 
+  const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string) => {
+    setUploadedPayloadFound(false);
+    setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing pages" : "페이지 이미지 보정 중" });
+    setResultTone("info");
+    setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
+    try {
+      const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      setUploadedVerificationText(recognized.text);
+      const verification = await verifySurveyReportPhoto(recognized.text);
+      setPhotoVerification(verification);
+      setPayload(null);
+      setResultTone(verification.photoConsistent ? "success" : "warning");
+      setResultMessage(verification.photoConsistent
+        ? (en ? `Visible content matches an issued dataset with ${verification.confidence}% confidence.` : `보이는 내용이 발급 데이터셋과 ${verification.confidence}% 신뢰도로 일치합니다.`)
+        : verification.status === "PHOTO_REVIEW"
+          ? (en ? `Partial match (${verification.confidence}%). Visual review is required.` : `부분 일치(${verification.confidence}%)하여 육안 검토가 필요합니다.`)
+          : (en ? `The visible content does not match an issued dataset (${verification.confidence}%).` : `보이는 내용이 발급 데이터셋과 충분히 일치하지 않습니다(${verification.confidence}%).`));
+    } catch (error) {
+      setResultTone("warning");
+      setResultMessage(error instanceof Error ? error.message : (en ? "Photo OCR failed." : "사진 OCR 처리에 실패했습니다."));
+    } finally {
+      setOcrProgress((current) => ({ ...current, busy: false }));
+    }
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     const file = files[0];
@@ -2265,28 +2321,7 @@ export function EmissionSurveyReportVerifyPage() {
     if (files.every((item) => item.type.startsWith("image/"))) {
       photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
       setPhotoPreviewUrls(files.map((item) => URL.createObjectURL(item)));
-      setUploadedPayloadFound(false);
-      setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing image" : "이미지 보정 중" });
-      setResultTone("info");
-      setResultMessage(en ? "Reading the photographed report on this device..." : "이 기기에서 촬영 리포트의 텍스트를 추출하고 있습니다...");
-      try {
-        const recognized = await recognizeReportPhotos(files, (percent, status) => setOcrProgress({ busy: true, percent, status }));
-        setUploadedVerificationText(recognized.text);
-        const verification = await verifySurveyReportPhoto(recognized.text);
-        setPhotoVerification(verification);
-        setPayload(null);
-        setResultTone(verification.photoConsistent ? "success" : "warning");
-        setResultMessage(verification.photoConsistent
-          ? (en ? `Photo content matches an issued dataset with ${verification.confidence}% confidence.` : `촬영본 내용이 발급 데이터셋과 ${verification.confidence}% 신뢰도로 일치합니다.`)
-          : verification.status === "PHOTO_REVIEW"
-            ? (en ? `Partial match (${verification.confidence}%). Visual review is required.` : `부분 일치(${verification.confidence}%)하여 육안 검토가 필요합니다.`)
-            : (en ? `The photographed content does not match an issued dataset (${verification.confidence}%).` : `촬영본 내용이 발급 데이터셋과 충분히 일치하지 않습니다(${verification.confidence}%).`));
-      } catch (error) {
-        setResultTone("warning");
-        setResultMessage(error instanceof Error ? error.message : (en ? "Photo OCR failed." : "사진 OCR 처리에 실패했습니다."));
-      } finally {
-        setOcrProgress((current) => ({ ...current, busy: false }));
-      }
+      await evaluatePhotographedPages(files, en ? "uploaded photos" : "업로드 사진");
       return;
     }
     photoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -2296,7 +2331,20 @@ export function EmissionSurveyReportVerifyPage() {
     const nextPayload = resolveVerificationPayload(extractedText);
     setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
-    await evaluatePayload(nextPayload, file.name);
+    if (nextPayload) {
+      await evaluatePayload(nextPayload, file.name);
+      return;
+    }
+    setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
+    try {
+      const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
+      await evaluatePhotographedPages(pages, file.name);
+    } catch (error) {
+      setOcrProgress((current) => ({ ...current, busy: false }));
+      setResultTone("warning");
+      setResultMessage(error instanceof Error ? error.message : (en ? "Scanned PDF OCR failed." : "스캔 PDF OCR 처리에 실패했습니다."));
+    }
   };
 
   const handleManualVerify = () => {
