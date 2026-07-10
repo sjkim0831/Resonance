@@ -586,23 +586,6 @@ function padPreviewSectionsWithExistingRows(
   });
 }
 
-function describeRowValues(
-  section: Record<string, unknown> | EmissionSurveyAdminSection,
-  values: Record<string, string>
-) {
-  const items = VISIBLE_COLUMN_KEYS.map((columnKey) => ({
-    label: VISIBLE_COLUMN_LABELS[columnKey],
-    value: displayValue(values[columnKey])
-  }));
-  if (isEmissionOutputSection(section)) {
-    items.push({
-      label: "배출계수",
-      value: displayValue(resolveStoredEmissionFactor(values))
-    });
-  }
-  return items;
-}
-
 function renderSectionTable(
   section: Record<string, unknown> | EmissionSurveyAdminSection,
   key: string,
@@ -634,7 +617,6 @@ function renderSectionTable(
       label: matchedColumn ? stringOf(matchedColumn, "label") || VISIBLE_COLUMN_LABELS[columnKey] : VISIBLE_COLUMN_LABELS[columnKey]
     };
   });
-  const comparisonColSpan = 1 + visibleColumns.length + (showGwpMapping ? 1 : 0) + (editable ? 1 : 0);
   return (
     <article className="gov-card scroll-mt-28 overflow-hidden" id={`survey-section-${stringOf(section as Record<string, unknown>, "sectionCode") || key}`} key={key}>
       <div className="border-b border-[var(--kr-gov-border-light)] px-5 py-4">
@@ -673,7 +655,7 @@ function renderSectionTable(
                 <th className="min-w-[160px] px-4 py-3" key={column.key}>{column.label}</th>
               ))}
               {showGwpMapping ? <th className="min-w-[240px] px-4 py-3">배출계수 매핑</th> : null}
-              {editable ? <th className="w-32 px-4 py-3 text-center">상태</th> : null}
+              {editable ? <th className="min-w-[210px] px-4 py-3 text-center">상태·반영 기준</th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -689,19 +671,18 @@ function renderSectionTable(
               const matchedExistingRow = editable && !isNewRow ? findMatchingExistingRow(section, row as EmissionSurveyAdminRow, existingSections) : null;
               const selectedSource = options?.rowSourceSelections?.[rowSelectionKey(sectionCode, rowId)] || "UPLOAD";
               const isIncomplete = !isDeletedRow && (visibleColumns.some((column) => !normalizedValue(values[column.key])) || requiresAttention);
-              const uploadValueSummary = describeRowValues(section, values);
-              const existingValueSummary = matchedExistingRow
-                ? describeRowValues(section, ((matchedExistingRow.values || {}) as Record<string, string>))
-                : [];
-              const changedValueCount = matchedExistingRow
-                ? uploadValueSummary.filter((item) => existingValueSummary.find((existing) => existing.label === item.label)?.value !== item.value).length
-                : 0;
+              const existingValues = matchedExistingRow
+                ? ((matchedExistingRow.values || {}) as Record<string, string>)
+                : null;
               const useDatabaseValue = selectedSource === "DB";
               return (
                 <Fragment key={`${key}-${index}`}>
                   <tr className={`hover:bg-gray-50/50 transition-colors ${isDeletedRow ? "bg-rose-50/60 opacity-75" : selectedSource === "DB" ? "bg-sky-50/60" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-emerald-50/40" : ""}`} key={`${key}-${index}`}>
                     <td className="px-4 py-3 text-center text-gray-500">{index + 1}</td>
-                    {visibleColumns.map((column) => (
+                    {visibleColumns.map((column) => {
+                      const databaseValue = existingValues ? existingValues[column.key] : "";
+                      const valueChanged = existingValues !== null && normalizedValue(databaseValue) !== normalizedValue(values[column.key]);
+                      return (
                       <td className="px-4 py-3 align-top" key={`${key}-${index}-${column.key}`}>
                         {editable ? (
                           column.key === "annualUnit" ? (
@@ -757,8 +738,15 @@ function renderSectionTable(
                         ) : (
                           column.key === "annualUnit" ? displayValue(values[column.key]) : displayValue(values[column.key])
                         )}
+                        {editable && existingValues ? (
+                          <p className={`mt-1.5 flex min-h-5 items-start gap-1 text-[11px] leading-4 ${valueChanged ? "font-bold text-amber-700" : "text-slate-500"}`}>
+                            <span className="shrink-0">DB 저장값:</span>
+                            <span className="break-words">{displayValue(databaseValue)}</span>
+                            {valueChanged ? <span className="shrink-0 text-amber-700">(변경)</span> : null}
+                          </p>
+                        ) : null}
                       </td>
-                    ))}
+                    );})}
                     {showGwpMapping ? (
                       <td className="min-w-[240px] px-4 py-3 align-top">
                         <div className="space-y-2">
@@ -785,8 +773,8 @@ function renderSectionTable(
                       </td>
                     ) : null}
                     {editable ? (
-                      <td className="px-4 py-3 text-center align-top">
-                        <div className="space-y-2">
+                      <td className="min-w-[210px] px-4 py-3 text-center align-top">
+                        <div className="flex flex-col items-stretch gap-2">
                           <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-full ${isDeletedRow ? "bg-rose-100 text-rose-800" : isNewRow ? "bg-emerald-100 text-emerald-700" : isIncomplete ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>
                             {isDeletedRow ? "삭제예정" : isNewRow ? "신규" : isIncomplete ? "보정 필요" : "완료"}
                           </span>
@@ -796,9 +784,9 @@ function renderSectionTable(
                             </span>
                           ) : null}
                           {matchedExistingRow ? (
-                            <div className="inline-flex overflow-hidden border border-slate-300 bg-white" role="group" aria-label="행 반영 기준">
-                              <button className={`h-8 px-2 text-[11px] font-bold ${selectedSource === "UPLOAD" ? "bg-violet-600 text-white" : "text-slate-600"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "UPLOAD")} type="button">현재 값</button>
-                              <button className={`h-8 border-l border-slate-300 px-2 text-[11px] font-bold ${selectedSource === "DB" ? "bg-sky-700 text-white" : "text-slate-600"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "DB")} type="button">DB 값</button>
+                            <div className="grid w-full grid-cols-2 overflow-hidden border border-slate-300 bg-white" role="group" aria-label="행 반영 기준">
+                              <button className={`h-9 whitespace-nowrap px-3 text-xs font-bold ${selectedSource === "UPLOAD" ? "bg-violet-600 text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "UPLOAD")} type="button">현재 값</button>
+                              <button className={`h-9 whitespace-nowrap border-l border-slate-300 px-3 text-xs font-bold ${selectedSource === "DB" ? "bg-sky-700 text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "DB")} type="button">DB 값</button>
                             </div>
                           ) : null}
                           {editable ? (
@@ -815,67 +803,6 @@ function renderSectionTable(
                       </td>
                     ) : null}
                   </tr>
-                  {editable && matchedExistingRow && !isDeletedRow ? (
-                    <tr className="bg-slate-50/80">
-                      <td className="px-4 py-3" colSpan={comparisonColSpan}>
-                        <details className="group border border-slate-200 bg-white" open={changedValueCount > 0}>
-                          <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-                            <span className="material-symbols-outlined text-[20px] transition-transform group-open:rotate-180">expand_more</span>
-                            <span>현재 입력값과 DB 저장값 비교</span>
-                            <span className={`ml-auto px-2 py-1 text-xs ${changedValueCount > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{changedValueCount > 0 ? `${changedValueCount}개 변경` : "변경 없음"}</span>
-                            <span className={`px-2 py-1 text-xs ${selectedSource === "DB" ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800"}`}>최종: {selectedSource === "DB" ? "DB 값" : "현재 값"}</span>
-                          </summary>
-                        <div className="grid gap-3 border-t border-slate-200 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
-                          <div className="rounded border border-violet-200 bg-white px-4 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">현재 입력값</p>
-                            <div className="mt-2 grid gap-1 text-sm text-slate-700">
-                              {uploadValueSummary.map((item) => (
-                                <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3" key={`${key}-${index}-upload-${item.label}`}>
-                                  <span className="font-semibold text-slate-500">{item.label}</span>
-                                  <span className="break-words text-right">{item.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="rounded border border-sky-200 bg-sky-50/70 px-4 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wide text-sky-700">DB 저장 값</p>
-                            <div className="mt-2 grid gap-1 text-sm text-slate-700">
-                              {existingValueSummary.map((item) => (
-                                <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3" key={`${key}-${index}-existing-${item.label}`}>
-                                  <span className="font-semibold text-slate-500">{item.label}</span>
-                                  <span className="break-words text-right">{item.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="rounded border border-slate-200 bg-white px-4 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">반영 기준</p>
-                            <div className="mt-3 space-y-2 text-sm text-slate-700">
-                              <label className={`flex cursor-pointer items-start gap-2 rounded border px-3 py-2 ${selectedSource === "UPLOAD" ? "border-violet-300 bg-violet-50" : "border-slate-200"}`}>
-                                <input
-                                  checked={selectedSource === "UPLOAD"}
-                                  name={`${key}-${index}-source`}
-                                  onChange={() => options?.onSelectRowSource?.(sectionCode, rowId, "UPLOAD")}
-                                  type="radio"
-                                />
-                                <span>새로 입력한 행 데이터를 사용</span>
-                              </label>
-                              <label className={`flex cursor-pointer items-start gap-2 rounded border px-3 py-2 ${selectedSource === "DB" ? "border-sky-300 bg-sky-50" : "border-slate-200"}`}>
-                                <input
-                                  checked={selectedSource === "DB"}
-                                  name={`${key}-${index}-source`}
-                                  onChange={() => options?.onSelectRowSource?.(sectionCode, rowId, "DB")}
-                                  type="radio"
-                                />
-                                <span>기존 DB 저장값을 유지</span>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                        </details>
-                      </td>
-                    </tr>
-                  ) : null}
                 </Fragment>
               );
             })}
