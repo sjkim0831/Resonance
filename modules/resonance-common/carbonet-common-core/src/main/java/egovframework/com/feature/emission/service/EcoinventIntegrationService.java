@@ -695,6 +695,10 @@ public class EcoinventIntegrationService {
         List<String> dictionaryTerms = dictionarySearchTerms(materialName);
         LinkedHashSet<String> terms = new LinkedHashSet<>(dictionaryTerms);
         terms.addAll(searchChemicalDictionaryTerms(materialName));
+        if (!containsKorean(materialName)) {
+            terms.add(safe(materialName));
+            terms.addAll(searchTermVariants(materialName));
+        }
         if (requiresExactMineralSearch(materialName)) {
             return new ArrayList<>(terms);
         }
@@ -709,7 +713,7 @@ public class EcoinventIntegrationService {
             terms.add(firstNonBlank(mappedSeed.getProductName(), mappedSeed.getMaterialName()));
             terms.add(firstNonBlank(mappedSeed.getActivityName(), mappedSeed.getProductName()));
         }
-        if (gemmaMappingEnabled && containsKorean(materialName)) {
+        if (gemmaMappingEnabled) {
             try {
                 terms.addAll(parseAiSearchTerms(callGemmaForSearchTerms(materialName)));
             } catch (RuntimeException ignored) {
@@ -1161,9 +1165,10 @@ public class EcoinventIntegrationService {
         body.put("messages", List.of(Map.of(
                 "role", "user",
                 "content", """
-                        Return only a JSON array containing 3 concise English ecoinvent search terms for the Korean industrial material or energy label below.
-                        Keep the physical meaning, energy source, voltage, treatment, and product context. Never invent an emission factor or dataset ID.
-                        Korean label: %s
+                        Return only a JSON array containing 3 concise English ecoinvent search terms for the industrial material, chemical formula, abbreviation, energy, emission, waste, or process label below.
+                        Resolve formulas and aliases to their standard English substance name (for example CH4 to methane), while preserving physical state, energy source, voltage, treatment, and product context when supplied.
+                        Put the exact substance or product first, a market activity second, and one close accepted synonym third. Never invent an emission factor or dataset ID.
+                        Input label: %s
                         """.formatted(materialName))));
         Map<?, ?> response = restTemplate.postForObject(
                 trimTrailingSlash(gemmaBaseUrl) + "/chat/completions",
