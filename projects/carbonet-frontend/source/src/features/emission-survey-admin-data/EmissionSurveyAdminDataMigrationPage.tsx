@@ -636,7 +636,7 @@ function renderSectionTable(
   });
   const comparisonColSpan = 1 + visibleColumns.length + (showGwpMapping ? 1 : 0) + (editable ? 1 : 0);
   return (
-    <article className="gov-card overflow-hidden" key={key}>
+    <article className="gov-card scroll-mt-28 overflow-hidden" id={`survey-section-${stringOf(section as Record<string, unknown>, "sectionCode") || key}`} key={key}>
       <div className="border-b border-[var(--kr-gov-border-light)] px-5 py-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -1356,6 +1356,26 @@ export function EmissionSurveyAdminDataMigrationPage() {
   const previewMessage = stringOf((previewPayload || {}) as Record<string, unknown>, "previewMessage");
   const previewProductNames = resolvePreviewProductNames(previewPayload, editablePreviewSections);
   const previewProductTitle = previewProductNames.join(" / ");
+  const previewStats = useMemo(() => {
+    const activeRows = editablePreviewSections.flatMap((section) =>
+      ((section.rows || []) as EditablePreviewRow[]).filter((row) => !rowClientState(row).isDeleted)
+    );
+    const mappingRows = activeRows.filter((row) => {
+      const values = (row.values || {}) as Record<string, string>;
+      return normalizedValue(values.gwpMappedRowId) || normalizedValue(values.ecoinventDatasetId);
+    });
+    const attentionRows = activeRows.filter((row) => needsMappingAttention((row.values || {}) as Record<string, string>));
+    return {
+      sections: editablePreviewSections.length,
+      rows: activeRows.length,
+      mapped: mappingRows.length,
+      attention: attentionRows.length
+    };
+  }, [editablePreviewSections]);
+
+  function scrollToSection(sectionCode: string) {
+    document.getElementById(`survey-section-${sectionCode}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   async function autoMapSectionsWithEcoinvent(sections: EditablePreviewSection[]) {
     const searchKeywords = Array.from(
@@ -1588,6 +1608,10 @@ export function EmissionSurveyAdminDataMigrationPage() {
         targetPath: stringOf(previewPayload, "targetPath"),
         sections: sectionsToApply.map((section) => sanitizeSectionForSave(section)) as Array<Record<string, unknown>>
       });
+      const uploadAudit = ((payload as Record<string, unknown>).uploadAudit || {}) as Record<string, unknown>;
+      if (uploadAudit.databaseVerified !== true) {
+        throw new Error("DB 저장 결과를 Patroni에서 확인하지 못했습니다. 데이터는 성공으로 처리되지 않았습니다.");
+      }
       setMessage(stringOf((payload as Record<string, unknown>), "message") || "업로드 파일 내용을 DB에 반영했습니다.");
       await pageState.reload();
       setPreviewPayload(null);
@@ -1819,6 +1843,21 @@ export function EmissionSurveyAdminDataMigrationPage() {
         {message ? <PageStatusNotice tone="success">{message}</PageStatusNotice> : null}
         {errorMessage || pageState.error ? <PageStatusNotice tone="error">{errorMessage || pageState.error}</PageStatusNotice> : null}
 
+        <section aria-label="데이터 반영 진행 단계" className="mb-4 border-y border-slate-200 bg-white px-4 py-3">
+          <ol className="grid gap-2 md:grid-cols-3">
+            {[
+              ["upload_file", en ? "1. Upload" : "1. 엑셀 업로드", Boolean(uploadedFile)],
+              ["fact_check", en ? "2. Review and map" : "2. 데이터 검토·매핑", Boolean(previewPayload)],
+              ["database", en ? "3. Save to DB" : "3. Patroni DB 반영", false]
+            ].map(([icon, label, completed], index) => (
+              <li className={`flex min-h-12 items-center gap-3 border-l-4 px-3 py-2 ${completed ? "border-emerald-600 bg-emerald-50" : index === (previewPayload ? 2 : uploadedFile ? 1 : 0) ? "border-[var(--kr-gov-blue)] bg-blue-50" : "border-slate-200 bg-slate-50"}`} key={String(label)}>
+                <span className="material-symbols-outlined text-[20px]">{String(icon)}</span>
+                <span className="text-sm font-bold text-slate-800">{String(label)}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <CollectionResultPanel
           data-help-id="emission-survey-admin-data-upload"
           description={en
@@ -1853,6 +1892,24 @@ export function EmissionSurveyAdminDataMigrationPage() {
             </div>
           </div>
         </CollectionResultPanel>
+
+        {previewPayload ? (
+          <section className="mt-4 border-y border-slate-200 bg-white px-4 py-4" aria-label="업로드 데이터 요약">
+            <div className="grid grid-cols-2 gap-px bg-slate-200 lg:grid-cols-4">
+              {[
+                ["view_agenda", en ? "Sections" : "섹션", previewStats.sections, "text-slate-900"],
+                ["table_rows", en ? "Rows" : "저장 대상 행", previewStats.rows, "text-slate-900"],
+                ["link", en ? "Mapped" : "매핑 완료", previewStats.mapped, "text-emerald-700"],
+                ["warning", en ? "Needs review" : "확인 필요", previewStats.attention, previewStats.attention ? "text-red-700" : "text-emerald-700"]
+              ].map(([icon, label, value, tone]) => (
+                <div className="flex min-h-20 items-center gap-3 bg-white px-4 py-3" key={String(label)}>
+                  <span className={`material-symbols-outlined text-[22px] ${String(tone)}`}>{String(icon)}</span>
+                  <div><p className="text-xs font-bold text-slate-500">{String(label)}</p><p className={`mt-1 text-xl font-black ${String(tone)}`}>{String(value)}</p></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-4 grid grid-cols-1 gap-4">
           {previewProductTitle ? (
@@ -1897,6 +1954,19 @@ export function EmissionSurveyAdminDataMigrationPage() {
               <div className="px-3 py-6 text-sm text-slate-500">파일에서 읽은 섹션이 없습니다.</div>
             ) : (
               <div className="space-y-4">
+                <div className="sticky top-0 z-20 border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="mr-1 text-xs font-bold text-slate-500">{en ? "Jump to" : "섹션 바로가기"}</span>
+                    {editablePreviewSections.map((section, index) => {
+                      const sectionCode = stringOf(section as Record<string, unknown>, "sectionCode") || String(index);
+                      return <button className="h-9 border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" key={sectionCode} onClick={() => scrollToSection(sectionCode)} type="button">{stringOf(section as Record<string, unknown>, "sectionLabel") || sectionCode}</button>;
+                    })}
+                    <MemberButton className="ml-auto" disabled={applying} onClick={() => void handleApplyUploadedFile()} size="sm" type="button" variant="primary">
+                      {applying ? (en ? "Saving..." : "DB 저장 중...") : (en ? "Save verified data" : "검증 데이터 DB 반영")}
+                    </MemberButton>
+                  </div>
+                  {previewStats.attention > 0 ? <p className="mt-2 text-xs font-bold text-red-700">확인이 필요한 매핑이 {previewStats.attention}건 있습니다. 저장 전 후보를 검토해 주세요.</p> : null}
+                </div>
                 {editablePreviewSections.map((section, index) => renderSectionTable(section, `preview-${section.sectionCode || index}`, {
                   editable: true,
                   sectionIndex: index,

@@ -29,6 +29,7 @@ import org.apache.poi.ss.util.RegionUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
@@ -488,6 +489,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public synchronized Map<String, Object> replaceSharedDatasetWorkbook(MultipartFile uploadFile, boolean isEn) {
         Objects.requireNonNull(uploadFile, "uploadFile");
         validateUploadFile(uploadFile, isEn);
@@ -536,6 +538,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public synchronized Map<String, Object> replaceSharedDatasetSections(EmissionSurveyDatasetReplaceRequest request, boolean isEn) {
         if (request == null || request.getSections() == null || request.getSections().isEmpty()) {
             throw new IllegalArgumentException(isEn
@@ -801,6 +804,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public synchronized Map<String, Object> saveCaseDraft(EmissionSurveyCaseSaveRequest request, String actorId, boolean isEn) {
         String sectionCode = safe(request.getSectionCode());
         String caseCode = safe(request.getCaseCode());
@@ -852,8 +856,10 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         response.put("message", isEn ? "Survey case draft saved." : "설문 케이스 초안을 저장했습니다.");
         if (isDraftTableReady()) {
             saveCaseDraftToDatabase(request, actorId);
+            response.put("databaseVerified", true);
             response.put("savedCaseMap", readDraftRegistry(storageActorId()));
         } else {
+            response.put("databaseVerified", false);
             response.put("savedCaseMap", registry);
         }
         return response;
@@ -2407,8 +2413,14 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                 row.put("actorId", safe(actorId));
                 adminEmissionSurveyDraftMapper.insertCaseRow(row);
             }
-        } catch (Exception ignored) {
-            // Keep file-based fallback behavior when DB tables are absent or unavailable.
+            int savedRowCount = adminEmissionSurveyDraftMapper.selectCaseRows(caseId).size();
+            int expectedRowCount = request.getRows().size();
+            if (savedRowCount != expectedRowCount) {
+                throw new IllegalStateException("Emission survey DB verification failed for " + caseId
+                        + ": expected " + expectedRowCount + " rows but found " + savedRowCount);
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to persist emission survey dataset to Patroni", exception);
         }
     }
 
@@ -2616,6 +2628,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         }
         int totalRowCount = 0;
         int savedSectionCount = 0;
+        boolean databaseVerified = isDraftTableReady();
         String resultStatus = "PARSE_ONLY";
         String message = isEn ? "Workbook parsed only." : "엑셀을 파싱만 완료했습니다.";
 
@@ -2645,7 +2658,8 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                 request.setGuidance((List<String>) (List<?>) (section.get("guidance") instanceof List<?> ? section.get("guidance") : List.of()));
                 request.setColumns((List<Map<String, String>>) (List<?>) (section.get("columns") instanceof List<?> ? section.get("columns") : List.of()));
                 request.setRows((List<Map<String, Object>>) (List<?>) (section.get("rows") instanceof List<?> ? section.get("rows") : List.of()));
-                saveCaseDraft(request, resolvedActorId, isEn);
+                Map<String, Object> saveResult = saveCaseDraft(request, resolvedActorId, isEn);
+                databaseVerified = databaseVerified && Boolean.TRUE.equals(saveResult.get("databaseVerified"));
                 int rowCount = request.getRows() == null ? 0 : request.getRows().size();
                 totalRowCount += rowCount;
                 savedSectionCount += 1;
@@ -2679,6 +2693,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         logRow.put("sectionCount", savedSectionCount);
         logRow.put("rowCount", totalRowCount);
         logRow.put("storageMode", isDraftTableReady() ? "database+file" : "file");
+        logRow.put("databaseVerified", databaseVerified);
         logRow.put("sectionResultJson", writeJson(sectionResults));
         logRow.put("uploadedAt", savedAt);
         writeUploadLog(logRow);
@@ -2690,8 +2705,8 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
             if (isUploadLogTableReady()) {
                 adminEmissionSurveyDraftMapper.insertUploadLog(logRow);
             }
-        } catch (Exception ignored) {
-            // Keep file-based fallback behavior when upload log table is absent.
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to persist emission survey upload audit to Patroni", exception);
         }
         Map<String, Map<String, Object>> registry = readUploadLogRegistry();
         registry.put(safeObject(logRow.get("logId")), new LinkedHashMap<>(logRow));
