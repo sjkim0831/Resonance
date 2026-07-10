@@ -693,6 +693,10 @@ function renderSectionTable(
               const existingValueSummary = matchedExistingRow
                 ? describeRowValues(section, ((matchedExistingRow.values || {}) as Record<string, string>))
                 : [];
+              const changedValueCount = matchedExistingRow
+                ? uploadValueSummary.filter((item) => existingValueSummary.find((existing) => existing.label === item.label)?.value !== item.value).length
+                : 0;
+              const useDatabaseValue = selectedSource === "DB";
               return (
                 <Fragment key={`${key}-${index}`}>
                   <tr className={`hover:bg-gray-50/50 transition-colors ${isDeletedRow ? "bg-rose-50/60 opacity-75" : selectedSource === "DB" ? "bg-sky-50/60" : isIncomplete ? "bg-amber-50/40" : isNewRow ? "bg-emerald-50/40" : ""}`} key={`${key}-${index}`}>
@@ -705,11 +709,13 @@ function renderSectionTable(
                               className={
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
+                                  : useDatabaseValue
+                                    ? "border-sky-200 bg-sky-50 text-slate-500 opacity-75"
                                   : !normalizedValue(values[column.key])
                                     ? "border-amber-300 bg-amber-50"
                                     : ""
                               }
-                              disabled={isDeletedRow}
+                              disabled={isDeletedRow || useDatabaseValue}
                               onChange={(event) => options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, event.target.value)}
                               value={normalizeUnitValue(String(values[column.key] || ""))}
                             >
@@ -725,9 +731,11 @@ function renderSectionTable(
                               className={
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
+                                  : useDatabaseValue
+                                    ? "border-sky-200 bg-sky-50 text-slate-500 opacity-75"
                                   : !normalizedValue(values[column.key]) ? "border-amber-300 bg-amber-50" : ""
                               }
-                              disabled={isDeletedRow}
+                              disabled={isDeletedRow || useDatabaseValue}
                               onChange={(event) => options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, event.target.value)}
                               rows={3}
                               value={String(values[column.key] || "")}
@@ -737,9 +745,11 @@ function renderSectionTable(
                               className={
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
+                                  : useDatabaseValue
+                                    ? "border-sky-200 bg-sky-50 text-slate-500 opacity-75"
                                   : !normalizedValue(values[column.key]) ? "border-amber-300 bg-amber-50" : ""
                               }
-                              disabled={isDeletedRow}
+                              disabled={isDeletedRow || useDatabaseValue}
                               onChange={(event) => options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, event.target.value)}
                               value={String(values[column.key] || "")}
                             />
@@ -785,6 +795,12 @@ function renderSectionTable(
                               {selectedSource === "DB" ? "DB 사용" : "업로드 사용"}
                             </span>
                           ) : null}
+                          {matchedExistingRow ? (
+                            <div className="inline-flex overflow-hidden border border-slate-300 bg-white" role="group" aria-label="행 반영 기준">
+                              <button className={`h-8 px-2 text-[11px] font-bold ${selectedSource === "UPLOAD" ? "bg-violet-600 text-white" : "text-slate-600"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "UPLOAD")} type="button">현재 값</button>
+                              <button className={`h-8 border-l border-slate-300 px-2 text-[11px] font-bold ${selectedSource === "DB" ? "bg-sky-700 text-white" : "text-slate-600"}`} onClick={() => options?.onSelectRowSource?.(sectionCode, rowId, "DB")} type="button">DB 값</button>
+                            </div>
+                          ) : null}
                           {editable ? (
                             <MemberButton
                               onClick={() => options?.onDeleteRow?.(options.sectionIndex || 0, index, rowId)}
@@ -802,9 +818,16 @@ function renderSectionTable(
                   {editable && matchedExistingRow && !isDeletedRow ? (
                     <tr className="bg-slate-50/80">
                       <td className="px-4 py-3" colSpan={comparisonColSpan}>
-                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
+                        <details className="group border border-slate-200 bg-white" open={changedValueCount > 0}>
+                          <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                            <span className="material-symbols-outlined text-[20px] transition-transform group-open:rotate-180">expand_more</span>
+                            <span>현재 입력값과 DB 저장값 비교</span>
+                            <span className={`ml-auto px-2 py-1 text-xs ${changedValueCount > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>{changedValueCount > 0 ? `${changedValueCount}개 변경` : "변경 없음"}</span>
+                            <span className={`px-2 py-1 text-xs ${selectedSource === "DB" ? "bg-sky-100 text-sky-800" : "bg-violet-100 text-violet-800"}`}>최종: {selectedSource === "DB" ? "DB 값" : "현재 값"}</span>
+                          </summary>
+                        <div className="grid gap-3 border-t border-slate-200 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]">
                           <div className="rounded border border-violet-200 bg-white px-4 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">현재 업로드 값</p>
+                            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">현재 입력값</p>
                             <div className="mt-2 grid gap-1 text-sm text-slate-700">
                               {uploadValueSummary.map((item) => (
                                 <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3" key={`${key}-${index}-upload-${item.label}`}>
@@ -849,6 +872,7 @@ function renderSectionTable(
                             </div>
                           </div>
                         </div>
+                        </details>
                       </td>
                     </tr>
                   ) : null}
