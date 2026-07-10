@@ -495,9 +495,9 @@ function describeRowValues(
   section: Record<string, unknown> | EmissionSurveyAdminSection,
   values: Record<string, string>
 ) {
-  const items = sectionDataColumns(section).map((column) => ({
-    label: column.label,
-    value: displayValue(values[column.key])
+  const items = VISIBLE_COLUMN_KEYS.map((columnKey) => ({
+    label: VISIBLE_COLUMN_LABELS[columnKey],
+    value: displayValue(values[columnKey])
   }));
   if (isAirEmissionSection(section)) {
     items.push({
@@ -532,7 +532,13 @@ function renderSectionTable(
   const showGwpMapping = editable && isAirEmissionSection(section);
   const existingSections = options?.existingSections || [];
   const deletedRows = rows.filter((row) => rowClientState(row).isDeleted).length;
-  const visibleColumns = sectionDataColumns(section);
+  const visibleColumns = VISIBLE_COLUMN_KEYS.map((columnKey) => {
+    const matchedColumn = columns.find((column) => stringOf(column, "key") === columnKey);
+    return {
+      key: columnKey,
+      label: matchedColumn ? stringOf(matchedColumn, "label") || VISIBLE_COLUMN_LABELS[columnKey] : VISIBLE_COLUMN_LABELS[columnKey]
+    };
+  });
   const comparisonColSpan = 1 + visibleColumns.length + (showGwpMapping ? 1 : 0) + (editable ? 1 : 0);
   return (
     <article className="gov-card overflow-hidden" key={key}>
