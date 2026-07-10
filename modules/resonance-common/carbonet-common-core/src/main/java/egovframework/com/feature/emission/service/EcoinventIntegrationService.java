@@ -29,10 +29,12 @@ import org.springframework.web.util.UriUtils;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -558,7 +560,42 @@ public class EcoinventIntegrationService {
             }
         }
         List<Map<String, Object>> rows = new ArrayList<>(deduped.values());
+        rows.sort(Comparator
+                .comparingInt(this::aiRecommendationPriority)
+                .thenComparingLong(row -> longValue(row.get("aiRank"), Long.MAX_VALUE))
+                .thenComparing(row -> safeObject(row.get("productName")), String.CASE_INSENSITIVE_ORDER));
+        for (int index = 0; index < rows.size(); index++) {
+            rows.get(index).put("aiRank", index + 1);
+        }
         return new DatasetPage(rows, rows.size(), request.pageIndex(), request.pageSize());
+    }
+
+    private int aiRecommendationPriority(Map<String, Object> row) {
+        String term = safeObject(row.get("aiSearchTerm")).toLowerCase(Locale.ROOT).trim();
+        String product = safeObject(row.get("productName")).toLowerCase(Locale.ROOT).trim();
+        String activity = safeObject(row.get("activityName")).toLowerCase(Locale.ROOT).trim();
+        if (term.isBlank()) {
+            return 90;
+        }
+        if (product.equals(term)) {
+            return activity.startsWith("market for ") ? 0 : 1;
+        }
+        if (product.startsWith(term + ",")) {
+            return activity.startsWith("market for ") ? 2 : 3;
+        }
+        if (activity.startsWith("market for " + term)) {
+            return 4;
+        }
+        if (product.startsWith(term + " ")) {
+            return 20;
+        }
+        if (product.contains(term)) {
+            return 30;
+        }
+        if (activity.contains(term)) {
+            return 40;
+        }
+        return 80;
     }
 
     @Transactional

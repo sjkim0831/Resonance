@@ -303,6 +303,13 @@ function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: Eco
     if (leftPrevious !== rightPrevious) {
       return leftPrevious - rightPrevious;
     }
+    const leftAiRank = Number(left.aiRank || 0);
+    const rightAiRank = Number(right.aiRank || 0);
+    if (leftAiRank > 0 || rightAiRank > 0) {
+      if (leftAiRank <= 0) return 1;
+      if (rightAiRank <= 0) return -1;
+      if (leftAiRank !== rightAiRank) return leftAiRank - rightAiRank;
+    }
     return geographyPriority(left) - geographyPriority(right);
   });
 }
