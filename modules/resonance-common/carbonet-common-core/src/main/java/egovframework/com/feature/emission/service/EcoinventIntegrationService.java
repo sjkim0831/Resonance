@@ -2337,11 +2337,13 @@ public class EcoinventIntegrationService {
                     + " AND LOWER(korean_name) LIKE ?"
                     + " ORDER BY CASE"
                     + " WHEN LOWER(korean_name) = ? THEN 0"
-                    + " WHEN LOWER(korean_name) LIKE ? THEN 1"
-                    + " ELSE 2 END, korean_name, raw_name")
+                    + " ELSE 1 END,"
+                    + " ABS(LENGTH(korean_name) - ?),"
+                    + " STRPOS(LOWER(korean_name), ?), korean_name, raw_name")
                     .setParameter(1, likeKeyword)
                     .setParameter(2, normalized.toLowerCase())
-                    .setParameter(3, normalized.toLowerCase() + "%")
+                    .setParameter(3, normalized.length())
+                    .setParameter(4, normalized.toLowerCase())
                     .setMaxResults(1000)
                     .getResultList();
         } else {
@@ -2375,11 +2377,13 @@ public class EcoinventIntegrationService {
                         + " WHERE mapped_material_id IS NOT NULL AND LOWER(raw_material_name) LIKE ?"
                         + " ORDER BY CASE"
                         + " WHEN LOWER(raw_material_name) = ? THEN 0"
-                        + " WHEN LOWER(raw_material_name) LIKE ? THEN 1"
-                        + " ELSE 2 END, raw_material_name")
+                        + " ELSE 1 END,"
+                        + " ABS(LENGTH(raw_material_name) - ?),"
+                        + " STRPOS(LOWER(raw_material_name), ?), raw_material_name")
                 .setParameter(1, likeKeyword)
                 .setParameter(2, normalized.toLowerCase())
-                .setParameter(3, normalized.toLowerCase() + "%")
+                .setParameter(3, normalized.length())
+                .setParameter(4, normalized.toLowerCase())
                 .setMaxResults(1000)
                 .getResultList();
                 
