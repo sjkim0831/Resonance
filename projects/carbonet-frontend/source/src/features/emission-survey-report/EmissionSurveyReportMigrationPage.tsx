@@ -225,22 +225,35 @@ async function scanReportQrEvidence(images: Blob[]) {
   const { default: jsQR } = await import("jsqr");
   for (const image of images) {
     const bitmap = await createImageBitmap(image, { imageOrientation: "from-image" });
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    if (!context) {
-      bitmap.close();
-      continue;
+    const regions = [
+      { x: 0.68, y: 0.68, width: 0.32, height: 0.32, scale: 4 },
+      { x: 0.55, y: 0.55, width: 0.45, height: 0.45, scale: 3 },
+      { x: 0, y: 0, width: 1, height: 1, scale: 1 }
+    ];
+    for (const region of regions) {
+      const sourceX = Math.floor(bitmap.width * region.x);
+      const sourceY = Math.floor(bitmap.height * region.y);
+      const sourceWidth = Math.max(1, Math.ceil(bitmap.width * region.width));
+      const sourceHeight = Math.max(1, Math.ceil(bitmap.height * region.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = sourceWidth * region.scale;
+      canvas.height = sourceHeight * region.scale;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) {
+        continue;
+      }
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+      const decoded = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" });
+      const evidence = decoded ? parseReportQrPayload(decoded.data) : null;
+      if (evidence) {
+        bitmap.close();
+        return evidence;
+      }
     }
-    context.drawImage(bitmap, 0, 0);
     bitmap.close();
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    const decoded = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" });
-    const evidence = decoded ? parseReportQrPayload(decoded.data) : null;
-    if (evidence) {
-      return evidence;
-    }
   }
   return null;
 }
