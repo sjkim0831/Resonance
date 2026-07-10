@@ -143,40 +143,67 @@ public class ReportVerificationRegistryService {
         String detectedCertificateId = certificateMatcher.find()
                 ? certificateMatcher.group().replaceAll("\\s+", "").toUpperCase(Locale.ROOT)
                 : "";
-        List<Map<String, Object>> candidates = detectedCertificateId.isBlank()
-                ? jdbcTemplate.queryForList("""
-                    SELECT certificate_id, issued_at, report_title, product_name, dataset_hash,
-                           dataset_json::text AS dataset_json
-                      FROM carbonet_report_verification_registry
-                     WHERE status_code = 'ISSUED'
-                     ORDER BY issued_at DESC
-                     LIMIT 500
-                    """)
-                : jdbcTemplate.queryForList("""
-                    SELECT certificate_id, issued_at, report_title, product_name, dataset_hash,
-                           dataset_json::text AS dataset_json
-                      FROM carbonet_report_verification_registry
-                     WHERE status_code = 'ISSUED' AND certificate_id = ?
-                    """, detectedCertificateId);
+        List<Map<String, Object>> candidates = jdbcTemplate.queryForList("""
+                SELECT certificate_id, issued_at, report_title, product_name, total_emission,
+                       row_count, payload_hash, integrity_code, dataset_hash,
+                       dataset_json::text AS dataset_json
+                  FROM carbonet_report_verification_registry
+                 WHERE status_code = 'ISSUED'
+                 ORDER BY issued_at DESC, certificate_id DESC
+                """);
 
         Map<String, Object> best = null;
         double bestScore = -1;
+        List<Map<String, Object>> comparisons = new ArrayList<>();
         for (Map<String, Object> candidate : candidates) {
             JsonNode dataset = readJson(candidate.get("dataset_json"));
             Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
             double candidateScore = ((Number) score.get("score")).doubleValue();
+            String certificateId = text(candidate.get("certificate_id"));
+            String payloadHash = text(candidate.get("payload_hash"));
+            String integrityCode = text(candidate.get("integrity_code"));
+            String datasetHash = text(candidate.get("dataset_hash"));
+            boolean certificateIdMatch = containsText(normalizedText, certificateId);
+            boolean payloadHashMatch = containsText(normalizedText, payloadHash);
+            boolean integrityCodeMatch = containsText(normalizedText, integrityCode);
+            boolean datasetHashMatch = containsText(normalizedText, datasetHash);
+            int confidence = (int) Math.round(candidateScore);
+            Map<String, Object> comparison = new LinkedHashMap<>();
+            comparison.put("certificateId", certificateId);
+            comparison.put("issuedAt", candidate.get("issued_at"));
+            comparison.put("reportTitle", candidate.get("report_title"));
+            comparison.put("productName", candidate.get("product_name"));
+            comparison.put("totalEmission", candidate.get("total_emission"));
+            comparison.put("rowCount", candidate.get("row_count"));
+            comparison.put("payloadHash", payloadHash);
+            comparison.put("integrityCode", integrityCode);
+            comparison.put("datasetHash", datasetHash);
+            comparison.put("confidence", confidence);
+            comparison.put("contentMatch", confidence >= 75);
+            comparison.put("certificateIdMatch", certificateIdMatch);
+            comparison.put("payloadHashMatch", payloadHashMatch);
+            comparison.put("integrityCodeMatch", integrityCodeMatch);
+            comparison.put("datasetHashMatch", datasetHashMatch);
+            comparison.put("verificationTagMatch", certificateIdMatch || payloadHashMatch || integrityCodeMatch || datasetHashMatch);
+            comparison.putAll(score);
+            comparisons.add(comparison);
             if (candidateScore > bestScore) {
                 bestScore = candidateScore;
                 best = new LinkedHashMap<>(candidate);
                 best.putAll(score);
             }
         }
+        comparisons.sort((left, right) -> Integer.compare(
+                ((Number) right.get("confidence")).intValue(),
+                ((Number) left.get("confidence")).intValue()
+        ));
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("verificationMode", "PHOTO_OCR_DATASET");
         response.put("ocrCharacterCount", ocrText.length());
         response.put("candidateCount", candidates.size());
         response.put("detectedCertificateId", detectedCertificateId);
+        response.put("comparisons", comparisons);
         if (best == null) {
             response.put("photoConsistent", false);
             response.put("status", "NOT_FOUND");

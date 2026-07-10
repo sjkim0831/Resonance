@@ -242,7 +242,35 @@ export type ReportPhotoVerificationResponse = {
   materialCount?: number;
   matchedNumberCount?: number;
   numberCount?: number;
+  candidateCount?: number;
+  comparisons?: ReportOcrComparison[];
   message?: string;
+};
+
+export type ReportOcrComparison = {
+  certificateId: string;
+  issuedAt?: string;
+  reportTitle?: string;
+  productName?: string;
+  totalEmission?: number;
+  rowCount?: number;
+  payloadHash?: string;
+  integrityCode?: string;
+  datasetHash?: string;
+  confidence: number;
+  contentMatch: boolean;
+  certificateIdMatch: boolean;
+  payloadHashMatch: boolean;
+  integrityCodeMatch: boolean;
+  datasetHashMatch: boolean;
+  verificationTagMatch: boolean;
+  productMatched: boolean;
+  titleMatched: boolean;
+  totalEmissionMatched: boolean;
+  matchedMaterialCount: number;
+  materialCount: number;
+  matchedNumberCount: number;
+  numberCount: number;
 };
 
 export async function issueSurveyReportVerification(payload: ReportVerificationDatasetPayload) {

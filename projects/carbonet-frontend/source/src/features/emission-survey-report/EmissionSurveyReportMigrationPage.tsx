@@ -2524,6 +2524,83 @@ export function EmissionSurveyReportVerifyPage() {
             </section>
           </aside>
         </div>
+
+        {photoVerification ? (
+          <section className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="text-base font-black text-slate-950">{en ? "Issued Report Comparison Log" : "전체 발급 리포트 비교 로그"}</h2>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {en
+                    ? `OCR content was compared with ${photoVerification.candidateCount || 0} issued datasets and verification tags.`
+                    : `수집한 OCR을 발급 원장의 리포트 ${photoVerification.candidateCount || 0}건과 데이터·검증 태그별로 비교했습니다.`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-black">
+                <span className="bg-emerald-50 px-3 py-2 text-emerald-800">{en ? "Content match" : "내용 일치"}: {photoVerification.comparisons?.filter((item) => item.contentMatch).length || 0}</span>
+                <span className="bg-sky-50 px-3 py-2 text-sky-800">{en ? "Tag match" : "태그 일치"}: {photoVerification.comparisons?.filter((item) => item.verificationTagMatch).length || 0}</span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-[1280px] w-full border-collapse text-left text-xs">
+                <thead className="bg-slate-100 text-slate-700">
+                  <tr>
+                    <th className="px-4 py-3 font-black">{en ? "Issued report" : "발급 리포트"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Confidence" : "내용 신뢰도"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Dataset fields" : "데이터 항목"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Certificate ID" : "인증서 ID"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Payload hash" : "리포트 해시"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Integrity" : "무결성 코드"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Dataset hash" : "데이터셋 해시"}</th>
+                    <th className="px-4 py-3 font-black">{en ? "Result" : "판정"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(photoVerification.comparisons || []).map((item) => (
+                    <tr className={item.contentMatch ? "bg-emerald-50/30" : "bg-white"} key={item.certificateId}>
+                      <td className="px-4 py-3 align-top">
+                        <p className="font-black text-slate-950">{item.productName || "-"}</p>
+                        <p className="mt-1 text-slate-600">{item.reportTitle || "-"}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "-"}</p>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{item.confidence}%</strong>
+                        <p className="mt-1 text-slate-500">{item.contentMatch ? (en ? "MATCH" : "일치") : item.confidence >= 55 ? (en ? "REVIEW" : "검토") : (en ? "MISMATCH" : "불일치")}</p>
+                      </td>
+                      <td className="px-4 py-3 align-top leading-5 text-slate-700">
+                        <p>{en ? "Product" : "제품"}: {item.productMatched ? "OK" : "-"}</p>
+                        <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p>
+                        <p>{en ? "Total" : "총량"}: {item.totalEmissionMatched ? "OK" : "-"}</p>
+                        <p>{en ? "Materials" : "물질"}: {item.matchedMaterialCount}/{item.materialCount}</p>
+                        <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
+                      </td>
+                      {[
+                        [item.certificateId, item.certificateIdMatch],
+                        [item.payloadHash, item.payloadHashMatch],
+                        [item.integrityCode, item.integrityCodeMatch],
+                        [item.datasetHash, item.datasetHashMatch]
+                      ].map(([value, matched], index) => (
+                        <td className="px-4 py-3 align-top" key={`${item.certificateId}-${index}`}>
+                          <span className={`inline-block px-2 py-1 font-black ${matched ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>{matched ? "MATCH" : "NOT READ"}</span>
+                          <p className="mt-2 max-w-40 break-all font-mono text-[10px] text-slate-500">{value ? `${String(value).slice(0, 16)}...${String(value).slice(-8)}` : "-"}</p>
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 align-top">
+                        <span className={`inline-block px-2 py-1 font-black ${item.contentMatch && item.verificationTagMatch ? "bg-emerald-100 text-emerald-800" : item.contentMatch ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-500"}`}>
+                          {item.contentMatch && item.verificationTagMatch
+                            ? (en ? "CONTENT + TAG" : "내용·태그 일치")
+                            : item.contentMatch
+                              ? (en ? "CONTENT ONLY" : "내용만 일치")
+                              : (en ? "NO MATCH" : "불일치")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );
