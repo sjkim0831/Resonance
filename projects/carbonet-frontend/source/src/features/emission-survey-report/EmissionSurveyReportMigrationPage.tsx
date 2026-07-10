@@ -2384,9 +2384,19 @@ export function EmissionSurveyReportVerifyPage() {
   const [datasetVerification, setDatasetVerification] = useState<ReportDatasetVerificationResponse | null>(null);
   const [photoVerification, setPhotoVerification] = useState<ReportPhotoVerificationResponse | null>(null);
   const [ocrProgress, setOcrProgress] = useState<{ busy: boolean; percent: number; status: string }>({ busy: false, percent: 0, status: "" });
+  const [verificationLogs, setVerificationLogs] = useState<Array<{ id: string; at: string; level: "INFO" | "OK" | "WARN" | "ERROR"; message: string; detail?: string }>>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning">("info");
+  const appendVerificationLog = (level: "INFO" | "OK" | "WARN" | "ERROR", message: string, detail?: string) => {
+    setVerificationLogs((current) => [...current, {
+      id: `${Date.now()}-${current.length}`,
+      at: new Date().toLocaleTimeString(),
+      level,
+      message,
+      detail
+    }].slice(-200));
+  };
 
   const matchedRecord = useMemo(() => {
     if (!payload) {
@@ -2401,6 +2411,7 @@ export function EmissionSurveyReportVerifyPage() {
 
   const evaluatePayload = async (nextPayload: ReportVerificationPayload | null, sourceLabel: string) => {
     if (!nextPayload) {
+      appendVerificationLog("WARN", en ? "No embedded verification dataset found." : "내장 검증 데이터셋을 찾지 못했습니다.", sourceLabel);
       setPayload(null);
       setDatasetVerification(null);
       setResultTone("warning");
@@ -2410,15 +2421,18 @@ export function EmissionSurveyReportVerifyPage() {
       return;
     }
     setPayload(nextPayload);
+    appendVerificationLog("OK", en ? "Embedded verification payload decoded." : "내장 검증 페이로드를 해석했습니다.", nextPayload.certificateId);
     if (nextPayload.version >= 2 && nextPayload.dataset) {
       try {
         const verification = await verifySurveyReportDataset(nextPayload);
+        appendVerificationLog(verification.valid ? "OK" : "WARN", en ? "Registry dataset comparison completed." : "원장 데이터셋 대조를 완료했습니다.", `status=${verification.status}, differences=${verification.differenceCount || 0}`);
         setDatasetVerification(verification);
         setResultTone(verification.valid ? "success" : "warning");
         setResultMessage(verification.valid
           ? (en ? "Authenticity verified: all certificate tags and the complete report dataset match the issued record." : "진위 확인 완료: 인증 태그와 리포트 전체 데이터셋이 발급 원장과 모두 일치합니다.")
           : (en ? `Dataset verification failed. ${verification.differenceCount || 0} differences were found.` : `데이터셋 검증에 실패했습니다. ${verification.differenceCount || 0}개의 불일치 항목을 확인했습니다.`));
       } catch (error) {
+        appendVerificationLog("ERROR", en ? "Registry dataset comparison failed." : "원장 데이터셋 대조에 실패했습니다.", error instanceof Error ? error.message : String(error));
         setDatasetVerification(null);
         setResultTone("warning");
         setResultMessage(error instanceof Error ? error.message : (en ? "Server dataset verification failed." : "서버 데이터셋 검증에 실패했습니다."));
@@ -2445,16 +2459,21 @@ export function EmissionSurveyReportVerifyPage() {
   };
 
   const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string, preserveDigitalPayload = false) => {
+    appendVerificationLog("INFO", en ? "Photographed-page verification started." : "촬영 페이지 검증을 시작했습니다.", `${sourceLabel}, pages=${pages.length}`);
     setUploadedPayloadFound(false);
     setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing pages" : "페이지 이미지 보정 중" });
     setResultTone("info");
     setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
     try {
       const qrEvidence = await scanReportQrEvidence(pages);
+      appendVerificationLog(qrEvidence ? "OK" : "WARN", qrEvidence ? (en ? "Verification QR decoded." : "검증 QR을 판독했습니다.") : (en ? "Verification QR was not found." : "검증 QR을 찾지 못했습니다."), qrEvidence?.certificateId);
       const visualProfile = await buildReportVisualProfile(pages);
+      appendVerificationLog("OK", en ? "Uploaded visual fingerprint generated." : "업로드 문서 시각 지문을 생성했습니다.", `grid=${visualProfile.columns}x${visualProfile.rows}, pages=${visualProfile.pages.length}`);
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile);
+      appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
       if (!preserveDigitalPayload) {
         setPayload(null);
@@ -2466,6 +2485,7 @@ export function EmissionSurveyReportVerifyPage() {
             : (en ? `The visible content does not match an issued dataset (${verification.confidence}%).` : `보이는 내용이 발급 데이터셋과 충분히 일치하지 않습니다(${verification.confidence}%).`));
       }
     } catch (error) {
+      appendVerificationLog("ERROR", en ? "Photographed report verification failed." : "촬영 리포트 검증에 실패했습니다.", error instanceof Error ? error.message : String(error));
       setResultTone("warning");
       setResultMessage(error instanceof Error ? error.message : (en ? "Photo OCR failed." : "사진 OCR 처리에 실패했습니다."));
     } finally {
@@ -2479,6 +2499,8 @@ export function EmissionSurveyReportVerifyPage() {
     if (!file) {
       return;
     }
+    setVerificationLogs([]);
+    appendVerificationLog("INFO", en ? "File selected." : "검증 파일을 선택했습니다.", files.map((item) => `${item.name} (${Math.round(item.size / 1024)} KB)`).join(", "));
     setFileName(files.map((item) => item.name).join(", "));
     setPhotoVerification(null);
     setDatasetVerification(null);
@@ -2492,6 +2514,7 @@ export function EmissionSurveyReportVerifyPage() {
     setPhotoPreviewUrls([]);
     const buffer = await file.arrayBuffer();
     const extractedText = await extractPdfVerificationText(buffer);
+    appendVerificationLog("INFO", en ? "PDF embedded text scan completed." : "PDF 내장 텍스트 검색을 완료했습니다.", `characters=${extractedText.length}`);
     const nextPayload = resolveVerificationPayload(extractedText);
     setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
@@ -2512,6 +2535,7 @@ export function EmissionSurveyReportVerifyPage() {
     setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
     try {
       const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+      appendVerificationLog("OK", en ? "PDF pages rendered for visual verification." : "시각 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
       setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
       await evaluatePhotographedPages(pages, file.name);
     } catch (error) {
@@ -2823,6 +2847,26 @@ export function EmissionSurveyReportVerifyPage() {
             </div>
           </section>
         ) : null}
+        <section className="mt-5 overflow-hidden border border-slate-300 bg-slate-950 text-slate-100 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-700 px-5 py-3">
+            <div>
+              <h2 className="text-sm font-black">{en ? "Verification Processing Log" : "검증 처리 로그"}</h2>
+              <p className="mt-1 text-[11px] font-semibold text-slate-400">{en ? "Client processing and registry comparison events for the current upload" : "현재 업로드 파일의 브라우저 처리 및 원장 대조 이력"}</p>
+            </div>
+            <button aria-label={en ? "Clear log" : "로그 지우기"} className="p-2 text-slate-400 hover:bg-slate-800 hover:text-white" onClick={() => setVerificationLogs([])} title={en ? "Clear log" : "로그 지우기"} type="button">
+              <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
+            </button>
+          </div>
+          <div className="max-h-80 overflow-y-auto p-4 font-mono text-xs">
+            {verificationLogs.length ? verificationLogs.map((entry) => (
+              <div className="grid grid-cols-[76px_52px_minmax(0,1fr)] gap-3 border-b border-slate-800 py-2 last:border-0" key={entry.id}>
+                <span className="text-slate-500">{entry.at}</span>
+                <span className={entry.level === "OK" ? "text-emerald-400" : entry.level === "WARN" ? "text-amber-400" : entry.level === "ERROR" ? "text-rose-400" : "text-sky-400"}>{entry.level}</span>
+                <span className="break-words"><strong className="text-slate-100">{entry.message}</strong>{entry.detail ? <span className="mt-1 block text-slate-400">{entry.detail}</span> : null}</span>
+              </div>
+            )) : <p className="py-4 text-center text-slate-500">{en ? "Select a PDF or image to begin logging." : "PDF 또는 이미지를 선택하면 처리 로그가 기록됩니다."}</p>}
+          </div>
+        </section>
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );
