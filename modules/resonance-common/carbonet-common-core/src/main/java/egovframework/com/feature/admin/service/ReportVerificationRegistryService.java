@@ -348,7 +348,7 @@ public class ReportVerificationRegistryService {
         int matchedNumberCount = 0;
         List<Map<String, Object>> allFieldComparisons = new ArrayList<>();
         List<Map<String, Object>> fieldMismatches = new ArrayList<>();
-        if (rows.isArray()) {
+        if (!lcaReport && rows.isArray()) {
             for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
                 JsonNode row = rows.get(rowIndex);
                 String materialName = row.path("materialName").asText();
@@ -419,6 +419,29 @@ public class ReportVerificationRegistryService {
                 field.put("field", entry.getKey());
                 field.put("label", entry.getValue());
                 field.put("expected", expected);
+                field.put("matched", matched);
+                lcaFieldComparisons.add(field);
+            }
+            Map<String, String> numericLabels = new LinkedHashMap<>();
+            numericLabels.put("preManufacturingMass", "제조 전 투입 질량");
+            numericLabels.put("postManufacturingMass", "제조 후 산출 질량");
+            numericLabels.put("normalizedOutputMass", "정규화 산출 질량");
+            numericLabels.put("totalEmission", "총 배출량");
+            numericLabels.put("totalEmissionPerMass", "단위 질량당 배출량");
+            for (Map.Entry<String, String> entry : numericLabels.entrySet()) {
+                JsonNode expectedNode = lcaSummary.path(entry.getKey());
+                if (!expectedNode.isNumber()) continue;
+                boolean matched = containsNumber(normalizedText, expectedNode);
+                numberCount++;
+                lcaFieldCount++;
+                if (matched) {
+                    matchedNumberCount++;
+                    matchedLcaFieldCount++;
+                }
+                Map<String, Object> field = new LinkedHashMap<>();
+                field.put("field", entry.getKey());
+                field.put("label", entry.getValue());
+                field.put("expected", expectedNode.asText());
                 field.put("matched", matched);
                 lcaFieldComparisons.add(field);
             }

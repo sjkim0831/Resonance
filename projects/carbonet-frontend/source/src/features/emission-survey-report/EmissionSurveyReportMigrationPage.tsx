@@ -2757,7 +2757,7 @@ export function EmissionSurveyReportVerifyPage() {
                     ))}
                   </div>
                 ) : null}
-                {photoVerification.fieldMismatches?.length ? (
+                {selectedReportType !== "LCA_SUMMARY" && photoVerification.fieldMismatches?.length ? (
                   <div className="mt-4 border-t border-rose-200 pt-3">
                     <p className="text-xs font-black text-rose-900">{en ? "Unmatched or unreadable dataset fields" : "불일치·판독 실패 데이터"}</p>
                     <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
@@ -2938,7 +2938,7 @@ export function EmissionSurveyReportVerifyPage() {
                                 ))}
                               </div>
                             ) : null}
-                            <div className="mt-3">
+                            {selectedReportType !== "LCA_SUMMARY" ? <div className="mt-3">
                               <p className="font-black text-emerald-800">{en ? "Matched fields" : "일치 내역"} ({item.fieldComparisons?.filter((field) => field.rowMatched).length || 0})</p>
                               <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
                                 {(item.fieldComparisons || []).filter((field) => field.rowMatched).map((field) => (
@@ -2953,8 +2953,8 @@ export function EmissionSurveyReportVerifyPage() {
                                   </div>
                                 ))}
                               </div>
-                            </div>
-                            <div className="mt-4 border-t border-slate-200 pt-3">
+                            </div> : null}
+                            {selectedReportType !== "LCA_SUMMARY" ? <div className="mt-4 border-t border-slate-200 pt-3">
                               <p className="font-black text-rose-800">{en ? "Mismatched fields" : "불일치 내역"} ({item.fieldMismatches?.length || 0})</p>
                             {item.fieldMismatches?.length ? (
                               <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
@@ -2973,7 +2973,7 @@ export function EmissionSurveyReportVerifyPage() {
                             ) : (
                               <p className="mt-3 bg-emerald-50 p-2 font-bold text-emerald-800">{en ? "No field-level mismatches were found." : "필드 단위 불일치가 없습니다."}</p>
                             )}
-                            </div>
+                            </div> : null}
                           </div>
                         </details>
                       </td>
