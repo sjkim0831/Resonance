@@ -29,7 +29,7 @@ import { isMappedUnitValue, normalizeUnitValue, UNIT_OPTIONS } from "../emission
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, MemberButton, PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
-import { AdminInput, AdminSelect, AdminTable, AdminTextarea } from "../member/common";
+import { AdminInput, AdminSelect, AdminTable, AdminTextarea, MemberSectionToolbar } from "../member/common";
 
 type GwpCandidateRow = Record<string, string | number | undefined>;
 type FactorType = "ECOINVENT" | "AR4" | "AR5" | "AR6" | "DIRECT";
@@ -1788,16 +1788,16 @@ export function EmissionSurveyAdminDataMigrationPage() {
         {message ? <PageStatusNotice tone="success">{message}</PageStatusNotice> : null}
         {errorMessage || pageState.error ? <PageStatusNotice tone="error">{errorMessage || pageState.error}</PageStatusNotice> : null}
 
-        <CollectionResultPanel
-          data-help-id="emission-survey-admin-data-upload"
-          description={en
-            ? "Upload the DB workbook, map each row to an emission factor option, and then apply the edited dataset to DB."
-            : "DB 업로드 양식을 업로드한 뒤 각 행에 대해 배출계수를 매핑하고, 수정된 데이터셋을 DB에 반영합니다."}
-          icon="upload_file"
-          title={en ? "DB Workbook Upload" : "DB 양식 업로드"}
-        >
+        <div className="gov-card mb-8" data-help-id="emission-survey-admin-data-upload">
+          <div className="border-b border-[var(--kr-gov-border-light)] px-6 py-5">
+            <MemberSectionToolbar
+              actions={<span className="inline-flex bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">XLSX</span>}
+              meta={en ? "Select a standard workbook, review mapped rows, and apply the verified dataset." : "표준 양식을 선택하고 행별 매핑을 검토한 뒤 검증된 데이터셋을 반영합니다."}
+              title={en ? "DB Workbook Upload" : "DB 양식 업로드"}
+            />
+          </div>
           <input accept=".xlsx" className="hidden" onChange={handleUploadChange} ref={fileInputRef} type="file" />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4">
             <div className="md:col-span-3">
               <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Workbook file" : "업로드 파일"}</label>
               <button className="flex min-h-11 w-full items-center gap-3 border border-[var(--kr-gov-border-light)] bg-white px-4 text-left hover:border-[var(--kr-gov-blue)]" onClick={() => fileInputRef.current?.click()} type="button">
@@ -1836,7 +1836,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
             </div>
           </div>
           </div>
-        </CollectionResultPanel>
+        </div>
 
         <section className="mt-4 grid grid-cols-1 gap-4">
           {previewProductTitle ? (
