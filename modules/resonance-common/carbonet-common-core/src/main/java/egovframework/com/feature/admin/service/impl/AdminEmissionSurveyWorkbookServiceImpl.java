@@ -66,6 +66,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     private static final Path WORKSPACE_SAMPLE = Path.of("/opt/Resonance", DEFAULT_WORKBOOK_NAME);
     private static final Path REFERENCE_SAMPLE = Path.of("/opt/reference/수식 설계", DEFAULT_WORKBOOK_NAME);
     private static final Path WORKSPACE_ADMIN_SAMPLE = Path.of("/opt/Resonance", ADMIN_UPLOAD_WORKBOOK_NAME);
+    private static final Path STATIC_ADMIN_SAMPLE = Path.of("/app/static-overlay", "download", ADMIN_UPLOAD_WORKBOOK_NAME);
     private static final Path WINDOWS_ADMIN_SAMPLE = Path.of("/mnt/c/Users/jwchoo/Downloads", ADMIN_UPLOAD_WORKBOOK_NAME);
     private static final Path DRAFT_REGISTRY_PATH = Path.of("data", "admin", "emission-survey-admin", "case-drafts.json");
     private static final Path SET_REGISTRY_PATH = Path.of("data", "admin", "emission-survey-admin", "draft-sets.json");
@@ -1760,14 +1761,10 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         if (adminSamplePath == null || !Files.exists(adminSamplePath)) {
             throw new IllegalStateException("관리자 업로드 양식 원본을 찾지 못했습니다.");
         }
-        try (InputStream inputStream = Files.newInputStream(adminSamplePath);
-             Workbook workbook = new XSSFWorkbook(inputStream);
-             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            clearAdminWorkbookSampleValues(workbook);
-            workbook.write(outputStream);
-            return outputStream.toByteArray();
+        try {
+            return Files.readAllBytes(adminSamplePath);
         } catch (Exception e) {
-            throw new IllegalStateException("관리자 업로드 빈 양식 생성에 실패했습니다.", e);
+            throw new IllegalStateException("관리자 업로드 양식을 읽지 못했습니다.", e);
         }
     }
 
@@ -2155,6 +2152,9 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     }
 
     private Path resolveAdminSamplePath() {
+        if (Files.exists(STATIC_ADMIN_SAMPLE)) {
+            return STATIC_ADMIN_SAMPLE;
+        }
         if (Files.exists(WINDOWS_ADMIN_SAMPLE)) {
             return WINDOWS_ADMIN_SAMPLE;
         }
