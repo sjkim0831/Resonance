@@ -1809,10 +1809,10 @@ export function EmissionSurveyAdminDataMigrationPage() {
               </button>
             </div>
             <div>
-              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Save target" : "저장 대상"}</label>
+              <label className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">{en ? "Apply to" : "반영 대상"}</label>
               <div className="flex min-h-11 items-center gap-2 border border-[var(--kr-gov-border-light)] bg-slate-50 px-4 text-sm font-bold text-slate-700">
                 <span className="material-symbols-outlined text-[19px] text-[var(--kr-gov-blue)]">database</span>
-                Patroni 공통 데이터셋
+                {en ? "Shared emissions dataset" : "공통 배출 데이터셋"}
               </div>
             </div>
             <div className="md:col-span-4">
