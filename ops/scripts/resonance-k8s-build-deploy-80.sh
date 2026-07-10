@@ -5,6 +5,11 @@
 #===============================================================================
 set -euo pipefail
 export RESONANCE_SUDO_PASSWORD="${RESONANCE_SUDO_PASSWORD:-qwer1234}"
+DRY_RUN=false
+SKIP_PREFLIGHT=false
+SKIP_NOTIFY=false
+FORCE=false
+SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
 
 SCRIPT_VERSION="2.0.0-complete"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -68,6 +73,7 @@ notify() {
     case "$status" in START) emoji="🚀"; color="#36a64f" ;; SUCCESS) emoji="✅"; color="#36a64f" ;; FAIL) emoji="❌"; color="#ff0000" ;; esac
     curl -s -X POST -H 'Content-Type: application/json' -d "{\"text\":\"$emoji $msg\"}" "$SLACK_WEBHOOK_URL" >/dev/null 2>&1 || true
   }
+  return 0
 }
 
 log_event() {
@@ -92,12 +98,20 @@ preflight_check() {
   local root_d opt_d
   root_d="$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')"
   opt_d="$(df -h /opt | awk 'NR==2 {print $5}' | sed 's/%//')"
-  echo -e "${root_d -lt 85 && opt_d -lt 85 ? GREEN : YELLOW}(root=${root_d}%, /opt=${opt_d}%)"
+  if (( root_d < 85 && opt_d < 85 )); then
+    echo -e "${GREEN}(root=${root_d}%, /opt=${opt_d}%)${NC}"
+  else
+    echo -e "${YELLOW}(root=${root_d}%, /opt=${opt_d}%)${NC}"
+  fi
   
   echo -n "  Nodes: "
   local nr
-  nr="$(kubectl get nodes --no-headers 2>/dev/null | grep -v Ready | wc -l)"
-  echo -e "${nr -eq 0 ? GREEN : RED}($nr not ready)"
+  nr="$(kubectl get nodes --no-headers 2>/dev/null | awk '$2 != "Ready" {count++} END {print count+0}')"
+  if (( nr == 0 )); then
+    echo -e "${GREEN}($nr not ready)${NC}"
+  else
+    echo -e "${RED}($nr not ready)${NC}"
+  fi
   
   echo -n "  Memory: "
   local mem
@@ -138,8 +152,7 @@ rollback_and_fail() {
 root_cmd() { [[ $EUID -eq 0 ]] && "$@" || echo "$RESONANCE_SUDO_PASSWORD" | sudo -S "$@"; }
 
 validate_frontend() {
-  local d="$MAVEN_DIR/../projects/carbonet-frontend/target/classes/static/react-app"
-  [[ -d "$d" ]] || d="$FRONTEND_DIR/dist"
+  local d="$OVERLAY_HOST_PATH"
   [[ -f "$d/index.html" && -d "$d/assets" ]] || rollback_and_fail "FRONTEND_BUILD_INCOMPLETE" "Missing build output"
 }
 
@@ -155,9 +168,7 @@ validate_overlay() {
 build_frontend() {
   log_step "Build Frontend"
   [[ "${SKIP_FRONTEND:-false}" == "true" ]] && { log "Skipped"; return; }
-  root_cmd rm -rf "$MAVEN_DIR/../projects/carbonet-frontend/target"
-  mkdir -p "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static"
-  (cd "$FRONTEND_DIR" && npm ci && CARBONET_NODE_HEAP_MB="$NODE_HEAP_MB" npm run build)
+  FORCE_FRONTEND_BUILD=true bash "$ROOT_DIR/ops/scripts/resonance-frontend-auto-build.sh"
   validate_frontend
   log_success "Frontend built"
 }
@@ -165,33 +176,10 @@ build_frontend() {
 sync_overlay() {
   log_step "Sync Overlay"
   [[ "${SKIP_OVERLAY_SYNC:-false}" == "true" ]] && { log "Skipped"; return; }
-  local src="$MAVEN_DIR/../projects/carbonet-frontend/target/classes/static/react-app"
-  [[ -d "$src" ]] || src="$FRONTEND_DIR/dist"
-  root_cmd rsync -a --delete "$src/" "$OVERLAY_HOST_PATH/"
   validate_overlay
-  
-  local cnt
-  cnt="$(kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT --field-selector=status.phase=Running -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | wc -w)"
-  [[ "$cnt" -eq 0 ]] && rollback_and_fail "NO_RUNNING_PODS" "No pods"
-  
-  kubectl -n "$NAMESPACE" rollout restart "deployment/$DEPLOYMENT" >/dev/null 2>&1
-  kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=120s || true
-  
-  # Verify mount with retry
-  local retry=0 pod
-  while [[ $retry -lt $MAX_RETRIES ]]; do
-    pod="$(kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
-    local c="$(kubectl -n $NAMESPACE exec $pod -- sh -c 'ls /app/react-app-overlay/ 2>/dev/null' 2>/dev/null || echo '')"
-    if echo "$c" | grep -q "index.html"; then
-      log_success "Overlay mounted"
-      return 0
-    fi
-    log_warning "Retry $((retry+1))/$MAX_RETRIES"
-    kubectl -n $NAMESPACE delete pods -l app=$DEPLOYMENT --grace-period=0 --force >/dev/null 2>&1
-    sleep $RETRY_DELAY
-    retry=$((retry+1))
-  done
-  rollback_and_fail "OVERLAY_MOUNT_FAILED" "Mount failed after $MAX_RETRIES retries"
+  curl -fsS --max-time 10 "http://127.0.0.1/signin/loginView" >/dev/null \
+    || rollback_and_fail "OVERLAY_HTTP_FAILED" "carbonet-web did not serve the published frontend"
+  log_success "Frontend published without API rollout"
 }
 
 build_maven() {
@@ -222,7 +210,8 @@ build_image() {
 
 rollout_image() {
   log_step "Rollout"
-  root_cmd ctr images list | grep -q "$IMAGE_NAME" || rollback_and_fail "IMAGE_NOT_FOUND" "Image not in containerd"
+  root_cmd ctr -n k8s.io images list | grep -F "$IMAGE_NAME" >/dev/null \
+    || rollback_and_fail "IMAGE_NOT_FOUND" "Image not in containerd"
   kubectl -n "$NAMESPACE" set image "deployment/$DEPLOYMENT" "$CONTAINER=$IMAGE_NAME" || rollback_and_fail "SET_IMAGE_FAILED" "kubectl failed"
   kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" "resonance.ai/image=$IMAGE_NAME" "resonance.ai/released-at=$(date -Iseconds)" --overwrite >/dev/null
   kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=600s || rollback_and_fail "ROLLOUT_FAILED" "Rollout timeout"

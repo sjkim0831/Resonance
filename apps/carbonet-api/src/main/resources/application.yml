@@ -36,6 +36,13 @@ spring:
       maximum-pool-size: 20
       connection-timeout: 30000
       initialization-fail-timeout: -1
+  session:
+    store-type: jdbc
+    timeout: ${CARBONET_SESSION_TIMEOUT:30m}
+    jdbc:
+      initialize-schema: never
+      table-name: SPRING_SESSION
+      cleanup-cron: "${CARBONET_SESSION_CLEANUP_CRON:0 * * * * *}"
   flyway:
     enabled: ${CARBONET_FLYWAY_ENABLED:false}
     locations: classpath:db/migration/postgresql
@@ -297,4 +304,3 @@ org:
         IS_AUTHENTICATED_FULLY > IS_AUTHENTICATED_REMEMBERED
         ROLE_USER > IS_AUTHENTICATED_FULLY
         ROLE_ADMIN > ROLE_USER
-
