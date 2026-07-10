@@ -3093,6 +3093,8 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         reportTitle: lcaDocumentTitle,
         datasetExtension: {
           lcaSummary: {
+            schemaVersion: 2,
+            capturedAt: new Date().toISOString(),
             documentTitle: lcaDocumentTitle,
             companyName,
             productFamily,
@@ -3111,7 +3113,27 @@ export function EmissionSurveyLcaSummaryPrintPage() {
             normalizedOutputMass,
             massUnit,
             totalEmission,
-            totalEmissionPerMass
+            totalEmissionPerMass,
+            inputTable: inputRows.map((row) => ({
+              sectionCode: row.sectionCode,
+              sectionLabel: row.sectionLabel,
+              materialName: row.materialName,
+              amount: row.amount,
+              unit: row.unit,
+              emissionFactor: row.emissionFactor,
+              totalEmission: row.totalEmission
+            })),
+            outputTable: outputRows.map((row) => ({
+              sectionCode: row.sectionCode,
+              sectionLabel: row.sectionLabel,
+              materialName: row.materialName,
+              amount: row.amount,
+              unit: row.unit,
+              originalAmount: row.originalAmount,
+              originalUnit: row.unit,
+              emissionFactor: row.emissionFactor,
+              totalEmission: row.totalEmission
+            }))
           }
         }
       });
