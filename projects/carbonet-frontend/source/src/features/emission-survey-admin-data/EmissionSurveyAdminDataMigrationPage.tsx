@@ -1,9 +1,14 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
+import { fetchHomePayload } from "../../lib/api/appBootstrap";
+import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import {
   fetchEmissionGwpValuesPage,
   fetchEmissionSurveyAdminDataPage,
+  fetchEcoinventDatasetPage,
+  fetchEcoinventFilterOptions,
   getEmissionSurveyAdminBlankTemplateDownloadUrl,
   previewEmissionSurveySharedDataset,
   replaceEmissionSurveySharedDatasetSections
@@ -13,14 +18,15 @@ import type {
   EmissionSurveyAdminRow,
   EmissionSurveyAdminSection
 } from "../../lib/api/emissionTypes";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
-import { hasUnitMappingIssue, isMappedUnitValue, normalizeUnitValue, UNIT_OPTIONS } from "../emission-common/unitOptions";
+import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
+import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { isMappedUnitValue, normalizeUnitValue, UNIT_OPTIONS } from "../emission-common/unitOptions";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, MemberButton, PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { AdminInput, AdminSelect, AdminTable, AdminTextarea } from "../member/common";
 
-type GwpCandidateRow = Record<string, string>;
+type GwpCandidateRow = Record<string, string | number | undefined>;
 type FactorType = "ECOINVENT" | "AR4" | "AR5" | "AR6" | "DIRECT";
 type ArFactorType = "AR4" | "AR5" | "AR6";
 type RowSourceChoice = "UPLOAD" | "DB";
@@ -72,7 +78,12 @@ function matchesGwpCandidate(row: GwpCandidateRow, keyword: string) {
     row.manualInputValue,
     row.ar4Value,
     row.ar5Value,
-    row.ar6Value
+    row.ar6Value,
+    row.koreanName,
+    row.productName,
+    row.englishName,
+    row.activityName,
+    row.materialName
   ].some((value) => normalizeText(String(value || "")).includes(normalizedKeyword));
 }
 
@@ -186,6 +197,51 @@ function mapPriority(row: GwpCandidateRow, keyword: string) {
   return 3;
 }
 
+function parseTimePeriod(timePeriod: string | number | undefined): { startYear: number; endYear: number } {
+  if (!timePeriod) {
+    return { startYear: 0, endYear: 0 };
+  }
+  const match = String(timePeriod).match(/(\d{4})[-~]?(\d{4})?/);
+  if (match) {
+    return {
+      startYear: parseInt(match[1], 10),
+      endYear: match[2] ? parseInt(match[2], 10) : parseInt(match[1], 10)
+    };
+  }
+  return { startYear: 0, endYear: 0 };
+}
+
+type SortFieldType = "geography" | "timePeriod";
+type SortState = Partial<Record<SortFieldType, "asc" | "desc">>;
+
+function sortEcoinventRowsByCustomField(rows: GwpCandidateRow[], sortState: SortState, keyword: string): GwpCandidateRow[] {
+  return rows.slice().sort((a, b) => {
+    const priorityA = mapPriority(a, keyword);
+    const priorityB = mapPriority(b, keyword);
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    const geoA = normalizedValue(a.geography) || "";
+    const geoB = normalizedValue(b.geography) || "";
+    const periodA = parseTimePeriod(a.timePeriod);
+    const periodB = parseTimePeriod(b.timePeriod);
+    if (sortState.geography && geoA !== geoB) {
+      const direction = sortState.geography === "desc" ? -1 : 1;
+      return geoA.localeCompare(geoB) * direction;
+    }
+    if (sortState.timePeriod) {
+      const direction = sortState.timePeriod === "desc" ? -1 : 1;
+      if (periodA.startYear !== periodB.startYear) {
+        return (periodA.startYear - periodB.startYear) * direction;
+      }
+      if (periodA.endYear !== periodB.endYear) {
+        return (periodA.endYear - periodB.endYear) * direction;
+      }
+    }
+    return 0;
+  });
+}
+
 function filterAndSortGwpCandidates(rows: GwpCandidateRow[], keyword: string) {
   return rows
     .filter((row) => matchesGwpCandidate(row, keyword))
@@ -209,9 +265,37 @@ function isAirEmissionSection(section: Record<string, unknown> | EmissionSurveyA
   return sectionCode === "output_air" || sectionLabel === "대기배출물";
 }
 
-function supportsEmissionFactorMapping(section: Record<string, unknown> | EmissionSurveyAdminSection) {
+const MAPPING_SECTION_CODES = new Set([
+  "input_raw_materials",
+  "input_energy",
+  "input_steam",
+  "input_misc",
+  "output_products",
+  "output_air",
+  "output_water",
+  "output_waste"
+]);
+
+const MAPPING_SECTION_LABELS = new Set([
+  "원료 물질",
+  "보조 물질",
+  "에너지",
+  "기타",
+  "제품",
+  "부산물",
+  "대기배출물",
+  "수계 배출물",
+  "수계배출물",
+  "폐기물"
+]);
+
+function isEmissionOutputSection(section: Record<string, unknown> | EmissionSurveyAdminSection) {
   const sectionCode = normalizeText(stringOf(section as Record<string, unknown>, "sectionCode")).replace(/\s+/g, "");
-  return Boolean(sectionCode) && sectionCode !== "output_products";
+  const sectionLabel = normalizeText(stringOf(section as Record<string, unknown>, "sectionLabel")).replace(/\s+/g, "");
+  if (sectionCode === "output_products" || sectionLabel === "제품및부산물") {
+    return false;
+  }
+  return MAPPING_SECTION_CODES.has(sectionCode) || MAPPING_SECTION_LABELS.has(sectionLabel);
 }
 
 function hasMappedValue(values: Record<string, string>) {
@@ -248,7 +332,7 @@ function resolveFactorValue(candidate: GwpCandidateRow | null, factorType: Facto
     return "";
   }
   if (factorType === "ECOINVENT") {
-    return normalizedValue(candidate.manualInputValue);
+    return normalizedValue(candidate.score) || normalizedValue(candidate.manualInputValue);
   }
   if (factorType === "AR4") {
     return normalizedValue(candidate.ar4Value);
@@ -303,18 +387,20 @@ function mappingSummary(values: Record<string, string>) {
   };
 }
 
-function applyMappedValues(values: Record<string, string>, candidate: GwpCandidateRow, factorType: FactorType, directValue: string) {
+function applyMappedValues(values: Record<string, string>, candidate: GwpCandidateRow, factorType: FactorType, directValue: string, isEcoinventSource?: boolean) {
   const factorValue = resolveFactorValue(candidate, factorType, directValue);
+  const mappedName = normalizedValue(candidate.commonName) || normalizedValue(candidate.koreanName) || normalizedValue(candidate.productName) || normalizedValue(candidate.activityName) || "";
+  const mappedSource = normalizedValue(candidate.source) || (isEcoinventSource ? "Ecoinvent" : "");
   return {
     ...values,
     emissionFactor: factorValue,
     gwpMappedRowId: normalizedValue(candidate.rowId),
-    gwpMappedName: normalizedValue(candidate.commonName),
-    gwpMappedSource: normalizedValue(candidate.source),
+    gwpMappedName: mappedName,
+    gwpMappedSource: mappedSource,
     gwpValueType: factorType,
     gwpValue: factorValue,
     gwpDirectValue: factorType === "DIRECT" ? directValue.trim() : "",
-    gwpReferenceValue: factorType === "ECOINVENT" ? normalizedValue(candidate.manualInputValue) : "",
+    gwpReferenceValue: factorType === "ECOINVENT" ? (normalizedValue(candidate.score) || normalizedValue(candidate.manualInputValue)) : "",
     gwpAr4Value: normalizedValue(candidate.ar4Value),
     gwpAr5Value: normalizedValue(candidate.ar5Value),
     gwpAr6Value: normalizedValue(candidate.ar6Value)
@@ -322,10 +408,10 @@ function applyMappedValues(values: Record<string, string>, candidate: GwpCandida
 }
 
 function applyAutoEcoinventMapping(values: Record<string, string>, candidate: GwpCandidateRow | null) {
-  if (!candidate || !normalizedValue(candidate.manualInputValue)) {
+  if (!candidate || (!normalizedValue(candidate.score) && !normalizedValue(candidate.manualInputValue))) {
     return values;
   }
-  return applyMappedValues(values, candidate, "ECOINVENT", "");
+  return applyMappedValues(values, candidate, "ECOINVENT", "", true);
 }
 
 const VISIBLE_COLUMN_KEYS = ["group", "materialName", "annualUnit", "remark"] as const;
@@ -362,18 +448,17 @@ function sectionDataColumns(section: Record<string, unknown> | EmissionSurveyAdm
 }
 
 function sanitizeRowValues(section: Record<string, unknown> | EmissionSurveyAdminSection, values: Record<string, string>) {
-  const sectionKeys = sectionDataColumns(section).map((column) => column.key);
   const allowedKeys = Array.from(new Set([
     ...BASE_ALLOWED_VALUE_KEYS,
-    ...sectionKeys,
-    ...(supportsEmissionFactorMapping(section) ? GWP_ALLOWED_VALUE_KEYS : [])
+    ...sectionDataColumns(section).map((column) => column.key),
+    ...(isEmissionOutputSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])
   ]));
   const nextValues: Record<string, string> = {};
   allowedKeys.forEach((key) => {
     nextValues[key] = String(values[key] || "");
   });
   nextValues.annualUnit = normalizeUnitValue(String(nextValues.annualUnit || ""));
-  if (supportsEmissionFactorMapping(section)) {
+  if (isEmissionOutputSection(section)) {
     nextValues.emissionFactor = resolveStoredEmissionFactor(nextValues);
   }
   return nextValues;
@@ -504,7 +589,7 @@ function describeRowValues(
     label: VISIBLE_COLUMN_LABELS[columnKey],
     value: displayValue(values[columnKey])
   }));
-  if (supportsEmissionFactorMapping(section)) {
+  if (isEmissionOutputSection(section)) {
     items.push({
       label: "배출계수",
       value: displayValue(resolveStoredEmissionFactor(values))
@@ -534,7 +619,7 @@ function renderSectionTable(
     (item) => stringOf(item, "label") || stringOf(item, "value")
   );
   const editable = Boolean(options?.editable);
-  const showGwpMapping = editable && supportsEmissionFactorMapping(section);
+  const showGwpMapping = editable && isEmissionOutputSection(section);
   const existingSections = options?.existingSections || [];
   const deletedRows = rows.filter((row) => rowClientState(row).isDeleted).length;
   const visibleColumns = VISIBLE_COLUMN_KEYS.map((columnKey) => {
@@ -598,10 +683,7 @@ function renderSectionTable(
               const sectionCode = stringOf(section as Record<string, unknown>, "sectionCode");
               const matchedExistingRow = editable && !isNewRow ? findMatchingExistingRow(section, row as EmissionSurveyAdminRow, existingSections) : null;
               const selectedSource = options?.rowSourceSelections?.[rowSelectionKey(sectionCode, rowId)] || "UPLOAD";
-              const annualUnitValue = String(values.annualUnit || "");
-              const hasAnnualUnitIssue = hasUnitMappingIssue(annualUnitValue);
-              const requiredKeys = ["group", "materialName", "annualUnit"];
-              const isIncomplete = !isDeletedRow && (requiredKeys.some((columnKey) => !normalizedValue(values[columnKey])) || hasAnnualUnitIssue || requiresAttention);
+              const isIncomplete = !isDeletedRow && (visibleColumns.some((column) => !normalizedValue(values[column.key])) || requiresAttention);
               const uploadValueSummary = describeRowValues(section, values);
               const existingValueSummary = matchedExistingRow
                 ? describeRowValues(section, ((matchedExistingRow.values || {}) as Record<string, string>))
@@ -618,8 +700,6 @@ function renderSectionTable(
                               className={
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
-                                  : hasAnnualUnitIssue
-                                  ? "border-pink-400 bg-pink-50 text-pink-800"
                                   : !normalizedValue(values[column.key])
                                     ? "border-amber-300 bg-amber-50"
                                     : ""
@@ -629,11 +709,6 @@ function renderSectionTable(
                               value={normalizeUnitValue(String(values[column.key] || ""))}
                             >
                               <option value="">단위를 선택하세요</option>
-                              {hasAnnualUnitIssue ? (
-                                <option value={normalizeUnitValue(annualUnitValue)}>
-                                  매핑 필요: {normalizeUnitValue(annualUnitValue)}
-                                </option>
-                              ) : null}
                               {UNIT_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
@@ -665,7 +740,7 @@ function renderSectionTable(
                             />
                           )
                         ) : (
-                          column.key === "annualUnit" && hasAnnualUnitIssue ? `매핑 필요: ${normalizeUnitValue(annualUnitValue)}` : displayValue(values[column.key])
+                          column.key === "annualUnit" ? displayValue(values[column.key]) : displayValue(values[column.key])
                         )}
                       </td>
                     ))}
@@ -804,7 +879,21 @@ function GwpMappingModal({
   onSearch,
   loading,
   onClose,
-  onApply
+  onApply,
+  mappingSource,
+  onMappingSourceChange,
+  allowSourceSwitch,
+  totalCount,
+  pageIndex,
+  pageSize,
+  onPageChange,
+  geography,
+  onGeographyChange,
+  timePeriod,
+  onTimePeriodChange,
+  sortField,
+  onSortFieldChange,
+  filterOptions
 }: {
   target: MappingTarget;
   searchKeyword: string;
@@ -823,9 +912,24 @@ function GwpMappingModal({
   loading: boolean;
   onClose: () => void;
   onApply: () => void;
+  mappingSource: "GWP" | "ECOINVENT";
+  onMappingSourceChange: (source: "GWP" | "ECOINVENT") => void;
+  allowSourceSwitch: boolean;
+  totalCount?: number;
+  pageIndex?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  geography?: string;
+  onGeographyChange?: (value: string) => void;
+  timePeriod?: string;
+  onTimePeriodChange?: (value: string) => void;
+  sortField?: SortState;
+  onSortFieldChange?: (value: SortState) => void;
+  filterOptions?: Record<string, string[]>;
 }) {
-  const selectedCandidate = rows.find((row) => String(row.rowId || "") === selectedCandidateId) || null;
-  const ecoinventValue = normalizedValue(selectedCandidate?.manualInputValue);
+  const selectedCandidate = rows.find((row) => String(row.rowId || row.datasetId || "") === selectedCandidateId) || null;
+  const isGwpSource = mappingSource === "GWP";
+  const ecoinventValue = normalizedValue(selectedCandidate?.score) || normalizedValue(selectedCandidate?.manualInputValue);
   const datasetArPreview = displayValue(
     datasetArVersion === "AR4"
       ? selectedCandidate?.ar4Value
@@ -834,10 +938,37 @@ function GwpMappingModal({
         : selectedCandidate?.ar6Value
   );
   const factorOptions: Array<{ value: FactorType; label: string; preview: string; disabled?: boolean }> = [
-    { value: "ECOINVENT", label: "Ecoinvent", preview: ecoinventValue || "임의 입력값 없음", disabled: !ecoinventValue },
-    ...(allowArSelection ? [{ value: datasetArVersion, label: `공통 AR 버전 (${datasetArVersion})`, preview: datasetArPreview }] : []),
+    { value: "ECOINVENT", label: "Ecoinvent", preview: ecoinventValue || "임의 입력값 없음", disabled: !ecoinventValue && isGwpSource },
+    ...(allowArSelection && !isGwpSource ? [{ value: datasetArVersion, label: `공통 AR 버전 (${datasetArVersion})`, preview: datasetArPreview }] : []),
     { value: "DIRECT", label: "직접입력", preview: directValue.trim() || "-" }
   ];
+  const totalPages = totalCount && pageSize ? Math.ceil(totalCount / pageSize) : 1;
+  const currentPage = pageIndex || 0;
+
+  type SortFieldType = "geography" | "timePeriod";
+  type SortState = Partial<Record<SortFieldType, "asc" | "desc">>;
+
+  function sortIndicator(field: SortFieldType, currentSortField: SortState) {
+    const direction = currentSortField[field];
+    if (!direction) {
+      return "↕";
+    }
+    return direction === "asc" ? "↑" : "↓";
+  }
+
+  function toggleSort(field: SortFieldType) {
+    const currentDirection = sortField?.[field];
+    const newSortState: SortState = { ...sortField };
+    if (currentDirection === "asc") {
+      newSortState[field] = "desc";
+    } else if (currentDirection === "desc") {
+      delete newSortState[field];
+    } else {
+      newSortState[field] = "asc";
+    }
+    onSortFieldChange?.(newSortState);
+    onSearch();
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6">
@@ -851,7 +982,7 @@ function GwpMappingModal({
         </div>
         <div className="grid gap-4 overflow-y-auto px-5 py-5 lg:grid-cols-[1.4fr,1fr]">
           <section className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-[1fr,120px]">
+            <div className="grid gap-3 md:grid-cols-[2fr,1fr,1fr]">
               <label className="block">
                 <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">물질 검색</span>
                 <AdminInput
@@ -865,56 +996,189 @@ function GwpMappingModal({
                   }}
                 />
               </label>
+              {!isGwpSource && (
+                <>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">Geography</span>
+                    <AdminSelect
+                      onChange={(event) => onGeographyChange?.(event.target.value)}
+                      value={geography || ""}
+                    >
+                      <option value="">전체</option>
+                      {(filterOptions?.geography || []).map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </AdminSelect>
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">Time Period</span>
+                    <AdminSelect
+                      onChange={(event) => onTimePeriodChange?.(event.target.value)}
+                      value={timePeriod || ""}
+                    >
+                      <option value="">전체</option>
+                      {(filterOptions?.timePeriod || []).map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </AdminSelect>
+                  </label>
+                </>
+              )}
+              {allowSourceSwitch ? (
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-text-secondary)]">데이터 소스</span>
+                  <AdminSelect onChange={(event) => onMappingSourceChange(event.target.value as "GWP" | "ECOINVENT")} value={mappingSource}>
+                    <option value="GWP">GWP</option>
+                    <option value="ECOINVENT">Ecoinvent</option>
+                  </AdminSelect>
+                </label>
+              ) : (
+                <div className="flex items-end pb-1">
+                  <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${isGwpSource ? "bg-emerald-100 text-emerald-800" : "bg-sky-100 text-sky-800"}`}>
+                    {isGwpSource ? "GWP" : "Ecoinvent"}
+                  </span>
+                </div>
+              )}
               <div className="flex items-end">
                 <MemberButton onClick={onSearch} type="button" variant="primary">{loading ? "검색 중..." : "검색"}</MemberButton>
               </div>
             </div>
             <div className="rounded-[var(--kr-gov-radius)] border border-slate-200">
-              <div className="grid grid-cols-[120px,1.2fr,0.8fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
-                <div className="px-3 py-2">우선순위</div>
-                <div className="px-3 py-2">물질</div>
-                <div className="px-3 py-2">Ecoinvent</div>
-                <div className="px-3 py-2">AR4</div>
-                <div className="px-3 py-2">AR5</div>
-                <div className="px-3 py-2">AR6</div>
-                <div className="px-3 py-2 text-center">선택</div>
-              </div>
-              <div className="max-h-[48vh] overflow-y-auto">
-                {rows.length === 0 ? (
-                  <div className="px-4 py-8 text-sm text-slate-500">검색 결과가 없습니다.</div>
-                ) : (
-                  rows.map((row) => {
-                    const selected = String(row.rowId || "") === selectedCandidateId;
-                    return (
-                      <div className={`grid grid-cols-[120px,1.2fr,0.8fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={String(row.rowId || row.commonName || Math.random())}>
-                        <div className="px-3 py-3 text-[11px] font-bold text-[var(--kr-gov-blue)]">
-                          {mapPriority(row, searchKeyword) === 0 ? "1순위 Ecoinvent" : mapPriority(row, searchKeyword) === 1 ? "정확 일치" : "후보"}
-                        </div>
-                        <div className="px-3 py-3">
-                          <p className="font-bold text-slate-900">{displayValue(row.commonName)}</p>
-                          <p className="mt-1 text-xs text-slate-500">{displayValue(row.note)}</p>
-                        </div>
-                        <div className="px-3 py-3 font-mono text-xs text-slate-600">{displayValue(row.manualInputValue)}</div>
-                        <div className="px-3 py-3">{displayValue(row.ar4Value)}</div>
-                        <div className="px-3 py-3">{displayValue(row.ar5Value)}</div>
-                        <div className="px-3 py-3">{displayValue(row.ar6Value)}</div>
-                        <div className="flex items-center justify-center px-3 py-3">
-                          <MemberButton onClick={() => onSelectCandidate(String(row.rowId || ""))} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              {isGwpSource ? (
+                <>
+                  <div className="grid grid-cols-[100px,1.2fr,0.8fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+                    <div className="px-3 py-2">GWP ID</div>
+                    <div className="px-3 py-2">물질명</div>
+                    <div className="px-3 py-2">GWP 값</div>
+                    <div className="px-3 py-2">AR4</div>
+                    <div className="px-3 py-2">AR5</div>
+                    <div className="px-3 py-2">AR6</div>
+                    <div className="px-3 py-2 text-center">선택</div>
+                  </div>
+                  <div className="max-h-[40vh] overflow-y-auto">
+                    {rows.length === 0 ? (
+                      <div className="px-4 py-8 text-sm text-slate-500">검색 결과가 없습니다.</div>
+                    ) : (
+                      rows.map((row) => {
+                        const selected = String(row.rowId || "") === selectedCandidateId;
+                        return (
+                          <div className={`grid grid-cols-[100px,1.2fr,0.8fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={String(row.rowId || row.commonName || Math.random())}>
+                            <div className="px-3 py-3 text-[11px] font-mono font-bold text-[var(--kr-gov-blue)]">
+                              {displayValue(row.rowId)}
+                            </div>
+                            <div className="px-3 py-3">
+                              <p className="font-bold text-slate-900">{displayValue(row.commonName)}</p>
+                              <p className="mt-1 text-xs text-slate-500">{displayValue(row.note)}</p>
+                            </div>
+                            <div className="px-3 py-3 font-mono text-xs text-slate-600">{displayValue(row.gwpDirectValue) || displayValue(row.gwpValue) || "-"}</div>
+                            <div className="px-3 py-3">{displayValue(row.ar4Value)}</div>
+                            <div className="px-3 py-3">{displayValue(row.ar5Value)}</div>
+                            <div className="px-3 py-3">{displayValue(row.ar6Value)}</div>
+                            <div className="flex items-center justify-center px-3 py-3">
+                              <MemberButton onClick={() => onSelectCandidate(String(row.rowId || ""))} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-[80px,1.2fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+                    <div className="px-3 py-2">우선순위</div>
+                    <div className="px-3 py-2">물질</div>
+                    <div className="px-3 py-2">배출계수</div>
+                    <div className="px-3 py-2">
+                      <button className="flex items-center gap-1" onClick={() => toggleSort("geography")} type="button">
+                        Geography <span>{sortIndicator("geography", sortField || {})}</span>
+                      </button>
+                    </div>
+                    <div className="px-3 py-2">
+                      <button className="flex items-center gap-1" onClick={() => toggleSort("timePeriod")} type="button">
+                        Period <span>{sortIndicator("timePeriod", sortField || {})}</span>
+                      </button>
+                    </div>
+                    <div className="px-3 py-2 text-center">선택</div>
+                  </div>
+                  <div className="max-h-[40vh] overflow-y-auto">
+                    {rows.length === 0 ? (
+                      <div className="px-4 py-8 text-sm text-slate-500">검색 결과가 없습니다.</div>
+                    ) : (
+                      rows.map((row) => {
+                        const rowId = String(row.rowId || row.datasetId || "");
+                        const selected = rowId === selectedCandidateId;
+                        return (
+                          <div className={`grid grid-cols-[80px,1.2fr,0.7fr,0.7fr,0.7fr,80px] border-b border-slate-100 text-sm ${selected ? "bg-blue-50/70" : ""}`} key={rowId || String(row.commonName || row.productName || Math.random())}>
+                            <div className="px-3 py-3 text-[11px] font-bold text-[var(--kr-gov-blue)]">
+                              {mapPriority(row, searchKeyword) === 0 ? "1순위" : mapPriority(row, searchKeyword) === 1 ? "정확 일치" : "후보"}
+                            </div>
+                            <div className="px-3 py-3">
+                              <p className="font-bold text-slate-900">{displayValue(row.koreanName) || displayValue(row.commonName) || displayValue(row.productName)}</p>
+                              <p className="mt-1 text-xs text-slate-500">{displayValue(row.productName)} / {displayValue(row.activityName)}</p>
+                            </div>
+                            <div className="px-3 py-3 font-mono text-xs text-slate-600">{displayValue(row.score) || displayValue(row.manualInputValue) || "-"}</div>
+                            <div className="px-3 py-3">{displayValue(row.geography) || "-"}</div>
+                            <div className="px-3 py-3">{displayValue(row.timePeriod) || "-"}</div>
+                            <div className="flex items-center justify-center px-3 py-3">
+                              <MemberButton onClick={() => onSelectCandidate(rowId)} size="sm" type="button" variant={selected ? "primary" : "secondary"}>선택</MemberButton>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+              {totalCount !== undefined && totalCount >= (pageSize || 100) && (
+                <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 bg-slate-50">
+                  <span className="text-xs text-slate-600">
+                    전체 {totalCount}개 중 {(currentPage * (pageSize || 100)) + 1}-{Math.min((currentPage + 1) * (pageSize || 100), totalCount)}개
+                  </span>
+                  <div className="flex gap-2">
+                    <MemberButton
+                      disabled={currentPage === 0 || loading}
+                      onClick={() => onPageChange?.(currentPage - 1)}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      이전
+                    </MemberButton>
+                    <span className="flex items-center px-2 text-xs">
+                      {currentPage + 1} / {totalPages}
+                    </span>
+                    <MemberButton
+                      disabled={currentPage >= totalPages - 1 || loading}
+                      onClick={() => onPageChange?.(currentPage + 1)}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      다음
+                    </MemberButton>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
           <section className="space-y-4">
             <div className="rounded-[var(--kr-gov-radius)] border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-bold text-slate-800">선택된 물질</p>
-              <p className="mt-2 text-base font-black text-[var(--kr-gov-text-primary)]">{selectedCandidate ? displayValue(selectedCandidate.commonName) : "먼저 물질을 선택하세요."}</p>
+              <p className="mt-2 text-base font-black text-[var(--kr-gov-text-primary)]">
+                {selectedCandidate
+                  ? isGwpSource
+                    ? displayValue(selectedCandidate.commonName)
+                    : displayValue(selectedCandidate.koreanName) || displayValue(selectedCandidate.commonName) || displayValue(selectedCandidate.productName)
+                  : "먼저 물질을 선택하세요."}
+              </p>
               {selectedCandidate ? (
-                <p className="mt-2 text-xs text-slate-500">출처: {displayValue(selectedCandidate.source)} / 임의값: {displayValue(selectedCandidate.manualInputValue)}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {isGwpSource
+                    ? `GWP ID: ${displayValue(selectedCandidate.rowId)} / GWP 값: ${displayValue(selectedCandidate.gwpDirectValue) || displayValue(selectedCandidate.gwpValue) || "-"}`
+                    : `배출계수: ${displayValue(selectedCandidate.score) || displayValue(selectedCandidate.manualInputValue) || "-"}`}
+                </p>
               ) : null}
             </div>
 
@@ -955,7 +1219,7 @@ function GwpMappingModal({
 
             <div className="flex justify-end gap-2">
               <MemberButton onClick={onClose} type="button" variant="secondary">취소</MemberButton>
-              <MemberButton onClick={onApply} type="button" variant="primary">이 행에 적용</MemberButton>
+              <MemberButton onClick={onApply} type="button" variant="primary">적용</MemberButton>
             </div>
           </section>
         </div>
@@ -966,6 +1230,36 @@ function GwpMappingModal({
 
 export function EmissionSurveyAdminDataMigrationPage() {
   const en = isEnglish();
+  const session = useFrontendSession();
+  const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const [mobileMenuOpen] = useState(false);
+
+  const payloadState = useAsyncValue<HomePayload>(
+    () => fetchHomePayload(),
+    [en],
+    {
+      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      onError: () => undefined,
+    }
+  );
+
+  useEffect(() => {
+    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
+    return () => document.body.classList.remove("mobile-menu-open");
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    function handleNavigationSync() {
+      void payloadState.reload();
+      void session.reload();
+    }
+
+    window.addEventListener(getNavigationEventName(), handleNavigationSync);
+    return () => {
+      window.removeEventListener(getNavigationEventName(), handleNavigationSync);
+    };
+  }, [payloadState, session]);
+
   const pageTitle = en ? "Shared Dataset Excel Apply" : "공통 데이터셋 엑셀 반영";
   const pageSubtitle = en
     ? "Upload a workbook, map emission factors, and then replace the shared dataset."
@@ -982,8 +1276,16 @@ export function EmissionSurveyAdminDataMigrationPage() {
   const [mappingTarget, setMappingTarget] = useState<MappingTarget | null>(null);
   const [mappingSearchKeyword, setMappingSearchKeyword] = useState("");
   const [mappingRows, setMappingRows] = useState<GwpCandidateRow[]>([]);
+  const [mappingSource, setMappingSource] = useState<"GWP" | "ECOINVENT">("ECOINVENT");
   const [gwpCatalogRows, setGwpCatalogRows] = useState<GwpCandidateRow[]>([]);
   const [mappingLoading, setMappingLoading] = useState(false);
+  const [mappingTotalCount, setMappingTotalCount] = useState<number>(0);
+  const [mappingPageIndex, setMappingPageIndex] = useState(0);
+  const [mappingPageSize] = useState(100);
+  const [mappingGeography, setMappingGeography] = useState("");
+  const [mappingTimePeriod, setMappingTimePeriod] = useState("");
+  const [mappingSortField, setMappingSortField] = useState<SortState>({});
+  const [mappingFilterOptions, setMappingFilterOptions] = useState<Record<string, string[]>>({});
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [datasetArVersion, setDatasetArVersion] = useState<ArFactorType>("AR6");
   const [factorType, setFactorType] = useState<FactorType>("ECOINVENT");
@@ -1049,6 +1351,14 @@ export function EmissionSurveyAdminDataMigrationPage() {
   }, [en, existingSections.length, editablePreviewSections.length]);
 
   useEffect(() => {
+    void fetchEcoinventFilterOptions("").then((options) => {
+      setMappingFilterOptions(options);
+    }).catch(() => {
+      setMappingFilterOptions({});
+    });
+  }, []);
+
+  useEffect(() => {
     setEditablePreviewSections((current) => current.map((section) => ({
       ...section,
       rows: ((section.rows || []) as EmissionSurveyAdminRow[]).map((row) => {
@@ -1097,7 +1407,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     newRowSequenceRef.current += 1;
     const rowId = `NEW_ROW_${Date.now()}_${newRowSequenceRef.current}`;
     const values: Record<string, string> = {};
-    [...sectionDataColumns(section).map((column) => column.key), ...(supportsEmissionFactorMapping(section) ? GWP_ALLOWED_VALUE_KEYS : [])].forEach((key) => {
+    [...sectionDataColumns(section).map((column) => column.key), ...(isEmissionOutputSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])].forEach((key) => {
       values[key] = "";
     });
     return {
@@ -1240,21 +1550,25 @@ export function EmissionSurveyAdminDataMigrationPage() {
   function handleOpenMapping(sectionIndex: number, rowIndex: number, row: EmissionSurveyAdminRow) {
     const section = editablePreviewSections[sectionIndex];
     const values = { ...((row.values || {}) as Record<string, string>) };
+    const isAir = isAirEmissionSection(section || {});
     const nextTarget = {
       sectionIndex,
       rowIndex,
       rowId: String(row.rowId || ""),
       materialName: String(values.materialName || ""),
-      allowArSelection: isAirEmissionSection(section || {})
+      allowArSelection: isAir
     };
     const nextKeyword = String(values.gwpMappedName || values.materialName || "");
     setMappingTarget(nextTarget);
     setMappingSearchKeyword(nextKeyword);
     setMappingRows([]);
+    setMappingPageIndex(0);
+    setMappingTotalCount(0);
+    setMappingSource(isAir ? "GWP" : "ECOINVENT");
     setSelectedCandidateId(String(values.gwpMappedRowId || ""));
     setFactorType(isArFactorType(String(values.gwpValueType || "")) ? datasetArVersion : (String(values.gwpValueType || "ECOINVENT") as FactorType));
     setDirectValue(String(values.gwpDirectValue || values.gwpValue || ""));
-    void handleSearchMapping(nextKeyword, nextTarget);
+    void handleSearchMapping(nextKeyword, nextTarget, 0);
   }
 
   function handleSelectRowSource(sectionCode: string, rowId: string, source: RowSourceChoice) {
@@ -1268,30 +1582,85 @@ export function EmissionSurveyAdminDataMigrationPage() {
     if (gwpCatalogRows.length > 0) {
       return gwpCatalogRows;
     }
-    const payload = await fetchEmissionGwpValuesPage();
-    const rows = (((payload.gwpRows || []) as Array<Record<string, string>>)).slice();
-    setGwpCatalogRows(rows);
-    return rows;
+    const gwpPayload = await fetchEmissionGwpValuesPage();
+    const gwpRows = (((gwpPayload.gwpRows || []) as Array<Record<string, string>>)).slice();
+    setGwpCatalogRows(gwpRows);
+    return gwpRows;
   }
 
-  async function handleSearchMapping(keywordOverride?: string, targetOverride?: MappingTarget | null) {
+  async function searchEcoinvent(keyword: string, pageIndex: number = 0, geography?: string, timePeriod?: string, sortField?: string, sortDirection?: string): Promise<{ rows: GwpCandidateRow[]; total: number }> {
+    const response = await fetchEcoinventDatasetPage({
+      keyword,
+      productName: keyword,
+      activityName: keyword,
+      materialName: keyword,
+      geography: geography || undefined,
+      timePeriod: timePeriod || undefined,
+      pageIndex,
+      pageSize: mappingPageSize,
+      sortField: sortField || undefined,
+      sortDirection: sortDirection || undefined
+    });
+    const rows = (((response.data || []) as Array<Record<string, string>>)).slice();
+    const total = response.totalCount || response.count || rows.length;
+    return { rows, total };
+  }
+
+  async function handleSearchMapping(keywordOverride?: string, targetOverride?: MappingTarget | null, pageOverride?: number) {
     const currentTarget = targetOverride || mappingTarget;
     if (!currentTarget) {
       return;
     }
     const keyword = String(keywordOverride ?? mappingSearchKeyword ?? "");
+    const page = pageOverride ?? mappingPageIndex;
     setMappingLoading(true);
     try {
-      const catalog = await loadGwpCatalogRows();
-      const rows = filterAndSortGwpCandidates(catalog, keyword);
-      setMappingRows(rows);
-      if (rows.length > 0) {
-        const nextSelectedCandidateId = String(rows[0].rowId || "");
-        setSelectedCandidateId(nextSelectedCandidateId);
-        if (normalizedValue(rows[0].manualInputValue)) {
-          setFactorType("ECOINVENT");
-        } else if (currentTarget.allowArSelection && factorType !== "DIRECT") {
-          setFactorType(datasetArVersion);
+      if (mappingSource === "GWP") {
+        const catalog = await loadGwpCatalogRows();
+        const allRows = filterAndSortGwpCandidates(catalog, keyword);
+        const start = page * mappingPageSize;
+        const pagedRows = allRows.slice(start, start + mappingPageSize);
+        setMappingTotalCount(allRows.length);
+        setMappingRows(pagedRows);
+        if (pagedRows.length > 0) {
+          const nextSelectedCandidateId = String(pagedRows[0].rowId || "");
+          setSelectedCandidateId(nextSelectedCandidateId);
+          if (normalizedValue(pagedRows[0].manualInputValue)) {
+            setFactorType("ECOINVENT");
+          } else if (currentTarget.allowArSelection && factorType !== "DIRECT") {
+            setFactorType(datasetArVersion);
+          }
+        }
+      } else {
+        const hasCustomSort = mappingSortField?.geography || mappingSortField?.timePeriod;
+        const serverSortField = hasCustomSort ? undefined : (Object.keys(mappingSortField || {})[0] || undefined);
+        const serverSortDirection = hasCustomSort ? undefined : (Object.values(mappingSortField || {})[0] || undefined);
+        const { rows, total } = await searchEcoinvent(keyword, page, mappingGeography, mappingTimePeriod, serverSortField, serverSortDirection);
+        const filteredRows = rows.filter((row) => {
+          if (mappingGeography && normalizedValue(row.geography) !== mappingGeography) {
+            return false;
+          }
+          if (mappingTimePeriod && normalizedValue(row.timePeriod) !== mappingTimePeriod) {
+            return false;
+          }
+          return true;
+        });
+        const sortedRows = (hasCustomSort && mappingSortField)
+          ? sortEcoinventRowsByCustomField(filteredRows, mappingSortField, keyword)
+          : filteredRows;
+        const start = page * mappingPageSize;
+        const pagedRows = sortedRows.slice(start, start + mappingPageSize);
+        setMappingTotalCount(total);
+        setMappingRows(pagedRows);
+        if (pagedRows.length > 0) {
+          const firstRow = pagedRows[0];
+          const nextSelectedCandidateId = String(firstRow.rowId || firstRow.datasetId || "");
+          setSelectedCandidateId(nextSelectedCandidateId);
+          if (normalizedValue(pagedRows[0].score) || normalizedValue(pagedRows[0].manualInputValue)) {
+            setFactorType("ECOINVENT");
+          } else if (currentTarget.allowArSelection && factorType !== "DIRECT") {
+            setFactorType(datasetArVersion);
+          }
         }
       }
     } catch (error) {
@@ -1301,11 +1670,16 @@ export function EmissionSurveyAdminDataMigrationPage() {
     }
   }
 
+  function handlePageChange(page: number) {
+    setMappingPageIndex(page);
+    void handleSearchMapping(undefined, undefined, page);
+  }
+
   function handleApplyMapping() {
     if (!mappingTarget) {
       return;
     }
-    const candidate = mappingRows.find((row) => String(row.rowId || "") === selectedCandidateId) || null;
+    const candidate = mappingRows.find((row) => String(row.rowId || row.datasetId || "") === selectedCandidateId) || null;
     if (!candidate) {
       setErrorMessage("먼저 매핑할 물질을 선택하세요.");
       return;
@@ -1314,8 +1688,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
       setErrorMessage("직접 입력값을 입력하세요.");
       return;
     }
-    if (factorType === "ECOINVENT" && !normalizedValue(candidate.manualInputValue)) {
-      setErrorMessage("선택한 물질에는 Ecoinvent 임의 입력값이 없습니다.");
+    if (factorType === "ECOINVENT" && !normalizedValue(candidate.score) && !normalizedValue(candidate.manualInputValue)) {
+      setErrorMessage("선택한 물질에는 Ecoinvent 배출계수가 없습니다.");
       return;
     }
     setEditablePreviewSections((current) => current.map((section, sectionIndex) => {
@@ -1331,12 +1705,12 @@ export function EmissionSurveyAdminDataMigrationPage() {
           const values = { ...((row.values || {}) as Record<string, string>) };
           return {
             ...row,
-            values: sanitizeRowValues(section, applyMappedValues(values, candidate, factorType, directValue))
+            values: sanitizeRowValues(section, applyMappedValues(values, candidate, factorType, directValue, mappingSource === "ECOINVENT"))
           };
         })
       };
     }));
-    setMessage(`${String(candidate.commonName || "-")} / ${factorLabel(factorType)} 매핑을 적용했습니다.`);
+    setMessage(`${String(candidate.commonName || candidate.koreanName || candidate.productName || "-")} / ${factorLabel(factorType)} 매핑을 적용했습니다.`);
     setMappingTarget(null);
   }
 
@@ -1453,22 +1827,40 @@ export function EmissionSurveyAdminDataMigrationPage() {
         {mappingTarget ? (
           <GwpMappingModal
             allowArSelection={mappingTarget.allowArSelection}
+            allowSourceSwitch={mappingTarget.allowArSelection}
             datasetArVersion={datasetArVersion}
             onDatasetArVersionChange={setDatasetArVersion}
             directValue={directValue}
             factorType={factorType}
+            filterOptions={mappingFilterOptions}
+            geography={mappingGeography}
+            onGeographyChange={setMappingGeography}
             loading={mappingLoading}
+            mappingSource={mappingSource}
             onApply={handleApplyMapping}
             onClose={() => setMappingTarget(null)}
             onDirectValueChange={setDirectValue}
             onFactorTypeChange={setFactorType}
+            onMappingSourceChange={(src) => {
+              setMappingSource(src);
+              setMappingPageIndex(0);
+              void handleSearchMapping(undefined, undefined, 0);
+            }}
+            onPageChange={handlePageChange}
             onSearch={() => void handleSearchMapping()}
             onSearchKeywordChange={setMappingSearchKeyword}
             onSelectCandidate={setSelectedCandidateId}
+            pageIndex={mappingPageIndex}
+            pageSize={mappingPageSize}
             rows={mappingRows}
             searchKeyword={mappingSearchKeyword}
             selectedCandidateId={selectedCandidateId}
+            sortField={mappingSortField}
+            onSortFieldChange={setMappingSortField}
             target={mappingTarget}
+            timePeriod={mappingTimePeriod}
+            onTimePeriodChange={setMappingTimePeriod}
+            totalCount={mappingTotalCount}
           />
         ) : null}
       </AdminWorkspacePageFrame>
