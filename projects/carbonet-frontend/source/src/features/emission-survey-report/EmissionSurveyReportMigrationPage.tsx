@@ -159,10 +159,14 @@ function canonicalReportForVerification(report: EmissionSurveyReportPayload) {
       sectionCode: row.sectionCode,
       materialName: row.materialName,
       amount: row.amount,
+      amountDisplay: formatNumber(row.amount, 2),
       originalAmount: row.originalAmount,
+      originalAmountDisplay: formatNumber(row.originalAmount, 2),
       unit: row.unit,
       emissionFactor: row.emissionFactor,
+      emissionFactorDisplay: formatNumber(row.emissionFactor, 2),
       totalEmission: row.totalEmission,
+      totalEmissionDisplay: formatNumber(row.originalAmount * row.emissionFactor, 2),
       calculated: row.calculated
     }))
   };
@@ -2657,9 +2661,9 @@ export function EmissionSurveyReportVerifyPage() {
                           <p className="font-black text-rose-950">#{item.rowIndex} {item.sectionLabel || "-"} / {item.materialName || "-"}</p>
                           <div className="mt-2 grid grid-cols-2 gap-1 text-rose-800">
                             {!item.materialMatched ? <span>{en ? "Material name not found" : "물질명 판독 불일치"}</span> : null}
-                            {!item.amountMatched ? <span>{en ? "Amount" : "사용량"}: {formatNumber(item.amount ?? 0, 6)}</span> : null}
-                            {!item.emissionFactorMatched ? <span>{en ? "Emission factor" : "배출계수"}: {formatNumber(item.emissionFactor ?? 0, 8)}</span> : null}
-                            {!item.totalEmissionMatched ? <span>{en ? "Emission" : "배출량"}: {formatNumber(item.totalEmission ?? 0, 8)}</span> : null}
+                            {!item.amountMatched ? <span>{en ? "Amount shown" : "화면 사용량"}: {item.amountDisplay || formatNumber(item.amount ?? 0, 2)}</span> : null}
+                            {!item.emissionFactorMatched ? <span>{en ? "Emission factor shown" : "화면 배출계수"}: {item.emissionFactorDisplay || formatNumber(item.emissionFactor ?? 0, 2)}</span> : null}
+                            {!item.totalEmissionMatched ? <span>{en ? "Emission shown" : "화면 배출량"}: {item.totalEmissionDisplay || formatNumber(item.totalEmission ?? 0, 2)}</span> : null}
                           </div>
                         </div>
                       ))}

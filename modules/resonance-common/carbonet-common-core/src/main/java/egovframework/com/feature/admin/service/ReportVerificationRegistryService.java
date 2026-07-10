@@ -334,7 +334,7 @@ public class ReportVerificationRegistryService {
                     JsonNode value = row.path(field);
                     if (value.isNumber() && Math.abs(value.asDouble()) > 0.0000001) {
                         numberCount++;
-                        boolean matched = containsNumber(normalizedText, value);
+                        boolean matched = containsDisplayedNumber(normalizedText, row, field, value);
                         fieldMatches.put(field, matched);
                         if (matched) {
                             matchedNumberCount++;
@@ -349,10 +349,13 @@ public class ReportVerificationRegistryService {
                     comparison.put("materialName", materialName);
                     comparison.put("materialMatched", materialMatched);
                     comparison.put("amount", row.path("amount").isNumber() ? row.path("amount").numberValue() : null);
+                    comparison.put("amountDisplay", displayValue(row, "amount", row.path("amount")));
                     comparison.put("amountMatched", fieldMatches.getOrDefault("amount", true));
                     comparison.put("emissionFactor", row.path("emissionFactor").isNumber() ? row.path("emissionFactor").numberValue() : null);
+                    comparison.put("emissionFactorDisplay", displayValue(row, "emissionFactor", row.path("emissionFactor")));
                     comparison.put("emissionFactorMatched", fieldMatches.getOrDefault("emissionFactor", true));
                     comparison.put("totalEmission", row.path("totalEmission").isNumber() ? row.path("totalEmission").numberValue() : null);
+                    comparison.put("totalEmissionDisplay", displayValue(row, "totalEmission", row.path("totalEmission")));
                     comparison.put("totalEmissionMatched", fieldMatches.getOrDefault("totalEmission", true));
                     fieldComparisons.add(comparison);
                 }
@@ -437,6 +440,27 @@ public class ReportVerificationRegistryService {
             }
         }
         return false;
+    }
+
+    private boolean containsDisplayedNumber(String normalizedText, JsonNode row, String field, JsonNode value) {
+        String display = displayValue(row, field, value);
+        String normalizedDisplay = normalizeText(display);
+        if (!normalizedDisplay.isBlank() && normalizedText.contains(normalizedDisplay)) {
+            return true;
+        }
+        return containsNumber(normalizedText, value);
+    }
+
+    private String displayValue(JsonNode row, String field, JsonNode value) {
+        String configured = row.path(field + "Display").asText();
+        if (!configured.isBlank()) {
+            return configured;
+        }
+        if (value == null || !value.isNumber()) {
+            return "";
+        }
+        return value.decimalValue().setScale(2, java.math.RoundingMode.HALF_UP)
+                .stripTrailingZeros().toPlainString();
     }
 
     private boolean editDistanceWithin(String expected, String actual, int limit) {

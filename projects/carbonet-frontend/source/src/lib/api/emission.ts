@@ -255,10 +255,13 @@ export type ReportPhotoVerificationResponse = {
     materialName?: string;
     materialMatched: boolean;
     amount?: number;
+    amountDisplay?: string;
     amountMatched: boolean;
     emissionFactor?: number;
+    emissionFactorDisplay?: string;
     emissionFactorMatched: boolean;
     totalEmission?: number;
+    totalEmissionDisplay?: string;
     totalEmissionMatched: boolean;
   }>;
   damagedRegions?: Array<{ page: number; row: number; column: number; difference: number }>;
