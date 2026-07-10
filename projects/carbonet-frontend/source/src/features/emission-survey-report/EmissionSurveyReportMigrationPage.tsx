@@ -45,6 +45,7 @@ const REPORT_VERIFY_BEGIN = "CARBONET_REPORT_VERIFY_BEGIN";
 const REPORT_VERIFY_END = "CARBONET_REPORT_VERIFY_END";
 
 type ReportVerificationPayload = {
+  reportType?: ReportVerificationType;
   version: 1 | 2;
   certificateId: string;
   issuedAt: string;
@@ -59,8 +60,10 @@ type ReportVerificationPayload = {
   integrityCode: string;
   verificationUrl: string;
   datasetHash?: string;
-  dataset?: ReturnType<typeof canonicalReportForVerification>;
+  dataset?: Record<string, unknown>;
 };
+
+type ReportVerificationType = "EMISSION_SURVEY" | "LCA_SUMMARY";
 
 type ReportVerificationRecord = ReportVerificationPayload & {
   source: "browser-print";
@@ -500,17 +503,26 @@ function resolveVerificationPayload(raw: string): ReportVerificationPayload | nu
   return extractVerificationPayload(raw) || findPayloadFromVisibleVerificationFields(raw);
 }
 
-async function buildReportVerificationRecord(report: EmissionSurveyReportPayload): Promise<ReportVerificationRecord> {
+async function buildReportVerificationRecord(report: EmissionSurveyReportPayload, options?: {
+  reportType?: ReportVerificationType;
+  reportTitle?: string;
+  datasetExtension?: Record<string, unknown>;
+}): Promise<ReportVerificationRecord> {
   const issuedAt = new Date().toISOString();
-  const payloadHash = await sha256Hex(stableStringify(canonicalReportForVerification(report)));
+  const reportType = options?.reportType || "EMISSION_SURVEY";
+  const dataset = options?.datasetExtension
+    ? { ...canonicalReportForVerification(report), reportType, ...options.datasetExtension }
+    : canonicalReportForVerification(report);
+  const payloadHash = await sha256Hex(stableStringify(dataset));
   const certificateId = `CRN-${issuedAt.slice(0, 10).replace(/-/g, "")}-${payloadHash.slice(0, 12).toUpperCase()}`;
   const integrityCode = (await sha256Hex(`${certificateId}|${payloadHash}|${report.summary.totalEmission}|CARBONET`)).slice(0, 24).toUpperCase();
   return {
     version: 2,
+    reportType,
     source: "browser-print",
     certificateId,
     issuedAt,
-    reportTitle: report.pageTitle,
+    reportTitle: options?.reportTitle || report.pageTitle,
     productName: report.productName,
     generatedAt: report.generatedAt,
     totalEmission: report.summary.totalEmission,
@@ -520,7 +532,7 @@ async function buildReportVerificationRecord(report: EmissionSurveyReportPayload
     payloadHash,
     integrityCode,
     datasetHash: payloadHash,
-    dataset: canonicalReportForVerification(report),
+    dataset,
     verificationUrl: `${window.location.origin}${buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify")}?certificateId=${encodeURIComponent(certificateId)}`
   };
 }
@@ -2387,6 +2399,7 @@ export function EmissionSurveyReportPrintPage() {
 
 export function EmissionSurveyReportVerifyPage() {
   const en = isEnglish();
+  const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
   const [manualBlock, setManualBlock] = useState("");
   const [fileName, setFileName] = useState("");
   const [uploadedVerificationText, setUploadedVerificationText] = useState("");
@@ -2429,6 +2442,15 @@ export function EmissionSurveyReportVerifyPage() {
       setResultMessage(en
         ? `No Carbonet verification block was found in ${sourceLabel}. If the browser compressed PDF text, paste the block printed on the last page.`
         : `${sourceLabel}에서 Carbonet 검증 블록을 찾지 못했습니다. 브라우저가 PDF 텍스트를 압축했다면 마지막 페이지의 검증 블록을 붙여넣으세요.`);
+      return;
+    }
+    const payloadReportType = nextPayload.reportType || (nextPayload.dataset?.reportType as ReportVerificationType | undefined) || "EMISSION_SURVEY";
+    if (payloadReportType !== selectedReportType) {
+      appendVerificationLog("WARN", en ? "The uploaded report type differs from the selected type." : "업로드 문서 종류가 선택한 리포트 종류와 다릅니다.", `${payloadReportType} != ${selectedReportType}`);
+      setPayload(nextPayload);
+      setDatasetVerification(null);
+      setResultTone("warning");
+      setResultMessage(en ? "Select the correct report type and upload the document again." : "올바른 리포트 종류를 선택한 후 문서를 다시 업로드하세요.");
       return;
     }
     setPayload(nextPayload);
@@ -2483,7 +2505,7 @@ export function EmissionSurveyReportVerifyPage() {
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
-      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile);
+      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType);
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
       if (!preserveDigitalPayload) {
@@ -2590,6 +2612,37 @@ export function EmissionSurveyReportVerifyPage() {
       <AdminWorkspacePageFrame>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <fieldset className="mb-5 border-b border-slate-200 pb-5">
+              <legend className="text-sm font-black text-slate-800">{en ? "Report type" : "검증할 리포트 종류"}</legend>
+              <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup">
+                {([
+                  ["EMISSION_SURVEY", en ? "Emission report" : "탄소배출량 리포트", en ? "Emission survey and calculation" : "배출 설문·산정 보고서"],
+                  ["LCA_SUMMARY", en ? "Product LCA summary" : "제품 LCA 수행 개요", en ? "Product LCA overview report" : "제품 LCA 요약 보고서"]
+                ] as const).map(([value, label, description]) => (
+                  <button
+                    aria-pressed={selectedReportType === value}
+                    className={`min-h-20 border px-4 py-3 text-left transition-colors ${selectedReportType === value ? "border-emerald-600 bg-emerald-50 text-emerald-950" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"}`}
+                    key={value}
+                    onClick={() => {
+                      setSelectedReportType(value);
+                      setPayload(null);
+                      setDatasetVerification(null);
+                      setPhotoVerification(null);
+                      setFileName("");
+                      setPhotoPreviewUrls([]);
+                      setVerificationLogs([]);
+                      setResultTone("info");
+                      setResultMessage(en ? "Upload a report of the selected type." : "선택한 종류의 리포트를 업로드하세요.");
+                    }}
+                    role="radio"
+                    type="button"
+                  >
+                    <strong className="block text-sm">{label}</strong>
+                    <span className="mt-1 block text-xs font-semibold opacity-70">{description}</span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{en ? "PDF Verification" : "PDF 검증"}</p>
@@ -3005,7 +3058,32 @@ export function EmissionSurveyLcaSummaryPrintPage() {
     setDownloadBusy(true);
     setDownloadMessage("");
     try {
-      const record = await buildReportVerificationRecord(report);
+      const record = await buildReportVerificationRecord(report, {
+        reportType: "LCA_SUMMARY",
+        reportTitle: lcaDocumentTitle,
+        datasetExtension: {
+          lcaSummary: {
+            companyName,
+            productFamily,
+            functionalUnit,
+            productModel,
+            productDescription,
+            productType,
+            equipmentWeight,
+            bucketCapacity,
+            referenceFlow,
+            dataPeriod,
+            regionScope,
+            lcaSoftware,
+            preManufacturingMass,
+            postManufacturingMass,
+            normalizedOutputMass,
+            massUnit,
+            totalEmission,
+            totalEmissionPerMass
+          }
+        }
+      });
       await issueSurveyReportVerification(record);
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
@@ -3048,6 +3126,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
         addImage: (image: string, format: string, x: number, y: number, width: number, height: number) => void;
         setProperties?: (properties: Record<string, string>) => void;
+        output: (type: "blob") => Blob;
       }) => {
         const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
         for (let page = 1; page <= pageCount; page += 1) {
@@ -3064,6 +3143,10 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           keywords: `carbonet,lca,verification,${record.certificateId}`,
           creator: "Carbonet"
         });
+        const issuedPdf = pdf.output("blob");
+        return renderReportPdfPages(new File([issuedPdf], buildLcaSummaryPdfFileName(report, lcaDocumentTitle), { type: "application/pdf" }), () => undefined)
+          .then(buildReportVisualProfile)
+          .then((visualProfile) => registerSurveyReportVisualProfile(record.certificateId, visualProfile));
       });
       await worker.save();
       setDownloadMessage(en ? "LCA summary PDF downloaded with hidden verification data." : "숨김 검증 정보가 포함된 LCA 요약 PDF를 다운로드했습니다.");

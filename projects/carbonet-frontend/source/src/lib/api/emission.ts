@@ -206,6 +206,7 @@ export async function fetchSurveyMaterialEnglishNames(materialNames: string[]) {
 }
 
 export type ReportVerificationDatasetPayload = {
+  reportType?: "EMISSION_SURVEY" | "LCA_SUMMARY";
   certificateId: string;
   payloadHash: string;
   integrityCode: string;
@@ -353,10 +354,10 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   payloadHash: string;
   integrityCode: string;
   datasetHash: string;
-}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }) {
+}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY") {
   return postJson<ReportPhotoVerificationResponse>(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
-    { ocrText, qrEvidence, visualProfile },
+    { ocrText, qrEvidence, visualProfile, reportType },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }

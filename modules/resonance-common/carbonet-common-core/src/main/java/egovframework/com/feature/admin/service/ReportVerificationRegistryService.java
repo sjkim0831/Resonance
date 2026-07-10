@@ -162,6 +162,10 @@ public class ReportVerificationRegistryService {
     @Transactional(readOnly = true)
     public Map<String, Object> verifyOcr(Map<String, Object> request) {
         String ocrText = required(request, "ocrText");
+        String requestedReportType = text(request.get("reportType"));
+        if (requestedReportType.isBlank()) {
+            requestedReportType = "EMISSION_SURVEY";
+        }
         String normalizedText = normalizeText(ocrText);
         Map<?, ?> qrEvidence = request.get("qrEvidence") instanceof Map<?, ?> value ? value : Map.of();
         String qrCertificateId = text(qrEvidence.get("certificateId"));
@@ -190,6 +194,10 @@ public class ReportVerificationRegistryService {
         JsonNode uploadedVisualProfile = objectMapper.valueToTree(request.get("visualProfile"));
         for (Map<String, Object> candidate : candidates) {
             JsonNode dataset = readJson(candidate.get("dataset_json"));
+            String candidateReportType = dataset.path("reportType").asText("EMISSION_SURVEY");
+            if (!requestedReportType.equalsIgnoreCase(candidateReportType)) {
+                continue;
+            }
             Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
             double contentScore = ((Number) score.get("score")).doubleValue();
             String certificateId = text(candidate.get("certificate_id"));
@@ -259,7 +267,8 @@ public class ReportVerificationRegistryService {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("verificationMode", "PHOTO_OCR_DATASET");
         response.put("ocrCharacterCount", ocrText.length());
-        response.put("candidateCount", candidates.size());
+        response.put("reportType", requestedReportType);
+        response.put("candidateCount", comparisons.size());
         response.put("detectedCertificateId", detectedCertificateId);
         response.put("qrDetected", qrDetected);
         response.put("comparisons", comparisons);
