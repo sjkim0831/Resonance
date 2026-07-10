@@ -135,6 +135,30 @@ public class ReportVerificationRegistryService {
         return response;
     }
 
+    @Transactional
+    public Map<String, Object> registerVisualProfile(Map<String, Object> request) {
+        String certificateId = required(request, "certificateId");
+        JsonNode profile = objectMapper.valueToTree(request.get("visualProfile"));
+        if (profile == null || !profile.isObject() || !profile.path("pages").isArray()) {
+            throw new IllegalArgumentException("A page visual profile is required.");
+        }
+        String profileJson = writeJson(profile);
+        if (profileJson.length() > 2_000_000) {
+            throw new IllegalArgumentException("The visual profile is too large.");
+        }
+        int updated = jdbcTemplate.update("""
+                UPDATE carbonet_report_verification_registry
+                   SET visual_profile_json = CAST(? AS jsonb), visual_profile_version = 1,
+                       visual_profile_updated_at = now(), updated_at = now()
+                 WHERE certificate_id = ? AND status_code = 'ISSUED'
+                """, profileJson, certificateId);
+        if (updated != 1) {
+            throw new IllegalArgumentException("Issued report not found.");
+        }
+        return Map.of("success", true, "certificateId", certificateId,
+                "pageCount", profile.path("pages").size(), "profileVersion", 1);
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> verifyOcr(Map<String, Object> request) {
         String ocrText = required(request, "ocrText");
@@ -153,7 +177,7 @@ public class ReportVerificationRegistryService {
                 : "";
         List<Map<String, Object>> candidates = jdbcTemplate.queryForList("""
                 SELECT certificate_id, issued_at, report_title, product_name, total_emission,
-                       row_count, payload_hash, integrity_code, dataset_hash,
+                       row_count, payload_hash, integrity_code, dataset_hash, visual_profile_json::text AS visual_profile_json,
                        dataset_json::text AS dataset_json
                   FROM carbonet_report_verification_registry
                  WHERE status_code = 'ISSUED'
@@ -163,6 +187,7 @@ public class ReportVerificationRegistryService {
         Map<String, Object> best = null;
         double bestScore = -1;
         List<Map<String, Object>> comparisons = new ArrayList<>();
+        JsonNode uploadedVisualProfile = objectMapper.valueToTree(request.get("visualProfile"));
         for (Map<String, Object> candidate : candidates) {
             JsonNode dataset = readJson(candidate.get("dataset_json"));
             Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
@@ -180,6 +205,7 @@ public class ReportVerificationRegistryService {
                     && qrIntegrityCode.equalsIgnoreCase(integrityCode)
                     && qrDatasetHash.equalsIgnoreCase(datasetHash);
             double combinedScore = qrFullyMatched ? 85 + (contentScore * 0.15) : contentScore;
+            Map<String, Object> visualScore = scoreVisualProfile(readJsonNullable(candidate.get("visual_profile_json")), uploadedVisualProfile);
             int confidence = (int) Math.round(combinedScore);
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("certificateId", certificateId);
@@ -200,6 +226,7 @@ public class ReportVerificationRegistryService {
             comparison.put("datasetHashMatch", datasetHashMatch);
             comparison.put("verificationTagMatch", certificateIdMatch || payloadHashMatch || integrityCodeMatch || datasetHashMatch);
             comparison.put("qrFullyMatched", qrFullyMatched);
+            comparison.putAll(visualScore);
             comparison.putAll(score);
             comparisons.add(comparison);
             if (combinedScore > bestScore) {
@@ -212,6 +239,7 @@ public class ReportVerificationRegistryService {
                 best.put("qrPayloadHashMatch", qrDetected && qrPayloadHash.equalsIgnoreCase(payloadHash));
                 best.put("qrIntegrityMatch", qrDetected && qrIntegrityCode.equalsIgnoreCase(integrityCode));
                 best.put("qrDatasetHashMatch", qrDetected && qrDatasetHash.equalsIgnoreCase(datasetHash));
+                best.putAll(visualScore);
             }
         }
         comparisons.sort((left, right) -> Integer.compare(
@@ -237,7 +265,10 @@ public class ReportVerificationRegistryService {
         int confidence = (int) Math.round(bestScore);
         double contentConfidence = ((Number) best.get("contentScore")).doubleValue();
         boolean qrFullyMatched = Boolean.TRUE.equals(best.get("qrFullyMatched"));
-        boolean photoConsistent = qrFullyMatched ? contentConfidence >= 40 : confidence >= 75;
+        boolean visualProfileAvailable = Boolean.TRUE.equals(best.get("visualProfileAvailable"));
+        boolean visualMatch = "VISUAL_MATCH".equals(best.get("visualStatus"));
+        boolean photoConsistent = (qrFullyMatched ? contentConfidence >= 40 : confidence >= 75)
+                && (!visualProfileAvailable || visualMatch);
         String status = photoConsistent ? "PHOTO_CONTENT_MATCH" : confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH";
         response.put("photoConsistent", photoConsistent);
         response.put("status", status);
@@ -248,6 +279,11 @@ public class ReportVerificationRegistryService {
         response.put("qrPayloadHashMatch", best.get("qrPayloadHashMatch"));
         response.put("qrIntegrityMatch", best.get("qrIntegrityMatch"));
         response.put("qrDatasetHashMatch", best.get("qrDatasetHashMatch"));
+        response.put("visualProfileAvailable", best.get("visualProfileAvailable"));
+        response.put("visualSimilarity", best.get("visualSimilarity"));
+        response.put("damagedCellCount", best.get("damagedCellCount"));
+        response.put("comparedCellCount", best.get("comparedCellCount"));
+        response.put("visualStatus", best.get("visualStatus"));
         response.put("certificateId", best.get("certificate_id"));
         response.put("issuedAt", best.get("issued_at"));
         response.put("reportTitle", best.get("report_title"));
@@ -406,6 +442,44 @@ public class ReportVerificationRegistryService {
         return previous[actual.length()] <= limit;
     }
 
+    private Map<String, Object> scoreVisualProfile(JsonNode stored, JsonNode uploaded) {
+        if (stored == null || uploaded == null || !stored.isObject() || !uploaded.isObject()) {
+            return Map.of("visualProfileAvailable", false, "visualSimilarity", 0,
+                    "damagedCellCount", 0, "comparedCellCount", 0, "visualStatus", "NOT_AVAILABLE");
+        }
+        JsonNode storedPages = stored.path("pages");
+        JsonNode uploadedPages = uploaded.path("pages");
+        if (!storedPages.isArray() || !uploadedPages.isArray() || storedPages.size() != uploadedPages.size()) {
+            return Map.of("visualProfileAvailable", true, "visualSimilarity", 0,
+                    "damagedCellCount", 0, "comparedCellCount", 0, "visualStatus", "PAGE_MISMATCH");
+        }
+        long differenceTotal = 0;
+        int compared = 0;
+        int damaged = 0;
+        for (int page = 0; page < storedPages.size(); page++) {
+            JsonNode expectedValues = storedPages.path(page).path("values");
+            JsonNode actualValues = uploadedPages.path(page).path("values");
+            if (!expectedValues.isArray() || !actualValues.isArray() || expectedValues.size() != actualValues.size()) {
+                return Map.of("visualProfileAvailable", true, "visualSimilarity", 0,
+                        "damagedCellCount", damaged, "comparedCellCount", compared, "visualStatus", "GRID_MISMATCH");
+            }
+            for (int index = 0; index < expectedValues.size(); index++) {
+                int difference = Math.abs(expectedValues.get(index).asInt() - actualValues.get(index).asInt());
+                differenceTotal += difference;
+                compared++;
+                if (difference >= 42) {
+                    damaged++;
+                }
+            }
+        }
+        int similarity = compared == 0 ? 0 : (int) Math.round(100 - Math.min(100, (differenceTotal / (double) compared) / 2.55));
+        double damageRatio = compared == 0 ? 1 : damaged / (double) compared;
+        String status = similarity >= 92 && damageRatio <= 0.015 ? "VISUAL_MATCH"
+                : similarity >= 82 && damageRatio <= 0.06 ? "VISUAL_DAMAGE_REVIEW" : "VISUAL_MISMATCH";
+        return Map.of("visualProfileAvailable", true, "visualSimilarity", similarity,
+                "damagedCellCount", damaged, "comparedCellCount", compared, "visualStatus", status);
+    }
+
     private Map<String, Object> load(String certificateId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
                 SELECT certificate_id, issued_at, report_title, product_name, payload_hash,
@@ -484,6 +558,14 @@ public class ReportVerificationRegistryService {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Stored report dataset is invalid.", exception);
         }
+    }
+
+    private JsonNode readJsonNullable(Object value) {
+        String text = text(value);
+        if (text.isBlank()) {
+            return null;
+        }
+        return readJson(text);
     }
 
     private String text(Object value) {

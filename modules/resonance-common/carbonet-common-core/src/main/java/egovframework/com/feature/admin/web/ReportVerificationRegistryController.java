@@ -38,6 +38,15 @@ public class ReportVerificationRegistryController {
     }
 
     @PostMapping({
+            "/api/admin/emission-survey-report/visual-profile",
+            "/admin/api/admin/emission-survey-report/visual-profile",
+            "/en/admin/api/admin/emission-survey-report/visual-profile"
+    })
+    public ResponseEntity<Map<String, Object>> registerVisualProfile(@RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(reportVerificationRegistryService.registerVisualProfile(payload));
+    }
+
+    @PostMapping({
             "/api/admin/emission-survey-report/verify-ocr",
             "/admin/api/admin/emission-survey-report/verify-ocr",
             "/en/admin/api/admin/emission-survey-report/verify-ocr"

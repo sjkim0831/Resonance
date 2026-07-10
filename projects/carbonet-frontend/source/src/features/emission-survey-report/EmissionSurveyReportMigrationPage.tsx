@@ -4,6 +4,7 @@ import {
   fetchSurveyEcoinventAiRecommendationPage,
   fetchSurveyMaterialEnglishNames,
   issueSurveyReportVerification,
+  registerSurveyReportVisualProfile,
   verifySurveyReportDataset,
   verifySurveyReportPhoto,
   type ReportPhotoVerificationResponse,
@@ -449,6 +450,34 @@ async function renderReportPdfPages(file: File, onProgress: (progress: number, s
   }
   await pdfDocument.destroy();
   return pages;
+}
+
+async function buildReportVisualProfile(pages: Blob[]) {
+  const columns = 48;
+  const rows = 68;
+  const profiles: Array<{ values: number[] }> = [];
+  for (const page of pages) {
+    const bitmap = await createImageBitmap(page, { imageOrientation: "from-image" });
+    const canvas = document.createElement("canvas");
+    canvas.width = columns;
+    canvas.height = rows;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      bitmap.close();
+      throw new Error("Visual fingerprint canvas is not available.");
+    }
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, columns, rows);
+    context.drawImage(bitmap, 0, 0, columns, rows);
+    bitmap.close();
+    const pixels = context.getImageData(0, 0, columns, rows).data;
+    const values: number[] = [];
+    for (let index = 0; index < pixels.length; index += 4) {
+      values.push(Math.round(pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114));
+    }
+    profiles.push({ values });
+  }
+  return { version: 1, columns, rows, pages: profiles };
 }
 
 function resolveVerificationPayload(raw: string): ReportVerificationPayload | null {
@@ -1804,13 +1833,14 @@ export function EmissionSurveyReportPrintPage() {
         .set(pdfOptions)
         .from(element)
         .toPdf();
-      await worker.get("pdf").then((pdf: {
+      await worker.get("pdf").then(async (pdf: {
         internal: { getNumberOfPages: () => number };
         setPage: (page: number) => void;
         setFontSize: (size: number) => void;
         setTextColor: (r: number, g: number, b: number) => void;
         text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
         addImage: (image: string, format: string, x: number, y: number, width: number, height: number) => void;
+        output: (type: "blob") => Blob;
         setProperties?: (properties: Record<string, string>) => void;
       }) => {
         const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
@@ -1838,6 +1868,9 @@ export function EmissionSurveyReportPrintPage() {
           keywords: `carbonet,verification,${record.certificateId}`,
           creator: "Carbonet"
         });
+        const issuedPdf = pdf.output("blob");
+        const issuedPages = await renderReportPdfPages(new File([issuedPdf], `${record.certificateId}.pdf`, { type: "application/pdf" }), () => undefined);
+        await registerSurveyReportVisualProfile(record.certificateId, await buildReportVisualProfile(issuedPages));
       });
       await worker.save();
       setVerificationMessage(en ? "PDF file downloaded with hidden verification data." : "숨김 검증 정보가 포함된 PDF 파일을 다운로드했습니다.");
@@ -2413,9 +2446,10 @@ export function EmissionSurveyReportVerifyPage() {
     setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
     try {
       const qrEvidence = await scanReportQrEvidence(pages);
+      const visualProfile = await buildReportVisualProfile(pages);
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       setUploadedVerificationText(recognized.text);
-      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined);
+      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile);
       setPhotoVerification(verification);
       if (!preserveDigitalPayload) {
         setPayload(null);
@@ -2606,6 +2640,8 @@ export function EmissionSurveyReportVerifyPage() {
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
                   <span className="col-span-2">QR: {photoVerification.qrFullyMatched ? "VERIFIED" : photoVerification.qrDetected ? "MISMATCH" : "NOT FOUND"}</span>
                   <span className="col-span-2">{en ? "OCR-only confidence" : "OCR 단독 일치도"}: {photoVerification.contentConfidence ?? photoVerification.confidence}%</span>
+                  <span className="col-span-2">{en ? "Visual integrity" : "시각 원본 일치"}: {photoVerification.visualProfileAvailable ? `${photoVerification.visualSimilarity ?? 0}% / ${photoVerification.visualStatus}` : "NOT REGISTERED"}</span>
+                  <span className="col-span-2">{en ? "Damaged regions" : "훼손 의심 영역"}: {photoVerification.damagedCellCount ?? 0}/{photoVerification.comparedCellCount ?? 0}</span>
                   <span>{en ? "Product" : "제품명"}: {photoVerification.productMatched ? "OK" : "-"}</span>
                   <span>{en ? "Title" : "제목"}: {photoVerification.titleMatched ? "OK" : "-"}</span>
                   <span>{en ? "Total" : "총량"}: {photoVerification.totalEmissionMatched ? "OK" : "-"}</span>

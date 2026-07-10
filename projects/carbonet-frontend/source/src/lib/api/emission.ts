@@ -244,6 +244,11 @@ export type ReportPhotoVerificationResponse = {
   qrIntegrityMatch?: boolean;
   qrDatasetHashMatch?: boolean;
   contentConfidence?: number;
+  visualProfileAvailable?: boolean;
+  visualSimilarity?: number;
+  damagedCellCount?: number;
+  comparedCellCount?: number;
+  visualStatus?: "VISUAL_MATCH" | "VISUAL_DAMAGE_REVIEW" | "VISUAL_MISMATCH" | "PAGE_MISMATCH" | "GRID_MISMATCH" | "NOT_AVAILABLE";
   detectedCertificateId?: string;
   productMatched?: boolean;
   titleMatched?: boolean;
@@ -304,10 +309,18 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   payloadHash: string;
   integrityCode: string;
   datasetHash: string;
-}) {
+}, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }) {
   return postJson<ReportPhotoVerificationResponse>(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
-    { ocrText, qrEvidence },
+    { ocrText, qrEvidence, visualProfile },
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function registerSurveyReportVisualProfile(certificateId: string, visualProfile: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }) {
+  return postJson<{ success: boolean; certificateId: string; pageCount: number; profileVersion: number }>(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/visual-profile", "/en/admin/api/admin/emission-survey-report/visual-profile"),
+    { certificateId, visualProfile },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }

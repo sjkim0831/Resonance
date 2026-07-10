@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260710-154500-register-report-visual-profile-governance
+      author: codex
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/20260710-154500-register-report-visual-profile-governance.sql
+            relativeToChangelogFile: false
