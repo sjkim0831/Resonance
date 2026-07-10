@@ -29,7 +29,7 @@ controller, or Carbonet React component.
   move reusable pieces to `resonance-*` only after removing Carbonet dependencies.
 - `projects/carbonet-frontend`: Carbonet Web source and generated runtime assets.
 - `projects/carbonet-backend-metadata`: buildless SDUI and backend metadata.
-- `apps/project-runtime`: compatibility runtime only; do not use for new projects.
+- `apps/carbonet-api`: compatibility runtime only; do not use for new projects.
 
 ## Change and deployment policy
 

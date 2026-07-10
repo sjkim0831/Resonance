@@ -695,13 +695,20 @@ const ADMIN_DOMAIN_OVERRIDES: AdminMenuTreePayload = {
       ] },
       { title: "운영 자산", titleEn: "Operations Assets", icon: "inventory_2", links: [
         { code: "AMENU_ASSET_INVENTORY", text: "자산 인벤토리", tEn: "Asset Inventory", u: "/admin/system/asset-inventory", icon: "inventory_2" },
-        { code: "AMENU_ASSET_DEFICIENCY", text: "자산 미흡 큐", tEn: "Asset Deficiency Queue", u: "/admin/system/asset-deficiency-queue", icon: "playlist_add_check" },
-        { code: "AMENU_VERIFICATION_ASSET", text: "검증 자산 관리", tEn: "Verification Asset Management", u: "/admin/system/verification-asset-management", icon: "fact_check" }
+        { code: "AMENU_ASSET_DEFICIENCY", text: "자산 미흡 큐", tEn: "Asset Deficiency Queue", u: "/admin/system/asset-gap", icon: "playlist_add_check" },
+        { code: "AMENU_VERIFICATION_ASSET", text: "검증 자산 관리", tEn: "Verification Asset Management", u: "/admin/system/verification-assets", icon: "fact_check" }
       ] },
       { title: "버전·복구", titleEn: "Version & Recovery", icon: "settings_backup_restore", links: [
         { code: "AMENU_OPERATIONS_VERSION_MANAGEMENT", text: "프로젝트 버전 관리", tEn: "Project Version Management", u: "/admin/system/version-management", icon: "commit" },
         { code: "AMENU_REPAIR_WORKBENCH", text: "복구 작업대", tEn: "Repair Workbench", u: "/admin/system/repair-workbench", icon: "healing" },
         { code: "AMENU_CODEX_PROVISION", text: "Codex 실행 관리", tEn: "Codex Provision", u: "/admin/system/codex-provision", icon: "terminal" }
+      ] },
+      { title: "모니터링", titleEn: "Monitoring", icon: "monitoring", links: [
+        { code: "AMENU_OPERATIONS_MONITORING_DASHBOARD", text: "모니터링 대시보드", tEn: "Monitoring Dashboard", u: "/admin/system/monitoring-dashboard", icon: "dashboard" },
+        { code: "AMENU_OPERATIONS_CRON_MONITORING", text: "크론 모니터링", tEn: "Cron Monitoring", u: "/admin/system/cron-monitoring", icon: "schedule" },
+        { code: "AMENU_OPERATIONS_DB_MONITORING", text: "DB 모니터링", tEn: "DB Monitoring", u: "/admin/system/db-monitoring", icon: "database" },
+        { code: "AMENU_OPERATIONS_BATCH_MONITORING", text: "배치 모니터링", tEn: "Batch Monitoring", u: "/admin/system/batch-monitoring", icon: "factory" },
+        { code: "AMENU_OPERATIONS_GIT_BUILD_MONITORING", text: "깃 빌드 모니터링", tEn: "Git Build Monitoring", u: "/admin/system/git-build-monitoring", icon: "account_tree" }
       ] }
     ]
   },

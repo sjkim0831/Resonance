@@ -11,7 +11,7 @@ Purpose:
   archive the artifact, deploy it to the main runtime, and verify remote freshness.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   bash ops/scripts/verify-large-move-app-closure.sh
@@ -131,14 +131,14 @@ build_artifact() {
   (cd "$BUILD_DIR/frontend" && npm run build)
 
   log "backend package"
-  (cd "$BUILD_DIR" && mvn -q -pl apps/carbonet-app -am -DskipTests package)
+  (cd "$BUILD_DIR" && mvn -q -pl apps/carbonet-api -am -DskipTests package)
 
   log "app closure verification"
   bash "$BUILD_DIR/ops/scripts/verify-large-move-app-closure.sh"
 }
 
 archive_artifact() {
-  local built_jar_path="$BUILD_DIR/apps/carbonet-app/target/$ARTIFACT_NAME"
+  local built_jar_path="$BUILD_DIR/apps/carbonet-api/target/$ARTIFACT_NAME"
   mkdir -p "$ARTIFACT_DIR"
   cp "$built_jar_path" "$ARTIFACT_DIR/$ARTIFACT_NAME"
   cp "$built_jar_path" "$ARTIFACT_DIR/carbonet-$(date +%Y%m%d-%H%M%S).jar"
@@ -183,7 +183,7 @@ sync_nginx_site() {
 
 deploy_main() {
   local remote_tmp="/tmp/$ARTIFACT_NAME"
-  local remote_target_dir="$MAIN_REMOTE_ROOT/apps/carbonet-app/target"
+  local remote_target_dir="$MAIN_REMOTE_ROOT/apps/carbonet-api/target"
   local remote_verify="$MAIN_REMOTE_ROOT/ops/scripts/codex-verify-18000-freshness.sh"
   sync_nginx_site
   if [[ -n "$MAIN_REMOTE_PASSWORD" ]]; then

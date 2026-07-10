@@ -18,7 +18,7 @@ import java.io.File;
 @RequestMapping("/api/mobile")
 public class MobileDownloadController {
 
-    @Value("${app.mobile.apk.path:/opt/Resonance/apps/carbonet-app/src/main/resources/static/download}")
+    @Value("${app.mobile.apk.path:/opt/Resonance/projects/carbonet-assets/static/download}")
     private String apkPath;
 
     @GetMapping("/download/carbonet.apk")

@@ -30,7 +30,7 @@
     "scripts/runtime-configs/**"
   ],
   "forbiddenForBackendScriptWork": [
-    "apps/project-runtime/src/main/java/**",
+    "apps/carbonet-api/src/main/java/**",
     "modules/resonance-common/**",
     "modules/resonance-builder/**"
   ],

@@ -15,7 +15,7 @@ WORKDIR /app
 
 # Copy the assembled release files into the container
 # This assumes the build context is var/releases/[PROJECT_ID]
-COPY project-runtime.jar /app/
+COPY carbonet-api.jar /app/
 COPY lib/ /app/lib/
 
 COPY ops/config/ /app/config/
@@ -25,4 +25,4 @@ COPY ops/config/ /app/config/
 EXPOSE ${SERVER_PORT}
 
 # Run the application with dynamic classpath
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Dloader.path=lib/ -jar project-runtime.jar --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=8080"]
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Dloader.path=lib/ -jar carbonet-api.jar --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=8080"]

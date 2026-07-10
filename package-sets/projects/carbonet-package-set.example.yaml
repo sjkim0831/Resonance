@@ -3,7 +3,7 @@ framework: resonance
 package_set_id: carbonet-runtime-v0.1
 
 runtime_packages:
-  - apps/project-runtime
+  - apps/carbonet-api
   - projects/carbonet-runtime
 
 adapter_packages:

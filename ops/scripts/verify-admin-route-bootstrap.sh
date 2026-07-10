@@ -14,7 +14,7 @@ Purpose:
   and that the matching /api/admin/app/bootstrap response is available.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Environment overrides:
   PORT
@@ -38,7 +38,7 @@ PORT="${PORT:-18000}"
 CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
 ENV_FILE="${ENV_FILE:-$CONFIG_DIR/carbonet-${PORT}.env}"
 RUNTIME_LOG="${RUNTIME_LOG:-/tmp/carbonet-runtime-18000.log}"
-TARGET_JAR_PATH="${TARGET_JAR_PATH:-$ROOT_DIR/apps/carbonet-app/target/carbonet.jar}"
+TARGET_JAR_PATH="${TARGET_JAR_PATH:-$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar}"
 TMP_DIR="$(mktemp -d /tmp/admin-route-bootstrap.XXXXXX)"
 CLASSPATH_FILE="$TMP_DIR/runtime.classpath"
 JAVA_SOURCE="$TMP_DIR/ForgeAdminRouteToken.java"
@@ -118,7 +118,7 @@ mkdir -p "$JAVA_CLASS_DIR"
 mkdir -p "$APP_CLASSES_DIR"
 
 info "building runtime classpath"
-mvn -q -f "$ROOT_DIR/apps/carbonet-app/pom.xml" -DincludeScope=runtime dependency:build-classpath "-Dmdep.outputFile=$CLASSPATH_FILE" >/dev/null
+mvn -q -f "$ROOT_DIR/apps/carbonet-api/pom.xml" -DincludeScope=runtime dependency:build-classpath "-Dmdep.outputFile=$CLASSPATH_FILE" >/dev/null
 require_file "$CLASSPATH_FILE"
 (cd "$APP_CLASSES_DIR" && jar xf "$TARGET_JAR_PATH" BOOT-INF/classes)
 APP_COMPILE_CLASSPATH="$APP_CLASSES_DIR/BOOT-INF/classes"

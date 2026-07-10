@@ -27,9 +27,9 @@ DIAGNOSTIC_LOG="$RUN_DIR/diagnostic-$(date +%Y%m%d-%H%M%S).log"
 
 OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
 FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
-MAVEN_DIR="$ROOT_DIR/apps/project-runtime"
+MAVEN_DIR="$ROOT_DIR/apps/carbonet-api"
 
-PRIMARY_APP="project-runtime"
+PRIMARY_APP="carbonet-api"
 
 NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-4096}"
 MAVEN_OPTS="${MAVEN_OPTS:--Xmx2g -Xms512m}"
@@ -51,7 +51,6 @@ else
     }
     JAR_OUTPUT_PATH() { echo "$ROOT_DIR/apps/$PRIMARY_APP/target/$PRIMARY_APP.jar"; }
 fi
-log "Build tool: $BUILD_TOOL"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 

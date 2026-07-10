@@ -80,7 +80,7 @@ LOCK_FILE="$RUN_DIR/resonance-k8s-build-deploy-80.lock"
 # Overlay paths
 OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
 FRONTEND_SOURCE_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
-MAVEN_SOURCE_DIR="$ROOT_DIR/apps/project-runtime"
+MAVEN_SOURCE_DIR="$ROOT_DIR/apps/carbonet-api"
 
 # Memory settings (for safe builds)
 NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-4096}"
@@ -402,7 +402,7 @@ validate_frontend_build() {
 }
 
 validate_maven_build() {
-  local jar_file="$ROOT_DIR/apps/project-runtime/target/project-runtime.jar"
+  local jar_file="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
   
   if [[ ! -f "$jar_file" ]]; then
     rollback_and_fail "MAVEN_BUILD_FAILED" "Maven build output not found: $jar_file"
@@ -533,14 +533,14 @@ EOF
     MAVEN_BUILD_FAILED|MAVEN_BUILD_CORRUPT)
       cat <<'EOF'
   1. Check Maven build errors:
-     cd $ROOT_DIR/apps/project-runtime && mvn clean package -DskipTests 2>&1 | tail -50
+     cd $ROOT_DIR/apps/carbonet-api && mvn clean package -DskipTests 2>&1 | tail -50
   
   2. Check Java version:
      java -version
   
   3. Clear Maven cache and retry:
      rm -rf ~/.m2/repository
-     cd $ROOT_DIR/apps/project-runtime && mvn clean package -DskipTests
+     cd $ROOT_DIR/apps/carbonet-api && mvn clean package -DskipTests
 EOF
       ;;
     OVERLAY_SYNC_FAILED|OVERLAY_PATH_MISSING|OVERLAY_SYNC_INCOMPLETE)
@@ -651,14 +651,14 @@ build_frontend() {
   root_cmd rm -rf \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app" \
     "$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app" \
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app" \
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static/react-app" \
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" \
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" \
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
   
   mkdir -p \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static" \
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static" \
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static" \
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static"
   
   normalize_generated_ownership "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static"
   
@@ -714,10 +714,10 @@ build_maven() {
     return 0
   fi
   
-  normalize_generated_ownership "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
-  root_cmd rm -rf "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
+  normalize_generated_ownership "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
+  root_cmd rm -rf "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
   
-  MAVEN_OPTS="$MAVEN_OPTS" mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true -T 1C package
+  MAVEN_OPTS="$MAVEN_OPTS" mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true -T 1C package
   
   # Validate
   validate_maven_build
@@ -847,7 +847,7 @@ build_image() {
   mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
   
   # Copy JAR
-  cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RELEASE_DIR/project-runtime.jar"
+  cp "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" "$RELEASE_DIR/carbonet-api.jar"
   
   # Copy KISA library if exists
   if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
@@ -968,7 +968,7 @@ ensure_ha_policy() {
 write_release_manifest() {
   local git_sha jar_sha
   git_sha="$(git -C "$ROOT_DIR" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
-  jar_sha="$(sha256sum "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" 2>/dev/null | awk '{print $1}' || echo unknown)"
+  jar_sha="$(sha256sum "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" 2>/dev/null | awk '{print $1}' || echo unknown)"
   
   printf '{"ts":"%s","projectId":"%s","gitSha":"%s","image":"%s","jarSha256":"%s"}\n' \
     "$(date -Iseconds)" "$PROJECT_ID" "$git_sha" "$IMAGE_NAME" "$jar_sha" >> "$MANIFEST_LOG"

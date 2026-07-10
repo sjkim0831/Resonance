@@ -2013,7 +2013,7 @@ build_package_and_archive_local_jar() {
   mvn -q -DskipTests package
   log "local backend package completed"
 
-  local target_jar="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+  local target_jar="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
   [[ -f "$target_jar" ]] || fail "packaged jar not found: $target_jar"
   cp "$target_jar" "$LOCAL_JAR_ARCHIVE_FILE"
   sha256sum "$LOCAL_JAR_ARCHIVE_FILE" >"${LOCAL_JAR_ARCHIVE_FILE}.sha256"
@@ -2033,7 +2033,7 @@ commit_and_push_all() {
   log "git add started"
   git -C "$ROOT_DIR" add -A -- . \
     ':(exclude).codex/config.toml' \
-    ':(exclude)apps/carbonet-app/target'
+    ':(exclude)apps/carbonet-api/target'
 
   if git -C "$ROOT_DIR" diff --cached --quiet; then
     log "no staged changes; commit skipped"
@@ -2126,7 +2126,7 @@ if command -v npm >/dev/null 2>&1; then
   bash ops/scripts/build-restart-18000.sh
 else
   echo "[windows-db-sync-push-and-fresh-deploy-221] npm not found on remote; running backend package + runtime restart"
-  mvn -q -pl apps/carbonet-app -am -DskipTests package
+  mvn -q -pl apps/carbonet-api -am -DskipTests package
   bash ops/scripts/restart-18000-runtime.sh
 fi
 VERIFY_WAIT_SECONDS="${VERIFY_WAIT_SECONDS:-180}" bash ops/scripts/codex-verify-18000-freshness.sh
@@ -2170,14 +2170,14 @@ if command -v npm >/dev/null 2>&1; then
   bash ops/scripts/build-restart-18000.sh
 else
   echo "[windows-db-sync-push-and-fresh-deploy-221] npm not found on remote; running backend package + runtime restart"
-  mvn -q -pl apps/carbonet-app -am -DskipTests package
+  mvn -q -pl apps/carbonet-api -am -DskipTests package
   bash ops/scripts/restart-18000-runtime.sh
 fi
 VERIFY_WAIT_SECONDS="${VERIFY_WAIT_SECONDS:-180}" bash ops/scripts/codex-verify-18000-freshness.sh
 EOF
 )
   elif [[ "$remote_mode" == "jar-mosh" ]]; then
-    local local_target_jar="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+    local local_target_jar="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
     [[ -f "$local_target_jar" ]] || fail "jar-mosh requires local packaged jar: $local_target_jar"
 
     log "221 jar-mosh upload started"
@@ -2186,13 +2186,13 @@ EOF
       -o UserKnownHostsFile=/dev/null \
       -p "$MAIN_REMOTE_PORT" \
       "$MAIN_TARGET" \
-      "mkdir -p '$MAIN_REMOTE_ROOT/apps/carbonet-app/target' '$MAIN_REMOTE_ROOT/ops/scripts' '$MAIN_REMOTE_ROOT/ops/config' '$remote_tmp_dir'"
+      "mkdir -p '$MAIN_REMOTE_ROOT/apps/carbonet-api/target' '$MAIN_REMOTE_ROOT/ops/scripts' '$MAIN_REMOTE_ROOT/ops/config' '$remote_tmp_dir'"
     sshpass -p "$MAIN_REMOTE_PASSWORD" scp \
       -o StrictHostKeyChecking=no \
       -o UserKnownHostsFile=/dev/null \
       -P "$MAIN_REMOTE_PORT" \
       "$local_target_jar" \
-      "$MAIN_TARGET:$MAIN_REMOTE_ROOT/apps/carbonet-app/target/carbonet.jar"
+      "$MAIN_TARGET:$MAIN_REMOTE_ROOT/apps/carbonet-api/target/carbonet-api.jar"
     local script_path=""
     for script_path in "${remote_scripts[@]}"; do
       sshpass -p "$MAIN_REMOTE_PASSWORD" scp \
@@ -4328,7 +4328,7 @@ build_package_and_archive_local_jar() {
   mvn -q -DskipTests package
   log "local backend package completed"
 
-  local target_jar="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+  local target_jar="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
   [[ -f "$target_jar" ]] || fail "packaged jar not found: $target_jar"
   cp "$target_jar" "$LOCAL_JAR_ARCHIVE_FILE"
   sha256sum "$LOCAL_JAR_ARCHIVE_FILE" >"${LOCAL_JAR_ARCHIVE_FILE}.sha256"
@@ -4348,7 +4348,7 @@ commit_and_push_all() {
   log "git add started"
   git -C "$ROOT_DIR" add -A -- . \
     ':(exclude).codex/config.toml' \
-    ':(exclude)apps/carbonet-app/target'
+    ':(exclude)apps/carbonet-api/target'
 
   if git -C "$ROOT_DIR" diff --cached --quiet; then
     log "no staged changes; commit skipped"
@@ -4441,7 +4441,7 @@ if command -v npm >/dev/null 2>&1; then
   bash ops/scripts/build-restart-18000.sh
 else
   echo "[windows-db-sync-push-and-fresh-deploy-221] npm not found on remote; running backend package + runtime restart"
-  mvn -q -pl apps/carbonet-app -am -DskipTests package
+  mvn -q -pl apps/carbonet-api -am -DskipTests package
   bash ops/scripts/restart-18000-runtime.sh
 fi
 VERIFY_WAIT_SECONDS="${VERIFY_WAIT_SECONDS:-180}" bash ops/scripts/codex-verify-18000-freshness.sh
@@ -4485,14 +4485,14 @@ if command -v npm >/dev/null 2>&1; then
   bash ops/scripts/build-restart-18000.sh
 else
   echo "[windows-db-sync-push-and-fresh-deploy-221] npm not found on remote; running backend package + runtime restart"
-  mvn -q -pl apps/carbonet-app -am -DskipTests package
+  mvn -q -pl apps/carbonet-api -am -DskipTests package
   bash ops/scripts/restart-18000-runtime.sh
 fi
 VERIFY_WAIT_SECONDS="${VERIFY_WAIT_SECONDS:-180}" bash ops/scripts/codex-verify-18000-freshness.sh
 EOF
 )
   elif [[ "$remote_mode" == "jar-mosh" ]]; then
-    local local_target_jar="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+    local local_target_jar="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
     [[ -f "$local_target_jar" ]] || fail "jar-mosh requires local packaged jar: $local_target_jar"
 
     log "221 jar-mosh upload started"
@@ -4501,13 +4501,13 @@ EOF
       -o UserKnownHostsFile=/dev/null \
       -p "$MAIN_REMOTE_PORT" \
       "$MAIN_TARGET" \
-      "mkdir -p '$MAIN_REMOTE_ROOT/apps/carbonet-app/target' '$MAIN_REMOTE_ROOT/ops/scripts' '$MAIN_REMOTE_ROOT/ops/config' '$remote_tmp_dir'"
+      "mkdir -p '$MAIN_REMOTE_ROOT/apps/carbonet-api/target' '$MAIN_REMOTE_ROOT/ops/scripts' '$MAIN_REMOTE_ROOT/ops/config' '$remote_tmp_dir'"
     sshpass -p "$MAIN_REMOTE_PASSWORD" scp \
       -o StrictHostKeyChecking=no \
       -o UserKnownHostsFile=/dev/null \
       -P "$MAIN_REMOTE_PORT" \
       "$local_target_jar" \
-      "$MAIN_TARGET:$MAIN_REMOTE_ROOT/apps/carbonet-app/target/carbonet.jar"
+      "$MAIN_TARGET:$MAIN_REMOTE_ROOT/apps/carbonet-api/target/carbonet-api.jar"
     local script_path=""
     for script_path in "${remote_scripts[@]}"; do
       sshpass -p "$MAIN_REMOTE_PASSWORD" scp \

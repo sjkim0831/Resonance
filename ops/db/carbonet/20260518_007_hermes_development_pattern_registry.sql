@@ -107,7 +107,7 @@ SELECT 'BUILD_RESTART_18000', 'DEPLOY', 'Local build restart and freshness verif
        'Local :18000 build, restart, and freshness evidence pattern.',
        '["18000","구동","재시작","빌드","로컬","freshness","runtime"]',
        '[":18000"]',
-       '["frontend","apps/carbonet-app","ops/scripts"]',
+       '["frontend","apps/carbonet-api","ops/scripts"]',
        'MEDIUM', 'carbonet-fast-bootstrap-ops', 'build-restart-18000'
 FROM db_root WHERE NOT EXISTS (SELECT 1 FROM hermes_development_pattern WHERE pattern_id = 'BUILD_RESTART_18000');
 

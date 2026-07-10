@@ -17,7 +17,7 @@ if [ "$TYPE" == "project-runtime" ]; then
     if [ -z "$PROJECT_ID" ]; then
         PROJECT_ID="default"
     fi
-    JAR_PATH="${BASE_DIR}/apps/project-runtime/target/project-runtime.jar"
+    JAR_PATH="${BASE_DIR}/apps/carbonet-api/target/carbonet-api.jar"
     PID_DIR="${RUN_DIR}/project-runtime/${PROJECT_ID}"
     PID_FILE="${PID_DIR}/project-runtime.pid"
     LOG_FILE="${BASE_DIR}/var/logs/project-runtime-${PROJECT_ID}.log"

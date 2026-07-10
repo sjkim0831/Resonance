@@ -255,7 +255,7 @@ export function OperationsCenterMigrationPage() {
       runtime: {
         runtimeMode: "DEDICATED_PROJECT_RUNTIME",
         status: "STOPPED",
-        bootCommand: "java -jar project-runtime.jar --server.port=18002",
+        bootCommand: "java -jar carbonet-api.jar --server.port=18002",
         routing: {
           selectorPath: "/projects/NEW",
           routePrefix: "/r/NEW"

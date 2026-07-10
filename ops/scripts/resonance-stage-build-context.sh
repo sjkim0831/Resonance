@@ -28,7 +28,7 @@ case "$RUNTIME" in
     project)
         JAR="$(jbooted project-runtime)"
         [[ -f "$JAR" ]] || { echo "JAR not found: $JAR" >&2; exit 2; }
-        cp "$JAR" "$CONTEXT_DIR/project-runtime.jar"
+        cp "$JAR" "$CONTEXT_DIR/carbonet-api.jar"
         # lib dir is shared common library dir if present
         if [[ -d "$ROOT_DIR/var/lib/common" ]]; then
             mkdir -p "$CONTEXT_DIR/lib"

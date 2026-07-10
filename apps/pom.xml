@@ -13,8 +13,7 @@
     <packaging>pom</packaging>
     <name>resonance-apps-parent</name>
     <modules>
-        <module>carbonet-app</module>
         <module>operations-console</module>
-        <module>project-runtime</module>
+        <module>carbonet-api</module>
     </modules>
 </project>

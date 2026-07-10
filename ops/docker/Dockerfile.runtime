@@ -1,6 +1,6 @@
 # Resonance project runtime Dockerfile.
 # Build context is prepared by ops/scripts/resonance-k8s-build-deploy-80-v2.sh:
-#   project-runtime.jar
+#   carbonet-api.jar
 #   lib/
 #   ops/config/
 
@@ -14,9 +14,9 @@ ENV SERVER_PORT=8080
 RUN mkdir -p /app/config /app/lib /app/db /opt/reference /var/logs
 WORKDIR /app
 
-COPY project-runtime.jar /app/project-runtime.jar
+COPY carbonet-api.jar /app/carbonet-api.jar
 COPY lib/ /app/lib/
 COPY ops/config/ /app/config/
 
 EXPOSE ${SERVER_PORT}
-ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dloader.path=lib/ -jar project-runtime.jar --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=${SERVER_PORT:-8080}"]
+ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dloader.path=lib/ -jar carbonet-api.jar --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=${SERVER_PORT:-8080}"]

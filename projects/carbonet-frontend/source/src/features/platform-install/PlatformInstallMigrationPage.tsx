@@ -146,7 +146,7 @@ const FALLBACK_PAYLOAD: PlatformInstallPagePayload = {
     {
       packageId: "carbonet-runtime",
       runtimeTarget: "isolated-project-runtime",
-      includes: "project-runtime.jar + project-adapter.jar + common jar set + theme bundle + migration bundle"
+      includes: "carbonet-api.jar + project-adapter.jar + common jar set + theme bundle + migration bundle"
     }
   ],
   k8sReleaseProfiles: [

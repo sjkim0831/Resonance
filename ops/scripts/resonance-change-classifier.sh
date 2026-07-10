@@ -85,8 +85,8 @@ is_project_core_path() {
   [[ "$f" == modules/resonance-common/platform-observability-web/* ]] && return 0
   [[ "$f" == modules/resonance-common/platform-observability-query/* ]] && return 0
   [[ "$f" == modules/resonance-common/platform-observability-payload/* ]] && return 0
-  [[ "$f" == apps/project-runtime/* ]] && return 0
-  [[ "$f" == apps/carbonet-app/* ]] && return 0
+  [[ "$f" == apps/carbonet-api/* ]] && return 0
+  [[ "$f" == apps/carbonet-api/* ]] && return 0
   [[ "$f" == projects/carbonet-frontend/source/* ]] && return 0
   return 1
 }

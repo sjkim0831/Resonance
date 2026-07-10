@@ -18,7 +18,7 @@ STATE_NAME="${STATE_NAME:-switch-$(date '+%Y%m%d-%H%M%S')}"
 
 MAIN_TARGET="${MAIN_TARGET:-carbonet2026@136.117.100.221}"
 MAIN_PRESSURE_REQUIRED="${MAIN_PRESSURE_REQUIRED:-false}"
-SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$ROOT_DIR/apps/carbonet-app/target/carbonet.jar}"
+SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar}"
 IDLE_REMOTE_ROOT="${IDLE_REMOTE_ROOT:-/opt/Resonance}"
 IDLE_REMOTE_JOB_FILE="${IDLE_REMOTE_JOB_FILE:-/tmp/carbonet-idle.nomad.hcl}"
 
@@ -102,13 +102,13 @@ main() {
   nomad job stop -purge -yes "$IDLE_JOB_NAME" >/dev/null 2>&1 || true
 
   log "upload jar to idle node"
-  run_remote "$IDLE_TARGET" "mkdir -p '$IDLE_REMOTE_ROOT/apps/carbonet-app/target' '$IDLE_REMOTE_ROOT/var/logs'"
-  copy_remote "$SOURCE_JAR_PATH" "${IDLE_TARGET}:${IDLE_REMOTE_ROOT}/apps/carbonet-app/target/carbonet.jar"
+  run_remote "$IDLE_TARGET" "mkdir -p '$IDLE_REMOTE_ROOT/apps/carbonet-api/target' '$IDLE_REMOTE_ROOT/var/logs'"
+  copy_remote "$SOURCE_JAR_PATH" "${IDLE_TARGET}:${IDLE_REMOTE_ROOT}/apps/carbonet-api/target/carbonet-api.jar"
 
   log "render and upload Nomad job"
   local tmp_job
   tmp_job="$(mktemp)"
-  TARGET_HOST="$IDLE_HTTP_HOST" REPO_ROOT="$IDLE_REMOTE_ROOT" JAR_PATH="$IDLE_REMOTE_ROOT/apps/carbonet-app/target/carbonet.jar" TARGET_PORT="$IDLE_PORT" JOB_NAME="$IDLE_JOB_NAME" \
+  TARGET_HOST="$IDLE_HTTP_HOST" REPO_ROOT="$IDLE_REMOTE_ROOT" JAR_PATH="$IDLE_REMOTE_ROOT/apps/carbonet-api/target/carbonet-api.jar" TARGET_PORT="$IDLE_PORT" JOB_NAME="$IDLE_JOB_NAME" \
     "$JOB_RENDER_SCRIPT" >"$tmp_job"
   copy_remote "$tmp_job" "${IDLE_TARGET}:${IDLE_REMOTE_JOB_FILE}"
   rm -f "$tmp_job"

@@ -17,11 +17,11 @@ import java.util.Arrays;
 public class AdminMemberRegisterMenuBootstrapSupport {
 
     private static final String DOMAIN_CODE = "A001";
-    private static final String DOMAIN_NAME = "회원/기업";
-    private static final String DOMAIN_NAME_EN = "Member/Company";
+    private static final String DOMAIN_NAME = "회원·권한";
+    private static final String DOMAIN_NAME_EN = "Members & Authority";
     private static final String GROUP_CODE = "A00101";
-    private static final String GROUP_NAME = "회원 관리";
-    private static final String GROUP_NAME_EN = "Member Management";
+    private static final String GROUP_NAME = "회원";
+    private static final String GROUP_NAME_EN = "Members";
     private static final String MENU_CODE = "A0010102";
     private static final String MENU_NAME_KO = "신규 회원 등록";
     private static final String MENU_NAME_EN = "New Member Registration";

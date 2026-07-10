@@ -11,7 +11,7 @@ Purpose:
   then schedule restart and runtime freshness verification.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   bash ops/scripts/verify-large-move-app-closure.sh
@@ -79,7 +79,7 @@ BACKUP_DIR="$REPO_ROOT/var/backups/codex-deploy"
 mkdir -p "$BACKUP_DIR"
 BACKUP_SOURCE="$REPO_ROOT/var/run/carbonet-18000.jar"
 if [[ ! -f "$BACKUP_SOURCE" ]]; then
-  BACKUP_SOURCE="$REPO_ROOT/apps/carbonet-app/target/carbonet.jar"
+  BACKUP_SOURCE="$REPO_ROOT/apps/carbonet-api/target/carbonet-api.jar"
 fi
 if [[ -f "$BACKUP_SOURCE" ]]; then
   BACKUP_JAR_PATH="$BACKUP_DIR/carbonet-18000-$(date '+%Y%m%d-%H%M%S').jar"
@@ -144,7 +144,7 @@ ROOT_DIR="$REPO_ROOT"
 source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
 
-jbuild -q -pl apps/carbonet-app -am -DskipTests package
+jbuild -q -pl apps/carbonet-api -am -DskipTests package
 
 echo "App closure verification started"
 bash "$REPO_ROOT/ops/scripts/verify-large-move-app-closure.sh"

@@ -23,10 +23,10 @@ Recommended daily check:
   bash ops/scripts/codex-verify-18000-freshness.sh
 
 Canonical app assembly:
-  apps/carbonet-app/pom.xml
+  apps/carbonet-api/pom.xml
 
 Canonical packaged jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Canonical local refresh:
   bash ops/scripts/build-restart-18000.sh

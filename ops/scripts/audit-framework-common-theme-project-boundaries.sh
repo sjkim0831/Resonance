@@ -13,7 +13,7 @@ required_paths=(
   "modules/carbonet-contract-metadata"
   "modules/carbonet-builder-observability"
   "modules/carbonet-mapper-infra"
-  "apps/carbonet-app"
+  "apps/carbonet-api"
   "frontend/src/features/admin-ui"
   "frontend/src/features/admin-entry"
   "frontend/src/features/screen-builder/shared"

@@ -234,11 +234,11 @@ normalize_generated_ownership() {
     "$ROOT_DIR/var/k8s"
     "$ROOT_DIR/data"
     "$ROOT_DIR/modules"
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app"
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static/react-app"
-    "$ROOT_DIR/apps/project-runtime/target"
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
-    "$ROOT_DIR/apps/carbonet-app/target"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/target"
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/target"
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
     "$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app"
     "$ROOT_DIR/projects/carbonet-adapter/target"
@@ -292,13 +292,13 @@ build_frontend() {
   root_cmd rm -rf \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app" \
     "$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app" \
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app" \
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static/react-app" \
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" \
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" \
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
   mkdir -p \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static" \
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static" \
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static" \
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static"
   normalize_generated_ownership
   (
     cd "$ROOT_DIR/projects/carbonet-frontend/source"
@@ -329,7 +329,7 @@ verify_screen_management_bundle() {
   fi
   local bundle_dir=""
   for dir in \
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app/assets" \
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app/assets" \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app/assets" \
     "$ROOT_DIR/projects/carbonet-frontend/source/dist/assets"; do
     if [[ -d "$dir" ]]; then
@@ -355,12 +355,12 @@ build_maven() {
   log 'maven package'
   normalize_generated_ownership
   normalize_generated_ownership
-  root_cmd rm -rf "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
+  root_cmd rm -rf "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
   normalize_generated_ownership
   if [[ "${SKIP_MAVEN_CLEAN:-true}" == "true" ]]; then
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true package
+    mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package
   else
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package
+    mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true clean package
   fi
   verify_survey_admin_combobox_bundle
   verify_screen_management_bundle
@@ -375,7 +375,7 @@ build_image() {
   ensure_release_dir_writable
   rm -rf "$RELEASE_DIR"
   mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
-  cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RELEASE_DIR/project-runtime.jar"
+  cp "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" "$RELEASE_DIR/carbonet-api.jar"
   if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
     cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
   fi
@@ -661,7 +661,7 @@ PY
 write_release_manifest() {
   local git_sha jar_sha disk_root disk_opt
   git_sha="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
-  jar_sha="$(sha256sum "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" 2>/dev/null | awk '{print $1}' || echo unknown)"
+  jar_sha="$(sha256sum "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" 2>/dev/null | awk '{print $1}' || echo unknown)"
   disk_root="$(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
   disk_opt="$(df -h /opt | awk 'NR==2 {print $5 " used, " $4 " free"}')"
   printf '{"ts":"%s","projectId":"%s","gitSha":"%s","image":"%s","jarSha256":"%s","rootDisk":"%s","optDisk":"%s"}\n' \
@@ -675,9 +675,9 @@ is_frontend_path() {
     projects/carbonet-frontend/source/*|\
     projects/carbonet-frontend/src/main/resources/static/react-app/*|\
     projects/carbonet-frontend/target/classes/static/react-app/*|\
-    apps/carbonet-app/src/main/resources/static/react-app/*|\
-    apps/project-runtime/src/main/resources/static/react-app/*|\
-    apps/project-runtime/target/classes/static/react-app/*)
+    apps/carbonet-api/src/main/resources/static/react-app/*|\
+    apps/carbonet-api/src/main/resources/static/react-app/*|\
+    apps/carbonet-api/target/classes/static/react-app/*)
       return 0
       ;;
   esac
@@ -993,11 +993,11 @@ normalize_generated_ownership() {
     "$ROOT_DIR/var/k8s"
     "$ROOT_DIR/data"
     "$ROOT_DIR/modules"
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app"
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static/react-app"
-    "$ROOT_DIR/apps/project-runtime/target"
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
-    "$ROOT_DIR/apps/carbonet-app/target"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/target"
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/target"
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
     "$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app"
     "$ROOT_DIR/projects/carbonet-adapter/target"
@@ -1051,13 +1051,13 @@ build_frontend() {
   root_cmd rm -rf \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app" \
     "$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app" \
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app" \
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static/react-app" \
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" \
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" \
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
   mkdir -p \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static" \
-    "$ROOT_DIR/apps/carbonet-app/src/main/resources/static" \
-    "$ROOT_DIR/apps/project-runtime/src/main/resources/static"
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static" \
+    "$ROOT_DIR/apps/carbonet-api/src/main/resources/static"
   normalize_generated_ownership
   (
     cd "$ROOT_DIR/projects/carbonet-frontend/source"
@@ -1088,7 +1088,7 @@ verify_screen_management_bundle() {
   fi
   local bundle_dir=""
   for dir in \
-    "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app/assets" \
+    "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app/assets" \
     "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app/assets" \
     "$ROOT_DIR/projects/carbonet-frontend/source/dist/assets"; do
     if [[ -d "$dir" ]]; then
@@ -1114,12 +1114,12 @@ build_maven() {
   log 'maven package'
   normalize_generated_ownership
   normalize_generated_ownership
-  root_cmd rm -rf "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app"
+  root_cmd rm -rf "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app"
   normalize_generated_ownership
   if [[ "${SKIP_MAVEN_CLEAN:-true}" == "true" ]]; then
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true package
+    mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package
   else
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package
+    mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true clean package
   fi
   verify_survey_admin_combobox_bundle
   verify_screen_management_bundle
@@ -1134,7 +1134,7 @@ build_image() {
   ensure_release_dir_writable
   rm -rf "$RELEASE_DIR"
   mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
-  cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RELEASE_DIR/project-runtime.jar"
+  cp "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" "$RELEASE_DIR/carbonet-api.jar"
   if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
     cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
   fi
@@ -1420,7 +1420,7 @@ PY
 write_release_manifest() {
   local git_sha jar_sha disk_root disk_opt
   git_sha="$(git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
-  jar_sha="$(sha256sum "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" 2>/dev/null | awk '{print $1}' || echo unknown)"
+  jar_sha="$(sha256sum "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" 2>/dev/null | awk '{print $1}' || echo unknown)"
   disk_root="$(df -h / | awk 'NR==2 {print $5 " used, " $4 " free"}')"
   disk_opt="$(df -h /opt | awk 'NR==2 {print $5 " used, " $4 " free"}')"
   printf '{"ts":"%s","projectId":"%s","gitSha":"%s","image":"%s","jarSha256":"%s","rootDisk":"%s","optDisk":"%s"}\n' \
@@ -1434,9 +1434,9 @@ is_frontend_path() {
     projects/carbonet-frontend/source/*|\
     projects/carbonet-frontend/src/main/resources/static/react-app/*|\
     projects/carbonet-frontend/target/classes/static/react-app/*|\
-    apps/carbonet-app/src/main/resources/static/react-app/*|\
-    apps/project-runtime/src/main/resources/static/react-app/*|\
-    apps/project-runtime/target/classes/static/react-app/*)
+    apps/carbonet-api/src/main/resources/static/react-app/*|\
+    apps/carbonet-api/src/main/resources/static/react-app/*|\
+    apps/carbonet-api/target/classes/static/react-app/*)
       return 0
       ;;
   esac

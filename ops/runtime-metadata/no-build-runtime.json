@@ -17,7 +17,7 @@
       "paths": [
         "modules/resonance-common/**",
         "modules/resonance-builder/**",
-        "apps/project-runtime/**"
+        "apps/carbonet-api/**"
       ],
       "purpose": "stable shared runtime, contracts, metadata readers, server-driven execution"
     },

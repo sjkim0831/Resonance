@@ -8,7 +8,7 @@ NOMAD_RENDER_SCRIPT="${NOMAD_RENDER_SCRIPT:-$ROOT_DIR/ops/scripts/render-idle-no
 MAIN_TARGET="${MAIN_TARGET:-carbonet2026@136.117.100.221}"
 MAIN_HTTP_HOST="${MAIN_HTTP_HOST:-136.117.100.221}"
 MAIN_PORT="${MAIN_PORT:-18000}"
-SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$ROOT_DIR/apps/carbonet-app/target/carbonet.jar}"
+SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar}"
 
 IDLE_TARGET="${IDLE_TARGET:-sjkim08314@34.82.132.175}"
 IDLE_HTTP_HOST="${IDLE_HTTP_HOST:-34.82.132.175}"
@@ -80,7 +80,7 @@ require_pressure() {
 }
 
 copy_idle_jar() {
-  local idle_target_jar="${IDLE_TARGET}:${IDLE_REMOTE_ROOT}/apps/carbonet-app/target/carbonet.jar"
+  local idle_target_jar="${IDLE_TARGET}:${IDLE_REMOTE_ROOT}/apps/carbonet-api/target/carbonet-api.jar"
 
   if [[ ! -f "$SOURCE_JAR_PATH" ]]; then
     echo "Source jar not found: $SOURCE_JAR_PATH" >&2
@@ -88,14 +88,14 @@ copy_idle_jar() {
   fi
 
   log "upload local jar to ${IDLE_TARGET}"
-  run_remote "$IDLE_TARGET" "mkdir -p '$IDLE_REMOTE_ROOT/apps/carbonet-app/target' '$IDLE_REMOTE_ROOT/var/logs'"
+  run_remote "$IDLE_TARGET" "mkdir -p '$IDLE_REMOTE_ROOT/apps/carbonet-api/target' '$IDLE_REMOTE_ROOT/var/logs'"
   copy_remote "$SOURCE_JAR_PATH" "$idle_target_jar"
 }
 
 render_and_run_nomad_job() {
   local tmp_job
   tmp_job="$(mktemp)"
-  TARGET_HOST="$IDLE_HTTP_HOST" REPO_ROOT="$IDLE_REMOTE_ROOT" JAR_PATH="$IDLE_REMOTE_ROOT/apps/carbonet-app/target/carbonet.jar" TARGET_PORT="$IDLE_PORT" JOB_NAME="$IDLE_JOB_NAME" \
+  TARGET_HOST="$IDLE_HTTP_HOST" REPO_ROOT="$IDLE_REMOTE_ROOT" JAR_PATH="$IDLE_REMOTE_ROOT/apps/carbonet-api/target/carbonet-api.jar" TARGET_PORT="$IDLE_PORT" JOB_NAME="$IDLE_JOB_NAME" \
     "$NOMAD_RENDER_SCRIPT" >"$tmp_job"
 
   log "upload Nomad job file to ${IDLE_TARGET}"

@@ -48,7 +48,7 @@ DIAGNOSTIC_LOG="$RUN_DIR/diagnostic-$(date +%Y%m%d-%H%M%S).log"
 OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
 FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
 FRONTEND_GUARD_SCRIPT="$ROOT_DIR/ops/scripts/resonance-frontend-overlay-guard.sh"
-MAVEN_DIR="$ROOT_DIR/apps/project-runtime"
+MAVEN_DIR="$ROOT_DIR/apps/carbonet-api"
 
 NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-4096}"
 MAVEN_OPTS="${MAVEN_OPTS:--Xmx2g -Xms512m}"
@@ -312,7 +312,7 @@ validate_maven() {
   if [[ ! -f "$jar" ]]; then
     rollback_and_fail "BACKEND_BUILD_FAILED" \
       "JAR file not found: $jar" \
-      "cd $ROOT_DIR && ./gradlew :apps:project-runtime:bootJar --console=plain 2>&1 | tail -50"
+      "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -50"
   fi
 
   local jar_size
@@ -321,7 +321,7 @@ validate_maven() {
   if [[ "$jar_size" -lt 1000000 ]]; then
     rollback_and_fail "BACKEND_BUILD_CORRUPT" \
       "JAR file too small: $jar_size bytes (expected >1MB)" \
-      "cd $ROOT_DIR && ./gradlew :apps:project-runtime:bootJar --console=plain 2>&1 | tail -50"
+      "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -50"
   fi
 
   log_success "Backend validation passed (tool: ${BUILD_TOOL:-unknown}, JAR: $jar, size: $((jar_size/1024/1024))MB)"
@@ -475,14 +475,14 @@ build_maven() {
     log "Using incremental ${BUILD_TOOL:-backend} build"
   fi
 
-  log_cmd "jbuild -q -pl apps/project-runtime -am -Dmaven.test.skip=true package"
+  log_cmd "jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package"
   cd "$ROOT_DIR" && \
-    MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/project-runtime -am -Dmaven.test.skip=true package \
+    MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package \
     > >(tee "$MAVEN_ERROR_LOG") 2>&1 || {
     log_error "Backend build failed"
     rollback_and_fail "BACKEND_BUILD_FAILED" \
       "Backend build failed" \
-      "cd $ROOT_DIR && ./gradlew :apps:project-runtime:bootJar --console=plain 2>&1 | tail -100"
+      "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -100"
   }
 
   validate_maven
@@ -506,10 +506,10 @@ build_image() {
   log_detail "Copying JAR to release directory..."
   local runtime_jar
   runtime_jar="$(jbooted project-runtime)"
-  cp "$runtime_jar" "$RELEASE_DIR/project-runtime.jar" || {
+  cp "$runtime_jar" "$RELEASE_DIR/carbonet-api.jar" || {
     rollback_and_fail "RELEASE_PREP_FAILED" \
       "Failed to copy JAR to release directory" \
-      "cp $(jbooted project-runtime) $RELEASE_DIR/project-runtime.jar"
+      "cp $(jbooted project-runtime) $RELEASE_DIR/carbonet-api.jar"
   }
 
   if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then

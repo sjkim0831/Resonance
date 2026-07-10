@@ -27,7 +27,7 @@ fi
 
 # 1. Build and extract common runtime
 echo "[assemble] building common project-runtime..."
-jbuild -q -pl apps/project-runtime -am -DskipTests package
+jbuild -q -pl apps/carbonet-api -am -DskipTests package
 
 FAT_JAR="$(jbooted project-runtime)"
 echo "[assemble] extracting common libraries from project-runtime..."
@@ -37,7 +37,7 @@ cp -rn "$TMP_EXTRACT/BOOT-INF/lib/"* "$LIB_DIR/"
 rm -rf "$TMP_EXTRACT"
 
 # Copy the "thin" target JAR (it is still technically fat but will use loader.path)
-cp "$FAT_JAR" "$RELEASE_BASE/project-runtime.jar"
+cp "$FAT_JAR" "$RELEASE_BASE/carbonet-api.jar"
 
 # 2. Copy project-specific runtime libraries.
 # Project-specific Maven modules are optional in the current Gradle-first layout.
@@ -100,7 +100,7 @@ OPTS="\${JAVA_OPTS:--Xms256m -Xmx512m}"
 
 echo "Starting $PROJECT_ID on port \$PORT with options \$OPTS"
 
-exec java \$OPTS -Dloader.path=lib/ -jar project-runtime.jar \\
+exec java \$OPTS -Dloader.path=lib/ -jar carbonet-api.jar \\
   --spring.profiles.active=prod \\
   --app.project-id="$PROJECT_ID" \\
   --server.port="\$PORT" \\
@@ -111,6 +111,6 @@ EOF
 chmod +x "$RELEASE_BASE/run.sh"
 
 echo "[assemble] assembly complete: $RELEASE_BASE"
-echo "  - Common Engine: project-runtime.jar"
+echo "  - Common Engine: carbonet-api.jar"
 echo "  - Project Libs: $(find "$LIB_DIR" -maxdepth 1 -name "*.jar" | wc -l) jars"
 echo "  - Execution: bash $RELEASE_BASE/run.sh"

@@ -8,11 +8,11 @@ if [[ ! -f "$SOURCE_FILE" ]]; then
 fi
 
 BUNDLE_ROOTS=(
-  "$ROOT_DIR/apps/project-runtime/target/classes/static/react-app/assets"
-  "$ROOT_DIR/apps/carbonet-app/target/classes/static/react-app/assets"
+  "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app/assets"
+  "$ROOT_DIR/apps/carbonet-api/target/classes/static/react-app/assets"
   "$ROOT_DIR/projects/carbonet-frontend/source/dist/assets"
   "$ROOT_DIR/src/main/resources/static/react-app/assets"
-  "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app/assets"
+  "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app/assets"
 )
 
 required_source_markers=(

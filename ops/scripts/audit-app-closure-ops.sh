@@ -67,7 +67,7 @@ info "checking legacy package lines"
 require_no_match 'mvn -q -DskipTests package|mvn -q package'
 
 info "checking canonical jar path presence"
-require_match 'apps/carbonet-app/target/carbonet\.jar' "$OPS_DIR"
+require_match 'apps/carbonet-api/target/carbonet\.jar' "$OPS_DIR"
 
 info "checking wrapper verifier wiring"
 require_match 'verify-large-move-app-closure\.sh' "$OPS_DIR/build-restart-verify-external-monitoring-18000.sh"

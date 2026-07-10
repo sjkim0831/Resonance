@@ -10,7 +10,7 @@ Purpose:
   Verify that the running :18000 service is using the newest packaged runtime jar.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Quick guide:
   bash ops/scripts/app-closure-help.sh
@@ -49,14 +49,14 @@ ENV_TARGET_FILE="${ENV_TARGET_FILE:-$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNT
 DEFAULT_ENV_TARGET_FILE="${DEFAULT_ENV_TARGET_FILE:-$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.defaults.env}"
 RUN_DIR="${RUN_DIR:-$ROOT_DIR/var/run}"
 LOG_DIR="${LOG_DIR:-$ROOT_DIR/var/logs}"
-APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
 TARGET_JAR_PATH="${TARGET_JAR_PATH:-$APP_TARGET_JAR_PATH}"
 RUNTIME_JAR_PATH="${RUNTIME_JAR_PATH:-$RUN_DIR/carbonet-${PORT}.jar}"
 PID_FILE="${PID_FILE:-$RUN_DIR/carbonet-${PORT}.pid}"
 LOG_FILE="${LOG_FILE:-$LOG_DIR/carbonet-${PORT}.log}"
 STARTUP_MARKER="${STARTUP_MARKER:-Tomcat started on port ${PORT}}"
 FRONTEND_RESOURCE_DIR="${FRONTEND_RESOURCE_DIR:-$ROOT_DIR/src/main/resources/static/react-app}"
-FRONTEND_APP_RESOURCE_DIR="${FRONTEND_APP_RESOURCE_DIR:-$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app}"
+FRONTEND_APP_RESOURCE_DIR="${FRONTEND_APP_RESOURCE_DIR:-$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app}"
 FRONTEND_MANIFEST_PATH="$FRONTEND_RESOURCE_DIR/.vite/manifest.json"
 FRONTEND_APP_MANIFEST_PATH="$FRONTEND_APP_RESOURCE_DIR/.vite/manifest.json"
 VERIFY_WAIT_SECONDS="${VERIFY_WAIT_SECONDS:-60}"

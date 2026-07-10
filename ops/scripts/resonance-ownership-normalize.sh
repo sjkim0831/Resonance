@@ -36,10 +36,10 @@ targets=(
   "$ROOT_DIR/var/cloudflare-tunnel"
   "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
   "$ROOT_DIR/projects/carbonet-frontend/target/classes/static/react-app"
-  "$ROOT_DIR/apps/carbonet-app/src/main/resources/static/react-app"
+  "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
   "$ROOT_DIR/projects/carbonet-frontend/source/dist"
-  "$ROOT_DIR/apps/project-runtime/target"
-  "$ROOT_DIR/apps/carbonet-app/target"
+  "$ROOT_DIR/apps/carbonet-api/target"
+  "$ROOT_DIR/apps/carbonet-api/target"
   "$ROOT_DIR/projects/carbonet-adapter/target"
 )
 

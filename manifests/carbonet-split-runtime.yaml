@@ -70,6 +70,12 @@ data:
           add_header Cache-Control "public, max-age=31536000, immutable" always;
         }
 
+        location ~ ^/(download|downloads|error|img)/ {
+          root /srv/public;
+          try_files $uri @carbonet_api;
+          add_header X-Carbonet-Served-By "carbonet-web" always;
+        }
+
         location ^~ /react-app/ {
           try_files $uri @carbonet_api;
           add_header Cache-Control "no-cache" always;
@@ -173,6 +179,9 @@ spec:
         - name: react-app
           mountPath: /srv/react-app
           readOnly: true
+        - name: public-assets
+          mountPath: /srv/public
+          readOnly: true
         - name: tmp
           mountPath: /tmp
       terminationGracePeriodSeconds: 30
@@ -183,6 +192,10 @@ spec:
       - name: react-app
         hostPath:
           path: /opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app
+          type: Directory
+      - name: public-assets
+        hostPath:
+          path: /opt/Resonance/projects/carbonet-assets/static
           type: Directory
       - name: tmp
         emptyDir: {}

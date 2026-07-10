@@ -10,7 +10,7 @@ Purpose:
   Restore a backup jar into the canonical app jar path and restart :18000.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   bash ops/scripts/run-large-move-app-closure.sh
@@ -32,7 +32,7 @@ if [[ ! -f "$BACKUP_JAR_PATH" ]]; then
   exit 1
 fi
 
-TARGET_JAR="$REPO_ROOT/apps/carbonet-app/target/carbonet.jar"
+TARGET_JAR="$REPO_ROOT/apps/carbonet-api/target/carbonet-api.jar"
 cp "$BACKUP_JAR_PATH" "$TARGET_JAR"
 ROLLBACK_LOG_DIR="$REPO_ROOT/var/logs"
 mkdir -p "$ROLLBACK_LOG_DIR"

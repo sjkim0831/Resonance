@@ -10,7 +10,6 @@ const buildTarget = process.env.VITE_BUILD_TARGET === "classes"
 const mirrorTarget = process.env.VITE_BUILD_TARGET === "classes"
   ? "../src/main/resources/static/react-app"
   : "../target/classes/static/react-app";
-const appResourceTarget = "../../../apps/carbonet-app/src/main/resources/static/react-app";
 
 async function replaceDirectory(sourceDir: string, targetDir: string) {
   try {
@@ -34,7 +33,6 @@ function syncBuildOutputPlugin() {
       const sourceDir = path.resolve(__dirname, buildTarget);
       const targetDirs = [
         path.resolve(__dirname, mirrorTarget),
-        path.resolve(__dirname, appResourceTarget)
       ];
 
       await Promise.all(targetDirs

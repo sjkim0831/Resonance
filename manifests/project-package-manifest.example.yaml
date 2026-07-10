@@ -5,7 +5,7 @@ runtime_mode: isolated
 
 package_set:
   runtime:
-    - apps/project-runtime
+    - apps/carbonet-api
     - projects/carbonet-runtime
   adapter:
     - projects/carbonet-adapter

@@ -21,7 +21,7 @@ EXCLUDED_DIRS = {
 }
 EXCLUDED_PARTS = {
     "src/main/resources/static/react-app/assets",
-    "apps/carbonet-app/src/main/resources/static/react-app/assets",
+    "apps/carbonet-api/src/main/resources/static/react-app/assets",
     "apps/operations-console/src/main/resources/static/react-app/assets",
 }
 

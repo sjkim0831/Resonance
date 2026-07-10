@@ -11,7 +11,7 @@ Resonance package groups
 ACTIVE BUILD PACKAGES
 - resonance-core     : modules/resonance-common/*
 - resonance-adaptor  : modules/resonance-builder/*
-- project-core       : apps/project-runtime, apps/carbonet-app
+- project-core       : apps/carbonet-api, apps/carbonet-api
 - resonance-ops      : modules/resonance-ops/*, apps/operations-console, ops, deploy
 
 ACTIVE PROJECT OVERLAYS

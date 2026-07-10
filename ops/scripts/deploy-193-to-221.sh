@@ -12,7 +12,7 @@ Purpose:
   remote freshness.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   bash ops/scripts/verify-large-move-app-closure.sh
@@ -158,7 +158,7 @@ prepare_build_worktree() {
 
 build_artifact() {
   local frontend_dir="$BUILD_DIR/frontend"
-  local jar_path="$BUILD_DIR/apps/carbonet-app/target/carbonet.jar"
+  local jar_path="$BUILD_DIR/apps/carbonet-api/target/carbonet-api.jar"
 
   load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.defaults.env"
   load_optional_env "$BUILD_DIR/ops/config/carbonet-${DEPLOY_SERVICE_PORT}.${CARBONET_RUNTIME_ENV}.defaults.env"
@@ -170,7 +170,7 @@ build_artifact() {
   (cd "$frontend_dir" && npm run build)
 
   log "backend package started"
-  (cd "$BUILD_DIR" && mvn -q -pl apps/carbonet-app -am -DskipTests package)
+  (cd "$BUILD_DIR" && mvn -q -pl apps/carbonet-api -am -DskipTests package)
 
   if [[ ! -f "$jar_path" ]]; then
     echo "Built jar not found: $jar_path" >&2
@@ -183,14 +183,14 @@ build_artifact() {
 
 deploy_remote() {
   local remote_tmp="/tmp/${DEPLOY_ARTIFACT_NAME}"
-  local remote_target="$DEPLOY_REMOTE_ROOT/apps/carbonet-app/target/${DEPLOY_ARTIFACT_NAME}"
+  local remote_target="$DEPLOY_REMOTE_ROOT/apps/carbonet-api/target/${DEPLOY_ARTIFACT_NAME}"
   local remote_backup_dir="$DEPLOY_REMOTE_ROOT/var/backups/manual-deploy"
   local remote_restart="$DEPLOY_REMOTE_ROOT/ops/scripts/restart-18000.sh"
   local remote_verify="$DEPLOY_REMOTE_ROOT/ops/scripts/codex-verify-18000-freshness.sh"
-  local jar_path="$BUILD_DIR/apps/carbonet-app/target/carbonet.jar"
+  local jar_path="$BUILD_DIR/apps/carbonet-api/target/carbonet-api.jar"
 
   log "prepare remote directories"
-  ssh_cmd "mkdir -p '$DEPLOY_REMOTE_ROOT/apps/carbonet-app/target' '$remote_backup_dir'"
+  ssh_cmd "mkdir -p '$DEPLOY_REMOTE_ROOT/apps/carbonet-api/target' '$remote_backup_dir'"
 
   if [[ "$NGINX_SITE_SYNC_ENABLED" == "true" ]]; then
     if [[ ! -f "$NGINX_SITE_CONFIG_SOURCE" ]]; then

@@ -25,7 +25,7 @@ ln -sf "$ROOT_DIR/data/version-control/project-runtime-manifest.json" "$CONFIG_D
 
 echo "[3/4] Copying common-core project-runtime..."
 # Relies on the shared project-runtime package output.
-cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RUN_DIR/project-runtime.jar"
+cp "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" "$RUN_DIR/carbonet-api.jar"
 
 echo "[4/4] Copying project-specific adapter binding..."
 # Simulates dropping the "Thin Project Adapter" jar.

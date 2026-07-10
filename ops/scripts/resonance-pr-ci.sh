@@ -66,7 +66,7 @@ run_build() {
     
     log "Backend Maven build check..."
     cd "$ROOT_DIR"
-    if MAVEN_OPTS="-Xmx4g" mvn -pl apps/project-runtime -am -Dmaven.test.skip=true package -q >> "$LOG_FILE" 2>&1; then
+    if MAVEN_OPTS="-Xmx4g" mvn -pl apps/carbonet-api -am -Dmaven.test.skip=true package -q >> "$LOG_FILE" 2>&1; then
         log_ok "Backend build passed"
     else
         log_fail "Backend build failed"
@@ -96,7 +96,7 @@ run_test() {
     
     log "Backend tests..."
     cd "$ROOT_DIR"
-    if mvn -pl apps/project-runtime -am test -q >> "$LOG_FILE" 2>&1; then
+    if mvn -pl apps/carbonet-api -am test -q >> "$LOG_FILE" 2>&1; then
         log_ok "Backend tests passed"
     else
         log_warn "Backend tests had failures (may be expected)"

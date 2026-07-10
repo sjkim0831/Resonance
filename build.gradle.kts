@@ -59,7 +59,7 @@ val projectCoreProjects = listOf(
     ":modules:resonance-common:platform-observability-web",
     ":modules:resonance-common:platform-observability-query",
     ":modules:resonance-common:platform-observability-payload",
-    ":apps:project-runtime"
+    ":apps:carbonet-api"
 )
 
 tasks.register("resonanceCoreBuild") {
@@ -82,7 +82,7 @@ tasks.register("resonanceOpsBuild") {
 
 tasks.register("projectCoreBuild") {
     group = "resonance"
-    description = "Compile project-core runtime modules and build project-runtime bootJar. Use for Java/API changes requiring redeploy."
-    dependsOn(projectCoreProjects.map { if (it == ":apps:project-runtime") "$it:bootJar" else "$it:compileJava" })
+    description = "Compile project-core runtime modules and build carbonet-api bootJar. Use for Java/API changes requiring redeploy."
+    dependsOn(projectCoreProjects.map { if (it == ":apps:carbonet-api") "$it:bootJar" else "$it:compileJava" })
 }
 

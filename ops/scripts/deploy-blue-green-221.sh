@@ -11,7 +11,7 @@ Purpose:
   freshness on both ports.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   PORT=18001 bash ops/scripts/codex-verify-18000-freshness.sh

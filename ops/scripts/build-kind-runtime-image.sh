@@ -13,11 +13,11 @@ RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 
 cd "$ROOT_DIR"
 
-jbuild -pl apps/project-runtime -am -Dmaven.test.skip=true package
+jbuild -pl apps/carbonet-api -am -Dmaven.test.skip=true package
 
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
-cp "$(jbooted project-runtime)" "$RELEASE_DIR/project-runtime.jar"
+cp "$(jbooted project-runtime)" "$RELEASE_DIR/carbonet-api.jar"
 
 if compgen -G "projects/carbonet-adapter/target/*.jar" >/dev/null; then
   cp projects/carbonet-adapter/target/*.jar "$RELEASE_DIR/lib/" || true

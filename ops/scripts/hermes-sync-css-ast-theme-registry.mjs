@@ -15,7 +15,7 @@ const projectId = "carbonet";
 const cssRoots = [
   "frontend/src",
   "frontend/src/styles.css",
-  "apps/carbonet-app/src/main/resources/static/react-app"
+  "apps/carbonet-api/src/main/resources/static/react-app"
 ].map((item) => path.join(root, item));
 const usageRoots = [
   "frontend/src"

@@ -1,0 +1,169 @@
+A001	회원·권한	Members & Authority	/admin/member/list	groups	100000
+A00101	회원	Members	#	groups	101000
+A0010101	회원 목록	Member List	/admin/member/list	person_search	101001
+A0010102	회원 등록	Register Member	/admin/member/register	person_add	101002
+A0010103	회원 통계	Member Statistics	/admin/member/stats	query_stats	101003
+A0010104	탈퇴 회원	Withdrawn Members	/admin/member/withdrawn	person_off	101004
+A0010105	휴면 계정	Dormant Accounts	/admin/member/activate	restart_alt	101005
+A00102	회원사	Companies	#	business	102000
+A0010201	회원사 목록	Company List	/admin/member/company_list	domain	102001
+A0010202	회원사 계정	Company Accounts	/admin/member/company_account	badge	102002
+A0010203	회원 승인	Member Approval	/admin/member/approve	how_to_reg	102003
+A0010204	회원사 승인	Company Approval	/admin/member/company-approve	approval	102004
+A00103	관리자·권한	Admins & Authority	#	admin_panel_settings	103000
+A0010301	관리자 목록	Admin List	/admin/member/admin_list	supervisor_account	103001
+A0010302	관리자 생성	Create Admin	/admin/member/admin_account	manage_accounts	103002
+A0010303	관리자 권한	Admin Permissions	/admin/member/admin_account/permissions	key	103003
+A0010304	권한 그룹	Authority Groups	/admin/auth/group	verified_user	103004
+A0010305	권한 변경	Authority Changes	/admin/member/auth-change	published_with_changes	103005
+A0010306	부서 권한 맵핑	Department Role Mapping	/admin/member/dept-role-mapping	account_tree	103006
+A0010307	비밀번호 초기화	Password Reset	/admin/member/reset_password	lock_reset	103007
+A002	배출량 관리	Emission Management	/admin/emission/site-management	account_tree	200000
+A00201	기준정보	Master Data	#	account_tree	201000
+A0020101	배출지·배출원 원장	Sites & Sources	/admin/emission/site-management	domain	201001
+A0020102	배출계수 관리	Emission Factors	/admin/emission/factor-management	science	201002
+A0020103	산정식 관리	Calculation Rules	/admin/emission/calculation-rule	functions	201003
+A0020104	입력 템플릿 관리	Input Templates	/admin/emission/input-template	view_list	201004
+A00202	검증·승인	Validation & Approval	#	fact_check	202000
+A0020201	검증 관리	Validation Queue	/admin/emission/validate	rule	202001
+A0020202	검증 규칙 관리	Validation Rules	/admin/emission/validation-rule	rule_settings	202002
+A0020203	승인 워크플로우 관리	Approval Workflow	/admin/emission/approval-workflow	approval	202003
+A00203	산정·보고	Calculation & Report	#	summarize	203000
+A0020301	산정 결과 관리	Calculation Results	/admin/emission/result_list	analytics	203001
+A0020302	보고서 템플릿 관리	Report Templates	/admin/emission/report-template	description	203002
+A0020303	GWP 값 관리	GWP Values	/admin/emission/gwp-values	public	203003
+A0020304	ecoinvent 배출계수 관리	ecoinvent Factors	/admin/emission/ecoinvent	science	203004
+A00204	증빙·감사·연계	Evidence, Audit & Integration	#	verified_user	204000
+A0020401	증빙 관리	Evidence Management	/admin/emission/evidence-management	folder_open	204001
+A0020402	데이터 변경 이력	Data Change History	/admin/emission/data_history	history	204002
+A0020403	감사 로그	Audit Log	/admin/emission/audit-log	receipt_long	204003
+A0020404	외부 시스템 연계	External System Links	/admin/emission/system-link	hub	204004
+A00205	설문·LCA	Survey & LCA	#	assignment	205000
+A0020501	배출 설문 관리	Emission Survey	/admin/emission/survey-admin	assignment	205001
+A0020502	배출 설문 데이터셋	Survey Dataset	/admin/emission/survey-admin-data	dataset	205002
+A0020503	LCI 분류 관리	LCI Classification	/admin/emission/lci-classification	category	205003
+A0020504	배출 정의 관리	Emission Definition	/admin/emission/definition-studio	schema	205004
+A003	거래·결제·인증	Trade, Payment & Certificate	/admin/trade/statistics	sync_alt	300000
+A00301	거래 관리	Trade	#	sync_alt	301000
+A0030101	정산 리포트	Settlement Report	/admin/trade/statistics	bar_chart	301001
+A0030102	이상거래 점검	Anomaly Review	/admin/trade/duplicate	troubleshoot	301002
+A0030103	거래 승인	Trade Approval	/admin/trade/approve	task_alt	301003
+A0030104	거래 반려 검토	Trade Rejection Review	/admin/trade/reject	block	301004
+A00302	결제·환불	Payment & Refund	#	payments	302000
+A0030201	환불 요청 목록	Refund Requests	/admin/payment/refund_list	request_page	302001
+A0030202	환불 처리	Refund Processing	/admin/payment/refund_process	currency_exchange	302002
+A0030203	정산 캘린더	Settlement Calendar	/admin/payment/settlement	event	302003
+A0030204	환불 계좌 검수	Refund Account Review	/admin/payment/virtual_issue	account_balance	302004
+A00303	인증서	Certificate	#	workspace_premium	303000
+A0030301	인증서 발급 대기	Pending Certificates	/admin/certificate/pending_list	pending_actions	303001
+A0030302	인증서 승인	Certificate Approval	/admin/certificate/approve	approval	303002
+A0030303	발급 검토	Certificate Review	/admin/certificate/review	fact_check	303003
+A0030304	인증서 통계	Certificate Statistics	/admin/certificate/statistics	query_stats	303004
+A0030305	REC 중복 확인	REC Duplicate Check	/admin/certificate/rec_check	rule	303005
+A0030306	인증서 감사 로그	Certificate Audit Log	/admin/certificate/audit-log	receipt_long	303006
+A0030307	이의신청 처리	Objection Handling	/admin/certificate/objection_list	gavel	303007
+A004	콘텐츠·지원	Content & Support	/admin/content/board_list	article	400000
+A00401	게시·공지	Publishing	#	article	401000
+A0040101	게시판 관리	Board Management	/admin/content/board_list	view_list	401001
+A0040102	공지 배포	Publish Notice	/admin/content/board_add	campaign	401002
+A0040103	게시글 목록	Post List	/admin/content/post_list	article	401003
+A00402	노출 자산	Display Assets	#	web_asset	402000
+A0040201	배너 목록	Banners	/admin/content/banner_list	view_carousel	402001
+A0040202	배너 편집	Edit Banner	/admin/content/banner_edit	edit	402002
+A0040203	팝업 목록	Popups	/admin/content/popup_list	web_asset	402003
+A0040204	팝업 스케줄	Popup Schedule	/admin/content/popup_edit	schedule	402004
+A00403	지원 콘텐츠	Support Content	#	support_agent	403000
+A0040301	Q&A 분류	Q&A Category	/admin/content/qna	category	403001
+A0040302	FAQ 관리	FAQ Management	/admin/content/faq_list	quiz	403002
+A0040303	FAQ 메뉴 관리	FAQ Menu	/admin/content/menu	menu_book	403003
+A0040304	파일 관리	File Management	/admin/content/file	folder	403004
+A0040305	태그 관리	Tag Management	/admin/content/tag	sell	403005
+A0040306	관리자 사이트맵	Admin Sitemap	/admin/content/sitemap	map	403006
+A005	외부 연계	External Integration	/admin/external/connection_list	hub	500000
+A00501	연결 설정	Connection	#	hub	501000
+A0050101	외부 연계 목록	Connections	/admin/external/connection_list	hub	501001
+A0050102	외부 인증키 관리	External Keys	/admin/external/keys	key	501002
+A0050103	외부 스키마	External Schema	/admin/external/schema	schema	501003
+A0050104	웹훅 설정	Webhooks	/admin/external/webhooks	webhook	501004
+A00502	실행·관측	Execution & Observability	#	monitoring	502000
+A0050201	동기화 실행	Sync Execution	/admin/external/sync	sync	502001
+A0050202	연계 모니터링	Integration Monitoring	/admin/external/monitoring	monitoring	502002
+A0050203	API 사용량	API Usage	/admin/external/usage	data_usage	502003
+A0050204	외부 연계 로그	Integration Logs	/admin/external/logs	receipt_long	502004
+A0050205	점검 관리	Maintenance	/admin/external/maintenance	build	502005
+A0050206	재시도 관리	Retry Management	/admin/external/retry	replay	502006
+A006	시스템	System	/admin/system/menu	dashboard_customize	600000
+A00601	메뉴·화면·빌더	Menu, Screen & Builder	#	dashboard_customize	601000
+A0060101	메뉴 관리	Menu Management	/admin/system/menu	menu	601001
+A0060102	페이지 관리	Page Management	/admin/system/page-management	web	601002
+A0060103	화면 관리	Screen Management	/admin/system/screen-management	wysiwyg	601003
+A0060104	화면 흐름 관리	Screen Flow	/admin/system/screen-flow-management	route	601004
+A0060105	화면-메뉴 귀속 관리	Screen Menu Assignment	/admin/system/screen-menu-assignment-management	account_tree	601005
+A0060106	빌더 스튜디오	Builder Studio	/admin/system/builder-studio	design_services	601006
+A0060107	섹션 관리	Section Management	/admin/system/section-management	view_quilt	601007
+A0060108	컴포넌트 관리	Component Management	/admin/system/component-management	widgets	601008
+A0060109	테마 관리	Theme Management	/admin/system/theme-management	palette	601009
+A00602	코드·기능·API	Code, Function & API	#	settings_applications	602000
+A0060201	코드 조회	Code Inquiry	/admin/system/code	tag	602001
+A0060202	기능 관리	Feature Management	/admin/system/feature-management	toggle_on	602002
+A0060203	함수 콘솔	Function Console	/admin/system/function-console	terminal	602003
+A0060204	API 관리	API Management	/admin/system/api-management	api	602004
+A0060205	컨트롤러 관리	Controller Management	/admin/system/controller-management	account_tree	602005
+A0060206	컬럼 관리	Column Management	/admin/system/column-management	view_column	602006
+A0060207	모듈 관리	Module Management	/admin/system/module	extension	602007
+A00603	보안·로그	Security & Logs	#	security	603000
+A0060301	보안 정책	Security Policy	/admin/system/security-policy	policy	603001
+A0060302	보안 모니터링	Security Monitoring	/admin/system/security-monitoring	monitor_heart	603002
+A0060303	보안 감사	Security Audit	/admin/system/security-audit	manage_search	603003
+A0060304	차단 목록	Blocklist	/admin/system/blocklist	block	603004
+A0060305	IP 화이트리스트	IP Whitelist	/admin/system/ip_whitelist	shield	603005
+A0060306	접속 로그	Access History	/admin/system/access_history	login	603006
+A0060307	에러 로그	Error Log	/admin/system/error-log	error	603007
+A0060308	로그인 이력	Login History	/admin/member/login_history	history	603008
+A0060309	알림센터	Notification Center	/admin/system/notification	notifications	603009
+A00604	운영 모니터링	Operations Monitoring	#	monitoring	604000
+A0060401	모니터링 대시보드	Monitoring Dashboard	/admin/system/monitoring-dashboard	dashboard	604001
+A0060402	크론 모니터링	Cron Monitoring	/admin/system/cron-monitoring	schedule	604002
+A0060403	DB 모니터링	DB Monitoring	/admin/system/db-monitoring	database	604003
+A0060404	배치 모니터링	Batch Monitoring	/admin/system/batch-monitoring	factory	604004
+A0060405	깃 빌드 모니터링	Git Build Monitoring	/admin/system/git-build-monitoring	account_tree	604005
+A0060406	성능	Performance	/admin/system/performance	speed	604006
+A0060407	인프라	Infrastructure	/admin/system/infra	dns	604007
+A00605	백업·런타임	Backup & Runtime	#	settings_backup_restore	605000
+A0060501	백업 설정	Backup Config	/admin/system/backup_config	backup	605001
+A0060502	백업 실행	Backup Execution	/admin/system/backup	cloud_upload	605002
+A0060503	복구 실행	Restore Execution	/admin/system/restore	restore	605003
+A0060504	DB 승격 정책	DB Promotion Policy	/admin/system/db-promotion-policy	swap_vert	605004
+A0060505	DB 동기화 배포	DB Sync Deploy	/admin/system/db-sync-deploy	sync_alt	605005
+A0060506	프로젝트 버전 관리	Project Version	/admin/system/version-management	commit	605006
+A0060507	패키지 거버넌스	Package Governance	/admin/system/package-governance	inventory_2	605007
+A007	운영	Operations	/admin/	dashboard	700000
+A00701	운영 관제	Operations Control	#	dashboard	701000
+A0070101	운영 대시보드	Operations Dashboard	/admin/	dashboard	701001
+A0070102	운영센터	Operations Center	/admin/monitoring/center	hub	701002
+A0070103	SR 작업대	SR Workbench	/admin/system/sr-workbench	assignment	701003
+A00702	운영 자산	Operations Assets	#	inventory_2	702000
+A0070201	자산 인벤토리	Asset Inventory	/admin/system/asset-inventory	inventory_2	702001
+A0070202	자산 미흡 큐	Asset Deficiency Queue	/admin/system/asset-gap	playlist_add_check	702002
+A0070203	검증 자산 관리	Verification Asset Management	/admin/system/verification-assets	fact_check	702003
+A00703	버전·복구	Version & Recovery	#	settings_backup_restore	703000
+A0070301	프로젝트 버전 관리	Project Version Management	/admin/system/version-management	commit	703001
+A0070302	복구 작업대	Repair Workbench	/admin/system/repair-workbench	healing	703002
+A0070303	Codex 실행 관리	Codex Provision	/admin/system/codex-provision	terminal	703003
+A00704	모니터링	Monitoring	#	monitoring	704000
+A0070401	모니터링 대시보드	Monitoring Dashboard	/admin/system/monitoring-dashboard	dashboard	704001
+A0070402	크론 모니터링	Cron Monitoring	/admin/system/cron-monitoring	schedule	704002
+A0070403	DB 모니터링	DB Monitoring	/admin/system/db-monitoring	database	704003
+A0070404	배치 모니터링	Batch Monitoring	/admin/system/batch-monitoring	factory	704004
+A0070405	깃 빌드 모니터링	Git Build Monitoring	/admin/system/git-build-monitoring	account_tree	704005
+A190	AI 운영	AI Operations	/admin/ai/dashboard	smart_toy	800000
+A19001	AI 관리	AI Management	#	smart_toy	801000
+A1900101	AI 대시보드	AI Dashboard	/admin/ai/dashboard	dashboard	801001
+A1900102	모델 관리	Models	/admin/ai/models	memory	801002
+A1900103	에이전트 관리	Agents	/admin/ai/agents	support_agent	801003
+A1900104	RAG 관리	RAG	/admin/ai/rag	travel_explore	801004
+A1900105	학습 관리	Training	/admin/ai/training	model_training	801005
+A1900106	품질 관리	Quality	/admin/ai/quality	verified	801006
+A1900107	로그 관리	Logs	/admin/ai/logs	receipt_long	801007
+A1900108	AI 관측	Observability	/admin/ai/observability	monitoring	801008
+A1900109	Hermes 작업 기억	Hermes Workflow	/admin/system/hermes-workflow	psychology	801009

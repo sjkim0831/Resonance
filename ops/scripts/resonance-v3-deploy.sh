@@ -13,7 +13,7 @@ DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 
 OVERLAY_HOST_PATH="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
 FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
-MAVEN_DIR="$ROOT_DIR/apps/project-runtime"
+MAVEN_DIR="$ROOT_DIR/apps/carbonet-api"
 RUNTIME_PATH="/opt/Resonance/data/carbonet-app/react-app"
 RELEASE_DIR="$ROOT_DIR/var/releases/P003/image-context"
 IMAGE_TAG="registry.local/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-v3)"
@@ -28,7 +28,7 @@ log_step() { echo ""; echo -e "${CYAN}==== $* ====${NC}"; }
 START_TIME=$(date +%s)
 
 check_jar_fresh() {
-    local jar="$MAVEN_DIR/target/project-runtime.jar"
+    local jar="$MAVEN_DIR/target/carbonet-api.jar"
     local src_time latest_src
     if [ ! -f "$jar" ]; then return 1; fi
     src_time=$(stat -c %Y "$jar" 2>/dev/null || echo 0)
@@ -74,14 +74,14 @@ build_maven() {
     local start=$(date +%s)
     log_step "Building Maven"
     cd "$ROOT_DIR"
-    MAVEN_OPTS="-Xmx4g" mvn -pl apps/project-runtime -am -Dmaven.test.skip=true -T 8 package -q 2>&1 | tail -5
+    MAVEN_OPTS="-Xmx4g" mvn -pl apps/carbonet-api -am -Dmaven.test.skip=true -T 8 package -q 2>&1 | tail -5
     local elapsed=$(($(date +%s) - start))
     log_ok "Maven built in ${elapsed}s"
 }
 
 prepare_release() {
     mkdir -p "$RELEASE_DIR/lib"
-    cp "$MAVEN_DIR/target/project-runtime.jar" "$RELEASE_DIR/" 2>/dev/null || true
+    cp "$MAVEN_DIR/target/carbonet-api.jar" "$RELEASE_DIR/" 2>/dev/null || true
 }
 
 build_docker_image() {

@@ -35,7 +35,7 @@ PRJ_BOOT operations-console
 # Strategy: Extract BOOT-INF/lib from one of the fat jars to common lib dir
 # This assumes they share most dependencies through the parent pom.
 PROJECT_RUNTIME_DIR="$(OUTPUT_DIR project-runtime)"
-FAT_JAR="$PROJECT_RUNTIME_DIR/project-runtime.jar"
+FAT_JAR="$PROJECT_RUNTIME_DIR/carbonet-api.jar"
 
 if [[ ! -f "$FAT_JAR" ]]; then
     # fallback: pick the largest jar in the output dir
@@ -56,7 +56,7 @@ rm -rf "$TMP_EXTRACT"
 
 echo "[build-thin-runtimes] build complete."
 echo "  Shared Libs: $COMMON_LIB_DIR"
-echo "  Thin project-runtime: apps/project-runtime/$( [ -f "$ROOT_DIR/apps/project-runtime/build/libs/project-runtime.jar" ] && echo "build/libs/project-runtime.jar" || echo "target/project-runtime.jar" )"
+echo "  Thin project-runtime: apps/carbonet-api/$( [ -f "$ROOT_DIR/apps/carbonet-api/build/libs/carbonet-api.jar" ] && echo "build/libs/carbonet-api.jar" || echo "target/carbonet-api.jar" )"
 echo "  Thin operations-console: apps/operations-console/$( [ -f "$ROOT_DIR/apps/operations-console/build/libs/operations-console.jar" ] && echo "build/libs/operations-console.jar" || echo "target/operations-console.jar" )"
 echo ""
 echo "Note: To run these as thin jars, use: java -Dloader.path=\"$COMMON_LIB_DIR\" -jar ..."

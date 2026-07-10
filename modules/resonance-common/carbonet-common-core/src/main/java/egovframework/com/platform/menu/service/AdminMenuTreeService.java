@@ -211,7 +211,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
         }
         String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
         String override = MENU_LABEL_OVERRIDES_KO.get(code);
-        if (!override.isEmpty()) {
+        if (override != null && !override.isEmpty()) {
             return override;
         }
         return label;
@@ -224,7 +224,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
         }
         String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
         String override = MENU_LABEL_OVERRIDES_EN.get(code);
-        if (!override.isEmpty()) {
+        if (override != null && !override.isEmpty()) {
             return override;
         }
         return label;

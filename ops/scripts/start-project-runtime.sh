@@ -7,7 +7,7 @@ set -euo pipefail
 PROJECT_ID="${1:-P001}"
 PORT="${2:-18000}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-JAR_PATH="$ROOT_DIR/apps/project-runtime/target/project-runtime.jar"
+JAR_PATH="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
 RUN_DIR="$ROOT_DIR/var/run/project-runtime/$PROJECT_ID"
 LOG_DIR="$ROOT_DIR/var/logs/project-runtime/$PROJECT_ID"
 ADAPTER_DIR="$RUN_DIR/lib"
@@ -19,7 +19,7 @@ echo "[start-project-runtime] run dir: $RUN_DIR"
 echo "[start-project-runtime] adapter dir: $ADAPTER_DIR"
 
 # Copy common runtime JAR to run directory to allow independent versioning/upgrades
-cp "$JAR_PATH" "$RUN_DIR/project-runtime.jar"
+cp "$JAR_PATH" "$RUN_DIR/carbonet-api.jar"
 
 # Here you would typically copy the project's specific adapter JAR into $ADAPTER_DIR
 # For example: cp projects/carbonet-adapter/target/carbonet-adapter-1.0.0.jar $ADAPTER_DIR/
@@ -37,7 +37,7 @@ if [[ -d "$COMMON_LIB_DIR" ]]; then
 fi
 DB_URL="jdbc:postgresql://${POSTGRES_HOST:-127.0.0.1}:5432/${POSTGRES_DB:-carbonet}?charset=UTF-8"
 
-exec java -Dloader.path="$LOADER_PATH" -jar project-runtime.jar \
+exec java -Dloader.path="$LOADER_PATH" -jar carbonet-api.jar \
   --spring.profiles.active=prod \
   --app.project-id="$PROJECT_ID" \
   --spring.datasource.url="$DB_URL" \

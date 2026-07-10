@@ -150,9 +150,9 @@ build_maven() {
   fi
   log 'maven package'
   if [[ "${SKIP_MAVEN_CLEAN:-false}" == "true" ]]; then
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true package
+    mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package
   else
-    mvn -q -pl apps/project-runtime -am -Dmaven.test.skip=true clean package
+    mvn -q -pl apps/carbonet-api -am -Dmaven.test.skip=true clean package
   fi
 }
 
@@ -165,7 +165,7 @@ build_image() {
   export DOCKER_BUILDKIT=1
   rm -rf "$RELEASE_DIR"
   mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config" "$RELEASE_DIR/ops/config"
-  cp "$ROOT_DIR/apps/project-runtime/target/project-runtime.jar" "$RELEASE_DIR/project-runtime.jar"
+  cp "$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar" "$RELEASE_DIR/carbonet-api.jar"
   if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
     cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
   fi

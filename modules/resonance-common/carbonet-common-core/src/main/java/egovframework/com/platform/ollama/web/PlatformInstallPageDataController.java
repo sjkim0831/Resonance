@@ -819,7 +819,7 @@ public class PlatformInstallPageDataController {
 
     private List<Map<String, Object>> defaultProjectPackageSet() {
         List<Map<String, Object>> rows = new ArrayList<>();
-        rows.add(namedRow("packageId", "carbonet-runtime", "runtimeTarget", "isolated-project-runtime", "includes", "project-runtime.jar + project-adapter.jar + common jar set + theme bundle + migration bundle"));
+        rows.add(namedRow("packageId", "carbonet-runtime", "runtimeTarget", "isolated-project-runtime", "includes", "carbonet-api.jar + project-adapter.jar + common jar set + theme bundle + migration bundle"));
         rows.add(namedRow("packageId", "carbonet-airgap-bundle", "runtimeTarget", "air-gapped-delivery", "includes", "runtime package set + install scripts + model manifest + k8s release manifest"));
         return rows;
     }

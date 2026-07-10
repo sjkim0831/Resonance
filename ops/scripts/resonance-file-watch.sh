@@ -21,7 +21,7 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $*" | tee -a "$LOG_FILE"; }
 WATCH_PATHS=(
     "$ROOT_DIR/projects/carbonet-frontend/source"
     "$ROOT_DIR/projects/carbonet-frontend/src"
-    "$ROOT_DIR/apps/project-runtime/src"
+    "$ROOT_DIR/apps/carbonet-api/src"
     "$ROOT_DIR/modules"
     "$ROOT_DIR/projects/carbonet-adapter/src"
 )

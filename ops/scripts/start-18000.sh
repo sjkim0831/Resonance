@@ -12,7 +12,7 @@ Purpose:
   the runtime jar path for the selected port.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   bash ops/scripts/run-large-move-app-closure.sh
@@ -28,7 +28,7 @@ LOG_DIR="${LOG_DIR:-$ROOT_DIR/var/logs}"
 RUN_DIR="${RUN_DIR:-$ROOT_DIR/var/run}"
 CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
 CARBONET_RUNTIME_ENV="${CARBONET_RUNTIME_ENV:-${DEPLOY_TARGET:-local}}"
-APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
 SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$APP_TARGET_JAR_PATH}"
 JAR_PATH="${JAR_PATH:-$RUN_DIR/carbonet-${PORT}.jar}"
 PID_FILE="$RUN_DIR/carbonet-${PORT}.pid"

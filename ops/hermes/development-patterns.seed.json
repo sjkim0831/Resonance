@@ -23,7 +23,7 @@
       ],
       "moduleHints": [
         "frontend",
-        "apps/carbonet-app",
+        "apps/carbonet-api",
         "ops/scripts"
       ],
       "teamRules": {
@@ -97,7 +97,7 @@
         ],
         [
           "backend",
-          "apps/carbonet-app/**",
+          "apps/carbonet-api/**",
           "BACKEND"
         ],
         [

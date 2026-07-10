@@ -40,8 +40,8 @@
     }
   },
   "artifactLocks": {
-    "projectRuntimeJar": "apps/project-runtime/target/project-runtime.jar",
-    "bootTarget": "var/run/project-runtime/P_TEMPLATE/project-runtime.jar"
+    "projectRuntimeJar": "apps/carbonet-api/target/carbonet-api.jar",
+    "bootTarget": "var/run/project-runtime/P_TEMPLATE/carbonet-api.jar"
   },
   "runtime": {
     "runtimeMode": "DEDICATED_PROJECT_RUNTIME",

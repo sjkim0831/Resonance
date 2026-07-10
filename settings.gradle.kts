@@ -34,6 +34,5 @@ include("modules:resonance-ops:platform-version-control")
 include("modules:resonance-ops:ollama-control-plane")
 include("modules:resonance-ops:workbench-core")
 
-include("apps:project-runtime")
+include("apps:carbonet-api")
 include("apps:operations-console")
-include("apps:carbonet-app")

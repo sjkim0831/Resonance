@@ -49,7 +49,7 @@ export function buildScreenBuilderOperatorFlowSteps(query: OperatorFlowQuery): O
       id: "freshness",
       label: "Freshness Verify",
       command: "VERIFY_WAIT_SECONDS=20 bash ops/scripts/codex-verify-18000-freshness.sh",
-      evidence: "apps/carbonet-app/target/carbonet.jar -> var/run/carbonet-18000.jar -> :18000"
+      evidence: "apps/carbonet-api/build/libs/carbonet-api.jar -> var/run/carbonet-18000.jar -> :18000"
     },
     {
       id: "compare",

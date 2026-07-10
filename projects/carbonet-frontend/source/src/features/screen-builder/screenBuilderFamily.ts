@@ -102,8 +102,8 @@ export const SCREEN_BUILDER_FAMILY = createRouteFamily(SCREEN_BUILDER_ROUTE_DEFI
     responsibilities: ["screen publish execution", "repair execution", "project runtime execution"]
   },
   installDeploy: {
-    packagingOwnerPath: "apps/carbonet-app/pom.xml",
-    assemblyOwnerPath: "apps/carbonet-app/pom.xml :: frontend/src/features/screen-builder/screenBuilderFamily.ts :: frontend/src/app/routes/families/allRouteFamilies.ts",
+    packagingOwnerPath: "apps/carbonet-api/pom.xml",
+    assemblyOwnerPath: "apps/carbonet-api/pom.xml :: frontend/src/features/screen-builder/screenBuilderFamily.ts :: frontend/src/app/routes/families/allRouteFamilies.ts",
     bootstrapPayloadTarget: "/admin/system/screen-runtime",
     bindingInputs: ["projectId", "menuCode", "pageId", "menuUrl", "canonicalRoute", "publishedVersionId", "requiredViewFeatureCode"],
     validatorChecks: ["manifest linked", "authority scope aligned", "runtime target known", "compare/repair target known", "rollback evidence present", "backend authority chain aligned"],

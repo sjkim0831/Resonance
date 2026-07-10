@@ -11,7 +11,7 @@ Purpose:
   checking that the jar is not older than frontend assets.
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Related checks:
   bash ops/scripts/run-large-move-app-closure.sh
@@ -25,7 +25,7 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/build.sh
 source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
-APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+APP_TARGET_JAR_PATH="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
 SOURCE_JAR_PATH="${SOURCE_JAR_PATH:-$APP_TARGET_JAR_PATH}"
 FRONTEND_STATIC_DIR="$ROOT_DIR/src/main/resources/static/react-app"
 FRONTEND_MANIFEST_PATH="$FRONTEND_STATIC_DIR/.vite/manifest.json"
@@ -47,7 +47,7 @@ require_fresh_source_jar() {
 
   if [[ "$manifest_mtime" -gt "$jar_mtime" ]]; then
     echo "[restart-18000-runtime] source jar is older than frontend manifest. package before runtime-only restart." >&2
-    echo "[restart-18000-runtime] required sequence: (cd frontend && npm run build) && mvn -q -pl apps/carbonet-app -am -DskipTests package" >&2
+    echo "[restart-18000-runtime] required sequence: (cd frontend && npm run build) && mvn -q -pl apps/carbonet-api -am -DskipTests package" >&2
     exit 1
   fi
 
@@ -55,7 +55,7 @@ require_fresh_source_jar() {
   newest_static_file="$(find "$FRONTEND_STATIC_DIR" -type f -newer "$SOURCE_JAR_PATH" ! -path '*/.git/*' | head -n 1 || true)"
   if [[ -n "$newest_static_file" ]]; then
     echo "[restart-18000-runtime] source jar is older than frontend asset: $newest_static_file" >&2
-    echo "[restart-18000-runtime] required sequence: (cd frontend && npm run build) && mvn -q -pl apps/carbonet-app -am -DskipTests package" >&2
+    echo "[restart-18000-runtime] required sequence: (cd frontend && npm run build) && mvn -q -pl apps/carbonet-api -am -DskipTests package" >&2
     exit 1
   fi
 }

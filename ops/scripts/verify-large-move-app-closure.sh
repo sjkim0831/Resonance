@@ -17,7 +17,7 @@ Checks:
   - optional runtime closure can be checked with VERIFY_RUNTIME=true
 
 Canonical app jar:
-  apps/carbonet-app/target/carbonet.jar
+  apps/carbonet-api/target/carbonet-api.jar
 
 Quick guide:
   bash ops/scripts/app-closure-help.sh
@@ -30,8 +30,8 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/build.sh
 source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
-APP_POM="$ROOT_DIR/apps/carbonet-app/pom.xml"
-APP_JAR="$ROOT_DIR/apps/carbonet-app/target/carbonet.jar"
+APP_POM="$ROOT_DIR/apps/carbonet-api/pom.xml"
+APP_JAR="$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar"
 MODULE_VERSIONCONTROL_MAPPER="$ROOT_DIR/modules/platform-version-control/src/main/resources/egovframework/mapper/com/platform/versioncontrol/ProjectVersionManagementMapper.xml"
 ROOT_VERSIONCONTROL_MAPPER="$ROOT_DIR/src/main/resources/egovframework/mapper/com/platform/versioncontrol/ProjectVersionManagementMapper.xml"
 PORT="${PORT:-18000}"
@@ -150,7 +150,7 @@ require_pattern 'egovframework/mapper/com/platform/runtimecontrol/\*\*' "$APP_PO
 info "checking owner-script canonical jar and package lines"
 require_no_matches '\$REPO_ROOT/target/carbonet\.jar|\$ROOT_DIR/target/carbonet\.jar|\$BUILD_DIR/target/carbonet\.jar' "$ROOT_DIR/ops/scripts"
 require_no_matches 'mvn -q -DskipTests package|mvn -q package' "$ROOT_DIR/ops/scripts"
-require_pattern 'apps/carbonet-app/target/carbonet\.jar' "$ROOT_DIR/ops/scripts"
+require_pattern 'apps/carbonet-api/target/carbonet\.jar' "$ROOT_DIR/ops/scripts"
 
 info "checking packaged app jar exists"
 require_file "$APP_JAR"
