@@ -473,11 +473,11 @@ function nextAnimationFrame() {
 
 type ReportPdfDesignDraft = "agency" | "summary" | "table" | "compact";
 
-const REPORT_PDF_DESIGN_DRAFTS: Array<{ id: ReportPdfDesignDraft; label: string; enLabel: string }> = [
-  { id: "agency", label: "시안 1 기관형", enLabel: "Draft 1 Agency" },
-  { id: "summary", label: "시안 2 요약형", enLabel: "Draft 2 Summary" },
-  { id: "table", label: "시안 3 표준표형", enLabel: "Draft 3 Table" },
-  { id: "compact", label: "시안 4 압축형", enLabel: "Draft 4 Compact" }
+const REPORT_PDF_DESIGN_DRAFTS: Array<{ id: ReportPdfDesignDraft; label: string; enLabel: string; description: string; enDescription: string; icon: string; buttonClass: string }> = [
+  { id: "agency", label: "시안 1 정부기관 표준", enLabel: "Draft 1 Government", description: "정부 보고서 청색 규격", enDescription: "Government blue standard", icon: "account_balance", buttonClass: "border-blue-300 bg-blue-50 text-blue-900" },
+  { id: "summary", label: "시안 2 인증 공문", enLabel: "Draft 2 Certificate", description: "발급·승인 중심 공문서", enDescription: "Issued certificate document", icon: "verified", buttonClass: "border-rose-300 bg-rose-50 text-rose-900" },
+  { id: "table", label: "시안 3 심사 원장", enLabel: "Draft 3 Audit Ledger", description: "심사표·대장 중심 규격", enDescription: "Audit ledger standard", icon: "fact_check", buttonClass: "border-slate-400 bg-slate-100 text-slate-900" },
+  { id: "compact", label: "시안 4 환경 인증", enLabel: "Draft 4 Green Certificate", description: "환경성과 인증서 규격", enDescription: "Environmental certificate", icon: "eco", buttonClass: "border-emerald-300 bg-emerald-50 text-emerald-900" }
 ];
 
 function buildReportPdfFileName(report: EmissionSurveyReportPayload, draft?: ReportPdfDesignDraft | null) {
@@ -1801,8 +1801,18 @@ export function EmissionSurveyReportPrintPage() {
         setProperties?: (properties: Record<string, string>) => void;
       }) => {
         const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
+        const qrTone: [number, number, number] = draft === "summary"
+          ? [143, 47, 54]
+          : draft === "compact"
+            ? [8, 120, 95]
+            : draft === "table"
+              ? [51, 65, 85]
+              : [22, 75, 122];
         for (let page = 1; page <= pageCount; page += 1) {
           pdf.setPage(page);
+          pdf.setFontSize(5);
+          pdf.setTextColor(...qrTone);
+          pdf.text(`DIGITAL VERIFICATION ${page}/${pageCount}`, 187, 274);
           pdf.addImage(qrDataUrl, "PNG", 187, 276, 18, 18);
         }
         pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
@@ -1905,40 +1915,78 @@ export function EmissionSurveyReportPrintPage() {
             background:#eef4fa!important;
           }
           .pdf-download-mode.pdf-draft-agency .print-report-hero{
-            border-top:10px solid #1f4f7a!important;
+            border:1px solid #9fb3c8!important;
+            border-top:12px solid #164b7a!important;
+            background:#f7fafe!important;
+            box-shadow:inset 0 -1px 0 #d7e2ec!important;
+          }
+          .pdf-download-mode.pdf-draft-agency .print-card{
+            border-color:#afc2d3!important;
+          }
+          .pdf-download-mode.pdf-draft-agency .pdf-table-page thead,
+          .pdf-download-mode.pdf-draft-agency .pdf-table-page tr.bg-blue-50{
+            background:#e7f0f8!important;
           }
           .pdf-download-mode.pdf-draft-summary .print-report-hero{
-            border-left:12px solid #2563eb!important;
-            border-top:1px solid #cbd5e1!important;
+            border:3px double #8f2f36!important;
+            background:#fffdfb!important;
+            padding:20px 22px!important;
           }
           .pdf-download-mode.pdf-draft-summary .print-report-total-card,
           .pdf-download-mode.pdf-draft-summary .print-total-cell{
-            background:#eff6ff!important;
+            background:#fff5f3!important;
+            border-color:#d9a8a3!important;
+          }
+          .pdf-download-mode.pdf-draft-summary .print-card{
+            border-color:#d8c3bd!important;
+          }
+          .pdf-download-mode.pdf-draft-summary .pdf-table-page thead,
+          .pdf-download-mode.pdf-draft-summary .pdf-table-page tr.bg-blue-50{
+            background:#f8ece9!important;
           }
           .pdf-download-mode.pdf-draft-table .print-report-hero{
-            border-top:6px double #334155!important;
+            border:3px double #334155!important;
+            background:#f8fafc!important;
+            border-radius:0!important;
           }
           .pdf-download-mode.pdf-draft-table .print-card,
           .pdf-download-mode.pdf-draft-table .pdf-table-page{
-            border-radius:2px!important;
+            border-radius:0!important;
+            border-color:#64748b!important;
+          }
+          .pdf-download-mode.pdf-draft-table .pdf-table-page table,
+          .pdf-download-mode.pdf-draft-table .pdf-table-page th,
+          .pdf-download-mode.pdf-draft-table .pdf-table-page td{
+            border-color:#64748b!important;
+          }
+          .pdf-download-mode.pdf-draft-table .pdf-table-page thead,
+          .pdf-download-mode.pdf-draft-table .pdf-table-page tr.bg-blue-50{
+            background:#e5e7eb!important;
           }
           .pdf-download-mode.pdf-draft-compact .print-report-hero{
-            border-top:8px solid #0f766e!important;
-            padding:14px!important;
+            border:1px solid #8bbcaf!important;
+            border-left:12px solid #08785f!important;
+            background:#f4fbf8!important;
+            padding:16px 18px!important;
           }
           .pdf-download-mode.pdf-draft-compact .print-card{
             border-radius:4px!important;
+            border-color:#a8cfc3!important;
           }
           .pdf-download-mode.pdf-draft-compact .pdf-chart-page{
             gap:10pt!important;
           }
+          .pdf-download-mode.pdf-draft-compact .pdf-table-page thead,
+          .pdf-download-mode.pdf-draft-compact .pdf-table-page tr.bg-blue-50{
+            background:#e5f5ef!important;
+          }
         `}
       </style>
-      <div className="print-hidden mx-auto mb-4 flex max-w-5xl justify-between gap-3">
+      <div className="print-hidden mx-auto mb-4 flex max-w-5xl flex-wrap justify-between gap-3">
         <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
           {en ? "Back To Report" : "리포트로 돌아가기"}
         </button>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:bg-slate-500"
             disabled={verificationBusy}
@@ -1947,16 +1995,20 @@ export function EmissionSurveyReportPrintPage() {
           >
             {verificationBusy ? (en ? "Preparing PDF..." : "PDF 생성 중...") : (en ? "Download PDF" : "PDF 다운로드")}
           </button>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
             {REPORT_PDF_DESIGN_DRAFTS.map((draft) => (
               <button
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-800 disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500"
+                className={`min-w-40 border px-3 py-2 text-left disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500 ${draft.buttonClass}`}
                 disabled={verificationBusy}
                 key={draft.id}
                 onClick={() => handleDownloadPdf(draft.id)}
                 type="button"
               >
-                {verificationBusy && pdfDesignDraft === draft.id ? (en ? "Preparing..." : "생성 중...") : (en ? draft.enLabel : draft.label)}
+                <span className="flex items-center gap-2 text-xs font-black">
+                  <span className="material-symbols-outlined text-[18px]">{draft.icon}</span>
+                  {verificationBusy && pdfDesignDraft === draft.id ? (en ? "Preparing..." : "생성 중...") : (en ? draft.enLabel : draft.label)}
+                </span>
+                <span className="mt-1 block text-[10px] font-bold opacity-70">{en ? draft.enDescription : draft.description}</span>
               </button>
             ))}
           </div>
