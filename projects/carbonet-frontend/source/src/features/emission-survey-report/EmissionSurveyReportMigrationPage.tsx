@@ -149,6 +149,7 @@ function canonicalReportForVerification(report: EmissionSurveyReportPayload) {
     generatedAt: report.generatedAt,
     productName: report.productName,
     pageTitle: report.pageTitle,
+    displayTitle: "제품/부산물 배출계수 리포트",
     classification: report.classification,
     calculationScope: report.calculationScope,
     summary: report.summary,

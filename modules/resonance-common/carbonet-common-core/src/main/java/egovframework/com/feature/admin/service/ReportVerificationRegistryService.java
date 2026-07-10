@@ -310,7 +310,10 @@ public class ReportVerificationRegistryService {
 
     private Map<String, Object> scoreOcrCandidate(String normalizedText, JsonNode dataset) {
         boolean productMatched = containsText(normalizedText, dataset.path("productName").asText());
-        boolean titleMatched = containsText(normalizedText, dataset.path("pageTitle").asText());
+        boolean titleMatched = containsText(normalizedText, dataset.path("displayTitle").asText())
+                || containsText(normalizedText, dataset.path("pageTitle").asText())
+                || containsText(normalizedText, "제품/부산물 배출계수 리포트")
+                || containsText(normalizedText, "탄소배출량 리포트");
         boolean totalMatched = containsNumber(normalizedText, dataset.path("summary").path("totalEmission"));
         JsonNode rows = dataset.path("rows");
         int materialCount = 0;
@@ -383,6 +386,9 @@ public class ReportVerificationRegistryService {
 
     private String normalizeText(String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT)
+                .replace('₀', '0').replace('₁', '1').replace('₂', '2').replace('₃', '3').replace('₄', '4')
+                .replace('₅', '5').replace('₆', '6').replace('₇', '7').replace('₈', '8').replace('₉', '9')
+                .replace("쳔연가스", "천연가스")
                 .replaceAll("[,，]", "")
                 .replaceAll("[^0-9a-z가-힣.]+", "");
     }
@@ -394,6 +400,12 @@ public class ReportVerificationRegistryService {
         }
         if (normalizedText.contains(normalizedExpected)) {
             return true;
+        }
+        if (normalizedExpected.matches("[a-z]{1,3}[0-9]{1,2}")) {
+            String ocrAlias = normalizedExpected.replace('0', 'o').replace('1', 'l').replace('4', 'a').replace('5', 's');
+            if (normalizedText.contains(ocrAlias)) {
+                return true;
+            }
         }
         if (normalizedExpected.length() < 4) {
             return false;
