@@ -212,7 +212,11 @@ public class ReportVerificationRegistryService {
                     && qrPayloadHash.equalsIgnoreCase(payloadHash)
                     && qrIntegrityCode.equalsIgnoreCase(integrityCode)
                     && qrDatasetHash.equalsIgnoreCase(datasetHash);
-            boolean datasetExactMatch = Boolean.TRUE.equals(score.get("productMatched"))
+            boolean lcaReport = "LCA_SUMMARY".equalsIgnoreCase(candidateReportType);
+            boolean datasetExactMatch = lcaReport
+                    ? Boolean.TRUE.equals(score.get("titleMatched"))
+                    && ((Number) score.get("matchedLcaFieldCount")).intValue() == ((Number) score.get("lcaFieldCount")).intValue()
+                    : Boolean.TRUE.equals(score.get("productMatched"))
                     && Boolean.TRUE.equals(score.get("titleMatched"))
                     && Boolean.TRUE.equals(score.get("totalEmissionMatched"))
                     && ((Number) score.get("matchedMaterialCount")).intValue() == ((Number) score.get("materialCount")).intValue()
@@ -327,8 +331,12 @@ public class ReportVerificationRegistryService {
     }
 
     private Map<String, Object> scoreOcrCandidate(String normalizedText, JsonNode dataset) {
+        boolean lcaReport = "LCA_SUMMARY".equalsIgnoreCase(dataset.path("reportType").asText());
+        JsonNode lcaSummary = dataset.path("lcaSummary");
         boolean productMatched = containsText(normalizedText, dataset.path("productName").asText());
-        boolean titleMatched = containsText(normalizedText, dataset.path("displayTitle").asText())
+        boolean titleMatched = (lcaReport && (containsText(normalizedText, lcaSummary.path("documentTitle").asText())
+                || containsText(normalizedText, "제품 LCA 수행 개요")))
+                || containsText(normalizedText, dataset.path("displayTitle").asText())
                 || containsText(normalizedText, dataset.path("pageTitle").asText())
                 || containsText(normalizedText, "제품/부산물 배출계수 리포트")
                 || containsText(normalizedText, "탄소배출량 리포트");
@@ -385,9 +393,42 @@ public class ReportVerificationRegistryService {
                 }
             }
         }
+        List<Map<String, Object>> lcaFieldComparisons = new ArrayList<>();
+        int lcaFieldCount = 0;
+        int matchedLcaFieldCount = 0;
+        if (lcaReport && lcaSummary.isObject()) {
+            Map<String, String> labels = new LinkedHashMap<>();
+            labels.put("companyName", "기업명");
+            labels.put("productFamily", "제품군");
+            labels.put("functionalUnit", "기능단위");
+            labels.put("productModel", "제품 모델");
+            labels.put("productType", "제품 유형");
+            labels.put("equipmentWeight", "장비 중량");
+            labels.put("bucketCapacity", "버킷 용량");
+            labels.put("referenceFlow", "기준 흐름");
+            labels.put("dataPeriod", "데이터 기간");
+            labels.put("regionScope", "지역 범위");
+            labels.put("lcaSoftware", "LCA 소프트웨어");
+            for (Map.Entry<String, String> entry : labels.entrySet()) {
+                String expected = lcaSummary.path(entry.getKey()).asText("").trim();
+                if (expected.isBlank()) continue;
+                boolean matched = containsText(normalizedText, expected);
+                lcaFieldCount++;
+                if (matched) matchedLcaFieldCount++;
+                Map<String, Object> field = new LinkedHashMap<>();
+                field.put("field", entry.getKey());
+                field.put("label", entry.getValue());
+                field.put("expected", expected);
+                field.put("matched", matched);
+                lcaFieldComparisons.add(field);
+            }
+        }
         double materialRatio = materialCount == 0 ? 0 : (double) matchedMaterialCount / materialCount;
         double numberRatio = numberCount == 0 ? 0 : (double) matchedNumberCount / numberCount;
-        double score = (productMatched ? 15 : 0)
+        double lcaFieldRatio = lcaFieldCount == 0 ? 0 : (double) matchedLcaFieldCount / lcaFieldCount;
+        double score = lcaReport
+                ? (titleMatched ? 20 : 0) + (productMatched ? 10 : 0) + Math.min(50, lcaFieldRatio * 50) + Math.min(20, numberRatio * 20)
+                : (productMatched ? 15 : 0)
                 + (titleMatched ? 10 : 0)
                 + (totalMatched ? 20 : 0)
                 + Math.min(25, materialRatio * 25)
@@ -401,6 +442,9 @@ public class ReportVerificationRegistryService {
         result.put("materialCount", materialCount);
         result.put("matchedNumberCount", matchedNumberCount);
         result.put("numberCount", numberCount);
+        result.put("matchedLcaFieldCount", matchedLcaFieldCount);
+        result.put("lcaFieldCount", lcaFieldCount);
+        result.put("lcaFieldComparisons", lcaFieldComparisons);
         result.put("fieldComparisons", allFieldComparisons);
         result.put("fieldMismatches", fieldMismatches);
         return result;

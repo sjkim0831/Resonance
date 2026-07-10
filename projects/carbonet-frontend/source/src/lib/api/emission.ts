@@ -228,6 +228,7 @@ export type ReportDatasetVerificationResponse = {
 };
 
 export type ReportPhotoVerificationResponse = {
+  reportType?: "EMISSION_SURVEY" | "LCA_SUMMARY";
   photoConsistent: boolean;
   status: "PHOTO_CONTENT_MATCH" | "PHOTO_REVIEW" | "PHOTO_MISMATCH" | "NOT_FOUND";
   verificationMode: "PHOTO_OCR_DATASET";
@@ -274,9 +275,19 @@ export type ReportPhotoVerificationResponse = {
   materialCount?: number;
   matchedNumberCount?: number;
   numberCount?: number;
+  matchedLcaFieldCount?: number;
+  lcaFieldCount?: number;
+  lcaFieldComparisons?: ReportLcaFieldComparison[];
   candidateCount?: number;
   comparisons?: ReportOcrComparison[];
   message?: string;
+};
+
+export type ReportLcaFieldComparison = {
+  field: string;
+  label: string;
+  expected: string;
+  matched: boolean;
 };
 
 export type ReportOcrComparison = {
@@ -306,6 +317,9 @@ export type ReportOcrComparison = {
   materialCount: number;
   matchedNumberCount: number;
   numberCount: number;
+  matchedLcaFieldCount?: number;
+  lcaFieldCount?: number;
+  lcaFieldComparisons?: ReportLcaFieldComparison[];
   fieldComparisons?: Array<{
     rowIndex: number;
     sectionLabel?: string;

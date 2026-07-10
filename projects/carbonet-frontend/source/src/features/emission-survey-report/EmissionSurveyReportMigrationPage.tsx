@@ -2737,10 +2737,26 @@ export function EmissionSurveyReportVerifyPage() {
                   <span className="col-span-2">{en ? "Damaged regions" : "훼손 의심 영역"}: {photoVerification.damagedCellCount ?? 0}/{photoVerification.comparedCellCount ?? 0}</span>
                   <span>{en ? "Product" : "제품명"}: {photoVerification.productMatched ? "OK" : "-"}</span>
                   <span>{en ? "Title" : "제목"}: {photoVerification.titleMatched ? "OK" : "-"}</span>
-                  <span>{en ? "Total" : "총량"}: {photoVerification.totalEmissionMatched ? "OK" : "-"}</span>
-                  <span>{en ? "Materials" : "물질명"}: {photoVerification.matchedMaterialCount || 0}/{photoVerification.materialCount || 0}</span>
-                  <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
+                  {selectedReportType === "LCA_SUMMARY" ? <>
+                    <span>{en ? "LCA fields" : "LCA 고유 항목"}: {photoVerification.matchedLcaFieldCount || 0}/{photoVerification.lcaFieldCount || 0}</span>
+                    <span>{en ? "Mass balance" : "질량·배출 수치"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
+                  </> : <>
+                    <span>{en ? "Total" : "총량"}: {photoVerification.totalEmissionMatched ? "OK" : "-"}</span>
+                    <span>{en ? "Materials" : "물질명"}: {photoVerification.matchedMaterialCount || 0}/{photoVerification.materialCount || 0}</span>
+                    <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
+                  </>}
                 </div>
+                {selectedReportType === "LCA_SUMMARY" && photoVerification.lcaFieldComparisons?.length ? (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {photoVerification.lcaFieldComparisons.map((field) => (
+                      <div className={`border p-3 text-xs ${field.matched ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`} key={field.field}>
+                        <strong>{field.label}</strong>
+                        <span className="mt-1 block break-words">{field.expected || "-"}</span>
+                        <span className="mt-1 block font-black">{field.matched ? "MATCH" : "MISMATCH"}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {photoVerification.fieldMismatches?.length ? (
                   <div className="mt-4 border-t border-rose-200 pt-3">
                     <p className="text-xs font-black text-rose-900">{en ? "Unmatched or unreadable dataset fields" : "불일치·판독 실패 데이터"}</p>
@@ -2885,9 +2901,14 @@ export function EmissionSurveyReportVerifyPage() {
                         <p className={`mb-2 font-black ${item.datasetExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Dataset" : "데이터셋"}: {item.datasetExactMatch ? "EXACT" : "MISMATCH"}</p>
                         <p>{en ? "Product" : "제품"}: {item.productMatched ? "OK" : "-"}</p>
                         <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p>
-                        <p>{en ? "Total" : "총량"}: {item.totalEmissionMatched ? "OK" : "-"}</p>
-                        <p>{en ? "Materials" : "물질"}: {item.matchedMaterialCount}/{item.materialCount}</p>
-                        <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
+                        {selectedReportType === "LCA_SUMMARY" ? <>
+                          <p>{en ? "LCA fields" : "LCA 고유 항목"}: {item.matchedLcaFieldCount || 0}/{item.lcaFieldCount || 0}</p>
+                          <p>{en ? "Mass / emission values" : "질량·배출 수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
+                        </> : <>
+                          <p>{en ? "Total" : "총량"}: {item.totalEmissionMatched ? "OK" : "-"}</p>
+                          <p>{en ? "Materials" : "물질"}: {item.matchedMaterialCount}/{item.materialCount}</p>
+                          <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
+                        </>}
                         <details className="mt-3 min-w-72 border border-slate-200 bg-white">
                           <summary className="cursor-pointer select-none px-3 py-2 font-black text-slate-800 hover:bg-slate-50">
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
@@ -2908,6 +2929,15 @@ export function EmissionSurveyReportVerifyPage() {
                                 </span>
                               ))}
                             </div>
+                            {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                {item.lcaFieldComparisons.map((field) => (
+                                  <span className={`px-2 py-1 font-bold ${field.matched ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`} key={field.field}>
+                                    {field.label}: {field.matched ? "MATCH" : "MISMATCH"}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                             <div className="mt-3">
                               <p className="font-black text-emerald-800">{en ? "Matched fields" : "일치 내역"} ({item.fieldComparisons?.filter((field) => field.rowMatched).length || 0})</p>
                               <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
@@ -3063,6 +3093,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         reportTitle: lcaDocumentTitle,
         datasetExtension: {
           lcaSummary: {
+            documentTitle: lcaDocumentTitle,
             companyName,
             productFamily,
             functionalUnit,
