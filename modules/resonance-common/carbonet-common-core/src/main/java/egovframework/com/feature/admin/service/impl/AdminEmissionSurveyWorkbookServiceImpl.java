@@ -268,55 +268,89 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
             new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_WASTE", "폐기물", 0, -1, 0, 0, 52, 1, 1, 11, 53, 55, 56, 67, List.of(), templateFixedColumns("OUTPUT_WASTE", "B"))
     );
     private static final List<SectionConfig> ADMIN_UPLOAD_WORKBOOK_SECTION_CONFIGS = List.of(
-            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_RAW_MATERIALS", "원료 물질 및 보조 물질", 3, 7, 2, 3, 8, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("R"), 9, 11, 12, 18, List.of(), List.of(
+            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_RAW_MATERIALS", "원료 물질 및 보조 물질", 3, 7, 2, 3, 8, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("P"), 9, 11, 12, 18, List.of(), List.of(
                     fixedColumn("group", "구분", "E"),
                     fixedColumn("materialName", "물질명", "F"),
-                    fixedColumn("annualUnit", "단위\n(연간)", "I"),
-                    fixedColumn("remark", "비고", "Q", "원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "비고")
-            )),
-            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_ENERGY", "에너지", 3, 7, 2, 3, 20, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("M"), 21, 21, 22, 25, List.of(), List.of(
-                    fixedColumn("group", "구분", "E"),
-                    fixedColumn("materialName", "물질명", "F"),
-                    fixedColumn("annualUnit", "단위(연간)", "I"),
-                    fixedColumn("remark", "비고", "M")
-            )),
-            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_STEAM", "에너지 스팀", 3, 7, 2, 3, 25, excelColumnIndex("BS"), excelColumnIndex("BT"), excelColumnIndex("CF"), 26, 26, 27, 28, List.of(), List.of(
-                    fixedColumn("group", "구분", "BT"),
-                    fixedColumn("materialName", "물질명", "BU"),
-                    fixedColumn("annualUnit", "단위(연간)", "BW"),
-                    fixedColumn("remark", "비고", "CF")
-            )),
-            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_MISC", "기타", 3, 7, 2, 3, 30, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("L"), 31, 31, 32, 80, List.of(), List.of(
-                    fixedColumn("group", "구분", "E"),
-                    fixedColumn("materialName", "물질명", "F"),
-                    fixedColumn("annualUnit", "단위(연간)", "H"),
-                    fixedColumn("remark", "비고", "L")
-            )),
-            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_PRODUCTS", "제품 및 부산물", 3, 8, 2, 3, 9, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("M"), 10, 10, 11, 13, List.of(), List.of(
-                    fixedColumn("group", "구분", "E"),
-                    fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
                     fixedColumn("annualUnit", "단위\n(연간)", "H"),
-                    fixedColumn("remark", "비고", "M")
+                    fixedColumn("usage", "용도", "I"),
+                    fixedColumn("origin", "원산지\n(국가/업체명)", "J"),
+                    fixedColumn("marineTransport", "해양", "K"),
+                    fixedColumn("marineTonKm", "물동량\n(ton · km)", "L"),
+                    fixedColumn("roadTransport", "육로", "M"),
+                    fixedColumn("roadTonKm", "물동량\n(ton · km)", "N"),
+                    fixedColumn("transportRoute", "운송경로", "O"),
+                    fixedColumn("remark", "비고", "P", "원료물질 수송 (원료 물질에만 기입하여 주시기 바랍니다.)", "비고")
             )),
-            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_AIR", "대기 배출물", 3, 8, 2, 3, 15, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("R"), 16, 16, 17, 23, List.of(), List.of(
+            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_ENERGY", "에너지", 3, 7, 2, 3, 20, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("J"), 21, 21, 22, 25, List.of(), List.of(
                     fixedColumn("group", "구분", "E"),
                     fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
                     fixedColumn("annualUnit", "단위(연간)", "H"),
-                    fixedColumn("remark", "비고", "M")
+                    fixedColumn("usage", "용도", "I"),
+                    fixedColumn("remark", "비고", "J")
             )),
-            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_WATER", "수계 배출물", 3, 8, 2, 3, 25, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("R"), 28, 28, 29, 33, List.of(
+            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_STEAM", "에너지 스팀", 3, 7, 2, 3, 25, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("Q"), 26, 26, 27, 28, List.of(), List.of(
+                    fixedColumn("group", "구분", "E"),
+                    fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
+                    fixedColumn("annualUnit", "단위(연간)", "H"),
+                    fixedColumn("usage", "용도", "I"),
+                    fixedColumn("steamType", "스팀종류\n(포화증기/습증기/과열증기)", "J"),
+                    fixedColumn("steamMass", "스팀의 질량", "L"),
+                    fixedColumn("condensateMass", "응축수 질량", "M"),
+                    fixedColumn("condensateTemperature", "응축수\n온도", "O"),
+                    fixedColumn("steamCirculation", "스팀순환여부", "P"),
+                    fixedColumn("externalSteam", "외부스팀 여부", "Q")
+            )),
+            new SectionConfig("투입물 데이터 수집", "INPUT", "3. 투입물 데이터 수집", "INPUT_MISC", "기타", 3, 7, 2, 3, 30, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("J"), 31, 31, 32, 80, List.of(), List.of(
+                    fixedColumn("group", "구분", "E"),
+                    fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
+                    fixedColumn("annualUnit", "단위(연간)", "H"),
+                    fixedColumn("usage", "용도", "I"),
+                    fixedColumn("remark", "비고", "J")
+            )),
+            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_PRODUCTS", "제품 및 부산물", 3, 8, 2, 3, 9, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("K"), 10, 10, 11, 13, List.of(), List.of(
+                    fixedColumn("group", "구분", "E"),
+                    fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
+                    fixedColumn("annualUnit", "단위\n(연간)", "H"),
+                    fixedColumn("productionCost", "생산원가", "I"),
+                    fixedColumn("costUnit", "단위", "J"),
+                    fixedColumn("remark", "비고", "K")
+            )),
+            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_AIR", "대기 배출물", 3, 8, 2, 3, 15, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("K"), 16, 16, 17, 23, List.of(), List.of(
+                    fixedColumn("group", "구분", "E"),
+                    fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
+                    fixedColumn("annualUnit", "단위(연간)", "H"),
+                    fixedColumn("collectionMethod", "포집방법", "I"),
+                    fixedColumn("remark", "비고", "K")
+            )),
+            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_WATER", "수계 배출물", 3, 8, 2, 3, 25, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("L"), 28, 28, 29, 33, List.of(
                     new SectionMetaConfig("wastewaterFacilityInstalled", "사업장 내 1차 하수처리장 설치여부", 26, excelColumnIndex("E"), 27, excelColumnIndex("E"))
             ), List.of(
                     fixedColumn("group", "구분", "E"),
                     fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
                     fixedColumn("annualUnit", "단위(연간)", "H"),
-                    fixedColumn("remark", "비고", "N")
+                    fixedColumn("treatmentRoute", "처리경로", "I"),
+                    fixedColumn("treatmentMethod", "처리방법", "K"),
+                    fixedColumn("remark", "비고", "L")
             )),
-            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_WASTE", "폐기물", 3, 8, 2, 3, 35, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("R"), 36, 38, 39, 120, List.of(), List.of(
+            new SectionConfig("산출물 데이터 수집", "OUTPUT", "4. 산출물 데이터 수집", "OUTPUT_WASTE", "폐기물", 3, 8, 2, 3, 35, excelColumnIndex("D"), excelColumnIndex("E"), excelColumnIndex("P"), 36, 38, 39, 120, List.of(), List.of(
                     fixedColumn("group", "구분", "E"),
                     fixedColumn("materialName", "물질명", "F"),
+                    fixedColumn("amount", "양", "G"),
                     fixedColumn("annualUnit", "단위", "H"),
-                    fixedColumn("remark", "비고", "R", "재활용 및 최종폐기 과정 수송", "비고")
+                    fixedColumn("wasteType", "폐기물 종류", "I"),
+                    fixedColumn("treatmentMethod", "처리방법", "K"),
+                    fixedColumn("transportTonKm", "물동량\n(ton · km)", "L"),
+                    fixedColumn("marineTransport", "해양", "M"),
+                    fixedColumn("roadTransport", "육로", "N"),
+                    fixedColumn("transportRoute", "운송경로", "O"),
+                    fixedColumn("remark", "비고", "P", "재활용 및 최종폐기 과정 수송", "비고")
             ))
     );
 
@@ -2183,7 +2217,13 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                 && "폐기물".equals(normalizeValue(readMergedValue(outputSheet, outputMerged, 35, excelColumnIndex("BO"))));
         boolean currentLayout = "원료 물질 및 보조 물질".equals(normalizeValue(readMergedValue(inputSheet, inputMerged, 8, excelColumnIndex("BS"))))
                 && "폐기물".equals(normalizeValue(readMergedValue(outputSheet, outputMerged, 31, excelColumnIndex("BP"))));
-        return legacyLayout || currentLayout;
+        boolean leftDataLayout = "구분".equals(normalizeValue(readMergedValue(inputSheet, inputMerged, 9, excelColumnIndex("E"))))
+                && "물질명".equals(normalizeValue(readMergedValue(inputSheet, inputMerged, 9, excelColumnIndex("F"))))
+                && "구분".equals(normalizeValue(readMergedValue(inputSheet, inputMerged, 26, excelColumnIndex("E"))))
+                && "물질명".equals(normalizeValue(readMergedValue(inputSheet, inputMerged, 26, excelColumnIndex("F"))))
+                && "구분".equals(normalizeValue(readMergedValue(outputSheet, outputMerged, 10, excelColumnIndex("E"))))
+                && "물질명".equals(normalizeValue(readMergedValue(outputSheet, outputMerged, 10, excelColumnIndex("F"))));
+        return leftDataLayout || legacyLayout || currentLayout;
     }
 
     private boolean isAdminUploadSection(SectionConfig config) {

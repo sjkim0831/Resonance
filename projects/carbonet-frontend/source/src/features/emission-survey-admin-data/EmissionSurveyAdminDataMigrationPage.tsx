@@ -346,10 +346,23 @@ const VISIBLE_COLUMN_LABELS: Record<(typeof VISIBLE_COLUMN_KEYS)[number], string
   remark: "비고"
 };
 
+function sectionDataColumns(section: Record<string, unknown> | EmissionSurveyAdminSection) {
+  const columns = ((section.columns || []) as Array<Record<string, unknown>>)
+    .map((column) => ({ key: stringOf(column, "key"), label: stringOf(column, "label") }))
+    .filter((column) => column.key && !GWP_ALLOWED_VALUE_KEYS.includes(column.key as (typeof GWP_ALLOWED_VALUE_KEYS)[number]));
+  if (columns.length) {
+    return columns;
+  }
+  return VISIBLE_COLUMN_KEYS.map((key) => ({ key, label: VISIBLE_COLUMN_LABELS[key] }));
+}
+
 function sanitizeRowValues(section: Record<string, unknown> | EmissionSurveyAdminSection, values: Record<string, string>) {
-  const allowedKeys = isAirEmissionSection(section)
-    ? [...BASE_ALLOWED_VALUE_KEYS, ...GWP_ALLOWED_VALUE_KEYS]
-    : [...BASE_ALLOWED_VALUE_KEYS];
+  const sectionKeys = sectionDataColumns(section).map((column) => column.key);
+  const allowedKeys = Array.from(new Set([
+    ...BASE_ALLOWED_VALUE_KEYS,
+    ...sectionKeys,
+    ...(isAirEmissionSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])
+  ]));
   const nextValues: Record<string, string> = {};
   allowedKeys.forEach((key) => {
     nextValues[key] = String(values[key] || "");
@@ -377,14 +390,7 @@ function createPaddedPreviewRow(
 }
 
 function sanitizeSectionForSave(section: EmissionSurveyAdminSection) {
-  const columns = VISIBLE_COLUMN_KEYS.map((columnKey) => {
-    const matchedColumn = ((section.columns || []) as Array<Record<string, unknown>>)
-      .find((column) => stringOf(column, "key") === columnKey);
-    return {
-      key: columnKey,
-      label: matchedColumn ? stringOf(matchedColumn, "label") || VISIBLE_COLUMN_LABELS[columnKey] : VISIBLE_COLUMN_LABELS[columnKey]
-    };
-  });
+  const columns = sectionDataColumns(section);
   return {
     ...section,
     columns,
@@ -489,9 +495,9 @@ function describeRowValues(
   section: Record<string, unknown> | EmissionSurveyAdminSection,
   values: Record<string, string>
 ) {
-  const items = VISIBLE_COLUMN_KEYS.map((columnKey) => ({
-    label: VISIBLE_COLUMN_LABELS[columnKey],
-    value: displayValue(values[columnKey])
+  const items = sectionDataColumns(section).map((column) => ({
+    label: column.label,
+    value: displayValue(values[column.key])
   }));
   if (isAirEmissionSection(section)) {
     items.push({
@@ -526,13 +532,7 @@ function renderSectionTable(
   const showGwpMapping = editable && isAirEmissionSection(section);
   const existingSections = options?.existingSections || [];
   const deletedRows = rows.filter((row) => rowClientState(row).isDeleted).length;
-  const visibleColumns = VISIBLE_COLUMN_KEYS.map((columnKey) => {
-    const matchedColumn = columns.find((column) => stringOf(column, "key") === columnKey);
-    return {
-      key: columnKey,
-      label: matchedColumn ? stringOf(matchedColumn, "label") || VISIBLE_COLUMN_LABELS[columnKey] : VISIBLE_COLUMN_LABELS[columnKey]
-    };
-  });
+  const visibleColumns = sectionDataColumns(section);
   const comparisonColSpan = 1 + visibleColumns.length + (showGwpMapping ? 1 : 0) + (editable ? 1 : 0);
   return (
     <article className="gov-card overflow-hidden" key={key}>
@@ -589,7 +589,8 @@ function renderSectionTable(
               const selectedSource = options?.rowSourceSelections?.[rowSelectionKey(sectionCode, rowId)] || "UPLOAD";
               const annualUnitValue = String(values.annualUnit || "");
               const hasAnnualUnitIssue = hasUnitMappingIssue(annualUnitValue);
-              const isIncomplete = !isDeletedRow && (visibleColumns.some((column) => !normalizedValue(values[column.key])) || hasAnnualUnitIssue || requiresAttention);
+              const requiredKeys = ["group", "materialName", "annualUnit"];
+              const isIncomplete = !isDeletedRow && (requiredKeys.some((columnKey) => !normalizedValue(values[columnKey])) || hasAnnualUnitIssue || requiresAttention);
               const uploadValueSummary = describeRowValues(section, values);
               const existingValueSummary = matchedExistingRow
                 ? describeRowValues(section, ((matchedExistingRow.values || {}) as Record<string, string>))
@@ -1085,7 +1086,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     newRowSequenceRef.current += 1;
     const rowId = `NEW_ROW_${Date.now()}_${newRowSequenceRef.current}`;
     const values: Record<string, string> = {};
-    [...BASE_ALLOWED_VALUE_KEYS, ...(isAirEmissionSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])].forEach((key) => {
+    [...sectionDataColumns(section).map((column) => column.key), ...(isAirEmissionSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])].forEach((key) => {
       values[key] = "";
     });
     return {
