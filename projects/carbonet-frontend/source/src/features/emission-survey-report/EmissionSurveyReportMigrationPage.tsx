@@ -1,6 +1,12 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { fetchSurveyEcoinventAiRecommendationPage, fetchSurveyMaterialEnglishNames } from "../../lib/api/emission";
+import {
+  fetchSurveyEcoinventAiRecommendationPage,
+  fetchSurveyMaterialEnglishNames,
+  issueSurveyReportVerification,
+  verifySurveyReportDataset,
+  type ReportDatasetVerificationResponse
+} from "../../lib/api/emission";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, WarningPanel } from "../admin-ui/common";
@@ -25,7 +31,7 @@ const REPORT_VERIFY_BEGIN = "CARBONET_REPORT_VERIFY_BEGIN";
 const REPORT_VERIFY_END = "CARBONET_REPORT_VERIFY_END";
 
 type ReportVerificationPayload = {
-  version: 1;
+  version: 1 | 2;
   certificateId: string;
   issuedAt: string;
   reportTitle: string;
@@ -38,6 +44,8 @@ type ReportVerificationPayload = {
   payloadHash: string;
   integrityCode: string;
   verificationUrl: string;
+  datasetHash?: string;
+  dataset?: ReturnType<typeof canonicalReportForVerification>;
 };
 
 type ReportVerificationRecord = ReportVerificationPayload & {
@@ -186,9 +194,9 @@ function verificationPayloadToBlock(payload: ReportVerificationPayload) {
 }
 
 function extractVerificationPayload(raw: string): ReportVerificationPayload | null {
-  const blockMatch = raw.match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_-]+)\s*CARBONET_REPORT_VERIFY_END/);
+  const blockMatch = raw.match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_\-\s]+?)\s*CARBONET_REPORT_VERIFY_END/);
   const inlineMatch = raw.match(/CARBONET-VERIFY:([A-Za-z0-9_-]+)/);
-  const encoded = blockMatch?.[1] || inlineMatch?.[1] || "";
+  const encoded = (blockMatch?.[1] || inlineMatch?.[1] || "").replace(/\s+/g, "");
   if (!encoded) {
     return null;
   }
@@ -294,7 +302,7 @@ async function buildReportVerificationRecord(report: EmissionSurveyReportPayload
   const certificateId = `CRN-${issuedAt.slice(0, 10).replace(/-/g, "")}-${payloadHash.slice(0, 12).toUpperCase()}`;
   const integrityCode = (await sha256Hex(`${certificateId}|${payloadHash}|${report.summary.totalEmission}|CARBONET`)).slice(0, 24).toUpperCase();
   return {
-    version: 1,
+    version: 2,
     source: "browser-print",
     certificateId,
     issuedAt,
@@ -307,6 +315,8 @@ async function buildReportVerificationRecord(report: EmissionSurveyReportPayload
     warningCount: report.summary.warningCount,
     payloadHash,
     integrityCode,
+    datasetHash: payloadHash,
+    dataset: canonicalReportForVerification(report),
     verificationUrl: `${window.location.origin}${buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify")}?certificateId=${encodeURIComponent(certificateId)}`
   };
 }
@@ -331,7 +341,24 @@ function buildReportPdfFileName(report: EmissionSurveyReportPayload, draft?: Rep
     .replace(/\s+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-  return `${name || "emission-survey-report"}${draft ? `-design-${draft}` : ""}-${date}.pdf`;
+  const draftLabel = draft ? `-${REPORT_PDF_DESIGN_DRAFTS.find((item) => item.id === draft)?.label.replace(/\s+/g, "-") || `시안-${draft}`}` : "";
+  return `탄소배출량-리포트-${name || "report"}${draftLabel}-${date}.pdf`;
+}
+
+function buildLcaSummaryPdfFileName(report: EmissionSurveyReportPayload, pageProductName = "") {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const name = (pageProductName || report.productName || report.pageTitle || "lca-summary")
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return `LCA-요약보고서-${name || "summary"}-${date}.pdf`;
+}
+
+function buildLcaSummaryDocumentTitle(companyName = "", en = false) {
+  const organization = companyName.trim();
+  const title = en ? "Product LCA Summary" : "제품 LCA 수행 개요";
+  return [organization, title].filter(Boolean).join(" ");
 }
 
 function formatPercent(value: number, digits = 1) {
@@ -1582,6 +1609,7 @@ export function EmissionSurveyReportPrintPage() {
     setVerificationMessage("");
     try {
       const record = await buildReportVerificationRecord(effectiveReport);
+      await issueSurveyReportVerification(record);
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
       setPdfDesignDraft(draft);
@@ -1604,11 +1632,11 @@ export function EmissionSurveyReportPrintPage() {
             windowWidth: element.scrollWidth
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          margin: [8, 8, 8, 8],
+          margin: [8, 8, 0, 8],
           pagebreak: {
             mode: ["css", "legacy"],
             before: [".pdf-page-start"],
-            after: [".pdf-page-end"],
+            after: [],
             avoid: [".pdf-avoid", ".print-break", ".print-card", ".pdf-table-row"]
           }
         };
@@ -1659,7 +1687,7 @@ export function EmissionSurveyReportPrintPage() {
   return (
     <main className="min-h-screen bg-[#dfe7ef] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}.pdf-page-start{break-before:page;page-break-before:always}.pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-page-end{break-after:page;page-break-after:always}.pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-chart-page .print-card{padding:12pt!important}.pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-chart-page h2,.pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-avoid,.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr,.pdf-table-row{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-page{break-after:page;page-break-after:always;padding-top:0!important;padding-bottom:20pt!important}.pdf-download-mode .pdf-page-start{break-before:page;page-break-before:always;margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-table-page{margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-page-end{break-after:page;page-break-after:always}.pdf-download-mode .pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-download-mode .pdf-chart-page .print-card{padding:12pt!important}.pdf-download-mode .pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-download-mode .pdf-chart-page h2,.pdf-download-mode .pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-download-mode .pdf-avoid,.pdf-download-mode .print-break,.pdf-download-mode .print-card,.pdf-download-mode .pdf-table-row{break-inside:avoid;page-break-inside:avoid}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
+        {"@page{size:A4;margin:8mm;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}.print-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;overflow:visible!important;padding:0!important}.print-page{break-after:page;page-break-after:always}.print-page:last-child{break-after:auto;page-break-after:auto}.pdf-page-start{break-before:page;page-break-before:always}.pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-page-end{break-after:page;page-break-after:always}.pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-chart-page .print-card{padding:12pt!important}.pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-chart-page h2,.pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-avoid,.print-break{break-inside:avoid;page-break-inside:avoid}.print-table{break-inside:auto;page-break-inside:auto}.print-table thead{display:table-header-group}.print-table tr,.pdf-table-row{break-inside:avoid;page-break-inside:avoid}.print-card{background:#fff!important;border:1px solid #d8e0ea!important;border-radius:18px!important;box-shadow:none!important;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-soft-bg{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-ink-bg{background:#0f172a!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero{background:linear-gradient(135deg,#0f172a,#11284d 42%,#0f766e)!important;color:#fff!important;border:1px solid #0f172a!important;border-radius:20px!important;margin:0 0 16px!important;padding:20px!important;overflow:hidden!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-hero-grid{display:grid!important;grid-template-columns:minmax(0,1.4fr) 260px!important;align-items:center!important}.print-report-title-wrap{min-height:112px!important;display:flex!important;align-items:center!important}.print-report-title-tag{color:#a5f3fc!important}.print-report-title{color:#fff!important}.print-report-total-card{width:260px!important;justify-self:end!important;background:rgba(255,255,255,.10)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-report-total-card *{color:#fff!important}.print-total-cell{background:#fff!important;color:#0f172a!important;border-top:2px solid #0f172a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-total-label{border-bottom-left-radius:18px!important}.print-total-box-cell{border-bottom-right-radius:18px!important}.print-total-value{background:#f8fafc!important;color:#0f172a!important;border:1px solid transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}@media screen{.print-input-text{display:none!important}.pdf-download-mode .print-page{break-after:page;page-break-after:always;padding-top:0!important;padding-bottom:20pt!important}.pdf-download-mode .print-page:last-child{break-after:auto!important;page-break-after:auto!important;padding-bottom:0!important}.pdf-download-mode .pdf-page-start{break-before:page;page-break-before:always;margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-page-content{margin-top:0!important;padding-top:0!important}.pdf-download-mode .pdf-table-page{margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important}.pdf-download-mode .pdf-page-end{break-after:auto!important;page-break-after:auto!important}.pdf-download-mode .pdf-chart-page{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important;gap:14pt!important}.pdf-download-mode .pdf-chart-page .print-card{padding:12pt!important}.pdf-download-mode .pdf-chart-page .pdf-table-row{padding-top:5pt!important;padding-bottom:5pt!important}.pdf-download-mode .pdf-chart-page h2,.pdf-chart-page h3{font-size:14pt!important;line-height:1.2!important}.pdf-download-mode .pdf-avoid,.pdf-download-mode .print-break,.pdf-download-mode .print-card,.pdf-download-mode .pdf-table-row{break-inside:avoid;page-break-inside:avoid}.pdf-download-mode .print-input-control{display:none!important}.pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.pdf-download-mode .print-hidden{display:none!important}.pdf-download-mode .pdf-hidden{display:none!important}.pdf-download-mode .pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}.pdf-download-mode > :last-child{break-after:auto!important;page-break-after:auto!important;margin-bottom:0!important;padding-bottom:0!important}.pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}}"}
       </style>
       <style>
         {`
@@ -2097,6 +2125,7 @@ export function EmissionSurveyReportVerifyPage() {
   const [uploadedVerificationText, setUploadedVerificationText] = useState("");
   const [uploadedPayloadFound, setUploadedPayloadFound] = useState(false);
   const [payload, setPayload] = useState<ReportVerificationPayload | null>(null);
+  const [datasetVerification, setDatasetVerification] = useState<ReportDatasetVerificationResponse | null>(null);
   const [resultMessage, setResultMessage] = useState(en ? "Upload the certificate PDF or paste the verification block." : "인증서 PDF를 업로드하거나 검증 블록을 붙여넣으세요.");
   const [resultTone, setResultTone] = useState<"info" | "success" | "warning">("info");
 
@@ -2111,13 +2140,30 @@ export function EmissionSurveyReportVerifyPage() {
     )) || null;
   }, [payload]);
 
-  const evaluatePayload = (nextPayload: ReportVerificationPayload | null, sourceLabel: string) => {
+  const evaluatePayload = async (nextPayload: ReportVerificationPayload | null, sourceLabel: string) => {
     if (!nextPayload) {
       setPayload(null);
+      setDatasetVerification(null);
       setResultTone("warning");
       setResultMessage(en
         ? `No Carbonet verification block was found in ${sourceLabel}. If the browser compressed PDF text, paste the block printed on the last page.`
         : `${sourceLabel}에서 Carbonet 검증 블록을 찾지 못했습니다. 브라우저가 PDF 텍스트를 압축했다면 마지막 페이지의 검증 블록을 붙여넣으세요.`);
+      return;
+    }
+    setPayload(nextPayload);
+    if (nextPayload.version >= 2 && nextPayload.dataset) {
+      try {
+        const verification = await verifySurveyReportDataset(nextPayload);
+        setDatasetVerification(verification);
+        setResultTone(verification.valid ? "success" : "warning");
+        setResultMessage(verification.valid
+          ? (en ? "Authenticity verified: all certificate tags and the complete report dataset match the issued record." : "진위 확인 완료: 인증 태그와 리포트 전체 데이터셋이 발급 원장과 모두 일치합니다.")
+          : (en ? `Dataset verification failed. ${verification.differenceCount || 0} differences were found.` : `데이터셋 검증에 실패했습니다. ${verification.differenceCount || 0}개의 불일치 항목을 확인했습니다.`));
+      } catch (error) {
+        setDatasetVerification(null);
+        setResultTone("warning");
+        setResultMessage(error instanceof Error ? error.message : (en ? "Server dataset verification failed." : "서버 데이터셋 검증에 실패했습니다."));
+      }
       return;
     }
     const records = loadReportVerificationRecords();
@@ -2127,7 +2173,7 @@ export function EmissionSurveyReportVerifyPage() {
       && record.integrityCode === nextPayload.integrityCode
     ));
     const sameId = records.some((record) => record.certificateId === nextPayload.certificateId);
-    setPayload(nextPayload);
+    setDatasetVerification(null);
     if (exact) {
       setResultTone("success");
       setResultMessage(en ? "Authenticity verified against the local issued-record registry." : "로컬 발급 이력과 일치하여 진위 확인이 완료되었습니다.");
@@ -2150,7 +2196,7 @@ export function EmissionSurveyReportVerifyPage() {
     const nextPayload = resolveVerificationPayload(extractedText);
     setUploadedVerificationText(extractedText);
     setUploadedPayloadFound(Boolean(nextPayload));
-    evaluatePayload(nextPayload, file.name);
+    await evaluatePayload(nextPayload, file.name);
   };
 
   const handleManualVerify = () => {
@@ -2158,7 +2204,7 @@ export function EmissionSurveyReportVerifyPage() {
     const sourceLabel = manualBlock.trim()
       ? (en ? "manual input" : "수동 입력값")
       : (fileName || (en ? "uploaded PDF" : "업로드 PDF"));
-    evaluatePayload(resolveVerificationPayload(sourceText), sourceLabel);
+    void evaluatePayload(resolveVerificationPayload(sourceText), sourceLabel);
   };
 
   const toneClass = resultTone === "success"
@@ -2175,7 +2221,7 @@ export function EmissionSurveyReportVerifyPage() {
         { label: en ? "Report Authenticity" : "리포트 진위확인" }
       ]}
       title={en ? "Emission Survey Report Authenticity" : "배출 설문 리포트 진위확인"}
-      subtitle={en ? "Upload a downloaded certificate PDF and verify the certificate ID, report fingerprint, and integrity block." : "다운로드한 인증서 PDF를 업로드하여 인증서 ID, 리포트 지문, 무결성 블록을 확인합니다."}
+      subtitle={en ? "Upload a downloaded report and compare its certificate tags and complete dataset with the issued registry." : "다운로드한 리포트를 업로드하여 인증 태그와 전체 데이터셋을 발급 원장과 비교합니다."}
     >
       <AdminWorkspacePageFrame>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -2185,7 +2231,7 @@ export function EmissionSurveyReportVerifyPage() {
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">{en ? "PDF Verification" : "PDF 검증"}</p>
                 <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Upload Certificate PDF" : "인증서 PDF 업로드"}</h2>
                 <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                  {en ? "Use the PDF saved from the report print screen. The verification block printed on the last page is read automatically when the PDF keeps text data." : "리포트 출력 화면에서 저장한 PDF를 사용하세요. PDF에 텍스트 데이터가 남아 있으면 마지막 페이지의 검증 블록을 자동으로 읽습니다."}
+                  {en ? "Version 2 PDFs contain hidden certificate data and the canonical report dataset. They are read and compared automatically." : "version 2 PDF에는 숨김 인증 정보와 정규화 데이터셋이 포함되며 업로드 시 자동으로 읽어 대조합니다."}
                 </p>
               </div>
               <MemberButton onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-print?lang=ko", "/en/admin/emission/survey-report-print?lang=en"))} type="button" variant="secondary">
@@ -2201,7 +2247,7 @@ export function EmissionSurveyReportVerifyPage() {
               <div className={`mt-3 rounded-2xl border px-4 py-3 text-sm font-bold ${uploadedPayloadFound ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
                 {uploadedPayloadFound
                   ? (en ? "Verification data was found in the uploaded PDF. The button below can verify it again." : "업로드한 PDF에서 검증 데이터를 찾았습니다. 아래 버튼으로 다시 확인할 수 있습니다.")
-                  : (en ? "The uploaded PDF was read, but the verification block was not found. Paste the block from the last report page below if needed." : "업로드한 PDF는 읽었지만 검증 블록을 찾지 못했습니다. 필요하면 리포트 마지막 페이지의 검증 블록을 아래에 붙여넣으세요.")}
+                  : (en ? "The uploaded PDF was read, but hidden Carbonet verification data was not found." : "업로드한 PDF는 읽었지만 숨김 Carbonet 검증 정보를 찾지 못했습니다.")}
               </div>
             ) : null}
 
@@ -2250,6 +2296,35 @@ export function EmissionSurveyReportVerifyPage() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
+                <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetPresent ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Embedded dataset" : "내장 데이터셋"}: {datasetVerification?.datasetPresent ? "OK" : "-"}
+                </span>
+                <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch ? "bg-emerald-50 text-emerald-800" : datasetVerification ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Registry match" : "원장 일치"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
+                </span>
+              </div>
+              {datasetVerification?.differences?.length ? (
+                <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
+                  {datasetVerification.differences.slice(0, 10).map((difference) => (
+                    <div className="rounded-lg border border-rose-100 bg-rose-50 p-2 text-xs" key={`${difference.path}-${difference.actual}`}>
+                      <p className="break-all font-mono font-black text-rose-900">{difference.path}</p>
+                      <p className="mt-1 break-all text-rose-700">{en ? "Issued" : "발급"}: {difference.expected}</p>
+                      <p className="break-all text-rose-700">{en ? "Uploaded" : "업로드"}: {difference.actual}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
+                  {datasetVerification?.datasetMatch
+                    ? (en ? "Every stored field and row matches the uploaded report." : "저장된 모든 필드와 행이 업로드 리포트와 일치합니다.")
+                    : (en ? "Upload a version 2 report to compare its complete dataset." : "전체 데이터셋 대조를 위해 version 2 리포트를 업로드하세요.")}
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Record" : "발급 이력"}</p>
               {matchedRecord ? (
                 <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
@@ -2274,6 +2349,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const routeEn = isEnglish();
   const en = routeEn;
   const report = loadEmissionSurveyReportSession();
+  const lcaArticleRef = useRef<HTMLElement | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [productFamily, setProductFamily] = useState("");
   const [functionalUnit, setFunctionalUnit] = useState("");
@@ -2283,8 +2359,12 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const [equipmentWeight, setEquipmentWeight] = useState("");
   const [bucketCapacity, setBucketCapacity] = useState("");
   const [referenceFlow, setReferenceFlow] = useState("");
-  const [dataPeriod, setDataPeriod] = useState("");
-  const [regionScope, setRegionScope] = useState("");
+  const [dataPeriod] = useState("");
+  const [regionScope] = useState("");
+  const [verificationRecord, setVerificationRecord] = useState<ReportVerificationRecord | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadMessage, setDownloadMessage] = useState("");
+  const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
   const lcaSoftware = defaultLcaSoftwareLabel();
 
   logGovernanceScope("PAGE", "emission-survey-lca-summary-print", {
@@ -2322,18 +2402,80 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const massUnit = outputMassUnitLabel(outputRows, en) || "t";
   const totalEmission = report.summary.totalEmission || 0;
   const totalEmissionPerMass = normalizedOutputMass > 0 ? totalEmission / normalizedOutputMass : totalEmission;
-  const handlePrintDocument = () => {
-    const originalTitle = document.title;
-    document.title = " ";
-    window.print();
-    window.setTimeout(() => {
-      document.title = originalTitle;
-    }, 500);
+  const lcaDocumentTitle = buildLcaSummaryDocumentTitle(companyName, en);
+  const handleDownloadDocument = async () => {
+    setDownloadBusy(true);
+    setDownloadMessage("");
+    try {
+      const record = await buildReportVerificationRecord(report);
+      await issueSurveyReportVerification(record);
+      saveReportVerificationRecord(record);
+      setVerificationRecord(record);
+      setPdfDownloadMode(true);
+      await nextAnimationFrame();
+      await nextAnimationFrame();
+      const element = lcaArticleRef.current;
+      if (!element) {
+        throw new Error("LCA summary element is not ready.");
+      }
+      const module = await import("html2pdf.js");
+      const html2pdf = module.default || module;
+      const pdfOptions: Record<string, unknown> = {
+        filename: buildLcaSummaryPdfFileName(report, lcaDocumentTitle),
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          windowWidth: element.scrollWidth
+        },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        margin: [14, 14, 0, 14],
+        pagebreak: {
+          mode: ["css", "legacy"],
+          before: [".lca-page-2"],
+          avoid: [".lca-section", ".lca-table tr"]
+        }
+      };
+      const worker = html2pdf()
+        .set(pdfOptions)
+        .from(element)
+        .toPdf();
+      await worker.get("pdf").then((pdf: {
+        internal: { getNumberOfPages: () => number };
+        setPage: (page: number) => void;
+        setFontSize: (size: number) => void;
+        setTextColor: (r: number, g: number, b: number) => void;
+        text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
+        setProperties?: (properties: Record<string, string>) => void;
+      }) => {
+        pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
+        pdf.setFontSize(1);
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(verificationPayloadToBlock(record), 1, 1, { maxWidth: 1 });
+        pdf.setProperties?.({
+          title: lcaDocumentTitle,
+          subject: "Carbonet verified LCA summary report",
+          keywords: `carbonet,lca,verification,${record.certificateId}`,
+          creator: "Carbonet"
+        });
+      });
+      await worker.save();
+      setDownloadMessage(en ? "LCA summary PDF downloaded with hidden verification data." : "숨김 검증 정보가 포함된 LCA 요약 PDF를 다운로드했습니다.");
+    } catch (error) {
+      console.error(error);
+      setDownloadMessage(en ? "PDF download failed. Please try again." : "PDF 다운로드에 실패했습니다. 다시 시도하세요.");
+    } finally {
+      setPdfDownloadMode(false);
+      setDownloadBusy(false);
+    }
   };
   const textFieldClass = "rounded-sm border border-emerald-300 bg-emerald-100/80 px-1.5 py-0.5 font-bold text-slate-950 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 print:border-0 print:bg-transparent print:px-0 print:py-0 print:shadow-none";
-  const tableHeaderClass = "border border-[#cccccc] bg-[#d9d9d9] px-3 py-2 text-center text-[8px] font-black text-slate-950";
-  const tableLabelClass = "border border-[#cccccc] bg-[#f2f2f2] px-3 py-2 text-[8px] font-black text-[#4f6fd5]";
-  const tableCellClass = "border border-[#cccccc] px-3 py-2 text-[8px] font-semibold leading-4 text-slate-800";
+  const tableHeaderClass = "align-middle border border-[#cccccc] bg-[#d9d9d9] px-3 py-2 text-center text-[8px] font-black text-slate-950";
+  const tableLabelClass = "align-middle border border-[#cccccc] bg-[#f2f2f2] px-3 py-2 text-[8px] font-black text-[#4f6fd5]";
+  const tableCellClass = "align-middle border border-[#cccccc] px-3 py-2 text-[8px] font-semibold leading-4 text-slate-800";
+  const cellContentClass = "lca-cell-content";
+  const centerCellContentClass = "lca-cell-content lca-cell-content-center";
   const terms = [
     ["영향범주", "평가 대상 제품 또는 시스템에 영향을 미칠 수 있는 일반적인 환경영향, 지구온난화, 부영양화, 산성화 등이 해당"],
     ["전과정", "원료물질 채취부터 최종 처리에 이르는 제품 시스템 상의 연속적이고 상호 연관된 단계들"],
@@ -2355,7 +2497,79 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   return (
     <main className="min-h-screen bg-[#e8edf3] px-4 py-8 text-slate-950 print:bg-white print:p-0">
       <style>
-        {"@page{size:A4;margin:60px;}@media print{html,body{background:#fff!important}.print-hidden{display:none!important}main{padding:60px!important;box-sizing:border-box!important}.lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;padding:0!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:10pt!important;font-weight:400!important;line-height:1.35!important}.lca-sheet header{min-height:25px!important;margin-bottom:8px!important}.lca-sheet header,.lca-sheet header *{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:18pt!important;font-weight:600!important;line-height:1.2!important}.lca-sheet h2{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:12pt!important;font-weight:600!important;line-height:1.2!important;margin-bottom:6px!important}.lca-page-2>h2{font-size:18pt!important;font-weight:600!important;margin-bottom:18pt!important}.lca-sheet p,.lca-overview-copy{font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:9pt!important;font-weight:400!important;line-height:1.45!important}.lca-section{break-inside:avoid;page-break-inside:avoid;margin-top:26px!important}.lca-page-2{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:60px!important}.lca-sheet>.lca-section:last-child{padding-bottom:0!important}.lca-table{break-inside:auto;page-break-inside:auto;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;width:100%!important}.lca-table thead{display:table-header-group}.lca-table tr{break-inside:avoid;page-break-inside:avoid}.lca-table th{background:#d9d9d9!important;color:#0f172a!important;padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:500!important;line-height:1.25!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-table td{padding:5px 7px!important;font-family:\"Pretendard GOV\",\"Noto Sans KR\",sans-serif!important;font-size:7pt!important;font-weight:400!important;line-height:1.25!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9pt!important;line-height:1.3!important}.lca-table td.bg-\[\#f2f2f2\],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;font-weight:500!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-input-control{display:none!important}.print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}.lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.lca-screen-note{display:none!important}}@media screen{.print-input-text{display:none!important}.lca-required-field{background-image:linear-gradient(135deg,#ef233c 0 8px,transparent 8px)!important;background-repeat:no-repeat!important;background-position:left top!important;background-size:12px 12px!important}.lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:9px!important;line-height:1.3!important}.lca-overview-copy{font-size:9px!important;line-height:1.45!important}}"}
+        {`
+          @page{size:A4;margin:60px;}
+          @media print{
+            html,body{background:#fff!important}
+            .print-hidden{display:none!important}
+            main{padding:60px!important;box-sizing:border-box!important}
+            .lca-sheet{box-shadow:none!important;border:none!important;border-radius:0!important;margin:0!important;max-width:none!important;width:100%!important;box-sizing:border-box!important;padding:0!important;font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:10pt!important;font-weight:400!important;line-height:1.35!important}
+            .lca-sheet header{min-height:25px!important;margin-bottom:8px!important}
+            .lca-sheet header,.lca-sheet header *{font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:18pt!important;font-weight:600!important;line-height:1.2!important}
+            .lca-sheet h2{font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:12pt!important;font-weight:600!important;line-height:1.2!important;margin-bottom:6px!important}
+            .lca-page-2>h2{font-size:18pt!important;font-weight:600!important;margin-bottom:12pt!important}
+            .lca-sheet p,.lca-overview-copy{font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:9pt!important;font-weight:400!important;line-height:1.45!important}
+            .lca-section{break-inside:avoid;page-break-inside:avoid;margin-top:26px!important}
+            .lca-page-2{break-before:page!important;page-break-before:always!important;margin-top:0!important;padding-top:20px!important}
+            .lca-page-2~.lca-section{margin-top:14px!important}
+            .lca-sheet>.lca-section:last-child{padding-bottom:0!important}
+            .lca-table{break-inside:auto;page-break-inside:auto;font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:8pt!important;font-weight:400!important;width:100%!important}
+            .lca-table thead{display:table-header-group}
+            .lca-table tr{break-inside:avoid;page-break-inside:avoid}
+            .lca-table th{background:#d9d9d9!important;color:#0f172a!important;padding:3px 6px!important;height:24px!important;font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:8pt!important;font-weight:500!important;line-height:1.18!important;vertical-align:middle!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+            .lca-table td{padding:3px 6px!important;height:24px!important;font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;font-size:8pt!important;font-weight:400!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-table th>*,.lca-table td>*{vertical-align:middle!important}
+            .lca-cell-content{display:flex!important;min-height:18px!important;align-items:center!important;box-sizing:border-box!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;line-height:1.18!important;transform:translateY(-2px)!important}
+            .lca-cell-content-center{justify-content:center!important;text-align:center!important}
+            .lca-cell-content>span,.lca-cell-content>input,.lca-cell-content>textarea{margin-top:0!important;margin-bottom:0!important}
+            .lca-data-quality-content{display:block!important;width:100%!important;min-height:0!important;text-align:left!important;line-height:1.28!important;transform:translateY(-2px)!important}
+            .lca-data-quality-cell{height:84px!important;min-height:84px!important;padding-top:4px!important;padding-bottom:6px!important}
+            .lca-data-quality-content>div{display:block!important;width:100%!important;text-align:left!important}
+            .lca-data-quality-value{display:block!important;margin-left:10px!important}
+            .lca-data-quality-content .print-input-control{display:inline-block!important;width:auto!important;min-height:0!important;margin:0!important;line-height:1.2!important;vertical-align:baseline!important}
+            .lca-data-quality-content .print-input-text{display:inline!important;line-height:1.2!important;vertical-align:baseline!important}
+            .lca-table .print-input-control{display:block!important;min-height:0!important;margin-top:0!important;margin-bottom:0!important;line-height:1.18!important;padding-top:0!important;padding-bottom:1px!important;vertical-align:middle!important}
+            .lca-pdf-download-mode .lca-table .print-input-text{display:inline-block!important;margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:8pt!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-page-2~.lca-section .lca-table th,.lca-page-2~.lca-section .lca-table td{padding:3px 6px!important;height:24px!important;font-size:8pt!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-page-2~.lca-section .lca-table .lca-data-quality-cell{height:84px!important;min-height:84px!important;padding-top:4px!important;padding-bottom:6px!important}
+            .lca-table td.bg-[#f2f2f2],.lca-table td[class*='bg-[#f2f2f2]']{background:#f2f2f2!important;font-weight:500!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+            .print-input-control{display:none!important}
+            .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}
+            .lca-auto{background:transparent!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+            .lca-screen-note{display:none!important}
+            .lca-pdf-machine-readable{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;overflow:hidden!important;color:#fff!important;background:#fff!important;font-size:1px!important;line-height:1px!important;letter-spacing:0!important;white-space:pre-wrap!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+          }
+          @media screen{
+            .print-input-text{display:none!important}
+            .lca-required-field{background-image:linear-gradient(135deg,#ef233c 0 8px,transparent 8px)!important;background-repeat:no-repeat!important;background-position:left top!important;background-size:12px 12px!important}
+            .lca-table{font-size:8px!important}
+            .lca-table th,.lca-table td{height:24px!important;font-size:8px!important;vertical-align:middle!important}
+            .lca-table th>*,.lca-table td>*{vertical-align:middle!important}
+            .lca-cell-content{display:flex!important;min-height:18px!important;align-items:center!important;box-sizing:border-box!important;margin:0!important;padding-top:0!important;padding-bottom:0!important;line-height:1.18!important;transform:translateY(-2px)!important}
+            .lca-cell-content-center{justify-content:center!important;text-align:center!important}
+            .lca-cell-content>span,.lca-cell-content>input,.lca-cell-content>textarea{margin-top:0!important;margin-bottom:0!important}
+            .lca-data-quality-content{display:block!important;width:100%!important;min-height:0!important;text-align:left!important;line-height:1.28!important;transform:translateY(-2px)!important}
+            .lca-data-quality-cell{height:84px!important;min-height:84px!important;padding-top:4px!important;padding-bottom:6px!important}
+            .lca-data-quality-content>div{display:block!important;width:100%!important;text-align:left!important}
+            .lca-data-quality-value{display:block!important;margin-left:10px!important}
+            .lca-data-quality-content .print-input-control{display:inline-block!important;width:auto!important;min-height:0!important;margin:0!important;line-height:1.2!important;vertical-align:baseline!important}
+            .lca-data-quality-content .print-input-text{display:inline!important;line-height:1.2!important;vertical-align:baseline!important}
+            .lca-table .print-input-control{display:block!important;min-height:0!important;margin-top:0!important;margin-bottom:0!important;line-height:1.18!important;padding-top:0!important;padding-bottom:1px!important;vertical-align:middle!important}
+            .lca-pdf-download-mode .lca-table .print-input-text{display:inline-block!important;margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-page-1-table,.lca-page-1-table th,.lca-page-1-table td{font-size:8px!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-page-2~.lca-section{margin-top:14px!important}
+            .lca-page-2~.lca-section .lca-table th,.lca-page-2~.lca-section .lca-table td{padding:3px 6px!important;height:24px!important;font-size:8px!important;line-height:1.18!important;vertical-align:middle!important}
+            .lca-page-2~.lca-section .lca-table .lca-data-quality-cell{height:84px!important;min-height:84px!important;padding-top:4px!important;padding-bottom:6px!important}
+            .lca-overview-copy{font-size:9px!important;line-height:1.45!important}
+            .lca-pdf-download-mode{padding-bottom:0!important}
+            .lca-pdf-download-mode .print-hidden{display:none!important}
+            .lca-pdf-download-mode .print-input-control{display:none!important}
+            .lca-pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}
+            .lca-pdf-download-mode .lca-section:last-of-type{margin-bottom:0!important;padding-bottom:0!important}
+            .lca-pdf-download-mode .lca-pdf-machine-readable,.lca-pdf-machine-readable{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;color:transparent!important;background:transparent!important;font-size:1px!important;line-height:1px!important;white-space:pre-wrap!important}
+          }
+        `}
       </style>
 
       <div className="print-hidden mx-auto mb-4 flex max-w-[900px] justify-between gap-3">
@@ -2366,12 +2580,23 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         >
           {en ? "Back To Report" : "리포트로 돌아가기"}
         </button>
-        <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={handlePrintDocument} type="button">
-          {en ? "Print" : "인쇄하기"}
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {downloadMessage ? <span className="text-xs font-black text-slate-600">{downloadMessage}</span> : null}
+          <button
+            className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60"
+            disabled={downloadBusy}
+            onClick={handleDownloadDocument}
+            type="button"
+          >
+            {downloadBusy ? (en ? "Preparing PDF..." : "PDF 생성 중...") : (en ? "Download PDF" : "PDF 다운로드")}
+          </button>
+          <button className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify"))} type="button">
+            {en ? "Verify PDF" : "진위확인"}
+          </button>
+        </div>
       </div>
 
-      <article className="lca-sheet mx-auto max-w-[900px] rounded-[20px] border border-white bg-white p-6 text-[12px] shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
+      <article className={`lca-sheet mx-auto max-w-[900px] rounded-[20px] border border-white bg-white p-6 text-[12px] shadow-[0_28px_80px_rgba(15,23,42,0.18)] ${pdfDownloadMode ? "lca-pdf-download-mode" : ""}`} ref={lcaArticleRef}>
         <header className="text-center">
           <div className="inline-flex flex-wrap items-center justify-center gap-2 text-3xl font-black tracking-[-0.04em] text-slate-950">
             <EditableText className={`${textFieldClass} lca-fill !w-auto min-w-[170px] text-center text-2xl`} onCommit={setCompanyName} placeholder="* 기업명(예: 00건설)" value={companyName} />
@@ -2384,15 +2609,15 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           <table className="lca-table lca-page-1-table w-full border-collapse">
             <thead>
               <tr>
-                <th className={`${tableHeaderClass} w-[24%] text-left`}>{en ? "Term" : "용어"}</th>
-                <th className={`${tableHeaderClass} text-left`}>{en ? "Description" : "설명"}</th>
+                <th className={`${tableHeaderClass} w-[24%] text-left`}><span className={cellContentClass}>{en ? "Term" : "용어"}</span></th>
+                <th className={`${tableHeaderClass} text-left`}><span className={cellContentClass}>{en ? "Description" : "설명"}</span></th>
               </tr>
             </thead>
             <tbody>
               {terms.map(([term, desc]) => (
                 <tr key={term}>
-                  <td className={tableLabelClass}>{term}</td>
-                  <td className={tableCellClass}>{desc}</td>
+                  <td className={tableLabelClass}><span className={cellContentClass}>{term}</span></td>
+                  <td className={tableCellClass}><span className={cellContentClass}>{desc}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -2411,8 +2636,8 @@ export function EmissionSurveyLcaSummaryPrintPage() {
                 ["할당", "제품 중량 기준 할당 적용"]
               ].map(([label, value]) => (
                 <tr key={String(label)}>
-                  <td className={`${tableLabelClass} w-[28%]`}>{label as string}</td>
-                  <td className={tableCellClass}>{value as string}</td>
+                  <td className={`${tableLabelClass} w-[28%]`}><span className={cellContentClass}>{label as string}</span></td>
+                  <td className={tableCellClass}><span className={cellContentClass}>{value as string}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -2444,29 +2669,29 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           <table className="lca-table w-full border-collapse">
             <tbody>
               <tr>
-                <td className={`${tableLabelClass} w-[28%]`}>{en ? "Product model" : "제품모델"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} placeholder="* 제품명으로 수정" value={productModel} /></td>
+                <td className={`${tableLabelClass} w-[28%]`}><span className={cellContentClass}>{en ? "Product model" : "제품모델"}</span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} placeholder="* 제품명으로 수정" value={productModel} /></span></td>
               </tr>
               <tr>
-                <td className={tableLabelClass}>{en ? "General information" : "제품 일반 정보"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} maxLength={300} multiline onCommit={setProductDescription} placeholder={`* 모델명으로 수정\n제품 일반 정보를 입력`} value={productDescription} /></td>
+                <td className={tableLabelClass}><span className={cellContentClass}>{en ? "General information" : "제품 일반 정보"}</span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} maxLength={300} multiline onCommit={setProductDescription} placeholder={`* 모델명으로 수정\n제품 일반 정보를 입력`} value={productDescription} /></span></td>
               </tr>
               <tr>
-                <td className={`${tableLabelClass} w-[28%] align-middle`} rowSpan={2}>Product Spec.</td>
-                <td className={tableHeaderClass}>{en ? "Product name" : "제품명"}</td>
-                <td className={tableHeaderClass}>{en ? "Model name" : "모델명"}</td>
-                <td className={tableHeaderClass}>{en ? "Equipment weight(ton)" : "장비중량(ton)"}</td>
-                <td className={tableHeaderClass}>버킷 용량(m2)</td>
+                <td className={`${tableLabelClass} w-[28%] align-middle`} rowSpan={2}><span className={cellContentClass}>Product Spec.</span></td>
+                <td className={tableHeaderClass}><span className={centerCellContentClass}>{en ? "Product name" : "제품명"}</span></td>
+                <td className={tableHeaderClass}><span className={centerCellContentClass}>{en ? "Model name" : "모델명"}</span></td>
+                <td className={tableHeaderClass}><span className={centerCellContentClass}>{en ? "Equipment weight(ton)" : "장비중량(ton)"}</span></td>
+                <td className={tableHeaderClass}><span className={centerCellContentClass}>버킷 용량(m2)</span></td>
               </tr>
               <tr>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductModel} placeholder="* 제품명" value={productModel} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} placeholder="* 모델명" value={productType} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setEquipmentWeight} placeholder="장비중량(ton)" value={equipmentWeight} /></td>
-                <td className={`${tableCellClass} text-center`}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setBucketCapacity} placeholder="버킷 용량(m2)" value={bucketCapacity} /></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductModel} placeholder="* 제품명" value={productModel} /></span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} placeholder="* 모델명" value={productType} /></span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setEquipmentWeight} placeholder="장비중량(ton)" value={equipmentWeight} /></span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setBucketCapacity} placeholder="버킷 용량(m2)" value={bucketCapacity} /></span></td>
               </tr>
               <tr>
-                <td className={`${tableLabelClass} w-[28%]`}>{en ? "Reference flow" : "중량정보(기준흐름)"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setReferenceFlow} placeholder="* 중량정보(기준흐름)" value={referenceFlow} /></td>
+                <td className={`${tableLabelClass} w-[28%]`}><span className={cellContentClass}>{en ? "Reference flow" : "중량정보(기준흐름)"}</span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setReferenceFlow} placeholder="* 중량정보(기준흐름)" value={referenceFlow} /></span></td>
               </tr>
             </tbody>
           </table>
@@ -2477,70 +2702,68 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           <table className="lca-table w-full border-collapse">
             <tbody>
               <tr>
-                <td className={`${tableLabelClass} w-[25%]`}>{en ? "Functional unit" : "기능단위"}</td>
-                <td className={tableCellClass} colSpan={4}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setFunctionalUnit} placeholder={`* 산정된 탄소배출량의 단위\n예: 단위 제품 생산당, 단위 작동 시간당 등`} value={functionalUnit} /></td>
+                <td className={`${tableLabelClass} w-[25%]`}><span className={cellContentClass}>{en ? "Functional unit" : "기능단위"}</span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setFunctionalUnit} placeholder={`* 산정된 탄소배출량의 단위\n예: 단위 제품 생산당, 단위 작동 시간당 등`} value={functionalUnit} /></span></td>
               </tr>
               <tr>
-                <td className={`${tableLabelClass} align-middle`} rowSpan={5}>{en ? "System boundary" : "시스템경계"}</td>
-                <th className={tableHeaderClass}>{en ? "Analysis stage" : "분석 단계"}</th>
-                <th className={tableHeaderClass} colSpan={2}>{en ? "Detailed scope" : "세부 범위"}</th>
-                <th className={tableHeaderClass}>{en ? "Included" : "분석 포함 여부"}</th>
+                <td className={`${tableLabelClass} align-middle`} rowSpan={5}><span className={cellContentClass}>{en ? "System boundary" : "시스템경계"}</span></td>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>{en ? "Analysis stage" : "분석 단계"}</span></th>
+                <th className={tableHeaderClass} colSpan={2}><span className={centerCellContentClass}>{en ? "Detailed scope" : "세부 범위"}</span></th>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>{en ? "Included" : "분석 포함 여부"}</span></th>
               </tr>
               <tr>
-                <td className={`${tableCellClass} text-center align-middle`} rowSpan={3}>제조전 단계</td>
-                <td className={tableCellClass} colSpan={2}>원료물질 채취 및 제조공정</td>
-                <td className={`${tableCellClass} text-center`}>●</td>
+                <td className={`${tableCellClass} text-center align-middle`} rowSpan={3}><span className={centerCellContentClass}>제조전 단계</span></td>
+                <td className={tableCellClass} colSpan={2}><span className={cellContentClass}>원료물질 채취 및 제조공정</span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}>●</span></td>
               </tr>
               <tr>
-                <td className={tableCellClass} colSpan={2}>1차 협력업체 생산제품 제조</td>
-                <td className={`${tableCellClass} text-center`}>X</td>
+                <td className={tableCellClass} colSpan={2}><span className={cellContentClass}>1차 협력업체 생산제품 제조</span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}>X</span></td>
               </tr>
               <tr>
-                <td className={tableCellClass} colSpan={2}>수송(협력업체→제조사업장)</td>
-                <td className={`${tableCellClass} text-center`}>X</td>
+                <td className={tableCellClass} colSpan={2}><span className={cellContentClass}>수송(협력업체→제조사업장)</span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}>X</span></td>
               </tr>
               <tr>
-                <td className={`${tableCellClass} text-center align-middle`}>제조 단계</td>
-                <td className={tableCellClass} colSpan={2}>제품 제조 공정</td>
-                <td className={`${tableCellClass} text-center`}>●</td>
+                <td className={`${tableCellClass} text-center align-middle`}><span className={centerCellContentClass}>제조 단계</span></td>
+                <td className={tableCellClass} colSpan={2}><span className={cellContentClass}>제품 제조 공정</span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}>●</span></td>
               </tr>
               <tr>
-                <td className={tableLabelClass}>{en ? "Data quality" : "데이터 품질"}</td>
-                <td className={tableCellClass} colSpan={4}>
-                  <div className="leading-7">
+                <td className={`${tableLabelClass} lca-data-quality-cell`}><span className={cellContentClass}>{en ? "Data quality" : "데이터 품질"}</span></td>
+                <td className={`${tableCellClass} lca-data-quality-cell text-left`} colSpan={4}>
+                  <div className="lca-data-quality-content">
                     <div>· Upstream : secondary data(LCI DB)</div>
-                    <div> · Core : 현장데이터 및 LCI DB</div>
-                    <div className="pl-4">
-                   - Time Related Scope :{" "}
-                    <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[150px] align-middle`} onCommit={setDataPeriod} value={dataPeriod} placeholder="* 0000.00.00 ~ 0000.00.00" />
-                    </div>
-                    <div className="pl-4">
-                      - Region Scope :{" "}
-                      <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[220px] align-middle`} onCommit={setRegionScope} placeholder="* 지역 범위(예: 00건설 00공장)" value={regionScope} />
-                    </div>
+                    <div>· Core : 현장데이터 및 LCI DB</div>
+                    <div>- Time Related Scope :</div>
+                    <div className="lca-data-quality-value">{dataPeriod.trim() || "0000.00.00 ~ 0000.00.00"}</div>
+                    <div>- Region Scope :</div>
+                    <div className="lca-data-quality-value">{regionScope.trim() || "지역 범위(예: 00건설 00공장)"}</div>
                   </div>
                 </td>
               </tr>
               <tr>
-                <td className={tableLabelClass}>LCA Software</td>
+                <td className={tableLabelClass}><span className={cellContentClass}>LCA Software</span></td>
                 <td className={`${tableCellClass} lca-auto bg-amber-100`} colSpan={4}>
-                  <span className="block font-black text-slate-950">{lcaSoftware || "-"}</span>
+                  <span className={`${cellContentClass} font-black text-slate-950`}>{lcaSoftware || "-"}</span>
                 </td>
               </tr>
               <tr>
-                <td className={`${tableLabelClass} align-middle`} rowSpan={2}>LCIA Method</td>
-                <th className={`${tableHeaderClass} w-[20%]`}>Impact category</th>
-                <th className={`${tableHeaderClass} w-[30%]`}>Indicator</th>
-                <th className={`${tableHeaderClass} w-[14%]`}>Unit</th>
-                <th className={`${tableHeaderClass} w-[26%]`}>Recommended default LCIA method</th>
+                <td className={`${tableLabelClass} align-middle`} rowSpan={2}><span className={cellContentClass}>LCIA Method</span></td>
+                <th className={`${tableHeaderClass} w-[20%]`}><span className={centerCellContentClass}>Impact category</span></th>
+                <th className={`${tableHeaderClass} w-[30%]`}><span className={centerCellContentClass}>Indicator</span></th>
+                <th className={`${tableHeaderClass} w-[14%]`}><span className={centerCellContentClass}>Unit</span></th>
+                <th className={`${tableHeaderClass} w-[26%]`}><span className={centerCellContentClass}>Recommended default LCIA method</span></th>
               </tr>
               <tr>
-                <td className={`${tableCellClass} align-middle text-center`}>Global Warming Potential (GWP100)</td>
-                <td className={`${tableCellClass} align-middle text-center`}>Radiative forcing as Global Warming Potential (GWP100)</td>
-                <td className={`${tableCellClass} align-middle text-center`}>kg CO₂–eq.</td>
+                <td className={`${tableCellClass} align-middle text-center`}><span className={centerCellContentClass}>Global Warming Potential (GWP100)</span></td>
+                <td className={`${tableCellClass} align-middle text-center`}><span className={centerCellContentClass}>Radiative forcing as Global Warming Potential (GWP100)</span></td>
+                <td className={`${tableCellClass} align-middle text-center`}><span className={centerCellContentClass}>kg CO₂–eq.</span></td>
                 <td className={`${tableCellClass} align-middle text-center`}>
-                  from openLCIA methods<br />
-                  <span className="font-black">✓ IPCC 2021, AR6</span>
+                  <span className={`${centerCellContentClass} flex-col`}>
+                    <span>from openLCIA methods</span>
+                    <span className="font-black">✓ IPCC 2021, AR6</span>
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -2552,30 +2775,35 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           <table className="lca-table w-full border-collapse">
             <thead>
               <tr>
-                <th className={tableHeaderClass}>Impact category</th>
-                <th className={tableHeaderClass}>Unit</th>
-                <th className={tableHeaderClass}>Total</th>
-                <th className={tableHeaderClass}>제조전</th>
-                <th className={tableHeaderClass}>제조</th>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>Impact category</span></th>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>Unit</span></th>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>Total</span></th>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>제조전</span></th>
+                <th className={tableHeaderClass}><span className={centerCellContentClass}>제조</span></th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className={`${tableCellClass} text-center`}>Global Warming Potential (GWP100)</td>
-                <td className={`${tableCellClass} text-center`}>kg CO₂–eq<br />/{massUnit}</td>
-                <td className={`${tableCellClass} lca-auto text-center font-black`}>{formatNumber(totalEmissionPerMass)}</td>
-                <td className={`${tableCellClass} lca-auto text-center font-black`}>{formatNumber(preManufacturingMass)}</td>
-                <td className={`${tableCellClass} lca-auto text-center font-black`}>{formatNumber(postManufacturingMass)}</td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}>Global Warming Potential (GWP100)</span></td>
+                <td className={`${tableCellClass} text-center`}><span className={`${centerCellContentClass} flex-col`}><span>kg CO₂–eq</span><span>/{massUnit}</span></span></td>
+                <td className={`${tableCellClass} lca-auto text-center font-black`}><span className={centerCellContentClass}>{formatNumber(totalEmissionPerMass)}</span></td>
+                <td className={`${tableCellClass} lca-auto text-center font-black`}><span className={centerCellContentClass}>{formatNumber(preManufacturingMass)}</span></td>
+                <td className={`${tableCellClass} lca-auto text-center font-black`}><span className={centerCellContentClass}>{formatNumber(postManufacturingMass)}</span></td>
               </tr>
               <tr>
-                <td className={`${tableCellClass} text-center font-black`} colSpan={2}>탄소배출량 합계</td>
-                <td className={`${tableCellClass} lca-auto text-center font-black`}>{formatNumber(totalEmission)} kg CO₂-eq</td>
-                <td className={`${tableCellClass} lca-auto text-center font-black`}>{preManufacturingMass > 0 ? formatPercent((preManufacturingMass / Math.max(preManufacturingMass + postManufacturingMass, 1)) * 100) : "-"}</td>
-                <td className={`${tableCellClass} lca-auto text-center font-black`}>{postManufacturingMass > 0 ? formatPercent((postManufacturingMass / Math.max(preManufacturingMass + postManufacturingMass, 1)) * 100) : "-"}</td>
+                <td className={`${tableCellClass} text-center font-black`} colSpan={2}><span className={centerCellContentClass}>탄소배출량 합계</span></td>
+                <td className={`${tableCellClass} lca-auto text-center font-black`}><span className={centerCellContentClass}>{formatNumber(totalEmission)} kg CO₂-eq</span></td>
+                <td className={`${tableCellClass} lca-auto text-center font-black`}><span className={centerCellContentClass}>{preManufacturingMass > 0 ? formatPercent((preManufacturingMass / Math.max(preManufacturingMass + postManufacturingMass, 1)) * 100) : "-"}</span></td>
+                <td className={`${tableCellClass} lca-auto text-center font-black`}><span className={centerCellContentClass}>{postManufacturingMass > 0 ? formatPercent((postManufacturingMass / Math.max(preManufacturingMass + postManufacturingMass, 1)) * 100) : "-"}</span></td>
               </tr>
             </tbody>
           </table>
         </section>
+        {verificationRecord ? (
+          <pre aria-hidden="true" className="lca-pdf-machine-readable">
+            {verificationPayloadToBlock(verificationRecord)}
+          </pre>
+        ) : null}
       </article>
     </main>
   );

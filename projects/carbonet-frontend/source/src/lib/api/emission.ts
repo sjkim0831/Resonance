@@ -205,6 +205,43 @@ export async function fetchSurveyMaterialEnglishNames(materialNames: string[]) {
   return unwrapEcoinventResponse(response, {});
 }
 
+export type ReportVerificationDatasetPayload = {
+  certificateId: string;
+  payloadHash: string;
+  integrityCode: string;
+  dataset?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type ReportDatasetVerificationResponse = {
+  valid: boolean;
+  status: "VALID" | "DATASET_MISMATCH" | "LEGACY_NO_DATASET" | "NOT_FOUND";
+  certificateId: string;
+  fingerprintMatch?: boolean;
+  integrityMatch?: boolean;
+  datasetPresent?: boolean;
+  datasetMatch?: boolean;
+  differenceCount?: number;
+  differences?: Array<{ path: string; expected: string; actual: string }>;
+  message?: string;
+};
+
+export async function issueSurveyReportVerification(payload: ReportVerificationDatasetPayload) {
+  return postJson<{ success: boolean; status: string; certificateId: string; datasetStored: boolean; datasetHash: string }>(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/issue", "/en/admin/api/admin/emission-survey-report/issue"),
+    payload,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
+export async function verifySurveyReportDataset(payload: ReportVerificationDatasetPayload) {
+  return postJson<ReportDatasetVerificationResponse>(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/verify", "/en/admin/api/admin/emission-survey-report/verify"),
+    payload,
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
 export async function fetchEcoinventFilterOptions(keyword?: string) {
   const response = await fetchJson<EcoinventApiResponse<EcoinventFilterOptions>>(
     `${buildLocalizedPath("/admin/api/admin/emission/ecoinvent/filter-options", "/en/admin/api/admin/emission/ecoinvent/filter-options")}${buildEmissionQuery({ keyword })}`,
