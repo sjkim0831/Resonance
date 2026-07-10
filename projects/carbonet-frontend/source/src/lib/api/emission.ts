@@ -305,6 +305,18 @@ export type ReportOcrComparison = {
   materialCount: number;
   matchedNumberCount: number;
   numberCount: number;
+  fieldMismatches?: Array<{
+    rowIndex: number;
+    sectionLabel?: string;
+    materialName?: string;
+    materialMatched: boolean;
+    amountDisplay?: string;
+    amountMatched: boolean;
+    emissionFactorDisplay?: string;
+    emissionFactorMatched: boolean;
+    totalEmissionDisplay?: string;
+    totalEmissionMatched: boolean;
+  }>;
 };
 
 export async function issueSurveyReportVerification(payload: ReportVerificationDatasetPayload) {

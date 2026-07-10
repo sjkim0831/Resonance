@@ -2835,6 +2835,45 @@ export function EmissionSurveyReportVerifyPage() {
                         <p>{en ? "Total" : "총량"}: {item.totalEmissionMatched ? "OK" : "-"}</p>
                         <p>{en ? "Materials" : "물질"}: {item.matchedMaterialCount}/{item.materialCount}</p>
                         <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
+                        <details className="mt-3 min-w-72 border border-slate-200 bg-white">
+                          <summary className="cursor-pointer select-none px-3 py-2 font-black text-slate-800 hover:bg-slate-50">
+                            {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
+                          </summary>
+                          <div className="border-t border-slate-200 p-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                [en ? "Product" : "제품명", item.productMatched],
+                                [en ? "Title" : "제목", item.titleMatched],
+                                [en ? "Total emission" : "총 배출량", item.totalEmissionMatched],
+                                [en ? "Certificate ID" : "인증서 ID", item.certificateIdMatch],
+                                [en ? "Report hash" : "리포트 해시", item.payloadHashMatch],
+                                [en ? "Integrity code" : "무결성 코드", item.integrityCodeMatch],
+                                [en ? "Dataset hash" : "데이터셋 해시", item.datasetHashMatch]
+                              ].map(([label, matched]) => (
+                                <span className={`px-2 py-1 font-bold ${matched ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`} key={String(label)}>
+                                  {String(label)}: {matched ? "MATCH" : "MISMATCH"}
+                                </span>
+                              ))}
+                            </div>
+                            {item.fieldMismatches?.length ? (
+                              <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                                {item.fieldMismatches.map((field) => (
+                                  <div className="border-l-4 border-rose-500 bg-rose-50 p-2 text-rose-900" key={`${item.certificateId}-${field.rowIndex}-${field.materialName}`}>
+                                    <p className="font-black">#{field.rowIndex} {field.sectionLabel || "-"} / {field.materialName || "-"}</p>
+                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+                                      {!field.materialMatched ? <span>{en ? "Material mismatch" : "물질명 불일치"}</span> : null}
+                                      {!field.amountMatched ? <span>{en ? "Amount" : "사용량"}: {field.amountDisplay || "-"}</span> : null}
+                                      {!field.emissionFactorMatched ? <span>{en ? "Factor" : "배출계수"}: {field.emissionFactorDisplay || "-"}</span> : null}
+                                      {!field.totalEmissionMatched ? <span>{en ? "Emission" : "배출량"}: {field.totalEmissionDisplay || "-"}</span> : null}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="mt-3 bg-emerald-50 p-2 font-bold text-emerald-800">{en ? "No field-level mismatches were found." : "필드 단위 불일치가 없습니다."}</p>
+                            )}
+                          </div>
+                        </details>
                       </td>
                       {[
                         [item.certificateId, item.certificateIdMatch],
