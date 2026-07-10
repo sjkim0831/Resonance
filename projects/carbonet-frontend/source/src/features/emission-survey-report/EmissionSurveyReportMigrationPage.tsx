@@ -29,6 +29,17 @@ function formatNumber(value: number, digits = 2) {
   });
 }
 
+function reportComparisonLabel(index: number) {
+  let value = index + 1;
+  let label = "";
+  while (value > 0) {
+    value -= 1;
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26);
+  }
+  return label;
+}
+
 const REPORT_VERIFICATION_STORAGE_KEY = "carbonet:emission-survey-report-verification:v1";
 const REPORT_VERIFY_BEGIN = "CARBONET_REPORT_VERIFY_BEGIN";
 const REPORT_VERIFY_END = "CARBONET_REPORT_VERIFY_END";
@@ -2473,7 +2484,7 @@ export function EmissionSurveyReportVerifyPage() {
       appendVerificationLog("OK", en ? "Korean/English OCR completed." : "한글·영문 OCR을 완료했습니다.", `characters=${recognized.text.length}, engineConfidence=${Math.round(recognized.confidence)}%`);
       setUploadedVerificationText(recognized.text);
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile);
-      appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
+      appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
       if (!preserveDigitalPayload) {
         setPayload(null);
@@ -2775,7 +2786,7 @@ export function EmissionSurveyReportVerifyPage() {
           <section className="mt-5 overflow-hidden border border-slate-200 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
-                <h2 className="text-base font-black text-slate-950">{en ? "Issued Report Comparison Log" : "전체 발급 리포트 비교 로그"}</h2>
+                <h2 className="text-base font-black text-slate-950">{en ? "All Issued Documents A-Z Comparison" : "전체 발급 문서 A-Z 일괄 대조"}</h2>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {en
                     ? `OCR content was compared with ${photoVerification.candidateCount || 0} issued datasets and verification tags.`
@@ -2785,6 +2796,9 @@ export function EmissionSurveyReportVerifyPage() {
               <div className="flex items-center gap-2 text-xs font-black">
                 <span className="bg-emerald-50 px-3 py-2 text-emerald-800">{en ? "Content match" : "내용 일치"}: {photoVerification.comparisons?.filter((item) => item.contentMatch).length || 0}</span>
                 <span className="bg-sky-50 px-3 py-2 text-sky-800">{en ? "Tag match" : "태그 일치"}: {photoVerification.comparisons?.filter((item) => item.verificationTagMatch).length || 0}</span>
+                <span className="bg-blue-50 px-3 py-2 text-blue-800">{en ? "Dataset exact" : "데이터셋 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.datasetExactMatch).length || 0}</span>
+                <span className="bg-violet-50 px-3 py-2 text-violet-800">{en ? "Tag exact" : "태그 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.tagExactMatch).length || 0}</span>
+                <span className="bg-slate-950 px-3 py-2 text-white">{en ? "Final exact" : "최종 완전 일치"}: {photoVerification.comparisons?.filter((item) => item.overallExactMatch).length || 0}</span>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -2802,9 +2816,10 @@ export function EmissionSurveyReportVerifyPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(photoVerification.comparisons || []).map((item) => (
+                  {(photoVerification.comparisons || []).map((item, comparisonIndex) => (
                     <tr className={item.contentMatch ? "bg-emerald-50/30" : "bg-white"} key={item.certificateId}>
                       <td className="px-4 py-3 align-top">
+                        <span className="mb-2 inline-flex h-7 min-w-7 items-center justify-center bg-slate-900 px-2 font-black text-white">{reportComparisonLabel(comparisonIndex)}</span>
                         <p className="font-black text-slate-950">{item.productName || "-"}</p>
                         <p className="mt-1 text-slate-600">{item.reportTitle || "-"}</p>
                         <p className="mt-1 text-[11px] text-slate-400">{item.issuedAt ? new Date(item.issuedAt).toLocaleString() : "-"}</p>
@@ -2814,6 +2829,7 @@ export function EmissionSurveyReportVerifyPage() {
                         <p className="mt-1 text-slate-500">{item.contentMatch ? (en ? "MATCH" : "일치") : item.confidence >= 55 ? (en ? "REVIEW" : "검토") : (en ? "MISMATCH" : "불일치")}</p>
                       </td>
                       <td className="px-4 py-3 align-top leading-5 text-slate-700">
+                        <p className={`mb-2 font-black ${item.datasetExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Dataset" : "데이터셋"}: {item.datasetExactMatch ? "EXACT" : "MISMATCH"}</p>
                         <p>{en ? "Product" : "제품"}: {item.productMatched ? "OK" : "-"}</p>
                         <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p>
                         <p>{en ? "Total" : "총량"}: {item.totalEmissionMatched ? "OK" : "-"}</p>
@@ -2832,12 +2848,9 @@ export function EmissionSurveyReportVerifyPage() {
                         </td>
                       ))}
                       <td className="px-4 py-3 align-top">
-                        <span className={`inline-block px-2 py-1 font-black ${item.contentMatch && item.verificationTagMatch ? "bg-emerald-100 text-emerald-800" : item.contentMatch ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-500"}`}>
-                          {item.contentMatch && item.verificationTagMatch
-                            ? (en ? "CONTENT + TAG" : "내용·태그 일치")
-                            : item.contentMatch
-                              ? (en ? "CONTENT ONLY" : "내용만 일치")
-                              : (en ? "NO MATCH" : "불일치")}
+                        <p className={`font-black ${item.tagExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Tag" : "태그"}: {item.tagExactMatch ? "EXACT" : "MISMATCH"}</p>
+                        <span className={`mt-2 inline-block px-2 py-1 font-black ${item.overallExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
+                          {item.overallExactMatch ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}
                         </span>
                       </td>
                     </tr>

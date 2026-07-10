@@ -204,6 +204,12 @@ public class ReportVerificationRegistryService {
                     && qrPayloadHash.equalsIgnoreCase(payloadHash)
                     && qrIntegrityCode.equalsIgnoreCase(integrityCode)
                     && qrDatasetHash.equalsIgnoreCase(datasetHash);
+            boolean datasetExactMatch = Boolean.TRUE.equals(score.get("productMatched"))
+                    && Boolean.TRUE.equals(score.get("titleMatched"))
+                    && Boolean.TRUE.equals(score.get("totalEmissionMatched"))
+                    && ((Number) score.get("matchedMaterialCount")).intValue() == ((Number) score.get("materialCount")).intValue()
+                    && ((Number) score.get("matchedNumberCount")).intValue() == ((Number) score.get("numberCount")).intValue();
+            boolean tagExactMatch = qrFullyMatched || (certificateIdMatch && payloadHashMatch && integrityCodeMatch && datasetHashMatch);
             double combinedScore = qrFullyMatched ? 85 + (contentScore * 0.15) : contentScore;
             Map<String, Object> visualScore = scoreVisualProfile(readJsonNullable(candidate.get("visual_profile_json")), uploadedVisualProfile);
             int confidence = (int) Math.round(combinedScore);
@@ -226,6 +232,9 @@ public class ReportVerificationRegistryService {
             comparison.put("datasetHashMatch", datasetHashMatch);
             comparison.put("verificationTagMatch", certificateIdMatch || payloadHashMatch || integrityCodeMatch || datasetHashMatch);
             comparison.put("qrFullyMatched", qrFullyMatched);
+            comparison.put("datasetExactMatch", datasetExactMatch);
+            comparison.put("tagExactMatch", tagExactMatch);
+            comparison.put("overallExactMatch", datasetExactMatch && tagExactMatch);
             comparison.putAll(visualScore);
             comparison.putAll(score);
             comparisons.add(comparison);

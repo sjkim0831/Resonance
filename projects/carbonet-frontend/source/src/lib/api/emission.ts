@@ -295,6 +295,9 @@ export type ReportOcrComparison = {
   integrityCodeMatch: boolean;
   datasetHashMatch: boolean;
   verificationTagMatch: boolean;
+  datasetExactMatch: boolean;
+  tagExactMatch: boolean;
+  overallExactMatch: boolean;
   productMatched: boolean;
   titleMatched: boolean;
   totalEmissionMatched: boolean;
