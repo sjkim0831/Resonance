@@ -45,7 +45,7 @@ public class AdminScreenManagementMenuBootstrapSupport {
 
     @EventListener(ApplicationReadyEvent.class)
     public void ensureScreenManagementMenus() {
-        cleanupLegacyMenus();
+        log.info("Legacy screen management cleanup skipped because A0060501/A0060502 are normalized backup menus.");
         provisionScreenMenu(
                 "BOOTSTRAP-SCREEN-FLOW-MANAGEMENT",
                 SCREEN_FLOW_MENU_CODE,
