@@ -693,6 +693,10 @@ public class EcoinventIntegrationService {
 
     private List<String> dictionarySearchTerms(String materialName) {
         String normalized = materialName.toLowerCase();
+        String compact = normalized.replaceAll("\\s+", "");
+        if (compact.contains("공업용수") || compact.contains("산업용수")) {
+            return List.of("market for tap water", "tap water", "water production");
+        }
         Map<String, List<String>> dictionary = Map.ofEntries(
                 Map.entry("탄산칼슘", List.of("calcium carbonate", "limestone")),
                 Map.entry("탄산마그네슘", List.of("magnesium carbonate")),
