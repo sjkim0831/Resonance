@@ -284,6 +284,7 @@ public class ReportVerificationRegistryService {
         response.put("damagedCellCount", best.get("damagedCellCount"));
         response.put("comparedCellCount", best.get("comparedCellCount"));
         response.put("visualStatus", best.get("visualStatus"));
+        response.put("damagedRegions", best.get("damagedRegions"));
         response.put("certificateId", best.get("certificate_id"));
         response.put("issuedAt", best.get("issued_at"));
         response.put("reportTitle", best.get("report_title"));
@@ -298,6 +299,7 @@ public class ReportVerificationRegistryService {
         response.put("materialCount", best.get("materialCount"));
         response.put("matchedNumberCount", best.get("matchedNumberCount"));
         response.put("numberCount", best.get("numberCount"));
+        response.put("fieldMismatches", best.get("fieldMismatches"));
         response.put("message", confidence >= 75
                 ? "The photographed report content is highly consistent with the issued dataset."
                 : confidence >= 60
@@ -315,23 +317,44 @@ public class ReportVerificationRegistryService {
         int matchedMaterialCount = 0;
         int numberCount = 0;
         int matchedNumberCount = 0;
+        List<Map<String, Object>> fieldComparisons = new ArrayList<>();
         if (rows.isArray()) {
-            for (JsonNode row : rows) {
+            for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+                JsonNode row = rows.get(rowIndex);
                 String materialName = row.path("materialName").asText();
+                boolean materialMatched = materialName.isBlank() || materialName.length() < 2 || containsText(normalizedText, materialName);
                 if (!materialName.isBlank() && materialName.length() >= 2) {
                     materialCount++;
-                    if (containsText(normalizedText, materialName)) {
+                    if (materialMatched) {
                         matchedMaterialCount++;
                     }
                 }
+                Map<String, Object> fieldMatches = new LinkedHashMap<>();
                 for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
                     JsonNode value = row.path(field);
                     if (value.isNumber() && Math.abs(value.asDouble()) > 0.0000001) {
                         numberCount++;
-                        if (containsNumber(normalizedText, value)) {
+                        boolean matched = containsNumber(normalizedText, value);
+                        fieldMatches.put(field, matched);
+                        if (matched) {
                             matchedNumberCount++;
                         }
                     }
+                }
+                boolean rowMatched = materialMatched && fieldMatches.values().stream().allMatch(Boolean.TRUE::equals);
+                if (!rowMatched) {
+                    Map<String, Object> comparison = new LinkedHashMap<>();
+                    comparison.put("rowIndex", rowIndex + 1);
+                    comparison.put("sectionLabel", row.path("sectionLabel").asText());
+                    comparison.put("materialName", materialName);
+                    comparison.put("materialMatched", materialMatched);
+                    comparison.put("amount", row.path("amount").isNumber() ? row.path("amount").numberValue() : null);
+                    comparison.put("amountMatched", fieldMatches.getOrDefault("amount", true));
+                    comparison.put("emissionFactor", row.path("emissionFactor").isNumber() ? row.path("emissionFactor").numberValue() : null);
+                    comparison.put("emissionFactorMatched", fieldMatches.getOrDefault("emissionFactor", true));
+                    comparison.put("totalEmission", row.path("totalEmission").isNumber() ? row.path("totalEmission").numberValue() : null);
+                    comparison.put("totalEmissionMatched", fieldMatches.getOrDefault("totalEmission", true));
+                    fieldComparisons.add(comparison);
                 }
             }
         }
@@ -351,6 +374,7 @@ public class ReportVerificationRegistryService {
         result.put("materialCount", materialCount);
         result.put("matchedNumberCount", matchedNumberCount);
         result.put("numberCount", numberCount);
+        result.put("fieldMismatches", fieldComparisons);
         return result;
     }
 
@@ -456,6 +480,8 @@ public class ReportVerificationRegistryService {
         long differenceTotal = 0;
         int compared = 0;
         int damaged = 0;
+        int columns = Math.max(1, stored.path("columns").asInt(48));
+        List<Map<String, Object>> damagedRegions = new ArrayList<>();
         for (int page = 0; page < storedPages.size(); page++) {
             JsonNode expectedValues = storedPages.path(page).path("values");
             JsonNode actualValues = uploadedPages.path(page).path("values");
@@ -469,6 +495,14 @@ public class ReportVerificationRegistryService {
                 compared++;
                 if (difference >= 42) {
                     damaged++;
+                    if (damagedRegions.size() < 100) {
+                        damagedRegions.add(Map.of(
+                                "page", page + 1,
+                                "row", index / columns + 1,
+                                "column", index % columns + 1,
+                                "difference", difference
+                        ));
+                    }
                 }
             }
         }
@@ -477,7 +511,8 @@ public class ReportVerificationRegistryService {
         String status = similarity >= 92 && damageRatio <= 0.015 ? "VISUAL_MATCH"
                 : similarity >= 82 && damageRatio <= 0.06 ? "VISUAL_DAMAGE_REVIEW" : "VISUAL_MISMATCH";
         return Map.of("visualProfileAvailable", true, "visualSimilarity", similarity,
-                "damagedCellCount", damaged, "comparedCellCount", compared, "visualStatus", status);
+                "damagedCellCount", damaged, "comparedCellCount", compared, "visualStatus", status,
+                "damagedRegions", damagedRegions);
     }
 
     private Map<String, Object> load(String certificateId) {

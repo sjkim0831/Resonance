@@ -249,6 +249,19 @@ export type ReportPhotoVerificationResponse = {
   damagedCellCount?: number;
   comparedCellCount?: number;
   visualStatus?: "VISUAL_MATCH" | "VISUAL_DAMAGE_REVIEW" | "VISUAL_MISMATCH" | "PAGE_MISMATCH" | "GRID_MISMATCH" | "NOT_AVAILABLE";
+  fieldMismatches?: Array<{
+    rowIndex: number;
+    sectionLabel?: string;
+    materialName?: string;
+    materialMatched: boolean;
+    amount?: number;
+    amountMatched: boolean;
+    emissionFactor?: number;
+    emissionFactorMatched: boolean;
+    totalEmission?: number;
+    totalEmissionMatched: boolean;
+  }>;
+  damagedRegions?: Array<{ page: number; row: number; column: number; difference: number }>;
   detectedCertificateId?: string;
   productMatched?: boolean;
   titleMatched?: boolean;

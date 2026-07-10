@@ -2648,6 +2648,37 @@ export function EmissionSurveyReportVerifyPage() {
                   <span>{en ? "Materials" : "물질명"}: {photoVerification.matchedMaterialCount || 0}/{photoVerification.materialCount || 0}</span>
                   <span className="col-span-2">{en ? "Numeric cells" : "수치 셀"}: {photoVerification.matchedNumberCount || 0}/{photoVerification.numberCount || 0}</span>
                 </div>
+                {photoVerification.fieldMismatches?.length ? (
+                  <div className="mt-4 border-t border-rose-200 pt-3">
+                    <p className="text-xs font-black text-rose-900">{en ? "Unmatched or unreadable dataset fields" : "불일치·판독 실패 데이터"}</p>
+                    <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
+                      {photoVerification.fieldMismatches.slice(0, 30).map((item) => (
+                        <div className="border border-rose-200 bg-rose-50 p-3 text-xs" key={`${item.rowIndex}-${item.materialName}`}>
+                          <p className="font-black text-rose-950">#{item.rowIndex} {item.sectionLabel || "-"} / {item.materialName || "-"}</p>
+                          <div className="mt-2 grid grid-cols-2 gap-1 text-rose-800">
+                            {!item.materialMatched ? <span>{en ? "Material name not found" : "물질명 판독 불일치"}</span> : null}
+                            {!item.amountMatched ? <span>{en ? "Amount" : "사용량"}: {formatNumber(item.amount ?? 0, 6)}</span> : null}
+                            {!item.emissionFactorMatched ? <span>{en ? "Emission factor" : "배출계수"}: {formatNumber(item.emissionFactor ?? 0, 8)}</span> : null}
+                            {!item.totalEmissionMatched ? <span>{en ? "Emission" : "배출량"}: {formatNumber(item.totalEmission ?? 0, 8)}</span> : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[11px] font-semibold text-rose-700">{en ? "These values were not confirmed in OCR. They may be altered, covered, blurred, or misread." : "표시된 값은 OCR에서 확인되지 않았습니다. 변조·가림·흐림 또는 오인식 가능성을 검토해야 합니다."}</p>
+                  </div>
+                ) : null}
+                {photoVerification.damagedRegions?.length ? (
+                  <div className="mt-3 border-t border-amber-200 pt-3">
+                    <p className="text-xs font-black text-amber-900">{en ? "Suspected visual damage locations" : "시각 훼손 의심 위치"}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {photoVerification.damagedRegions.slice(0, 16).map((region, index) => (
+                        <span className="bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-900" key={`${region.page}-${region.row}-${region.column}-${index}`}>
+                          P{region.page} R{region.row} C{region.column} ({region.difference})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <p className="mt-3 text-xs font-semibold leading-5 text-amber-800">{en ? "A photo verifies visible-content consistency, not the hidden digital signature. Use the original PDF for cryptographic authenticity." : "사진은 보이는 내용의 일치도를 검증하며 숨김 디지털 서명 자체를 증명하지는 않습니다. 완전한 진위 확인은 원본 PDF를 사용하세요."}</p>
               </section>
             ) : null}
