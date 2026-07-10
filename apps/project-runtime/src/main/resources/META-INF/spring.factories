@@ -1,2 +1,3 @@
 org.springframework.context.ApplicationContextInitializer=\
-  egovframework.com.MyBatisAotInitializer
+  egovframework.com.MyBatisAotInitializer,\
+  egovframework.com.config.DatabaseMigrationModeInitializer

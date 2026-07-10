@@ -36,6 +36,28 @@ spring:
       maximum-pool-size: 20
       connection-timeout: 30000
       initialization-fail-timeout: -1
+  flyway:
+    enabled: ${CARBONET_FLYWAY_ENABLED:false}
+    locations: classpath:db/migration/postgresql
+    table: carbonet_flyway_schema_history
+    baseline-on-migrate: ${CARBONET_FLYWAY_BASELINE_ON_MIGRATE:true}
+    baseline-version: ${CARBONET_FLYWAY_BASELINE_VERSION:20260710000000}
+    baseline-description: ${CARBONET_FLYWAY_BASELINE_DESCRIPTION:Existing Carbonet schema before managed migrations}
+    validate-on-migrate: true
+    out-of-order: false
+    clean-disabled: true
+    placeholders:
+      appName: carbonet
+      managedBy: flyway
+  liquibase:
+    enabled: ${CARBONET_LIQUIBASE_ENABLED:false}
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    database-change-log-table: carbonet_databasechangelog
+    database-change-log-lock-table: carbonet_databasechangeloglock
+    contexts: ${CARBONET_LIQUIBASE_CONTEXTS:carbonet,postgresql}
+    label-filter: ${CARBONET_LIQUIBASE_LABEL_FILTER:}
+    drop-first: false
+    clear-checksums: false
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

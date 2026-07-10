@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260710-091500-create-carbonet-migration-control
+      author: codex
+      labels: carbonet,postgresql,baseline
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/20260710-091500-create-carbonet-migration-control.sql
+            relativeToChangelogFile: false
+            splitStatements: true
