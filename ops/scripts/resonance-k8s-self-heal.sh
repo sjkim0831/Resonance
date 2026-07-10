@@ -264,33 +264,12 @@ EOF
 }
 
 recover_service() {
-  log "recovering service by recreation"
-  kubectl -n "$NAMESPACE" delete service carbonet-runtime --ignore-not-found=true >/dev/null 2>&1 || true
-  sleep 3
-
-  cat <<EOF | kubectl apply -f - >/dev/null 2>&1
-apiVersion: v1
-kind: Service
-metadata:
-  name: carbonet-runtime
-  namespace: $NAMESPACE
-  labels:
-    app: carbonet-runtime
-spec:
-  type: NodePort
-  selector:
-    app: carbonet-runtime
-  ports:
-  - name: http
-    port: 80
-    targetPort: 8080
-    nodePort: 80
-  - name: http-alt-32947
-    port: 32947
-    targetPort: 8080
-    nodePort: 32947
-EOF
-  sleep 5
+  log "repairing split API and Web services"
+  kubectl -n "$NAMESPACE" patch service carbonet-api --type=merge \
+    -p '{"spec":{"selector":{"app":"carbonet-runtime"}}}' >/dev/null 2>&1 || true
+  kubectl -n "$NAMESPACE" patch service carbonet-web --type=merge \
+    -p '{"spec":{"selector":{"app":"carbonet-web"}}}' >/dev/null 2>&1 || true
+  sleep 2
 }
 
 prune_images() {

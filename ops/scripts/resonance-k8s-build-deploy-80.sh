@@ -292,6 +292,8 @@ main() {
   build_maven
   build_image
   rollout_image
+  kubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"
+  kubectl -n "$NAMESPACE" rollout status deployment/carbonet-web --timeout=300s
   ensure_pdb
   verify_runtime
   

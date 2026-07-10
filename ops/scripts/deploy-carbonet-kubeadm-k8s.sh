@@ -319,10 +319,9 @@ spec:
     app: carbonet-runtime
   ports:
     - name: http
-      port: 80
+      port: 8080
       targetPort: http
-      nodePort: ${SERVICE_NODE_PORT}
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -336,7 +335,9 @@ spec:
       app: carbonet-runtime
 YAML
   kubectl apply -f "$K8S_DIR/carbonet-runtime-kubeadm.yaml"
+  kubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"
   kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout="${ROLLOUT_TIMEOUT:-600s}"
+  kubectl -n "$NAMESPACE" rollout status deployment/carbonet-web --timeout="${ROLLOUT_TIMEOUT:-600s}"
 }
 
 verify_runtime() {
