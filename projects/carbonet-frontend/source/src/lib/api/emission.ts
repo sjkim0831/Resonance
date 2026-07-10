@@ -237,6 +237,13 @@ export type ReportPhotoVerificationResponse = {
   issuedAt?: string;
   totalEmission?: number;
   rowCount?: number;
+  qrDetected?: boolean;
+  qrFullyMatched?: boolean;
+  qrCertificateMatch?: boolean;
+  qrPayloadHashMatch?: boolean;
+  qrIntegrityMatch?: boolean;
+  qrDatasetHashMatch?: boolean;
+  contentConfidence?: number;
   detectedCertificateId?: string;
   productMatched?: boolean;
   titleMatched?: boolean;
@@ -292,10 +299,15 @@ export async function verifySurveyReportDataset(payload: ReportVerificationDatas
   );
 }
 
-export async function verifySurveyReportPhoto(ocrText: string) {
+export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
+  certificateId: string;
+  payloadHash: string;
+  integrityCode: string;
+  datasetHash: string;
+}) {
   return postJson<ReportPhotoVerificationResponse>(
     buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
-    { ocrText },
+    { ocrText, qrEvidence },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
 }

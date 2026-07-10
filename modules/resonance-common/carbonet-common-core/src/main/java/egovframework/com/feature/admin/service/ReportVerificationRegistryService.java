@@ -139,8 +139,16 @@ public class ReportVerificationRegistryService {
     public Map<String, Object> verifyOcr(Map<String, Object> request) {
         String ocrText = required(request, "ocrText");
         String normalizedText = normalizeText(ocrText);
+        Map<?, ?> qrEvidence = request.get("qrEvidence") instanceof Map<?, ?> value ? value : Map.of();
+        String qrCertificateId = text(qrEvidence.get("certificateId"));
+        String qrPayloadHash = text(qrEvidence.get("payloadHash"));
+        String qrIntegrityCode = text(qrEvidence.get("integrityCode"));
+        String qrDatasetHash = text(qrEvidence.get("datasetHash"));
+        boolean qrDetected = !qrCertificateId.isBlank();
         Matcher certificateMatcher = Pattern.compile("CRN[-\\s]?\\d{8}[-\\s]?[A-Fa-f0-9]{12}").matcher(ocrText);
-        String detectedCertificateId = certificateMatcher.find()
+        String detectedCertificateId = qrDetected
+                ? qrCertificateId.toUpperCase(Locale.ROOT)
+                : certificateMatcher.find()
                 ? certificateMatcher.group().replaceAll("\\s+", "").toUpperCase(Locale.ROOT)
                 : "";
         List<Map<String, Object>> candidates = jdbcTemplate.queryForList("""
@@ -158,16 +166,21 @@ public class ReportVerificationRegistryService {
         for (Map<String, Object> candidate : candidates) {
             JsonNode dataset = readJson(candidate.get("dataset_json"));
             Map<String, Object> score = scoreOcrCandidate(normalizedText, dataset);
-            double candidateScore = ((Number) score.get("score")).doubleValue();
+            double contentScore = ((Number) score.get("score")).doubleValue();
             String certificateId = text(candidate.get("certificate_id"));
             String payloadHash = text(candidate.get("payload_hash"));
             String integrityCode = text(candidate.get("integrity_code"));
             String datasetHash = text(candidate.get("dataset_hash"));
-            boolean certificateIdMatch = containsText(normalizedText, certificateId);
-            boolean payloadHashMatch = containsText(normalizedText, payloadHash);
-            boolean integrityCodeMatch = containsText(normalizedText, integrityCode);
-            boolean datasetHashMatch = containsText(normalizedText, datasetHash);
-            int confidence = (int) Math.round(candidateScore);
+            boolean certificateIdMatch = qrCertificateId.equalsIgnoreCase(certificateId) || containsText(normalizedText, certificateId);
+            boolean payloadHashMatch = qrPayloadHash.equalsIgnoreCase(payloadHash) || containsText(normalizedText, payloadHash);
+            boolean integrityCodeMatch = qrIntegrityCode.equalsIgnoreCase(integrityCode) || containsText(normalizedText, integrityCode);
+            boolean datasetHashMatch = qrDatasetHash.equalsIgnoreCase(datasetHash) || containsText(normalizedText, datasetHash);
+            boolean qrFullyMatched = qrDetected && qrCertificateId.equalsIgnoreCase(certificateId)
+                    && qrPayloadHash.equalsIgnoreCase(payloadHash)
+                    && qrIntegrityCode.equalsIgnoreCase(integrityCode)
+                    && qrDatasetHash.equalsIgnoreCase(datasetHash);
+            double combinedScore = qrFullyMatched ? 85 + (contentScore * 0.15) : contentScore;
+            int confidence = (int) Math.round(combinedScore);
             Map<String, Object> comparison = new LinkedHashMap<>();
             comparison.put("certificateId", certificateId);
             comparison.put("issuedAt", candidate.get("issued_at"));
@@ -179,18 +192,26 @@ public class ReportVerificationRegistryService {
             comparison.put("integrityCode", integrityCode);
             comparison.put("datasetHash", datasetHash);
             comparison.put("confidence", confidence);
-            comparison.put("contentMatch", confidence >= 75);
+            comparison.put("contentConfidence", (int) Math.round(contentScore));
+            comparison.put("contentMatch", contentScore >= 75 || (qrFullyMatched && contentScore >= 40));
             comparison.put("certificateIdMatch", certificateIdMatch);
             comparison.put("payloadHashMatch", payloadHashMatch);
             comparison.put("integrityCodeMatch", integrityCodeMatch);
             comparison.put("datasetHashMatch", datasetHashMatch);
             comparison.put("verificationTagMatch", certificateIdMatch || payloadHashMatch || integrityCodeMatch || datasetHashMatch);
+            comparison.put("qrFullyMatched", qrFullyMatched);
             comparison.putAll(score);
             comparisons.add(comparison);
-            if (candidateScore > bestScore) {
-                bestScore = candidateScore;
+            if (combinedScore > bestScore) {
+                bestScore = combinedScore;
                 best = new LinkedHashMap<>(candidate);
                 best.putAll(score);
+                best.put("contentScore", contentScore);
+                best.put("qrFullyMatched", qrFullyMatched);
+                best.put("qrCertificateMatch", qrDetected && qrCertificateId.equalsIgnoreCase(certificateId));
+                best.put("qrPayloadHashMatch", qrDetected && qrPayloadHash.equalsIgnoreCase(payloadHash));
+                best.put("qrIntegrityMatch", qrDetected && qrIntegrityCode.equalsIgnoreCase(integrityCode));
+                best.put("qrDatasetHashMatch", qrDetected && qrDatasetHash.equalsIgnoreCase(datasetHash));
             }
         }
         comparisons.sort((left, right) -> Integer.compare(
@@ -203,6 +224,7 @@ public class ReportVerificationRegistryService {
         response.put("ocrCharacterCount", ocrText.length());
         response.put("candidateCount", candidates.size());
         response.put("detectedCertificateId", detectedCertificateId);
+        response.put("qrDetected", qrDetected);
         response.put("comparisons", comparisons);
         if (best == null) {
             response.put("photoConsistent", false);
@@ -213,10 +235,19 @@ public class ReportVerificationRegistryService {
         }
 
         int confidence = (int) Math.round(bestScore);
-        String status = confidence >= 75 ? "PHOTO_CONTENT_MATCH" : confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH";
-        response.put("photoConsistent", confidence >= 75);
+        double contentConfidence = ((Number) best.get("contentScore")).doubleValue();
+        boolean qrFullyMatched = Boolean.TRUE.equals(best.get("qrFullyMatched"));
+        boolean photoConsistent = qrFullyMatched ? contentConfidence >= 40 : confidence >= 75;
+        String status = photoConsistent ? "PHOTO_CONTENT_MATCH" : confidence >= 55 ? "PHOTO_REVIEW" : "PHOTO_MISMATCH";
+        response.put("photoConsistent", photoConsistent);
         response.put("status", status);
         response.put("confidence", confidence);
+        response.put("contentConfidence", (int) Math.round(contentConfidence));
+        response.put("qrFullyMatched", qrFullyMatched);
+        response.put("qrCertificateMatch", best.get("qrCertificateMatch"));
+        response.put("qrPayloadHashMatch", best.get("qrPayloadHashMatch"));
+        response.put("qrIntegrityMatch", best.get("qrIntegrityMatch"));
+        response.put("qrDatasetHashMatch", best.get("qrDatasetHashMatch"));
         response.put("certificateId", best.get("certificate_id"));
         response.put("issuedAt", best.get("issued_at"));
         response.put("reportTitle", best.get("report_title"));

@@ -195,6 +195,56 @@ function verificationPayloadToBlock(payload: ReportVerificationPayload) {
   return `${REPORT_VERIFY_BEGIN}\n${base64UrlEncode(JSON.stringify(payload))}\n${REPORT_VERIFY_END}`;
 }
 
+type ReportQrEvidence = {
+  certificateId: string;
+  payloadHash: string;
+  integrityCode: string;
+  datasetHash: string;
+};
+
+function buildReportQrPayload(record: ReportVerificationRecord) {
+  return `CARBONET:V1:${record.certificateId}:${record.payloadHash}:${record.integrityCode}:${record.datasetHash || record.payloadHash}`;
+}
+
+function parseReportQrPayload(value: string): ReportQrEvidence | null {
+  const match = value.match(/^CARBONET:V1:(CRN-\d{8}-[A-F0-9]{12}):([a-f0-9]{64}):([A-F0-9]{24}):([a-f0-9]{64})$/i);
+  return match ? {
+    certificateId: match[1].toUpperCase(),
+    payloadHash: match[2].toLowerCase(),
+    integrityCode: match[3].toUpperCase(),
+    datasetHash: match[4].toLowerCase()
+  } : null;
+}
+
+async function createReportQrDataUrl(record: ReportVerificationRecord) {
+  const { toDataURL } = await import("qrcode");
+  return toDataURL(buildReportQrPayload(record), { errorCorrectionLevel: "M", margin: 1, width: 512 });
+}
+
+async function scanReportQrEvidence(images: Blob[]) {
+  const { default: jsQR } = await import("jsqr");
+  for (const image of images) {
+    const bitmap = await createImageBitmap(image, { imageOrientation: "from-image" });
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) {
+      bitmap.close();
+      continue;
+    }
+    context.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    const decoded = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: "attemptBoth" });
+    const evidence = decoded ? parseReportQrPayload(decoded.data) : null;
+    if (evidence) {
+      return evidence;
+    }
+  }
+  return null;
+}
+
 function extractVerificationPayload(raw: string): ReportVerificationPayload | null {
   const blockMatch = raw.match(/CARBONET_REPORT_VERIFY_BEGIN\s*([A-Za-z0-9_\-\s]+?)\s*CARBONET_REPORT_VERIFY_END/);
   const inlineMatch = raw.match(/CARBONET-VERIFY:([A-Za-z0-9_-]+)/);
@@ -1718,6 +1768,7 @@ export function EmissionSurveyReportPrintPage() {
       }
       const module = await import("html2pdf.js");
       const html2pdf = module.default || module;
+      const qrDataUrl = await createReportQrDataUrl(record);
       const pdfOptions: Record<string, unknown> = {
           filename: buildReportPdfFileName(effectiveReport, draft),
           image: { type: "jpeg", quality: 0.98 },
@@ -1746,8 +1797,14 @@ export function EmissionSurveyReportPrintPage() {
         setFontSize: (size: number) => void;
         setTextColor: (r: number, g: number, b: number) => void;
         text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
+        addImage: (image: string, format: string, x: number, y: number, width: number, height: number) => void;
         setProperties?: (properties: Record<string, string>) => void;
       }) => {
+        const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
+        for (let page = 1; page <= pageCount; page += 1) {
+          pdf.setPage(page);
+          pdf.addImage(qrDataUrl, "PNG", 187, 276, 18, 18);
+        }
         pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
         pdf.setFontSize(1);
         pdf.setTextColor(255, 255, 255);
@@ -2290,9 +2347,10 @@ export function EmissionSurveyReportVerifyPage() {
     setResultTone("info");
     setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
     try {
+      const qrEvidence = await scanReportQrEvidence(pages);
       const recognized = await recognizeReportPhotos(pages, (percent, status) => setOcrProgress({ busy: true, percent, status }));
       setUploadedVerificationText(recognized.text);
-      const verification = await verifySurveyReportPhoto(recognized.text);
+      const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined);
       setPhotoVerification(verification);
       if (!preserveDigitalPayload) {
         setPayload(null);
@@ -2481,6 +2539,8 @@ export function EmissionSurveyReportVerifyPage() {
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Photo OCR Evidence" : "사진 OCR 대조 근거"}</p>
                 <div className="mt-3 flex items-end justify-between"><strong className="text-3xl text-slate-950">{photoVerification.confidence}%</strong><span className="text-xs font-black text-slate-500">{en ? "CONTENT CONFIDENCE" : "내용 일치 신뢰도"}</span></div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
+                  <span className="col-span-2">QR: {photoVerification.qrFullyMatched ? "VERIFIED" : photoVerification.qrDetected ? "MISMATCH" : "NOT FOUND"}</span>
+                  <span className="col-span-2">{en ? "OCR-only confidence" : "OCR 단독 일치도"}: {photoVerification.contentConfidence ?? photoVerification.confidence}%</span>
                   <span>{en ? "Product" : "제품명"}: {photoVerification.productMatched ? "OK" : "-"}</span>
                   <span>{en ? "Title" : "제목"}: {photoVerification.titleMatched ? "OK" : "-"}</span>
                   <span>{en ? "Total" : "총량"}: {photoVerification.totalEmissionMatched ? "OK" : "-"}</span>
@@ -2505,6 +2565,9 @@ export function EmissionSurveyReportVerifyPage() {
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
                   {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
+                </span>
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${photoVerification?.qrFullyMatched ? "bg-emerald-100 text-emerald-900" : photoVerification?.qrDetected ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Photographed QR signature vs registry" : "촬영 QR 서명 ↔ 원장"}: {photoVerification?.qrFullyMatched ? "OK" : photoVerification?.qrDetected ? "FAIL" : "-"}
                 </span>
                 <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-600"}`}>
                   {en ? "Three-way equality" : "3자 데이터 일치"}: {datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
@@ -2703,6 +2766,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
       }
       const module = await import("html2pdf.js");
       const html2pdf = module.default || module;
+      const qrDataUrl = await createReportQrDataUrl(record);
       const pdfOptions: Record<string, unknown> = {
         filename: buildLcaSummaryPdfFileName(report, lcaDocumentTitle),
         image: { type: "jpeg", quality: 0.98 },
@@ -2730,8 +2794,14 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         setFontSize: (size: number) => void;
         setTextColor: (r: number, g: number, b: number) => void;
         text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
+        addImage: (image: string, format: string, x: number, y: number, width: number, height: number) => void;
         setProperties?: (properties: Record<string, string>) => void;
       }) => {
+        const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
+        for (let page = 1; page <= pageCount; page += 1) {
+          pdf.setPage(page);
+          pdf.addImage(qrDataUrl, "PNG", 187, 276, 18, 18);
+        }
         pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
         pdf.setFontSize(1);
         pdf.setTextColor(255, 255, 255);
