@@ -2930,13 +2930,32 @@ export function EmissionSurveyReportVerifyPage() {
                               ))}
                             </div>
                             {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
-                              <div className="mt-3 grid grid-cols-2 gap-2">
-                                {item.lcaFieldComparisons.map((field) => (
-                                  <span className={`px-2 py-1 font-bold ${field.matched ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`} key={field.field}>
-                                    {field.label}: {field.matched ? "MATCH" : "MISMATCH"}
-                                  </span>
-                                ))}
+                              <div className="mt-3 space-y-4">
+                                <div>
+                                  <p className="font-black text-emerald-800">{en ? "Matched LCA fields" : "LCA 일치 내역"} ({item.lcaFieldComparisons.filter((field) => field.matched).length})</p>
+                                  <div className="mt-2 grid grid-cols-2 gap-2">
+                                    {item.lcaFieldComparisons.filter((field) => field.matched).map((field) => (
+                                      <span className="bg-emerald-50 px-2 py-1 font-bold text-emerald-800" key={`matched-${field.field}`}>
+                                        {field.label}: {field.expected || "-"}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="border-t border-slate-200 pt-3">
+                                  <p className="font-black text-rose-800">{en ? "Mismatched LCA fields" : "LCA 불일치 내역"} ({item.lcaFieldComparisons.filter((field) => !field.matched).length})</p>
+                                  <div className="mt-2 grid grid-cols-2 gap-2">
+                                    {item.lcaFieldComparisons.filter((field) => !field.matched).map((field) => (
+                                      <span className="bg-rose-50 px-2 py-1 font-bold text-rose-800" key={`mismatched-${field.field}`}>
+                                        {field.label}: {field.expected || "-"}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
+                            ) : selectedReportType === "LCA_SUMMARY" ? (
+                              <p className="mt-3 border border-amber-200 bg-amber-50 p-3 font-bold text-amber-900">
+                                {en ? "This issued PDF does not contain the LCA-specific dataset. Download it again from the LCA report page." : "이 발급 PDF에는 LCA 전용 데이터셋이 없습니다. LCA 보고서 화면에서 새로 다운로드하세요."}
+                              </p>
                             ) : null}
                             {selectedReportType !== "LCA_SUMMARY" ? <div className="mt-3">
                               <p className="font-black text-emerald-800">{en ? "Matched fields" : "일치 내역"} ({item.fieldComparisons?.filter((field) => field.rowMatched).length || 0})</p>

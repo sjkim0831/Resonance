@@ -321,6 +321,9 @@ public class ReportVerificationRegistryService {
         response.put("materialCount", best.get("materialCount"));
         response.put("matchedNumberCount", best.get("matchedNumberCount"));
         response.put("numberCount", best.get("numberCount"));
+        response.put("matchedLcaFieldCount", best.get("matchedLcaFieldCount"));
+        response.put("lcaFieldCount", best.get("lcaFieldCount"));
+        response.put("lcaFieldComparisons", best.get("lcaFieldComparisons"));
         response.put("fieldMismatches", best.get("fieldMismatches"));
         response.put("message", confidence >= 75
                 ? "The photographed report content is highly consistent with the issued dataset."
