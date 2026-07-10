@@ -501,10 +501,11 @@ public class AdminSystemCodeController {
     @GetMapping("/new-page/page-data")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> newPagePageApi(
+            @RequestParam(value = "routePath", required = false) String routePath,
             HttpServletRequest request,
             Locale locale) {
         boolean isEn = isEnglishRequest(request, locale);
-        return buildPageDataResponse(request, model -> model.addAllAttributes(adminShellBootstrapPageService.buildNewPagePageData(isEn)));
+        return buildPageDataResponse(request, model -> model.addAllAttributes(adminShellBootstrapPageService.buildNewPagePageData(isEn, routePath)));
     }
 
     @GetMapping("/wbs-management/page-data")

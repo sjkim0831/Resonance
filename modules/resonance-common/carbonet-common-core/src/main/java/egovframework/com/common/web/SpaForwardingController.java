@@ -34,7 +34,7 @@ public class SpaForwardingController {
                 || requestPath.startsWith("/en/admin/");
         String route = ReactPageUrlMapper.resolveRouteIdForPath(requestPath);
         if (route == null || route.isBlank()) {
-            route = admin ? "admin-home" : "home";
+            route = admin ? "new-page" : "home";
         }
         return reactAppViewSupport.render(model, route, english, admin);
     }

@@ -394,9 +394,10 @@ export async function resolveVerificationAction(actionId: string) {
   );
 }
 
-export async function fetchNewPagePage() {
+export async function fetchNewPagePage(routePath = window.location.pathname) {
+  const query = buildQueryString({ routePath });
   return fetchPageJson<NewPagePagePayload>(
-    buildLocalizedPath("/admin/system/new-page/page-data", "/en/admin/system/new-page/page-data"),
+    `${buildLocalizedPath("/admin/system/new-page/page-data", "/en/admin/system/new-page/page-data")}${query}`,
     {
       fallbackMessage: "Failed to load new page"
     }
@@ -856,7 +857,7 @@ export async function restoreScreenBuilderDraft(payload: {
 export async function publishScreenBuilderDraft(payload: {
   menuCode: string;
 }) {
-  return postAdminValidatedJson<{ success?: boolean; message?: string } & Record<string, unknown>>(
+  const response = await postAdminValidatedJson<{ success?: boolean; message?: string } & Record<string, unknown>>(
     "/api/platform/screen-builder/publish",
     payload,
     "Failed to publish screen builder draft",
@@ -866,6 +867,10 @@ export async function publishScreenBuilderDraft(payload: {
       }
     }
   );
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("carbonet:runtime-page:refresh", `${Date.now()}:${payload.menuCode}`);
+  }
+  return response;
 }
 
 export async function registerScreenBuilderComponent(payload: {

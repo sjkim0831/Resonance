@@ -267,6 +267,9 @@ export function resolvePageFromPath(pathname: string): MigrationPageId {
     return matchedRouteId;
   }
   if (normalizedPath.startsWith("/admin") || normalizedPath.startsWith("/en/admin")) {
+    if (normalizeRouteId(getCurrentBootstrappedRouteId()) === "new-page") {
+      return "new-page";
+    }
     return DEFAULT_ADMIN_ROUTE;
   }
   return DEFAULT_PAGE_ROUTE;

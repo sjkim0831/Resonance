@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { readBootstrappedNewPagePageData } from "../../lib/api/bootstrap";
-import { fetchNewPagePage } from "../../lib/api/platform";
+import { fetchNewPagePage, fetchScreenBuilderPreview } from "../../lib/api/platform";
 import type { NewPagePagePayload } from "../../lib/api/platformTypes";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, DiagnosticCard, PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { numberOf, stringOf } from "../admin-system/adminSystemShared";
+import { renderScreenBuilderNodePreview } from "../screen-builder/shared/screenBuilderPreview";
+import { sortScreenBuilderNodes } from "../screen-builder/shared/screenBuilderUtils";
 
 type StarterTrack = {
   id: string;
@@ -88,9 +90,9 @@ function statusLabel(status: StarterTrack["status"], en: boolean) {
 export function NewPageMigrationPage() {
   const en = isEnglish();
   const initialPayload = useMemo(() => readBootstrappedNewPagePageData(), []);
-  const pageState = useAsyncValue<NewPagePagePayload>(fetchNewPagePage, [], {
-    initialValue: initialPayload,
-    skipInitialLoad: true
+  const routePath = window.location.pathname;
+  const pageState = useAsyncValue<NewPagePagePayload>(() => fetchNewPagePage(routePath), [routePath], {
+    initialValue: initialPayload
   });
   const [selectedTrackId, setSelectedTrackId] = useState<string>(starterTracks[0].id);
   const selectedTrack = useMemo(
@@ -99,6 +101,34 @@ export function NewPageMigrationPage() {
   );
 
   const page = pageState.value;
+  const runtimePageId = stringOf(page || null, "pageId");
+  const runtimeMenuCode = stringOf(page || null, "menuCode");
+  const runtimeMenuUrl = stringOf(page || null, "canonicalMenuUrl") || routePath;
+  const runtimeMenuTitle = en ? stringOf(page || null, "menuNameEn", "menuName") : stringOf(page || null, "menuName", "menuNameEn");
+  const previewState = useAsyncValue(
+    () => fetchScreenBuilderPreview({
+      menuCode: runtimeMenuCode,
+      pageId: runtimePageId,
+      menuTitle: runtimeMenuTitle,
+      menuUrl: runtimeMenuUrl,
+      versionStatus: "PUBLISHED"
+    }),
+    [runtimeMenuCode, runtimePageId, runtimeMenuTitle, runtimeMenuUrl],
+    { enabled: Boolean(runtimeMenuCode && runtimePageId) }
+  );
+  const publishedNodes = useMemo(() => sortScreenBuilderNodes(previewState.value?.nodes || []), [previewState.value?.nodes]);
+  const rootNodes = useMemo(() => publishedNodes.filter((node) => !node.parentNodeId), [publishedNodes]);
+
+  useEffect(() => {
+    const handleRuntimeRefresh = (event: StorageEvent) => {
+      if (event.key === "carbonet:runtime-page:refresh") {
+        void pageState.reload();
+        void previewState.reload();
+      }
+    };
+    window.addEventListener("storage", handleRuntimeRefresh);
+    return () => window.removeEventListener("storage", handleRuntimeRefresh);
+  }, [pageState, previewState]);
   const featureCodes = ((page?.featureCodes || []) as string[]).filter(Boolean);
   const featureCount = numberOf(page || null, "featureCount") || featureCodes.length;
   const manifest = (page?.manifest || {}) as Record<string, unknown>;
@@ -140,6 +170,12 @@ export function NewPageMigrationPage() {
               : "이 경로는 이제 고정 placeholder 값이 아니라 실제 page-data 메타를 기준으로 렌더링됩니다."}
           </PageStatusNotice>
         )}
+
+        {publishedNodes.length > 0 ? (
+          <section className="space-y-4" data-help-id="runtime-managed-page-content">
+            {rootNodes.map((node) => renderScreenBuilderNodePreview(node, publishedNodes, en))}
+          </section>
+        ) : null}
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-4" data-help-id="new-page-summary">
           <SummaryMetricCard

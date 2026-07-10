@@ -213,13 +213,18 @@ public class AdminShellBootstrapPageService {
     }
 
     public Map<String, Object> buildNewPagePageData(boolean isEn) {
-        String canonicalMenuUrl = "/admin/system/new-page";
-        String localizedMenuUrl = isEn ? "/en/admin/system/new-page" : canonicalMenuUrl;
+        return buildNewPagePageData(isEn, "/admin/system/new-page");
+    }
+
+    public Map<String, Object> buildNewPagePageData(boolean isEn, String requestedRoutePath) {
+        String canonicalMenuUrl = normalizeManagedPageRoute(requestedRoutePath);
+        String localizedMenuUrl = isEn ? "/en" + canonicalMenuUrl : canonicalMenuUrl;
         String menuCode = "";
         String requiredViewFeatureCode = "";
         List<String> featureCodes = Collections.emptyList();
         MenuInfoDTO menuDetail = null;
-        Map<String, Object> manifest = uiManifestRegistryPort.getPageRegistry("new-page");
+        String runtimePageId = buildManagedRuntimePageId(canonicalMenuUrl);
+        Map<String, Object> manifest = uiManifestRegistryPort.getPageRegistry(runtimePageId);
 
         try {
             menuDetail = menuInfoReadPort.selectMenuDetailByUrl(canonicalMenuUrl);
@@ -247,7 +252,7 @@ public class AdminShellBootstrapPageService {
         List<MenuInfoDTO> menuRows = loadMenuTreeRows("AMENU1");
         MenuInfoDTO selfRow = findMenuRow(menuRows, menuCode);
         Map<String, Object> payload = createPayload(isEn);
-        payload.put("pageId", "new-page");
+        payload.put("pageId", runtimePageId);
         appendNewPageMenuPayload(
                 payload,
                 canonicalMenuUrl,
@@ -262,6 +267,31 @@ public class AdminShellBootstrapPageService {
         payload.put("manifest", manifest);
         payload.put("governanceNotes", buildNewPageGovernanceNotes(isEn, requiredViewFeatureCode, manifest, featureCodes));
         return payload;
+    }
+
+    private String normalizeManagedPageRoute(String routePath) {
+        String normalized = safeString(routePath);
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+        if (normalized.startsWith("/en/admin/")) {
+            normalized = normalized.substring(3);
+        }
+        if (!normalized.startsWith("/admin/")) {
+            return "/admin/system/new-page";
+        }
+        return normalized;
+    }
+
+    private String buildManagedRuntimePageId(String routePath) {
+        String compact = safeString(routePath).toLowerCase(Locale.ROOT)
+                .replaceFirst("^/", "")
+                .replace('/', '-')
+                .replace('_', '-')
+                .replaceAll("[^a-z0-9\\-]", "")
+                .replaceAll("-{2,}", "-");
+        return compact.isEmpty() ? "new-page" : compact;
     }
 
     private void appendMemberStatsSections(Map<String, Object> response, boolean isEn) {

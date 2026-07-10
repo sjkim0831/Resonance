@@ -26,6 +26,7 @@ function removeLegacyAdminMenuTreeCaches() {
 }
 
 const ADMIN_MENU_TREE_REFRESH_EVENT = "carbonet:admin-menu-tree:refresh";
+const ADMIN_MENU_TREE_REFRESH_STORAGE_KEY = "carbonet:admin-menu-tree:refresh-at";
 const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
 
 let frontendSessionCache: FrontendSession | null = null;
@@ -57,7 +58,24 @@ function readBootstrap<T>(key: string): T | null {
 }
 
 export function getAdminMenuTreeRefreshEventName() {
+  ensureAdminMenuTreeCrossTabRefresh();
   return ADMIN_MENU_TREE_REFRESH_EVENT;
+}
+
+let adminMenuTreeCrossTabRefreshReady = false;
+
+function ensureAdminMenuTreeCrossTabRefresh() {
+  if (adminMenuTreeCrossTabRefreshReady || typeof window === "undefined") {
+    return;
+  }
+  adminMenuTreeCrossTabRefreshReady = true;
+  window.addEventListener("storage", (event) => {
+    if (event.key !== ADMIN_MENU_TREE_REFRESH_STORAGE_KEY) {
+      return;
+    }
+    invalidateFrontendSessionCache();
+    window.dispatchEvent(new Event(ADMIN_MENU_TREE_REFRESH_EVENT));
+  });
 }
 
 export function invalidateFrontendSessionCache() {
@@ -97,8 +115,10 @@ export function readFrontendSessionSnapshot(): FrontendSession | null {
 }
 
 export function refreshAdminMenuTree() {
+  ensureAdminMenuTreeCrossTabRefresh();
   invalidateFrontendSessionCache();
   if (typeof window !== "undefined") {
+    window.localStorage.setItem(ADMIN_MENU_TREE_REFRESH_STORAGE_KEY, String(Date.now()));
     window.dispatchEvent(new Event(ADMIN_MENU_TREE_REFRESH_EVENT));
   }
 }
