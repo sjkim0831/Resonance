@@ -209,6 +209,11 @@ function isAirEmissionSection(section: Record<string, unknown> | EmissionSurveyA
   return sectionCode === "output_air" || sectionLabel === "대기배출물";
 }
 
+function supportsEmissionFactorMapping(section: Record<string, unknown> | EmissionSurveyAdminSection) {
+  const sectionCode = normalizeText(stringOf(section as Record<string, unknown>, "sectionCode")).replace(/\s+/g, "");
+  return Boolean(sectionCode) && sectionCode !== "output_products";
+}
+
 function hasMappedValue(values: Record<string, string>) {
   return mappingSummary(values) !== null;
 }
@@ -361,14 +366,14 @@ function sanitizeRowValues(section: Record<string, unknown> | EmissionSurveyAdmi
   const allowedKeys = Array.from(new Set([
     ...BASE_ALLOWED_VALUE_KEYS,
     ...sectionKeys,
-    ...(isAirEmissionSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])
+    ...(supportsEmissionFactorMapping(section) ? GWP_ALLOWED_VALUE_KEYS : [])
   ]));
   const nextValues: Record<string, string> = {};
   allowedKeys.forEach((key) => {
     nextValues[key] = String(values[key] || "");
   });
   nextValues.annualUnit = normalizeUnitValue(String(nextValues.annualUnit || ""));
-  if (isAirEmissionSection(section)) {
+  if (supportsEmissionFactorMapping(section)) {
     nextValues.emissionFactor = resolveStoredEmissionFactor(nextValues);
   }
   return nextValues;
@@ -499,7 +504,7 @@ function describeRowValues(
     label: VISIBLE_COLUMN_LABELS[columnKey],
     value: displayValue(values[columnKey])
   }));
-  if (isAirEmissionSection(section)) {
+  if (supportsEmissionFactorMapping(section)) {
     items.push({
       label: "배출계수",
       value: displayValue(resolveStoredEmissionFactor(values))
@@ -529,7 +534,7 @@ function renderSectionTable(
     (item) => stringOf(item, "label") || stringOf(item, "value")
   );
   const editable = Boolean(options?.editable);
-  const showGwpMapping = editable && isAirEmissionSection(section);
+  const showGwpMapping = editable && supportsEmissionFactorMapping(section);
   const existingSections = options?.existingSections || [];
   const deletedRows = rows.filter((row) => rowClientState(row).isDeleted).length;
   const visibleColumns = VISIBLE_COLUMN_KEYS.map((columnKey) => {
@@ -1092,7 +1097,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     newRowSequenceRef.current += 1;
     const rowId = `NEW_ROW_${Date.now()}_${newRowSequenceRef.current}`;
     const values: Record<string, string> = {};
-    [...sectionDataColumns(section).map((column) => column.key), ...(isAirEmissionSection(section) ? GWP_ALLOWED_VALUE_KEYS : [])].forEach((key) => {
+    [...sectionDataColumns(section).map((column) => column.key), ...(supportsEmissionFactorMapping(section) ? GWP_ALLOWED_VALUE_KEYS : [])].forEach((key) => {
       values[key] = "";
     });
     return {
