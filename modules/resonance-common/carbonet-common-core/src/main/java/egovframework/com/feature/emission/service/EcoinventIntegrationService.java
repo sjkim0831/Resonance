@@ -1898,6 +1898,8 @@ public class EcoinventIntegrationService {
                 jpql.append("""
                         and (
                             lower(coalesce(e.productName, '')) like :keyword
+                            or lower(coalesce(e.activityName, '')) like :keyword
+                            or lower(coalesce(e.materialName, '')) like :keyword
                         """);
                 if (matchedIds != null && !matchedIds.isEmpty()) {
                     jpql.append(" or e.id in :matchedIds");
@@ -1937,13 +1939,32 @@ public class EcoinventIntegrationService {
             } else if (!request.keyword().isEmpty()) {
                 parameters.put("keywordExact", request.keyword().toLowerCase());
                 parameters.put("keywordPrefix", request.keyword().toLowerCase() + "%");
+                parameters.put("keywordLength", request.keyword().length());
                 appendMatchedIdOrder(jpql, parameters, matchedIds);
                 jpql.append("""
                             case
                                 when lower(coalesce(e.productName, '')) = :keywordExact then 0
+                                when lower(coalesce(e.activityName, '')) = :keywordExact then 0
+                                when lower(coalesce(e.materialName, '')) = :keywordExact then 0
                                 when lower(coalesce(e.productName, '')) like :keywordPrefix then 1
+                                when lower(coalesce(e.activityName, '')) like :keywordPrefix then 1
+                                when lower(coalesce(e.materialName, '')) like :keywordPrefix then 1
                                 when lower(coalesce(e.productName, '')) like :keyword then 2
+                                when lower(coalesce(e.activityName, '')) like :keyword then 2
+                                when lower(coalesce(e.materialName, '')) like :keyword then 2
                                 else 3
+                            end asc,
+                            case
+                                when lower(coalesce(e.productName, '')) like :keyword then locate(:keywordExact, lower(coalesce(e.productName, '')))
+                                when lower(coalesce(e.activityName, '')) like :keyword then locate(:keywordExact, lower(coalesce(e.activityName, '')))
+                                when lower(coalesce(e.materialName, '')) like :keyword then locate(:keywordExact, lower(coalesce(e.materialName, '')))
+                                else 999999
+                            end asc,
+                            case
+                                when lower(coalesce(e.productName, '')) like :keyword then abs(length(coalesce(e.productName, '')) - :keywordLength)
+                                when lower(coalesce(e.activityName, '')) like :keyword then abs(length(coalesce(e.activityName, '')) - :keywordLength)
+                                when lower(coalesce(e.materialName, '')) like :keyword then abs(length(coalesce(e.materialName, '')) - :keywordLength)
+                                else 999999
                             end asc,
                             coalesce(e.timePeriod, '') desc,
                             length(coalesce(e.activityName, '')) asc,

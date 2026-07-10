@@ -1591,12 +1591,9 @@ export function EmissionSurveyAdminDataMigrationPage() {
   async function searchEcoinvent(keyword: string, pageIndex: number = 0, geography?: string, timePeriod?: string, sortField?: string, sortDirection?: string): Promise<{ rows: GwpCandidateRow[]; total: number }> {
     const response = await fetchEcoinventDatasetPage({
       keyword,
-      productName: keyword,
-      activityName: keyword,
-      materialName: keyword,
       geography: geography || undefined,
       timePeriod: timePeriod || undefined,
-      pageIndex,
+      pageIndex: pageIndex + 1,
       pageSize: mappingPageSize,
       sortField: sortField || undefined,
       sortDirection: sortDirection || undefined
@@ -1648,8 +1645,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
         const sortedRows = (hasCustomSort && mappingSortField)
           ? sortEcoinventRowsByCustomField(filteredRows, mappingSortField, keyword)
           : filteredRows;
-        const start = page * mappingPageSize;
-        const pagedRows = sortedRows.slice(start, start + mappingPageSize);
+        const pagedRows = sortedRows;
         setMappingTotalCount(total);
         setMappingRows(pagedRows);
         if (pagedRows.length > 0) {
