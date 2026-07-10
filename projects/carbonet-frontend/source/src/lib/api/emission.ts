@@ -234,6 +234,9 @@ export type ReportPhotoVerificationResponse = {
   certificateId?: string;
   reportTitle?: string;
   productName?: string;
+  issuedAt?: string;
+  totalEmission?: number;
+  rowCount?: number;
   detectedCertificateId?: string;
   productMatched?: boolean;
   titleMatched?: boolean;

@@ -221,6 +221,8 @@ public class ReportVerificationRegistryService {
         response.put("issuedAt", best.get("issued_at"));
         response.put("reportTitle", best.get("report_title"));
         response.put("productName", best.get("product_name"));
+        response.put("totalEmission", best.get("total_emission"));
+        response.put("rowCount", best.get("row_count"));
         response.put("datasetHash", best.get("dataset_hash"));
         response.put("productMatched", best.get("productMatched"));
         response.put("titleMatched", best.get("titleMatched"));
@@ -268,11 +270,11 @@ public class ReportVerificationRegistryService {
         }
         double materialRatio = materialCount == 0 ? 0 : (double) matchedMaterialCount / materialCount;
         double numberRatio = numberCount == 0 ? 0 : (double) matchedNumberCount / numberCount;
-        double score = (productMatched ? 30 : 0)
-                + (titleMatched ? 20 : 0)
-                + (totalMatched ? 25 : 0)
-                + Math.min(15, materialRatio * 15)
-                + Math.min(10, numberRatio * 10);
+        double score = (productMatched ? 15 : 0)
+                + (titleMatched ? 10 : 0)
+                + (totalMatched ? 20 : 0)
+                + Math.min(25, materialRatio * 25)
+                + Math.min(30, numberRatio * 30);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("score", Math.min(100, score));
         result.put("productMatched", productMatched);
@@ -293,7 +295,26 @@ public class ReportVerificationRegistryService {
 
     private boolean containsText(String normalizedText, String expected) {
         String normalizedExpected = normalizeText(expected);
-        return normalizedExpected.length() >= 2 && normalizedText.contains(normalizedExpected);
+        if (normalizedExpected.length() < 2) {
+            return false;
+        }
+        if (normalizedText.contains(normalizedExpected)) {
+            return true;
+        }
+        if (normalizedExpected.length() < 4) {
+            return false;
+        }
+        int allowedDistance = Math.max(1, normalizedExpected.length() / 6);
+        int minimumLength = Math.max(2, normalizedExpected.length() - allowedDistance);
+        int maximumLength = normalizedExpected.length() + allowedDistance;
+        for (int length = minimumLength; length <= maximumLength; length++) {
+            for (int start = 0; start + length <= normalizedText.length(); start++) {
+                if (editDistanceWithin(normalizedExpected, normalizedText.substring(start, start + length), allowedDistance)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean containsNumber(String normalizedText, JsonNode value) {
@@ -307,7 +328,51 @@ public class ReportVerificationRegistryService {
         }
         String roundedTwo = number.setScale(Math.min(2, Math.max(0, number.scale())), java.math.RoundingMode.HALF_UP)
                 .stripTrailingZeros().toPlainString();
-        return roundedTwo.length() >= 2 && normalizedText.contains(roundedTwo);
+        if (roundedTwo.length() >= 2 && normalizedText.contains(roundedTwo)) {
+            return true;
+        }
+        String numericText = normalizedText.replace('o', '0').replace('l', '1');
+        Matcher matcher = Pattern.compile("[0-9]+(?:\\.[0-9]+)?").matcher(numericText);
+        java.math.BigDecimal tolerance = number.abs().multiply(new java.math.BigDecimal("0.001"))
+                .max(new java.math.BigDecimal("0.01"));
+        while (matcher.find()) {
+            try {
+                java.math.BigDecimal candidate = new java.math.BigDecimal(matcher.group());
+                if (candidate.subtract(number).abs().compareTo(tolerance) <= 0) {
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+                // Continue with the remaining OCR number tokens.
+            }
+        }
+        return false;
+    }
+
+    private boolean editDistanceWithin(String expected, String actual, int limit) {
+        if (Math.abs(expected.length() - actual.length()) > limit) {
+            return false;
+        }
+        int[] previous = new int[actual.length() + 1];
+        int[] current = new int[actual.length() + 1];
+        for (int column = 0; column <= actual.length(); column++) {
+            previous[column] = column;
+        }
+        for (int row = 1; row <= expected.length(); row++) {
+            current[0] = row;
+            int rowMinimum = current[0];
+            for (int column = 1; column <= actual.length(); column++) {
+                int substitution = previous[column - 1] + (expected.charAt(row - 1) == actual.charAt(column - 1) ? 0 : 1);
+                current[column] = Math.min(Math.min(previous[column] + 1, current[column - 1] + 1), substitution);
+                rowMinimum = Math.min(rowMinimum, current[column]);
+            }
+            if (rowMinimum > limit) {
+                return false;
+            }
+            int[] swap = previous;
+            previous = current;
+            current = swap;
+        }
+        return previous[actual.length()] <= limit;
     }
 
     private Map<String, Object> load(String certificateId) {

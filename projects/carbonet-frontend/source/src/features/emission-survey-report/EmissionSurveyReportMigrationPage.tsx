@@ -329,8 +329,8 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
   const { createWorker, OEM } = await import("tesseract.js");
   const texts: string[] = [];
   const confidences: number[] = [];
-  for (const [languageIndex, language] of (["kor", "eng"] as const).entries()) {
-    const worker = await createWorker(language, OEM.LSTM_ONLY, {
+  for (const [languageIndex, languages] of ([["kor", "eng"]] as const).entries()) {
+    const worker = await createWorker([...languages], OEM.LSTM_ONLY, {
       workerPath: "/assets/react/ocr/worker.min.js",
       corePath: "/assets/react/ocr/tesseract-core-lstm.wasm.js",
       langPath: "/assets/react/ocr",
@@ -345,7 +345,7 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
         });
         texts.push(result.data.text);
         confidences.push(result.data.confidence);
-        onProgress(10 + Math.round(((base + 1) / (images.length * 2)) * 90), `${language.toUpperCase()} ${imageIndex + 1}/${images.length}`);
+        onProgress(10 + Math.round(((base + 1) / images.length) * 90), `${languages.join("+").toUpperCase()} ${imageIndex + 1}/${images.length}`);
       }
     } finally {
       await worker.terminate();
@@ -2284,7 +2284,7 @@ export function EmissionSurveyReportVerifyPage() {
       : (en ? "Verification block is readable, but no matching local issued record exists on this browser." : "검증 블록은 읽었지만 이 브라우저의 발급 이력에서 일치하는 기록을 찾지 못했습니다."));
   };
 
-  const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string) => {
+  const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string, preserveDigitalPayload = false) => {
     setUploadedPayloadFound(false);
     setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing pages" : "페이지 이미지 보정 중" });
     setResultTone("info");
@@ -2294,13 +2294,15 @@ export function EmissionSurveyReportVerifyPage() {
       setUploadedVerificationText(recognized.text);
       const verification = await verifySurveyReportPhoto(recognized.text);
       setPhotoVerification(verification);
-      setPayload(null);
-      setResultTone(verification.photoConsistent ? "success" : "warning");
-      setResultMessage(verification.photoConsistent
-        ? (en ? `Visible content matches an issued dataset with ${verification.confidence}% confidence.` : `보이는 내용이 발급 데이터셋과 ${verification.confidence}% 신뢰도로 일치합니다.`)
-        : verification.status === "PHOTO_REVIEW"
-          ? (en ? `Partial match (${verification.confidence}%). Visual review is required.` : `부분 일치(${verification.confidence}%)하여 육안 검토가 필요합니다.`)
-          : (en ? `The visible content does not match an issued dataset (${verification.confidence}%).` : `보이는 내용이 발급 데이터셋과 충분히 일치하지 않습니다(${verification.confidence}%).`));
+      if (!preserveDigitalPayload) {
+        setPayload(null);
+        setResultTone(verification.photoConsistent ? "success" : "warning");
+        setResultMessage(verification.photoConsistent
+          ? (en ? `Visible content matches an issued dataset with ${verification.confidence}% confidence.` : `보이는 내용이 발급 데이터셋과 ${verification.confidence}% 신뢰도로 일치합니다.`)
+          : verification.status === "PHOTO_REVIEW"
+            ? (en ? `Partial match (${verification.confidence}%). Visual review is required.` : `부분 일치(${verification.confidence}%)하여 육안 검토가 필요합니다.`)
+            : (en ? `The visible content does not match an issued dataset (${verification.confidence}%).` : `보이는 내용이 발급 데이터셋과 충분히 일치하지 않습니다(${verification.confidence}%).`));
+      }
     } catch (error) {
       setResultTone("warning");
       setResultMessage(error instanceof Error ? error.message : (en ? "Photo OCR failed." : "사진 OCR 처리에 실패했습니다."));
@@ -2333,6 +2335,16 @@ export function EmissionSurveyReportVerifyPage() {
     setUploadedPayloadFound(Boolean(nextPayload));
     if (nextPayload) {
       await evaluatePayload(nextPayload, file.name);
+      setOcrProgress({ busy: true, percent: 0, status: en ? "Cross-checking visible PDF data" : "PDF 화면 데이터 교차 검증 중" });
+      try {
+        const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+        setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
+        await evaluatePhotographedPages(pages, file.name, true);
+      } catch (error) {
+        setOcrProgress((current) => ({ ...current, busy: false }));
+        setResultTone("warning");
+        setResultMessage(error instanceof Error ? error.message : (en ? "Visible PDF dataset cross-check failed." : "PDF 화면 데이터셋 교차 검증에 실패했습니다."));
+      }
       return;
     }
     setOcrProgress({ busy: true, percent: 0, status: en ? "Rendering PDF pages" : "PDF 페이지 변환 중" });
@@ -2482,11 +2494,20 @@ export function EmissionSurveyReportVerifyPage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Dataset Comparison" : "데이터셋 대조"}</p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black">
+                <span className={`rounded-lg px-3 py-2 ${photoVerification || datasetVerification ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Pre-PDF registry dataset" : "PDF 생성 전 원장 데이터셋"}: {photoVerification || datasetVerification ? "OK" : "-"}
+                </span>
                 <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetPresent ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Embedded dataset" : "내장 데이터셋"}: {datasetVerification?.datasetPresent ? "OK" : "-"}
+                  {en ? "PDF embedded dataset" : "PDF 내장 데이터셋"}: {datasetVerification?.datasetPresent ? "OK" : "-"}
                 </span>
                 <span className={`rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch ? "bg-emerald-50 text-emerald-800" : datasetVerification ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-500"}`}>
-                  {en ? "Registry match" : "원장 일치"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
+                  {en ? "Embedded vs registry" : "내장 ↔ 원장"}: {datasetVerification?.datasetMatch ? "OK" : datasetVerification ? "FAIL" : "-"}
+                </span>
+                <span className={`rounded-lg px-3 py-2 ${photoVerification?.photoConsistent ? "bg-emerald-50 text-emerald-800" : photoVerification ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
+                  {en ? "Visible OCR vs registry" : "화면 OCR ↔ 원장"}: {photoVerification?.photoConsistent ? `${photoVerification.confidence}%` : photoVerification ? `${photoVerification.confidence}%` : "-"}
+                </span>
+                <span className={`col-span-2 rounded-lg px-3 py-2 ${datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "bg-emerald-100 text-emerald-900" : "bg-slate-100 text-slate-600"}`}>
+                  {en ? "Three-way equality" : "3자 데이터 일치"}: {datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
                 </span>
               </div>
               {datasetVerification?.differences?.length ? (
@@ -2510,11 +2531,12 @@ export function EmissionSurveyReportVerifyPage() {
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">{en ? "Issued Record" : "발급 이력"}</p>
-              {matchedRecord ? (
+              {matchedRecord || photoVerification?.certificateId ? (
                 <div className="mt-3 space-y-2 text-sm font-bold text-slate-700">
-                  <p>{en ? "Issued at" : "발급일시"}: {new Date(matchedRecord.issuedAt).toLocaleString()}</p>
-                  <p>{en ? "Product" : "제품"}: {matchedRecord.productName || "-"}</p>
-                  <p>{en ? "Total emission" : "총 배출량"}: {formatNumber(matchedRecord.totalEmission, 4)} kg CO2e</p>
+                  <p>{en ? "Certificate" : "인증서"}: {matchedRecord?.certificateId || photoVerification?.certificateId || "-"}</p>
+                  <p>{en ? "Issued at" : "발급일시"}: {(matchedRecord?.issuedAt || photoVerification?.issuedAt) ? new Date(matchedRecord?.issuedAt || photoVerification?.issuedAt || "").toLocaleString() : "-"}</p>
+                  <p>{en ? "Product" : "제품"}: {matchedRecord?.productName || photoVerification?.productName || "-"}</p>
+                  <p>{en ? "Total emission" : "총 배출량"}: {formatNumber(matchedRecord?.totalEmission ?? photoVerification?.totalEmission ?? 0, 4)} kg CO2e</p>
                 </div>
               ) : (
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
