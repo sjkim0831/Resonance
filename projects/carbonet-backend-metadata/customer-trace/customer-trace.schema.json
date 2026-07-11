@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resonance Customer Trace",
+  "type": "object",
+  "required": ["traceId", "requirement", "links", "status"],
+  "properties": {
+    "traceId": {"type": "string", "pattern": "^CTR-[A-Z0-9-]+$"},
+    "requirement": {"type": "object", "required": ["requirementId", "title", "authorityTier", "evidenceIds"]},
+    "links": {"type": "object", "properties": {
+      "ubuntuAssets": {"$ref": "#/$defs/idList"}, "kubernetesAssets": {"$ref": "#/$defs/idList"},
+      "frameworkModules": {"$ref": "#/$defs/idList"}, "userPages": {"$ref": "#/$defs/idList"},
+      "adminPages": {"$ref": "#/$defs/idList"}, "apis": {"$ref": "#/$defs/idList"},
+      "databaseAssets": {"$ref": "#/$defs/idList"}, "sduiAssets": {"$ref": "#/$defs/idList"},
+      "srTickets": {"$ref": "#/$defs/idList"}, "aiExecutions": {"$ref": "#/$defs/idList"},
+      "testEvidence": {"$ref": "#/$defs/idList"}}, "additionalProperties": false},
+    "status": {"enum": ["NOT_STARTED", "UI_ONLY", "API_MISSING", "DB_MISSING", "PARTIAL", "IMPLEMENTED", "VERIFIED", "CUSTOMER_APPROVED"]},
+    "customerDecision": {"type": "object", "properties": {"decision": {"enum": ["PENDING", "APPROVED", "REJECTED", "REVISION_REQUESTED"]}, "actorId": {"type": "string"}, "reason": {"type": "string"}, "decidedAt": {"type": "string", "format": "date-time"}}}
+  },
+  "$defs": {"idList": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}}
+}
