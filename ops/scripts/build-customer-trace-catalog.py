@@ -24,6 +24,8 @@ def main():
     approval = read("customer-approval-ledger.json")
     contracts = read("customer-contract-verification.json")
     runtime = read("customer-runtime-findings.json")
+    e2e_path = TRACE / "customer-e2e-readonly-evidence.json"
+    e2e = json.loads(e2e_path.read_text(encoding="utf-8")) if e2e_path.is_file() else {}
 
     catalog = {
         "schemaVersion": 1,
@@ -54,6 +56,12 @@ def main():
             "verificationQueue": {
                 "artifact": "customer-verification-queue.json",
                 "itemCount": queue.get("itemCount", len(queue.get("items", []))),
+            },
+            "e2eReadOnlyEvidence": {
+                "artifact": "customer-e2e-readonly-evidence.json",
+                "itemCount": e2e.get("itemCount", 0),
+                "summary": e2e.get("summary", {}),
+                "mutatingRequestsExecuted": False,
             },
             "approvalLedger": {
                 "artifact": "customer-approval-ledger.json",

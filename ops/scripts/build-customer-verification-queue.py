@@ -7,8 +7,12 @@ from pathlib import Path
 def main()->int:
     p=argparse.ArgumentParser();p.add_argument("--bindings",default="projects/carbonet-backend-metadata/customer-trace/customer-sdui-bindings.json")
     p.add_argument("--source",default="projects/carbonet-backend-metadata/customer-trace/customer-source-evidence.json")
+    p.add_argument("--runtime-evidence",default="projects/carbonet-backend-metadata/customer-trace/customer-e2e-readonly-evidence.json")
     p.add_argument("--output",default="projects/carbonet-backend-metadata/customer-trace/customer-verification-queue.json");a=p.parse_args()
     bindings=json.loads(Path(a.bindings).read_text());source=json.loads(Path(a.source).read_text());by_uc=defaultdict(list)
+    runtime_path=Path(a.runtime_evidence);runtime_by_uc={}
+    if runtime_path.is_file():
+        runtime_by_uc={row["useCaseId"]:row for row in json.loads(runtime_path.read_text()).get("items",[])}
     for row in source["records"]:by_uc[row["useCaseId"]].append(row)
     queue=[]
     for row in bindings["bindings"]:
@@ -20,8 +24,10 @@ def main()->int:
         elif api_source:stage="READY_FOR_API_VERIFICATION";priority=3
         elif row.get("pageCandidates") or row.get("apiCandidates"):stage="CANDIDATE_REVIEW";priority=4
         else:stage="MAPPING_REQUIRED";priority=5
+        runtime=runtime_by_uc.get(uc,{})
         queue.append({"queueId":"VERIFY-"+uc,"priority":priority,"stage":stage,"useCaseId":uc,"traceId":row["traceId"],"title":row["title"],"domain":row["domain"],
             "pageSourceConfirmed":page_source,"apiSourceConfirmed":api_source,"httpReachable":reachable,"srRequestIds":row.get("srRequestIds",[]),
+            "runtimeEvidenceStatus":runtime.get("result","NOT_COLLECTED"),"runtimeEvidenceRef":"customer-e2e-readonly-evidence.json" if runtime else None,
             "requiredChecks":["AUTHENTICATED_BROWSER","API_RUNTIME","DATABASE_EFFECT","AUTHORITY","AUDIT_LOG"],"automaticVerification":False})
     queue.sort(key=lambda x:(x["priority"],x["domain"],x["useCaseId"]));summary=Counter(x["stage"] for x in queue)
     payload={"schemaVersion":1,"queueCount":len(queue),"summary":dict(sorted(summary.items())),"policy":{"humanApprovalRequired":True,"automaticVerification":False},"queue":queue}
