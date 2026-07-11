@@ -10,6 +10,7 @@ const AI_MANAGEMENT_ROUTE_DEFINITIONS = [
   { id: "ai-logs", label: "로그 관리", group: "admin", koPath: "/admin/ai/logs", enPath: "/en/admin/ai/logs" },
   { id: "ai-quality", label: "품질 관리", group: "admin", koPath: "/admin/ai/quality", enPath: "/en/admin/ai/quality" },
   { id: "ai-observability", label: "AI 관측", group: "admin", koPath: "/admin/ai/observability", enPath: "/en/admin/ai/observability" },
+  { id: "customer-trace", label: "고객 요구 추적", group: "admin", koPath: "/admin/ai/customer-trace", enPath: "/en/admin/ai/customer-trace" },
 ] as const satisfies RouteDefinitionsOf;
 
 const AI_MANAGEMENT_PAGE_UNITS = [
@@ -21,6 +22,7 @@ const AI_MANAGEMENT_PAGE_UNITS = [
   { id: "ai-logs", exportName: "AiLogsPage", loader: () => import("../../../features/ai-management/AiLogsPage") },
   { id: "ai-quality", exportName: "AiQualityPage", loader: () => import("../../../features/ai-management/AiQualityPage") },
   { id: "ai-observability", exportName: "AiObservabilityPage", loader: () => import("../../../features/ai-management/AiObservabilityPage") },
+  { id: "customer-trace", exportName: "CustomerTracePage", loader: () => import("../../../features/customer-trace/CustomerTracePage") },
 ] as const satisfies PageUnitsOf<typeof AI_MANAGEMENT_ROUTE_DEFINITIONS>;
 
 export const AI_MANAGEMENT_FAMILY = createRouteFamily(AI_MANAGEMENT_ROUTE_DEFINITIONS, AI_MANAGEMENT_PAGE_UNITS, {
