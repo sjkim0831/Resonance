@@ -45,4 +45,5 @@ python3 ops/scripts/build-customer-runtime-findings.py
 python3 ops/scripts/build-customer-approval-ledger.py
 python3 ops/scripts/verify-customer-approval-ledger.py
 python3 ops/scripts/verify-customer-trace-contracts.py
+python3 ops/scripts/build-customer-trace-catalog.py
 echo "Customer Trace refresh completed."

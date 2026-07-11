@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T07:18:05.451103+00:00",
+  "status": "READY_FOR_HUMAN_REVIEW",
+  "customerTrace": {
+    "canonicalUseCases": 342,
+    "customerMaturity": {
+      "score": 80.8,
+      "grade": "B+",
+      "decision": "REVIEW_REQUIRED"
+    },
+    "deliveryReadiness": {
+      "score": 30.6,
+      "grade": "D",
+      "verifiedUseCases": 0,
+      "approvedUseCases": 0
+    }
+  },
+  "connectedAssets": {
+    "operations": {
+      "assetCount": 81,
+      "healthyCount": 81,
+      "reviewCount": 0,
+      "byType": {
+        "K8S_DEPLOYMENT": 6,
+        "K8S_PDB": 6,
+        "K8S_POD": 23,
+        "K8S_PVC": 1,
+        "K8S_SERVICE": 15,
+        "K8S_STATEFULSET": 3,
+        "PATRONI_MEMBER": 3,
+        "SYSTEMD_SERVICE": 23,
+        "UBUNTU_HOST": 1
+      },
+      "reviewAssetIds": []
+    },
+    "resonance": {
+      "routes": 263,
+      "apis": 1190,
+      "tables": 54,
+      "menus": 169,
+      "sduiScreens": 250,
+      "sduiComponents": 447,
+      "sduiThemes": 1
+    },
+    "sourceEvidence": 613,
+    "httpEvidence": {
+      "REACHABLE": 12,
+      "REDIRECTED": 108
+    }
+  },
+  "consumerContracts": {
+    "srWorkbench": {
+      "artifact": "customer-sr-workbench-import.json",
+      "requestCount": 37,
+      "automaticExecution": false
+    },
+    "sduiBuilder": {
+      "artifact": "customer-sdui-bindings.json",
+      "bindingCount": 342,
+      "automaticPublish": false
+    },
+    "verificationQueue": {
+      "artifact": "customer-verification-queue.json",
+      "itemCount": 0
+    },
+    "approvalLedger": {
+      "artifact": "customer-approval-ledger.json",
+      "entryCount": 342,
+      "stateSummary": {
+        "APPROVED": 0,
+        "IN_REVIEW": 0,
+        "PENDING": 342,
+        "REJECTED": 0,
+        "VERIFIED": 0
+      },
+      "automaticApproval": false
+    }
+  },
+  "contractVerification": {
+    "schemaVersion": 1,
+    "generatedAt": "2026-07-11T07:16:09.078423+00:00",
+    "valid": true,
+    "counts": {
+      "bindings": 342,
+      "approvalEntries": 342,
+      "srRequests": 37,
+      "verificationItems": 342,
+      "sourceRoutes": 263,
+      "sourceSduiScreens": 250,
+      "sourceApis": 1190,
+      "danglingPageCandidates": 0,
+      "danglingApiCandidates": 0
+    },
+    "errors": [],
+    "reviewFindings": {
+      "danglingPageCandidates": [],
+      "danglingApiCandidates": []
+    },
+    "policy": {
+      "automaticApproval": false,
+      "automaticExecution": false,
+      "automaticDeployment": false
+    }
+  },
+  "runtime": {
+    "artifact": "customer-runtime-findings.json",
+    "findings": [
+      {
+        "findingId": "RUNTIME-PROJECT_INFO",
+        "path": "/api/runtime/project-info",
+        "httpStatus": 500,
+        "state": "RUNTIME_GAP",
+        "remediation": "FIX_COMPILED_DEPLOYMENT_PENDING",
+        "automaticDeploy": false
+      },
+      {
+        "findingId": "RUNTIME-CUSTOMER_TRACE_SUMMARY",
+        "path": "/api/platform/customer-trace/summary",
+        "httpStatus": 404,
+        "state": "RUNTIME_GAP",
+        "remediation": "FEATURE_COMPILED_DEPLOYMENT_PENDING",
+        "automaticDeploy": false
+      },
+      {
+        "findingId": "RUNTIME-HEALTH",
+        "path": "/actuator/health",
+        "httpStatus": 200,
+        "state": "HEALTHY",
+        "remediation": "NONE",
+        "automaticDeploy": false
+      }
+    ],
+    "deploymentChanged": false
+  },
+  "readOnlyApi": {
+    "basePath": "/api/platform/customer-trace",
+    "endpoints": [
+      "summary",
+      "traces",
+      "trace",
+      "scorecard",
+      "sr-backlog",
+      "approval-ledger",
+      "catalog"
+    ],
+    "runtimeStatus": "DEPLOYMENT_PENDING"
+  },
+  "policy": {
+    "automaticImplementationApproval": false,
+    "automaticVerification": false,
+    "automaticExecution": false,
+    "automaticDeployment": false,
+    "operatingDatabaseChanged": false,
+    "kubernetesChanged": false
+  }
+}

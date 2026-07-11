@@ -103,6 +103,9 @@ public class CustomerTraceApiController {
     @GetMapping("/approval-ledger")
     public JsonNode approvalLedger() throws IOException { return read("customer-approval-ledger.json"); }
 
+    @GetMapping("/catalog")
+    public JsonNode catalog() throws IOException { return read("customer-trace-catalog.json"); }
+
     private JsonNode read(String fileName) throws IOException {
         Path file = traceRoot.resolve(fileName).normalize();
         if (!file.startsWith(traceRoot) || !Files.isRegularFile(file)) return objectMapper.createObjectNode();
