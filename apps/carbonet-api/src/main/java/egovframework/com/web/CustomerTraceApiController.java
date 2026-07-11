@@ -41,6 +41,7 @@ public class CustomerTraceApiController {
         JsonNode scorecard = read("customer-governance-scorecard.json");
         JsonNode srImport = read("customer-sr-workbench-import.json");
         JsonNode runtimeFindings = read("customer-runtime-findings.json");
+        JsonNode approvalLedger = read("customer-approval-ledger.json");
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("traceCount", baseline.path("traceCount").asInt());
         response.put("modelOutputCount", consensus.path("modelOutputCount").asInt());
@@ -52,6 +53,7 @@ public class CustomerTraceApiController {
         response.put("srRequestCount", srImport.path("requestCount").asInt());
         response.put("runtimeFindingCount", runtimeFindings.path("findingCount").asInt());
         response.put("runtimeFindings", objectMapper.convertValue(runtimeFindings.path("findings"), List.class));
+        response.put("approvalStateSummary", objectMapper.convertValue(approvalLedger.path("stateSummary"), Map.class));
         response.put("policy", objectMapper.convertValue(scorecard.path("policy"), Map.class));
         return response;
     }
@@ -97,6 +99,9 @@ public class CustomerTraceApiController {
 
     @GetMapping("/sr-backlog")
     public JsonNode srBacklog() throws IOException { return read("customer-sr-workbench-import.json"); }
+
+    @GetMapping("/approval-ledger")
+    public JsonNode approvalLedger() throws IOException { return read("customer-approval-ledger.json"); }
 
     private JsonNode read(String fileName) throws IOException {
         Path file = traceRoot.resolve(fileName).normalize();

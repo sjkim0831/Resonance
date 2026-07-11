@@ -37,11 +37,12 @@ export function CustomerTracePage() {
             </span>
           </PageStatusNotice>
         ) : null}
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <SummaryMetricCard title={en ? "Canonical use cases" : "기준 UC"} value={String(summary.value?.traceCount ?? "-")} description={en ? "Master customer use cases." : "고객 Master 기준 유즈케이스입니다."} />
           <SummaryMetricCard title={en ? "Customer maturity" : "고객 성숙도"} value={`${summary.value?.customerMaturity?.score ?? "-"} / ${summary.value?.customerMaturity?.grade ?? "-"}`} description={en ? "Requirement governance maturity." : "요구사항 관리 성숙도입니다."} />
           <SummaryMetricCard title={en ? "Delivery readiness" : "납품 준비도"} value={`${summary.value?.deliveryReadiness?.score ?? "-"} / ${summary.value?.deliveryReadiness?.grade ?? "-"}`} description={en ? "Evidence-backed delivery readiness." : "검증 증거 기반 납품 준비도입니다."} />
           <SummaryMetricCard title={en ? "SR review groups" : "SR 검토 묶음"} value={String(summary.value?.srRequestCount ?? "-")} description={en ? "Human review is required." : "사람의 검토 후 실행할 수 있습니다."} />
+          <SummaryMetricCard title={en ? "Pending approvals" : "승인 검토 대기"} value={String(summary.value?.approvalStateSummary?.PENDING ?? "-")} description={en ? "No AI decision is auto-approved." : "AI 판단은 자동 승인되지 않습니다."} />
         </section>
 
         <section className="border-y border-[var(--kr-gov-border-light)] bg-white px-5 py-4">

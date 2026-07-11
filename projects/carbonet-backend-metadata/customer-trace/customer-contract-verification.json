@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T07:15:10.108109+00:00",
+  "valid": true,
+  "counts": {
+    "bindings": 342,
+    "approvalEntries": 342,
+    "srRequests": 37,
+    "verificationItems": 342,
+    "sourceRoutes": 263,
+    "sourceSduiScreens": 249,
+    "sourceApis": 1189,
+    "danglingPageCandidates": 0,
+    "danglingApiCandidates": 0
+  },
+  "errors": [],
+  "reviewFindings": {
+    "danglingPageCandidates": [],
+    "danglingApiCandidates": []
+  },
+  "policy": {
+    "automaticApproval": false,
+    "automaticExecution": false,
+    "automaticDeployment": false
+  }
+}

@@ -37,10 +37,12 @@ def main():
             "comment": row.get("comment", ""),
             "automaticApproval": False,
         })
+    state_summary = {s: sum(e["state"] == s for e in entries) for s in sorted(ALLOWED_STATES)}
     payload = {
         "schemaVersion": 1,
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "entryCount": len(entries),
+        "stateSummary": state_summary,
         "policy": {
             "automaticApproval": False,
             "approvalRequiresReviewer": True,
@@ -50,7 +52,7 @@ def main():
         "entries": entries,
     }
     OUTPUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"entryCount": len(entries), "states": {s: sum(e["state"] == s for e in entries) for s in sorted(ALLOWED_STATES)}}, ensure_ascii=False))
+    print(json.dumps({"entryCount": len(entries), "states": state_summary}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

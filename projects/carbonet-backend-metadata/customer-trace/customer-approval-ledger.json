@@ -1,7 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T05:48:25.550887+00:00",
+  "generatedAt": "2026-07-11T07:12:34.754638+00:00",
   "entryCount": 342,
+  "stateSummary": {
+    "APPROVED": 0,
+    "IN_REVIEW": 0,
+    "PENDING": 342,
+    "REJECTED": 0,
+    "VERIFIED": 0
+  },
   "policy": {
     "automaticApproval": false,
     "approvalRequiresReviewer": true,
