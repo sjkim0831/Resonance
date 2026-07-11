@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T05:27:47.964110+00:00",
+  "generatedAt": "2026-07-11T05:36:17.158051+00:00",
   "summary": {
-    "routes": 262,
-    "apis": 1182,
+    "routes": 263,
+    "apis": 1189,
     "tables": 54,
     "menus": 169,
     "sduiScreens": 249,
-    "sduiComponents": 446,
+    "sduiComponents": 447,
     "sduiThemes": 1
   },
   "routes": [
@@ -2069,6 +2069,16 @@
       "enPath": "/en/admin/ai/observability",
       "exportName": "AiObservabilityPage",
       "modulePath": "../../../features/ai-management/AiObservabilityPage",
+      "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/aiManagementFamily.ts"
+    },
+    {
+      "assetId": "ROUTE-CUSTOMER-TRACE",
+      "routeId": "customer-trace",
+      "label": "고객 요구 추적",
+      "koPath": "/admin/ai/customer-trace",
+      "enPath": "/en/admin/ai/customer-trace",
+      "exportName": "CustomerTracePage",
+      "modulePath": "../../../features/customer-trace/CustomerTracePage",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/aiManagementFamily.ts"
     },
     {
@@ -4319,6 +4329,20 @@
       "path": "/api/platform/builder/en/api/platform/builder",
       "contract": "ANY /api/platform/builder/en/api/platform/builder",
       "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/BuilderApiController.java"
+    },
+    {
+      "assetId": "API-A4DD3610553A1FCB",
+      "method": "ANY",
+      "path": "/api/platform/customer-trace/api/platform/customer-trace",
+      "contract": "ANY /api/platform/customer-trace/api/platform/customer-trace",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
+      "assetId": "API-08319677BF389949",
+      "method": "ANY",
+      "path": "/api/platform/customer-trace/en/api/platform/customer-trace",
+      "contract": "ANY /api/platform/customer-trace/en/api/platform/customer-trace",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
     },
     {
       "assetId": "API-17263C92C05F8D18",
@@ -7182,6 +7206,41 @@
       "path": "/api/platform/builder/themes",
       "contract": "GET /api/platform/builder/themes",
       "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/BuilderApiController.java"
+    },
+    {
+      "assetId": "API-5908E6664C957C95",
+      "method": "GET",
+      "path": "/api/platform/customer-trace/scorecard",
+      "contract": "GET /api/platform/customer-trace/scorecard",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
+      "assetId": "API-AEA2CE4184BB6945",
+      "method": "GET",
+      "path": "/api/platform/customer-trace/sr-backlog",
+      "contract": "GET /api/platform/customer-trace/sr-backlog",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
+      "assetId": "API-5B751C7D7CDE6BC0",
+      "method": "GET",
+      "path": "/api/platform/customer-trace/summary",
+      "contract": "GET /api/platform/customer-trace/summary",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
+      "assetId": "API-962281A6F2EA0357",
+      "method": "GET",
+      "path": "/api/platform/customer-trace/trace",
+      "contract": "GET /api/platform/customer-trace/trace",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
+      "assetId": "API-5D8B4FA8033DB6B2",
+      "method": "GET",
+      "path": "/api/platform/customer-trace/traces",
+      "contract": "GET /api/platform/customer-trace/traces",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
     },
     {
       "assetId": "API-1D4473D24A5EDCDB",
@@ -15731,6 +15790,13 @@
     {
       "componentId": "SOURCE_COMPONENT_CompanyListMigrationPage",
       "componentNm": "CompanyListMigrationPage",
+      "componentType": "OTHER",
+      "categoryCd": "LAYOUT",
+      "useAt": "Y"
+    },
+    {
+      "componentId": "SOURCE_COMPONENT_CustomerTracePage",
+      "componentNm": "CustomerTracePage",
       "componentType": "OTHER",
       "categoryCd": "LAYOUT",
       "useAt": "Y"
