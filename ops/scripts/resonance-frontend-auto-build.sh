@@ -36,6 +36,7 @@ if [[ "$new_fp" == "$old_fp" && -f "$OUT_DIR/.vite/manifest.json" ]]; then
 fi
 {
   echo "[$(date -Is)] frontend change detected; building React assets"
+  node "$ROOT_DIR/ops/scripts/generate-builder-asset-registry.mjs"
   cd "$SRC_DIR"
   if [[ ! -d node_modules || "${FORCE_NPM_CI:-false}" == "true" ]]; then
     npm ci
