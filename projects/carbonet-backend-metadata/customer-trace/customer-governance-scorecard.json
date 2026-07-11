@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T05:26:17.434135+00:00",
+  "customerProfile": "PRODUCT_CO_DESIGN_CUSTOMER",
+  "customerMaturity": {
+    "score": 80.8,
+    "grade": "B+",
+    "decision": "REVIEW_REQUIRED"
+  },
+  "deliveryReadiness": {
+    "score": 30.6,
+    "grade": "D",
+    "verifiedUseCases": 0,
+    "approvedUseCases": 0
+  },
+  "dimensions": [
+    {
+      "id": "VISION_SCOPE",
+      "name": "사업 비전·범위",
+      "weight": 25,
+      "score": 95.0,
+      "evidence": [
+        "14 domains",
+        "342 canonical use cases"
+      ]
+    },
+    {
+      "id": "AUTHORITATIVE_EVIDENCE",
+      "name": "공식 근거 품질",
+      "weight": 20,
+      "score": 88,
+      "evidence": [
+        "tier A documents: 9",
+        "tier B documents: 99"
+      ]
+    },
+    {
+      "id": "REFERENCE_HYGIENE",
+      "name": "버전·중복 관리",
+      "weight": 15,
+      "score": 67.4,
+      "evidence": [
+        "duplicate ratio: 59.3%",
+        "excluded generated documents: 50"
+      ]
+    },
+    {
+      "id": "TRACEABILITY",
+      "name": "요구사항 추적성",
+      "weight": 20,
+      "score": 56.5,
+      "evidence": [
+        "page agreement: 212/342",
+        "api agreement: 100/342"
+      ]
+    },
+    {
+      "id": "CHANGE_GOVERNANCE",
+      "name": "변경·우선순위 관리",
+      "weight": 20,
+      "score": 90.0,
+      "evidence": [
+        "review SR backlog: 37",
+        "automatic approval prohibited"
+      ]
+    }
+  ],
+  "gradePolicy": {
+    "A+": 95,
+    "A": 90,
+    "A-": 85,
+    "B+": 80,
+    "B": 75,
+    "B-": 70,
+    "C": 60
+  },
+  "promotionConditions": [
+    {
+      "id": "BASELINE_LOCK",
+      "title": "342개 UC 기준선 승인",
+      "status": "READY_FOR_REVIEW"
+    },
+    {
+      "id": "REFERENCE_CANONICAL",
+      "title": "공식 기준 문서와 중복 문서 분리",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "PAGE_API_MAPPING",
+      "title": "사용자·관리자 화면과 API 명시적 연결",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "E2E_EVIDENCE",
+      "title": "브라우저·API·DB·권한 E2E 증거",
+      "status": "NOT_STARTED"
+    },
+    {
+      "id": "CUSTOMER_SIGNOFF",
+      "title": "UC별 고객 승인·반려 이력",
+      "status": "NOT_STARTED"
+    }
+  ],
+  "policy": {
+    "automaticGradePromotion": false,
+    "automaticImplementationApproval": false,
+    "requiredDecision": "HUMAN_REVIEW"
+  }
+}
