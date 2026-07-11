@@ -2,6 +2,7 @@ package egovframework.com.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import egovframework.com.service.CustomerTraceApprovalLedgerService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,34 +15,27 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.Principal;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 @RestController
 @RequestMapping({"/api/platform/customer-trace", "/en/api/platform/customer-trace"})
 public class CustomerTraceApiController {
 
-    private static final Map<String, Set<String>> APPROVAL_TRANSITIONS = Map.of(
-            "PENDING", Set.of("IN_REVIEW", "REJECTED"),
-            "IN_REVIEW", Set.of("PENDING", "APPROVED", "REJECTED"),
-            "APPROVED", Set.of("IN_REVIEW", "VERIFIED"),
-            "REJECTED", Set.of("IN_REVIEW"),
-            "VERIFIED", Set.of("IN_REVIEW"));
-
     private final ObjectMapper objectMapper;
     private final Path traceRoot;
+    private final CustomerTraceApprovalLedgerService approvalLedgerService;
 
     public CustomerTraceApiController(
             ObjectMapper objectMapper,
+            CustomerTraceApprovalLedgerService approvalLedgerService,
             @Value("${CARBONET_BACKEND_METADATA_FS_OVERRIDE_PATH:/app/backend-metadata}") String backendMetadataRoot) {
         this.objectMapper = objectMapper;
+        this.approvalLedgerService = approvalLedgerService;
         this.traceRoot = Path.of(backendMetadataRoot).normalize().resolve("customer-trace").normalize();
     }
 
@@ -54,7 +48,6 @@ public class CustomerTraceApiController {
         JsonNode scorecard = read("customer-governance-scorecard.json");
         JsonNode srImport = read("customer-sr-workbench-import.json");
         JsonNode runtimeFindings = read("customer-runtime-findings.json");
-        JsonNode approvalLedger = read("customer-approval-ledger.json");
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("traceCount", baseline.path("traceCount").asInt());
         response.put("modelOutputCount", consensus.path("modelOutputCount").asInt());
@@ -66,7 +59,7 @@ public class CustomerTraceApiController {
         response.put("srRequestCount", srImport.path("requestCount").asInt());
         response.put("runtimeFindingCount", runtimeFindings.path("findingCount").asInt());
         response.put("runtimeFindings", objectMapper.convertValue(runtimeFindings.path("findings"), List.class));
-        response.put("approvalStateSummary", objectMapper.convertValue(approvalLedger.path("stateSummary"), Map.class));
+        response.put("approvalStateSummary", approvalLedgerService.stateSummary());
         response.put("policy", objectMapper.convertValue(scorecard.path("policy"), Map.class));
         return response;
     }
@@ -99,14 +92,13 @@ public class CustomerTraceApiController {
     @GetMapping("/trace")
     public ResponseEntity<?> trace(@RequestParam String useCaseId) throws IOException {
         JsonNode bindings = read("customer-sdui-bindings.json").path("bindings");
-        JsonNode approvals = read("customer-approval-ledger.json").path("entries");
         JsonNode requests = read("customer-sr-workbench-import.json").path("requests");
         if (bindings.isArray()) {
             for (JsonNode row : bindings) {
                 if (useCaseId.equalsIgnoreCase(row.path("useCaseId").asText())) {
                     Map<String, Object> response = new LinkedHashMap<>();
                     response.put("binding", row);
-                    response.put("approval", findBy(approvals, "useCaseId", useCaseId));
+                    response.put("approval", approvalLedgerService.find(useCaseId));
                     List<JsonNode> linkedRequests = new ArrayList<>();
                     if (requests.isArray()) {
                         for (JsonNode request : requests) {
@@ -130,7 +122,7 @@ public class CustomerTraceApiController {
     public JsonNode srBacklog() throws IOException { return read("customer-sr-workbench-import.json"); }
 
     @GetMapping("/approval-ledger")
-    public JsonNode approvalLedger() throws IOException { return read("customer-approval-ledger.json"); }
+    public Map<String, Object> approvalLedger() { return approvalLedgerService.ledger(); }
 
     @PostMapping("/approval")
     public synchronized ResponseEntity<?> updateApproval(
@@ -139,27 +131,16 @@ public class CustomerTraceApiController {
         if (principal == null || safe(principal.getName()).isEmpty()) {
             return ResponseEntity.status(401).body(Map.of("message", "Authenticated reviewer is required."));
         }
-        String requestedState = safe(request.state()).toUpperCase(Locale.ROOT);
-        JsonNode ledger = read("customer-approval-ledger.json");
-        JsonNode target = findBy(ledger.path("entries"), "useCaseId", safe(request.useCaseId()));
-        if (target.isMissingNode() || target.isEmpty()) return ResponseEntity.notFound().build();
-        String currentState = target.path("state").asText("PENDING");
-        if (!APPROVAL_TRANSITIONS.getOrDefault(currentState, Set.of()).contains(requestedState)) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Invalid approval transition.", "from", currentState, "to", requestedState));
-        }
         List<String> evidenceRefs = request.evidenceRefs() == null ? List.of() : request.evidenceRefs().stream().map(this::safe).filter(value -> !value.isEmpty()).distinct().toList();
-        if ("VERIFIED".equals(requestedState) && evidenceRefs.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "VERIFIED requires evidenceRefs."));
+        try {
+            Map<String, Object> updated = approvalLedgerService.update(safe(request.useCaseId()), safe(request.state()), evidenceRefs, request.comment(), principal.getName());
+            approvalLedgerService.exportSnapshot();
+            return ResponseEntity.ok(updated);
+        } catch (org.springframework.dao.EmptyResultDataAccessException error) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            return ResponseEntity.badRequest().body(Map.of("message", error.getMessage()));
         }
-        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("state", requestedState);
-        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("reviewer", principal.getName());
-        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("reviewedAt", OffsetDateTime.now().toString());
-        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("comment", safe(request.comment()));
-        ((com.fasterxml.jackson.databind.node.ObjectNode) target).set("evidenceRefs", objectMapper.valueToTree(evidenceRefs));
-        ((com.fasterxml.jackson.databind.node.ObjectNode) ledger).set("stateSummary", summarizeStates(ledger.path("entries")));
-        ((com.fasterxml.jackson.databind.node.ObjectNode) ledger).put("generatedAt", OffsetDateTime.now().toString());
-        writeAtomically("customer-approval-ledger.json", ledger);
-        return ResponseEntity.ok(target);
     }
 
     @GetMapping("/catalog")
@@ -176,26 +157,6 @@ public class CustomerTraceApiController {
             for (JsonNode row : rows) if (value.equalsIgnoreCase(row.path(field).asText())) return row;
         }
         return objectMapper.createObjectNode();
-    }
-
-    private JsonNode summarizeStates(JsonNode rows) {
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        APPROVAL_TRANSITIONS.keySet().stream().sorted().forEach(state -> counts.put(state, 0));
-        for (JsonNode row : rows) counts.computeIfPresent(row.path("state").asText(), (key, value) -> value + 1);
-        return objectMapper.valueToTree(counts);
-    }
-
-    private void writeAtomically(String fileName, JsonNode value) throws IOException {
-        Path target = traceRoot.resolve(fileName).normalize();
-        if (!target.startsWith(traceRoot)) throw new IOException("Invalid metadata path.");
-        Files.createDirectories(traceRoot);
-        Path temporary = Files.createTempFile(traceRoot, fileName, ".tmp");
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), value);
-        try {
-            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 
     public record ApprovalUpdateRequest(String useCaseId, String state, List<String> evidenceRefs, String comment) {}

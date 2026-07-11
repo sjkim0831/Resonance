@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260711-170100-register-customer-trace-governance
+      author: codex
+      labels: customer-trace
+      context: carbonet,postgresql
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/20260711-170100-register-customer-trace-governance.sql
+            relativeToChangelogFile: false
