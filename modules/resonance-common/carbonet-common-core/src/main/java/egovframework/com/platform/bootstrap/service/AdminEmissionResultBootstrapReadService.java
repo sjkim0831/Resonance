@@ -80,17 +80,19 @@ public class AdminEmissionResultBootstrapReadService {
     public Map<String, Object> buildEmissionResultDetailPageData(String resultId, boolean isEn) {
         String normalizedResultId = safeString(resultId);
         EmissionResultFilterSnapshot filterSnapshot = adminSummaryReadPort.buildEmissionResultFilterSnapshot(isEn, "", "", "");
-        EmissionResultSummaryView summary = filterSnapshot.getItems().stream()
-                .filter(item -> normalizedResultId.equalsIgnoreCase(safeString(item.getResultId())))
-                .findFirst()
-                .orElse(null);
+        EmissionResultSummaryView summary = normalizedResultId.isEmpty()
+                ? filterSnapshot.getItems().stream().findFirst().orElse(null)
+                : filterSnapshot.getItems().stream()
+                        .filter(item -> normalizedResultId.equalsIgnoreCase(safeString(item.getResultId())))
+                        .findFirst()
+                        .orElse(null);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("isEn", isEn);
-        response.put("resultId", normalizedResultId);
+        response.put("resultId", summary == null ? normalizedResultId : summary.getResultId());
         response.put("listUrl", buildAdminPath(isEn, "/emission/result_list"));
         response.put("found", summary != null);
-        if (summary == null && !normalizedResultId.isEmpty()) {
+        if (summary == null) {
             response.put("pageError", isEn ? "The requested emission result could not be found." : "요청한 산정 결과를 찾을 수 없습니다.");
             return response;
         }

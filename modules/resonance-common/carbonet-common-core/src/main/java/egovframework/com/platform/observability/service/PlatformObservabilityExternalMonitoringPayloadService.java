@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -23,14 +24,20 @@ public class PlatformObservabilityExternalMonitoringPayloadService {
     private final PlatformObservabilityExternalWebhooksPayloadService externalWebhooksPayloadService;
 
     public Map<String, Object> buildExternalMonitoringPagePayload(boolean isEn) {
-        List<Map<String, String>> connectionRows = castStringRowList(
-                externalConnectionListPayloadService.buildExternalConnectionListPagePayload(isEn).get("externalConnectionRows"));
-        List<Map<String, String>> usageRows = castStringRowList(
-                externalUsagePayloadService.buildExternalUsagePagePayload(isEn).get("externalUsageRows"));
-        List<Map<String, String>> syncRows = castStringRowList(
-                externalSyncPayloadService.buildExternalSyncPagePayload(isEn).get("externalSyncRows"));
-        List<Map<String, String>> webhookRows = castStringRowList(
-                externalWebhooksPayloadService.buildExternalWebhooksPagePayload("", "ALL", "ALL", isEn).get("externalWebhookRows"));
+        CompletableFuture<List<Map<String, String>>> connectionFuture = CompletableFuture.supplyAsync(() -> castStringRowList(
+                externalConnectionListPayloadService.buildExternalConnectionListPagePayload(isEn).get("externalConnectionRows")));
+        CompletableFuture<List<Map<String, String>>> usageFuture = CompletableFuture.supplyAsync(() -> castStringRowList(
+                externalUsagePayloadService.buildExternalUsagePagePayload(isEn).get("externalUsageRows")));
+        CompletableFuture<List<Map<String, String>>> syncFuture = CompletableFuture.supplyAsync(() -> castStringRowList(
+                externalSyncPayloadService.buildExternalSyncPagePayload(isEn).get("externalSyncRows")));
+        CompletableFuture<List<Map<String, String>>> webhookFuture = CompletableFuture.supplyAsync(() -> castStringRowList(
+                externalWebhooksPayloadService.buildExternalWebhooksPagePayload("", "ALL", "ALL", isEn).get("externalWebhookRows")));
+
+        CompletableFuture.allOf(connectionFuture, usageFuture, syncFuture, webhookFuture).join();
+        List<Map<String, String>> connectionRows = connectionFuture.join();
+        List<Map<String, String>> usageRows = usageFuture.join();
+        List<Map<String, String>> syncRows = syncFuture.join();
+        List<Map<String, String>> webhookRows = webhookFuture.join();
 
         List<Map<String, String>> alertRows = buildExternalMonitoringAlertRows(usageRows, syncRows, webhookRows, isEn);
         List<Map<String, String>> monitoringRows = buildExternalMonitoringRows(connectionRows, usageRows, syncRows, alertRows, isEn);
