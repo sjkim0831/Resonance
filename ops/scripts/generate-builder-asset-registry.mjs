@@ -197,7 +197,7 @@ store.screens = routes.map((route) => {
     status: existing.status || "PUBLISHED",
     version: existing.version || 1,
     createdAt: existing.createdAt || now,
-    updatedAt: now
+    updatedAt: existing.updatedAt || now
   };
 });
 store.assets.routes = routeAssets;
