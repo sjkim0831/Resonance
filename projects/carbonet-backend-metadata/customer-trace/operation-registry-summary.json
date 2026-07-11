@@ -1,0 +1,1028 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T05:01:17.240031+00:00",
+  "namespace": "carbonet-prod",
+  "summary": {
+    "assetCount": 81,
+    "healthyCount": 81,
+    "reviewCount": 0,
+    "byType": {
+      "K8S_DEPLOYMENT": 6,
+      "K8S_PDB": 6,
+      "K8S_POD": 23,
+      "K8S_PVC": 1,
+      "K8S_SERVICE": 15,
+      "K8S_STATEFULSET": 3,
+      "PATRONI_MEMBER": 3,
+      "SYSTEMD_SERVICE": 23,
+      "UBUNTU_HOST": 1
+    },
+    "reviewAssetIds": []
+  },
+  "assets": [
+    {
+      "assetId": "OPS-UBUNTU-HOST-HOST-CCUS",
+      "assetType": "UBUNTU_HOST",
+      "assetName": "ccus",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "os": "Linux-7.0.0-22-generic-x86_64-with-glibc2.43",
+      "kernel": "7.0.0-22-generic",
+      "architecture": "x86_64"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-CARBONET-SELF-EVOLVING-LEARNING-COLLECTOR-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "carbonet-self-evolving-learning-collector.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-CONTAINERD-PRUNE-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "containerd-prune.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-CONTAINERD-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "containerd.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-DOCKER-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "docker.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-KUBELET-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "kubelet.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-AI-MODEL-STACK-HEALTH-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-ai-model-stack-health.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-CLOUDFLARE-TUNNEL-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-cloudflare-tunnel.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "exited"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-DUCKDNS-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-duckdns.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-FRONTEND-AUTO-BUILD-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-frontend-auto-build.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-K8S-HOUSEKEEPER-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-k8s-housekeeper.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-K8S-SELF-HEAL-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-k8s-self-heal.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-OPS-WEB-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-ops-web.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-OWNERSHIP-NORMALIZE-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-ownership-normalize.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-QWEN40-IMPROVEMENT-BOT-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-qwen40-improvement-bot.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-RECOVERY-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-recovery.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "exited"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-SHADOW-GEMMA4-E4B-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-shadow-gemma4-e4b.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-SHADOW-QWEN05-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-shadow-qwen05.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-SHADOW-QWEN14-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-shadow-qwen14.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-SHADOW-QWEN15-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-shadow-qwen15.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-SHADOW-QWEN7-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-shadow-qwen7.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-STARTUP-WATCHDOG-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-startup-watchdog.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-RESONANCE-UP-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "resonance-up.service",
+      "namespace": "host",
+      "status": "inactive",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "dead"
+    },
+    {
+      "assetId": "OPS-SYSTEMD-SERVICE-HOST-TTYD-RESONANCE-SERVICE",
+      "assetType": "SYSTEMD_SERVICE",
+      "assetName": "ttyd-resonance.service",
+      "namespace": "host",
+      "status": "active",
+      "healthStatus": "HEALTHY",
+      "loadState": "loaded",
+      "subState": "running"
+    },
+    {
+      "assetId": "OPS-K8S-DEPLOYMENT-CARBONET-PROD-CARBONET-RUNTIME",
+      "assetType": "K8S_DEPLOYMENT",
+      "assetName": "carbonet-runtime",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 2,
+      "readyReplicas": 2,
+      "images": [
+        "localhost:5000/carbonet-runtime:2026.07.11-project-manifest-v1"
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-DEPLOYMENT-CARBONET-PROD-CARBONET-WEB",
+      "assetType": "K8S_DEPLOYMENT",
+      "assetName": "carbonet-web",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 2,
+      "readyReplicas": 2,
+      "images": [
+        "nginx:1.27-alpine"
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-DEPLOYMENT-CARBONET-PROD-P004-RUNTIME",
+      "assetType": "K8S_DEPLOYMENT",
+      "assetName": "p004-runtime",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 2,
+      "readyReplicas": 2,
+      "images": [
+        "localhost:5000/carbonet-runtime:2026.07.11-project-manifest-v1"
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-DEPLOYMENT-CARBONET-PROD-P005-RUNTIME",
+      "assetType": "K8S_DEPLOYMENT",
+      "assetName": "p005-runtime",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 2,
+      "readyReplicas": 2,
+      "images": [
+        "localhost:5000/carbonet-runtime:2026.07.11-project-manifest-v1"
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-DEPLOYMENT-CARBONET-PROD-POSTGRES-HAPROXY",
+      "assetType": "K8S_DEPLOYMENT",
+      "assetName": "postgres-haproxy",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 3,
+      "readyReplicas": 3,
+      "images": [
+        "haproxy:3.0"
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-DEPLOYMENT-CARBONET-PROD-POSTGRES-PGBOUNCER",
+      "assetType": "K8S_DEPLOYMENT",
+      "assetName": "postgres-pgbouncer",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 3,
+      "readyReplicas": 3,
+      "images": [
+        "docker.io/dockette/pgbouncer:latest"
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-STATEFULSET-CARBONET-PROD-CARBONET-REDIS",
+      "assetType": "K8S_STATEFULSET",
+      "assetName": "carbonet-redis",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 3,
+      "readyReplicas": 3
+    },
+    {
+      "assetId": "OPS-K8S-STATEFULSET-CARBONET-PROD-ETCD-PATRONI",
+      "assetType": "K8S_STATEFULSET",
+      "assetName": "etcd-patroni",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 3,
+      "readyReplicas": 3
+    },
+    {
+      "assetId": "OPS-K8S-STATEFULSET-CARBONET-PROD-POSTGRES-PATRONI",
+      "assetType": "K8S_STATEFULSET",
+      "assetName": "postgres-patroni",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "desiredReplicas": 3,
+      "readyReplicas": 3
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-CARBONET-API",
+      "assetType": "K8S_SERVICE",
+      "assetName": "carbonet-api",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080,
+          "protocol": "TCP",
+          "targetPort": 8080
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-CARBONET-REDIS",
+      "assetType": "K8S_SERVICE",
+      "assetName": "carbonet-redis",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "redis",
+          "port": 6379,
+          "protocol": "TCP",
+          "targetPort": 6379
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-CARBONET-RUNTIME",
+      "assetType": "K8S_SERVICE",
+      "assetName": "carbonet-runtime",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080,
+          "protocol": "TCP",
+          "targetPort": 8080
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-CARBONET-RUNTIME-REVIEW",
+      "assetType": "K8S_SERVICE",
+      "assetName": "carbonet-runtime-review",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "NodePort",
+      "ports": [
+        {
+          "name": "http",
+          "nodePort": 20080,
+          "port": 80,
+          "protocol": "TCP",
+          "targetPort": 8080
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-CARBONET-WEB",
+      "assetType": "K8S_SERVICE",
+      "assetName": "carbonet-web",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "NodePort",
+      "ports": [
+        {
+          "name": "http",
+          "nodePort": 80,
+          "port": 80,
+          "protocol": "TCP",
+          "targetPort": 8080
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-ETCD-CLUSTER",
+      "assetType": "K8S_SERVICE",
+      "assetName": "etcd-cluster",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "client",
+          "port": 2379,
+          "protocol": "TCP",
+          "targetPort": 2379
+        },
+        {
+          "name": "peer",
+          "port": 2380,
+          "protocol": "TCP",
+          "targetPort": 2380
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-ETCD-PATRONI",
+      "assetType": "K8S_SERVICE",
+      "assetName": "etcd-patroni",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "client",
+          "port": 2379,
+          "protocol": "TCP",
+          "targetPort": 2379
+        },
+        {
+          "name": "peer",
+          "port": 2380,
+          "protocol": "TCP",
+          "targetPort": 2380
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-LOCAL-REGISTRY",
+      "assetType": "K8S_SERVICE",
+      "assetName": "local-registry",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "port": 5000,
+          "protocol": "TCP",
+          "targetPort": 5000
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-OLLAMA-GPU",
+      "assetType": "K8S_SERVICE",
+      "assetName": "ollama-gpu",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "port": 11434,
+          "protocol": "TCP",
+          "targetPort": 11434
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-P004-RUNTIME",
+      "assetType": "K8S_SERVICE",
+      "assetName": "p004-runtime",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "http",
+          "port": 80,
+          "protocol": "TCP",
+          "targetPort": "http"
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-P005-RUNTIME",
+      "assetType": "K8S_SERVICE",
+      "assetName": "p005-runtime",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "http",
+          "port": 80,
+          "protocol": "TCP",
+          "targetPort": "http"
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-POSTGRES-HAPROXY",
+      "assetType": "K8S_SERVICE",
+      "assetName": "postgres-haproxy",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "primary",
+          "port": 5432,
+          "protocol": "TCP",
+          "targetPort": 5432
+        },
+        {
+          "name": "replica",
+          "port": 5433,
+          "protocol": "TCP",
+          "targetPort": 5433
+        },
+        {
+          "name": "stats",
+          "port": 7000,
+          "protocol": "TCP",
+          "targetPort": 7000
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-POSTGRES-PATRONI",
+      "assetType": "K8S_SERVICE",
+      "assetName": "postgres-patroni",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "postgres",
+          "port": 5432,
+          "protocol": "TCP",
+          "targetPort": 5432
+        },
+        {
+          "name": "patroni",
+          "port": 8008,
+          "protocol": "TCP",
+          "targetPort": 8008
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-POSTGRES-PATRONI-EXTERNAL",
+      "assetType": "K8S_SERVICE",
+      "assetName": "postgres-patroni-external",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "NodePort",
+      "ports": [
+        {
+          "name": "postgres",
+          "nodePort": 31432,
+          "port": 5432,
+          "protocol": "TCP",
+          "targetPort": 5432
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-SERVICE-CARBONET-PROD-POSTGRES-PGBOUNCER",
+      "assetType": "K8S_SERVICE",
+      "assetName": "postgres-pgbouncer",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "serviceType": "ClusterIP",
+      "ports": [
+        {
+          "name": "pgbouncer",
+          "port": 5432,
+          "protocol": "TCP",
+          "targetPort": 5432
+        },
+        {
+          "name": "admin",
+          "port": 5433,
+          "protocol": "TCP",
+          "targetPort": 5433
+        }
+      ]
+    },
+    {
+      "assetId": "OPS-K8S-PVC-CARBONET-PROD-CARBONET-APP-PVC",
+      "assetType": "K8S_PVC",
+      "assetName": "carbonet-app-pvc",
+      "namespace": "carbonet-prod",
+      "status": "Bound",
+      "healthStatus": "HEALTHY",
+      "storageClass": "local-storage",
+      "capacity": "5Gi"
+    },
+    {
+      "assetId": "OPS-K8S-PDB-CARBONET-PROD-CARBONET-RUNTIME-PDB",
+      "assetType": "K8S_PDB",
+      "assetName": "carbonet-runtime-pdb",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "currentHealthy": 2,
+      "desiredHealthy": 1,
+      "disruptionsAllowed": 1
+    },
+    {
+      "assetId": "OPS-K8S-PDB-CARBONET-PROD-CARBONET-WEB-PDB",
+      "assetType": "K8S_PDB",
+      "assetName": "carbonet-web-pdb",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "currentHealthy": 2,
+      "desiredHealthy": 1,
+      "disruptionsAllowed": 1
+    },
+    {
+      "assetId": "OPS-K8S-PDB-CARBONET-PROD-ETCD-PATRONI-PDB",
+      "assetType": "K8S_PDB",
+      "assetName": "etcd-patroni-pdb",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "currentHealthy": 3,
+      "desiredHealthy": 2,
+      "disruptionsAllowed": 1
+    },
+    {
+      "assetId": "OPS-K8S-PDB-CARBONET-PROD-P004-RUNTIME-PDB",
+      "assetType": "K8S_PDB",
+      "assetName": "p004-runtime-pdb",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "currentHealthy": 2,
+      "desiredHealthy": 1,
+      "disruptionsAllowed": 1
+    },
+    {
+      "assetId": "OPS-K8S-PDB-CARBONET-PROD-P005-RUNTIME-PDB",
+      "assetType": "K8S_PDB",
+      "assetName": "p005-runtime-pdb",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "currentHealthy": 2,
+      "desiredHealthy": 1,
+      "disruptionsAllowed": 1
+    },
+    {
+      "assetId": "OPS-K8S-PDB-CARBONET-PROD-POSTGRES-PATRONI-PDB",
+      "assetType": "K8S_PDB",
+      "assetName": "postgres-patroni-pdb",
+      "namespace": "carbonet-prod",
+      "status": "Available",
+      "healthStatus": "HEALTHY",
+      "currentHealthy": 3,
+      "desiredHealthy": 2,
+      "disruptionsAllowed": 1
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-REDIS-0",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-redis-0",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-REDIS-1",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-redis-1",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-REDIS-2",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-redis-2",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-RUNTIME-5659C6CD97-4RNQT",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-runtime-5659c6cd97-4rnqt",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-RUNTIME-5659C6CD97-ZWQQP",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-runtime-5659c6cd97-zwqqp",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-WEB-6D5C876CB-7QQ6D",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-web-6d5c876cb-7qq6d",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-CARBONET-WEB-6D5C876CB-SDXDK",
+      "assetType": "K8S_POD",
+      "assetName": "carbonet-web-6d5c876cb-sdxdk",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-ETCD-PATRONI-0",
+      "assetType": "K8S_POD",
+      "assetName": "etcd-patroni-0",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-ETCD-PATRONI-1",
+      "assetType": "K8S_POD",
+      "assetName": "etcd-patroni-1",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-ETCD-PATRONI-2",
+      "assetType": "K8S_POD",
+      "assetName": "etcd-patroni-2",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-P004-RUNTIME-75B78788D-6LDGW",
+      "assetType": "K8S_POD",
+      "assetName": "p004-runtime-75b78788d-6ldgw",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-P004-RUNTIME-75B78788D-LHBJK",
+      "assetType": "K8S_POD",
+      "assetName": "p004-runtime-75b78788d-lhbjk",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-P005-RUNTIME-58686C486-LC6TK",
+      "assetType": "K8S_POD",
+      "assetName": "p005-runtime-58686c486-lc6tk",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-P005-RUNTIME-58686C486-RHG6K",
+      "assetType": "K8S_POD",
+      "assetName": "p005-runtime-58686c486-rhg6k",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-HAPROXY-6B8949CC88-BZ4H9",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-haproxy-6b8949cc88-bz4h9",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-HAPROXY-6B8949CC88-PXWS8",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-haproxy-6b8949cc88-pxws8",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-HAPROXY-6B8949CC88-WMZK7",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-haproxy-6b8949cc88-wmzk7",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-PATRONI-0",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-patroni-0",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-PATRONI-1",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-patroni-1",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-PATRONI-2",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-patroni-2",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-PGBOUNCER-5DCDB9D7FF-479L5",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-pgbouncer-5dcdb9d7ff-479l5",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-PGBOUNCER-5DCDB9D7FF-8RGNV",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-pgbouncer-5dcdb9d7ff-8rgnv",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-K8S-POD-CARBONET-PROD-POSTGRES-PGBOUNCER-5DCDB9D7FF-NM7JJ",
+      "assetType": "K8S_POD",
+      "assetName": "postgres-pgbouncer-5dcdb9d7ff-nm7jj",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "phase": "Running",
+      "restartCount": 0,
+      "nodeName": "ccus"
+    },
+    {
+      "assetId": "OPS-PATRONI-MEMBER-CARBONET-PROD-POSTGRES-PATRONI-0",
+      "assetType": "PATRONI_MEMBER",
+      "assetName": "postgres-patroni-0",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "role": "unknown",
+      "cluster": "postgres-patroni",
+      "phase": "Running"
+    },
+    {
+      "assetId": "OPS-PATRONI-MEMBER-CARBONET-PROD-POSTGRES-PATRONI-1",
+      "assetType": "PATRONI_MEMBER",
+      "assetName": "postgres-patroni-1",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "role": "unknown",
+      "cluster": "postgres-patroni",
+      "phase": "Running"
+    },
+    {
+      "assetId": "OPS-PATRONI-MEMBER-CARBONET-PROD-POSTGRES-PATRONI-2",
+      "assetType": "PATRONI_MEMBER",
+      "assetName": "postgres-patroni-2",
+      "namespace": "carbonet-prod",
+      "status": "Ready",
+      "healthStatus": "HEALTHY",
+      "role": "unknown",
+      "cluster": "postgres-patroni",
+      "phase": "Running"
+    }
+  ],
+  "evidenceHash": "ef50fed1e1f6a5d8c03ac30cd27a05d52484487962c1d3d795cfa6e51caa523a"
+}
