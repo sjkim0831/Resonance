@@ -42,4 +42,6 @@ python3 ops/scripts/build-customer-sr-workbench-import.py
 python3 ops/scripts/build-customer-sdui-bindings.py
 python3 ops/scripts/build-customer-verification-queue.py
 python3 ops/scripts/build-customer-runtime-findings.py
+python3 ops/scripts/build-customer-approval-ledger.py
+python3 ops/scripts/verify-customer-approval-ledger.py
 echo "Customer Trace refresh completed."
