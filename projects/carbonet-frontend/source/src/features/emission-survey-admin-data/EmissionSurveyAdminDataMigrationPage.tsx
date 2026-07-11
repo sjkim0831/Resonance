@@ -25,7 +25,8 @@ import type {
 } from "../../lib/api/emissionTypes";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
-import { isMappedUnitValue, normalizeUnitValue, UNIT_OPTIONS } from "../emission-common/unitOptions";
+import { isMappedUnitValue, normalizeUnitValue, resolveUnitCategory } from "../emission-common/unitOptions";
+import { UnitCategorySelectPair } from "../emission-common/UnitCategorySelectPair";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { CollectionResultPanel, MemberButton, PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -420,7 +421,7 @@ function applyAutoEcoinventMapping(values: Record<string, string>, candidate: Gw
 }
 
 const VISIBLE_COLUMN_KEYS = ["group", "materialName", "annualUnit", "remark"] as const;
-const BASE_ALLOWED_VALUE_KEYS = ["group", "materialName", "annualUnit", "remark"] as const;
+const BASE_ALLOWED_VALUE_KEYS = ["group", "materialName", "annualUnitCategory", "annualUnit", "remark"] as const;
 const GWP_ALLOWED_VALUE_KEYS = [
   "emissionFactor",
   "gwpMappedRowId",
@@ -463,6 +464,7 @@ function sanitizeRowValues(section: Record<string, unknown> | EmissionSurveyAdmi
     nextValues[key] = String(values[key] || "");
   });
   nextValues.annualUnit = normalizeUnitValue(String(nextValues.annualUnit || ""));
+  nextValues.annualUnitCategory = String(nextValues.annualUnitCategory || resolveUnitCategory(nextValues.annualUnit));
   if (isEmissionOutputSection(section)) {
     nextValues.emissionFactor = resolveStoredEmissionFactor(nextValues);
   }
@@ -695,7 +697,7 @@ function renderSectionTable(
                         <div className="flex min-h-[66px] flex-col justify-start">
                         {editable ? (
                           column.key === "annualUnit" ? (
-                            <AdminSelect
+                            <UnitCategorySelectPair
                               className={
                                 isDeletedRow
                                   ? "border-rose-200 bg-rose-50 text-rose-700 opacity-70"
@@ -706,16 +708,16 @@ function renderSectionTable(
                                     : ""
                               }
                               disabled={isDeletedRow || useDatabaseValue}
-                              onChange={(event) => options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, event.target.value)}
-                              value={normalizeUnitValue(String(values[column.key] || ""))}
-                            >
-                              <option value="">단위를 선택하세요</option>
-                              {UNIT_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </AdminSelect>
+                              category={String(values.annualUnitCategory || resolveUnitCategory(String(values[column.key] || "")))}
+                              onCategoryChange={(category) => {
+                                options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, "annualUnitCategory", category);
+                                if (values[column.key] && resolveUnitCategory(String(values[column.key])) !== category) {
+                                  options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, "");
+                                }
+                              }}
+                              onUnitChange={(unit) => options?.onChangeValue?.(options.sectionIndex || 0, index, rowId, column.key, unit)}
+                              unit={String(values[column.key] || "")}
+                            />
                           ) : column.key === "remark" ? (
                             <AdminTextarea
                               className={

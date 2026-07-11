@@ -1,0 +1,178 @@
+{
+  "components" : [ {
+    "componentId" : "BTN_PRIMARY",
+    "componentNm" : "기본 버튼",
+    "componentDc" : "기본 버튼 빌더 기본 컴포넌트",
+    "componentType" : "BUTTON",
+    "categoryCd" : "FORM",
+    "iconNm" : "",
+    "defaultProps" : {
+      "label" : "기본 버튼",
+      "className" : "px-4 py-2 rounded bg-blue-700 text-white font-bold"
+    },
+    "defaultClassNm" : "px-4 py-2 rounded bg-blue-700 text-white font-bold",
+    "defaultStyle" : { },
+    "dataAttrs" : { },
+    "isContainer" : false,
+    "isReusable" : true,
+    "sortOrder" : 10,
+    "useAt" : "Y"
+  }, {
+    "componentId" : "CARD_PANEL",
+    "componentNm" : "정보 카드",
+    "componentDc" : "정보 카드 빌더 기본 컴포넌트",
+    "componentType" : "CARD",
+    "categoryCd" : "DISPLAY",
+    "iconNm" : "",
+    "defaultProps" : {
+      "label" : "정보 카드",
+      "className" : "rounded border bg-white p-4 shadow-sm"
+    },
+    "defaultClassNm" : "rounded border bg-white p-4 shadow-sm",
+    "defaultStyle" : { },
+    "dataAttrs" : { },
+    "isContainer" : true,
+    "isReusable" : true,
+    "sortOrder" : 20,
+    "useAt" : "Y"
+  }, {
+    "componentId" : "INPUT_TEXT",
+    "componentNm" : "텍스트 입력",
+    "componentDc" : "텍스트 입력 빌더 기본 컴포넌트",
+    "componentType" : "INPUT",
+    "categoryCd" : "FORM",
+    "iconNm" : "",
+    "defaultProps" : {
+      "label" : "텍스트 입력",
+      "className" : "w-full rounded border px-3 py-2"
+    },
+    "defaultClassNm" : "w-full rounded border px-3 py-2",
+    "defaultStyle" : { },
+    "dataAttrs" : { },
+    "isContainer" : false,
+    "isReusable" : true,
+    "sortOrder" : 30,
+    "useAt" : "Y"
+  }, {
+    "componentId" : "TABLE_BASIC",
+    "componentNm" : "기본 테이블",
+    "componentDc" : "기본 테이블 빌더 기본 컴포넌트",
+    "componentType" : "TABLE",
+    "categoryCd" : "DATA",
+    "iconNm" : "",
+    "defaultProps" : {
+      "label" : "기본 테이블",
+      "className" : "w-full text-sm border-collapse"
+    },
+    "defaultClassNm" : "w-full text-sm border-collapse",
+    "defaultStyle" : { },
+    "dataAttrs" : { },
+    "isContainer" : false,
+    "isReusable" : true,
+    "sortOrder" : 40,
+    "useAt" : "Y"
+  }, {
+    "componentId" : "SECTION_STANDARD",
+    "componentNm" : "표준 섹션",
+    "componentDc" : "표준 섹션 빌더 기본 컴포넌트",
+    "componentType" : "SECTION",
+    "categoryCd" : "LAYOUT",
+    "iconNm" : "",
+    "defaultProps" : {
+      "label" : "표준 섹션",
+      "className" : "rounded border bg-white p-5"
+    },
+    "defaultClassNm" : "rounded border bg-white p-5",
+    "defaultStyle" : { },
+    "dataAttrs" : { },
+    "isContainer" : true,
+    "isReusable" : true,
+    "sortOrder" : 50,
+    "useAt" : "Y"
+  }, {
+    "componentId" : "UNIT_CATEGORY_SELECT_PAIR",
+    "componentNm" : "단위 분류·단위 2단 선택",
+    "componentDc" : "단위 분류를 먼저 선택하고 호환 단위만 선택하는 KRDS 공통 콤보박스 쌍",
+    "componentType" : "FORM",
+    "categoryCd" : "FORM",
+    "iconNm" : "straighten",
+    "defaultProps" : {
+      "category" : "",
+      "unit" : "",
+      "categoryLabel" : "단위 분류",
+      "unitLabel" : "단위"
+    },
+    "defaultClassNm" : "grid min-w-[260px] grid-cols-[minmax(112px,0.8fr)_minmax(138px,1fr)] gap-2",
+    "defaultStyle" : {
+      "designSystem" : "KRDS",
+      "layout" : "paired-select"
+    },
+    "dataAttrs" : {
+      "data-builder-component" : "UNIT_CATEGORY_SELECT_PAIR"
+    },
+    "isContainer" : false,
+    "isReusable" : true,
+    "sortOrder" : 35,
+    "useAt" : "Y"
+  } ],
+  "screens" : [ {
+    "screenId" : "builder-default",
+    "menuCode" : "A0060119",
+    "pageId" : "builder-studio",
+    "menuNm" : "빌더 스튜디오",
+    "menuUrl" : "/admin/system/builder-studio",
+    "templateType" : "admin",
+    "nodes" : [ ],
+    "events" : [ ],
+    "themeId" : "theme-default",
+    "customClasses" : "",
+    "customStyles" : "",
+    "status" : "DRAFT",
+    "version" : 1,
+    "createdAt" : "2026-07-08T13:52:09.711039692Z",
+    "updatedAt" : "2026-07-08T13:52:09.711069447Z"
+  } ],
+  "themes" : [ {
+    "themeId" : "theme-default",
+    "themeName" : "Carbonet 기본 테마",
+    "description" : "빌더 기본 테마",
+    "themeType" : "admin",
+    "isDefault" : true,
+    "tokens" : { }
+  } ],
+  "assets" : {
+    "codex-smoke" : [ ],
+    "sections" : [ {
+      "id" : "SECTION_UNIT_CATEGORY_SELECT_PAIR",
+      "name" : "단위 분류·단위 선택 섹션",
+      "description" : "배출 데이터 그리드에서 재사용하는 2단 단위 선택 영역",
+      "componentId" : "UNIT_CATEGORY_SELECT_PAIR",
+      "sourcePath" : "features/emission-common/UnitCategorySelectPair.tsx",
+      "sourcePageIds" : [ "emission-survey-admin", "emission-survey-admin-data" ],
+      "layoutZone" : "grid-cell",
+      "designTokenVersion" : "krds-current",
+      "status" : "ACTIVE"
+    } ],
+    "design-presets" : [ {
+      "id" : "PRESET_UNIT_CATEGORY_SELECT_PAIR_KRDS",
+      "name" : "KRDS 2단 단위 선택",
+      "description" : "분류와 단위를 112:138 비율로 배치하는 공통 폼 프리셋",
+      "componentId" : "UNIT_CATEGORY_SELECT_PAIR",
+      "themeId" : "theme-default",
+      "tokens" : {
+        "gap" : "0.5rem",
+        "categoryMinWidth" : "112px",
+        "unitMinWidth" : "138px",
+        "controlRadius" : "var(--kr-gov-radius)",
+        "borderColor" : "var(--kr-gov-border-light)",
+        "focusColor" : "var(--kr-gov-blue)"
+      },
+      "previewProps" : {
+        "category" : "MASS",
+        "unit" : "kg"
+      },
+      "status" : "ACTIVE"
+    } ]
+  },
+  "updatedAt" : "2026-07-11T02:05:19.267296298Z"
+}

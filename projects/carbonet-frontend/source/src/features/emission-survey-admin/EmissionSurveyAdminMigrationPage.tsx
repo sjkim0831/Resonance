@@ -25,7 +25,8 @@ import type {
   EmissionSurveyAdminSection
 } from "../../lib/api/emissionTypes";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { getUnitOptionsByCategory, normalizeUnitValue, resolveUnitCategory, UNIT_CATEGORY_OPTIONS } from "../emission-common/unitOptions";
+import { normalizeUnitValue, resolveUnitCategory } from "../emission-common/unitOptions";
+import { UnitCategorySelectPair } from "../emission-common/UnitCategorySelectPair";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -530,30 +531,8 @@ function isUnitCategoryColumnKey(key: string) {
   return key === "annualUnitCategory" || key === "costUnitCategory";
 }
 
-function unitCategoryColumnTemplate(unitColumn: Record<string, string>) {
-  const key = stringOf(unitColumn, "key");
-  const headerPath = parseHeaderPath(unitColumn);
-  const label = headerPath[headerPath.length - 1] || stringOf(unitColumn, "label") || "단위";
-  return {
-    key: unitCategoryKeyForUnitKey(key),
-    label: "단위 분류",
-    headerPath: JSON.stringify([...headerPath.slice(0, -1), `${label} 분류`])
-  };
-}
-
 function withUnitCategoryColumns(columns: Array<Record<string, string>>) {
-  const nextColumns: Array<Record<string, string>> = [];
-  columns.forEach((column) => {
-    const key = stringOf(column, "key");
-    if (isUnitColumnKey(key)) {
-      const categoryKey = unitCategoryKeyForUnitKey(key);
-      if (!columns.some((candidate) => stringOf(candidate, "key") === categoryKey)) {
-        nextColumns.push(unitCategoryColumnTemplate(column));
-      }
-    }
-    nextColumns.push(column);
-  });
-  return nextColumns;
+  return columns.filter((column) => !isUnitCategoryColumnKey(stringOf(column, "key")));
 }
 function sanitizeAnnualUnitLabel(label: string) {
   return label.replace(/\n?\(연간\)/g, "").replace(/\(연간\)/g, "").trim();
@@ -1367,23 +1346,13 @@ function SectionEditor({
                           </AdminSelect>
                         ) : column.key === "group" && groupOptions.length === 1 ? (
                           <AdminInput readOnly value={value || groupOptions[0]} />
-                        ) : isUnitCategoryColumnKey(column.key) ? (
-                          <AdminSelect
-                            onChange={(event) => onChangeCell(row.rowId, column.key, event.target.value)}
-                            value={value}
-                          >
-                            <option value="">분류 선택</option>
-                            {UNIT_CATEGORY_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </AdminSelect>
                         ) : isUnitColumnKey(column.key) ? (
-                          <AdminSelect onChange={(event) => onChangeCell(row.rowId, column.key, event.target.value)} value={value}>
-                            <option value="">선택</option>
-                            {getUnitOptionsByCategory(row.values[unitCategoryKeyForUnitKey(column.key)] || "").map((option) => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </AdminSelect>
+                          <UnitCategorySelectPair
+                            category={row.values[unitCategoryKeyForUnitKey(column.key)] || ""}
+                            onCategoryChange={(category) => onChangeCell(row.rowId, unitCategoryKeyForUnitKey(column.key), category)}
+                            onUnitChange={(unit) => onChangeCell(row.rowId, column.key, unit)}
+                            unit={value}
+                          />
                         ) : column.key === "ecoinventMappingAction" ? (
                           <div className="space-y-1">
                             <MemberButton
