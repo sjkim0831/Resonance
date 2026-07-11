@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import egovframework.com.service.CustomerTraceApprovalLedgerService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,7 +42,8 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/summary")
-    public Map<String, Object> summary() throws IOException {
+    public Map<String, Object> summary(Principal principal) throws IOException {
+        requireAdmin(principal);
         JsonNode baseline = read("customer-trace-baseline.json");
         JsonNode consensus = read("customer-mapping-consensus.json");
         JsonNode sourceEvidence = read("customer-source-evidence.json");
@@ -69,7 +72,9 @@ public class CustomerTraceApiController {
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String query,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "50") int limit) throws IOException {
+            @RequestParam(defaultValue = "50") int limit,
+            Principal principal) throws IOException {
+        requireAdmin(principal);
         JsonNode bindings = read("customer-sdui-bindings.json").path("bindings");
         String normalizedDomain = safe(domain).toLowerCase(Locale.ROOT);
         String normalizedQuery = safe(query).toLowerCase(Locale.ROOT);
@@ -90,7 +95,8 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/trace")
-    public ResponseEntity<?> trace(@RequestParam String useCaseId) throws IOException {
+    public ResponseEntity<?> trace(@RequestParam String useCaseId, Principal principal) throws IOException {
+        requireAdmin(principal);
         JsonNode bindings = read("customer-sdui-bindings.json").path("bindings");
         JsonNode requests = read("customer-sr-workbench-import.json").path("requests");
         if (bindings.isArray()) {
@@ -116,13 +122,13 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/scorecard")
-    public JsonNode scorecard() throws IOException { return read("customer-governance-scorecard.json"); }
+    public JsonNode scorecard(Principal principal) throws IOException { requireAdmin(principal); return read("customer-governance-scorecard.json"); }
 
     @GetMapping("/sr-backlog")
-    public JsonNode srBacklog() throws IOException { return read("customer-sr-workbench-import.json"); }
+    public JsonNode srBacklog(Principal principal) throws IOException { requireAdmin(principal); return read("customer-sr-workbench-import.json"); }
 
     @GetMapping("/approval-ledger")
-    public Map<String, Object> approvalLedger() { return approvalLedgerService.ledger(); }
+    public Map<String, Object> approvalLedger(Principal principal) { requireAdmin(principal); return approvalLedgerService.ledger(); }
 
     @PostMapping("/approval")
     public synchronized ResponseEntity<?> updateApproval(
@@ -131,6 +137,7 @@ public class CustomerTraceApiController {
         if (principal == null || safe(principal.getName()).isEmpty()) {
             return ResponseEntity.status(401).body(Map.of("message", "Authenticated reviewer is required."));
         }
+        requireAdmin(principal);
         List<String> evidenceRefs = request.evidenceRefs() == null ? List.of() : request.evidenceRefs().stream().map(this::safe).filter(value -> !value.isEmpty()).distinct().toList();
         try {
             Map<String, Object> updated = approvalLedgerService.update(safe(request.useCaseId()), safe(request.state()), evidenceRefs, request.comment(), principal.getName());
@@ -144,7 +151,7 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/catalog")
-    public JsonNode catalog() throws IOException { return read("customer-trace-catalog.json"); }
+    public JsonNode catalog(Principal principal) throws IOException { requireAdmin(principal); return read("customer-trace-catalog.json"); }
 
     private JsonNode read(String fileName) throws IOException {
         Path file = traceRoot.resolve(fileName).normalize();
@@ -162,4 +169,13 @@ public class CustomerTraceApiController {
     public record ApprovalUpdateRequest(String useCaseId, String state, List<String> evidenceRefs, String comment) {}
 
     private String safe(String value) { return value == null ? "" : value.trim(); }
+
+    private void requireAdmin(Principal principal) {
+        if (principal == null || safe(principal.getName()).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
+        }
+        if (!approvalLedgerService.isCustomerTraceAdmin(principal.getName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customer Trace administrator authority is required.");
+        }
+    }
 }

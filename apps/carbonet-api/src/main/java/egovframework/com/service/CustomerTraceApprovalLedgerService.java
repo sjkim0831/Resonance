@@ -72,6 +72,20 @@ public class CustomerTraceApprovalLedgerService {
         return Boolean.TRUE.equals(exists);
     }
 
+    public boolean isCustomerTraceAdmin(String userId) {
+        if (userId == null || userId.isBlank()) return false;
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                FROM comtnemplyrinfo employee
+                JOIN comtnemplyrscrtyestbs security
+                  ON security.scrty_dtrmn_trget_id = employee.esntl_id
+                WHERE employee.emplyr_id = ?
+                  AND employee.emplyr_sttus_code = 'P'
+                  AND security.author_code IN ('ROLE_SYSTEM_MASTER', 'ROLE_OPERATION_ADMIN')
+                """, Integer.class, userId.trim());
+        return count != null && count > 0;
+    }
+
     public Map<String, Integer> stateSummary() {
         Map<String, Integer> summary = new LinkedHashMap<>();
         TRANSITIONS.keySet().stream().sorted().forEach(state -> summary.put(state, 0));
