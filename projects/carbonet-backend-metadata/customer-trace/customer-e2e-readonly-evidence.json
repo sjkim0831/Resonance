@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T09:22:22.818352+00:00",
+  "generatedAt": "2026-07-11T09:59:29.882745+00:00",
   "mode": "READ_ONLY",
-  "itemCount": 59,
+  "itemCount": 57,
   "summary": {
     "partialRuntimeEvidence": 57,
-    "runtimeGap": 2
+    "runtimeGap": 0
   },
   "policy": {
     "automaticVerification": false,
@@ -398,76 +398,6 @@
           "httpStatus": 302,
           "classification": "AUTH_OR_ROUTE_REDIRECT",
           "location": "http://127.0.0.1/signin/loginView"
-        }
-      ],
-      "requiredChecks": {
-        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
-        "API_RUNTIME": "READ_ONLY_CHECKED",
-        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
-        "AUTHORITY": "PENDING_ROLE_MATRIX",
-        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
-      },
-      "automaticVerification": false
-    },
-    {
-      "queueId": "VERIFY-UC-COMMON-009",
-      "useCaseId": "UC-COMMON-009",
-      "title": "첨부파일 미리보기",
-      "domain": "공통",
-      "result": "RUNTIME_GAP",
-      "pageChecks": [
-        {
-          "path": "/home",
-          "httpStatus": 200,
-          "classification": "REACHABLE",
-          "location": ""
-        },
-        {
-          "path": "/support/faq",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/signin/loginView"
-        },
-        {
-          "path": "/admin/",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/admin"
-        }
-      ],
-      "apiChecks": [
-        {
-          "method": "GET",
-          "path": "/admin/api/admin/screen-builder/preview",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/admin/login/loginView"
-        },
-        {
-          "method": "GET",
-          "path": "/api/platform/screen-builder/preview",
-          "httpStatus": 404,
-          "classification": "NOT_FOUND",
-          "location": ""
-        },
-        {
-          "method": "GET",
-          "path": "/api/platform/builder/screens/{param}/preview",
-          "httpStatus": 400,
-          "classification": "OTHER",
-          "location": ""
-        },
-        {
-          "method": "GET",
-          "path": "/api/platform/screen-builder/component-registry/auto-replace/preview",
-          "httpStatus": 404,
-          "classification": "NOT_FOUND",
-          "location": ""
-        },
-        {
-          "method": "ANY",
-          "path": "/api/auth/api/auth",
-          "classification": "NOT_EXECUTED_MUTATION_SAFE"
         }
       ],
       "requiredChecks": {
@@ -2114,76 +2044,6 @@
           "method": "POST",
           "path": "/admin/api/admin/auth-change/save",
           "classification": "NOT_EXECUTED_MUTATION_SAFE"
-        }
-      ],
-      "requiredChecks": {
-        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
-        "API_RUNTIME": "READ_ONLY_CHECKED",
-        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
-        "AUTHORITY": "PENDING_ROLE_MATRIX",
-        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
-      },
-      "automaticVerification": false
-    },
-    {
-      "queueId": "VERIFY-UC-SUP010",
-      "useCaseId": "UC-SUP010",
-      "title": "버전 관리",
-      "domain": "유지보수",
-      "result": "RUNTIME_GAP",
-      "pageChecks": [
-        {
-          "path": "/mtn/version",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/signin/loginView"
-        },
-        {
-          "path": "/mtn/version",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/signin/loginView"
-        },
-        {
-          "path": "/admin/content/board_list",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/admin/login/loginView"
-        }
-      ],
-      "apiChecks": [
-        {
-          "method": "GET",
-          "path": "/admin/api/admin/screen-builder/versions",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/admin/login/loginView"
-        },
-        {
-          "method": "GET",
-          "path": "/api/platform/screen-builder/versions",
-          "httpStatus": 404,
-          "classification": "NOT_FOUND",
-          "location": ""
-        },
-        {
-          "method": "ANY",
-          "path": "/admin/api/admin/api",
-          "classification": "NOT_EXECUTED_MUTATION_SAFE"
-        },
-        {
-          "method": "GET",
-          "path": "/admin/api/admin/menu-placeholder",
-          "httpStatus": 302,
-          "classification": "AUTH_OR_ROUTE_REDIRECT",
-          "location": "http://127.0.0.1/admin/login/loginView"
-        },
-        {
-          "method": "GET",
-          "path": "/api/admin/app/bootstrap",
-          "httpStatus": 200,
-          "classification": "REACHABLE",
-          "location": ""
         }
       ],
       "requiredChecks": {

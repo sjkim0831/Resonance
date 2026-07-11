@@ -8767,133 +8767,34 @@
       ],
       "apis": [
         {
-          "assetId": "API-2B1B1BB5528CB09E",
-          "agreementCount": 2,
-          "sources": [
-            "model-1",
-            "model-3"
-          ],
-          "maxConfidence": 0.44,
-          "evidence": [
-            {
-              "source": "model-1",
-              "assetId": "API-2B1B1BB5528CB09E",
-              "contract": "GET /admin/api/admin/screen-builder/preview",
-              "confidence": 0.44,
-              "reasons": [
-                "path similarity: 0.30"
-              ]
-            },
-            {
-              "source": "model-3",
-              "assetId": "API-2B1B1BB5528CB09E",
-              "contract": "GET /admin/api/admin/screen-builder/preview",
-              "confidence": 0.1,
-              "reasons": [
-                "method_match=exact",
-                "path_similarity=0.2",
-                "source: modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/AdminScreenBuilderController.java"
-              ]
-            }
-          ]
-        },
-        {
-          "assetId": "API-F7CEB99F6E8E5E16",
-          "agreementCount": 2,
-          "sources": [
-            "model-1",
-            "model-3"
-          ],
-          "maxConfidence": 0.44,
-          "evidence": [
-            {
-              "source": "model-1",
-              "assetId": "API-F7CEB99F6E8E5E16",
-              "contract": "GET /api/platform/screen-builder/preview",
-              "confidence": 0.44,
-              "reasons": [
-                "path similarity: 0.30"
-              ]
-            },
-            {
-              "source": "model-3",
-              "assetId": "API-F7CEB99F6E8E5E16",
-              "contract": "GET /api/platform/screen-builder/preview",
-              "confidence": 0.125,
-              "reasons": [
-                "method_match=exact",
-                "path_similarity=0.25",
-                "source: modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/ScreenBuilderApiController.java"
-              ]
-            }
-          ]
-        },
-        {
-          "assetId": "API-2B62D5519B047FDE",
-          "agreementCount": 2,
-          "sources": [
-            "model-1",
-            "model-3"
-          ],
-          "maxConfidence": 0.41,
-          "evidence": [
-            {
-              "source": "model-1",
-              "assetId": "API-2B62D5519B047FDE",
-              "contract": "GET /api/platform/builder/screens/{param}/preview",
-              "confidence": 0.41,
-              "reasons": [
-                "path similarity: 0.25"
-              ]
-            },
-            {
-              "source": "model-3",
-              "assetId": "API-2B62D5519B047FDE",
-              "contract": "GET /api/platform/builder/screens/{param}/preview",
-              "confidence": 0.167,
-              "reasons": [
-                "method_match=exact",
-                "path_similarity=0.33",
-                "source: modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/BuilderApiController.java"
-              ]
-            }
-          ]
-        },
-        {
-          "assetId": "API-365A0739A46AE92D",
+          "assetId": "API-40F62000671AC584",
           "agreementCount": 1,
           "sources": [
-            "model-1"
+            "reviewed-technical"
           ],
-          "maxConfidence": 0.41,
+          "maxConfidence": 0.98,
           "evidence": [
             {
-              "source": "model-1",
-              "assetId": "API-365A0739A46AE92D",
-              "contract": "GET /api/platform/screen-builder/component-registry/auto-replace/preview",
-              "confidence": 0.41,
-              "reasons": [
-                "path similarity: 0.25"
-              ]
+              "source": "reviewed-technical",
+              "assetId": "API-40F62000671AC584",
+              "confidence": 0.98,
+              "evidence": "AdminMemberController /admin/member/file"
             }
           ]
         },
         {
-          "assetId": "API-165CEBF0CDC54829",
+          "assetId": "API-72472585BE3F85C7",
           "agreementCount": 1,
           "sources": [
-            "model-1"
+            "reviewed-technical"
           ],
-          "maxConfidence": 0.36,
+          "maxConfidence": 0.95,
           "evidence": [
             {
-              "source": "model-1",
-              "assetId": "API-165CEBF0CDC54829",
-              "contract": "ANY /api/auth/api/auth",
-              "confidence": 0.36,
-              "reasons": [
-                "method match: ANY"
-              ]
+              "source": "reviewed-technical",
+              "assetId": "API-72472585BE3F85C7",
+              "confidence": 0.95,
+              "evidence": "AdminMemberController /admin/member/company-file"
             }
           ]
         }
@@ -54528,109 +54429,50 @@
       ],
       "apis": [
         {
-          "assetId": "API-01EA421642D54DB6",
-          "agreementCount": 2,
+          "assetId": "API-DDFCEFCE10B9D016",
+          "agreementCount": 1,
           "sources": [
-            "model-1",
-            "model-3"
+            "reviewed-technical"
           ],
-          "maxConfidence": 0.52,
+          "maxConfidence": 0.99,
           "evidence": [
             {
-              "source": "model-1",
-              "assetId": "API-01EA421642D54DB6",
-              "contract": "GET /admin/api/admin/screen-builder/versions",
-              "confidence": 0.52,
-              "reasons": [
-                "path similarity: 0.20"
-              ]
-            },
-            {
-              "source": "model-3",
-              "assetId": "API-01EA421642D54DB6",
-              "contract": "GET /admin/api/admin/screen-builder/versions",
-              "confidence": 0.2,
-              "reasons": [
-                "method_match=exact",
-                "path_similarity=0.4",
-                "source: modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/AdminScreenBuilderController.java"
-              ]
+              "source": "reviewed-technical",
+              "assetId": "API-DDFCEFCE10B9D016",
+              "confidence": 0.99,
+              "evidence": "GET /api/platform/version-control/overview returned 200"
             }
           ]
         },
         {
-          "assetId": "API-814396CB0ECEABE4",
+          "assetId": "API-22AABF378B4F97D6",
           "agreementCount": 1,
           "sources": [
-            "model-1"
+            "reviewed-technical"
           ],
-          "maxConfidence": 0.6,
+          "maxConfidence": 0.98,
           "evidence": [
             {
-              "source": "model-1",
-              "assetId": "API-814396CB0ECEABE4",
-              "contract": "GET /api/platform/screen-builder/versions",
-              "confidence": 0.6,
-              "reasons": [
-                "path similarity: 0.50"
-              ]
+              "source": "reviewed-technical",
+              "assetId": "API-22AABF378B4F97D6",
+              "confidence": 0.98,
+              "evidence": "GET /api/platform/version-control/release-units returned 200"
             }
           ]
         },
         {
-          "assetId": "API-149AF17C6DF77305",
+          "assetId": "API-2B8FCBAE3DFFD217",
           "agreementCount": 1,
           "sources": [
-            "model-1"
+            "reviewed-technical"
           ],
-          "maxConfidence": 0.45,
+          "maxConfidence": 0.97,
           "evidence": [
             {
-              "source": "model-1",
-              "assetId": "API-149AF17C6DF77305",
-              "contract": "ANY /admin/api/admin/api",
-              "confidence": 0.45,
-              "reasons": [
-                "path similarity: 0.25"
-              ]
-            }
-          ]
-        },
-        {
-          "assetId": "API-AA40E0153A293844",
-          "agreementCount": 1,
-          "sources": [
-            "model-1"
-          ],
-          "maxConfidence": 0.45,
-          "evidence": [
-            {
-              "source": "model-1",
-              "assetId": "API-AA40E0153A293844",
-              "contract": "GET /admin/api/admin/menu-placeholder",
-              "confidence": 0.45,
-              "reasons": [
-                "path similarity: 0.25"
-              ]
-            }
-          ]
-        },
-        {
-          "assetId": "API-DEC84BD554541B2B",
-          "agreementCount": 1,
-          "sources": [
-            "model-1"
-          ],
-          "maxConfidence": 0.45,
-          "evidence": [
-            {
-              "source": "model-1",
-              "assetId": "API-DEC84BD554541B2B",
-              "contract": "GET /api/admin/app/bootstrap",
-              "confidence": 0.45,
-              "reasons": [
-                "path similarity: 0.25"
-              ]
+              "source": "reviewed-technical",
+              "assetId": "API-2B8FCBAE3DFFD217",
+              "confidence": 0.97,
+              "evidence": "ProjectVersionManagementApiController server deploy state"
             }
           ]
         }

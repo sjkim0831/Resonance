@@ -1025,38 +1025,20 @@
       ],
       "apiCandidates": [
         {
-          "assetId": "API-2B1B1BB5528CB09E",
-          "agreementCount": 2,
-          "confidence": 0.44
-        },
-        {
-          "assetId": "API-F7CEB99F6E8E5E16",
-          "agreementCount": 2,
-          "confidence": 0.44
-        },
-        {
-          "assetId": "API-2B62D5519B047FDE",
-          "agreementCount": 2,
-          "confidence": 0.41
-        },
-        {
-          "assetId": "API-365A0739A46AE92D",
+          "assetId": "API-40F62000671AC584",
           "agreementCount": 1,
-          "confidence": 0.41
+          "confidence": 0.98
         },
         {
-          "assetId": "API-165CEBF0CDC54829",
+          "assetId": "API-72472585BE3F85C7",
           "agreementCount": 1,
-          "confidence": 0.36
+          "confidence": 0.95
         }
       ],
       "tableCandidates": [],
       "sourceEvidenceIds": [
         "ROUTE-HOME",
-        "ROUTE-SUPPORT-FAQ",
-        "API-2B1B1BB5528CB09E",
-        "API-F7CEB99F6E8E5E16",
-        "API-2B62D5519B047FDE"
+        "ROUTE-SUPPORT-FAQ"
       ],
       "srRequestIds": [
         "CUSTOMER-GAP-SR-005"
@@ -37469,35 +37451,24 @@
       ],
       "apiCandidates": [
         {
-          "assetId": "API-01EA421642D54DB6",
-          "agreementCount": 2,
-          "confidence": 0.52
+          "assetId": "API-DDFCEFCE10B9D016",
+          "agreementCount": 1,
+          "confidence": 0.99
         },
         {
-          "assetId": "API-814396CB0ECEABE4",
+          "assetId": "API-22AABF378B4F97D6",
           "agreementCount": 1,
-          "confidence": 0.6
+          "confidence": 0.98
         },
         {
-          "assetId": "API-149AF17C6DF77305",
+          "assetId": "API-2B8FCBAE3DFFD217",
           "agreementCount": 1,
-          "confidence": 0.45
-        },
-        {
-          "assetId": "API-AA40E0153A293844",
-          "agreementCount": 1,
-          "confidence": 0.45
-        },
-        {
-          "assetId": "API-DEC84BD554541B2B",
-          "agreementCount": 1,
-          "confidence": 0.45
+          "confidence": 0.97
         }
       ],
       "tableCandidates": [],
       "sourceEvidenceIds": [
-        "ROUTE-MTN-VERSION",
-        "API-01EA421642D54DB6"
+        "ROUTE-MTN-VERSION"
       ],
       "srRequestIds": [
         "CUSTOMER-GAP-SR-029"

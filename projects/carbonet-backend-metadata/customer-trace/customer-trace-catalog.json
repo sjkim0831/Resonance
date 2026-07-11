@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T09:23:44.589930+00:00",
+  "generatedAt": "2026-07-11T10:00:13.142922+00:00",
   "status": "READY_FOR_HUMAN_REVIEW",
   "customerTrace": {
     "canonicalUseCases": 342,
     "customerMaturity": {
-      "score": 80.8,
+      "score": 80.7,
       "grade": "B+",
       "decision": "REVIEW_REQUIRED"
     },
     "deliveryReadiness": {
-      "score": 30.6,
+      "score": 30.5,
       "grade": "D",
       "verifiedUseCases": 0,
       "approvedUseCases": 0
@@ -43,7 +43,7 @@
       "sduiComponents": 447,
       "sduiThemes": 1
     },
-    "sourceEvidence": 613,
+    "sourceEvidence": 609,
     "httpEvidence": {
       "REACHABLE": 12,
       "REDIRECTED": 108
@@ -66,10 +66,10 @@
     },
     "e2eReadOnlyEvidence": {
       "artifact": "customer-e2e-readonly-evidence.json",
-      "itemCount": 59,
+      "itemCount": 57,
       "summary": {
         "partialRuntimeEvidence": 57,
-        "runtimeGap": 2
+        "runtimeGap": 0
       },
       "mutatingRequestsExecuted": false
     },
@@ -88,7 +88,7 @@
   },
   "contractVerification": {
     "schemaVersion": 1,
-    "generatedAt": "2026-07-11T09:23:44.560365+00:00",
+    "generatedAt": "2026-07-11T09:59:25.069356+00:00",
     "valid": true,
     "counts": {
       "bindings": 342,
@@ -120,14 +120,16 @@
         "path": "/api/runtime/project-info",
         "httpStatus": 200,
         "state": "HEALTHY",
+        "accessState": "PUBLIC_OR_INTERNAL",
         "remediation": "NONE",
         "automaticDeploy": false
       },
       {
         "findingId": "RUNTIME-CUSTOMER_TRACE_SUMMARY",
         "path": "/api/platform/customer-trace/summary",
-        "httpStatus": 200,
+        "httpStatus": 401,
         "state": "HEALTHY",
+        "accessState": "AUTH_GUARDED",
         "remediation": "NONE",
         "automaticDeploy": false
       },
@@ -136,6 +138,7 @@
         "path": "/actuator/health",
         "httpStatus": 200,
         "state": "HEALTHY",
+        "accessState": "PUBLIC_OR_INTERNAL",
         "remediation": "NONE",
         "automaticDeploy": false
       }

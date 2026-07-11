@@ -5,8 +5,8 @@
     "CANDIDATE_REVIEW": 88,
     "MAPPING_REQUIRED": 1,
     "READY_FOR_API_VERIFICATION": 41,
-    "READY_FOR_E2E": 59,
-    "READY_FOR_PAGE_VERIFICATION": 153
+    "READY_FOR_E2E": 57,
+    "READY_FOR_PAGE_VERIFICATION": 155
   },
   "policy": {
     "humanApprovalRequired": true,
@@ -153,31 +153,6 @@
         "CUSTOMER-GAP-SR-005"
       ],
       "runtimeEvidenceStatus": "PARTIAL_RUNTIME_EVIDENCE",
-      "runtimeEvidenceRef": "customer-e2e-readonly-evidence.json",
-      "requiredChecks": [
-        "AUTHENTICATED_BROWSER",
-        "API_RUNTIME",
-        "DATABASE_EFFECT",
-        "AUTHORITY",
-        "AUDIT_LOG"
-      ],
-      "automaticVerification": false
-    },
-    {
-      "queueId": "VERIFY-UC-COMMON-009",
-      "priority": 1,
-      "stage": "READY_FOR_E2E",
-      "useCaseId": "UC-COMMON-009",
-      "traceId": "CTR-UC-COMMON-009",
-      "title": "첨부파일 미리보기",
-      "domain": "공통",
-      "pageSourceConfirmed": true,
-      "apiSourceConfirmed": true,
-      "httpReachable": true,
-      "srRequestIds": [
-        "CUSTOMER-GAP-SR-005"
-      ],
-      "runtimeEvidenceStatus": "RUNTIME_GAP",
       "runtimeEvidenceRef": "customer-e2e-readonly-evidence.json",
       "requiredChecks": [
         "AUTHENTICATED_BROWSER",
@@ -778,31 +753,6 @@
         "CUSTOMER-GAP-SR-027"
       ],
       "runtimeEvidenceStatus": "PARTIAL_RUNTIME_EVIDENCE",
-      "runtimeEvidenceRef": "customer-e2e-readonly-evidence.json",
-      "requiredChecks": [
-        "AUTHENTICATED_BROWSER",
-        "API_RUNTIME",
-        "DATABASE_EFFECT",
-        "AUTHORITY",
-        "AUDIT_LOG"
-      ],
-      "automaticVerification": false
-    },
-    {
-      "queueId": "VERIFY-UC-SUP010",
-      "priority": 1,
-      "stage": "READY_FOR_E2E",
-      "useCaseId": "UC-SUP010",
-      "traceId": "CTR-UC-SUP010",
-      "title": "버전 관리",
-      "domain": "유지보수",
-      "pageSourceConfirmed": true,
-      "apiSourceConfirmed": true,
-      "httpReachable": true,
-      "srRequestIds": [
-        "CUSTOMER-GAP-SR-029"
-      ],
-      "runtimeEvidenceStatus": "RUNTIME_GAP",
       "runtimeEvidenceRef": "customer-e2e-readonly-evidence.json",
       "requiredChecks": [
         "AUTHENTICATED_BROWSER",
@@ -2489,6 +2439,31 @@
       "automaticVerification": false
     },
     {
+      "queueId": "VERIFY-UC-COMMON-009",
+      "priority": 2,
+      "stage": "READY_FOR_PAGE_VERIFICATION",
+      "useCaseId": "UC-COMMON-009",
+      "traceId": "CTR-UC-COMMON-009",
+      "title": "첨부파일 미리보기",
+      "domain": "공통",
+      "pageSourceConfirmed": true,
+      "apiSourceConfirmed": false,
+      "httpReachable": true,
+      "srRequestIds": [
+        "CUSTOMER-GAP-SR-005"
+      ],
+      "runtimeEvidenceStatus": "RUNTIME_GAP",
+      "runtimeEvidenceRef": "customer-e2e-readonly-evidence.json",
+      "requiredChecks": [
+        "AUTHENTICATED_BROWSER",
+        "API_RUNTIME",
+        "DATABASE_EFFECT",
+        "AUTHORITY",
+        "AUDIT_LOG"
+      ],
+      "automaticVerification": false
+    },
+    {
       "queueId": "VERIFY-UC-COMMON-010",
       "priority": 2,
       "stage": "READY_FOR_PAGE_VERIFICATION",
@@ -3979,6 +3954,31 @@
       ],
       "runtimeEvidenceStatus": "NOT_COLLECTED",
       "runtimeEvidenceRef": null,
+      "requiredChecks": [
+        "AUTHENTICATED_BROWSER",
+        "API_RUNTIME",
+        "DATABASE_EFFECT",
+        "AUTHORITY",
+        "AUDIT_LOG"
+      ],
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SUP010",
+      "priority": 2,
+      "stage": "READY_FOR_PAGE_VERIFICATION",
+      "useCaseId": "UC-SUP010",
+      "traceId": "CTR-UC-SUP010",
+      "title": "버전 관리",
+      "domain": "유지보수",
+      "pageSourceConfirmed": true,
+      "apiSourceConfirmed": false,
+      "httpReachable": true,
+      "srRequestIds": [
+        "CUSTOMER-GAP-SR-029"
+      ],
+      "runtimeEvidenceStatus": "RUNTIME_GAP",
+      "runtimeEvidenceRef": "customer-e2e-readonly-evidence.json",
       "requiredChecks": [
         "AUTHENTICATED_BROWSER",
         "API_RUNTIME",

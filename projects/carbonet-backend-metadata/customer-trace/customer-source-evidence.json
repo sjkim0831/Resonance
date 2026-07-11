@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T09:19:47.854822+00:00",
+  "generatedAt": "2026-07-11T09:59:23.651382+00:00",
   "policy": "source evidence is not runtime verification",
-  "evidenceCount": 613,
+  "evidenceCount": 609,
   "summary": {
-    "SOURCE_CONFIRMED": 613
+    "SOURCE_CONFIRMED": 609
   },
   "records": [
     {
@@ -1266,39 +1266,6 @@
       "routeFamilySource": "projects/carbonet-frontend/source/src/app/routes/families/homeExperienceFamily.ts",
       "pageModuleSource": "projects/carbonet-frontend/source/src/features/support-faq/SupportFaqMigrationPage.tsx",
       "sourceHash": "761453af1851d58f4e525ba713401cf52ecd61543d76f6261556ce55c1ed0093"
-    },
-    {
-      "useCaseId": "UC-COMMON-009",
-      "assetId": "API-2B1B1BB5528CB09E",
-      "assetKind": "API",
-      "agreementCount": 2,
-      "runtimeStatus": "PENDING",
-      "sourceStatus": "SOURCE_CONFIRMED",
-      "contract": "GET /admin/api/admin/screen-builder/preview",
-      "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/AdminScreenBuilderController.java",
-      "sourceHash": "1acf4fb283070772909f386cc35e52c7cbe3665f9e87b98b0e22120fcb08ad51"
-    },
-    {
-      "useCaseId": "UC-COMMON-009",
-      "assetId": "API-F7CEB99F6E8E5E16",
-      "assetKind": "API",
-      "agreementCount": 2,
-      "runtimeStatus": "PENDING",
-      "sourceStatus": "SOURCE_CONFIRMED",
-      "contract": "GET /api/platform/screen-builder/preview",
-      "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/ScreenBuilderApiController.java",
-      "sourceHash": "6c6d5a31edc549dbdacc2d414187811f9c735e55337de167127b28ae58d6d68a"
-    },
-    {
-      "useCaseId": "UC-COMMON-009",
-      "assetId": "API-2B62D5519B047FDE",
-      "assetKind": "API",
-      "agreementCount": 2,
-      "runtimeStatus": "PENDING",
-      "sourceStatus": "SOURCE_CONFIRMED",
-      "contract": "GET /api/platform/builder/screens/{param}/preview",
-      "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/BuilderApiController.java",
-      "sourceHash": "46fbafe7f6705a0e7dbdc65e64575193ce698caba9aa84151d5ca99458131230"
     },
     {
       "useCaseId": "UC-COMMON-010",
@@ -5492,17 +5459,6 @@
       "routeFamilySource": "projects/carbonet-frontend/source/src/app/routes/families/homeExperienceFamily.ts",
       "pageModuleSource": "projects/carbonet-frontend/source/src/features/version-management/index.ts",
       "sourceHash": "44c8b0fd59dfe511803e85f9aef8a91cad8f72a2af65bbca616ea79adc4927e5"
-    },
-    {
-      "useCaseId": "UC-SUP010",
-      "assetId": "API-01EA421642D54DB6",
-      "assetKind": "API",
-      "agreementCount": 2,
-      "runtimeStatus": "PENDING",
-      "sourceStatus": "SOURCE_CONFIRMED",
-      "contract": "GET /admin/api/admin/screen-builder/versions",
-      "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/AdminScreenBuilderController.java",
-      "sourceHash": "1acf4fb283070772909f386cc35e52c7cbe3665f9e87b98b0e22120fcb08ad51"
     },
     {
       "useCaseId": "UC-SUP011",

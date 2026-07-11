@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T09:19:49.036176+00:00",
+  "generatedAt": "2026-07-11T09:59:24.768106+00:00",
   "customerProfile": "PRODUCT_CO_DESIGN_CUSTOMER",
   "customerMaturity": {
-    "score": 80.8,
+    "score": 80.7,
     "grade": "B+",
     "decision": "REVIEW_REQUIRED"
   },
   "deliveryReadiness": {
-    "score": 30.6,
+    "score": 30.5,
     "grade": "D",
     "verifiedUseCases": 0,
     "approvedUseCases": 0
@@ -48,10 +48,10 @@
       "id": "TRACEABILITY",
       "name": "요구사항 추적성",
       "weight": 20,
-      "score": 56.5,
+      "score": 56.3,
       "evidence": [
         "page agreement: 212/342",
-        "api agreement: 100/342"
+        "api agreement: 98/342"
       ]
     },
     {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T09:19:49.423146+00:00",
+  "generatedAt": "2026-07-11T10:00:13.108948+00:00",
   "findingCount": 3,
   "findings": [
     {
@@ -8,14 +8,16 @@
       "path": "/api/runtime/project-info",
       "httpStatus": 200,
       "state": "HEALTHY",
+      "accessState": "PUBLIC_OR_INTERNAL",
       "remediation": "NONE",
       "automaticDeploy": false
     },
     {
       "findingId": "RUNTIME-CUSTOMER_TRACE_SUMMARY",
       "path": "/api/platform/customer-trace/summary",
-      "httpStatus": 200,
+      "httpStatus": 401,
       "state": "HEALTHY",
+      "accessState": "AUTH_GUARDED",
       "remediation": "NONE",
       "automaticDeploy": false
     },
@@ -24,6 +26,7 @@
       "path": "/actuator/health",
       "httpStatus": 200,
       "state": "HEALTHY",
+      "accessState": "PUBLIC_OR_INTERNAL",
       "remediation": "NONE",
       "automaticDeploy": false
     }

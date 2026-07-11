@@ -16,11 +16,13 @@ def main()->int:
     compatibility=(root/"modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common/governance/model/ProjectManifestVO.java").read_text(errors="ignore")
     trace_controller=root/"apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
     for check_id,path in checks:
-        code=status(a.base_url+path);state="HEALTHY" if 200<=code<300 else "RUNTIME_GAP"
+        code=status(a.base_url+path)
+        access_state="AUTH_GUARDED" if code in (401,403) else "PUBLIC_OR_INTERNAL"
+        state="HEALTHY" if 200<=code<300 or code in (401,403) else "RUNTIME_GAP"
         remediation="NONE"
         if check_id=="PROJECT_INFO" and code>=400 and "private String projectId;" in compatibility:remediation="FIX_COMPILED_DEPLOYMENT_PENDING"
         if check_id=="CUSTOMER_TRACE_SUMMARY" and code==404 and trace_controller.is_file():remediation="FEATURE_COMPILED_DEPLOYMENT_PENDING"
-        findings.append({"findingId":"RUNTIME-"+check_id,"path":path,"httpStatus":code,"state":state,"remediation":remediation,"automaticDeploy":False})
+        findings.append({"findingId":"RUNTIME-"+check_id,"path":path,"httpStatus":code,"state":state,"accessState":access_state,"remediation":remediation,"automaticDeploy":False})
     payload={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"findingCount":len(findings),"findings":findings}
     Path(a.output).write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8");print(json.dumps(payload,indent=2));return 0
 if __name__=="__main__":raise SystemExit(main())

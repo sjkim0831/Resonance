@@ -24,6 +24,7 @@ def candidate_id(item: dict) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(); parser.add_argument("--deterministic", required=True)
     parser.add_argument("--model", action="append", default=[]); parser.add_argument("--output", required=True)
+    parser.add_argument("--reviewed-overrides", default="projects/carbonet-backend-metadata/customer-trace/customer-mapping-reviewed-overrides.json")
     args = parser.parse_args(); deterministic = json.loads(Path(args.deterministic).read_text())
     model_payloads = [read_json_output(Path(path)) for path in args.model]
     index = defaultdict(lambda: {"pages": defaultdict(list), "apis": defaultdict(list), "tables": defaultdict(list)})
@@ -40,6 +41,18 @@ def main() -> int:
                 for item in row.get(key, []):
                     asset = candidate_id(item)
                     if asset: index[uc][target][asset].append({"source": f"model-{number}", **item})
+    override_path = Path(args.reviewed_overrides)
+    if override_path.is_file():
+        reviewed = json.loads(override_path.read_text())
+        for override in reviewed.get("overrides", []):
+            uc = override.get("useCaseId", "")
+            if override.get("replacePageCandidates"): index[uc]["pages"].clear()
+            if override.get("replaceApiCandidates"): index[uc]["apis"].clear()
+            if override.get("replaceTableCandidates"): index[uc]["tables"].clear()
+            for key, target in (("pageCandidates", "pages"), ("apiCandidates", "apis"), ("tableCandidates", "tables")):
+                for item in override.get(key, []):
+                    asset = candidate_id(item)
+                    if asset: index[uc][target][asset].append({"source": "reviewed-technical", **item})
     mappings = []
     for uc in sorted(index):
         result = {"useCaseId": uc, "decision": "REVIEW_REQUIRED", "automaticApproval": False}

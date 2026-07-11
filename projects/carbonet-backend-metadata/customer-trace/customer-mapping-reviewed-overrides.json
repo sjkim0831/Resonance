@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "TECHNICAL_REVIEWED",
+  "customerApproval": false,
+  "automaticVerification": false,
+  "overrides": [
+    {
+      "useCaseId": "UC-COMMON-009",
+      "reason": "Attachment preview must use member evidence file endpoints, not Screen Builder preview APIs.",
+      "replaceApiCandidates": true,
+      "apiCandidates": [
+        {"assetId": "API-40F62000671AC584", "confidence": 0.98, "evidence": "AdminMemberController /admin/member/file"},
+        {"assetId": "API-72472585BE3F85C7", "confidence": 0.95, "evidence": "AdminMemberController /admin/member/company-file"}
+      ]
+    },
+    {
+      "useCaseId": "UC-SUP010",
+      "reason": "Project version management must use Version Control APIs, not Screen Builder draft versions.",
+      "replaceApiCandidates": true,
+      "apiCandidates": [
+        {"assetId": "API-DDFCEFCE10B9D016", "confidence": 0.99, "evidence": "GET /api/platform/version-control/overview returned 200"},
+        {"assetId": "API-22AABF378B4F97D6", "confidence": 0.98, "evidence": "GET /api/platform/version-control/release-units returned 200"},
+        {"assetId": "API-2B8FCBAE3DFFD217", "confidence": 0.97, "evidence": "ProjectVersionManagementApiController server deploy state"}
+      ]
+    }
+  ]
+}

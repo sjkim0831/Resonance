@@ -1,30 +1,30 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T09:51:53.937675+00:00",
+  "generatedAt": "2026-07-11T10:00:13.164057+00:00",
   "mission": "Complete the customer project by converting every canonical UC into an evidence-backed, customer-approved delivery outcome.",
   "currentState": {
     "canonicalUseCases": 342,
     "customerMaturity": {
-      "score": 80.8,
+      "score": 80.7,
       "grade": "B+",
       "decision": "REVIEW_REQUIRED"
     },
     "deliveryReadiness": {
-      "score": 30.6,
+      "score": 30.5,
       "grade": "D",
       "verifiedUseCases": 0,
       "approvedUseCases": 0
     },
     "queueSummary": {
-      "READY_FOR_E2E": 59,
-      "READY_FOR_PAGE_VERIFICATION": 153,
+      "READY_FOR_E2E": 57,
+      "READY_FOR_PAGE_VERIFICATION": 155,
       "READY_FOR_API_VERIFICATION": 41,
       "CANDIDATE_REVIEW": 88,
       "MAPPING_REQUIRED": 1
     },
     "readOnlyE2E": {
       "partialRuntimeEvidence": 57,
-      "runtimeGap": 2
+      "runtimeGap": 0
     },
     "authLedgerE2E": "PASSED",
     "approvalSummary": {
@@ -32,7 +32,7 @@
       "IN_REVIEW": 0,
       "PENDING": 342,
       "REJECTED": 0,
-      "VERIFIED": 1
+      "VERIFIED": 0
     }
   },
   "requiredCapabilities": [
@@ -51,21 +51,21 @@
     {
       "priority": 1,
       "id": "RUNTIME_GAP_REPAIR",
-      "itemCount": 2,
+      "itemCount": 0,
       "exitCriteria": "No confirmed 404/5xx candidate API remains without an SR decision",
       "automation": "AI_IMPLEMENT_HUMAN_REVIEW"
     },
     {
       "priority": 2,
       "id": "AUTHENTICATED_BROWSER_E2E",
-      "itemCount": 59,
+      "itemCount": 57,
       "exitCriteria": "Role-specific browser, API, DB effect, authority, and audit evidence attached",
       "automation": "EPHEMERAL_FIXTURE_AND_PLAYWRIGHT"
     },
     {
       "priority": 3,
       "id": "PAGE_VERIFICATION",
-      "itemCount": 153,
+      "itemCount": 155,
       "exitCriteria": "Desktop/mobile render, interaction, accessibility, and visual evidence attached",
       "automation": "PLAYWRIGHT_VISUAL_A11Y"
     },
