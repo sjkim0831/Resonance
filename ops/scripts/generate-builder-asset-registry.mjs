@@ -118,6 +118,83 @@ const store = fs.existsSync(storePath)
   ? JSON.parse(fs.readFileSync(storePath, "utf8"))
   : { components: [], screens: [], themes: [], assets: {} };
 store.assets ||= {};
+
+const manualComponents = (store.components || []).filter((item) => !String(item.componentId || "").startsWith("SOURCE_COMPONENT_"));
+const sourcePageComponent = {
+  componentId: "SOURCE_PAGE",
+  componentNm: "기존 구현 화면",
+  componentDc: "기존 React 화면을 보존하면서 SDUI 노드 트리에 연결하는 전환용 컴포넌트",
+  componentType: "OTHER",
+  categoryCd: "LAYOUT",
+  iconNm: "web",
+  defaultProps: { sourcePath: "", exportName: "", routePath: "" },
+  defaultClassNm: "min-w-0",
+  defaultStyle: { runtimeMode: "source-backed" },
+  dataAttrs: { "data-sdui-component": "SOURCE_PAGE" },
+  isContainer: true,
+  isReusable: true,
+  sortOrder: 5,
+  useAt: "Y"
+};
+const generatedComponents = sourceComponents.map((item, index) => ({
+  componentId: item.id,
+  componentNm: item.componentId,
+  componentDc: `소스 자동 등록: ${item.sourcePath}`,
+  componentType: "OTHER",
+  categoryCd: "LAYOUT",
+  iconNm: "widgets",
+  defaultProps: { sourcePath: item.sourcePath, exportName: item.componentId },
+  defaultClassNm: "",
+  defaultStyle: { registrySource: "automatic" },
+  dataAttrs: { "data-source-component": item.componentId },
+  isContainer: false,
+  isReusable: true,
+  sortOrder: 1000 + index,
+  useAt: "Y"
+}));
+store.components = [
+  ...manualComponents.filter((item) => item.componentId !== "SOURCE_PAGE"),
+  sourcePageComponent,
+  ...generatedComponents
+];
+
+const existingScreens = new Map((store.screens || []).map((item) => [item.screenId, item]));
+store.screens = routes.map((route) => {
+  const screenId = `route-${route.routeId}`;
+  const existing = existingScreens.get(screenId) || {};
+  const now = new Date().toISOString();
+  return {
+    screenId,
+    menuCode: existing.menuCode || route.routeId,
+    pageId: route.routeId,
+    menuNm: route.label,
+    menuUrl: route.koPath,
+    templateType: route.koPath.startsWith("/admin/") ? "admin" : "home",
+    schemaVersion: "sdui.v1",
+    runtimeMode: "source-backed",
+    nodes: existing.nodes?.length ? existing.nodes : [{
+      nodeId: `${screenId}-source-page`,
+      componentId: "SOURCE_PAGE",
+      parentNodeId: null,
+      componentType: "OTHER",
+      slotName: "content",
+      sortOrder: 0,
+      props: {
+        sourcePath: route.effectiveSourcePath,
+        exportName: route.effectiveExportName,
+        routePath: route.koPath
+      }
+    }],
+    events: existing.events || [],
+    themeId: existing.themeId || "theme-default",
+    customClasses: existing.customClasses || "",
+    customStyles: existing.customStyles || "",
+    status: existing.status || "PUBLISHED",
+    version: existing.version || 1,
+    createdAt: existing.createdAt || now,
+    updatedAt: now
+  };
+});
 store.assets.routes = routeAssets;
 store.assets.pages = pageAssets;
 store.assets["source-components"] = sourceComponents;
