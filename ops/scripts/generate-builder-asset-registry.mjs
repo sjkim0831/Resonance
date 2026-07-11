@@ -40,7 +40,12 @@ const completeness = generatedArray(
   path.join(frontend, "features/builder-studio/pageCompletenessInventory.ts"),
   "PAGE_COMPLETENESS_INVENTORY"
 );
-const completenessBySource = new Map(completeness.map((row) => [row.sourcePath, row]));
+const completenessBySource = new Map();
+for (const row of completeness) {
+  completenessBySource.set(row.sourcePath, row);
+  completenessBySource.set(row.effectiveSourcePath, row);
+  for (const sourcePath of row.effectiveSourcePaths || []) completenessBySource.set(sourcePath, row);
+}
 
 const routeAssets = routes.map((route) => ({
   id: `ROUTE_${route.routeId}`,
@@ -200,6 +205,26 @@ store.assets.pages = pageAssets;
 store.assets["source-components"] = sourceComponents;
 store.assets.apis = apiAssets;
 store.assets["database-migrations"] = dbAssets;
+store.assets["system-page-checklist"] = pageAssets
+  .filter((page) => page.routePath === "/admin/system" || page.routePath.startsWith("/admin/system/"))
+  .map((page) => ({
+    id: `SYSTEM_CHECK_${page.pageId}`,
+    pageId: page.pageId,
+    title: page.title,
+    routePath: page.routePath,
+    sourcePath: page.sourcePath,
+    implementationStatus: page.status,
+    checks: {
+      routeRegistered: true,
+      sourceRegistered: Boolean(page.sourcePath),
+      hasDataBinding: page.capabilities.asyncData,
+      hasFormAction: page.capabilities.form,
+      hasGridOrTable: page.capabilities.table,
+      sduiRegistered: true,
+      runtimeVerified: false
+    },
+    normalizationStatus: ["implemented", "delegated"].includes(page.status) ? "STATIC_READY" : "REVIEW_REQUIRED"
+  }));
 store.assets["registry-summary"] = [{
   id: "SYSTEM_ASSET_REGISTRY_SUMMARY",
   generatedAt: new Date().toISOString(),
@@ -207,7 +232,8 @@ store.assets["registry-summary"] = [{
   pages: pageAssets.length,
   sourceComponents: sourceComponents.length,
   apis: apiAssets.length,
-  databaseMigrations: dbAssets.length
+  databaseMigrations: dbAssets.length,
+  systemPages: store.assets["system-page-checklist"].length
 }];
 
 fs.mkdirSync(path.dirname(storePath), { recursive: true });

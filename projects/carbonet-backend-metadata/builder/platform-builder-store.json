@@ -10252,7 +10252,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-admin-create",
@@ -10285,7 +10285,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-admin-list",
@@ -10318,7 +10318,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-admin-menu-placeholder",
@@ -10351,7 +10351,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-admin-monitoring-dashboard",
@@ -10384,7 +10384,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-admin-permission",
@@ -10417,7 +10417,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-admin-sitemap",
@@ -10450,7 +10450,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-agents",
@@ -10483,7 +10483,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-dashboard",
@@ -10516,7 +10516,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-hangar",
@@ -10549,7 +10549,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-logs",
@@ -10582,7 +10582,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-models",
@@ -10615,7 +10615,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-observability",
@@ -10648,7 +10648,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-quality",
@@ -10681,7 +10681,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-rag",
@@ -10714,7 +10714,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ai-training",
@@ -10747,7 +10747,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-api-management",
@@ -10780,7 +10780,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-asset-deficiency-queue",
@@ -10813,7 +10813,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-auth-change",
@@ -10846,7 +10846,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-auth-group",
@@ -10879,7 +10879,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-backup-config",
@@ -10912,7 +10912,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-backup-execution",
@@ -10945,7 +10945,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-banner-edit",
@@ -10978,7 +10978,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-banner-list",
@@ -11011,7 +11011,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-batch-management",
@@ -11044,7 +11044,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-batch-monitoring",
@@ -11077,7 +11077,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-blocklist",
@@ -11110,7 +11110,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-board-add",
@@ -11143,7 +11143,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-board-list",
@@ -11176,7 +11176,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-builder-studio",
@@ -11209,7 +11209,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-apply",
@@ -11242,7 +11242,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-approve",
@@ -11275,7 +11275,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-audit-log",
@@ -11308,7 +11308,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-index",
@@ -11341,7 +11341,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-list",
@@ -11374,7 +11374,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-objection-list",
@@ -11407,7 +11407,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-pending",
@@ -11440,7 +11440,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-rec-check",
@@ -11473,7 +11473,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-report-edit",
@@ -11506,7 +11506,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-report-form",
@@ -11539,7 +11539,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-report-list",
@@ -11572,7 +11572,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-review",
@@ -11605,7 +11605,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-certificate-statistics",
@@ -11638,7 +11638,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-analysis",
@@ -11671,7 +11671,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-credit",
@@ -11704,7 +11704,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-demand-list",
@@ -11737,7 +11737,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-index",
@@ -11770,7 +11770,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-integrity",
@@ -11803,7 +11803,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-production-list",
@@ -11836,7 +11836,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-co2-search",
@@ -11869,7 +11869,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-column-management",
@@ -11902,7 +11902,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-company-account",
@@ -11935,7 +11935,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-company-approve",
@@ -11968,7 +11968,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-company-detail",
@@ -12001,7 +12001,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-company-list",
@@ -12034,7 +12034,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-component-management",
@@ -12067,7 +12067,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-controller-management",
@@ -12100,7 +12100,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-cron-monitoring",
@@ -12133,7 +12133,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-db-monitoring",
@@ -12166,7 +12166,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-db-promotion-policy",
@@ -12199,7 +12199,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-db-sync-deploy",
@@ -12232,7 +12232,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-dept-role",
@@ -12265,7 +12265,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-download-list",
@@ -12298,7 +12298,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-apply",
@@ -12331,7 +12331,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-certificate",
@@ -12364,7 +12364,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-content",
@@ -12397,7 +12397,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-course-detail",
@@ -12430,7 +12430,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-course-list",
@@ -12463,7 +12463,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-index",
@@ -12496,7 +12496,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-my-course",
@@ -12529,7 +12529,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-progress",
@@ -12562,7 +12562,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-edu-survey",
@@ -12595,7 +12595,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-approval-workflow",
@@ -12628,7 +12628,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-audit-log",
@@ -12661,7 +12661,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-calculation-rule",
@@ -12694,7 +12694,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-dashboard",
@@ -12727,7 +12727,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-data-history",
@@ -12760,7 +12760,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-data-input",
@@ -12793,7 +12793,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-definition-studio",
@@ -12826,7 +12826,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-ecoinvent-admin",
@@ -12859,7 +12859,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-evidence",
@@ -12892,7 +12892,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-evidence-management",
@@ -12925,7 +12925,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-factor-management",
@@ -12958,7 +12958,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-gwp-values",
@@ -12991,7 +12991,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-home-validate",
@@ -13024,7 +13024,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-input-template",
@@ -13057,7 +13057,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-lca",
@@ -13090,7 +13090,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-lci",
@@ -13123,7 +13123,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-lci-classification",
@@ -13156,7 +13156,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-management",
@@ -13189,7 +13189,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-my-tasks",
@@ -13222,7 +13222,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-project-list",
@@ -13255,7 +13255,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-reduction",
@@ -13288,7 +13288,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-report-submit",
@@ -13321,7 +13321,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-report-template",
@@ -13354,7 +13354,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-result",
@@ -13387,7 +13387,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-result-detail",
@@ -13420,7 +13420,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-result-list",
@@ -13453,7 +13453,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-simulate",
@@ -13486,7 +13486,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-site-management",
@@ -13519,7 +13519,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-survey-admin",
@@ -13552,7 +13552,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-survey-admin-data",
@@ -13585,7 +13585,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-survey-lca-summary-print",
@@ -13618,7 +13618,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-survey-report",
@@ -13651,7 +13651,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-survey-report-print",
@@ -13684,7 +13684,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-survey-report-verify",
@@ -13717,7 +13717,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-system-link",
@@ -13750,7 +13750,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-validate",
@@ -13783,7 +13783,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-emission-validation-rule",
@@ -13816,7 +13816,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-error-log",
@@ -13849,7 +13849,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-event-management",
@@ -13882,7 +13882,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-connection-add",
@@ -13915,7 +13915,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-connection-edit",
@@ -13948,7 +13948,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-connection-list",
@@ -13981,7 +13981,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-keys",
@@ -14014,7 +14014,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-logs",
@@ -14047,7 +14047,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-maintenance",
@@ -14080,7 +14080,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-monitoring",
@@ -14113,7 +14113,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-retry",
@@ -14146,7 +14146,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-schema",
@@ -14179,7 +14179,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-sync",
@@ -14212,7 +14212,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-usage",
@@ -14245,7 +14245,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-external-webhooks",
@@ -14278,7 +14278,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-faq-management",
@@ -14311,7 +14311,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-faq-menu-management",
@@ -14344,7 +14344,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-file-management",
@@ -14377,7 +14377,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-flutter-app",
@@ -14410,7 +14410,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-full-stack-management",
@@ -14443,7 +14443,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-function-console",
@@ -14476,7 +14476,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-function-management",
@@ -14509,7 +14509,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-git-build-monitoring",
@@ -14542,7 +14542,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-hermes-workflow",
@@ -14575,7 +14575,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-home",
@@ -14608,7 +14608,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-home-menu-placeholder",
@@ -14641,7 +14641,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-home-page-workbench",
@@ -14674,7 +14674,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-infra",
@@ -14707,7 +14707,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-installed-programs",
@@ -14740,7 +14740,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-ip-whitelist",
@@ -14773,7 +14773,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-auth",
@@ -14806,7 +14806,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-company-reapply",
@@ -14839,7 +14839,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-company-register",
@@ -14872,7 +14872,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-company-register-complete",
@@ -14905,7 +14905,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-complete",
@@ -14938,7 +14938,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-info",
@@ -14971,7 +14971,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-terms",
@@ -15004,7 +15004,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-join-wizard",
@@ -15037,7 +15037,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-login-history",
@@ -15070,7 +15070,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-activate",
@@ -15103,7 +15103,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-approve",
@@ -15136,7 +15136,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-detail",
@@ -15169,7 +15169,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-edit",
@@ -15202,7 +15202,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-list",
@@ -15235,7 +15235,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-register",
@@ -15268,7 +15268,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-security-history",
@@ -15301,7 +15301,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-stats",
@@ -15334,7 +15334,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-member-withdrawn",
@@ -15367,7 +15367,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-menu-management",
@@ -15400,7 +15400,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-module",
@@ -15433,7 +15433,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-monitoring-alerts",
@@ -15466,7 +15466,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-monitoring-center",
@@ -15499,7 +15499,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.439Z"
     },
     {
       "screenId": "route-monitoring-dashboard",
@@ -15532,7 +15532,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-export",
@@ -15565,7 +15565,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-index",
@@ -15598,7 +15598,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-realtime",
@@ -15631,7 +15631,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-reduction-trend",
@@ -15664,7 +15664,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-share",
@@ -15697,7 +15697,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-statistics",
@@ -15730,7 +15730,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-monitoring-track",
@@ -15763,7 +15763,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mtn-index",
@@ -15796,7 +15796,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mtn-status",
@@ -15829,7 +15829,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mtn-version",
@@ -15862,7 +15862,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-my-inquiry",
@@ -15895,7 +15895,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage",
@@ -15928,7 +15928,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-company",
@@ -15961,7 +15961,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-email",
@@ -15994,7 +15994,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-index",
@@ -16027,7 +16027,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-marketing",
@@ -16060,7 +16060,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-notification",
@@ -16093,7 +16093,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-password",
@@ -16126,7 +16126,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-mypage-staff",
@@ -16159,7 +16159,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-new-page",
@@ -16192,7 +16192,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-notice-list",
@@ -16225,7 +16225,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-notification",
@@ -16258,7 +16258,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-operations-log-management",
@@ -16291,7 +16291,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-page-management",
@@ -16324,7 +16324,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-password-reset",
@@ -16357,7 +16357,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-history",
@@ -16390,7 +16390,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-index",
@@ -16423,7 +16423,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-notify",
@@ -16456,7 +16456,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-pay",
@@ -16489,7 +16489,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-receipt",
@@ -16522,7 +16522,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-refund",
@@ -16555,7 +16555,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-refund-account",
@@ -16588,7 +16588,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-payment-virtual-account",
@@ -16621,7 +16621,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-performance",
@@ -16654,7 +16654,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-popup-edit",
@@ -16687,7 +16687,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-popup-list",
@@ -16720,7 +16720,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-post-list",
@@ -16753,7 +16753,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-qna-category",
@@ -16786,7 +16786,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-qna-list",
@@ -16819,7 +16819,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-refund-list",
@@ -16852,7 +16852,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-refund-process",
@@ -16885,7 +16885,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-restore-execution",
@@ -16918,7 +16918,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-scheduler-management",
@@ -16951,7 +16951,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-screen-builder-dashboard",
@@ -16984,7 +16984,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-screen-flow-management",
@@ -17017,7 +17017,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-screen-management",
@@ -17050,7 +17050,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-screen-menu-assignment-management",
@@ -17083,7 +17083,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-section-management",
@@ -17116,7 +17116,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-security-audit",
@@ -17149,7 +17149,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-security-history",
@@ -17182,7 +17182,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-security-monitoring",
@@ -17215,7 +17215,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-security-policy",
@@ -17248,7 +17248,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-sensor-add",
@@ -17281,7 +17281,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-sensor-edit",
@@ -17314,7 +17314,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-sensor-list",
@@ -17347,7 +17347,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-settlement-calendar",
@@ -17380,7 +17380,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-sitemap",
@@ -17413,7 +17413,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-support-faq",
@@ -17446,7 +17446,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-support-index",
@@ -17479,7 +17479,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-support-inquiry",
@@ -17512,7 +17512,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-inquiry",
@@ -17545,7 +17545,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-inquiry-class",
@@ -17578,7 +17578,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-inquiry-detail",
@@ -17611,7 +17611,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-inquiry-group",
@@ -17644,7 +17644,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-register",
@@ -17677,7 +17677,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-register-class",
@@ -17710,7 +17710,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-register-detail",
@@ -17743,7 +17743,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-code-register-group",
@@ -17776,7 +17776,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-system-resources",
@@ -17809,7 +17809,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-tag-management",
@@ -17842,7 +17842,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-theme",
@@ -17875,7 +17875,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-theme-management",
@@ -17908,7 +17908,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-approve",
@@ -17941,7 +17941,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-auto-order",
@@ -17974,7 +17974,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-buy-request",
@@ -18007,7 +18007,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-complete",
@@ -18040,7 +18040,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-duplicate",
@@ -18073,7 +18073,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-index",
@@ -18106,7 +18106,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-list",
@@ -18139,7 +18139,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-market",
@@ -18172,7 +18172,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-price-alert",
@@ -18205,7 +18205,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-reject",
@@ -18238,7 +18238,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-report",
@@ -18271,7 +18271,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-sell",
@@ -18304,7 +18304,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-trade-statistics",
@@ -18337,7 +18337,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-verification-asset-management",
@@ -18370,7 +18370,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-virtual-issue",
@@ -18403,7 +18403,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     },
     {
       "screenId": "route-wbs-management",
@@ -18436,7 +18436,7 @@
       "status": "PUBLISHED",
       "version": 1,
       "createdAt": "2026-07-11T02:15:06.487Z",
-      "updatedAt": "2026-07-11T02:15:06.487Z"
+      "updatedAt": "2026-07-11T02:24:57.440Z"
     }
   ],
   "themes": [
@@ -18743,7 +18743,7 @@
         "effectiveExportName": "PlatformStudioMigrationPage",
         "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_asset-deficiency-queue",
@@ -18758,7 +18758,7 @@
         "effectiveExportName": "AssetGapMigrationPage",
         "effectiveSourcePath": "features/asset-inventory/AssetGapMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_auth-change",
@@ -19253,7 +19253,7 @@
         "effectiveExportName": "PlatformStudioMigrationPage",
         "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_company-account",
@@ -19343,7 +19343,7 @@
         "effectiveExportName": "PlatformStudioMigrationPage",
         "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_cron-monitoring",
@@ -19433,7 +19433,7 @@
         "effectiveExportName": "DownloadListMigrationPage",
         "effectiveSourcePath": "features/download-list/DownloadListMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/contentSupportFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_edu-apply",
@@ -19613,7 +19613,7 @@
         "effectiveExportName": "EmissionDefinitionStudioMigrationPage",
         "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_emission-dashboard",
@@ -19673,7 +19673,7 @@
         "effectiveExportName": "EmissionDefinitionStudioMigrationPage",
         "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_emission-ecoinvent-admin",
@@ -19778,7 +19778,7 @@
         "effectiveExportName": "EmissionDefinitionStudioMigrationPage",
         "effectiveSourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_emission-lca",
@@ -20153,7 +20153,7 @@
         "effectiveExportName": "PlatformStudioMigrationPage",
         "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_external-connection-add",
@@ -20423,7 +20423,7 @@
         "effectiveExportName": "PlatformStudioMigrationPage",
         "effectiveSourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_function-management",
@@ -21053,7 +21053,7 @@
         "effectiveExportName": "VersionManagementMigrationPage",
         "effectiveSourcePath": "features/version-management/VersionManagementMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_my-inquiry",
@@ -21203,7 +21203,7 @@
         "effectiveExportName": "NewPageMigrationPage",
         "effectiveSourcePath": "features/new-page/NewPageMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_notice-list",
@@ -21218,7 +21218,7 @@
         "effectiveExportName": "NoticeListMigrationPage",
         "effectiveSourcePath": "features/notice-list/NoticeListMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/contentSupportFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_notification",
@@ -21488,7 +21488,7 @@
         "effectiveExportName": "QnaListMigrationPage",
         "effectiveSourcePath": "features/qna-list/QnaListMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/contentSupportFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_refund-list",
@@ -22193,7 +22193,7 @@
         "effectiveExportName": "VerificationAssetManagementMigrationPage",
         "effectiveSourcePath": "features/environment-management/VerificationAssetManagementMigrationPage.tsx",
         "routeFamilyFile": "app/routes/families/adminSystemFamily.ts",
-        "status": "missing"
+        "status": "implemented"
       },
       {
         "id": "ROUTE_virtual-issue",
@@ -22507,13 +22507,13 @@
         "routePath": "/admin/system/api-management",
         "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "exportName": "PlatformStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 1548,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
-          "builderLink": false
+          "asyncData": true,
+          "form": true,
+          "table": true,
+          "builderLink": true
         }
       },
       {
@@ -22524,12 +22524,12 @@
         "routePath": "/admin/system/asset-deficiency-queue",
         "sourcePath": "features/asset-inventory/AssetGapMigrationPage.tsx",
         "exportName": "AssetGapMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 229,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
+          "asyncData": true,
+          "form": true,
+          "table": true,
           "builderLink": false
         }
       },
@@ -23085,13 +23085,13 @@
         "routePath": "/admin/system/column-management",
         "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "exportName": "PlatformStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 1548,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
-          "builderLink": false
+          "asyncData": true,
+          "form": true,
+          "table": true,
+          "builderLink": true
         }
       },
       {
@@ -23187,13 +23187,13 @@
         "routePath": "/admin/system/controller-management",
         "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "exportName": "PlatformStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 1548,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
-          "builderLink": false
+          "asyncData": true,
+          "form": true,
+          "table": true,
+          "builderLink": true
         }
       },
       {
@@ -23289,11 +23289,11 @@
         "routePath": "/support/download_list",
         "sourcePath": "features/download-list/DownloadListMigrationPage.tsx",
         "exportName": "DownloadListMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 436,
         "capabilities": {
           "asyncData": false,
-          "form": false,
+          "form": true,
           "table": false,
           "builderLink": false
         }
@@ -23493,13 +23493,13 @@
         "routePath": "/admin/emission/calculation-rule",
         "sourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
         "exportName": "EmissionDefinitionStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 2242,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
+          "asyncData": true,
+          "form": true,
           "table": false,
-          "builderLink": false
+          "builderLink": true
         }
       },
       {
@@ -23561,13 +23561,13 @@
         "routePath": "/admin/emission/definition-studio",
         "sourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
         "exportName": "EmissionDefinitionStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 2242,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
+          "asyncData": true,
+          "form": true,
           "table": false,
-          "builderLink": false
+          "builderLink": true
         }
       },
       {
@@ -23680,13 +23680,13 @@
         "routePath": "/admin/emission/input-template",
         "sourcePath": "features/emission-definition-studio/EmissionDefinitionStudioMigrationPage.tsx",
         "exportName": "EmissionDefinitionStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 2242,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
+          "asyncData": true,
+          "form": true,
           "table": false,
-          "builderLink": false
+          "builderLink": true
         }
       },
       {
@@ -24105,13 +24105,13 @@
         "routePath": "/admin/system/event-management",
         "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "exportName": "PlatformStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 1548,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
-          "builderLink": false
+          "asyncData": true,
+          "form": true,
+          "table": true,
+          "builderLink": true
         }
       },
       {
@@ -24411,13 +24411,13 @@
         "routePath": "/admin/system/function-console",
         "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
         "exportName": "PlatformStudioMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 1548,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
-          "builderLink": false
+          "asyncData": true,
+          "form": true,
+          "table": true,
+          "builderLink": true
         }
       },
       {
@@ -25125,8 +25125,8 @@
         "routePath": "/mtn/version",
         "sourcePath": "features/version-management/VersionManagementMigrationPage.tsx",
         "exportName": "VersionManagementMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 499,
         "capabilities": {
           "asyncData": false,
           "form": false,
@@ -25295,13 +25295,13 @@
         "routePath": "/admin/system/new-page",
         "sourcePath": "features/new-page/NewPageMigrationPage.tsx",
         "exportName": "NewPageMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 472,
         "capabilities": {
-          "asyncData": false,
+          "asyncData": true,
           "form": false,
-          "table": false,
-          "builderLink": false
+          "table": true,
+          "builderLink": true
         }
       },
       {
@@ -25312,11 +25312,11 @@
         "routePath": "/support/notice_list",
         "sourcePath": "features/notice-list/NoticeListMigrationPage.tsx",
         "exportName": "NoticeListMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 391,
         "capabilities": {
           "asyncData": false,
-          "form": false,
+          "form": true,
           "table": false,
           "builderLink": false
         }
@@ -25618,11 +25618,11 @@
         "routePath": "/support/qna_list",
         "sourcePath": "features/qna-list/QnaListMigrationPage.tsx",
         "exportName": "QnaListMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 519,
         "capabilities": {
           "asyncData": false,
-          "form": false,
+          "form": true,
           "table": false,
           "builderLink": false
         }
@@ -26417,12 +26417,12 @@
         "routePath": "/admin/system/verification-asset-management",
         "sourcePath": "features/environment-management/VerificationAssetManagementMigrationPage.tsx",
         "exportName": "VerificationAssetManagementMigrationPage",
-        "status": "missing",
-        "lineCount": 0,
+        "status": "implemented",
+        "lineCount": 378,
         "capabilities": {
-          "asyncData": false,
-          "form": false,
-          "table": false,
+          "asyncData": true,
+          "form": true,
+          "table": true,
           "builderLink": false
         }
       },
@@ -29904,12 +29904,1095 @@
     "registry-summary": [
       {
         "id": "SYSTEM_ASSET_REGISTRY_SUMMARY",
-        "generatedAt": "2026-07-11T02:15:06.487Z",
+        "generatedAt": "2026-07-11T02:24:57.440Z",
         "routes": 249,
         "pages": 249,
         "sourceComponents": 438,
         "apis": 32,
-        "databaseMigrations": 10
+        "databaseMigrations": 10,
+        "systemPages": 60
+      }
+    ],
+    "system-page-checklist": [
+      {
+        "id": "SYSTEM_CHECK_access-history",
+        "pageId": "access-history",
+        "title": "접속 로그",
+        "routePath": "/admin/system/access_history",
+        "sourcePath": "features/access-history/AccessHistoryMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_admin-monitoring-dashboard",
+        "pageId": "admin-monitoring-dashboard",
+        "title": "모니터링 대시보드",
+        "routePath": "/admin/system/monitoring-dashboard",
+        "sourcePath": "features/admin-monitoring/MonitoringDashboardPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_ai-hangar",
+        "pageId": "ai-hangar",
+        "title": "AI 격납고",
+        "routePath": "/admin/system/ai-hangar",
+        "sourcePath": "features/operations-inventory/OperationsInventoryPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_api-management",
+        "pageId": "api-management",
+        "title": "API 관리",
+        "routePath": "/admin/system/api-management",
+        "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_asset-deficiency-queue",
+        "pageId": "asset-deficiency-queue",
+        "title": "자산 미흡 큐",
+        "routePath": "/admin/system/asset-deficiency-queue",
+        "sourcePath": "features/asset-inventory/AssetGapMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_backup-config",
+        "pageId": "backup-config",
+        "title": "백업 설정",
+        "routePath": "/admin/system/backup_config",
+        "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_backup-execution",
+        "pageId": "backup-execution",
+        "title": "백업 실행",
+        "routePath": "/admin/system/backup",
+        "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_batch-management",
+        "pageId": "batch-management",
+        "title": "배치 관리",
+        "routePath": "/admin/system/batch",
+        "sourcePath": "features/batch-management/BatchManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_batch-monitoring",
+        "pageId": "batch-monitoring",
+        "title": "배치 모니터링",
+        "routePath": "/admin/system/batch-monitoring",
+        "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_blocklist",
+        "pageId": "blocklist",
+        "title": "차단 목록",
+        "routePath": "/admin/system/blocklist",
+        "sourcePath": "features/blocklist/BlocklistMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_builder-studio",
+        "pageId": "builder-studio",
+        "title": "빌더 스튜디오",
+        "routePath": "/admin/system/builder-studio",
+        "sourcePath": "features/builder-studio/BuilderStudioPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_column-management",
+        "pageId": "column-management",
+        "title": "컬럼 관리",
+        "routePath": "/admin/system/column-management",
+        "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_component-management",
+        "pageId": "component-management",
+        "title": "컴포넌트 관리",
+        "routePath": "/admin/system/component-management",
+        "sourcePath": "features/builder-studio/ComponentManagementPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_controller-management",
+        "pageId": "controller-management",
+        "title": "컨트롤러 관리",
+        "routePath": "/admin/system/controller-management",
+        "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_cron-monitoring",
+        "pageId": "cron-monitoring",
+        "title": "크론 모니터링",
+        "routePath": "/admin/system/cron-monitoring",
+        "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_db-monitoring",
+        "pageId": "db-monitoring",
+        "title": "DB 모니터링",
+        "routePath": "/admin/system/db-monitoring",
+        "sourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_db-promotion-policy",
+        "pageId": "db-promotion-policy",
+        "title": "DB 반영 정책 카탈로그",
+        "routePath": "/admin/system/db-promotion-policy",
+        "sourcePath": "features/db-promotion-policy/DbPromotionPolicyMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_db-sync-deploy",
+        "pageId": "db-sync-deploy",
+        "title": "DB 동기화 배포",
+        "routePath": "/admin/system/db-sync-deploy",
+        "sourcePath": "features/db-sync-deploy/DbSyncDeployMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_error-log",
+        "pageId": "error-log",
+        "title": "에러 로그",
+        "routePath": "/admin/system/error-log",
+        "sourcePath": "features/error-log/ErrorLogMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_event-management",
+        "pageId": "event-management",
+        "title": "이벤트 관리",
+        "routePath": "/admin/system/event-management",
+        "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_full-stack-management",
+        "pageId": "full-stack-management",
+        "title": "풀스택 관리",
+        "routePath": "/admin/system/full-stack-management",
+        "sourcePath": "features/menu-management/FullStackManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_function-console",
+        "pageId": "function-console",
+        "title": "함수 콘솔",
+        "routePath": "/admin/system/function-console",
+        "sourcePath": "features/platform-studio/PlatformStudioMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_function-management",
+        "pageId": "function-management",
+        "title": "기능 관리",
+        "routePath": "/admin/system/feature-management",
+        "sourcePath": "features/function-management/FunctionManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_git-build-monitoring",
+        "pageId": "git-build-monitoring",
+        "title": "Git/빌드 모니터링",
+        "routePath": "/admin/system/git-build-monitoring",
+        "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_hermes-workflow",
+        "pageId": "hermes-workflow",
+        "title": "Hermes 작업 기억",
+        "routePath": "/admin/system/hermes-workflow",
+        "sourcePath": "features/hermes-workflow/HermesWorkflowMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_home-page-workbench",
+        "pageId": "home-page-workbench",
+        "title": "홈 페이지 작업대",
+        "routePath": "/admin/system/home-page-workbench",
+        "sourcePath": "features/home-page-workbench/HomePageWorkbenchMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_infra",
+        "pageId": "infra",
+        "title": "인프라",
+        "routePath": "/admin/system/infra",
+        "sourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_installed-programs",
+        "pageId": "installed-programs",
+        "title": "설치 프로그램 관리",
+        "routePath": "/admin/system/programs",
+        "sourcePath": "features/operations-inventory/OperationsInventoryPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_ip-whitelist",
+        "pageId": "ip-whitelist",
+        "title": "IP 화이트리스트",
+        "routePath": "/admin/system/ip_whitelist",
+        "sourcePath": "features/ip-whitelist/IpWhitelistMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_menu-management",
+        "pageId": "menu-management",
+        "title": "메뉴 관리",
+        "routePath": "/admin/system/menu",
+        "sourcePath": "features/menu-management/MenuManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_module",
+        "pageId": "module",
+        "title": "모듈 관리",
+        "routePath": "/admin/system/module",
+        "sourcePath": "features/module-management/ModuleManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_new-page",
+        "pageId": "new-page",
+        "title": "새 페이지",
+        "routePath": "/admin/system/new-page",
+        "sourcePath": "features/new-page/NewPageMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_notification",
+        "pageId": "notification",
+        "title": "알림센터",
+        "routePath": "/admin/system/notification",
+        "sourcePath": "features/notification-center/NotificationCenterMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_operations-log-management",
+        "pageId": "operations-log-management",
+        "title": "운영 로그 관리",
+        "routePath": "/admin/system/logs",
+        "sourcePath": "features/operations-inventory/OperationsInventoryPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_page-management",
+        "pageId": "page-management",
+        "title": "화면 관리",
+        "routePath": "/admin/system/page-management",
+        "sourcePath": "features/page-management/PageManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_performance",
+        "pageId": "performance",
+        "title": "성능",
+        "routePath": "/admin/system/performance",
+        "sourcePath": "features/performance/PerformanceMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_restore-execution",
+        "pageId": "restore-execution",
+        "title": "복구 실행",
+        "routePath": "/admin/system/restore",
+        "sourcePath": "features/backup-config/BackupConfigMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_scheduler-management",
+        "pageId": "scheduler-management",
+        "title": "스케줄러 관리",
+        "routePath": "/admin/system/scheduler",
+        "sourcePath": "features/scheduler-management/SchedulerManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_screen-builder-dashboard",
+        "pageId": "screen-builder-dashboard",
+        "title": "빌더 대시보드",
+        "routePath": "/admin/system/screen-builder-dashboard",
+        "sourcePath": "features/screen-builder/ScreenBuilderDashboardPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_screen-flow-management",
+        "pageId": "screen-flow-management",
+        "title": "화면 흐름 관리",
+        "routePath": "/admin/system/screen-flow-management",
+        "sourcePath": "features/screen-management/ScreenFlowManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_screen-management",
+        "pageId": "screen-management",
+        "title": "화면 관리",
+        "routePath": "/admin/system/screen-management",
+        "sourcePath": "features/screen-management/ScreenManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_screen-menu-assignment-management",
+        "pageId": "screen-menu-assignment-management",
+        "title": "화면-메뉴 귀속 관리",
+        "routePath": "/admin/system/screen-menu-assignment-management",
+        "sourcePath": "features/screen-management/ScreenMenuAssignmentManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_section-management",
+        "pageId": "section-management",
+        "title": "섹션 관리",
+        "routePath": "/admin/system/section-management",
+        "sourcePath": "features/builder-studio/BuilderStudioPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_security-audit",
+        "pageId": "security-audit",
+        "title": "보안 감사",
+        "routePath": "/admin/system/security-audit",
+        "sourcePath": "features/security-audit/SecurityAuditMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_security-history",
+        "pageId": "security-history",
+        "title": "보안 이력",
+        "routePath": "/admin/system/security",
+        "sourcePath": "features/security-history/SecurityHistoryMigrationPage.tsx",
+        "implementationStatus": "delegated",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": false,
+          "hasFormAction": false,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_security-monitoring",
+        "pageId": "security-monitoring",
+        "title": "보안 모니터링",
+        "routePath": "/admin/system/security-monitoring",
+        "sourcePath": "features/security-monitoring/SecurityMonitoringMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_security-policy",
+        "pageId": "security-policy",
+        "title": "보안 정책",
+        "routePath": "/admin/system/security-policy",
+        "sourcePath": "features/security-policy/SecurityPolicyMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-inquiry",
+        "pageId": "system-code-inquiry",
+        "title": "코드 조회",
+        "routePath": "/admin/system/code",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-inquiry-class",
+        "pageId": "system-code-inquiry-class",
+        "title": "대분류",
+        "routePath": "/admin/system/code/class",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-inquiry-detail",
+        "pageId": "system-code-inquiry-detail",
+        "title": "소분류",
+        "routePath": "/admin/system/code/detail",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-inquiry-group",
+        "pageId": "system-code-inquiry-group",
+        "title": "중분류",
+        "routePath": "/admin/system/code/group",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-register",
+        "pageId": "system-code-register",
+        "title": "코드 등록",
+        "routePath": "/admin/system/code/register",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-register-class",
+        "pageId": "system-code-register-class",
+        "title": "대분류 등록",
+        "routePath": "/admin/system/code/register/class",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-register-detail",
+        "pageId": "system-code-register-detail",
+        "title": "소분류 등록",
+        "routePath": "/admin/system/code/register/detail",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-code-register-group",
+        "pageId": "system-code-register-group",
+        "title": "중분류 등록",
+        "routePath": "/admin/system/code/register/group",
+        "sourcePath": "features/system-code/SystemCodeSimplePage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": false,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_system-resources",
+        "pageId": "system-resources",
+        "title": "시스템 리소스 관리",
+        "routePath": "/admin/system/resources",
+        "sourcePath": "features/operations-inventory/OperationsInventoryPages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": false,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_theme",
+        "pageId": "theme",
+        "title": "테마 관리",
+        "routePath": "/admin/system/theme",
+        "sourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_theme-management",
+        "pageId": "theme-management",
+        "title": "테마 관리",
+        "routePath": "/admin/system/theme-management",
+        "sourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_verification-asset-management",
+        "pageId": "verification-asset-management",
+        "title": "검증 자산 관리",
+        "routePath": "/admin/system/verification-asset-management",
+        "sourcePath": "features/environment-management/VerificationAssetManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
+      },
+      {
+        "id": "SYSTEM_CHECK_wbs-management",
+        "pageId": "wbs-management",
+        "title": "WBS 관리",
+        "routePath": "/admin/system/wbs-management",
+        "sourcePath": "features/wbs-management/WbsManagementMigrationPage.tsx",
+        "implementationStatus": "implemented",
+        "checks": {
+          "routeRegistered": true,
+          "sourceRegistered": true,
+          "hasDataBinding": true,
+          "hasFormAction": true,
+          "hasGridOrTable": true,
+          "sduiRegistered": true,
+          "runtimeVerified": false
+        },
+        "normalizationStatus": "STATIC_READY"
       }
     ]
   },

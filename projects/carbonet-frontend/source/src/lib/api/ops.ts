@@ -386,11 +386,61 @@ export function buildSecurityAuditExportUrl(params?: {
 }
 
 export async function fetchSchedulerManagementPage(params?: { jobStatus?: string; executionType?: string; }) {
-  return fetchOpsPageJson<SchedulerManagementPagePayload>(
-    "/admin/system/scheduler/page-data",
-    params,
-    "Failed to load scheduler management page"
-  );
+  const response = await fetch("/admin/api/cron-monitoring/status", {
+    credentials: "include",
+    headers: { Accept: "application/json" }
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to load scheduler management page (HTTP ${response.status})`);
+  }
+  const payload = await response.json() as Record<string, unknown>;
+  if (payload.error) throw new Error(String(payload.error));
+  const cronJobs = (Array.isArray(payload.cronJobs) ? payload.cronJobs : []) as Array<Record<string, unknown>>;
+  const jobs = (Array.isArray(payload.jobs) ? payload.jobs : []) as Array<Record<string, unknown>>;
+  const statusFilter = String(params?.jobStatus || "").toUpperCase();
+  const typeFilter = String(params?.executionType || "").toUpperCase();
+  const schedulerJobRows = cronJobs
+    .map((row) => ({
+      jobId: `${String(row.namespace || "default")}/${String(row.name || "-")}`,
+      jobName: String(row.name || "-"),
+      cronExpression: String(row.schedule || "-"),
+      executionTypeCode: "CRON",
+      executionType: "CRON",
+      jobStatus: Boolean(row.suspend) ? "PAUSED" : Number(row.active || 0) > 0 ? "ACTIVE" : String(row.health || "ACTIVE"),
+      lastRunAt: String(row.lastSuccessfulTime || row.lastScheduleTime || "-"),
+      nextRunAt: String(row.timezone || "-") === "-" ? "스케줄 기준" : `${String(row.timezone)} 기준`,
+      owner: String(row.namespace || "default")
+    }))
+    .filter((row) => (!statusFilter || row.jobStatus === statusFilter) && (!typeFilter || row.executionTypeCode === typeFilter));
+  const namespaces = Array.from(new Set(cronJobs.map((row) => String(row.namespace || "default"))));
+  return {
+    jobStatus: statusFilter,
+    executionType: typeFilter,
+    schedulerSummary: (Array.isArray(payload.summary) ? payload.summary : []).map((row) => {
+      const item = row as Record<string, unknown>;
+      return { title: String(item.title || item.label || "-"), value: String(item.value || "0"), description: String(item.description || "") };
+    }),
+    schedulerJobRows,
+    schedulerNodeRows: namespaces.map((namespace) => ({
+      nodeId: namespace,
+      role: "Kubernetes namespace",
+      status: "CONNECTED",
+      runningJobs: String(cronJobs.filter((row) => String(row.namespace || "default") === namespace).reduce((sum, row) => sum + Number(row.active || 0), 0)),
+      heartbeatAt: String(payload.generatedAt || "-")
+    })),
+    schedulerExecutionRows: jobs.slice(0, 80).map((row) => ({
+      executedAt: String(row.completionTime || row.startTime || row.createdAt || "-"),
+      jobId: `${String(row.namespace || "default")}/${String(row.name || "-")}`,
+      result: String(row.status || "UNKNOWN"),
+      duration: row.startTime && row.completionTime ? "완료" : Number(row.active || 0) > 0 ? "실행 중" : "-",
+      message: `CronJob ${String(row.cronJob || "-")} · 성공 ${String(row.succeeded || 0)} · 실패 ${String(row.failed || 0)}`
+    })),
+    schedulerPlaybooks: [
+      { title: "실시간 데이터 원본", body: String(payload.source || "Kubernetes in-cluster API") },
+      { title: "최근 수집 시각", body: String(payload.generatedAt || "-") },
+      { title: "운영 상태", body: `클러스터 상태 ${String(payload.health || "UNKNOWN")}, 일시정지 CronJob ${String(payload.suspendedCronJobs || 0)}개` }
+    ]
+  } satisfies SchedulerManagementPagePayload;
 }
 
 export async function fetchBatchManagementPage() {
