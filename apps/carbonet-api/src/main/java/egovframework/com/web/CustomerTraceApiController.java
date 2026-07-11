@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -113,9 +112,9 @@ public class CustomerTraceApiController {
                     response.put("approval", approvalLedgerService.find(useCaseId));
                     List<JsonNode> linkedRequests = new ArrayList<>();
                     if (requests.isArray()) {
-                        for (JsonNode request : requests) {
+                        for (JsonNode srRequest : requests) {
                             for (JsonNode requestId : row.path("srRequestIds")) {
-                                if (requestId.asText().equals(request.path("requestId").asText())) linkedRequests.add(request);
+                                if (requestId.asText().equals(srRequest.path("requestId").asText())) linkedRequests.add(srRequest);
                             }
                         }
                     }
