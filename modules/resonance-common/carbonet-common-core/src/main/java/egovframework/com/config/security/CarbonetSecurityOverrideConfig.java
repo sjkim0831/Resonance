@@ -58,6 +58,8 @@ public class CarbonetSecurityOverrideConfig {
                 "/en/api/monitoring/**",
                 "/api/menu/**",
                 "/en/api/menu/**",
+                "/api/runtime/project-info",
+                "/api/runtime/info",
                 "/api/platform/**",
                 "/en/api/platform/**",
                 "/admin/api/**",
