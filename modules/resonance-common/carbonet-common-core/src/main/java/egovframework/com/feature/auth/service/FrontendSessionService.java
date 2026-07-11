@@ -57,23 +57,7 @@ public class FrontendSessionService {
     }
 
     private boolean canEnterAdminConsole(CurrentUserContextService.CurrentUserContext context) {
-        if (context == null || !context.isAuthenticated()) {
-            return false;
-        }
-        if (context.isWebmaster()) {
-            return true;
-        }
-        String authorCode = safeString(context.getAuthorCode()).toUpperCase(Locale.ROOT);
-        if ("ROLE_SYSTEM_MASTER".equals(authorCode)
-                || "ROLE_SYSTEM_ADMIN".equals(authorCode)
-                || "ROLE_ADMIN".equals(authorCode)
-                || "ROLE_OPERATION_ADMIN".equals(authorCode)
-                || "ROLE_COMPANY_ADMIN".equals(authorCode)
-                || "ROLE_CS_ADMIN".equals(authorCode)) {
-            return true;
-        }
-        List<String> featureCodes = context.getFeatureCodes();
-        return featureCodes != null && !featureCodes.isEmpty();
+        return context != null && context.isAuthenticated();
     }
 
     private String safeString(String value) {

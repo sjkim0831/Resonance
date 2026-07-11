@@ -116,26 +116,6 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
     }
 
     private boolean canEnterAdminConsole(LoginResponseDTO loginResult) {
-        String authorCode = safeString(loginResult == null ? null : loginResult.getAuthorCode()).toUpperCase();
-        if (authorCode.isEmpty()) {
-            return false;
-        }
-        if ("ROLE_SYSTEM_MASTER".equals(authorCode)
-                || "ROLE_SYSTEM_ADMIN".equals(authorCode)
-                || "ROLE_ADMIN".equals(authorCode)
-                || "ROLE_OPERATION_ADMIN".equals(authorCode)
-                || "ROLE_COMPANY_ADMIN".equals(authorCode)
-                || "ROLE_CS_ADMIN".equals(authorCode)) {
-            return true;
-        }
-        try {
-            List<String> featureCodes = authGroupManageService.selectAuthorFeatureCodes(authorCode);
-            return featureCodes != null && !featureCodes.isEmpty();
-        } catch (Exception e) {
-            log.warn("Failed to resolve admin console entry permission. userId={}, authorCode={}",
-                    loginResult == null ? "" : loginResult.getUserId(), authorCode, e);
-            return false;
-        }
+        return loginResult != null && !safeString(loginResult.getUserId()).isEmpty();
     }
 }
-

@@ -69,6 +69,11 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             deny(response);
             return false;
         }
+        // Unified-account mode: authentication is the only admin-console gate.
+        markCompanyScope(request, "ALLOW_AUTHENTICATED", "Authenticated unified account.",
+                resolveTargetInsttId(request, normalizeMenuUrl(requestUri)));
+        return true;
+        /*
         if (frameworkAuthorityPolicyService.isSystemMaster(authorCode)) {
             markCompanyScope(request, "ALLOW_MASTER", "System master bypassed company scope validation.",
                     resolveTargetInsttId(request, normalizeMenuUrl(requestUri)));
@@ -115,6 +120,7 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+        */
     }
 
     private void redirectToLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {

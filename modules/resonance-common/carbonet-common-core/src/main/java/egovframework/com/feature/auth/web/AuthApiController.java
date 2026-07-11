@@ -289,20 +289,7 @@ public class AuthApiController {
     }
 
     private boolean canEnterAdminConsole(LoginResponseDTO loginResult) {
-        String userId = safeString(loginResult == null ? null : loginResult.getUserId());
-        String authorCode = safeString(loginResult == null ? null : loginResult.getAuthorCode()).toUpperCase(Locale.ROOT);
-        if ("webmaster".equalsIgnoreCase(userId)) {
-            return true;
-        }
-        if (authorCode.isEmpty()) {
-            return false;
-        }
-        return "ROLE_SYSTEM_MASTER".equals(authorCode)
-                || "ROLE_SYSTEM_ADMIN".equals(authorCode)
-                || "ROLE_ADMIN".equals(authorCode)
-                || "ROLE_OPERATION_ADMIN".equals(authorCode)
-                || "ROLE_COMPANY_ADMIN".equals(authorCode)
-                || "ROLE_CS_ADMIN".equals(authorCode);
+        return loginResult != null && !safeString(loginResult.getUserId()).isEmpty();
     }
 
     @GetMapping("/validateRefreshToken")
