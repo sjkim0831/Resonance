@@ -27,7 +27,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.*;
@@ -124,8 +124,11 @@ public class AuthApiController {
 
             String accessiblePatterns = resolveAccessiblePatternsSafely(loginResult);
             log.debug("AuthApiController actionLogin accessiblePatterns >>> {}", accessiblePatterns);
-            // SecurityContextHolder ??젣
-            new SecurityContextLogoutHandler().logout(request, response, authentication);
+            // Persist the same authenticated identity for Spring Security page routes.
+            // JWT cookies remain the API credential; the session prevents protected
+            // home routes from bouncing a successfully logged-in user back to login.
+            new HttpSessionSecurityContextRepository().saveContext(
+                    SecurityContextHolder.getContext(), request, response);
 
             LoginResponseDTO dtoToVo = new LoginResponseDTO();
             dtoToVo.setUserId(loginResult.getUserId());
