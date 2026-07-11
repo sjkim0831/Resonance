@@ -1,0 +1,1093 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T05:28:33.191042+00:00",
+  "baseUrl": "http://127.0.0.1",
+  "policy": "reachability is not functional verification",
+  "pathCount": 120,
+  "summary": {
+    "REACHABLE": 12,
+    "REDIRECTED": 108
+  },
+  "probes": [
+    {
+      "path": "/admin/",
+      "url": "http://127.0.0.1/admin/",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/ai/dashboard",
+      "url": "http://127.0.0.1/admin/ai/dashboard",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/ai/dashboard",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/ai/logs",
+      "url": "http://127.0.0.1/admin/ai/logs",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/ai/logs",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/ai/quality",
+      "url": "http://127.0.0.1/admin/ai/quality",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/ai/quality",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/auth/group",
+      "url": "http://127.0.0.1/admin/auth/group",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/auth/group",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/certificate/objection_list",
+      "url": "http://127.0.0.1/admin/certificate/objection_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/certificate/objection_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/certificate/rec_check",
+      "url": "http://127.0.0.1/admin/certificate/rec_check",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/certificate/rec_check",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/certificate/review",
+      "url": "http://127.0.0.1/admin/certificate/review",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/certificate/review",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/certificate/statistics",
+      "url": "http://127.0.0.1/admin/certificate/statistics",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/certificate/statistics",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/banner_list",
+      "url": "http://127.0.0.1/admin/content/banner_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/banner_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/board_list",
+      "url": "http://127.0.0.1/admin/content/board_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/board_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/faq_list",
+      "url": "http://127.0.0.1/admin/content/faq_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/faq_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/file",
+      "url": "http://127.0.0.1/admin/content/file",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/file",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/menu",
+      "url": "http://127.0.0.1/admin/content/menu",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/menu",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/popup_list",
+      "url": "http://127.0.0.1/admin/content/popup_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/popup_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/qna",
+      "url": "http://127.0.0.1/admin/content/qna",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/qna",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/sitemap",
+      "url": "http://127.0.0.1/admin/content/sitemap",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/sitemap",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/content/tag",
+      "url": "http://127.0.0.1/admin/content/tag",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/content/tag",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/data_history",
+      "url": "http://127.0.0.1/admin/emission/data_history",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/data_history",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/gwp-values",
+      "url": "http://127.0.0.1/admin/emission/gwp-values",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/gwp-values",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/input-template",
+      "url": "http://127.0.0.1/admin/emission/input-template",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/input-template",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/management",
+      "url": "http://127.0.0.1/admin/emission/management",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/management",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/report-template",
+      "url": "http://127.0.0.1/admin/emission/report-template",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/report-template",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/result_detail",
+      "url": "http://127.0.0.1/admin/emission/result_detail",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/result_detail",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/result_list",
+      "url": "http://127.0.0.1/admin/emission/result_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/result_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/system-link",
+      "url": "http://127.0.0.1/admin/emission/system-link",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/system-link",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/emission/validate",
+      "url": "http://127.0.0.1/admin/emission/validate",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/emission/validate",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/external/connection_list",
+      "url": "http://127.0.0.1/admin/external/connection_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/external/connection_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/external/keys",
+      "url": "http://127.0.0.1/admin/external/keys",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/external/keys",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/external/logs",
+      "url": "http://127.0.0.1/admin/external/logs",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/external/logs",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/external/monitoring",
+      "url": "http://127.0.0.1/admin/external/monitoring",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/external/monitoring",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/external/sync",
+      "url": "http://127.0.0.1/admin/external/sync",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/external/sync",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/external/usage",
+      "url": "http://127.0.0.1/admin/external/usage",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/external/usage",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/login/loginView",
+      "url": "http://127.0.0.1/admin/login/loginView",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/admin/login/loginView",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/admin_account",
+      "url": "http://127.0.0.1/admin/member/admin_account",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/admin_account",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/auth-change",
+      "url": "http://127.0.0.1/admin/member/auth-change",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/auth-change",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/company_detail",
+      "url": "http://127.0.0.1/admin/member/company_detail",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/company_detail",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/company_list",
+      "url": "http://127.0.0.1/admin/member/company_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/company_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/detail",
+      "url": "http://127.0.0.1/admin/member/detail",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/detail",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/edit",
+      "url": "http://127.0.0.1/admin/member/edit",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/edit",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/list",
+      "url": "http://127.0.0.1/admin/member/list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/login_history",
+      "url": "http://127.0.0.1/admin/member/login_history",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/login_history",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/reset_password",
+      "url": "http://127.0.0.1/admin/member/reset_password",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/reset_password",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/stats",
+      "url": "http://127.0.0.1/admin/member/stats",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/stats",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/member/withdrawn",
+      "url": "http://127.0.0.1/admin/member/withdrawn",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/member/withdrawn",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/monitoring/sensor_add",
+      "url": "http://127.0.0.1/admin/monitoring/sensor_add",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/monitoring/sensor_add",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/payment/refund_list",
+      "url": "http://127.0.0.1/admin/payment/refund_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/payment/refund_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/payment/refund_process",
+      "url": "http://127.0.0.1/admin/payment/refund_process",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/payment/refund_process",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/api-management",
+      "url": "http://127.0.0.1/admin/system/api-management",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/api-management",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/backup",
+      "url": "http://127.0.0.1/admin/system/backup",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/backup",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/backup_config",
+      "url": "http://127.0.0.1/admin/system/backup_config",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/backup_config",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/batch",
+      "url": "http://127.0.0.1/admin/system/batch",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/batch",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/cron-monitoring",
+      "url": "http://127.0.0.1/admin/system/cron-monitoring",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/cron-monitoring",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/db-monitoring",
+      "url": "http://127.0.0.1/admin/system/db-monitoring",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/db-monitoring",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/menu",
+      "url": "http://127.0.0.1/admin/system/menu",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/menu",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/monitoring-dashboard",
+      "url": "http://127.0.0.1/admin/system/monitoring-dashboard",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/monitoring-dashboard",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/performance",
+      "url": "http://127.0.0.1/admin/system/performance",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/performance",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/screen-menu-assignment-management",
+      "url": "http://127.0.0.1/admin/system/screen-menu-assignment-management",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/screen-menu-assignment-management",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/security-monitoring",
+      "url": "http://127.0.0.1/admin/system/security-monitoring",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/security-monitoring",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/system/security-policy",
+      "url": "http://127.0.0.1/admin/system/security-policy",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/system/security-policy",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/trade/approve",
+      "url": "http://127.0.0.1/admin/trade/approve",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/trade/approve",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/admin/trade/reject",
+      "url": "http://127.0.0.1/admin/trade/reject",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/admin/trade/reject",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/certificate/index",
+      "url": "http://127.0.0.1/certificate/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/certificate/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/certificate/list",
+      "url": "http://127.0.0.1/certificate/list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/certificate/list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/certificate/report_edit",
+      "url": "http://127.0.0.1/certificate/report_edit",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/certificate/report_edit",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/certificate/report_form",
+      "url": "http://127.0.0.1/certificate/report_form",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/certificate/report_form",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/co2/analysis",
+      "url": "http://127.0.0.1/co2/analysis",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/co2/analysis",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/co2/credit",
+      "url": "http://127.0.0.1/co2/credit",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/co2/credit",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/co2/demand_list",
+      "url": "http://127.0.0.1/co2/demand_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/co2/demand_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/co2/index",
+      "url": "http://127.0.0.1/co2/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/co2/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/co2/production_list",
+      "url": "http://127.0.0.1/co2/production_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/co2/production_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/co2/search",
+      "url": "http://127.0.0.1/co2/search",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/co2/search",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/edu/apply",
+      "url": "http://127.0.0.1/edu/apply",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/edu/apply",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/edu/index",
+      "url": "http://127.0.0.1/edu/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/edu/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/edu/my_course",
+      "url": "http://127.0.0.1/edu/my_course",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/edu/my_course",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/emission/lca",
+      "url": "http://127.0.0.1/emission/lca",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/emission/lca",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/emission/lci",
+      "url": "http://127.0.0.1/emission/lci",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/emission/lci",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/emission/result",
+      "url": "http://127.0.0.1/emission/result",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/emission/result",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/emission/validate",
+      "url": "http://127.0.0.1/emission/validate",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/emission/validate",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/home",
+      "url": "http://127.0.0.1/home",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/home",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/join/companyRegister",
+      "url": "http://127.0.0.1/join/companyRegister",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/join/companyRegister",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/join/companyRegisterComplete",
+      "url": "http://127.0.0.1/join/companyRegisterComplete",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/join/companyRegisterComplete",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/join/step1",
+      "url": "http://127.0.0.1/join/step1",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/join/step1",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/join/step2",
+      "url": "http://127.0.0.1/join/step2",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/join/step2",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/monitoring/dashboard",
+      "url": "http://127.0.0.1/monitoring/dashboard",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/monitoring/dashboard",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/monitoring/export",
+      "url": "http://127.0.0.1/monitoring/export",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/monitoring/export",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/monitoring/index",
+      "url": "http://127.0.0.1/monitoring/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/monitoring/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/monitoring/realtime",
+      "url": "http://127.0.0.1/monitoring/realtime",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/monitoring/realtime",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/monitoring/share",
+      "url": "http://127.0.0.1/monitoring/share",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/monitoring/share",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/monitoring/statistics",
+      "url": "http://127.0.0.1/monitoring/statistics",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/monitoring/statistics",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mtn/status",
+      "url": "http://127.0.0.1/mtn/status",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mtn/status",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mtn/version",
+      "url": "http://127.0.0.1/mtn/version",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mtn/version",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/company",
+      "url": "http://127.0.0.1/mypage/company",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/company",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/email",
+      "url": "http://127.0.0.1/mypage/email",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/email",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/index",
+      "url": "http://127.0.0.1/mypage/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/notification",
+      "url": "http://127.0.0.1/mypage/notification",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/notification",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/password",
+      "url": "http://127.0.0.1/mypage/password",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/password",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/profile",
+      "url": "http://127.0.0.1/mypage/profile",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/profile",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/mypage/staff",
+      "url": "http://127.0.0.1/mypage/staff",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/mypage/staff",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/payment/history",
+      "url": "http://127.0.0.1/payment/history",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/payment/history",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/payment/index",
+      "url": "http://127.0.0.1/payment/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/payment/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/payment/notify",
+      "url": "http://127.0.0.1/payment/notify",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/payment/notify",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/payment/pay",
+      "url": "http://127.0.0.1/payment/pay",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/payment/pay",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/payment/refund_account",
+      "url": "http://127.0.0.1/payment/refund_account",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/payment/refund_account",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/payment/virtual_account",
+      "url": "http://127.0.0.1/payment/virtual_account",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/payment/virtual_account",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/signin/authChoice",
+      "url": "http://127.0.0.1/signin/authChoice",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/signin/authChoice",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/signin/findId",
+      "url": "http://127.0.0.1/signin/findId",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/signin/findId",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/signin/findPassword",
+      "url": "http://127.0.0.1/signin/findPassword",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/signin/findPassword",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/signin/loginView",
+      "url": "http://127.0.0.1/signin/loginView",
+      "httpStatus": 200,
+      "effectiveUrl": "http://127.0.0.1/signin/loginView",
+      "classification": "REACHABLE",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/sitemap",
+      "url": "http://127.0.0.1/sitemap",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/sitemap",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/support/download_list",
+      "url": "http://127.0.0.1/support/download_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/support/download_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/support/faq",
+      "url": "http://127.0.0.1/support/faq",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/support/faq",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/support/inquiry",
+      "url": "http://127.0.0.1/support/inquiry",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/support/inquiry",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/support/notice_list",
+      "url": "http://127.0.0.1/support/notice_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/support/notice_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/support/qna_list",
+      "url": "http://127.0.0.1/support/qna_list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/support/qna_list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/trade/buy_request",
+      "url": "http://127.0.0.1/trade/buy_request",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/trade/buy_request",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/trade/index",
+      "url": "http://127.0.0.1/trade/index",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/trade/index",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/trade/list",
+      "url": "http://127.0.0.1/trade/list",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/trade/list",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/trade/market",
+      "url": "http://127.0.0.1/trade/market",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/trade/market",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    },
+    {
+      "path": "/trade/report",
+      "url": "http://127.0.0.1/trade/report",
+      "httpStatus": 302,
+      "effectiveUrl": "http://127.0.0.1/trade/report",
+      "classification": "REDIRECTED",
+      "functionalVerification": "PENDING",
+      "error": ""
+    }
+  ]
+}
