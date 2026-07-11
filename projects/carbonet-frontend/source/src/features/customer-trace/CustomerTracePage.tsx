@@ -15,6 +15,7 @@ export function CustomerTracePage() {
   const [domain, setDomain] = useState("");
   const summary = useAsyncValue(() => fetchCustomerTraceSummary(), []);
   const traces = useAsyncValue(() => fetchCustomerTraces({ domain: domain || undefined, query: query || undefined, limit: "100" }), [domain, query]);
+  const runtimeGaps = (summary.value?.runtimeFindings || []).filter((finding) => finding.state !== "HEALTHY");
 
   useEffect(() => { logGovernanceScope("PAGE", "customer-trace", { language: en ? "en" : "ko" }); }, [en]);
 
@@ -28,6 +29,14 @@ export function CustomerTracePage() {
     >
       <AdminWorkspacePageFrame>
         {summary.error || traces.error ? <PageStatusNotice tone="error">{summary.error || traces.error}</PageStatusNotice> : null}
+        {runtimeGaps.length > 0 ? (
+          <PageStatusNotice tone="warning">
+            <strong>{en ? "Runtime deployment gaps" : "런타임 반영 대기"}</strong>
+            <span className="ml-2">
+              {runtimeGaps.map((finding) => `${finding.path} (${finding.httpStatus}, ${finding.remediation})`).join(" / ")}
+            </span>
+          </PageStatusNotice>
+        ) : null}
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryMetricCard title={en ? "Canonical use cases" : "기준 UC"} value={String(summary.value?.traceCount ?? "-")} description={en ? "Master customer use cases." : "고객 Master 기준 유즈케이스입니다."} />
           <SummaryMetricCard title={en ? "Customer maturity" : "고객 성숙도"} value={`${summary.value?.customerMaturity?.score ?? "-"} / ${summary.value?.customerMaturity?.grade ?? "-"}`} description={en ? "Requirement governance maturity." : "요구사항 관리 성숙도입니다."} />
