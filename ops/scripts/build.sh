@@ -86,6 +86,11 @@ jbuild() {
 
 jbooted() {
     local module_app="$1"
+    # Legacy deployment scripts called the shared runtime "project-runtime".
+    # The canonical Gradle application is now apps:carbonet-api.
+    if [[ "$module_app" == "project-runtime" ]]; then
+        module_app="carbonet-api"
+    fi
     if [[ "${BUILD_TOOL:-}" == "gradle" ]]; then
         echo "${ROOT_DIR}/apps/${module_app}/build/libs/${module_app}.jar"
     else
