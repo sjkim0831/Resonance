@@ -91,31 +91,95 @@ for (const file of walk(path.join(frontend, "features"), (name) => name.endsWith
   }
 }
 
+function mappingPaths(args = "") {
+  const normalized = String(args || "").trim();
+  if (!normalized) return [""];
+  const named = normalized.match(/(?:value|path)\s*=\s*(\{[\s\S]*?\}|"[^"]*")/);
+  const candidate = named?.[1] || (/^(?:\{|\")/.test(normalized) ? normalized.split(/,\s*(?:produces|consumes|headers|params)\s*=/)[0] : "");
+  const paths = [...candidate.matchAll(/"([^"]*)"/g)].map((match) => match[1]);
+  return paths.length ? paths : [""];
+}
+
+function annotationArgsAt(source, annotationIndex) {
+  const open = source.indexOf("(", annotationIndex);
+  if (open < 0) return "";
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let index = open; index < source.length; index += 1) {
+    const character = source[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') quoted = false;
+      continue;
+    }
+    if (character === '"') quoted = true;
+    else if (character === "(") depth += 1;
+    else if (character === ")" && --depth === 0) return source.slice(open + 1, index);
+  }
+  return "";
+}
+
+const settingsSource = fs.readFileSync(path.join(root, "settings.gradle.kts"), "utf8");
+const activeProjectRoots = [...settingsSource.matchAll(/include\("([^"]+)"\)/g)]
+  .map((match) => path.join(root, ...match[1].split(":")));
+const controllerFiles = activeProjectRoots.flatMap((directory) =>
+  walk(directory, (name) => name.endsWith("Controller.java"))
+);
+const controllerAssets = [];
 const apiAssets = [];
-for (const file of walk(path.join(root, "apps/carbonet-api/src/main/java"), (name) => name.endsWith("Controller.java"))) {
+for (const file of controllerFiles) {
   const text = fs.readFileSync(file, "utf8");
-  const base = text.match(/@RequestMapping\("([^"]+)"\)/)?.[1] || "";
   const controller = path.basename(file, ".java");
-  for (const match of text.matchAll(/@(Get|Post|Put|Patch|Delete)Mapping(?:\("([^"]*)"\))?/g)) {
-    apiAssets.push({
-      id: `API_${controller}_${match.index}`,
-      assetType: "api",
-      controller,
-      method: match[1].toUpperCase(),
-      path: `${base}${match[2] || ""}`,
-      sourcePath: relative(file),
-      status: "ACTIVE"
-    });
+  const classIndex = text.search(/\bclass\s+[A-Za-z0-9_]+/);
+  const classMappingIndex = classIndex < 0 ? -1 : text.lastIndexOf("@RequestMapping", classIndex);
+  const bases = mappingPaths(classMappingIndex < 0 ? "" : annotationArgsAt(text, classMappingIndex));
+  controllerAssets.push({
+    id: `CONTROLLER_${controller}_${relative(file).replace(/[^A-Za-z0-9]+/g, "_")}`,
+    assetType: "controller",
+    controller,
+    basePaths: bases,
+    sourcePath: relative(file),
+    status: "ACTIVE"
+  });
+  for (const match of text.matchAll(/@(Get|Post|Put|Patch|Delete)Mapping\s*(?:\(([\s\S]*?)\))?/g)) {
+    const paths = mappingPaths(match[2] || "");
+    for (const base of bases) for (const endpointPath of paths) apiAssets.push({
+        id: `API_${controller}_${match.index}_${apiAssets.length}`,
+        assetType: "api",
+        controller,
+        method: match[1].toUpperCase(),
+        path: `${base}${endpointPath}`.replace(/\/{2,}/g, "/") || "/",
+        sourcePath: relative(file),
+        status: "ACTIVE"
+      });
   }
 }
 
-const dbAssets = walk(path.join(root, "apps/carbonet-api/src/main/resources/db"), (name) => /\.(sql|ya?ml|xml)$/.test(name))
+const uniqueApiAssets = [...new Map(apiAssets.map((item) => [
+  `${item.controller}|${item.method}|${item.path}|${item.sourcePath}`,
+  item
+])).values()];
+
+const dbAssets = [...activeProjectRoots, path.join(root, "db"), path.join(root, "ops")].flatMap((directory) =>
+  walk(directory, (name) => {
+    const normalized = name.replaceAll(path.sep, "/");
+    return /\.(sql|ya?ml|xml)$/.test(name) && (
+      normalized.includes("/src/main/resources/db/") ||
+      normalized.includes("/db/migration/") ||
+      normalized.includes("/db/changelog/") ||
+      normalized.includes("/db/migrations/flyway/") ||
+      normalized.includes("/ops/db/")
+    );
+  })
+)
   .map((file) => ({
     id: `DB_${relative(file).replace(/[^A-Za-z0-9]+/g, "_")}`,
     assetType: "database-migration",
     name: path.basename(file),
     sourcePath: relative(file),
-    engine: file.includes("liquibase") || file.includes("changelog") ? "liquibase" : "flyway",
+    engine: file.endsWith(".check.sql") ? "verification" : file.includes("liquibase") || file.includes("changelog") ? "liquibase" : file.includes("flyway") || /\/V[^/]+__/.test(file.replaceAll(path.sep, "/")) ? "flyway" : "sql",
     status: "ACTIVE"
   }));
 
@@ -203,7 +267,8 @@ store.screens = routes.map((route) => {
 store.assets.routes = routeAssets;
 store.assets.pages = pageAssets;
 store.assets["source-components"] = sourceComponents;
-store.assets.apis = apiAssets;
+store.assets.controllers = controllerAssets;
+store.assets.apis = uniqueApiAssets;
 store.assets["database-migrations"] = dbAssets;
 store.assets["system-page-checklist"] = pageAssets
   .filter((page) => page.routePath === "/admin/system" || page.routePath.startsWith("/admin/system/"))
@@ -231,7 +296,8 @@ store.assets["registry-summary"] = [{
   routes: routeAssets.length,
   pages: pageAssets.length,
   sourceComponents: sourceComponents.length,
-  apis: apiAssets.length,
+  controllers: controllerAssets.length,
+  apis: uniqueApiAssets.length,
   databaseMigrations: dbAssets.length,
   systemPages: store.assets["system-page-checklist"].length
 }];
