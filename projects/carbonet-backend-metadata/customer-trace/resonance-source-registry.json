@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T05:36:17.158051+00:00",
+  "generatedAt": "2026-07-11T07:15:57.472844+00:00",
   "summary": {
     "routes": 263,
-    "apis": 1189,
+    "apis": 1190,
     "tables": 54,
     "menus": 169,
-    "sduiScreens": 249,
+    "sduiScreens": 250,
     "sduiComponents": 447,
     "sduiThemes": 1
   },
@@ -7208,6 +7208,13 @@
       "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/BuilderApiController.java"
     },
     {
+      "assetId": "API-B1E9E923F2AE4CA5",
+      "method": "GET",
+      "path": "/api/platform/customer-trace/approval-ledger",
+      "contract": "GET /api/platform/customer-trace/approval-ledger",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
       "assetId": "API-5908E6664C957C95",
       "method": "GET",
       "path": "/api/platform/customer-trace/scorecard",
@@ -12894,6 +12901,15 @@
       "menuCode": "cron-monitoring",
       "menuUrl": "/admin/system/cron-monitoring",
       "menuNm": "크론 모니터링",
+      "status": "PUBLISHED",
+      "version": 1
+    },
+    {
+      "screenId": "route-customer-trace",
+      "pageId": "customer-trace",
+      "menuCode": "customer-trace",
+      "menuUrl": "/admin/ai/customer-trace",
+      "menuNm": "고객 요구 추적",
       "status": "PUBLISHED",
       "version": 1
     },
