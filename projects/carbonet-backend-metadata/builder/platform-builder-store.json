@@ -9185,6 +9185,29 @@
       "useAt": "Y"
     },
     {
+      "componentId": "SOURCE_COMPONENT_SduiRuntimeRenderer",
+      "componentNm": "SduiRuntimeRenderer",
+      "componentDc": "소스 자동 등록: projects/carbonet-frontend/source/src/features/screen-builder/shared/SduiRuntimeRenderer.tsx",
+      "componentType": "OTHER",
+      "categoryCd": "LAYOUT",
+      "iconNm": "widgets",
+      "defaultProps": {
+        "sourcePath": "projects/carbonet-frontend/source/src/features/screen-builder/shared/SduiRuntimeRenderer.tsx",
+        "exportName": "SduiRuntimeRenderer"
+      },
+      "defaultClassNm": "",
+      "defaultStyle": {
+        "registrySource": "automatic"
+      },
+      "dataAttrs": {
+        "data-source-component": "SduiRuntimeRenderer"
+      },
+      "isContainer": false,
+      "isReusable": true,
+      "sortOrder": 1393,
+      "useAt": "Y"
+    },
+    {
       "componentId": "SOURCE_COMPONENT_ScreenFlowManagementMigrationPage",
       "componentNm": "ScreenFlowManagementMigrationPage",
       "componentDc": "소스 자동 등록: projects/carbonet-frontend/source/src/features/screen-management/ScreenFlowManagementMigrationPage.tsx",
@@ -9204,7 +9227,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1393,
+      "sortOrder": 1394,
       "useAt": "Y"
     },
     {
@@ -9227,7 +9250,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1394,
+      "sortOrder": 1395,
       "useAt": "Y"
     },
     {
@@ -9250,7 +9273,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1395,
+      "sortOrder": 1396,
       "useAt": "Y"
     },
     {
@@ -9273,7 +9296,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1396,
+      "sortOrder": 1397,
       "useAt": "Y"
     },
     {
@@ -9296,7 +9319,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1397,
+      "sortOrder": 1398,
       "useAt": "Y"
     },
     {
@@ -9319,7 +9342,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1398,
+      "sortOrder": 1399,
       "useAt": "Y"
     },
     {
@@ -9342,7 +9365,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1399,
+      "sortOrder": 1400,
       "useAt": "Y"
     },
     {
@@ -9365,7 +9388,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1400,
+      "sortOrder": 1401,
       "useAt": "Y"
     },
     {
@@ -9388,7 +9411,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1401,
+      "sortOrder": 1402,
       "useAt": "Y"
     },
     {
@@ -9411,7 +9434,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1402,
+      "sortOrder": 1403,
       "useAt": "Y"
     },
     {
@@ -9434,7 +9457,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1403,
+      "sortOrder": 1404,
       "useAt": "Y"
     },
     {
@@ -9457,7 +9480,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1404,
+      "sortOrder": 1405,
       "useAt": "Y"
     },
     {
@@ -9480,7 +9503,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1405,
+      "sortOrder": 1406,
       "useAt": "Y"
     },
     {
@@ -9503,7 +9526,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1406,
+      "sortOrder": 1407,
       "useAt": "Y"
     },
     {
@@ -9526,7 +9549,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1407,
+      "sortOrder": 1408,
       "useAt": "Y"
     },
     {
@@ -9549,7 +9572,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1408,
+      "sortOrder": 1409,
       "useAt": "Y"
     },
     {
@@ -9572,7 +9595,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1409,
+      "sortOrder": 1410,
       "useAt": "Y"
     },
     {
@@ -9595,7 +9618,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1410,
+      "sortOrder": 1411,
       "useAt": "Y"
     },
     {
@@ -9618,7 +9641,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1411,
+      "sortOrder": 1412,
       "useAt": "Y"
     },
     {
@@ -9641,7 +9664,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1412,
+      "sortOrder": 1413,
       "useAt": "Y"
     },
     {
@@ -9664,7 +9687,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1413,
+      "sortOrder": 1414,
       "useAt": "Y"
     },
     {
@@ -9687,7 +9710,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1414,
+      "sortOrder": 1415,
       "useAt": "Y"
     },
     {
@@ -9710,7 +9733,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1415,
+      "sortOrder": 1416,
       "useAt": "Y"
     },
     {
@@ -9733,7 +9756,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1416,
+      "sortOrder": 1417,
       "useAt": "Y"
     },
     {
@@ -9756,7 +9779,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1417,
+      "sortOrder": 1418,
       "useAt": "Y"
     },
     {
@@ -9779,7 +9802,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1418,
+      "sortOrder": 1419,
       "useAt": "Y"
     },
     {
@@ -9802,7 +9825,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1419,
+      "sortOrder": 1420,
       "useAt": "Y"
     },
     {
@@ -9825,7 +9848,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1420,
+      "sortOrder": 1421,
       "useAt": "Y"
     },
     {
@@ -9848,7 +9871,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1421,
+      "sortOrder": 1422,
       "useAt": "Y"
     },
     {
@@ -9871,7 +9894,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1422,
+      "sortOrder": 1423,
       "useAt": "Y"
     },
     {
@@ -9894,7 +9917,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1423,
+      "sortOrder": 1424,
       "useAt": "Y"
     },
     {
@@ -9917,7 +9940,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1424,
+      "sortOrder": 1425,
       "useAt": "Y"
     },
     {
@@ -9940,7 +9963,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1425,
+      "sortOrder": 1426,
       "useAt": "Y"
     },
     {
@@ -9963,7 +9986,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1426,
+      "sortOrder": 1427,
       "useAt": "Y"
     },
     {
@@ -9986,7 +10009,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1427,
+      "sortOrder": 1428,
       "useAt": "Y"
     },
     {
@@ -10009,7 +10032,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1428,
+      "sortOrder": 1429,
       "useAt": "Y"
     },
     {
@@ -10032,7 +10055,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1429,
+      "sortOrder": 1430,
       "useAt": "Y"
     },
     {
@@ -10055,7 +10078,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1430,
+      "sortOrder": 1431,
       "useAt": "Y"
     },
     {
@@ -10078,7 +10101,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1431,
+      "sortOrder": 1432,
       "useAt": "Y"
     },
     {
@@ -10101,7 +10124,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1432,
+      "sortOrder": 1433,
       "useAt": "Y"
     },
     {
@@ -10124,7 +10147,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1433,
+      "sortOrder": 1434,
       "useAt": "Y"
     },
     {
@@ -10147,7 +10170,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1434,
+      "sortOrder": 1435,
       "useAt": "Y"
     },
     {
@@ -10170,7 +10193,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1435,
+      "sortOrder": 1436,
       "useAt": "Y"
     },
     {
@@ -10193,7 +10216,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1436,
+      "sortOrder": 1437,
       "useAt": "Y"
     },
     {
@@ -10216,7 +10239,7 @@
       },
       "isContainer": false,
       "isReusable": true,
-      "sortOrder": 1437,
+      "sortOrder": 1438,
       "useAt": "Y"
     }
   ],
@@ -29214,6 +29237,13 @@
         "status": "ACTIVE"
       },
       {
+        "id": "SOURCE_COMPONENT_SduiRuntimeRenderer",
+        "assetType": "source-component",
+        "componentId": "SduiRuntimeRenderer",
+        "sourcePath": "projects/carbonet-frontend/source/src/features/screen-builder/shared/SduiRuntimeRenderer.tsx",
+        "status": "ACTIVE"
+      },
+      {
         "id": "SOURCE_COMPONENT_ScreenFlowManagementMigrationPage",
         "assetType": "source-component",
         "componentId": "ScreenFlowManagementMigrationPage",
@@ -29904,10 +29934,10 @@
     "registry-summary": [
       {
         "id": "SYSTEM_ASSET_REGISTRY_SUMMARY",
-        "generatedAt": "2026-07-11T02:24:57.440Z",
+        "generatedAt": "2026-07-11T02:44:04.756Z",
         "routes": 249,
         "pages": 249,
-        "sourceComponents": 438,
+        "sourceComponents": 439,
         "apis": 32,
         "databaseMigrations": 10,
         "systemPages": 60

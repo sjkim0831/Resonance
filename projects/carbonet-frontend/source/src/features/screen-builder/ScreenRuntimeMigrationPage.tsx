@@ -15,7 +15,7 @@ import { CopyableCodeBlock, DiagnosticCard, GridToolbar, KeyValueGridPanel, Memb
 import { resolveRuntimeSurfaceContextKeys } from "../admin-ui/contextKeyPresets";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { MemberStateCard } from "../member/sections";
-import { renderScreenBuilderNodePreview } from "./shared/screenBuilderPreview";
+import { SduiRuntimeRenderer } from "./shared/SduiRuntimeRenderer";
 import { resolveScreenBuilderQuery, sortScreenBuilderNodes } from "./shared/screenBuilderUtils";
 import { buildScreenBuilderOperatorFlowPaths, buildScreenBuilderOperatorFlowSteps, buildScreenBuilderRuntimeVerificationCommand } from "./operatorFlow";
 import { buildEnvironmentManagementPath, buildScreenBuilderPath } from "./screenBuilderPaths";
@@ -471,7 +471,7 @@ export function ScreenRuntimeMigrationPage() {
           />
           <div className="min-h-[680px] bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-4">
             {previewNodes.length && !runtimeBlocked ? (
-              renderScreenBuilderNodePreview(previewNodes[0], previewNodes, en)
+              <SduiRuntimeRenderer en={en} events={preview?.events || []} nodes={previewNodes} />
             ) : (
               <div className="flex min-h-[280px] items-center justify-center rounded-[var(--kr-gov-radius)] border border-dashed border-[var(--kr-gov-border-light)] text-sm text-[var(--kr-gov-text-secondary)]">
                 {runtimeBlocked
