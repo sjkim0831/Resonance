@@ -38,7 +38,9 @@ public class ProjectRuntimeInfoApiController {
             response.put("runtimeRole", safe(projectRuntimeContext == null ? null : projectRuntimeContext.getRole()));
             response.put("bound", manifest != null);
             if (manifest != null) {
-                response.put("projectName", manifest.getMetadata() == null ? "" : safe(manifest.getMetadata().getProjectName()));
+                response.put("projectName", manifest.getMetadata() == null
+                        ? safe(manifest.getProjectName())
+                        : safe(manifest.getMetadata().getProjectName()));
                 response.put("runtimeStatus", manifest.getRuntime() == null ? "" : safe(manifest.getRuntime().getStatus()));
                 response.put("runtimeMode", manifest.getRuntime() == null ? "" : safe(manifest.getRuntime().getRuntimeMode()));
                 response.put("sharedRuntimeId", manifest.getRuntime() == null ? "" : safe(manifest.getRuntime().getSharedRuntimeId()));

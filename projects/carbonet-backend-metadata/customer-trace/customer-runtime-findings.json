@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T05:44:20.658303+00:00",
+  "findingCount": 3,
+  "findings": [
+    {
+      "findingId": "RUNTIME-PROJECT_INFO",
+      "path": "/api/runtime/project-info",
+      "httpStatus": 500,
+      "state": "RUNTIME_GAP",
+      "remediation": "FIX_COMPILED_DEPLOYMENT_PENDING",
+      "automaticDeploy": false
+    },
+    {
+      "findingId": "RUNTIME-CUSTOMER_TRACE_SUMMARY",
+      "path": "/api/platform/customer-trace/summary",
+      "httpStatus": 404,
+      "state": "RUNTIME_GAP",
+      "remediation": "FEATURE_COMPILED_DEPLOYMENT_PENDING",
+      "automaticDeploy": false
+    },
+    {
+      "findingId": "RUNTIME-HEALTH",
+      "path": "/actuator/health",
+      "httpStatus": 200,
+      "state": "HEALTHY",
+      "remediation": "NONE",
+      "automaticDeploy": false
+    }
+  ]
+}

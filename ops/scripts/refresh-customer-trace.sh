@@ -41,4 +41,5 @@ python3 ops/scripts/build-customer-governance-scorecard.py
 python3 ops/scripts/build-customer-sr-workbench-import.py
 python3 ops/scripts/build-customer-sdui-bindings.py
 python3 ops/scripts/build-customer-verification-queue.py
+python3 ops/scripts/build-customer-runtime-findings.py
 echo "Customer Trace refresh completed."

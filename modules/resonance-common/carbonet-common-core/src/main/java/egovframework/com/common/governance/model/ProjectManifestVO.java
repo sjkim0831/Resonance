@@ -1,11 +1,15 @@
 package egovframework.com.common.governance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import java.util.Map;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProjectManifestVO {
     private Integer schemaVersion;
+    private String projectId;
+    private String projectName;
     private Metadata metadata;
     private Installations installations;
     private Bindings bindings;
