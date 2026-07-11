@@ -203,8 +203,6 @@ Unit=resonance-k8s-boot-stabilize.service
 WantedBy=timers.target
 EOF
 
-install_unit resonance-backend-auto-redeploy.service "$tmp_dir/resonance-backend-auto-redeploy.service"
-install_unit resonance-backend-auto-redeploy.timer "$tmp_dir/resonance-backend-auto-redeploy.timer"
 install_unit resonance-frontend-auto-build.service "$tmp_dir/resonance-frontend-auto-build.service"
 install_unit resonance-frontend-auto-build.timer "$tmp_dir/resonance-frontend-auto-build.timer"
 install_unit resonance-k8s-ops-doctor.service "$tmp_dir/resonance-k8s-ops-doctor.service"
@@ -215,15 +213,12 @@ install_unit resonance-startup-watchdog.service "$tmp_dir/resonance-startup-watc
 install_unit resonance-startup-watchdog.timer "$tmp_dir/resonance-startup-watchdog.timer"
 install_unit resonance-ownership-normalize.service "$tmp_dir/resonance-ownership-normalize.service"
 install_unit resonance-ownership-normalize.timer "$tmp_dir/resonance-ownership-normalize.timer"
-install_unit resonance-k8s-boot-stabilize.service "$tmp_dir/resonance-k8s-boot-stabilize.service"
-install_unit resonance-k8s-boot-stabilize.timer "$tmp_dir/resonance-k8s-boot-stabilize.timer"
 
 systemctl daemon-reload
 systemctl enable --now resonance-frontend-auto-build.timer
-systemctl enable --now resonance-backend-auto-redeploy.timer
 systemctl enable --now resonance-k8s-ops-doctor.timer
 systemctl enable --now resonance-k8s-housekeeper.timer
 systemctl enable --now resonance-startup-watchdog.timer
 systemctl enable --now resonance-ownership-normalize.timer
-systemctl enable --now resonance-k8s-boot-stabilize.timer
+systemctl disable --now resonance-backend-auto-redeploy.timer resonance-k8s-boot-stabilize.timer 2>/dev/null || true
 systemctl list-timers --all | grep -E 'resonance-(frontend|backend|k8s-ops|k8s-housekeeper)' || true

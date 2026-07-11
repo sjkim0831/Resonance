@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resonance.local/schema/project-manifest.schema.json",
+  "title": "Resonance project manifest",
+  "type": "object",
+  "required": ["schemaVersion", "metadata", "bindings", "runtime"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "metadata": {
+      "type": "object",
+      "required": ["projectId", "projectName"],
+      "properties": {
+        "projectId": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,31}$" },
+        "projectName": { "type": "string", "minLength": 1 }
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "required": ["database", "theme", "menu"],
+      "properties": {
+        "database": {
+          "type": "object",
+          "required": ["bindingMode", "projectDb"],
+          "properties": {
+            "bindingMode": { "enum": ["PROJECT_DB", "COMMON_DB + PROJECT_DB"] },
+            "projectDb": {
+              "type": "object",
+              "required": ["url", "schema"],
+              "properties": {
+                "url": { "type": "string", "pattern": "^jdbc:postgresql://" },
+                "schema": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        },
+        "theme": {
+          "type": "object",
+          "required": ["id"],
+          "properties": { "id": { "type": "string", "minLength": 1 } }
+        },
+        "menu": { "type": "object" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["packagePath", "manifestPath", "runtimeMode", "routing"],
+      "properties": {
+        "runtimeMode": { "const": "DEDICATED_PROJECT_RUNTIME" },
+        "routing": {
+          "type": "object",
+          "required": ["routePrefix", "infoPath"]
+        }
+      }
+    }
+  }
+}
