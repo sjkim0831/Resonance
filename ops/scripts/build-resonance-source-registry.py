@@ -5,7 +5,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROUTE_RE = re.compile(r'\{\s*id:\s*"([^"]+)"[^}]*?koPath:\s*"([^"]+)"[^}]*?enPath:\s*"([^"]+)"', re.S)
+ROUTE_RE = re.compile(r'\{\s*id:\s*"([^"]+)"[^}]*?label:\s*"([^"]+)"[^}]*?koPath:\s*"([^"]+)"[^}]*?enPath:\s*"([^"]+)"', re.S)
 LOADER_RE = re.compile(r'\{\s*id:\s*"([^"]+)"[^}]*?exportName:\s*"([^"]+)"[^}]*?import\("([^"]+)"\)', re.S)
 CLASS_MAPPING_RE = re.compile(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?\{?\s*"([^"]+)"', re.S)
 METHOD_MAPPING_RE = re.compile(r'@(Get|Post|Put|Delete|Patch|Request)Mapping\s*\((.*?)\)', re.S)
@@ -23,9 +23,9 @@ def scan_routes(root: Path) -> list[dict]:
     for path in family_root.glob("*.ts"):
         text = path.read_text(errors="ignore")
         for route_id, export_name, module in LOADER_RE.findall(text): loaders[route_id] = (export_name, module)
-        for route_id, ko_path, en_path in ROUTE_RE.findall(text):
+        for route_id, label, ko_path, en_path in ROUTE_RE.findall(text):
             export_name, module = loaders.get(route_id, ("", ""))
-            routes.append({"assetId": "ROUTE-" + route_id.upper(), "routeId": route_id, "koPath": ko_path,
+            routes.append({"assetId": "ROUTE-" + route_id.upper(), "routeId": route_id, "label": label, "koPath": ko_path,
                 "enPath": en_path, "exportName": export_name, "modulePath": module, "sourcePath": str(path)})
     return routes
 

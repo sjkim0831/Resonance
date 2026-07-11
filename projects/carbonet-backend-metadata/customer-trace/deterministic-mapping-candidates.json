@@ -1,0 +1,6954 @@
+{
+  "schemaVersion": 1,
+  "engine": "deterministic-baseline-v1",
+  "useCaseCount": 342,
+  "mappings": [
+    {
+      "useCaseId": "UC-COMMON-001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-LIST",
+          "path": "/support/qna_list",
+          "label": "지원 통합검색",
+          "confidence": 0.655,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-list",
+          "path": "/support/qna_list",
+          "label": "지원 통합검색",
+          "confidence": 0.655,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-NOTICE-LIST",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-notice-list",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-CATEGORY",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.567,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-category",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.567,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-DOWNLOAD-LIST",
+          "path": "/support/download_list",
+          "label": "자료실",
+          "confidence": 0.55,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-download-list",
+          "path": "/support/download_list",
+          "label": "자료실",
+          "confidence": 0.55,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-007",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-PASSWORD",
+          "path": "/mypage/password",
+          "label": "비밀번호 변경",
+          "confidence": 0.772,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-password",
+          "path": "/mypage/password",
+          "label": "비밀번호 변경",
+          "confidence": 0.772,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-013",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-018",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-019",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-FILE-MANAGEMENT",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.441,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-file-management",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.441,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-COMMON-020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-FILE-MANAGEMENT",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.441,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-file-management",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.441,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-LOGIN-HISTORY",
+          "path": "/admin/member/login_history",
+          "label": "로그인 이력",
+          "confidence": 0.633,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-login-history",
+          "path": "/admin/member/login_history",
+          "label": "로그인 이력",
+          "confidence": 0.633,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A002",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-JOIN-COMPLETE",
+          "path": "/join/step5",
+          "label": "회원가입 완료",
+          "confidence": 0.655,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-JOIN-TERMS",
+          "path": "/join/step2",
+          "label": "회원가입 약관",
+          "confidence": 0.655,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-join-complete",
+          "path": "/join/step5",
+          "label": "회원가입 완료",
+          "confidence": 0.655,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-join-terms",
+          "path": "/join/step2",
+          "label": "회원가입 약관",
+          "confidence": 0.655,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-JOIN-WIZARD",
+          "path": "/join/step1",
+          "label": "회원가입 위저드",
+          "confidence": 0.633,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A004",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PASSWORD-RESET",
+          "path": "/admin/member/reset_password",
+          "label": "비밀번호 초기화",
+          "confidence": 0.447,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-password-reset",
+          "path": "/admin/member/reset_password",
+          "label": "비밀번호 초기화",
+          "confidence": 0.447,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE-PASSWORD",
+          "path": "/mypage/password",
+          "label": "비밀번호 변경",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-password",
+          "path": "/mypage/password",
+          "label": "비밀번호 변경",
+          "confidence": 0.417,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A007",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-55B559EAA97D3E4A",
+          "contract": "POST /api/auth/roles",
+          "confidence": 0.46,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A013",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-A014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.669,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.669,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-PASSWORD",
+          "path": "/mypage/password",
+          "label": "비밀번호 변경",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-password",
+          "path": "/mypage/password",
+          "label": "비밀번호 변경",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-COMPANY",
+          "path": "/mypage/company",
+          "label": "기업 정보",
+          "confidence": 0.883,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-company",
+          "path": "/mypage/company",
+          "label": "기업 정보",
+          "confidence": 0.883,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-COMPANY",
+          "path": "/mypage/company",
+          "label": "기업 정보",
+          "confidence": 0.535,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-company",
+          "path": "/mypage/company",
+          "label": "기업 정보",
+          "confidence": 0.535,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M008",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE-STAFF",
+          "path": "/mypage/staff",
+          "label": "담당자 관리",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-staff",
+          "path": "/mypage/staff",
+          "label": "담당자 관리",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M009",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MEMBER-LIST",
+          "path": "/admin/member/list",
+          "label": "회원 목록",
+          "confidence": 0.619,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-member-list",
+          "path": "/admin/member/list",
+          "label": "회원 목록",
+          "confidence": 0.619,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-REGISTER",
+          "path": "/admin/member/register",
+          "label": "회원 등록",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M010",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MYPAGE-NOTIFICATION",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-notification",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M012",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage",
+          "path": "/mypage/profile",
+          "label": "마이페이지",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MEMBER-LIST",
+          "path": "/admin/member/list",
+          "label": "회원 목록",
+          "confidence": 0.834,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-member-list",
+          "path": "/admin/member/list",
+          "label": "회원 목록",
+          "confidence": 0.834,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-REGISTER",
+          "path": "/admin/member/register",
+          "label": "회원 등록",
+          "confidence": 0.647,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-member-register",
+          "path": "/admin/member/register",
+          "label": "회원 등록",
+          "confidence": 0.647,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-EDIT",
+          "path": "/admin/member/edit",
+          "label": "회원 수정",
+          "confidence": 0.611,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M014",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MEMBER-DETAIL",
+          "path": "/admin/member/detail",
+          "label": "회원 상세",
+          "confidence": 0.834,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-member-detail",
+          "path": "/admin/member/detail",
+          "label": "회원 상세",
+          "confidence": 0.834,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M018",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M019",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-AUTH-CHANGE",
+          "path": "/admin/member/auth-change",
+          "label": "권한 변경",
+          "confidence": 0.702,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-auth-change",
+          "path": "/admin/member/auth-change",
+          "label": "권한 변경",
+          "confidence": 0.702,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-DATA-HISTORY",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-data-history",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M021",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-COMPANY-LIST",
+          "path": "/admin/member/company_list",
+          "label": "회원사 목록",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-company-list",
+          "path": "/admin/member/company_list",
+          "label": "회원사 목록",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-JOIN-COMPANY-REGISTER-COMPLETE",
+          "path": "/join/companyRegisterComplete",
+          "label": "회원사 등록 완료",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-join-company-register-complete",
+          "path": "/join/companyRegisterComplete",
+          "label": "회원사 등록 완료",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-JOIN-COMPANY-REGISTER",
+          "path": "/join/companyRegister",
+          "label": "공개 회원사 등록",
+          "confidence": 0.444,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-B5B826DDE77262B9",
+          "contract": "GET /admin/api/admin/companies/search",
+          "confidence": 0.55,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M022",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-COMPANY-DETAIL",
+          "path": "/admin/member/company_detail",
+          "label": "회원사 상세",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-company-detail",
+          "path": "/admin/member/company_detail",
+          "label": "회원사 상세",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-COMPANY-LIST",
+          "path": "/admin/member/company_list",
+          "label": "회원사 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-company-list",
+          "path": "/admin/member/company_list",
+          "label": "회원사 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-DETAIL",
+          "path": "/admin/member/detail",
+          "label": "회원 상세",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-B5B826DDE77262B9",
+          "contract": "GET /admin/api/admin/companies/search",
+          "confidence": 0.491,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M023",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-STAFF",
+          "path": "/mypage/staff",
+          "label": "담당자 관리",
+          "confidence": 0.662,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-staff",
+          "path": "/mypage/staff",
+          "label": "담당자 관리",
+          "confidence": 0.662,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-COMPANY-LIST",
+          "path": "/admin/member/company_list",
+          "label": "회원사 목록",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-company-list",
+          "path": "/admin/member/company_list",
+          "label": "회원사 목록",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-M024",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-DATA-HISTORY",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.45,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-data-history",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.45,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-ADMIN-CREATE",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-create",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E002",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E004",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E005",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-SIMULATE",
+          "path": "/emission/simulate",
+          "label": "배출량 산정",
+          "confidence": 0.763,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-simulate",
+          "path": "/emission/simulate",
+          "label": "배출량 산정",
+          "confidence": 0.763,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E011",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-ADMIN-CREATE",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-create",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E018",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E019",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-ADMIN-PERMISSION",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-permission",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-SURVEY-ADMIN",
+          "path": "/admin/emission/survey-admin",
+          "label": "배출 설문 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-survey-admin",
+          "path": "/admin/emission/survey-admin",
+          "label": "배출 설문 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-ECOINVENT-ADMIN",
+          "path": "/admin/emission/ecoinvent",
+          "label": "ecoinvent 배출계수 관리",
+          "confidence": 0.4,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E021",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-GWP-VALUES",
+          "path": "/admin/emission/gwp-values",
+          "label": "GWP 값 관리",
+          "confidence": 0.456,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-gwp-values",
+          "path": "/admin/emission/gwp-values",
+          "label": "GWP 값 관리",
+          "confidence": 0.456,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E022",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-GWP-VALUES",
+          "path": "/admin/emission/gwp-values",
+          "label": "GWP 값 관리",
+          "confidence": 0.538,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-gwp-values",
+          "path": "/admin/emission/gwp-values",
+          "label": "GWP 값 관리",
+          "confidence": 0.538,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-ADMIN-PERMISSION",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-permission",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-SURVEY-ADMIN",
+          "path": "/admin/emission/survey-admin",
+          "label": "배출 설문 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E023",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-RESULT",
+          "path": "/emission/result",
+          "label": "산정 결과 조회",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-result",
+          "path": "/emission/result",
+          "label": "산정 결과 조회",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-RESULT-LIST",
+          "path": "/admin/emission/result_list",
+          "label": "산정 결과 관리",
+          "confidence": 0.755,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-result-list",
+          "path": "/admin/emission/result_list",
+          "label": "산정 결과 관리",
+          "confidence": 0.755,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-ADMIN-PERMISSION",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E024",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-PROJECT-LIST",
+          "path": "/emission/project_list",
+          "label": "배출량 관리",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-project-list",
+          "path": "/emission/project_list",
+          "label": "배출량 관리",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E025",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-LCI",
+          "path": "/emission/lci",
+          "label": "LCI DB 조회",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-lci",
+          "path": "/emission/lci",
+          "label": "LCI DB 조회",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E026",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E027",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-DATA-HISTORY",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-data-history",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E028",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-SIMULATE",
+          "path": "/emission/simulate",
+          "label": "배출량 산정",
+          "confidence": 0.591,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-simulate",
+          "path": "/emission/simulate",
+          "label": "배출량 산정",
+          "confidence": 0.591,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-RESULT",
+          "path": "/emission/result",
+          "label": "산정 결과 조회",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-RESULT-LIST",
+          "path": "/admin/emission/result_list",
+          "label": "산정 결과 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-result",
+          "path": "/emission/result",
+          "label": "산정 결과 조회",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E029",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E030",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E031",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-DATA-HISTORY",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.715,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-data-history",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.715,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-ADMIN-PERMISSION",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-permission",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.413,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-SURVEY-ADMIN",
+          "path": "/admin/emission/survey-admin",
+          "label": "배출 설문 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E032",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E033",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E034",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E035",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E036",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E037",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PERFORMANCE",
+          "path": "/admin/system/performance",
+          "label": "성능",
+          "confidence": 0.457,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-performance",
+          "path": "/admin/system/performance",
+          "label": "성능",
+          "confidence": 0.457,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E038",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E039",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-E040",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.733,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-edit",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.733,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-FORM",
+          "path": "/certificate/report_form",
+          "label": "보고서 작성",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-form",
+          "path": "/certificate/report_form",
+          "label": "보고서 작성",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-edit",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.45,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-edit",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.45,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-report-template",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-INPUT-TEMPLATE",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-edit",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-edit",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-APPLY",
+          "path": "/certificate/apply",
+          "label": "인증서 신청",
+          "confidence": 0.613,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-apply",
+          "path": "/certificate/apply",
+          "label": "인증서 신청",
+          "confidence": 0.613,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-PENDING",
+          "path": "/admin/certificate/pending_list",
+          "label": "인증서 발급 대기",
+          "confidence": 0.522,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-pending",
+          "path": "/admin/certificate/pending_list",
+          "label": "인증서 발급 대기",
+          "confidence": 0.522,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R008",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.7,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.7,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-APPLY",
+          "path": "/certificate/apply",
+          "label": "인증서 신청",
+          "confidence": 0.45,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-APPROVE",
+          "path": "/admin/certificate/approve",
+          "label": "인증서 승인",
+          "confidence": 0.45,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-STATISTICS",
+          "path": "/admin/certificate/statistics",
+          "label": "인증서 통계",
+          "confidence": 0.45,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R009",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R010",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.45,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.45,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-OBJECTION-LIST",
+          "path": "/admin/certificate/objection_list",
+          "label": "이의신청 처리",
+          "confidence": 0.5,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-objection-list",
+          "path": "/admin/certificate/objection_list",
+          "label": "이의신청 처리",
+          "confidence": 0.5,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R012",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-OBJECTION-LIST",
+          "path": "/admin/certificate/objection_list",
+          "label": "이의신청 처리",
+          "confidence": 0.706,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-objection-list",
+          "path": "/admin/certificate/objection_list",
+          "label": "이의신청 처리",
+          "confidence": 0.706,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REVIEW",
+          "path": "/admin/certificate/review",
+          "label": "발급 검토",
+          "confidence": 0.552,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-review",
+          "path": "/admin/certificate/review",
+          "label": "발급 검토",
+          "confidence": 0.552,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R017",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-OBJECTION-LIST",
+          "path": "/admin/certificate/objection_list",
+          "label": "이의신청 처리",
+          "confidence": 0.5,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-objection-list",
+          "path": "/admin/certificate/objection_list",
+          "label": "이의신청 처리",
+          "confidence": 0.5,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R018",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-STATISTICS",
+          "path": "/admin/certificate/statistics",
+          "label": "인증서 통계",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-statistics",
+          "path": "/admin/certificate/statistics",
+          "label": "인증서 통계",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R019",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.465,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.465,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R021",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-LIST",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-list",
+          "path": "/certificate/list",
+          "label": "인증서 목록",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R022",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R023",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R024",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R025",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-AUDIT-LOG",
+          "path": "/admin/certificate/audit-log",
+          "label": "인증서 감사 로그",
+          "confidence": 0.522,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-PENDING",
+          "path": "/admin/certificate/pending_list",
+          "label": "인증서 발급 대기",
+          "confidence": 0.522,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-audit-log",
+          "path": "/admin/certificate/audit-log",
+          "label": "인증서 감사 로그",
+          "confidence": 0.522,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-pending",
+          "path": "/admin/certificate/pending_list",
+          "label": "인증서 발급 대기",
+          "confidence": 0.522,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-R026",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-PRODUCTION-LIST",
+          "path": "/co2/production_list",
+          "label": "생산 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-production-list",
+          "path": "/co2/production_list",
+          "label": "생산 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-PRODUCTION-LIST",
+          "path": "/co2/production_list",
+          "label": "생산 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-production-list",
+          "path": "/co2/production_list",
+          "label": "생산 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-PRODUCTION-LIST",
+          "path": "/co2/production_list",
+          "label": "생산 정보",
+          "confidence": 0.523,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-production-list",
+          "path": "/co2/production_list",
+          "label": "생산 정보",
+          "confidence": 0.523,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-DEMAND-LIST",
+          "path": "/co2/demand_list",
+          "label": "수요 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-demand-list",
+          "path": "/co2/demand_list",
+          "label": "수요 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-DEMAND-LIST",
+          "path": "/co2/demand_list",
+          "label": "수요 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-demand-list",
+          "path": "/co2/demand_list",
+          "label": "수요 정보",
+          "confidence": 0.606,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-DEMAND-LIST",
+          "path": "/co2/demand_list",
+          "label": "수요 정보",
+          "confidence": 0.523,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-demand-list",
+          "path": "/co2/demand_list",
+          "label": "수요 정보",
+          "confidence": 0.523,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI007",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REC-CHECK",
+          "path": "/admin/certificate/rec_check",
+          "label": "REC 중복 확인",
+          "confidence": 0.565,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-rec-check",
+          "path": "/admin/certificate/rec_check",
+          "label": "REC 중복 확인",
+          "confidence": 0.565,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI013",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-CI016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON001",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.483,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.474,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.459,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CO2-CREDIT",
+          "path": "/co2/credit",
+          "label": "탄소 크레딧",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-credit",
+          "path": "/co2/credit",
+          "label": "탄소 크레딧",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.462,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.457,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON003",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.474,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.459,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.453,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MONITORING-REALTIME",
+          "path": "/monitoring/realtime",
+          "label": "실시간 모니터링",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-monitoring-realtime",
+          "path": "/monitoring/realtime",
+          "label": "실시간 모니터링",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.486,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.457,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.452,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TAG-MANAGEMENT",
+          "path": "/admin/content/tag",
+          "label": "태그 관리",
+          "confidence": 0.662,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-tag-management",
+          "path": "/admin/content/tag",
+          "label": "태그 관리",
+          "confidence": 0.662,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TAG-MANAGEMENT",
+          "path": "/admin/content/tag",
+          "label": "태그 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-tag-management",
+          "path": "/admin/content/tag",
+          "label": "태그 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TAG-MANAGEMENT",
+          "path": "/admin/content/tag",
+          "label": "태그 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-tag-management",
+          "path": "/admin/content/tag",
+          "label": "태그 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON008",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-ADMIN-MONITORING-DASHBOARD",
+          "path": "/admin/system/monitoring-dashboard",
+          "label": "모니터링 대시보드",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MONITORING-INDEX",
+          "path": "/monitoring/index",
+          "label": "모니터링 대시보드",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-monitoring-dashboard",
+          "path": "/admin/system/monitoring-dashboard",
+          "label": "모니터링 대시보드",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-monitoring-index",
+          "path": "/monitoring/index",
+          "label": "모니터링 대시보드",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.452,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON009",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-NOTIFICATION",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.583,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-notification",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.583,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON010",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.468,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.462,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.453,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON011",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.468,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.468,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON012",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-SENSOR-ADD",
+          "path": "/admin/monitoring/sensor_add",
+          "label": "센서 등록",
+          "confidence": 0.4,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-SENSOR-LIST",
+          "path": "/admin/monitoring/sensor_list",
+          "label": "센서 목록",
+          "confidence": 0.4,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-sensor-add",
+          "path": "/admin/monitoring/sensor_add",
+          "label": "센서 등록",
+          "confidence": 0.4,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-sensor-list",
+          "path": "/admin/monitoring/sensor_list",
+          "label": "센서 목록",
+          "confidence": 0.4,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.462,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON013",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-DFE180EC84EBBD8B",
+          "contract": "GET /admin/api/monitoring/alerts",
+          "confidence": 0.591,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-704A3C2AD9A35926",
+          "contract": "GET /en/admin/api/monitoring/alerts",
+          "confidence": 0.525,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.483,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.477,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.453,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON014",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-DATA-HISTORY",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-data-history",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON015",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MONITORING-STATISTICS",
+          "path": "/monitoring/statistics",
+          "label": "ESG 보고서",
+          "confidence": 0.772,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-monitoring-statistics",
+          "path": "/monitoring/statistics",
+          "label": "ESG 보고서",
+          "confidence": 0.772,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON016",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MONITORING-SHARE",
+          "path": "/monitoring/share",
+          "label": "이해관계자 공유",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-monitoring-share",
+          "path": "/monitoring/share",
+          "label": "이해관계자 공유",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON018",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-CD29910BA0CEBE31",
+          "contract": "GET /api/monitoring/metrics",
+          "confidence": 0.477,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-E713A5B9416E22A3",
+          "contract": "GET /api/monitoring/system",
+          "confidence": 0.468,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-F744DD759D155D53",
+          "contract": "GET /api/monitoring/health",
+          "confidence": 0.453,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON019",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MON020",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-TRADE-APPROVE",
+          "path": "/admin/trade/approve",
+          "label": "거래 승인",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-TRADE-MARKET",
+          "path": "/trade/market",
+          "label": "거래 시장",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-approve",
+          "path": "/admin/trade/approve",
+          "label": "거래 승인",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-BUY-REQUEST",
+          "path": "/trade/buy_request",
+          "label": "구매 요청",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-buy-request",
+          "path": "/trade/buy_request",
+          "label": "구매 요청",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-SELL",
+          "path": "/trade/sell",
+          "label": "판매 등록",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-sell",
+          "path": "/trade/sell",
+          "label": "판매 등록",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T008",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.675,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.675,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-TRADE-APPROVE",
+          "path": "/admin/trade/approve",
+          "label": "거래 승인",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-TRADE-MARKET",
+          "path": "/trade/market",
+          "label": "거래 시장",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-approve",
+          "path": "/admin/trade/approve",
+          "label": "거래 승인",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T010",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.4,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.4,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T012",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-REJECT",
+          "path": "/admin/trade/reject",
+          "label": "거래 반려 검토",
+          "confidence": 0.552,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-reject",
+          "path": "/admin/trade/reject",
+          "label": "거래 반려 검토",
+          "confidence": 0.552,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.519,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.519,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T014",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-APPROVE",
+          "path": "/admin/trade/approve",
+          "label": "거래 승인",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-approve",
+          "path": "/admin/trade/approve",
+          "label": "거래 승인",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T015",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T016",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-90833A3BBC0BD392",
+          "contract": "GET /admin/api/monitoring/health",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-DFE180EC84EBBD8B",
+          "contract": "GET /admin/api/monitoring/alerts",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-FC1F929CF134DC74",
+          "contract": "GET /admin/api/monitoring/system",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-079929D31BDDD9E8",
+          "contract": "GET /admin/api/monitoring/overview",
+          "confidence": 0.468,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-2C038F27DBA31007",
+          "contract": "GET /admin/api/monitoring/database",
+          "confidence": 0.468,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T017",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T018",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-REPORT",
+          "path": "/trade/report",
+          "label": "거래 리포트",
+          "confidence": 0.704,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-report",
+          "path": "/trade/report",
+          "label": "거래 리포트",
+          "confidence": 0.704,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T019",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-RESULT",
+          "path": "/emission/result",
+          "label": "산정 결과 조회",
+          "confidence": 0.429,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-result",
+          "path": "/emission/result",
+          "label": "산정 결과 조회",
+          "confidence": 0.429,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T021",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-TRADE-LIST",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-trade-list",
+          "path": "/trade/list",
+          "label": "거래 목록",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T022",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REC-CHECK",
+          "path": "/admin/certificate/rec_check",
+          "label": "REC 중복 확인",
+          "confidence": 0.456,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-rec-check",
+          "path": "/admin/certificate/rec_check",
+          "label": "REC 중복 확인",
+          "confidence": 0.456,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T023",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T024",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T025",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T026",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T027",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T028",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-NOTIFICATION",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.753,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-notification",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.753,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T029",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-T030",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P002",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PAYMENT-VIRTUAL-ACCOUNT",
+          "path": "/payment/virtual_account",
+          "label": "가상계좌",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-virtual-account",
+          "path": "/payment/virtual_account",
+          "label": "가상계좌",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PAYMENT-VIRTUAL-ACCOUNT",
+          "path": "/payment/virtual_account",
+          "label": "가상계좌",
+          "confidence": 0.655,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-virtual-account",
+          "path": "/payment/virtual_account",
+          "label": "가상계좌",
+          "confidence": 0.655,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-ADMIN-CREATE",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-create",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PAYMENT-NOTIFY",
+          "path": "/payment/notify",
+          "label": "세금계산서",
+          "confidence": 0.669,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-notify",
+          "path": "/payment/notify",
+          "label": "세금계산서",
+          "confidence": 0.669,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P009",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PAYMENT-HISTORY",
+          "path": "/payment/history",
+          "label": "결제 내역",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-history",
+          "path": "/payment/history",
+          "label": "결제 내역",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P010",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PAYMENT-PAY",
+          "path": "/payment/pay",
+          "label": "결제 요청",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-pay",
+          "path": "/payment/pay",
+          "label": "결제 요청",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P011",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PAYMENT-VIRTUAL-ACCOUNT",
+          "path": "/payment/virtual_account",
+          "label": "가상계좌",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-virtual-account",
+          "path": "/payment/virtual_account",
+          "label": "가상계좌",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P016",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-REFUND-PROCESS",
+          "path": "/admin/payment/refund_process",
+          "label": "환불 처리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-refund-process",
+          "path": "/admin/payment/refund_process",
+          "label": "환불 처리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-PAYMENT-REFUND-ACCOUNT",
+          "path": "/payment/refund_account",
+          "label": "환불 계좌",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-payment-refund-account",
+          "path": "/payment/refund_account",
+          "label": "환불 계좌",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-REFUND-LIST",
+          "path": "/admin/payment/refund_list",
+          "label": "환불 요청 목록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-P018",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L002",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EXTERNAL-MONITORING",
+          "path": "/admin/external/monitoring",
+          "label": "연계 모니터링",
+          "confidence": 0.606,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-external-monitoring",
+          "path": "/admin/external/monitoring",
+          "label": "연계 모니터링",
+          "confidence": 0.606,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-90833A3BBC0BD392",
+          "contract": "GET /admin/api/monitoring/health",
+          "confidence": 0.483,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-DFE180EC84EBBD8B",
+          "contract": "GET /admin/api/monitoring/alerts",
+          "confidence": 0.483,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-FC1F929CF134DC74",
+          "contract": "GET /admin/api/monitoring/system",
+          "confidence": 0.483,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-079929D31BDDD9E8",
+          "contract": "GET /admin/api/monitoring/overview",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-2C038F27DBA31007",
+          "contract": "GET /admin/api/monitoring/database",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L005",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EXTERNAL-CONNECTION-LIST",
+          "path": "/admin/external/connection_list",
+          "label": "외부 연계 목록",
+          "confidence": 0.528,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-external-connection-list",
+          "path": "/admin/external/connection_list",
+          "label": "외부 연계 목록",
+          "confidence": 0.528,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-SYSTEM-LINK",
+          "path": "/admin/emission/system-link",
+          "label": "외부 시스템 연계",
+          "confidence": 0.471,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-system-link",
+          "path": "/admin/emission/system-link",
+          "label": "외부 시스템 연계",
+          "confidence": 0.471,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EXTERNAL-LOGS",
+          "path": "/admin/external/logs",
+          "label": "외부 연계 로그",
+          "confidence": 0.444,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L011",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EXTERNAL-LOGS",
+          "path": "/admin/external/logs",
+          "label": "외부 연계 로그",
+          "confidence": 0.552,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-external-logs",
+          "path": "/admin/external/logs",
+          "label": "외부 연계 로그",
+          "confidence": 0.552,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-AI-LOGS",
+          "path": "/admin/ai/logs",
+          "label": "로그 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-ai-logs",
+          "path": "/admin/ai/logs",
+          "label": "로그 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L014",
+      "pageCandidates": [],
+      "apiCandidates": [
+        {
+          "assetId": "API-B3AE62DDD6414D2E",
+          "contract": "GET /admin/api/cubrid/status",
+          "confidence": 0.464,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L015",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-API-MANAGEMENT",
+          "path": "/admin/system/api-management",
+          "label": "API 관리",
+          "confidence": 0.497,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-api-management",
+          "path": "/admin/system/api-management",
+          "label": "API 관리",
+          "confidence": 0.497,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EXTERNAL-KEYS",
+          "path": "/admin/external/keys",
+          "label": "외부 인증키 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-external-keys",
+          "path": "/admin/external/keys",
+          "label": "외부 인증키 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L018",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MYPAGE-NOTIFICATION",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.753,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mypage-notification",
+          "path": "/mypage/notification",
+          "label": "알림 설정",
+          "confidence": 0.753,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L019",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-SYSTEM-LINK",
+          "path": "/admin/emission/system-link",
+          "label": "외부 시스템 연계",
+          "confidence": 0.675,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-system-link",
+          "path": "/admin/emission/system-link",
+          "label": "외부 시스템 연계",
+          "confidence": 0.675,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EXTERNAL-CONNECTION-LIST",
+          "path": "/admin/external/connection_list",
+          "label": "외부 연계 목록",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-external-connection-list",
+          "path": "/admin/external/connection_list",
+          "label": "외부 연계 목록",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L021",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L022",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L023",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-L024",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-API-MANAGEMENT",
+          "path": "/admin/system/api-management",
+          "label": "API 관리",
+          "confidence": 0.53,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-api-management",
+          "path": "/admin/system/api-management",
+          "label": "API 관리",
+          "confidence": 0.53,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-NOTICE-LIST",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.6,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-notice-list",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.6,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-CATEGORY",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-category",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S003",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-CATEGORY",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-category",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S004",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-CATEGORY",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.567,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-category",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.567,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-CATEGORY",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-category",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-QNA-CATEGORY",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-qna-category",
+          "path": "/admin/content/qna",
+          "label": "Q&A 분류",
+          "confidence": 0.483,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-DOWNLOAD-LIST",
+          "path": "/support/download_list",
+          "label": "자료실",
+          "confidence": 0.591,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-download-list",
+          "path": "/support/download_list",
+          "label": "자료실",
+          "confidence": 0.591,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S008",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-NOTICE-LIST",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-notice-list",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S009",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-BOARD-LIST",
+          "path": "/admin/content/board_list",
+          "label": "게시판 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-board-list",
+          "path": "/admin/content/board_list",
+          "label": "게시판 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S010",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-POPUP-LIST",
+          "path": "/admin/content/popup_list",
+          "label": "팝업 목록",
+          "confidence": 0.71,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-popup-list",
+          "path": "/admin/content/popup_list",
+          "label": "팝업 목록",
+          "confidence": 0.71,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-POPUP-EDIT",
+          "path": "/admin/content/popup_edit",
+          "label": "팝업 스케줄",
+          "confidence": 0.441,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-popup-edit",
+          "path": "/admin/content/popup_edit",
+          "label": "팝업 스케줄",
+          "confidence": 0.441,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-BANNER-LIST",
+          "path": "/admin/content/banner_list",
+          "label": "배너 목록",
+          "confidence": 0.71,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-banner-list",
+          "path": "/admin/content/banner_list",
+          "label": "배너 목록",
+          "confidence": 0.71,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-BANNER-EDIT",
+          "path": "/admin/content/banner_edit",
+          "label": "배너 편집",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-banner-edit",
+          "path": "/admin/content/banner_edit",
+          "label": "배너 편집",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-FAQ-MANAGEMENT",
+          "path": "/admin/content/faq_list",
+          "label": "FAQ 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-faq-management",
+          "path": "/admin/content/faq_list",
+          "label": "FAQ 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-SUPPORT-FAQ",
+          "path": "/support/faq",
+          "label": "FAQ",
+          "confidence": 0.883,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-support-faq",
+          "path": "/support/faq",
+          "label": "FAQ",
+          "confidence": 0.883,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-FAQ-MENU-MANAGEMENT",
+          "path": "/admin/content/menu",
+          "label": "FAQ 메뉴 관리",
+          "confidence": 0.53,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S016",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-FILE-MANAGEMENT",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.441,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-file-management",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.441,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S017",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-FILE-MANAGEMENT",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-file-management",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S018",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-FILE-MANAGEMENT",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.662,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-file-management",
+          "path": "/admin/content/file",
+          "label": "파일 관리",
+          "confidence": 0.662,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S019",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-NOTICE-LIST",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.517,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-notice-list",
+          "path": "/support/notice_list",
+          "label": "공지사항",
+          "confidence": 0.517,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S020",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S021",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S022",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S023",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S024",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-SITEMAP",
+          "path": "/sitemap",
+          "label": "사이트맵",
+          "confidence": 0.655,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-sitemap",
+          "path": "/sitemap",
+          "label": "사이트맵",
+          "confidence": 0.655,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-ADMIN-SITEMAP",
+          "path": "/admin/content/sitemap",
+          "label": "관리자 사이트맵",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-sitemap",
+          "path": "/admin/content/sitemap",
+          "label": "관리자 사이트맵",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-ADMIN-CREATE",
+          "path": "/admin/member/admin_account",
+          "label": "관리자 생성",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S025",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S026",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S027",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-S028",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS001",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-AI-DASHBOARD",
+          "path": "/admin/ai/dashboard",
+          "label": "AI 대시보드",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EDU-INDEX",
+          "path": "/edu/index",
+          "label": "교육 대시보드",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MONITORING-DASHBOARD",
+          "path": "/monitoring/dashboard",
+          "label": "통합 대시보드",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-PAYMENT-INDEX",
+          "path": "/payment/index",
+          "label": "결제 대시보드",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-SCREEN-BUILDER-DASHBOARD",
+          "path": "/admin/system/screen-builder-dashboard",
+          "label": "빌더 대시보드",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-BACB39849F22C781",
+          "contract": "GET /admin/ai/dashboard",
+          "confidence": 0.467,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MEMBER-STATS",
+          "path": "/admin/member/stats",
+          "label": "회원 통계",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-member-stats",
+          "path": "/admin/member/stats",
+          "label": "회원 통계",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-EDIT",
+          "path": "/admin/member/edit",
+          "label": "회원 수정",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-LIST",
+          "path": "/admin/member/list",
+          "label": "회원 목록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-MEMBER-REGISTER",
+          "path": "/admin/member/register",
+          "label": "회원 등록",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS004",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS005",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-ADMIN-PERMISSION",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.627,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-admin-permission",
+          "path": "/admin/member/admin_account/permissions",
+          "label": "관리자 권한",
+          "confidence": 0.627,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-AUTH-CHANGE",
+          "path": "/admin/member/auth-change",
+          "label": "권한 변경",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-AUTH-GROUP",
+          "path": "/admin/auth/group",
+          "label": "권한 그룹",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-auth-change",
+          "path": "/admin/member/auth-change",
+          "label": "권한 변경",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS007",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-AI-LOGS",
+          "path": "/admin/ai/logs",
+          "label": "로그 관리",
+          "confidence": 0.71,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-ai-logs",
+          "path": "/admin/ai/logs",
+          "label": "로그 관리",
+          "confidence": 0.71,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-OPERATIONS-LOG-MANAGEMENT",
+          "path": "/admin/system/logs",
+          "label": "운영 로그 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-operations-log-management",
+          "path": "/admin/system/logs",
+          "label": "운영 로그 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-C2DB65F9392D91CD",
+          "contract": "GET /admin/api/kubernetes/logs",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS011",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MENU-MANAGEMENT",
+          "path": "/admin/system/menu",
+          "label": "메뉴 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-menu-management",
+          "path": "/admin/system/menu",
+          "label": "메뉴 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-FAQ-MENU-MANAGEMENT",
+          "path": "/admin/content/menu",
+          "label": "FAQ 메뉴 관리",
+          "confidence": 0.65,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-faq-menu-management",
+          "path": "/admin/content/menu",
+          "label": "FAQ 메뉴 관리",
+          "confidence": 0.65,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-SCREEN-MENU-ASSIGNMENT-MANAGEMENT",
+          "path": "/admin/system/screen-menu-assignment-management",
+          "label": "화면-메뉴 귀속 관리",
+          "confidence": 0.469,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-INPUT-TEMPLATE",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-input-template",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-report-template",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS014",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-INPUT-TEMPLATE",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-input-template",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-report-template",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.412,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS015",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-BATCH-MANAGEMENT",
+          "path": "/admin/system/batch",
+          "label": "배치 관리",
+          "confidence": 0.519,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-batch-management",
+          "path": "/admin/system/batch",
+          "label": "배치 관리",
+          "confidence": 0.519,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS017",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS018",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS019",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS020",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-BACKUP-CONFIG",
+          "path": "/admin/system/backup_config",
+          "label": "백업 설정",
+          "confidence": 0.6,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-BACKUP-EXECUTION",
+          "path": "/admin/system/backup",
+          "label": "백업 실행",
+          "confidence": 0.6,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-backup-config",
+          "path": "/admin/system/backup_config",
+          "label": "백업 설정",
+          "confidence": 0.6,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-backup-execution",
+          "path": "/admin/system/backup",
+          "label": "백업 실행",
+          "confidence": 0.6,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS021",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS022",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-API-MANAGEMENT",
+          "path": "/admin/system/api-management",
+          "label": "API 관리",
+          "confidence": 0.8,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-api-management",
+          "path": "/admin/system/api-management",
+          "label": "API 관리",
+          "confidence": 0.8,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EXTERNAL-USAGE",
+          "path": "/admin/external/usage",
+          "label": "API 사용량",
+          "confidence": 0.437,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-external-usage",
+          "path": "/admin/external/usage",
+          "label": "API 사용량",
+          "confidence": 0.437,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS023",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS024",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS025",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS026",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS027",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS028",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS029",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-DATA-HISTORY",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.606,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-data-history",
+          "path": "/admin/emission/data_history",
+          "label": "데이터 변경 이력",
+          "confidence": 0.606,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS030",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-PERFORMANCE",
+          "path": "/admin/system/performance",
+          "label": "성능",
+          "confidence": 0.556,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-performance",
+          "path": "/admin/system/performance",
+          "label": "성능",
+          "confidence": 0.556,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-BATCH-MONITORING",
+          "path": "/admin/system/batch-monitoring",
+          "label": "배치 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CRON-MONITORING",
+          "path": "/admin/system/cron-monitoring",
+          "label": "크론 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-DB-MONITORING",
+          "path": "/admin/system/db-monitoring",
+          "label": "DB 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS031",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EMISSION-INPUT-TEMPLATE",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.439,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-input-template",
+          "path": "/admin/emission/input-template",
+          "label": "입력 템플릿 관리",
+          "confidence": 0.439,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-report-template",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS032",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MTN-VERSION",
+          "path": "/mtn/version",
+          "label": "버전 관리",
+          "confidence": 0.4,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mtn-version",
+          "path": "/mtn/version",
+          "label": "버전 관리",
+          "confidence": 0.4,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-D6B17F78A60EDBB7",
+          "contract": "ANY /admin/system/version",
+          "confidence": 0.637,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-3360576A29E4ACE6",
+          "contract": "GET /admin/api/system/metrics",
+          "confidence": 0.475,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-3D5B57672869C22A",
+          "contract": "GET /admin/api/system/services",
+          "confidence": 0.47,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-3A6E7CAD67676119",
+          "contract": "GET /api/admin/system/asset/list",
+          "confidence": 0.464,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "API-628A48FDE2FCFE82",
+          "contract": "GET /admin/system/version/page-data",
+          "confidence": 0.463,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS033",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS034",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-AI-QUALITY",
+          "path": "/admin/ai/quality",
+          "label": "품질 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-ai-quality",
+          "path": "/admin/ai/quality",
+          "label": "품질 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CO2-ANALYSIS",
+          "path": "/co2/analysis",
+          "label": "품질 지표",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-co2-analysis",
+          "path": "/co2/analysis",
+          "label": "품질 지표",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [
+        {
+          "assetId": "API-EC3D91F5F12A3254",
+          "contract": "GET /admin/ai/quality",
+          "confidence": 0.458,
+          "reasons": [
+            "HTTP method/path deterministic similarity"
+          ]
+        }
+      ],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS035",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS036",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.733,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-certificate-report-edit",
+          "path": "/certificate/report_edit",
+          "label": "보고서 수정",
+          "confidence": 0.733,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.512,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-emission-report-template",
+          "path": "/admin/emission/report-template",
+          "label": "보고서 템플릿 관리",
+          "confidence": 0.512,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CERTIFICATE-REPORT-FORM",
+          "path": "/certificate/report_form",
+          "label": "보고서 작성",
+          "confidence": 0.483,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS037",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS038",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS039",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS040",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS041",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SYS042",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-BATCH-MONITORING",
+          "path": "/admin/system/batch-monitoring",
+          "label": "배치 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-CRON-MONITORING",
+          "path": "/admin/system/cron-monitoring",
+          "label": "크론 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-DB-MONITORING",
+          "path": "/admin/system/db-monitoring",
+          "label": "DB 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EXTERNAL-MONITORING",
+          "path": "/admin/external/monitoring",
+          "label": "연계 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-SECURITY-MONITORING",
+          "path": "/admin/system/security-monitoring",
+          "label": "보안 모니터링",
+          "confidence": 0.417,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU002",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EDU-APPLY",
+          "path": "/edu/apply",
+          "label": "교육 신청",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-edu-apply",
+          "path": "/edu/apply",
+          "label": "교육 신청",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU004",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU005",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EDU-APPLY",
+          "path": "/edu/apply",
+          "label": "교육 신청",
+          "confidence": 0.46,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-edu-apply",
+          "path": "/edu/apply",
+          "label": "교육 신청",
+          "confidence": 0.46,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "ROUTE-EDU-INDEX",
+          "path": "/edu/index",
+          "label": "교육 대시보드",
+          "confidence": 0.425,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-edu-index",
+          "path": "/edu/index",
+          "label": "교육 대시보드",
+          "confidence": 0.425,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU007",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU011",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-EDU-MY-COURSE",
+          "path": "/edu/my_course",
+          "label": "나의 교육",
+          "confidence": 0.441,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-edu-my-course",
+          "path": "/edu/my_course",
+          "label": "나의 교육",
+          "confidence": 0.441,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-EDU014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB002",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB004",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB005",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB006",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MTN-VERSION",
+          "path": "/mtn/version",
+          "label": "버전 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mtn-version",
+          "path": "/mtn/version",
+          "label": "버전 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB007",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-MOB010",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP001",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP002",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP003",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP004",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP005",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP006",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP007",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP008",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP009",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP010",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-MTN-VERSION",
+          "path": "/mtn/version",
+          "label": "버전 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-mtn-version",
+          "path": "/mtn/version",
+          "label": "버전 관리",
+          "confidence": 0.89,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP011",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP012",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP013",
+      "pageCandidates": [
+        {
+          "assetId": "ROUTE-LOGIN-HISTORY",
+          "path": "/admin/member/login_history",
+          "label": "로그인 이력",
+          "confidence": 0.613,
+          "reasons": [
+            "title/route deterministic similarity"
+          ]
+        },
+        {
+          "assetId": "SDUI-route-login-history",
+          "path": "/admin/member/login_history",
+          "label": "로그인 이력",
+          "confidence": 0.613,
+          "reasons": [
+            "title/SDUI deterministic similarity"
+          ]
+        }
+      ],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP014",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP015",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    },
+    {
+      "useCaseId": "UC-SUP016",
+      "pageCandidates": [],
+      "apiCandidates": [],
+      "decision": "REVIEW_REQUIRED",
+      "automaticApproval": false
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T05:05:18.744533+00:00",
+  "generatedAt": "2026-07-11T05:11:21.457982+00:00",
   "summary": {
     "routes": 262,
     "apis": 1182,
@@ -14,6 +14,7 @@
     {
       "assetId": "ROUTE-HOME",
       "routeId": "home",
+      "label": "Home",
       "koPath": "/home",
       "enPath": "/en/home",
       "exportName": "HomeLandingPage",
@@ -23,6 +24,7 @@
     {
       "assetId": "ROUTE-FLUTTER-APP",
       "routeId": "flutter-app",
+      "label": "Flutter App",
       "koPath": "/flutter-app",
       "enPath": "/en/flutter-app",
       "exportName": "default",
@@ -32,6 +34,7 @@
     {
       "assetId": "ROUTE-SIGNIN-LOGIN",
       "routeId": "signin-login",
+      "label": "Login",
       "koPath": "/signin/loginView",
       "enPath": "/en/signin/loginView",
       "exportName": "",
@@ -41,6 +44,7 @@
     {
       "assetId": "ROUTE-SIGNIN-AUTH-CHOICE",
       "routeId": "signin-auth-choice",
+      "label": "Auth Choice",
       "koPath": "/signin/authChoice",
       "enPath": "/en/signin/authChoice",
       "exportName": "",
@@ -50,6 +54,7 @@
     {
       "assetId": "ROUTE-SIGNIN-FIND-ID",
       "routeId": "signin-find-id",
+      "label": "Find ID",
       "koPath": "/signin/findId",
       "enPath": "/en/signin/findId",
       "exportName": "",
@@ -59,6 +64,7 @@
     {
       "assetId": "ROUTE-SIGNIN-FIND-ID-RESULT",
       "routeId": "signin-find-id-result",
+      "label": "Find ID Result",
       "koPath": "/signin/findId/result",
       "enPath": "/en/signin/findId/result",
       "exportName": "",
@@ -68,6 +74,7 @@
     {
       "assetId": "ROUTE-SIGNIN-FIND-PASSWORD",
       "routeId": "signin-find-password",
+      "label": "Find Password",
       "koPath": "/signin/findPassword",
       "enPath": "/en/signin/findPassword",
       "exportName": "",
@@ -77,6 +84,7 @@
     {
       "assetId": "ROUTE-SIGNIN-FIND-PASSWORD-RESULT",
       "routeId": "signin-find-password-result",
+      "label": "Find Password Result",
       "koPath": "/signin/findPassword/result",
       "enPath": "/en/signin/findPassword/result",
       "exportName": "",
@@ -86,6 +94,7 @@
     {
       "assetId": "ROUTE-SIGNIN-FORBIDDEN",
       "routeId": "signin-forbidden",
+      "label": "Forbidden",
       "koPath": "/signin/loginForbidden",
       "enPath": "/en/signin/loginForbidden",
       "exportName": "",
@@ -95,6 +104,7 @@
     {
       "assetId": "ROUTE-ADMIN-HOME",
       "routeId": "admin-home",
+      "label": "Admin Home",
       "koPath": "/admin/",
       "enPath": "/en/admin/",
       "exportName": "",
@@ -104,6 +114,7 @@
     {
       "assetId": "ROUTE-ADMIN-LOGIN",
       "routeId": "admin-login",
+      "label": "Admin Login",
       "koPath": "/admin/login/loginView",
       "enPath": "/en/admin/login/loginView",
       "exportName": "",
@@ -113,6 +124,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPANY-STATUS",
       "routeId": "join-company-status",
+      "label": "Join Status",
       "koPath": "/join/companyJoinStatusSearch",
       "enPath": "/join/en/companyJoinStatusSearch",
       "exportName": "",
@@ -122,6 +134,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPANY-STATUS-GUIDE",
       "routeId": "join-company-status-guide",
+      "label": "Join Status Guide",
       "koPath": "/join/companyJoinStatusGuide",
       "enPath": "/join/en/companyJoinStatusGuide",
       "exportName": "",
@@ -131,6 +144,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPANY-STATUS-DETAIL",
       "routeId": "join-company-status-detail",
+      "label": "Join Status Detail",
       "koPath": "/join/companyJoinStatusDetail",
       "enPath": "/join/en/companyJoinStatusDetail",
       "exportName": "",
@@ -140,6 +154,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPANY-REGISTER",
       "routeId": "join-company-register",
+      "label": "공개 회원사 등록",
       "koPath": "/join/companyRegister",
       "enPath": "/join/en/companyRegister",
       "exportName": "JoinCompanyRegisterMigrationPage",
@@ -149,6 +164,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPANY-REGISTER-COMPLETE",
       "routeId": "join-company-register-complete",
+      "label": "회원사 등록 완료",
       "koPath": "/join/companyRegisterComplete",
       "enPath": "/join/en/companyRegisterComplete",
       "exportName": "JoinCompanyRegisterCompleteMigrationPage",
@@ -158,6 +174,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPANY-REAPPLY",
       "routeId": "join-company-reapply",
+      "label": "반려 재신청",
       "koPath": "/join/companyReapply",
       "enPath": "/join/en/companyReapply",
       "exportName": "JoinCompanyReapplyMigrationPage",
@@ -167,6 +184,7 @@
     {
       "assetId": "ROUTE-EDU-INDEX",
       "routeId": "edu-index",
+      "label": "교육 대시보드",
       "koPath": "/edu/index",
       "enPath": "/en/edu/index",
       "exportName": "EduIndexPage",
@@ -176,6 +194,7 @@
     {
       "assetId": "ROUTE-EDU-COURSE-LIST",
       "routeId": "edu-course-list",
+      "label": "교육과정 목록",
       "koPath": "/edu/course_list",
       "enPath": "/en/edu/course_list",
       "exportName": "EduCourseListMigrationPage",
@@ -185,6 +204,7 @@
     {
       "assetId": "ROUTE-EDU-MY-COURSE",
       "routeId": "edu-my-course",
+      "label": "나의 교육",
       "koPath": "/edu/my_course",
       "enPath": "/en/edu/my_course",
       "exportName": "EduMyCourseMigrationPage",
@@ -194,6 +214,7 @@
     {
       "assetId": "ROUTE-EDU-PROGRESS",
       "routeId": "edu-progress",
+      "label": "진도 관리",
       "koPath": "/edu/progress",
       "enPath": "/en/edu/progress",
       "exportName": "EduProgressMigrationPage",
@@ -203,6 +224,7 @@
     {
       "assetId": "ROUTE-EDU-CONTENT",
       "routeId": "edu-content",
+      "label": "자격 연계",
       "koPath": "/edu/content",
       "enPath": "/en/edu/content",
       "exportName": "EduContentMigrationPage",
@@ -212,6 +234,7 @@
     {
       "assetId": "ROUTE-EDU-COURSE-DETAIL",
       "routeId": "edu-course-detail",
+      "label": "과정 상세",
       "koPath": "/edu/course_detail",
       "enPath": "/en/edu/course_detail",
       "exportName": "EduCourseDetailMigrationPage",
@@ -221,6 +244,7 @@
     {
       "assetId": "ROUTE-EDU-APPLY",
       "routeId": "edu-apply",
+      "label": "교육 신청",
       "koPath": "/edu/apply",
       "enPath": "/en/edu/apply",
       "exportName": "EduApplyMigrationPage",
@@ -230,6 +254,7 @@
     {
       "assetId": "ROUTE-EDU-SURVEY",
       "routeId": "edu-survey",
+      "label": "설문조사",
       "koPath": "/edu/survey",
       "enPath": "/en/edu/survey",
       "exportName": "EduSurveyMigrationPage",
@@ -239,6 +264,7 @@
     {
       "assetId": "ROUTE-EDU-CERTIFICATE",
       "routeId": "edu-certificate",
+      "label": "수료증",
       "koPath": "/edu/certificate",
       "enPath": "/en/edu/certificate",
       "exportName": "EduCertificateMigrationPage",
@@ -248,6 +274,7 @@
     {
       "assetId": "ROUTE-JOIN-WIZARD",
       "routeId": "join-wizard",
+      "label": "회원가입 위저드",
       "koPath": "/join/step1",
       "enPath": "/join/en/step1",
       "exportName": "JoinWizardMigrationPage",
@@ -257,6 +284,7 @@
     {
       "assetId": "ROUTE-JOIN-TERMS",
       "routeId": "join-terms",
+      "label": "회원가입 약관",
       "koPath": "/join/step2",
       "enPath": "/join/en/step2",
       "exportName": "JoinTermsMigrationPage",
@@ -266,6 +294,7 @@
     {
       "assetId": "ROUTE-JOIN-AUTH",
       "routeId": "join-auth",
+      "label": "회원가입 본인확인",
       "koPath": "/join/step3",
       "enPath": "/join/en/step3",
       "exportName": "JoinAuthMigrationPage",
@@ -275,6 +304,7 @@
     {
       "assetId": "ROUTE-JOIN-INFO",
       "routeId": "join-info",
+      "label": "회원가입 정보입력",
       "koPath": "/join/step4",
       "enPath": "/join/en/step4",
       "exportName": "JoinInfoMigrationPage",
@@ -284,6 +314,7 @@
     {
       "assetId": "ROUTE-JOIN-COMPLETE",
       "routeId": "join-complete",
+      "label": "회원가입 완료",
       "koPath": "/join/step5",
       "enPath": "/join/en/step5",
       "exportName": "JoinCompleteMigrationPage",
@@ -293,6 +324,7 @@
     {
       "assetId": "ROUTE-MTN-INDEX",
       "routeId": "mtn-index",
+      "label": "서비스 운영 대시보드",
       "koPath": "/mtn/index",
       "enPath": "/en/mtn/index",
       "exportName": "MtnIndexPage",
@@ -302,6 +334,7 @@
     {
       "assetId": "ROUTE-MY-INQUIRY",
       "routeId": "my-inquiry",
+      "label": "1:1 문의",
       "koPath": "/mtn/my_inquiry",
       "enPath": "/en/mtn/my_inquiry",
       "exportName": "MyInquiryMigrationPage",
@@ -311,6 +344,7 @@
     {
       "assetId": "ROUTE-MTN-STATUS",
       "routeId": "mtn-status",
+      "label": "서비스 상태",
       "koPath": "/mtn/status",
       "enPath": "/en/mtn/status",
       "exportName": "MtnStatusMigrationPage",
@@ -320,6 +354,7 @@
     {
       "assetId": "ROUTE-MTN-VERSION",
       "routeId": "mtn-version",
+      "label": "버전 관리",
       "koPath": "/mtn/version",
       "enPath": "/en/mtn/version",
       "exportName": "VersionManagementMigrationPage",
@@ -329,6 +364,7 @@
     {
       "assetId": "ROUTE-SUPPORT-FAQ",
       "routeId": "support-faq",
+      "label": "FAQ",
       "koPath": "/support/faq",
       "enPath": "/en/support/faq",
       "exportName": "SupportFaqMigrationPage",
@@ -338,6 +374,7 @@
     {
       "assetId": "ROUTE-SUPPORT-INQUIRY",
       "routeId": "support-inquiry",
+      "label": "문의 내역",
       "koPath": "/support/inquiry",
       "enPath": "/en/support/inquiry",
       "exportName": "SupportInquiryMigrationPage",
@@ -347,6 +384,7 @@
     {
       "assetId": "ROUTE-MYPAGE-INDEX",
       "routeId": "mypage-index",
+      "label": "마이페이지 대시보드",
       "koPath": "/mypage/index",
       "enPath": "/en/mypage/index",
       "exportName": "MypageIndexPage",
@@ -356,6 +394,7 @@
     {
       "assetId": "ROUTE-MYPAGE",
       "routeId": "mypage",
+      "label": "마이페이지",
       "koPath": "/mypage/profile",
       "enPath": "/en/mypage/profile",
       "exportName": "MypageMigrationPage",
@@ -365,6 +404,7 @@
     {
       "assetId": "ROUTE-MYPAGE-EMAIL",
       "routeId": "mypage-email",
+      "label": "이메일/전화 변경",
       "koPath": "/mypage/email",
       "enPath": "/en/mypage/email",
       "exportName": "MypageEmailMigrationPage",
@@ -374,6 +414,7 @@
     {
       "assetId": "ROUTE-MYPAGE-NOTIFICATION",
       "routeId": "mypage-notification",
+      "label": "알림 설정",
       "koPath": "/mypage/notification",
       "enPath": "/en/mypage/notification",
       "exportName": "MypageNotificationMigrationPage",
@@ -383,6 +424,7 @@
     {
       "assetId": "ROUTE-MYPAGE-MARKETING",
       "routeId": "mypage-marketing",
+      "label": "마케팅 수신",
       "koPath": "/mypage/marketing",
       "enPath": "/en/mypage/marketing",
       "exportName": "MypageMarketingMigrationPage",
@@ -392,6 +434,7 @@
     {
       "assetId": "ROUTE-MYPAGE-COMPANY",
       "routeId": "mypage-company",
+      "label": "기업 정보",
       "koPath": "/mypage/company",
       "enPath": "/en/mypage/company",
       "exportName": "MypageCompanyMigrationPage",
@@ -401,6 +444,7 @@
     {
       "assetId": "ROUTE-MYPAGE-PASSWORD",
       "routeId": "mypage-password",
+      "label": "비밀번호 변경",
       "koPath": "/mypage/password",
       "enPath": "/en/mypage/password",
       "exportName": "MypagePasswordMigrationPage",
@@ -410,6 +454,7 @@
     {
       "assetId": "ROUTE-MYPAGE-STAFF",
       "routeId": "mypage-staff",
+      "label": "담당자 관리",
       "koPath": "/mypage/staff",
       "enPath": "/en/mypage/staff",
       "exportName": "MypageStaffMigrationPage",
@@ -419,6 +464,7 @@
     {
       "assetId": "ROUTE-TRADE-INDEX",
       "routeId": "trade-index",
+      "label": "거래 대시보드",
       "koPath": "/trade/index",
       "enPath": "/en/trade/index",
       "exportName": "TradeIndexPage",
@@ -428,6 +474,7 @@
     {
       "assetId": "ROUTE-TRADE-LIST",
       "routeId": "trade-list",
+      "label": "거래 목록",
       "koPath": "/trade/list",
       "enPath": "/en/trade/list",
       "exportName": "TradeListMigrationPage",
@@ -437,6 +484,7 @@
     {
       "assetId": "ROUTE-TRADE-MARKET",
       "routeId": "trade-market",
+      "label": "거래 시장",
       "koPath": "/trade/market",
       "enPath": "/en/trade/market",
       "exportName": "TradeMarketMigrationPage",
@@ -446,6 +494,7 @@
     {
       "assetId": "ROUTE-TRADE-REPORT",
       "routeId": "trade-report",
+      "label": "거래 리포트",
       "koPath": "/trade/report",
       "enPath": "/en/trade/report",
       "exportName": "TradeReportMigrationPage",
@@ -455,6 +504,7 @@
     {
       "assetId": "ROUTE-TRADE-STATISTICS",
       "routeId": "trade-statistics",
+      "label": "정산 리포트",
       "koPath": "/admin/trade/statistics",
       "enPath": "/en/admin/trade/statistics",
       "exportName": "TradeStatisticsMigrationPage",
@@ -464,6 +514,7 @@
     {
       "assetId": "ROUTE-REFUND-LIST",
       "routeId": "refund-list",
+      "label": "환불 요청 목록",
       "koPath": "/admin/payment/refund_list",
       "enPath": "/en/admin/payment/refund_list",
       "exportName": "RefundListMigrationPage",
@@ -473,6 +524,7 @@
     {
       "assetId": "ROUTE-SETTLEMENT-CALENDAR",
       "routeId": "settlement-calendar",
+      "label": "정산 캘린더",
       "koPath": "/admin/payment/settlement",
       "enPath": "/en/admin/payment/settlement",
       "exportName": "SettlementCalendarMigrationPage",
@@ -482,6 +534,7 @@
     {
       "assetId": "ROUTE-TRADE-DUPLICATE",
       "routeId": "trade-duplicate",
+      "label": "이상거래 점검",
       "koPath": "/admin/trade/duplicate",
       "enPath": "/en/admin/trade/duplicate",
       "exportName": "TradeDuplicateMigrationPage",
@@ -491,6 +544,7 @@
     {
       "assetId": "ROUTE-TRADE-APPROVE",
       "routeId": "trade-approve",
+      "label": "거래 승인",
       "koPath": "/admin/trade/approve",
       "enPath": "/en/admin/trade/approve",
       "exportName": "TradeApproveMigrationPage",
@@ -500,6 +554,7 @@
     {
       "assetId": "ROUTE-TRADE-REJECT",
       "routeId": "trade-reject",
+      "label": "거래 반려 검토",
       "koPath": "/admin/trade/reject",
       "enPath": "/en/admin/trade/reject",
       "exportName": "TradeRejectMigrationPage",
@@ -509,6 +564,7 @@
     {
       "assetId": "ROUTE-REFUND-PROCESS",
       "routeId": "refund-process",
+      "label": "환불 처리",
       "koPath": "/admin/payment/refund_process",
       "enPath": "/en/admin/payment/refund_process",
       "exportName": "RefundProcessMigrationPage",
@@ -518,6 +574,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-REVIEW",
       "routeId": "certificate-review",
+      "label": "발급 검토",
       "koPath": "/admin/certificate/review",
       "enPath": "/en/admin/certificate/review",
       "exportName": "CertificateReviewMigrationPage",
@@ -527,6 +584,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-STATISTICS",
       "routeId": "certificate-statistics",
+      "label": "인증서 통계",
       "koPath": "/admin/certificate/statistics",
       "enPath": "/en/admin/certificate/statistics",
       "exportName": "CertificateStatisticsMigrationPage",
@@ -536,6 +594,7 @@
     {
       "assetId": "ROUTE-TRADE-BUY-REQUEST",
       "routeId": "trade-buy-request",
+      "label": "구매 요청",
       "koPath": "/trade/buy_request",
       "enPath": "/en/trade/buy_request",
       "exportName": "TradeBuyRequestMigrationPage",
@@ -545,6 +604,7 @@
     {
       "assetId": "ROUTE-TRADE-COMPLETE",
       "routeId": "trade-complete",
+      "label": "체결 현황",
       "koPath": "/trade/complete",
       "enPath": "/en/trade/complete",
       "exportName": "TradeCompleteMigrationPage",
@@ -554,6 +614,7 @@
     {
       "assetId": "ROUTE-TRADE-AUTO-ORDER",
       "routeId": "trade-auto-order",
+      "label": "자동 매칭",
       "koPath": "/trade/auto_order",
       "enPath": "/en/trade/auto_order",
       "exportName": "TradeAutoOrderMigrationPage",
@@ -563,6 +624,7 @@
     {
       "assetId": "ROUTE-TRADE-SELL",
       "routeId": "trade-sell",
+      "label": "판매 등록",
       "koPath": "/trade/sell",
       "enPath": "/en/trade/sell",
       "exportName": "TradeSellMigrationPage",
@@ -572,6 +634,7 @@
     {
       "assetId": "ROUTE-TRADE-PRICE-ALERT",
       "routeId": "trade-price-alert",
+      "label": "가격 알림",
       "koPath": "/trade/price_alert",
       "enPath": "/en/trade/price_alert",
       "exportName": "TradePriceAlertMigrationPage",
@@ -581,6 +644,7 @@
     {
       "assetId": "ROUTE-PAYMENT-INDEX",
       "routeId": "payment-index",
+      "label": "결제 대시보드",
       "koPath": "/payment/index",
       "enPath": "/en/payment/index",
       "exportName": "PaymentIndexPage",
@@ -590,6 +654,7 @@
     {
       "assetId": "ROUTE-PAYMENT-PAY",
       "routeId": "payment-pay",
+      "label": "결제 요청",
       "koPath": "/payment/pay",
       "enPath": "/en/payment/pay",
       "exportName": "PaymentPayMigrationPage",
@@ -599,6 +664,7 @@
     {
       "assetId": "ROUTE-PAYMENT-VIRTUAL-ACCOUNT",
       "routeId": "payment-virtual-account",
+      "label": "가상계좌",
       "koPath": "/payment/virtual_account",
       "enPath": "/en/payment/virtual_account",
       "exportName": "PaymentVirtualAccountMigrationPage",
@@ -608,6 +674,7 @@
     {
       "assetId": "ROUTE-PAYMENT-REFUND",
       "routeId": "payment-refund",
+      "label": "결제 환불",
       "koPath": "/payment/refund",
       "enPath": "/en/payment/refund",
       "exportName": "PaymentRefundMigrationPage",
@@ -617,6 +684,7 @@
     {
       "assetId": "ROUTE-PAYMENT-REFUND-ACCOUNT",
       "routeId": "payment-refund-account",
+      "label": "환불 계좌",
       "koPath": "/payment/refund_account",
       "enPath": "/en/payment/refund_account",
       "exportName": "PaymentRefundAccountMigrationPage",
@@ -626,6 +694,7 @@
     {
       "assetId": "ROUTE-PAYMENT-NOTIFY",
       "routeId": "payment-notify",
+      "label": "세금계산서",
       "koPath": "/payment/notify",
       "enPath": "/en/payment/notify",
       "exportName": "PaymentNotifyMigrationPage",
@@ -635,6 +704,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-INDEX",
       "routeId": "certificate-index",
+      "label": "인증서 대시보드",
       "koPath": "/certificate/index",
       "enPath": "/en/certificate/index",
       "exportName": "CertificateIndexPage",
@@ -644,6 +714,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-LIST",
       "routeId": "certificate-list",
+      "label": "인증서 목록",
       "koPath": "/certificate/list",
       "enPath": "/en/certificate/list",
       "exportName": "CertificateListMigrationPage",
@@ -653,6 +724,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-APPLY",
       "routeId": "certificate-apply",
+      "label": "인증서 신청",
       "koPath": "/certificate/apply",
       "enPath": "/en/certificate/apply",
       "exportName": "CertificateApplyMigrationPage",
@@ -662,6 +734,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-REPORT-LIST",
       "routeId": "certificate-report-list",
+      "label": "보고서 및 인증서 목록",
       "koPath": "/certificate/report_list",
       "enPath": "/en/certificate/report_list",
       "exportName": "CertificateReportListMigrationPage",
@@ -671,6 +744,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-REPORT-FORM",
       "routeId": "certificate-report-form",
+      "label": "보고서 작성",
       "koPath": "/certificate/report_form",
       "enPath": "/en/certificate/report_form",
       "exportName": "CertificateReportFormMigrationPage",
@@ -680,6 +754,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-REPORT-EDIT",
       "routeId": "certificate-report-edit",
+      "label": "보고서 수정",
       "koPath": "/certificate/report_edit",
       "enPath": "/en/certificate/report_edit",
       "exportName": "CertificateReportEditMigrationPage",
@@ -689,6 +764,7 @@
     {
       "assetId": "ROUTE-PAYMENT-HISTORY",
       "routeId": "payment-history",
+      "label": "결제 내역",
       "koPath": "/payment/history",
       "enPath": "/en/payment/history",
       "exportName": "PaymentHistoryMigrationPage",
@@ -698,6 +774,7 @@
     {
       "assetId": "ROUTE-PAYMENT-RECEIPT",
       "routeId": "payment-receipt",
+      "label": "영수증 관리",
       "koPath": "/payment/receipt",
       "enPath": "/en/payment/receipt",
       "exportName": "PaymentReceiptMigrationPage",
@@ -707,6 +784,7 @@
     {
       "assetId": "ROUTE-AUTH-GROUP",
       "routeId": "auth-group",
+      "label": "권한 그룹",
       "koPath": "/admin/auth/group",
       "enPath": "/en/admin/auth/group",
       "exportName": "AuthGroupMigrationPage",
@@ -716,6 +794,7 @@
     {
       "assetId": "ROUTE-AUTH-CHANGE",
       "routeId": "auth-change",
+      "label": "권한 변경",
       "koPath": "/admin/member/auth-change",
       "enPath": "/en/admin/member/auth-change",
       "exportName": "AuthChangeMigrationPage",
@@ -725,6 +804,7 @@
     {
       "assetId": "ROUTE-DEPT-ROLE",
       "routeId": "dept-role",
+      "label": "부서 권한 맵핑",
       "koPath": "/admin/member/dept-role-mapping",
       "enPath": "/en/admin/member/dept-role-mapping",
       "exportName": "DeptRoleMappingMigrationPage",
@@ -734,6 +814,7 @@
     {
       "assetId": "ROUTE-MEMBER-EDIT",
       "routeId": "member-edit",
+      "label": "회원 수정",
       "koPath": "/admin/member/edit",
       "enPath": "/en/admin/member/edit",
       "exportName": "MemberEditMigrationPage",
@@ -743,6 +824,7 @@
     {
       "assetId": "ROUTE-PASSWORD-RESET",
       "routeId": "password-reset",
+      "label": "비밀번호 초기화",
       "koPath": "/admin/member/reset_password",
       "enPath": "/en/admin/member/reset_password",
       "exportName": "PasswordResetMigrationPage",
@@ -752,6 +834,7 @@
     {
       "assetId": "ROUTE-ADMIN-PERMISSION",
       "routeId": "admin-permission",
+      "label": "관리자 권한",
       "koPath": "/admin/member/admin_account/permissions",
       "enPath": "/en/admin/member/admin_account/permissions",
       "exportName": "AdminPermissionMigrationPage",
@@ -761,6 +844,7 @@
     {
       "assetId": "ROUTE-ADMIN-CREATE",
       "routeId": "admin-create",
+      "label": "관리자 생성",
       "koPath": "/admin/member/admin_account",
       "enPath": "/en/admin/member/admin_account",
       "exportName": "AdminAccountCreateMigrationPage",
@@ -770,6 +854,7 @@
     {
       "assetId": "ROUTE-COMPANY-ACCOUNT",
       "routeId": "company-account",
+      "label": "회원사 계정",
       "koPath": "/admin/member/company_account",
       "enPath": "/en/admin/member/company_account",
       "exportName": "CompanyAccountMigrationPage",
@@ -779,6 +864,7 @@
     {
       "assetId": "ROUTE-ADMIN-LIST",
       "routeId": "admin-list",
+      "label": "관리자 목록",
       "koPath": "/admin/member/admin_list",
       "enPath": "/en/admin/member/admin_list",
       "exportName": "AdminListMigrationPage",
@@ -788,6 +874,7 @@
     {
       "assetId": "ROUTE-COMPANY-LIST",
       "routeId": "company-list",
+      "label": "회원사 목록",
       "koPath": "/admin/member/company_list",
       "enPath": "/en/admin/member/company_list",
       "exportName": "CompanyListMigrationPage",
@@ -797,6 +884,7 @@
     {
       "assetId": "ROUTE-MEMBER-APPROVE",
       "routeId": "member-approve",
+      "label": "회원 승인",
       "koPath": "/admin/member/approve",
       "enPath": "/en/admin/member/approve",
       "exportName": "MemberApproveMigrationPage",
@@ -806,6 +894,7 @@
     {
       "assetId": "ROUTE-COMPANY-APPROVE",
       "routeId": "company-approve",
+      "label": "회원사 승인",
       "koPath": "/admin/member/company-approve",
       "enPath": "/en/admin/member/company-approve",
       "exportName": "CompanyApproveMigrationPage",
@@ -815,6 +904,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-APPROVE",
       "routeId": "certificate-approve",
+      "label": "인증서 승인",
       "koPath": "/admin/certificate/approve",
       "enPath": "/en/admin/certificate/approve",
       "exportName": "CertificateApproveMigrationPage",
@@ -824,6 +914,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-PENDING",
       "routeId": "certificate-pending",
+      "label": "인증서 발급 대기",
       "koPath": "/admin/certificate/pending_list",
       "enPath": "/en/admin/certificate/pending_list",
       "exportName": "CertificatePendingMigrationPage",
@@ -833,6 +924,7 @@
     {
       "assetId": "ROUTE-VIRTUAL-ISSUE",
       "routeId": "virtual-issue",
+      "label": "환불 계좌 검수",
       "koPath": "/admin/payment/virtual_issue",
       "enPath": "/en/admin/payment/virtual_issue",
       "exportName": "VirtualIssueMigrationPage",
@@ -842,6 +934,7 @@
     {
       "assetId": "ROUTE-MEMBER-LIST",
       "routeId": "member-list",
+      "label": "회원 목록",
       "koPath": "/admin/member/list",
       "enPath": "/en/admin/member/list",
       "exportName": "MemberListMigrationPage",
@@ -851,6 +944,7 @@
     {
       "assetId": "ROUTE-MEMBER-WITHDRAWN",
       "routeId": "member-withdrawn",
+      "label": "탈퇴 회원",
       "koPath": "/admin/member/withdrawn",
       "enPath": "/en/admin/member/withdrawn",
       "exportName": "WithdrawnMemberListMigrationPage",
@@ -860,6 +954,7 @@
     {
       "assetId": "ROUTE-MEMBER-ACTIVATE",
       "routeId": "member-activate",
+      "label": "휴면 계정",
       "koPath": "/admin/member/activate",
       "enPath": "/en/admin/member/activate",
       "exportName": "ActivateMemberListMigrationPage",
@@ -869,6 +964,7 @@
     {
       "assetId": "ROUTE-MEMBER-DETAIL",
       "routeId": "member-detail",
+      "label": "회원 상세",
       "koPath": "/admin/member/detail",
       "enPath": "/en/admin/member/detail",
       "exportName": "MemberDetailMigrationPage",
@@ -878,6 +974,7 @@
     {
       "assetId": "ROUTE-COMPANY-DETAIL",
       "routeId": "company-detail",
+      "label": "회원사 상세",
       "koPath": "/admin/member/company_detail",
       "enPath": "/en/admin/member/company_detail",
       "exportName": "CompanyDetailMigrationPage",
@@ -887,6 +984,7 @@
     {
       "assetId": "ROUTE-MEMBER-STATS",
       "routeId": "member-stats",
+      "label": "회원 통계",
       "koPath": "/admin/member/stats",
       "enPath": "/en/admin/member/stats",
       "exportName": "MemberStatsMigrationPage",
@@ -896,6 +994,7 @@
     {
       "assetId": "ROUTE-MEMBER-REGISTER",
       "routeId": "member-register",
+      "label": "회원 등록",
       "koPath": "/admin/member/register",
       "enPath": "/en/admin/member/register",
       "exportName": "MemberRegisterMigrationPage",
@@ -905,6 +1004,7 @@
     {
       "assetId": "ROUTE-BOARD-LIST",
       "routeId": "board-list",
+      "label": "게시판 관리",
       "koPath": "/admin/content/board_list",
       "enPath": "/en/admin/content/board_list",
       "exportName": "BoardListMigrationPage",
@@ -914,6 +1014,7 @@
     {
       "assetId": "ROUTE-BOARD-ADD",
       "routeId": "board-add",
+      "label": "공지 배포",
       "koPath": "/admin/content/board_add",
       "enPath": "/en/admin/content/board_add",
       "exportName": "BoardAddMigrationPage",
@@ -923,6 +1024,7 @@
     {
       "assetId": "ROUTE-POST-LIST",
       "routeId": "post-list",
+      "label": "게시글 목록",
       "koPath": "/admin/content/post_list",
       "enPath": "/en/admin/content/post_list",
       "exportName": "PostListMigrationPage",
@@ -932,6 +1034,7 @@
     {
       "assetId": "ROUTE-BANNER-LIST",
       "routeId": "banner-list",
+      "label": "배너 목록",
       "koPath": "/admin/content/banner_list",
       "enPath": "/en/admin/content/banner_list",
       "exportName": "BannerListMigrationPage",
@@ -941,6 +1044,7 @@
     {
       "assetId": "ROUTE-POPUP-LIST",
       "routeId": "popup-list",
+      "label": "팝업 목록",
       "koPath": "/admin/content/popup_list",
       "enPath": "/en/admin/content/popup_list",
       "exportName": "PopupListMigrationPage",
@@ -950,6 +1054,7 @@
     {
       "assetId": "ROUTE-BANNER-EDIT",
       "routeId": "banner-edit",
+      "label": "배너 편집",
       "koPath": "/admin/content/banner_edit",
       "enPath": "/en/admin/content/banner_edit",
       "exportName": "BannerEditMigrationPage",
@@ -959,6 +1064,7 @@
     {
       "assetId": "ROUTE-POPUP-EDIT",
       "routeId": "popup-edit",
+      "label": "팝업 스케줄",
       "koPath": "/admin/content/popup_edit",
       "enPath": "/en/admin/content/popup_edit",
       "exportName": "PopupEditMigrationPage",
@@ -968,6 +1074,7 @@
     {
       "assetId": "ROUTE-QNA-CATEGORY",
       "routeId": "qna-category",
+      "label": "Q&A 분류",
       "koPath": "/admin/content/qna",
       "enPath": "/en/admin/content/qna",
       "exportName": "QnaCategoryMigrationPage",
@@ -977,6 +1084,7 @@
     {
       "assetId": "ROUTE-FAQ-MANAGEMENT",
       "routeId": "faq-management",
+      "label": "FAQ 관리",
       "koPath": "/admin/content/faq_list",
       "enPath": "/en/admin/content/faq_list",
       "exportName": "FaqManagementMigrationPage",
@@ -986,6 +1094,7 @@
     {
       "assetId": "ROUTE-FILE-MANAGEMENT",
       "routeId": "file-management",
+      "label": "파일 관리",
       "koPath": "/admin/content/file",
       "enPath": "/en/admin/content/file",
       "exportName": "FileManagementMigrationPage",
@@ -995,6 +1104,7 @@
     {
       "assetId": "ROUTE-ADMIN-SITEMAP",
       "routeId": "admin-sitemap",
+      "label": "관리자 사이트맵",
       "koPath": "/admin/content/sitemap",
       "enPath": "/en/admin/content/sitemap",
       "exportName": "AdminSitemapMigrationPage",
@@ -1004,6 +1114,7 @@
     {
       "assetId": "ROUTE-TAG-MANAGEMENT",
       "routeId": "tag-management",
+      "label": "태그 관리",
       "koPath": "/admin/content/tag",
       "enPath": "/en/admin/content/tag",
       "exportName": "TagManagementMigrationPage",
@@ -1013,6 +1124,7 @@
     {
       "assetId": "ROUTE-ADMIN-MENU-PLACEHOLDER",
       "routeId": "admin-menu-placeholder",
+      "label": "관리자 메뉴 플레이스홀더",
       "koPath": "/admin/placeholder",
       "enPath": "/en/admin/placeholder",
       "exportName": "AdminMenuPlaceholderPage",
@@ -1022,6 +1134,7 @@
     {
       "assetId": "ROUTE-SUPPORT-INDEX",
       "routeId": "support-index",
+      "label": "고객지원 대시보드",
       "koPath": "/support/index",
       "enPath": "/en/support/index",
       "exportName": "SupportIndexPage",
@@ -1031,6 +1144,7 @@
     {
       "assetId": "ROUTE-DOWNLOAD-LIST",
       "routeId": "download-list",
+      "label": "자료실",
       "koPath": "/support/download_list",
       "enPath": "/en/support/download_list",
       "exportName": "DownloadListMigrationPage",
@@ -1040,6 +1154,7 @@
     {
       "assetId": "ROUTE-NOTICE-LIST",
       "routeId": "notice-list",
+      "label": "공지사항",
       "koPath": "/support/notice_list",
       "enPath": "/en/support/notice_list",
       "exportName": "NoticeListMigrationPage",
@@ -1049,6 +1164,7 @@
     {
       "assetId": "ROUTE-QNA-LIST",
       "routeId": "qna-list",
+      "label": "지원 통합검색",
       "koPath": "/support/qna_list",
       "enPath": "/en/support/qna_list",
       "exportName": "QnaListMigrationPage",
@@ -1058,6 +1174,7 @@
     {
       "assetId": "ROUTE-SITEMAP",
       "routeId": "sitemap",
+      "label": "사이트맵",
       "koPath": "/sitemap",
       "enPath": "/en/sitemap",
       "exportName": "SitemapMigrationPage",
@@ -1067,6 +1184,7 @@
     {
       "assetId": "ROUTE-HOME-MENU-PLACEHOLDER",
       "routeId": "home-menu-placeholder",
+      "label": "사용자 메뉴 플레이스홀더",
       "koPath": "/placeholder",
       "enPath": "/en/placeholder",
       "exportName": "HomeMenuPlaceholderPage",
@@ -1076,6 +1194,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-INQUIRY",
       "routeId": "system-code-inquiry",
+      "label": "코드 조회",
       "koPath": "/admin/system/code",
       "enPath": "/en/admin/system/code",
       "exportName": "SystemCodeMigrationPage",
@@ -1085,6 +1204,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-INQUIRY-CLASS",
       "routeId": "system-code-inquiry-class",
+      "label": "대분류",
       "koPath": "/admin/system/code/class",
       "enPath": "/en/admin/system/code/class",
       "exportName": "SystemCodeMigrationPage",
@@ -1094,6 +1214,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-INQUIRY-GROUP",
       "routeId": "system-code-inquiry-group",
+      "label": "중분류",
       "koPath": "/admin/system/code/group",
       "enPath": "/en/admin/system/code/group",
       "exportName": "SystemCodeMigrationPage",
@@ -1103,6 +1224,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-INQUIRY-DETAIL",
       "routeId": "system-code-inquiry-detail",
+      "label": "소분류",
       "koPath": "/admin/system/code/detail",
       "enPath": "/en/admin/system/code/detail",
       "exportName": "SystemCodeMigrationPage",
@@ -1112,6 +1234,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-REGISTER",
       "routeId": "system-code-register",
+      "label": "코드 등록",
       "koPath": "/admin/system/code/register",
       "enPath": "/en/admin/system/code/register",
       "exportName": "SystemCodeMigrationPage",
@@ -1121,6 +1244,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-REGISTER-CLASS",
       "routeId": "system-code-register-class",
+      "label": "대분류 등록",
       "koPath": "/admin/system/code/register/class",
       "enPath": "/en/admin/system/code/register/class",
       "exportName": "SystemCodeMigrationPage",
@@ -1130,6 +1254,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-REGISTER-GROUP",
       "routeId": "system-code-register-group",
+      "label": "중분류 등록",
       "koPath": "/admin/system/code/register/group",
       "enPath": "/en/admin/system/code/register/group",
       "exportName": "SystemCodeMigrationPage",
@@ -1139,6 +1264,7 @@
     {
       "assetId": "ROUTE-SYSTEM-CODE-REGISTER-DETAIL",
       "routeId": "system-code-register-detail",
+      "label": "소분류 등록",
       "koPath": "/admin/system/code/register/detail",
       "enPath": "/en/admin/system/code/register/detail",
       "exportName": "SystemCodeMigrationPage",
@@ -1148,6 +1274,7 @@
     {
       "assetId": "ROUTE-PAGE-MANAGEMENT",
       "routeId": "page-management",
+      "label": "화면 관리",
       "koPath": "/admin/system/page-management",
       "enPath": "/en/admin/system/page-management",
       "exportName": "PageManagementMigrationPage",
@@ -1157,6 +1284,7 @@
     {
       "assetId": "ROUTE-FUNCTION-MANAGEMENT",
       "routeId": "function-management",
+      "label": "기능 관리",
       "koPath": "/admin/system/feature-management",
       "enPath": "/en/admin/system/feature-management",
       "exportName": "FunctionManagementMigrationPage",
@@ -1166,6 +1294,7 @@
     {
       "assetId": "ROUTE-MENU-MANAGEMENT",
       "routeId": "menu-management",
+      "label": "메뉴 관리",
       "koPath": "/admin/system/menu",
       "enPath": "/en/admin/system/menu",
       "exportName": "MenuManagementMigrationPage",
@@ -1175,6 +1304,7 @@
     {
       "assetId": "ROUTE-FAQ-MENU-MANAGEMENT",
       "routeId": "faq-menu-management",
+      "label": "FAQ 메뉴 관리",
       "koPath": "/admin/content/menu",
       "enPath": "/en/admin/content/menu",
       "exportName": "FaqMenuManagementMigrationPage",
@@ -1184,6 +1314,7 @@
     {
       "assetId": "ROUTE-FULL-STACK-MANAGEMENT",
       "routeId": "full-stack-management",
+      "label": "풀스택 관리",
       "koPath": "/admin/system/full-stack-management",
       "enPath": "/en/admin/system/full-stack-management",
       "exportName": "FullStackManagementMigrationPage",
@@ -1193,6 +1324,7 @@
     {
       "assetId": "ROUTE-INFRA",
       "routeId": "infra",
+      "label": "인프라",
       "koPath": "/admin/system/infra",
       "enPath": "/en/admin/system/infra",
       "exportName": "InfraManagementMigrationPage",
@@ -1202,6 +1334,7 @@
     {
       "assetId": "ROUTE-SCREEN-FLOW-MANAGEMENT",
       "routeId": "screen-flow-management",
+      "label": "화면 흐름 관리",
       "koPath": "/admin/system/screen-flow-management",
       "enPath": "/en/admin/system/screen-flow-management",
       "exportName": "ScreenFlowManagementMigrationPage",
@@ -1211,6 +1344,7 @@
     {
       "assetId": "ROUTE-SCREEN-MENU-ASSIGNMENT-MANAGEMENT",
       "routeId": "screen-menu-assignment-management",
+      "label": "화면-메뉴 귀속 관리",
       "koPath": "/admin/system/screen-menu-assignment-management",
       "enPath": "/en/admin/system/screen-menu-assignment-management",
       "exportName": "ScreenMenuAssignmentManagementMigrationPage",
@@ -1220,6 +1354,7 @@
     {
       "assetId": "ROUTE-SCREEN-MANAGEMENT",
       "routeId": "screen-management",
+      "label": "화면 관리",
       "koPath": "/admin/system/screen-management",
       "enPath": "/en/admin/system/screen-management",
       "exportName": "ScreenManagementMigrationPage",
@@ -1229,6 +1364,7 @@
     {
       "assetId": "ROUTE-SCREEN-BUILDER-DASHBOARD",
       "routeId": "screen-builder-dashboard",
+      "label": "빌더 대시보드",
       "koPath": "/admin/system/screen-builder-dashboard",
       "enPath": "/en/admin/system/screen-builder-dashboard",
       "exportName": "ScreenBuilderDashboardPage",
@@ -1238,6 +1374,7 @@
     {
       "assetId": "ROUTE-WBS-MANAGEMENT",
       "routeId": "wbs-management",
+      "label": "WBS 관리",
       "koPath": "/admin/system/wbs-management",
       "enPath": "/en/admin/system/wbs-management",
       "exportName": "WbsManagementMigrationPage",
@@ -1247,6 +1384,7 @@
     {
       "assetId": "ROUTE-HOME-PAGE-WORKBENCH",
       "routeId": "home-page-workbench",
+      "label": "홈 페이지 작업대",
       "koPath": "/admin/system/home-page-workbench",
       "enPath": "/en/admin/system/home-page-workbench",
       "exportName": "HomePageWorkbenchMigrationPage",
@@ -1256,6 +1394,7 @@
     {
       "assetId": "ROUTE-NEW-PAGE",
       "routeId": "new-page",
+      "label": "새 페이지",
       "koPath": "/admin/system/new-page",
       "enPath": "/en/admin/system/new-page",
       "exportName": "NewPageMigrationPage",
@@ -1265,6 +1404,7 @@
     {
       "assetId": "ROUTE-IP-WHITELIST",
       "routeId": "ip-whitelist",
+      "label": "IP 화이트리스트",
       "koPath": "/admin/system/ip_whitelist",
       "enPath": "/en/admin/system/ip_whitelist",
       "exportName": "IpWhitelistMigrationPage",
@@ -1274,6 +1414,7 @@
     {
       "assetId": "ROUTE-ACCESS-HISTORY",
       "routeId": "access-history",
+      "label": "접속 로그",
       "koPath": "/admin/system/access_history",
       "enPath": "/en/admin/system/access_history",
       "exportName": "AccessHistoryMigrationPage",
@@ -1283,6 +1424,7 @@
     {
       "assetId": "ROUTE-ERROR-LOG",
       "routeId": "error-log",
+      "label": "에러 로그",
       "koPath": "/admin/system/error-log",
       "enPath": "/en/admin/system/error-log",
       "exportName": "ErrorLogMigrationPage",
@@ -1292,6 +1434,7 @@
     {
       "assetId": "ROUTE-LOGIN-HISTORY",
       "routeId": "login-history",
+      "label": "로그인 이력",
       "koPath": "/admin/member/login_history",
       "enPath": "/en/admin/member/login_history",
       "exportName": "LoginHistoryMigrationPage",
@@ -1301,6 +1444,7 @@
     {
       "assetId": "ROUTE-MEMBER-SECURITY-HISTORY",
       "routeId": "member-security-history",
+      "label": "회원 접근 차단 이력",
       "koPath": "/admin/member/security",
       "enPath": "/en/admin/member/security",
       "exportName": "MemberSecurityHistoryMigrationPage",
@@ -1310,6 +1454,7 @@
     {
       "assetId": "ROUTE-SECURITY-HISTORY",
       "routeId": "security-history",
+      "label": "보안 이력",
       "koPath": "/admin/system/security",
       "enPath": "/en/admin/system/security",
       "exportName": "SecurityHistoryMigrationPage",
@@ -1319,6 +1464,7 @@
     {
       "assetId": "ROUTE-SECURITY-POLICY",
       "routeId": "security-policy",
+      "label": "보안 정책",
       "koPath": "/admin/system/security-policy",
       "enPath": "/en/admin/system/security-policy",
       "exportName": "SecurityPolicyMigrationPage",
@@ -1328,6 +1474,7 @@
     {
       "assetId": "ROUTE-NOTIFICATION",
       "routeId": "notification",
+      "label": "알림센터",
       "koPath": "/admin/system/notification",
       "enPath": "/en/admin/system/notification",
       "exportName": "NotificationCenterMigrationPage",
@@ -1337,6 +1484,7 @@
     {
       "assetId": "ROUTE-PERFORMANCE",
       "routeId": "performance",
+      "label": "성능",
       "koPath": "/admin/system/performance",
       "enPath": "/en/admin/system/performance",
       "exportName": "PerformanceMigrationPage",
@@ -1346,6 +1494,7 @@
     {
       "assetId": "ROUTE-INSTALLED-PROGRAMS",
       "routeId": "installed-programs",
+      "label": "설치 프로그램 관리",
       "koPath": "/admin/system/programs",
       "enPath": "/en/admin/system/programs",
       "exportName": "InstalledProgramsMigrationPage",
@@ -1355,6 +1504,7 @@
     {
       "assetId": "ROUTE-SYSTEM-RESOURCES",
       "routeId": "system-resources",
+      "label": "시스템 리소스 관리",
       "koPath": "/admin/system/resources",
       "enPath": "/en/admin/system/resources",
       "exportName": "SystemResourcesMigrationPage",
@@ -1364,6 +1514,7 @@
     {
       "assetId": "ROUTE-OPERATIONS-LOG-MANAGEMENT",
       "routeId": "operations-log-management",
+      "label": "운영 로그 관리",
       "koPath": "/admin/system/logs",
       "enPath": "/en/admin/system/logs",
       "exportName": "OperationsLogManagementMigrationPage",
@@ -1373,6 +1524,7 @@
     {
       "assetId": "ROUTE-AI-HANGAR",
       "routeId": "ai-hangar",
+      "label": "AI 격납고",
       "koPath": "/admin/system/ai-hangar",
       "enPath": "/en/admin/system/ai-hangar",
       "exportName": "AiHangarMigrationPage",
@@ -1382,6 +1534,7 @@
     {
       "assetId": "ROUTE-HERMES-WORKFLOW",
       "routeId": "hermes-workflow",
+      "label": "Hermes 작업 기억",
       "koPath": "/admin/system/hermes-workflow",
       "enPath": "/en/admin/system/hermes-workflow",
       "exportName": "HermesWorkflowMigrationPage",
@@ -1391,6 +1544,7 @@
     {
       "assetId": "ROUTE-THEME-MANAGEMENT",
       "routeId": "theme-management",
+      "label": "테마 관리",
       "koPath": "/admin/system/theme-management",
       "enPath": "/en/admin/system/theme-management",
       "exportName": "ThemeManagementMigrationPage",
@@ -1400,6 +1554,7 @@
     {
       "assetId": "ROUTE-THEME",
       "routeId": "theme",
+      "label": "테마 관리",
       "koPath": "/admin/system/theme",
       "enPath": "/en/admin/system/theme",
       "exportName": "ThemeManagementMigrationPage",
@@ -1409,6 +1564,7 @@
     {
       "assetId": "ROUTE-MODULE",
       "routeId": "module",
+      "label": "모듈 관리",
       "koPath": "/admin/system/module",
       "enPath": "/en/admin/system/module",
       "exportName": "ModuleManagementMigrationPage",
@@ -1418,6 +1574,7 @@
     {
       "assetId": "ROUTE-EVENT-MANAGEMENT",
       "routeId": "event-management",
+      "label": "이벤트 관리",
       "koPath": "/admin/system/event-management",
       "enPath": "/en/admin/system/event-management",
       "exportName": "EventManagementMigrationPage",
@@ -1427,6 +1584,7 @@
     {
       "assetId": "ROUTE-FUNCTION-CONSOLE",
       "routeId": "function-console",
+      "label": "함수 콘솔",
       "koPath": "/admin/system/function-console",
       "enPath": "/en/admin/system/function-console",
       "exportName": "FunctionConsoleMigrationPage",
@@ -1436,6 +1594,7 @@
     {
       "assetId": "ROUTE-API-MANAGEMENT",
       "routeId": "api-management",
+      "label": "API 관리",
       "koPath": "/admin/system/api-management",
       "enPath": "/en/admin/system/api-management",
       "exportName": "ApiManagementMigrationPage",
@@ -1445,6 +1604,7 @@
     {
       "assetId": "ROUTE-CONTROLLER-MANAGEMENT",
       "routeId": "controller-management",
+      "label": "컨트롤러 관리",
       "koPath": "/admin/system/controller-management",
       "enPath": "/en/admin/system/controller-management",
       "exportName": "ControllerManagementMigrationPage",
@@ -1454,6 +1614,7 @@
     {
       "assetId": "ROUTE-COLUMN-MANAGEMENT",
       "routeId": "column-management",
+      "label": "컬럼 관리",
       "koPath": "/admin/system/column-management",
       "enPath": "/en/admin/system/column-management",
       "exportName": "ColumnManagementMigrationPage",
@@ -1463,6 +1624,7 @@
     {
       "assetId": "ROUTE-ASSET-DEFICIENCY-QUEUE",
       "routeId": "asset-deficiency-queue",
+      "label": "자산 미흡 큐",
       "koPath": "/admin/system/asset-deficiency-queue",
       "enPath": "/en/admin/system/asset-deficiency-queue",
       "exportName": "AssetDeficiencyQueueMigrationPage",
@@ -1472,6 +1634,7 @@
     {
       "assetId": "ROUTE-VERIFICATION-ASSET-MANAGEMENT",
       "routeId": "verification-asset-management",
+      "label": "검증 자산 관리",
       "koPath": "/admin/system/verification-asset-management",
       "enPath": "/en/admin/system/verification-asset-management",
       "exportName": "VerificationAssetManagementMigrationPage",
@@ -1481,6 +1644,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-CONNECTION-LIST",
       "routeId": "external-connection-list",
+      "label": "외부 연계 목록",
       "koPath": "/admin/external/connection_list",
       "enPath": "/en/admin/external/connection_list",
       "exportName": "ExternalConnectionListMigrationPage",
@@ -1490,6 +1654,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-SCHEMA",
       "routeId": "external-schema",
+      "label": "외부 스키마",
       "koPath": "/admin/external/schema",
       "enPath": "/en/admin/external/schema",
       "exportName": "ExternalSchemaMigrationPage",
@@ -1499,6 +1664,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-KEYS",
       "routeId": "external-keys",
+      "label": "외부 인증키 관리",
       "koPath": "/admin/external/keys",
       "enPath": "/en/admin/external/keys",
       "exportName": "ExternalKeysMigrationPage",
@@ -1508,6 +1674,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-USAGE",
       "routeId": "external-usage",
+      "label": "API 사용량",
       "koPath": "/admin/external/usage",
       "enPath": "/en/admin/external/usage",
       "exportName": "ExternalUsageMigrationPage",
@@ -1517,6 +1684,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-LOGS",
       "routeId": "external-logs",
+      "label": "외부 연계 로그",
       "koPath": "/admin/external/logs",
       "enPath": "/en/admin/external/logs",
       "exportName": "ExternalLogsMigrationPage",
@@ -1526,6 +1694,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-WEBHOOKS",
       "routeId": "external-webhooks",
+      "label": "웹훅 설정",
       "koPath": "/admin/external/webhooks",
       "enPath": "/en/admin/external/webhooks",
       "exportName": "ExternalWebhooksMigrationPage",
@@ -1535,6 +1704,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-SYNC",
       "routeId": "external-sync",
+      "label": "동기화 실행",
       "koPath": "/admin/external/sync",
       "enPath": "/en/admin/external/sync",
       "exportName": "ExternalSyncMigrationPage",
@@ -1544,6 +1714,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-MONITORING",
       "routeId": "external-monitoring",
+      "label": "연계 모니터링",
       "koPath": "/admin/external/monitoring",
       "enPath": "/en/admin/external/monitoring",
       "exportName": "ExternalMonitoringMigrationPage",
@@ -1553,6 +1724,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-MAINTENANCE",
       "routeId": "external-maintenance",
+      "label": "점검 관리",
       "koPath": "/admin/external/maintenance",
       "enPath": "/en/admin/external/maintenance",
       "exportName": "ExternalMaintenanceMigrationPage",
@@ -1562,6 +1734,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-RETRY",
       "routeId": "external-retry",
+      "label": "재시도 관리",
       "koPath": "/admin/external/retry",
       "enPath": "/en/admin/external/retry",
       "exportName": "ExternalRetryMigrationPage",
@@ -1571,6 +1744,7 @@
     {
       "assetId": "ROUTE-DB-SYNC-DEPLOY",
       "routeId": "db-sync-deploy",
+      "label": "DB 동기화 배포",
       "koPath": "/admin/system/db-sync-deploy",
       "enPath": "/en/admin/system/db-sync-deploy",
       "exportName": "DbSyncDeployMigrationPage",
@@ -1580,6 +1754,7 @@
     {
       "assetId": "ROUTE-SECURITY-MONITORING",
       "routeId": "security-monitoring",
+      "label": "보안 모니터링",
       "koPath": "/admin/system/security-monitoring",
       "enPath": "/en/admin/system/security-monitoring",
       "exportName": "SecurityMonitoringMigrationPage",
@@ -1589,6 +1764,7 @@
     {
       "assetId": "ROUTE-BLOCKLIST",
       "routeId": "blocklist",
+      "label": "차단 목록",
       "koPath": "/admin/system/blocklist",
       "enPath": "/en/admin/system/blocklist",
       "exportName": "BlocklistMigrationPage",
@@ -1598,6 +1774,7 @@
     {
       "assetId": "ROUTE-SECURITY-AUDIT",
       "routeId": "security-audit",
+      "label": "보안 감사",
       "koPath": "/admin/system/security-audit",
       "enPath": "/en/admin/system/security-audit",
       "exportName": "SecurityAuditMigrationPage",
@@ -1607,6 +1784,7 @@
     {
       "assetId": "ROUTE-MONITORING-CENTER",
       "routeId": "monitoring-center",
+      "label": "운영센터",
       "koPath": "/admin/monitoring/center",
       "enPath": "/en/admin/monitoring/center",
       "exportName": "OperationsCenterMigrationPage",
@@ -1616,6 +1794,7 @@
     {
       "assetId": "ROUTE-SENSOR-ADD",
       "routeId": "sensor-add",
+      "label": "센서 등록",
       "koPath": "/admin/monitoring/sensor_add",
       "enPath": "/en/admin/monitoring/sensor_add",
       "exportName": "SensorAddMigrationPage",
@@ -1625,6 +1804,7 @@
     {
       "assetId": "ROUTE-SENSOR-EDIT",
       "routeId": "sensor-edit",
+      "label": "센서 설정",
       "koPath": "/admin/monitoring/sensor_edit",
       "enPath": "/en/admin/monitoring/sensor_edit",
       "exportName": "SensorEditMigrationPage",
@@ -1634,6 +1814,7 @@
     {
       "assetId": "ROUTE-SENSOR-LIST",
       "routeId": "sensor-list",
+      "label": "센서 목록",
       "koPath": "/admin/monitoring/sensor_list",
       "enPath": "/en/admin/monitoring/sensor_list",
       "exportName": "SensorListMigrationPage",
@@ -1643,6 +1824,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-CONNECTION-ADD",
       "routeId": "external-connection-add",
+      "label": "외부연계 등록",
       "koPath": "/admin/external/connection_add",
       "enPath": "/en/admin/external/connection_add",
       "exportName": "ExternalConnectionAddMigrationPage",
@@ -1652,6 +1834,7 @@
     {
       "assetId": "ROUTE-EXTERNAL-CONNECTION-EDIT",
       "routeId": "external-connection-edit",
+      "label": "외부연계 수정",
       "koPath": "/admin/external/connection_edit",
       "enPath": "/en/admin/external/connection_edit",
       "exportName": "ExternalConnectionEditMigrationPage",
@@ -1661,6 +1844,7 @@
     {
       "assetId": "ROUTE-BATCH-MANAGEMENT",
       "routeId": "batch-management",
+      "label": "배치 관리",
       "koPath": "/admin/system/batch",
       "enPath": "/en/admin/system/batch",
       "exportName": "BatchManagementMigrationPage",
@@ -1670,6 +1854,7 @@
     {
       "assetId": "ROUTE-SCHEDULER-MANAGEMENT",
       "routeId": "scheduler-management",
+      "label": "스케줄러 관리",
       "koPath": "/admin/system/scheduler",
       "enPath": "/en/admin/system/scheduler",
       "exportName": "SchedulerManagementMigrationPage",
@@ -1679,6 +1864,7 @@
     {
       "assetId": "ROUTE-DB-PROMOTION-POLICY",
       "routeId": "db-promotion-policy",
+      "label": "DB 반영 정책 카탈로그",
       "koPath": "/admin/system/db-promotion-policy",
       "enPath": "/en/admin/system/db-promotion-policy",
       "exportName": "DbPromotionPolicyMigrationPage",
@@ -1688,6 +1874,7 @@
     {
       "assetId": "ROUTE-BACKUP-CONFIG",
       "routeId": "backup-config",
+      "label": "백업 설정",
       "koPath": "/admin/system/backup_config",
       "enPath": "/en/admin/system/backup_config",
       "exportName": "BackupConfigMigrationPage",
@@ -1697,6 +1884,7 @@
     {
       "assetId": "ROUTE-BACKUP-EXECUTION",
       "routeId": "backup-execution",
+      "label": "백업 실행",
       "koPath": "/admin/system/backup",
       "enPath": "/en/admin/system/backup",
       "exportName": "BackupConfigMigrationPage",
@@ -1706,6 +1894,7 @@
     {
       "assetId": "ROUTE-RESTORE-EXECUTION",
       "routeId": "restore-execution",
+      "label": "복구 실행",
       "koPath": "/admin/system/restore",
       "enPath": "/en/admin/system/restore",
       "exportName": "BackupConfigMigrationPage",
@@ -1715,6 +1904,7 @@
     {
       "assetId": "ROUTE-PACKAGE-GOVERNANCE",
       "routeId": "package-governance",
+      "label": "패키지 거버넌스",
       "koPath": "/admin/system/package-governance",
       "enPath": "/en/admin/system/package-governance",
       "exportName": "PackageGovernanceScreen",
@@ -1724,6 +1914,7 @@
     {
       "assetId": "ROUTE-SECTION-MANAGEMENT",
       "routeId": "section-management",
+      "label": "섹션 관리",
       "koPath": "/admin/system/section-management",
       "enPath": "/en/admin/system/section-management",
       "exportName": "BuilderStudioPage",
@@ -1733,6 +1924,7 @@
     {
       "assetId": "ROUTE-BUILDER-STUDIO",
       "routeId": "builder-studio",
+      "label": "빌더 스튜디오",
       "koPath": "/admin/system/builder-studio",
       "enPath": "/en/admin/system/builder-studio",
       "exportName": "BuilderStudioPage",
@@ -1742,6 +1934,7 @@
     {
       "assetId": "ROUTE-COMPONENT-MANAGEMENT",
       "routeId": "component-management",
+      "label": "컴포넌트 관리",
       "koPath": "/admin/system/component-management",
       "enPath": "/en/admin/system/component-management",
       "exportName": "ComponentManagementPage",
@@ -1751,6 +1944,7 @@
     {
       "assetId": "ROUTE-ADMIN-MONITORING-DASHBOARD",
       "routeId": "admin-monitoring-dashboard",
+      "label": "모니터링 대시보드",
       "koPath": "/admin/system/monitoring-dashboard",
       "enPath": "/en/admin/system/monitoring-dashboard",
       "exportName": "MonitoringDashboardPage",
@@ -1760,6 +1954,7 @@
     {
       "assetId": "ROUTE-CRON-MONITORING",
       "routeId": "cron-monitoring",
+      "label": "크론 모니터링",
       "koPath": "/admin/system/cron-monitoring",
       "enPath": "/en/admin/system/cron-monitoring",
       "exportName": "CronMonitoringPage",
@@ -1769,6 +1964,7 @@
     {
       "assetId": "ROUTE-DB-MONITORING",
       "routeId": "db-monitoring",
+      "label": "DB 모니터링",
       "koPath": "/admin/system/db-monitoring",
       "enPath": "/en/admin/system/db-monitoring",
       "exportName": "DbMonitoringPage",
@@ -1778,6 +1974,7 @@
     {
       "assetId": "ROUTE-BATCH-MONITORING",
       "routeId": "batch-monitoring",
+      "label": "배치 모니터링",
       "koPath": "/admin/system/batch-monitoring",
       "enPath": "/en/admin/system/batch-monitoring",
       "exportName": "BatchMonitoringPage",
@@ -1787,6 +1984,7 @@
     {
       "assetId": "ROUTE-GIT-BUILD-MONITORING",
       "routeId": "git-build-monitoring",
+      "label": "Git/빌드 모니터링",
       "koPath": "/admin/system/git-build-monitoring",
       "enPath": "/en/admin/system/git-build-monitoring",
       "exportName": "GitBuildMonitoringPage",
@@ -1796,6 +1994,7 @@
     {
       "assetId": "ROUTE-AI-DASHBOARD",
       "routeId": "ai-dashboard",
+      "label": "AI 대시보드",
       "koPath": "/admin/ai/dashboard",
       "enPath": "/en/admin/ai/dashboard",
       "exportName": "AiDashboardPage",
@@ -1805,6 +2004,7 @@
     {
       "assetId": "ROUTE-AI-MODELS",
       "routeId": "ai-models",
+      "label": "모델 관리",
       "koPath": "/admin/ai/models",
       "enPath": "/en/admin/ai/models",
       "exportName": "AiModelsPage",
@@ -1814,6 +2014,7 @@
     {
       "assetId": "ROUTE-AI-TRAINING",
       "routeId": "ai-training",
+      "label": "학습 관리",
       "koPath": "/admin/ai/training",
       "enPath": "/en/admin/ai/training",
       "exportName": "AiTrainingPage",
@@ -1823,6 +2024,7 @@
     {
       "assetId": "ROUTE-AI-RAG",
       "routeId": "ai-rag",
+      "label": "RAG 관리",
       "koPath": "/admin/ai/rag",
       "enPath": "/en/admin/ai/rag",
       "exportName": "AiRagPage",
@@ -1832,6 +2034,7 @@
     {
       "assetId": "ROUTE-AI-AGENTS",
       "routeId": "ai-agents",
+      "label": "에이전트 관리",
       "koPath": "/admin/ai/agents",
       "enPath": "/en/admin/ai/agents",
       "exportName": "AiAgentsPage",
@@ -1841,6 +2044,7 @@
     {
       "assetId": "ROUTE-AI-LOGS",
       "routeId": "ai-logs",
+      "label": "로그 관리",
       "koPath": "/admin/ai/logs",
       "enPath": "/en/admin/ai/logs",
       "exportName": "AiLogsPage",
@@ -1850,6 +2054,7 @@
     {
       "assetId": "ROUTE-AI-QUALITY",
       "routeId": "ai-quality",
+      "label": "품질 관리",
       "koPath": "/admin/ai/quality",
       "enPath": "/en/admin/ai/quality",
       "exportName": "AiQualityPage",
@@ -1859,6 +2064,7 @@
     {
       "assetId": "ROUTE-AI-OBSERVABILITY",
       "routeId": "ai-observability",
+      "label": "AI 관측",
       "koPath": "/admin/ai/observability",
       "enPath": "/en/admin/ai/observability",
       "exportName": "AiObservabilityPage",
@@ -1868,6 +2074,7 @@
     {
       "assetId": "ROUTE-EMISSION-RESULT-LIST",
       "routeId": "emission-result-list",
+      "label": "산정 결과 관리",
       "koPath": "/admin/emission/result_list",
       "enPath": "/en/admin/emission/result_list",
       "exportName": "EmissionResultListMigrationPage",
@@ -1877,6 +2084,7 @@
     {
       "assetId": "ROUTE-EMISSION-RESULT-DETAIL",
       "routeId": "emission-result-detail",
+      "label": "결과 상세",
       "koPath": "/admin/emission/result_detail",
       "enPath": "/en/admin/emission/result_detail",
       "exportName": "EmissionResultDetailMigrationPage",
@@ -1886,6 +2094,7 @@
     {
       "assetId": "ROUTE-EMISSION-VALIDATE",
       "routeId": "emission-validate",
+      "label": "검증 관리",
       "koPath": "/admin/emission/validate",
       "enPath": "/en/admin/emission/validate",
       "exportName": "EmissionValidateMigrationPage",
@@ -1895,6 +2104,7 @@
     {
       "assetId": "ROUTE-EMISSION-MANAGEMENT",
       "routeId": "emission-management",
+      "label": "배출 변수 관리",
       "koPath": "/admin/emission/management",
       "enPath": "/en/admin/emission/management",
       "exportName": "EmissionManagementMigrationPage",
@@ -1904,6 +2114,7 @@
     {
       "assetId": "ROUTE-EMISSION-FACTOR-MANAGEMENT",
       "routeId": "emission-factor-management",
+      "label": "배출계수 관리",
       "koPath": "/admin/emission/factor-management",
       "enPath": "/en/admin/emission/factor-management",
       "exportName": "EmissionEcoinventAdminMigrationPage",
@@ -1913,6 +2124,7 @@
     {
       "assetId": "ROUTE-EMISSION-CALCULATION-RULE",
       "routeId": "emission-calculation-rule",
+      "label": "산정식 관리",
       "koPath": "/admin/emission/calculation-rule",
       "enPath": "/en/admin/emission/calculation-rule",
       "exportName": "EmissionDefinitionStudioMigrationPage",
@@ -1922,6 +2134,7 @@
     {
       "assetId": "ROUTE-EMISSION-INPUT-TEMPLATE",
       "routeId": "emission-input-template",
+      "label": "입력 템플릿 관리",
       "koPath": "/admin/emission/input-template",
       "enPath": "/en/admin/emission/input-template",
       "exportName": "EmissionDefinitionStudioMigrationPage",
@@ -1931,6 +2144,7 @@
     {
       "assetId": "ROUTE-EMISSION-VALIDATION-RULE",
       "routeId": "emission-validation-rule",
+      "label": "검증 규칙 관리",
       "koPath": "/admin/emission/validation-rule",
       "enPath": "/en/admin/emission/validation-rule",
       "exportName": "EmissionValidateMigrationPage",
@@ -1940,6 +2154,7 @@
     {
       "assetId": "ROUTE-EMISSION-APPROVAL-WORKFLOW",
       "routeId": "emission-approval-workflow",
+      "label": "승인 워크플로우 관리",
       "koPath": "/admin/emission/approval-workflow",
       "enPath": "/en/admin/emission/approval-workflow",
       "exportName": "EmissionValidateMigrationPage",
@@ -1949,6 +2164,7 @@
     {
       "assetId": "ROUTE-EMISSION-REPORT-TEMPLATE",
       "routeId": "emission-report-template",
+      "label": "보고서 템플릿 관리",
       "koPath": "/admin/emission/report-template",
       "enPath": "/en/admin/emission/report-template",
       "exportName": "EmissionSurveyReportMigrationPage",
@@ -1958,6 +2174,7 @@
     {
       "assetId": "ROUTE-EMISSION-EVIDENCE-MANAGEMENT",
       "routeId": "emission-evidence-management",
+      "label": "증빙 관리",
       "koPath": "/admin/emission/evidence-management",
       "enPath": "/en/admin/emission/evidence-management",
       "exportName": "EmissionSurveyAdminDataMigrationPage",
@@ -1967,6 +2184,7 @@
     {
       "assetId": "ROUTE-EMISSION-AUDIT-LOG",
       "routeId": "emission-audit-log",
+      "label": "감사 로그",
       "koPath": "/admin/emission/audit-log",
       "enPath": "/en/admin/emission/audit-log",
       "exportName": "EmissionDataHistoryMigrationPage",
@@ -1976,6 +2194,7 @@
     {
       "assetId": "ROUTE-EMISSION-SYSTEM-LINK",
       "routeId": "emission-system-link",
+      "label": "외부 시스템 연계",
       "koPath": "/admin/emission/system-link",
       "enPath": "/en/admin/emission/system-link",
       "exportName": "ExternalConnectionListMigrationPage",
@@ -1985,6 +2204,7 @@
     {
       "assetId": "ROUTE-EMISSION-LCI-CLASSIFICATION",
       "routeId": "emission-lci-classification",
+      "label": "LCI 분류 관리",
       "koPath": "/admin/emission/lci-classification",
       "enPath": "/en/admin/emission/lci-classification",
       "exportName": "EmissionLciClassificationMigrationPage",
@@ -1994,6 +2214,7 @@
     {
       "assetId": "ROUTE-EMISSION-DEFINITION-STUDIO",
       "routeId": "emission-definition-studio",
+      "label": "배출 정의 관리",
       "koPath": "/admin/emission/definition-studio",
       "enPath": "/en/admin/emission/definition-studio",
       "exportName": "EmissionDefinitionStudioMigrationPage",
@@ -2003,6 +2224,7 @@
     {
       "assetId": "ROUTE-EMISSION-GWP-VALUES",
       "routeId": "emission-gwp-values",
+      "label": "GWP 값 관리",
       "koPath": "/admin/emission/gwp-values",
       "enPath": "/en/admin/emission/gwp-values",
       "exportName": "EmissionGwpValuesMigrationPage",
@@ -2012,6 +2234,7 @@
     {
       "assetId": "ROUTE-EMISSION-ECOINVENT-ADMIN",
       "routeId": "emission-ecoinvent-admin",
+      "label": "ecoinvent 배출계수 관리",
       "koPath": "/admin/emission/ecoinvent",
       "enPath": "/en/admin/emission/ecoinvent",
       "exportName": "EmissionEcoinventAdminMigrationPage",
@@ -2021,6 +2244,7 @@
     {
       "assetId": "ROUTE-EMISSION-SURVEY-ADMIN",
       "routeId": "emission-survey-admin",
+      "label": "배출 설문 관리",
       "koPath": "/admin/emission/survey-admin",
       "enPath": "/en/admin/emission/survey-admin",
       "exportName": "EmissionSurveyAdminMigrationPage",
@@ -2030,6 +2254,7 @@
     {
       "assetId": "ROUTE-EMISSION-SURVEY-REPORT",
       "routeId": "emission-survey-report",
+      "label": "배출 설문 리포트",
       "koPath": "/admin/emission/survey-report",
       "enPath": "/en/admin/emission/survey-report",
       "exportName": "EmissionSurveyReportMigrationPage",
@@ -2039,6 +2264,7 @@
     {
       "assetId": "ROUTE-EMISSION-SURVEY-REPORT-PRINT",
       "routeId": "emission-survey-report-print",
+      "label": "배출 설문 리포트 출력",
       "koPath": "/admin/emission/survey-report-print",
       "enPath": "/en/admin/emission/survey-report-print",
       "exportName": "EmissionSurveyReportPrintPage",
@@ -2048,6 +2274,7 @@
     {
       "assetId": "ROUTE-EMISSION-SURVEY-REPORT-VERIFY",
       "routeId": "emission-survey-report-verify",
+      "label": "리포트 진위확인",
       "koPath": "/admin/emission/survey-report-verify",
       "enPath": "/en/admin/emission/survey-report-verify",
       "exportName": "EmissionSurveyReportVerifyPage",
@@ -2057,6 +2284,7 @@
     {
       "assetId": "ROUTE-EMISSION-SURVEY-LCA-SUMMARY-PRINT",
       "routeId": "emission-survey-lca-summary-print",
+      "label": "LCA 요약보고서 출력",
       "koPath": "/admin/emission/survey-report-lca-summary",
       "enPath": "/en/admin/emission/survey-report-lca-summary",
       "exportName": "EmissionSurveyLcaSummaryPrintPage",
@@ -2066,6 +2294,7 @@
     {
       "assetId": "ROUTE-EMISSION-SURVEY-ADMIN-DATA",
       "routeId": "emission-survey-admin-data",
+      "label": "배출 설문 데이터셋",
       "koPath": "/admin/emission/survey-admin-data",
       "enPath": "/en/admin/emission/survey-admin-data",
       "exportName": "EmissionSurveyAdminDataMigrationPage",
@@ -2075,6 +2304,7 @@
     {
       "assetId": "ROUTE-EMISSION-DATA-HISTORY",
       "routeId": "emission-data-history",
+      "label": "데이터 변경 이력",
       "koPath": "/admin/emission/data_history",
       "enPath": "/en/admin/emission/data_history",
       "exportName": "EmissionDataHistoryMigrationPage",
@@ -2084,6 +2314,7 @@
     {
       "assetId": "ROUTE-EMISSION-SITE-MANAGEMENT",
       "routeId": "emission-site-management",
+      "label": "배출지·배출원 원장",
       "koPath": "/admin/emission/site-management",
       "enPath": "/en/admin/emission/site-management",
       "exportName": "EmissionSiteManagementMigrationPage",
@@ -2093,6 +2324,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-REC-CHECK",
       "routeId": "certificate-rec-check",
+      "label": "REC 중복 확인",
       "koPath": "/admin/certificate/rec_check",
       "enPath": "/en/admin/certificate/rec_check",
       "exportName": "CertificateRecCheckMigrationPage",
@@ -2102,6 +2334,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-AUDIT-LOG",
       "routeId": "certificate-audit-log",
+      "label": "인증서 감사 로그",
       "koPath": "/admin/certificate/audit-log",
       "enPath": "/en/admin/certificate/audit-log",
       "exportName": "CertificateAuditLogMigrationPage",
@@ -2111,6 +2344,7 @@
     {
       "assetId": "ROUTE-CERTIFICATE-OBJECTION-LIST",
       "routeId": "certificate-objection-list",
+      "label": "이의신청 처리",
       "koPath": "/admin/certificate/objection_list",
       "enPath": "/en/admin/certificate/objection_list",
       "exportName": "CertificateObjectionListMigrationPage",
@@ -2120,6 +2354,7 @@
     {
       "assetId": "ROUTE-EMISSION-DASHBOARD",
       "routeId": "emission-dashboard",
+      "label": "탄소 배출 대시보드",
       "koPath": "/emission/index",
       "enPath": "/en/emission/index",
       "exportName": "EmissionDashboardPage",
@@ -2129,6 +2364,7 @@
     {
       "assetId": "ROUTE-EMISSION-PROJECT-LIST",
       "routeId": "emission-project-list",
+      "label": "배출량 관리",
       "koPath": "/emission/project_list",
       "enPath": "/en/emission/project_list",
       "exportName": "EmissionProjectListMigrationPage",
@@ -2138,6 +2374,7 @@
     {
       "assetId": "ROUTE-EMISSION-MY-TASKS",
       "routeId": "emission-my-tasks",
+      "label": "내 배출 업무",
       "koPath": "/emission/my-tasks",
       "enPath": "/en/emission/my-tasks",
       "exportName": "EmissionProjectListMigrationPage",
@@ -2147,6 +2384,7 @@
     {
       "assetId": "ROUTE-EMISSION-REDUCTION",
       "routeId": "emission-reduction",
+      "label": "감축 시나리오",
       "koPath": "/emission/reduction",
       "enPath": "/en/emission/reduction",
       "exportName": "EmissionReductionMigrationPage",
@@ -2156,6 +2394,7 @@
     {
       "assetId": "ROUTE-EMISSION-LCI",
       "routeId": "emission-lci",
+      "label": "LCI DB 조회",
       "koPath": "/emission/lci",
       "enPath": "/en/emission/lci",
       "exportName": "EmissionLciMigrationPage",
@@ -2165,6 +2404,7 @@
     {
       "assetId": "ROUTE-EMISSION-DATA-INPUT",
       "routeId": "emission-data-input",
+      "label": "활동자료 입력",
       "koPath": "/emission/data_input",
       "enPath": "/en/emission/data_input",
       "exportName": "EmissionDataInputMigrationPage",
@@ -2174,6 +2414,7 @@
     {
       "assetId": "ROUTE-EMISSION-EVIDENCE",
       "routeId": "emission-evidence",
+      "label": "증빙 자료함",
       "koPath": "/emission/evidence",
       "enPath": "/en/emission/evidence",
       "exportName": "EmissionReportSubmitMigrationPage",
@@ -2183,6 +2424,7 @@
     {
       "assetId": "ROUTE-EMISSION-RESULT",
       "routeId": "emission-result",
+      "label": "산정 결과 조회",
       "koPath": "/emission/result",
       "enPath": "/en/emission/result",
       "exportName": "EmissionResultListMigrationPage",
@@ -2192,6 +2434,7 @@
     {
       "assetId": "ROUTE-EMISSION-REPORT-SUBMIT",
       "routeId": "emission-report-submit",
+      "label": "배출량 보고서 작성",
       "koPath": "/emission/report_submit",
       "enPath": "/en/emission/report_submit",
       "exportName": "EmissionReportSubmitMigrationPage",
@@ -2201,6 +2444,7 @@
     {
       "assetId": "ROUTE-EMISSION-LCA",
       "routeId": "emission-lca",
+      "label": "LCA 분석",
       "koPath": "/emission/lca",
       "enPath": "/en/emission/lca",
       "exportName": "EmissionLcaMigrationPage",
@@ -2210,6 +2454,7 @@
     {
       "assetId": "ROUTE-EMISSION-SIMULATE",
       "routeId": "emission-simulate",
+      "label": "배출량 산정",
       "koPath": "/emission/simulate",
       "enPath": "/en/emission/simulate",
       "exportName": "EmissionSimulateMigrationPage",
@@ -2219,6 +2464,7 @@
     {
       "assetId": "ROUTE-MONITORING-INDEX",
       "routeId": "monitoring-index",
+      "label": "모니터링 대시보드",
       "koPath": "/monitoring/index",
       "enPath": "/en/monitoring/index",
       "exportName": "MonitoringIndexPage",
@@ -2228,6 +2474,7 @@
     {
       "assetId": "ROUTE-MONITORING-DASHBOARD",
       "routeId": "monitoring-dashboard",
+      "label": "통합 대시보드",
       "koPath": "/monitoring/dashboard",
       "enPath": "/en/monitoring/dashboard",
       "exportName": "MonitoringDashboardMigrationPage",
@@ -2237,6 +2484,7 @@
     {
       "assetId": "ROUTE-MONITORING-REALTIME",
       "routeId": "monitoring-realtime",
+      "label": "실시간 모니터링",
       "koPath": "/monitoring/realtime",
       "enPath": "/en/monitoring/realtime",
       "exportName": "MonitoringRealtimeMigrationPage",
@@ -2246,6 +2494,7 @@
     {
       "assetId": "ROUTE-MONITORING-ALERTS",
       "routeId": "monitoring-alerts",
+      "label": "경보 현황",
       "koPath": "/monitoring/alerts",
       "enPath": "/en/monitoring/alerts",
       "exportName": "MonitoringAlertsMigrationPage",
@@ -2255,6 +2504,7 @@
     {
       "assetId": "ROUTE-MONITORING-STATISTICS",
       "routeId": "monitoring-statistics",
+      "label": "ESG 보고서",
       "koPath": "/monitoring/statistics",
       "enPath": "/en/monitoring/statistics",
       "exportName": "MonitoringStatisticsMigrationPage",
@@ -2264,6 +2514,7 @@
     {
       "assetId": "ROUTE-MONITORING-SHARE",
       "routeId": "monitoring-share",
+      "label": "이해관계자 공유",
       "koPath": "/monitoring/share",
       "enPath": "/en/monitoring/share",
       "exportName": "MonitoringShareMigrationPage",
@@ -2273,6 +2524,7 @@
     {
       "assetId": "ROUTE-MONITORING-REDUCTION-TREND",
       "routeId": "monitoring-reduction-trend",
+      "label": "성과 추이 분석",
       "koPath": "/monitoring/reduction_trend",
       "enPath": "/en/monitoring/reduction_trend",
       "exportName": "MonitoringReductionTrendMigrationPage",
@@ -2282,6 +2534,7 @@
     {
       "assetId": "ROUTE-MONITORING-TRACK",
       "routeId": "monitoring-track",
+      "label": "추적 리포트",
       "koPath": "/monitoring/track",
       "enPath": "/en/monitoring/track",
       "exportName": "MonitoringTrackMigrationPage",
@@ -2291,6 +2544,7 @@
     {
       "assetId": "ROUTE-MONITORING-EXPORT",
       "routeId": "monitoring-export",
+      "label": "분석 리포트 내보내기",
       "koPath": "/monitoring/export",
       "enPath": "/en/monitoring/export",
       "exportName": "MonitoringExportMigrationPage",
@@ -2300,6 +2554,7 @@
     {
       "assetId": "ROUTE-CO2-INDEX",
       "routeId": "co2-index",
+      "label": "MRV·탄소시장 대시보드",
       "koPath": "/co2/index",
       "enPath": "/en/co2/index",
       "exportName": "Co2IndexPage",
@@ -2309,6 +2564,7 @@
     {
       "assetId": "ROUTE-CO2-PRODUCTION-LIST",
       "routeId": "co2-production-list",
+      "label": "생산 정보",
       "koPath": "/co2/production_list",
       "enPath": "/en/co2/production_list",
       "exportName": "Co2ProductionListMigrationPage",
@@ -2318,6 +2574,7 @@
     {
       "assetId": "ROUTE-CO2-DEMAND-LIST",
       "routeId": "co2-demand-list",
+      "label": "수요 정보",
       "koPath": "/co2/demand_list",
       "enPath": "/en/co2/demand_list",
       "exportName": "Co2DemandListMigrationPage",
@@ -2327,6 +2584,7 @@
     {
       "assetId": "ROUTE-CO2-INTEGRITY",
       "routeId": "co2-integrity",
+      "label": "무결성 추적",
       "koPath": "/co2/integrity",
       "enPath": "/en/co2/integrity",
       "exportName": "Co2IntegrityMigrationPage",
@@ -2336,6 +2594,7 @@
     {
       "assetId": "ROUTE-CO2-CREDIT",
       "routeId": "co2-credit",
+      "label": "탄소 크레딧",
       "koPath": "/co2/credit",
       "enPath": "/en/co2/credit",
       "exportName": "Co2CreditMigrationPage",
@@ -2345,6 +2604,7 @@
     {
       "assetId": "ROUTE-CO2-ANALYSIS",
       "routeId": "co2-analysis",
+      "label": "품질 지표",
       "koPath": "/co2/analysis",
       "enPath": "/en/co2/analysis",
       "exportName": "Co2AnalysisMigrationPage",
@@ -2354,6 +2614,7 @@
     {
       "assetId": "ROUTE-CO2-SEARCH",
       "routeId": "co2-search",
+      "label": "MRV 정보",
       "koPath": "/co2/search",
       "enPath": "/en/co2/search",
       "exportName": "Co2SearchMigrationPage",
@@ -2363,6 +2624,7 @@
     {
       "assetId": "ROUTE-EMISSION-HOME-VALIDATE",
       "routeId": "emission-home-validate",
+      "label": "검증·보정",
       "koPath": "/emission/validate",
       "enPath": "/en/emission/validate",
       "exportName": "EmissionHomeValidateMigrationPage",
