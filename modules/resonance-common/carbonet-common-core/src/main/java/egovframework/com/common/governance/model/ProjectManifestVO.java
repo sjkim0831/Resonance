@@ -5,6 +5,7 @@ import java.util.Map;
 
 @Data
 public class ProjectManifestVO {
+    private Integer schemaVersion;
     private Metadata metadata;
     private Installations installations;
     private Bindings bindings;
