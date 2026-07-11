@@ -61,8 +61,8 @@ fi
 
 echo "[patroni-migrate] applying $(basename "$SQL_FILE") through $LEADER"
 kubectl -n "$NAMESPACE" exec -i "$LEADER" -- \
+  env PGOPTIONS="-c lock_timeout=$LOCK_TIMEOUT -c statement_timeout=$STATEMENT_TIMEOUT" \
   psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -v ON_ERROR_STOP=1 \
-  -c "SET lock_timeout='$LOCK_TIMEOUT'; SET statement_timeout='$STATEMENT_TIMEOUT';" \
   -1 < "$SQL_FILE"
 
 check_cluster "$LEADER"

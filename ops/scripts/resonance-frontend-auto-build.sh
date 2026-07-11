@@ -37,6 +37,9 @@ fi
 {
   echo "[$(date -Is)] frontend change detected; building React assets"
   node "$ROOT_DIR/ops/scripts/generate-builder-asset-registry.mjs"
+  if [[ "${SYNC_SDUI_REGISTRY:-true}" == "true" ]]; then
+    bash "$ROOT_DIR/ops/scripts/sync-sdui-component-registry.sh"
+  fi
   cd "$SRC_DIR"
   if [[ ! -d node_modules || "${FORCE_NPM_CI:-false}" == "true" ]]; then
     npm ci
