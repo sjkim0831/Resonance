@@ -19,6 +19,7 @@ import {
   type ScreenCommandChangeTarget,
   type ScreenCommandPagePayload
 } from "./lib/api/platformTypes";
+import { useProjectTheme } from "./app/hooks/useProjectTheme";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
 
@@ -148,6 +149,7 @@ function fallbackHelpContent(pageId: string): PageHelpContent {
 }
 
 export default function App() {
+  useProjectTheme();
   useTelemetryTransport();
   useGlobalErrorHandler();
   const { locationState, location, page, routeLoading } = useRuntimeNavigation();

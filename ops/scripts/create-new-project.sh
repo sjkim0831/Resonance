@@ -64,7 +64,7 @@ manifest = {
             "bindingMode": "PROJECT_DB",
             "projectDb": {"url": db_url, "schema": "public"}
         },
-        "theme": {"id": theme_id, "version": "1"},
+        "theme": {"id": theme_id, "version": "1", "tokens": {}},
         "menu": {"profile": f"{project_id}-admin-v1", "apiPrefix": "/api"}
     },
     "runtime": {

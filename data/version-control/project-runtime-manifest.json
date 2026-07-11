@@ -176,6 +176,124 @@
         "compatibilityClass": "IMPLEMENTATION_SAFE",
         "updatedAt": "2026-04-16T11:30:00Z"
       }
+    },
+    "P004": {
+      "schemaVersion": 1,
+      "metadata": {
+        "projectId": "P004",
+        "projectName": "Resonance-Sample-Blue",
+        "owner": "project-team",
+        "description": "Metadata-first Resonance project P004"
+      },
+      "installations": {
+        "commonCore": "workspace",
+        "stableGate": "v1",
+        "adapter": "none",
+        "adapterContract": "v1"
+      },
+      "bindings": {
+        "database": {
+          "bindingMode": "PROJECT_DB",
+          "projectDb": {
+            "url": "jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/resonance_p004?sslmode=disable",
+            "schema": "public"
+          }
+        },
+        "theme": {
+          "id": "theme-krds-blue",
+          "version": "1",
+          "tokens": {
+            "--kr-gov-blue": "#2457a7",
+            "--kr-gov-blue-hover": "#163f7f",
+            "--kr-gov-focus": "#ffbf47",
+            "--kr-gov-surface-subtle": "#f3f7fc",
+            "--kr-gov-text-primary": "#17202b"
+          }
+        },
+        "menu": {
+          "profile": "P004-admin-v1",
+          "apiPrefix": "/api"
+        }
+      },
+      "runtime": {
+        "packagePath": "apps/carbonet-api/build/libs/carbonet-api.jar",
+        "manifestPath": "projects/P004/manifest.json",
+        "bootTarget": "var/run/project-runtime/P004/carbonet-api.jar",
+        "bootCommand": "bash ops/scripts/start-project-runtime.sh P004 18084",
+        "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+        "lane": "PROJECT_RUNTIME",
+        "sharedRuntimeId": "carbonet-api",
+        "status": "READY_FOR_DATABASE",
+        "routing": {
+          "selectorPath": "/projects/P004",
+          "routePrefix": "/r/P004",
+          "managementPath": "/api/operations/governance/runtime/projects/P004",
+          "infoPath": "/api/runtime/project-info"
+        }
+      },
+      "governance": {
+        "compatibilityClass": "METADATA_FIRST",
+        "updatedAt": "2026-07-11T04:18:43.289103Z"
+      }
+    },
+    "P005": {
+      "schemaVersion": 1,
+      "metadata": {
+        "projectId": "P005",
+        "projectName": "Resonance-Sample-Green",
+        "owner": "project-team",
+        "description": "Metadata-first Resonance project P005"
+      },
+      "installations": {
+        "commonCore": "workspace",
+        "stableGate": "v1",
+        "adapter": "none",
+        "adapterContract": "v1"
+      },
+      "bindings": {
+        "database": {
+          "bindingMode": "PROJECT_DB",
+          "projectDb": {
+            "url": "jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/resonance_p005?sslmode=disable",
+            "schema": "public"
+          }
+        },
+        "theme": {
+          "id": "theme-krds-green",
+          "version": "1",
+          "tokens": {
+            "--kr-gov-blue": "#176b55",
+            "--kr-gov-blue-hover": "#0f4f3f",
+            "--kr-gov-focus": "#e5a000",
+            "--kr-gov-surface-subtle": "#f2f8f5",
+            "--kr-gov-text-primary": "#18231f"
+          }
+        },
+        "menu": {
+          "profile": "P005-admin-v1",
+          "apiPrefix": "/api"
+        }
+      },
+      "runtime": {
+        "packagePath": "apps/carbonet-api/build/libs/carbonet-api.jar",
+        "manifestPath": "projects/P005/manifest.json",
+        "bootTarget": "var/run/project-runtime/P005/carbonet-api.jar",
+        "bootCommand": "bash ops/scripts/start-project-runtime.sh P005 18085",
+        "runtimeMode": "DEDICATED_PROJECT_RUNTIME",
+        "lane": "PROJECT_RUNTIME",
+        "sharedRuntimeId": "carbonet-api",
+        "status": "READY_FOR_DATABASE",
+        "routing": {
+          "selectorPath": "/projects/P005",
+          "routePrefix": "/r/P005",
+          "managementPath": "/api/operations/governance/runtime/projects/P005",
+          "infoPath": "/api/runtime/project-info"
+        }
+      },
+      "governance": {
+        "compatibilityClass": "METADATA_FIRST",
+        "updatedAt": "2026-07-11T04:18:43.382441Z"
+      }
     }
   }
 }

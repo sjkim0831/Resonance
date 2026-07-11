@@ -47,6 +47,9 @@ public class ProjectRuntimeInfoApiController {
                 response.put("externalBaseUrl", routingValue(manifest, "externalBaseUrl"));
                 response.put("domainHost", routingValue(manifest, "domainHost"));
                 response.put("managementPath", routingValue(manifest, "managementPath"));
+                response.put("theme", manifest.getBindings() == null || manifest.getBindings().getTheme() == null
+                        ? Map.of()
+                        : new LinkedHashMap<>(manifest.getBindings().getTheme()));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {

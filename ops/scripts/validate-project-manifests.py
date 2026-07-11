@@ -26,6 +26,7 @@ def main() -> int:
     validator = Draft202012Validator(schema)
     failures: list[str] = []
     legacy: list[str] = []
+    canonical_registry: dict[str, dict] = {}
     checked = 0
 
     for project_id, payload in sorted(registry.get("projects", {}).items()):
@@ -33,12 +34,16 @@ def main() -> int:
             legacy.append(project_id)
             continue
         checked += 1
+        canonical_registry[project_id] = payload
         failures.extend(validate(f"registry:{project_id}", payload, validator))
 
     for manifest_path in sorted((ROOT / "projects").glob("*/manifest.json")):
         payload = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
         checked += 1
         failures.extend(validate(str(manifest_path.relative_to(ROOT)), payload, validator))
+        project_id = payload.get("metadata", {}).get("projectId", "")
+        if project_id in canonical_registry and canonical_registry[project_id] != payload:
+            failures.append(f"{manifest_path.relative_to(ROOT)}: differs from global registry")
 
     if failures:
         print("\n".join(failures), file=sys.stderr)
