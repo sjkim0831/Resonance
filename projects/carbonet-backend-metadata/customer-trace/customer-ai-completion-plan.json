@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T09:51:53.937675+00:00",
+  "mission": "Complete the customer project by converting every canonical UC into an evidence-backed, customer-approved delivery outcome.",
+  "currentState": {
+    "canonicalUseCases": 342,
+    "customerMaturity": {
+      "score": 80.8,
+      "grade": "B+",
+      "decision": "REVIEW_REQUIRED"
+    },
+    "deliveryReadiness": {
+      "score": 30.6,
+      "grade": "D",
+      "verifiedUseCases": 0,
+      "approvedUseCases": 0
+    },
+    "queueSummary": {
+      "READY_FOR_E2E": 59,
+      "READY_FOR_PAGE_VERIFICATION": 153,
+      "READY_FOR_API_VERIFICATION": 41,
+      "CANDIDATE_REVIEW": 88,
+      "MAPPING_REQUIRED": 1
+    },
+    "readOnlyE2E": {
+      "partialRuntimeEvidence": 57,
+      "runtimeGap": 2
+    },
+    "authLedgerE2E": "PASSED",
+    "approvalSummary": {
+      "APPROVED": 0,
+      "IN_REVIEW": 0,
+      "PENDING": 342,
+      "REJECTED": 0,
+      "VERIFIED": 1
+    }
+  },
+  "requiredCapabilities": [
+    "Ephemeral role-based test accounts with automatic cleanup",
+    "Authenticated Playwright desktop/mobile runner",
+    "Safe seeded test datasets and transaction rollback",
+    "OpenAPI and runtime contract comparison",
+    "Database before/after effect and audit-log correlation",
+    "Visual regression, accessibility, localization, and responsive checks",
+    "SR implementation sandbox with file allow-list and diff review",
+    "Zero-downtime Flyway/Liquibase migration and rollback evidence",
+    "Customer review inbox with approve/reject/comment/evidence workflow",
+    "Release scorecard that blocks promotion on missing evidence"
+  ],
+  "workstreams": [
+    {
+      "priority": 1,
+      "id": "RUNTIME_GAP_REPAIR",
+      "itemCount": 2,
+      "exitCriteria": "No confirmed 404/5xx candidate API remains without an SR decision",
+      "automation": "AI_IMPLEMENT_HUMAN_REVIEW"
+    },
+    {
+      "priority": 2,
+      "id": "AUTHENTICATED_BROWSER_E2E",
+      "itemCount": 59,
+      "exitCriteria": "Role-specific browser, API, DB effect, authority, and audit evidence attached",
+      "automation": "EPHEMERAL_FIXTURE_AND_PLAYWRIGHT"
+    },
+    {
+      "priority": 3,
+      "id": "PAGE_VERIFICATION",
+      "itemCount": 153,
+      "exitCriteria": "Desktop/mobile render, interaction, accessibility, and visual evidence attached",
+      "automation": "PLAYWRIGHT_VISUAL_A11Y"
+    },
+    {
+      "priority": 4,
+      "id": "API_VERIFICATION",
+      "itemCount": 41,
+      "exitCriteria": "Contract, authorization, persistence, idempotency, and failure behavior verified",
+      "automation": "CONTRACT_TEST_SAFE_DATA"
+    },
+    {
+      "priority": 5,
+      "id": "CANDIDATE_REVIEW",
+      "itemCount": 88,
+      "exitCriteria": "Human accepts or rejects page/API/DB candidates with evidence",
+      "automation": "AI_RECOMMEND_HUMAN_DECIDE"
+    },
+    {
+      "priority": 6,
+      "id": "MAPPING_REQUIRED",
+      "itemCount": 1,
+      "exitCriteria": "At least one evidence-backed asset mapping or explicit new-build SR exists",
+      "automation": "AI_DISCOVER_HUMAN_DECIDE"
+    },
+    {
+      "priority": 7,
+      "id": "CUSTOMER_SIGNOFF",
+      "itemCount": 342,
+      "exitCriteria": "Customer reviewer approves or rejects every canonical UC; VERIFIED always includes evidence",
+      "automation": "HUMAN_ONLY_DECISION"
+    }
+  ],
+  "promotionGate": {
+    "automaticImplemented": false,
+    "automaticVerified": false,
+    "requiredForVerified": [
+      "AUTHENTICATED_BROWSER",
+      "API_RUNTIME",
+      "DATABASE_EFFECT",
+      "AUTHORITY",
+      "AUDIT_LOG",
+      "HUMAN_REVIEWER",
+      "EVIDENCE_REFS"
+    ],
+    "requiredForRelease": [
+      "PATRONI_HEALTHY",
+      "BACKUP_VERIFIED",
+      "MIGRATIONS_VALID",
+      "ROLLING_DEPLOYMENT_READY",
+      "NO_CRITICAL_RUNTIME_GAPS"
+    ]
+  }
+}

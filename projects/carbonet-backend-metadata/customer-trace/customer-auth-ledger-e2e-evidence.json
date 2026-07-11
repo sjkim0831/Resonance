@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "executedAt": "2026-07-11T09:50:00Z",
+  "environment": "carbonet-prod",
+  "result": "PASSED",
+  "checks": {
+    "systemAdministratorApiAccess": 200,
+    "generalUserApiAccess": 403,
+    "anonymousApiAccess": 401,
+    "pendingToInReview": "PASSED",
+    "inReviewToApproved": "PASSED",
+    "approvedToVerifiedWithEvidence": "PASSED",
+    "pendingToApprovedDirect": "REJECTED_400",
+    "optimisticRowVersion": "0_TO_3",
+    "auditHistoryEntries": 4,
+    "verifiedEvidenceCount": 2
+  },
+  "cleanup": {
+    "temporaryAccountsRemoved": true,
+    "temporaryTokensRemoved": true,
+    "temporaryLedgerRowsRemoved": true,
+    "canonicalApprovalRows": 342,
+    "canonicalHistoryRows": 342
+  },
+  "policy": {
+    "productionUserPasswordsChanged": false,
+    "automaticVerification": false,
+    "canonicalUseCasesPromoted": 0
+  }
+}
