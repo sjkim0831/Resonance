@@ -3,6 +3,8 @@ package egovframework.com.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import egovframework.com.service.CustomerTraceApprovalLedgerService;
+import egovframework.com.feature.auth.util.JwtTokenProvider;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,19 +34,22 @@ public class CustomerTraceApiController {
     private final ObjectMapper objectMapper;
     private final Path traceRoot;
     private final CustomerTraceApprovalLedgerService approvalLedgerService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     public CustomerTraceApiController(
             ObjectMapper objectMapper,
             CustomerTraceApprovalLedgerService approvalLedgerService,
+            JwtTokenProvider jwtTokenProvider,
             @Value("${CARBONET_BACKEND_METADATA_FS_OVERRIDE_PATH:/app/backend-metadata}") String backendMetadataRoot) {
         this.objectMapper = objectMapper;
         this.approvalLedgerService = approvalLedgerService;
+        this.jwtTokenProvider = jwtTokenProvider;
         this.traceRoot = Path.of(backendMetadataRoot).normalize().resolve("customer-trace").normalize();
     }
 
     @GetMapping("/summary")
-    public Map<String, Object> summary(Principal principal) throws IOException {
-        requireAdmin(principal);
+    public Map<String, Object> summary(Principal principal, HttpServletRequest request) throws IOException {
+        requireAdmin(principal, request);
         JsonNode baseline = read("customer-trace-baseline.json");
         JsonNode consensus = read("customer-mapping-consensus.json");
         JsonNode sourceEvidence = read("customer-source-evidence.json");
@@ -73,8 +79,8 @@ public class CustomerTraceApiController {
             @RequestParam(required = false) String query,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "50") int limit,
-            Principal principal) throws IOException {
-        requireAdmin(principal);
+            Principal principal, HttpServletRequest request) throws IOException {
+        requireAdmin(principal, request);
         JsonNode bindings = read("customer-sdui-bindings.json").path("bindings");
         String normalizedDomain = safe(domain).toLowerCase(Locale.ROOT);
         String normalizedQuery = safe(query).toLowerCase(Locale.ROOT);
@@ -95,8 +101,8 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/trace")
-    public ResponseEntity<?> trace(@RequestParam String useCaseId, Principal principal) throws IOException {
-        requireAdmin(principal);
+    public ResponseEntity<?> trace(@RequestParam String useCaseId, Principal principal, HttpServletRequest request) throws IOException {
+        requireAdmin(principal, request);
         JsonNode bindings = read("customer-sdui-bindings.json").path("bindings");
         JsonNode requests = read("customer-sr-workbench-import.json").path("requests");
         if (bindings.isArray()) {
@@ -122,25 +128,22 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/scorecard")
-    public JsonNode scorecard(Principal principal) throws IOException { requireAdmin(principal); return read("customer-governance-scorecard.json"); }
+    public JsonNode scorecard(Principal principal, HttpServletRequest request) throws IOException { requireAdmin(principal, request); return read("customer-governance-scorecard.json"); }
 
     @GetMapping("/sr-backlog")
-    public JsonNode srBacklog(Principal principal) throws IOException { requireAdmin(principal); return read("customer-sr-workbench-import.json"); }
+    public JsonNode srBacklog(Principal principal, HttpServletRequest request) throws IOException { requireAdmin(principal, request); return read("customer-sr-workbench-import.json"); }
 
     @GetMapping("/approval-ledger")
-    public Map<String, Object> approvalLedger(Principal principal) { requireAdmin(principal); return approvalLedgerService.ledger(); }
+    public Map<String, Object> approvalLedger(Principal principal, HttpServletRequest request) { requireAdmin(principal, request); return approvalLedgerService.ledger(); }
 
     @PostMapping("/approval")
     public synchronized ResponseEntity<?> updateApproval(
             @RequestBody ApprovalUpdateRequest request,
-            Principal principal) throws IOException {
-        if (principal == null || safe(principal.getName()).isEmpty()) {
-            return ResponseEntity.status(401).body(Map.of("message", "Authenticated reviewer is required."));
-        }
-        requireAdmin(principal);
+            Principal principal, HttpServletRequest servletRequest) throws IOException {
+        String reviewerId = requireAdmin(principal, servletRequest);
         List<String> evidenceRefs = request.evidenceRefs() == null ? List.of() : request.evidenceRefs().stream().map(this::safe).filter(value -> !value.isEmpty()).distinct().toList();
         try {
-            Map<String, Object> updated = approvalLedgerService.update(safe(request.useCaseId()), safe(request.state()), evidenceRefs, request.comment(), principal.getName());
+            Map<String, Object> updated = approvalLedgerService.update(safe(request.useCaseId()), safe(request.state()), evidenceRefs, request.comment(), reviewerId);
             approvalLedgerService.exportSnapshot();
             return ResponseEntity.ok(updated);
         } catch (org.springframework.dao.EmptyResultDataAccessException error) {
@@ -151,7 +154,7 @@ public class CustomerTraceApiController {
     }
 
     @GetMapping("/catalog")
-    public JsonNode catalog(Principal principal) throws IOException { requireAdmin(principal); return read("customer-trace-catalog.json"); }
+    public JsonNode catalog(Principal principal, HttpServletRequest request) throws IOException { requireAdmin(principal, request); return read("customer-trace-catalog.json"); }
 
     private JsonNode read(String fileName) throws IOException {
         Path file = traceRoot.resolve(fileName).normalize();
@@ -170,12 +173,29 @@ public class CustomerTraceApiController {
 
     private String safe(String value) { return value == null ? "" : value.trim(); }
 
-    private void requireAdmin(Principal principal) {
-        if (principal == null || safe(principal.getName()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
+    private String requireAdmin(Principal principal, HttpServletRequest request) {
+        String userId = principal == null ? "" : safe(principal.getName());
+        if (userId.isEmpty()) {
+            String token = jwtTokenProvider.getCookie(request, "accessToken");
+            if (!token.isEmpty() && jwtTokenProvider.accessValidateToken(token) == 200) {
+                Object encryptedUserId = jwtTokenProvider.accessExtractClaims(token).get("userId");
+                userId = encryptedUserId == null ? "" : safe(jwtTokenProvider.decrypt(encryptedUserId.toString()));
+            }
         }
-        if (!approvalLedgerService.isCustomerTraceAdmin(principal.getName())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customer Trace administrator authority is required.");
+        if (userId.isEmpty()) throw new CustomerTraceAccessException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
+        if (!approvalLedgerService.isCustomerTraceAdmin(userId)) {
+            throw new CustomerTraceAccessException(HttpStatus.FORBIDDEN, "Customer Trace administrator authority is required.");
         }
+        return userId;
+    }
+
+    @ExceptionHandler(CustomerTraceAccessException.class)
+    public ResponseEntity<Map<String, Object>> handleAccess(CustomerTraceAccessException error) {
+        return ResponseEntity.status(error.status).body(Map.of("status", error.status.value(), "message", error.getMessage()));
+    }
+
+    private static class CustomerTraceAccessException extends RuntimeException {
+        private final HttpStatus status;
+        private CustomerTraceAccessException(HttpStatus status, String message) { super(message); this.status = status; }
     }
 }
