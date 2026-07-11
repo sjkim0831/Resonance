@@ -1,0 +1,3967 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-11T09:22:22.818352+00:00",
+  "mode": "READ_ONLY",
+  "itemCount": 59,
+  "summary": {
+    "partialRuntimeEvidence": 57,
+    "runtimeGap": 2
+  },
+  "policy": {
+    "automaticVerification": false,
+    "mutatingRequestsExecuted": false,
+    "databaseChanged": false
+  },
+  "items": [
+    {
+      "queueId": "VERIFY-UC-T016",
+      "useCaseId": "UC-T016",
+      "title": "거래 현황 모니터링",
+      "domain": "거래",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/trade/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/trade/list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/trade/approve",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/health",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/overview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/system",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-T018",
+      "useCaseId": "UC-T018",
+      "title": "거래 리포트 Export",
+      "domain": "거래",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/monitoring/export",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/trade/report",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/trade/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/platform/theme-builder/themes/{param}/export",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-P005",
+      "useCaseId": "UC-P005",
+      "title": "가상계좌 생성",
+      "domain": "결제",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/member/admin_account",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/payment/virtual_account",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/payment/virtual_account",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/profile-save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/features",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-change/save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-P007",
+      "useCaseId": "UC-P007",
+      "title": "세금계산서 발행",
+      "domain": "결제",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/payment/notify",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/payment/notify",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/payment/refund_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/profile-save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/features",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-change/save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-P015",
+      "useCaseId": "UC-P015",
+      "title": "결제 알림",
+      "domain": "결제",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mypage/notification",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/payment/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/payment/pay",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-COMMON-006",
+      "useCaseId": "UC-COMMON-006",
+      "title": "보고서 내보내기 (Export)",
+      "domain": "공통",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/monitoring/export",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/home",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/support/faq",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/platform/theme-builder/themes/{param}/export",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/app/bootstrap",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/roles",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/en/home",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/check",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-COMMON-009",
+      "useCaseId": "UC-COMMON-009",
+      "title": "첨부파일 미리보기",
+      "domain": "공통",
+      "result": "RUNTIME_GAP",
+      "pageChecks": [
+        {
+          "path": "/home",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/support/faq",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/screen-builder/preview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/screen-builder/preview",
+          "httpStatus": 404,
+          "classification": "NOT_FOUND",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/builder/screens/{param}/preview",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/screen-builder/component-registry/auto-replace/preview",
+          "httpStatus": 404,
+          "classification": "NOT_FOUND",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-COMMON-011",
+      "useCaseId": "UC-COMMON-011",
+      "title": "비밀번호 변경 안내",
+      "domain": "공통",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mypage/password",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/home",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/admin/",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/auth/roles",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/check",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/roles/{param}",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/roles/{param}/menus",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-EDU002",
+      "useCaseId": "UC-EDU002",
+      "title": "교육 신청",
+      "domain": "교육훈련",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/edu/apply",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/edu/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/edu/apply",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/platform/runtime/repair/apply",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/platform/version-control/apply-upgrade",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/apply-routing",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON002",
+      "useCaseId": "UC-MON002",
+      "title": "탄소 크레딧 조회",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/co2/credit",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/credit",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/emission/lci",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/monitoring/health",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/metrics",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/overview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON004",
+      "useCaseId": "UC-MON004",
+      "title": "실시간 모니터링",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/monitoring/realtime",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/external/monitoring",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/monitoring/realtime",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/monitoring/health",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/system",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/metrics",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON008",
+      "useCaseId": "UC-MON008",
+      "title": "모니터링 대시보드",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/system/monitoring-dashboard",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/monitoring/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/monitoring/dashboard",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/monitoring/health",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/overview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/kubernetes",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/health",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON010",
+      "useCaseId": "UC-MON010",
+      "title": "모니터링 Export",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/monitoring/export",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/external/monitoring",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/system/monitoring-dashboard",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/monitoring/health",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/metrics",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/system",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON012",
+      "useCaseId": "UC-MON012",
+      "title": "센서 데이터 조회",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/monitoring/sensor_add",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/emission/lci",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/monitoring/system",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/overview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/kubernetes",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON013",
+      "useCaseId": "UC-MON013",
+      "title": "관제 알림",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mypage/notification",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/system/notification",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/trade/price_alert",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/en/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/en/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/health",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/metrics",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/monitoring/system",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MON014",
+      "useCaseId": "UC-MON014",
+      "title": "센서 데이터 이력",
+      "domain": "모니터링",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/member/login_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/member/security",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/overview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/kubernetes",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/health",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MOB003",
+      "useCaseId": "UC-MOB003",
+      "title": "모바일 알림 수신",
+      "domain": "모바일",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mypage/notification",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/system/notification",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/trade/price_alert",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk/info",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-MOB006",
+      "useCaseId": "UC-MOB006",
+      "title": "앱 버전 관리",
+      "domain": "모바일",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mtn/version",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/mtn/version",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/content/board_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/version-control/adapter-history",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/version-control/candidate-artifacts",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/version-control/fleet-governance",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-R004",
+      "useCaseId": "UC-R004",
+      "title": "보고서 내보내기",
+      "domain": "보고서인증서",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/certificate/report_edit",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/certificate/report_form",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/certificate/report_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/platform/theme-builder/themes/{param}/export",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-R007",
+      "useCaseId": "UC-R007",
+      "title": "인증서 발급 신청",
+      "domain": "보고서인증서",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/certificate/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/certificate/list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/certificate/review",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/platform/runtime/repair/apply",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/platform/version-control/apply-upgrade",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/apply-routing",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-R010",
+      "useCaseId": "UC-R010",
+      "title": "인증서 다운로드",
+      "domain": "보고서인증서",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/certificate/list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/certificate/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/certificate/review",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/template-download",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk/info",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/admin-template-download",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/sample-download",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS001",
+      "useCaseId": "UC-SYS001",
+      "title": "관리자 대시보드",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/ai/dashboard",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/monitoring/dashboard",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/edu/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/ai/dashboard",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/dev/session-simulator",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-management/categories",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/menu-placeholder",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS007",
+      "useCaseId": "UC-SYS007",
+      "title": "로그 조회",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/ai/logs",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/ai/logs",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/emission/lci",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/kubernetes/logs",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/ai/hermes/logs",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/menu-placeholder",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/app/bootstrap",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS020",
+      "useCaseId": "UC-SYS020",
+      "title": "백업",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/system/backup_config",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/system/backup",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/system/backup_config",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/emission-management/element-definitions",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/dev/session-simulator",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/emission-definition-studio/drafts",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS029",
+      "useCaseId": "UC-SYS029",
+      "title": "데이터 변경 관리",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/edu/progress",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/mtn/version",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/app/bootstrap",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/auth-change/page",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/auth-change/history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS032",
+      "useCaseId": "UC-SYS032",
+      "title": "시스템 버전 정보",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mtn/version",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/demand_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/production_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/system/metrics",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/system/version/page-data",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/system",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/system/version",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/system/menu-permission-diagnostics",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS034",
+      "useCaseId": "UC-SYS034",
+      "title": "품질 관리",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/ai/quality",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/ai/quality",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/edu/progress",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/ai/quality",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/dev/session-simulator",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-management/categories",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/menu-placeholder",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SYS039",
+      "useCaseId": "UC-SYS039",
+      "title": "데이터 모델 검증",
+      "domain": "시스템",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/validate",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/emission/validate",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/admin/api/kubernetes/yaml/validate",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/features",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-change/save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-L004",
+      "useCaseId": "UC-L004",
+      "title": "연계 데이터 모니터링",
+      "domain": "외부연계",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/external/monitoring",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/edu/content",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/health",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/alerts",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/overview",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/database",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/monitoring/system",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-L014",
+      "useCaseId": "UC-L014",
+      "title": "연계 상태 확인",
+      "domain": "외부연계",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mtn/status",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/edu/content",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/external/connection_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/cubrid/status",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/screen-builder/status-summary",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-management/scopes/{param}/{param}/status",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "POST",
+          "path": "/api/platform/runtime/project-pipeline/status",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-L017",
+      "useCaseId": "UC-L017",
+      "title": "연계 데이터 검증",
+      "domain": "외부연계",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/validate",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/emission/validate",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/admin/api/kubernetes/yaml/validate",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/features",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-change/save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-SUP010",
+      "useCaseId": "UC-SUP010",
+      "title": "버전 관리",
+      "domain": "유지보수",
+      "result": "RUNTIME_GAP",
+      "pageChecks": [
+        {
+          "path": "/mtn/version",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/mtn/version",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/content/board_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/screen-builder/versions",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/platform/screen-builder/versions",
+          "httpStatus": 404,
+          "classification": "NOT_FOUND",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/menu-placeholder",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/app/bootstrap",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-S007",
+      "useCaseId": "UC-S007",
+      "title": "자료실 다운로드",
+      "domain": "콘텐츠",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/support/download_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/support/download_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/template-download",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/mobile/download/carbonet.apk/info",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/admin-template-download",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/sample-download",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-S024",
+      "useCaseId": "UC-S024",
+      "title": "사이트맵 생성",
+      "domain": "콘텐츠",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/content/sitemap",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/member/admin_account",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/sitemap",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/en/admin/content/sitemap",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-groups/features",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/api/admin/auth-change/save",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E001",
+      "useCaseId": "UC-E001",
+      "title": "프로젝트 생성",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/factor-management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/apply-routing",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/delete",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/check-health",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E002",
+      "useCaseId": "UC-E002",
+      "title": "프로젝트 수정",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "PUT",
+          "path": "/api/platform/builder/assets/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "PUT",
+          "path": "/api/auth/roles/{param}/menus",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/telemetry/en/signin/telemetry",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E003",
+      "useCaseId": "UC-E003",
+      "title": "프로젝트 삭제",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/factor-management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "DELETE",
+          "path": "/api/platform/builder/screens/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/platform/builder/components/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/telemetry/en/signin/telemetry",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E005",
+      "useCaseId": "UC-E005",
+      "title": "프로젝트 상세 조회",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/result_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/emission/lci",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/emission/result",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/en/home"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects/{param}",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects/registry",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E007",
+      "useCaseId": "UC-E007",
+      "title": "배출량 산정 실행",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/factor-management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/admin/emission-management/input-sessions/{param}/calculate",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E027",
+      "useCaseId": "UC-E027",
+      "title": "데이터 변경 이력 조회",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/emission/lci",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects/{param}",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects/registry",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E028",
+      "useCaseId": "UC-E028",
+      "title": "배출량 산정 결과 Export",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/result_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/factor-management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/platform/theme-builder/themes/{param}/export",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/operations/governance/runtime/projects/registry",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E029",
+      "useCaseId": "UC-E029",
+      "title": "데이터 검증",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/emission/validate",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/validate",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/apply-routing",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/delete",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/operations/governance/runtime/projects/{param}/check-health",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/release-units",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/version-control/projects/{param}/deploys",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E031",
+      "useCaseId": "UC-E031",
+      "title": "기초데이터 변경 이력",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/data_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/auth-change/history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/member/login-history/page",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/admin/emission-definition-studio/api/admin/emission-definition-studio",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/admin/dev/api/admin/dev",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-E032",
+      "useCaseId": "UC-E032",
+      "title": "배출량 결과 비교",
+      "domain": "탄소배출",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/emission/management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/result_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/emission/factor-management",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/platform/runtime/parity/compare",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-CI003",
+      "useCaseId": "UC-CI003",
+      "title": "CO2 생산 정보 검색",
+      "domain": "탄소정보",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/co2/production_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/search",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/index",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/companies/search",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-CI006",
+      "useCaseId": "UC-CI006",
+      "title": "CO2 수요 정보 검색",
+      "domain": "탄소정보",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/co2/demand_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/search",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/co2/production_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/companies/search",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/runtime/api/runtime",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/mobile/api/mobile",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-CI007",
+      "useCaseId": "UC-CI007",
+      "title": "CO2 성분 분석 결과 조회",
+      "domain": "탄소정보",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/co2/analysis",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/emission/result",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/en/home"
+        },
+        {
+          "path": "/emission/lca",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-management/input-sessions/{param}",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/telemetry/en/signin/telemetry",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-management/lime/default-factor",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/system/asset/detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/emission-survey-admin/case-drafts/by-classification",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A001",
+      "useCaseId": "UC-A001",
+      "title": "로그인",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/login/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/admin/member/login_history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/users/{param}/roles/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A002",
+      "useCaseId": "UC-A002",
+      "title": "로그아웃",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/users/{param}/roles/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A004",
+      "useCaseId": "UC-A004",
+      "title": "아이디 찾기",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/users/{param}/roles/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A005",
+      "useCaseId": "UC-A005",
+      "title": "비밀번호 찾기",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/mypage/password",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "path": "/admin/member/reset_password",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/signin/findPassword",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/mypage/password",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/en/mypage/password",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A006",
+      "useCaseId": "UC-A006",
+      "title": "本人인증",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/admin/emission-survey-report/verify",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/emission-survey-report/verify-ocr",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A007",
+      "useCaseId": "UC-A007",
+      "title": "토큰 갱신",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/users/{param}/roles/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A008",
+      "useCaseId": "UC-A008",
+      "title": "세션 조회",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/api/auth/roles",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/check",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/auth/roles/{param}",
+          "httpStatus": 400,
+          "classification": "OTHER",
+          "location": ""
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/dev/session-simulator",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A009",
+      "useCaseId": "UC-A009",
+      "title": "자동로그인",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/admin/login/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/admin/full-stack-management/registry/auto-collect",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/platform/screen-builder/component-registry/auto-replace",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A010",
+      "useCaseId": "UC-A010",
+      "title": "2차 인증",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/users/{param}/roles/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-A012",
+      "useCaseId": "UC-A012",
+      "title": "전체 로그아웃",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/signin/loginView",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/authChoice",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/signin/findId",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "POST",
+          "path": "/api/auth/roles",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/roles/{param}/menus/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "POST",
+          "path": "/api/auth/users/{param}/roles/{param}",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/auth/api/auth",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "ANY",
+          "path": "/api/frontend/api/frontend",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-M021",
+      "useCaseId": "UC-M021",
+      "title": "회원사 목록 조회",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/member/company_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/join/companyRegister",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        },
+        {
+          "path": "/join/companyRegisterComplete",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/companies/search",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "ANY",
+          "path": "/admin/api/admin/api",
+          "classification": "NOT_EXECUTED_MUTATION_SAFE"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/dev/session-simulator",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/signin/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/menu-placeholder",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/api/admin/app/bootstrap",
+          "httpStatus": 200,
+          "classification": "REACHABLE",
+          "location": ""
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    },
+    {
+      "queueId": "VERIFY-UC-M022",
+      "useCaseId": "UC-M022",
+      "title": "회원사 상세 조회",
+      "domain": "회원인증",
+      "result": "PARTIAL_RUNTIME_EVIDENCE",
+      "pageChecks": [
+        {
+          "path": "/admin/member/company_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/member/company_list",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "path": "/admin/member/company_detail",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "apiChecks": [
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/companies/search",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/member/register/check-id",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/member/admin-account/check-id",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/app/bootstrap",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/api/admin/auth-change/history",
+          "httpStatus": 302,
+          "classification": "AUTH_OR_ROUTE_REDIRECT",
+          "location": "http://127.0.0.1/admin/login/loginView"
+        }
+      ],
+      "requiredChecks": {
+        "AUTHENTICATED_BROWSER": "PENDING_AUTH_SESSION",
+        "API_RUNTIME": "READ_ONLY_CHECKED",
+        "DATABASE_EFFECT": "NOT_EXECUTED_READ_ONLY",
+        "AUTHORITY": "PENDING_ROLE_MATRIX",
+        "AUDIT_LOG": "NOT_EXECUTED_READ_ONLY"
+      },
+      "automaticVerification": false
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T07:18:31.675533+00:00",
+  "generatedAt": "2026-07-11T09:19:37.079150+00:00",
   "summary": {
     "routes": 263,
-    "apis": 1191,
-    "tables": 54,
+    "apis": 1192,
+    "tables": 56,
     "menus": 169,
     "sduiScreens": 250,
     "sduiComponents": 447,
@@ -9889,6 +9889,13 @@
       "sourcePath": "modules/resonance-builder/screenbuilder-carbonet-adapter/src/main/java/egovframework/com/platform/screenbuilder/web/BuilderApiController.java"
     },
     {
+      "assetId": "API-556D0BA2DB3B535E",
+      "method": "POST",
+      "path": "/api/platform/customer-trace/approval",
+      "contract": "POST /api/platform/customer-trace/approval",
+      "sourcePath": "apps/carbonet-api/src/main/java/egovframework/com/web/CustomerTraceApiController.java"
+    },
+    {
       "assetId": "API-A0CF2484D9A2C0EF",
       "method": "POST",
       "path": "/api/platform/db-change/changes/{param}/queue",
@@ -11052,6 +11059,20 @@
       "sourcePaths": [
         "ops/db/carbonet/20260531_001_ai_platform_management_schema.sql",
         "ops/db/carbonet/20260613_ai_platform_migration.sql"
+      ]
+    },
+    {
+      "assetId": "DB-TABLE-CARBONET_CUSTOMER_TRACE_APPROVAL",
+      "tableName": "carbonet_customer_trace_approval",
+      "sourcePaths": [
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260711170000__create_customer_trace_approval_ledger.sql"
+      ]
+    },
+    {
+      "assetId": "DB-TABLE-CARBONET_CUSTOMER_TRACE_APPROVAL_HISTORY",
+      "tableName": "carbonet_customer_trace_approval_history",
+      "sourcePaths": [
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260711170000__create_customer_trace_approval_ledger.sql"
       ]
     },
     {

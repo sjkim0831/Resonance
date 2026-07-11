@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T07:18:42.749943+00:00",
+  "generatedAt": "2026-07-11T09:19:49.521274+00:00",
   "status": "READY_FOR_HUMAN_REVIEW",
   "customerTrace": {
     "canonicalUseCases": 342,
@@ -36,8 +36,8 @@
     },
     "resonance": {
       "routes": 263,
-      "apis": 1191,
-      "tables": 54,
+      "apis": 1192,
+      "tables": 56,
       "menus": 169,
       "sduiScreens": 250,
       "sduiComponents": 447,
@@ -79,7 +79,7 @@
   },
   "contractVerification": {
     "schemaVersion": 1,
-    "generatedAt": "2026-07-11T07:18:42.724602+00:00",
+    "generatedAt": "2026-07-11T09:19:49.492061+00:00",
     "valid": true,
     "counts": {
       "bindings": 342,
@@ -88,7 +88,7 @@
       "verificationItems": 342,
       "sourceRoutes": 263,
       "sourceSduiScreens": 250,
-      "sourceApis": 1191,
+      "sourceApis": 1192,
       "danglingPageCandidates": 0,
       "danglingApiCandidates": 0
     },
@@ -109,17 +109,17 @@
       {
         "findingId": "RUNTIME-PROJECT_INFO",
         "path": "/api/runtime/project-info",
-        "httpStatus": 500,
-        "state": "RUNTIME_GAP",
-        "remediation": "FIX_COMPILED_DEPLOYMENT_PENDING",
+        "httpStatus": 200,
+        "state": "HEALTHY",
+        "remediation": "NONE",
         "automaticDeploy": false
       },
       {
         "findingId": "RUNTIME-CUSTOMER_TRACE_SUMMARY",
         "path": "/api/platform/customer-trace/summary",
-        "httpStatus": 404,
-        "state": "RUNTIME_GAP",
-        "remediation": "FEATURE_COMPILED_DEPLOYMENT_PENDING",
+        "httpStatus": 200,
+        "state": "HEALTHY",
+        "remediation": "NONE",
         "automaticDeploy": false
       },
       {
