@@ -1,0 +1,1759 @@
+{
+  "schemaVersion": 1,
+  "scope": "GAP_SR_AUDIT",
+  "useCaseCount": 342,
+  "summary": {
+    "totalUseCases": 342,
+    "totalSrTickets": 37,
+    "domainsCovered": 14,
+    "allNotStarted": 342,
+    "prioritizedCategories": 6,
+    "useCasesWithCandidates": 162,
+    "highConfidenceMappings": 50
+  },
+  "prioritizedSr": [
+    {
+      "priority": 1,
+      "useCaseIds": [
+        "UC-COMMON-003",
+        "UC-M021",
+        "UC-M022",
+        "UC-M004",
+        "UC-M006",
+        "UC-M013",
+        "UC-M014",
+        "UC-COMMON-011",
+        "UC-M020",
+        "UC-M001"
+      ],
+      "title": "Authentication & Common Features - Group 1",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/companies/my",
+          "GET /api/v1/admin/members",
+          "GET /api/v1/admin/members/{param}/role-history",
+          "GET /api/v1/notices",
+          "GET /api/v1/admin/members/{param}",
+          "GET /api/v1/members/me",
+          "GET /api/v1/auth/password-expired",
+          "PUT /api/v1/members/me/password",
+          "GET /api/v1/admin/companies",
+          "GET /api/v1/admin/companies/{param}"
+        ],
+        "screens": [
+          "USER-MYPAGE-001",
+          "USER-MYPAGE-003",
+          "ADMIN-CONTENT-001",
+          "ADMIN-MEMBER-002",
+          "ADMIN-COMPANY-002",
+          "ADMIN-MEMBER-014",
+          "USER-MYPAGE-010",
+          "ADMIN-MEMBER-001",
+          "ADMIN-COMPANY-001",
+          "USER-SUPPORT-002"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 공지사항 조회, 회원사 목록 조회, 회원사 상세 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 2,
+      "useCaseIds": [
+        "UC-M023",
+        "UC-COMMON-002",
+        "UC-A003",
+        "UC-A001",
+        "UC-M009",
+        "UC-COMMON-004",
+        "UC-COMMON-005",
+        "UC-M007",
+        "UC-A011",
+        "UC-M002"
+      ],
+      "title": "Authentication & Common Features - Group 2",
+      "missingAssets": {
+        "apis": [
+          "(관리자)",
+          "GET /api/v1/qnas",
+          "GET /api/v1/downloads",
+          "POST /api/v1/members/join",
+          "GET /api/v1/members/me",
+          "GET /api/v1/search",
+          "POST /api/v1/auth/login",
+          "GET /api/v1/companies/my/members",
+          "PUT /api/v1/companies/my",
+          "POST /api/v1/auth/cert"
+        ],
+        "screens": [
+          "ADMIN-COMPANY-010",
+          "COMMON-SEARCH-001",
+          "USER-MYPAGE-021",
+          "USER-AUTH-010",
+          "USER-SUPPORT-004",
+          "USER-MYPAGE-004",
+          "ADMIN-CONTENT-010",
+          "ADMIN-CONTENT-020",
+          "USER-AUTH-001",
+          "USER-MYPAGE-002"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 회원사 담당자 관리, 통합검색, 회원가입...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 3,
+      "useCaseIds": [
+        "UC-M003",
+        "UC-M005",
+        "UC-M008",
+        "UC-M010",
+        "UC-M011",
+        "UC-M012",
+        "UC-M024",
+        "UC-A005",
+        "UC-COMMON-019",
+        "UC-COMMON-020"
+      ],
+      "title": "Authentication & Common Features - Group 3",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/notifications/{param}/read",
+          "(관리자)",
+          "GET /api/v1/members/join/status",
+          "PUT /api/v1/members/me",
+          "POST /api/v1/auth/find-password",
+          "GET /api/v1/notifications",
+          "DELETE /api/v1/members/me",
+          "PUT /api/v1/companies/my/delegate",
+          "POST /api/v1/files/decrypt",
+          "POST /api/v1/files/encrypt"
+        ],
+        "screens": [
+          "USER-MYPAGE-041",
+          "USER-MYPAGE-001",
+          "ADMIN-COMPANY-011",
+          "USER-MYPAGE-002",
+          "USER-MYPAGE-030",
+          "USER-AUTH-003",
+          "USER-MYPAGE-020",
+          "공통",
+          "USER-MYPAGE-040"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 내 정보 수정, 탈퇴 신청, 담당자 위임...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 4,
+      "useCaseIds": [
+        "UC-A007",
+        "UC-COMMON-012",
+        "UC-COMMON-013",
+        "UC-COMMON-014",
+        "UC-A012",
+        "UC-M015",
+        "UC-M016",
+        "UC-M017",
+        "UC-M018",
+        "UC-M019"
+      ],
+      "title": "Authentication & Common Features - Group 4",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/admin/members/{param}/unmask",
+          "PUT /api/v1/admin/members/{param}/approve",
+          "GET /api/v1/admin/members/{param}/access-log",
+          "POST /api/v1/auth/refresh",
+          "PUT /api/v1/admin/members/{param}/reject",
+          "PUT /api/v1/admin/members/{param}/withdraw",
+          "PUT /api/v1/admin/companies/{param}/approve",
+          "PUT /api/v1/admin/members/{param}/status",
+          "POST /api/v1/auth/logout-all"
+        ],
+        "screens": [
+          "ADMIN-MEMBER-020",
+          "ADMIN-MEMBER-012",
+          "ADMIN-MEMBER-011",
+          "ADMIN-SYSTEM-020",
+          "ADMIN-MEMBER-031",
+          "공통",
+          "ADMIN-MEMBER-030",
+          "ADMIN-MEMBER-010",
+          "ADMIN-MEMBER-013"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 토큰 갱신, 데이터 마스킹, 데이터 복호화...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 5,
+      "useCaseIds": [
+        "UC-COMMON-001",
+        "UC-COMMON-006",
+        "UC-COMMON-007",
+        "UC-COMMON-008",
+        "UC-COMMON-009",
+        "UC-COMMON-010",
+        "UC-COMMON-015",
+        "UC-COMMON-016",
+        "UC-COMMON-017",
+        "UC-COMMON-018"
+      ],
+      "title": "Authentication & Common Features - Group 5",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/export",
+          "(프론트엔드)",
+          "GET /api/v1/files/{param}/preview",
+          "GET /api/v1/tasks/{param}/progress",
+          "PUT /api/v1/settings/language",
+          "GET /api/v1/search/within",
+          "GET /api/v1/search/popular",
+          "(서버)",
+          "GET /api/v1/search/advanced"
+        ],
+        "screens": [
+          "COMMON-SEARCH-002",
+          "공통",
+          "COMMON-LANG-001"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 언어 설정 (언어전환), 보고서 내보내기 (Export), 인쇄 기능...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 6,
+      "useCaseIds": [
+        "UC-A002",
+        "UC-A004",
+        "UC-A006",
+        "UC-A008",
+        "UC-A009",
+        "UC-A010",
+        "UC-A013",
+        "UC-A014"
+      ],
+      "title": "Authentication & Common Features - Group 6",
+      "missingAssets": {
+        "apis": [
+          "POST /api/v1/auth/verify",
+          "POST /api/v1/auth/find-id",
+          "POST /api/v1/auth/2fa",
+          "POST /api/v1/auth/auto-login",
+          "POST /api/v1/auth/logout",
+          "(서버)",
+          "GET /api/v1/auth/session",
+          "POST /api/v1/auth/verify-company"
+        ],
+        "screens": [
+          "USER-AUTH-010",
+          "공통",
+          "USER-AUTH-001",
+          "USER-AUTH-002"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 8 use cases: 로그아웃, 아이디 찾기, 本人인증...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 7,
+      "useCaseIds": [
+        "UC-E023",
+        "UC-R005",
+        "UC-R018",
+        "UC-S008",
+        "UC-S009",
+        "UC-S013",
+        "UC-E027",
+        "UC-E007",
+        "UC-R002",
+        "UC-E031"
+      ],
+      "title": "Emission & Report Management - Group 7",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/admin/stats/certificates",
+          "GET /api/v1/admin/emissions/base-data/history",
+          "GET /api/v1/admin/emissions/results",
+          "POST /api/v1/emissions/calculate",
+          "GET /api/v1/emissions/projects/{param}/data-history",
+          "CRUD /api/v1/admin/boards",
+          "CRUD /api/v1/admin/faqs",
+          "CRUD /api/v1/admin/reports/templates",
+          "GET /api/v1/reports",
+          "CRUD /api/v1/admin/notices"
+        ],
+        "screens": [
+          "ADMIN-EMISSION-004",
+          "ADMIN-STATS-002",
+          "USER-CERT-011",
+          "ADMIN-CONTENT-010",
+          "USER-EMISSION-071",
+          "ADMIN-CONTENT-002",
+          "ADMIN-CONTENT-050",
+          "ADMIN-EMISSION-003",
+          "USER-EMISSION-020",
+          "ADMIN-CERT-001"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 산정 결과 조회 (관리자), 보고서 템플릿 관리, 인증서 통계 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 8,
+      "useCaseIds": [
+        "UC-S010",
+        "UC-S011",
+        "UC-R012",
+        "UC-R008",
+        "UC-S018",
+        "UC-S024",
+        "UC-R007",
+        "UC-S001",
+        "UC-E028",
+        "UC-S007"
+      ],
+      "title": "Emission & Report Management - Group 8",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/certificates",
+          "POST /api/v1/certificates/apply",
+          "GET /api/v1/downloads/{param}/download",
+          "CRUD /api/v1/admin/popups",
+          "GET /api/v1/certificates/objections",
+          "POST /api/v1/admin/sitemap/generate",
+          "GET /api/v1/emissions/projects/{param}/export",
+          "GET /api/v1/notices/{param}",
+          "GET /api/v1/files",
+          "CRUD /api/v1/admin/banners"
+        ],
+        "screens": [
+          "ADMIN-CONTENT-080",
+          "ADMIN-CONTENT-030",
+          "USER-SUPPORT-003",
+          "USER-CERT-003",
+          "공통",
+          "USER-CERT-002",
+          "USER-SUPPORT-008",
+          "ADMIN-CONTENT-020",
+          "USER-EMISSION-072",
+          "USER-CERT-007"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 팝업 관리, 배너 관리, 이의신청 목록 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 9,
+      "useCaseIds": [
+        "UC-S004",
+        "UC-R013",
+        "UC-E022",
+        "UC-R025",
+        "UC-S019",
+        "UC-R017",
+        "UC-R011",
+        "UC-S006",
+        "UC-R006",
+        "UC-R021"
+      ],
+      "title": "Emission & Report Management - Group 9",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/admin/notices/{param}/pin",
+          "PUT /api/v1/qnas/{param}",
+          "PUT /api/v1/admin/certificates/objections/{param}/answer",
+          "PUT /api/v1/reports/{param}/edit",
+          "GET /api/v1/admin/certificates/{param}/logs",
+          "GET /api/v1/certificates/verify/{param}",
+          "POST /api/v1/certificates/{param}/objection",
+          "POST /api/v1/qnas/{param}/answer",
+          "CRUD /api/v1/admin/emissions/gwp",
+          "GET /api/v1/admin/certificates/applies"
+        ],
+        "screens": [
+          "ADMIN-EMISSION-002",
+          "ADMIN-CERT-041",
+          "ADMIN-CONTENT-003",
+          "ADMIN-CONTENT-011",
+          "USER-CERT-006",
+          "ADMIN-CERT-010",
+          "ADMIN-CERT-020",
+          "USER-SUPPORT-007",
+          "USER-CERT-014",
+          "USER-CERT-100"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: Q&A 수정, 발급 신청 검토 목록, GWP 계수 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 10,
+      "useCaseIds": [
+        "UC-S003",
+        "UC-S005",
+        "UC-R020",
+        "UC-S017",
+        "UC-E037",
+        "UC-E021",
+        "UC-R004",
+        "UC-R010",
+        "UC-S016",
+        "UC-R019"
+      ],
+      "title": "Emission & Report Management - Group 10",
+      "missingAssets": {
+        "apis": [
+          "POST /api/v1/certificates/{param}/reissue",
+          "DELETE /api/v1/qnas/{param}",
+          "DELETE /api/v1/files/{param}",
+          "GET /api/v1/reports/{param}/export",
+          "GET /api/v1/certificates/{param}/download",
+          "CRUD /api/v1/admin/certificates/templates",
+          "POST /api/v1/emissions/performance-predict",
+          "GET /api/v1/emissions/gwp",
+          "POST /api/v1/qnas",
+          "POST /api/v1/files/upload"
+        ],
+        "screens": [
+          "USER-CERT-013",
+          "ADMIN-CERT-030",
+          "USER-EMISSION-061",
+          "USER-EMISSION-084",
+          "USER-CERT-009",
+          "공통",
+          "USER-CERT-005",
+          "USER-SUPPORT-008",
+          "USER-SUPPORT-006"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: Q&A 작성, Q&A 삭제, 인증서 재발급...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 11,
+      "useCaseIds": [
+        "UC-E024",
+        "UC-R003",
+        "UC-R009",
+        "UC-S002",
+        "UC-E013",
+        "UC-E025",
+        "UC-E020",
+        "UC-E001",
+        "UC-R014",
+        "UC-R015"
+      ],
+      "title": "Emission & Report Management - Group 11",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/admin/certificates/applies/{param}/review",
+          "GET /api/v1/reports/{param}",
+          "GET /api/v1/emissions/lci",
+          "CRUD /api/v1/admin/emissions/base-data",
+          "POST /api/v1/emissions/projects",
+          "PUT /api/v1/admin/certificates/applies/{param}/issue",
+          "POST /api/v1/emissions/projects/{param}/statement",
+          "GET /api/v1/certificates/{param}",
+          "GET /api/v1/qnas/{param}",
+          "GET /api/v1/emissions/history"
+        ],
+        "screens": [
+          "USER-EMISSION-062",
+          "USER-EMISSION-070",
+          "USER-CERT-012",
+          "ADMIN-EMISSION-001",
+          "USER-EMISSION-050",
+          "USER-EMISSION-003",
+          "USER-CERT-004",
+          "USER-SUPPORT-005",
+          "ADMIN-CERT-012",
+          "ADMIN-CERT-011"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 배출량 이력 조회, 보고서 상세 조회, 인증서 상세 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 12,
+      "useCaseIds": [
+        "UC-R022",
+        "UC-R026",
+        "UC-S012",
+        "UC-S015",
+        "UC-S022",
+        "UC-S025",
+        "UC-S026",
+        "UC-S027",
+        "UC-E002",
+        "UC-E003"
+      ],
+      "title": "Emission & Report Management - Group 12",
+      "missingAssets": {
+        "apis": [
+          "CRUD /api/v1/admin/press",
+          "CRUD /api/v1/admin/styles",
+          "PUT /api/v1/emissions/projects/{param}",
+          "CRUD /api/v1/admin/schedules",
+          "GET /api/v1/admin/contents/{param}/history",
+          "POST /api/v1/certificates/{param}/kmark",
+          "CRUD /api/v1/admin/contents/i18n",
+          "DELETE /api/v1/emissions/projects/{param}",
+          "PUT /api/v1/admin/accessibility",
+          "POST /api/v1/certificates/{param}/verify-3rd"
+        ],
+        "screens": [
+          "ADMIN-CONTENT-090",
+          "USER-EMISSION-005",
+          "ADMIN-SYSTEM-060",
+          "ADMIN-CONTENT-070",
+          "ADMIN-CERT-042",
+          "USER-EMISSION-004",
+          "ADMIN-CONTENT-040",
+          "ADMIN-SYSTEM-070",
+          "ADMIN-CERT-040",
+          "ADMIN-CONTENT-060"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: K마크 인증 연계, 디지털 3자 검증, 일정 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 13,
+      "useCaseIds": [
+        "UC-E004",
+        "UC-E005",
+        "UC-E006",
+        "UC-E008",
+        "UC-E009",
+        "UC-E010",
+        "UC-E011",
+        "UC-E012",
+        "UC-E014",
+        "UC-E015"
+      ],
+      "title": "Emission & Report Management - Group 13",
+      "missingAssets": {
+        "apis": [
+          "POST /api/v1/emissions/projects/{param}/temp",
+          "POST /api/v1/emissions/tier/decide",
+          "GET /api/v1/emissions/statements",
+          "GET /api/v1/emissions/projects/{param}",
+          "GET /api/v1/emissions/projects/{param}/temp",
+          "POST /api/v1/emissions/projects/{param}/temp/{param}/restore",
+          "GET /api/v1/emissions/statements/{param}",
+          "POST /api/v1/emissions/simulation",
+          "PUT /api/v1/emissions/projects/{param}/data",
+          "GET /api/v1/emissions/projects"
+        ],
+        "screens": [
+          "USER-EMISSION-012",
+          "USER-EMISSION-002",
+          "USER-EMISSION-052",
+          "USER-EMISSION-030",
+          "USER-EMISSION-010",
+          "USER-EMISSION-006",
+          "USER-EMISSION-051",
+          "USER-EMISSION-040",
+          "USER-EMISSION-011"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 프로젝트 목록 조회, 프로젝트 상세 조회, 배출량 데이터 입력...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 14,
+      "useCaseIds": [
+        "UC-E016",
+        "UC-E017",
+        "UC-E018",
+        "UC-E019",
+        "UC-E026",
+        "UC-E029",
+        "UC-E030",
+        "UC-E032",
+        "UC-E033",
+        "UC-E034"
+      ],
+      "title": "Emission & Report Management - Group 14",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/emissions/autocomplete",
+          "DELETE /api/v1/emissions/statements/{param}",
+          "POST /api/v1/emissions/statements/{param}/submit",
+          "DELETE /api/v1/emissions/projects/{param}/data",
+          "GET /api/v1/emissions/base-data",
+          "POST /api/v1/emissions/lca/evaluate",
+          "GET /api/v1/emissions/compare",
+          "POST /api/v1/emissions/projects/{param}/validate",
+          "POST /api/v1/emissions/impact-indicators",
+          "PUT /api/v1/emissions/statements/{param}"
+        ],
+        "screens": [
+          "USER-EMISSION-080",
+          "USER-EMISSION-053",
+          "USER-EMISSION-060",
+          "USER-EMISSION-081",
+          "USER-EMISSION-015",
+          "USER-EMISSION-073",
+          "USER-EMISSION-013",
+          "USER-EMISSION-054",
+          "USER-EMISSION-055",
+          "USER-EMISSION-014"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 명세서 수정, 명세서 삭제, 명세서 제출...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 15,
+      "useCaseIds": [
+        "UC-E035",
+        "UC-E036",
+        "UC-E038",
+        "UC-E039",
+        "UC-E040",
+        "UC-R001",
+        "UC-R016",
+        "UC-R023",
+        "UC-R024",
+        "UC-S014"
+      ],
+      "title": "Emission & Report Management - Group 15",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/certificates/{param}/cancel",
+          "GET /api/v1/emissions/recommendations",
+          "POST /api/v1/emissions/vba-validate",
+          "POST /api/v1/emissions/pre-validate",
+          "POST /api/v1/emissions/uncertainty",
+          "GET /api/v1/certificates/export/{param}",
+          "POST /api/v1/emissions/data-quality",
+          "POST /api/v1/reports/slm",
+          "GET /api/v1/certificates/{param}/access-log",
+          "GET /api/v1/press"
+        ],
+        "screens": [
+          "USER-EMISSION-085",
+          "USER-CERT-010",
+          "USER-CERT-015",
+          "USER-SUPPORT-010",
+          "USER-CERT-101",
+          "USER-CERT-008",
+          "USER-EMISSION-082",
+          "USER-EMISSION-083",
+          "USER-EMISSION-017",
+          "USER-EMISSION-016"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 불확실성 분석, 감축 전략 추천, 데이터 품질 검증...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 16,
+      "useCaseIds": [
+        "UC-S020",
+        "UC-S021",
+        "UC-S023",
+        "UC-S028"
+      ],
+      "title": "Emission & Report Management - Group 16",
+      "missingAssets": {
+        "apis": [
+          "(프론트엔드)",
+          "GET /api/v1/search/trending",
+          "POST /api/v1/files/editor-image"
+        ],
+        "screens": [
+          "USER-SUPPORT-011",
+          "공통"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 4 use cases: 게시글 SNS 공유, 인기 검색어 조회, 웹에디터 이미지 업로드...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 17,
+      "useCaseIds": [
+        "UC-T014",
+        "UC-P004",
+        "UC-P016",
+        "UC-T001",
+        "UC-T003",
+        "UC-T004",
+        "UC-P009",
+        "UC-P010",
+        "UC-P013",
+        "UC-T028"
+      ],
+      "title": "Trade & Payment - Group 17",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/payment/history",
+          "POST /api/v1/trades/sell-request",
+          "GET /api/v1/payment/virtual-account",
+          "GET /api/v1/admin/payment/virtual-accounts",
+          "POST /api/v1/trades/buy-request",
+          "POST /api/v1/payment/refund",
+          "GET /api/v1/trades",
+          "POST /api/v1/payment/request",
+          "PUT /api/v1/admin/trades/{param}/approve",
+          "PUT /api/v1/trades/alert-config"
+        ],
+        "screens": [
+          "USER-PAYMENT-010",
+          "USER-TRADE-010",
+          "ADMIN-TRADE-010",
+          "USER-PAYMENT-014",
+          "ADMIN-PAYMENT-040",
+          "USER-TRADE-001",
+          "USER-TRADE-011",
+          "USER-PAYMENT-011",
+          "USER-TRADE-043",
+          "ADMIN-PAYMENT-001"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 거래 승인, 가상계좌 목록, 환불 처리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 18,
+      "useCaseIds": [
+        "UC-T018",
+        "UC-T008",
+        "UC-P007",
+        "UC-P005",
+        "UC-CI001",
+        "UC-CI002",
+        "UC-CI004",
+        "UC-CI005",
+        "UC-CI011",
+        "UC-T012"
+      ],
+      "title": "Trade & Payment - Group 18",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/co2/produce",
+          "POST /api/v1/admin/payment/tax-invoices",
+          "GET /api/v1/trades/my",
+          "GET /api/v1/co2/rec-check",
+          "GET /api/v1/trades/export",
+          "GET /api/v1/admin/trades",
+          "GET /api/v1/co2/demand",
+          "POST /api/v1/co2/demand",
+          "POST /api/v1/co2/produce",
+          "POST /api/v1/admin/payment/virtual-accounts"
+        ],
+        "screens": [
+          "USER-CO2-010",
+          "USER-TRADE-030",
+          "USER-CO2-011",
+          "USER-CO2-001",
+          "USER-TRADE-020",
+          "ADMIN-CO2-003",
+          "ADMIN-TRADE-001",
+          "USER-CO2-002",
+          "ADMIN-PAYMENT-020",
+          "ADMIN-PAYMENT-002"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 거래 리포트 Export, 내 거래 조회, 세금계산서 발행...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 19,
+      "useCaseIds": [
+        "UC-CI003",
+        "UC-CI006",
+        "UC-T013",
+        "UC-T015",
+        "UC-T021",
+        "UC-T005",
+        "UC-T006",
+        "UC-T007",
+        "UC-T011",
+        "UC-T022"
+      ],
+      "title": "Trade & Payment - Group 19",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/co2/demand/search",
+          "PUT /api/v1/trades/{param}/reject",
+          "PUT /api/v1/trades/{param}/cancel",
+          "PUT /api/v1/admin/trades/{param}/restrict",
+          "GET /api/v1/admin/trades/{param}",
+          "POST /api/v1/trades/{param}/propose",
+          "GET /api/v1/trades/duplicate-check",
+          "PUT /api/v1/trades/{param}/accept",
+          "GET /api/v1/co2/produce/search",
+          "PUT /api/v1/admin/trades/{param}/reject"
+        ],
+        "screens": [
+          "USER-CO2-003",
+          "ADMIN-TRADE-011",
+          "USER-CO2-012",
+          "USER-TRADE-023",
+          "USER-TRADE-013",
+          "USER-TRADE-032",
+          "ADMIN-TRADE-002",
+          "USER-TRADE-014",
+          "ADMIN-TRADE-012",
+          "USER-TRADE-012"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: CO2 생산 정보 검색, CO2 수요 정보 검색, 거래 상세...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 20,
+      "useCaseIds": [
+        "UC-T020",
+        "UC-T017",
+        "UC-T002",
+        "UC-T010",
+        "UC-T016",
+        "UC-CI008",
+        "UC-CI009",
+        "UC-CI013",
+        "UC-P006",
+        "UC-P008"
+      ],
+      "title": "Trade & Payment - Group 20",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/admin/stats/trades",
+          "GET /api/v1/admin/trades/monitoring",
+          "GET /api/v1/admin/co2/{param}/audit",
+          "CRUD /api/v1/admin/co2/grades",
+          "PUT /api/v1/admin/payment/refund-accounts/{param}/approve",
+          "PUT /api/v1/admin/payment/fees",
+          "GET /api/v1/trades/matches",
+          "GET /api/v1/trades/{param}",
+          "PUT /api/v1/admin/co2/{param}",
+          "GET /api/v1/trades/{param}/messages"
+        ],
+        "screens": [
+          "ADMIN-CO2-001",
+          "ADMIN-CO2-002",
+          "USER-TRADE-002",
+          "ADMIN-TRADE-020",
+          "ADMIN-STATS-003",
+          "ADMIN-CO2-010",
+          "ADMIN-PAYMENT-010",
+          "USER-TRADE-022",
+          "USER-TRADE-031",
+          "ADMIN-PAYMENT-030"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 매칭 결과 조회, 거래 통계 조회, 거래 상세 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 21,
+      "useCaseIds": [
+        "UC-CI007",
+        "UC-CI010",
+        "UC-CI012",
+        "UC-CI014",
+        "UC-CI015",
+        "UC-CI016",
+        "UC-T009",
+        "UC-T019",
+        "UC-T023",
+        "UC-T024"
+      ],
+      "title": "Trade & Payment - Group 21",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/co2/duplicate-check",
+          "POST /api/v1/co2/trace-number",
+          "GET /api/v1/co2/stats",
+          "GET /api/v1/co2/analysis/{param}",
+          "GET /api/v1/trades/demanders",
+          "GET /api/v1/trades/suppliers",
+          "GET /api/v1/co2/integrity",
+          "POST /api/v1/co2/validate",
+          "POST /api/v1/trades/{param}/messages",
+          "POST /api/v1/trades/match"
+        ],
+        "screens": [
+          "USER-CO2-031",
+          "USER-CO2-032",
+          "USER-TRADE-033",
+          "USER-TRADE-034",
+          "USER-CO2-033",
+          "USER-CO2-030",
+          "USER-TRADE-021",
+          "USER-CO2-020",
+          "(시스템)",
+          "USER-CO2-040"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: CO2 성분 분석 결과 조회, 물량 무결성 관리, CO2 정보 통계...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 22,
+      "useCaseIds": [
+        "UC-T025",
+        "UC-T026",
+        "UC-T027",
+        "UC-T029",
+        "UC-T030",
+        "UC-P001",
+        "UC-P002",
+        "UC-P003",
+        "UC-P011",
+        "UC-P012"
+      ],
+      "title": "Trade & Payment - Group 22",
+      "missingAssets": {
+        "apis": [
+          "POST /api/v1/payment/refund-account",
+          "PUT /api/v1/trades/auto-config",
+          "POST /api/v1/payment/cancel",
+          "POST /api/v1/trades/{param}/complete",
+          "GET /api/v1/trades/search",
+          "POST /api/v1/payment/confirm",
+          "GET /api/v1/payment/refund-account",
+          "GET /api/v1/trades/price-forecast",
+          "PUT /api/v1/payment/refund-account/{param}",
+          "GET /api/v1/trades/market"
+        ],
+        "screens": [
+          "USER-TRADE-041",
+          "USER-PAYMENT-013",
+          "USER-PAYMENT-003",
+          "USER-PAYMENT-012",
+          "USER-TRADE-045",
+          "USER-PAYMENT-002",
+          "USER-TRADE-040",
+          "USER-TRADE-042",
+          "USER-TRADE-044",
+          "USER-PAYMENT-001"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 시장 동향 조회, 가격 예측 정보, 거래 자동화 설정...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 23,
+      "useCaseIds": [
+        "UC-P014",
+        "UC-P015",
+        "UC-P017",
+        "UC-P018"
+      ],
+      "title": "Trade & Payment - Group 23",
+      "missingAssets": {
+        "apis": [
+          "POST /api/v1/payment/wincms",
+          "GET /api/v1/payment/alerts",
+          "POST /api/v1/payment/validate",
+          "GET /api/v1/payment/fee-status"
+        ],
+        "screens": [
+          "(시스템)",
+          "USER-PAYMENT-015",
+          "USER-PAYMENT-016",
+          "USER-PAYMENT-017"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 4 use cases: 수수료 납부 확인, 결제 알림, WIN-CMS 연계...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 24,
+      "useCaseIds": [
+        "UC-MON007",
+        "UC-MON002",
+        "UC-MON004",
+        "UC-MON008",
+        "UC-MON016",
+        "UC-MON015",
+        "UC-L018",
+        "UC-L020",
+        "UC-MON005",
+        "UC-L004"
+      ],
+      "title": "Carbon Information & External Links - Group 24",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/monitoring/realtime",
+          "GET /api/v1/monitoring/credits",
+          "POST /api/v1/link/external-cert",
+          "PUT /api/v1/admin/link/alert",
+          "GET /api/v1/monitoring/dashboard",
+          "POST /api/v1/reports/share",
+          "POST /api/v1/reports/esg",
+          "GET /api/v1/admin/tags",
+          "PUT /api/v1/admin/tags/{param}",
+          "GET /api/v1/admin/link/monitoring"
+        ],
+        "screens": [
+          "USER-MONITOR-103",
+          "ADMIN-LINK-020",
+          "ADMIN-LINK-061",
+          "ADMIN-TAG-001",
+          "USER-MONITOR-010",
+          "USER-MONITOR-002",
+          "ADMIN-LINK-053",
+          "ADMIN-TAG-003",
+          "USER-MONITOR-102",
+          "USER-MONITOR-100"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 태그 관리, 탄소 크레딧 조회, 실시간 모니터링...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 25,
+      "useCaseIds": [
+        "UC-MON009",
+        "UC-L013",
+        "UC-L024",
+        "UC-L007",
+        "UC-L015",
+        "UC-MON014",
+        "UC-MON006",
+        "UC-MON012",
+        "UC-MON011",
+        "UC-MON013"
+      ],
+      "title": "Carbon Information & External Links - Group 25",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/admin/tags/{param}",
+          "GET /api/v1/monitoring/center",
+          "CRUD /api/v1/admin/link/apis",
+          "GET /api/v1/monitoring/sensors",
+          "CRUD /api/v1/admin/link/api-keys",
+          "PUT /api/v1/monitoring/thresholds",
+          "GET /api/v1/admin/link/logs",
+          "GET /api/v1/monitoring/alerts",
+          "GET /api/v1/link/external-validator",
+          "GET /api/v1/monitoring/sensors/{param}/history"
+        ],
+        "screens": [
+          "ADMIN-MONITOR-001",
+          "ADMIN-LINK-042",
+          "ADMIN-LINK-032",
+          "ADMIN-MONITOR-021",
+          "ADMIN-LINK-071",
+          "ADMIN-MONITOR-010",
+          "ADMIN-LINK-050",
+          "ADMIN-MONITOR-022",
+          "ADMIN-MONITOR-020",
+          "ADMIN-TAG-002"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 알림 임계치 설정, 연계 로그 조회, API 연동 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 26,
+      "useCaseIds": [
+        "UC-L014",
+        "UC-MON001",
+        "UC-MON003",
+        "UC-MON010",
+        "UC-MON018",
+        "UC-MON019",
+        "UC-L001",
+        "UC-L002",
+        "UC-L003",
+        "UC-L005"
+      ],
+      "title": "Carbon Information & External Links - Group 26",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/monitoring/stats",
+          "GET /api/v1/monitoring/trends",
+          "GET /api/v1/monitoring/trace",
+          "PUT /api/v1/admin/cloud-config",
+          "GET /api/v1/link/kpx",
+          "GET /api/v1/admin/link/history",
+          "GET /api/v1/monitoring/export",
+          "POST /api/v1/admin/link/test",
+          "GET /api/v1/admin/link/status",
+          "CRUD /api/v1/admin/link/config"
+        ],
+        "screens": [
+          "ADMIN-LINK-010",
+          "USER-MONITOR-105",
+          "USER-MONITOR-101",
+          "ADMIN-LINK-043",
+          "ADMIN-LINK-030",
+          "USER-MONITOR-001",
+          "ADMIN-LINK-002",
+          "USER-MONITOR-003",
+          "ADMIN-LINK-001",
+          "ADMIN-SYSTEM-050"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 연계 상태 확인, 전주기 추적 조회, 통계자료 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 27,
+      "useCaseIds": [
+        "UC-L006",
+        "UC-L008",
+        "UC-L011",
+        "UC-L012",
+        "UC-L016",
+        "UC-L017",
+        "UC-L019",
+        "UC-L021",
+        "UC-L023",
+        "UC-MON017"
+      ],
+      "title": "Carbon Information & External Links - Group 27",
+      "missingAssets": {
+        "apis": [
+          "CRUD /api/v1/admin/link/schedule",
+          "GET /api/v1/link/global-lca",
+          "POST /api/v1/admin/link/validate",
+          "POST /api/v1/admin/link/retry",
+          "POST /api/v1/link/schema-mapping",
+          "POST /api/v1/admin/link/consistency-check",
+          "CRUD /api/v1/admin/link/mapping",
+          "POST /api/v1/link/ntis",
+          "GET /api/v1/monitoring/cumulative",
+          "POST /api/v1/admin/link/connector"
+        ],
+        "screens": [
+          "ADMIN-LINK-031",
+          "USER-MONITOR-104",
+          "ADMIN-LINK-070",
+          "ADMIN-LINK-033",
+          "ADMIN-LINK-062",
+          "ADMIN-LINK-041",
+          "ADMIN-LINK-052",
+          "ADMIN-LINK-060",
+          "ADMIN-LINK-040",
+          "ADMIN-LINK-051"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 국세청 연계, 외부 플랫폼 커넥터, 연계 실패 처리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 28,
+      "useCaseIds": [
+        "UC-MON020",
+        "UC-L009",
+        "UC-L010",
+        "UC-L022"
+      ],
+      "title": "Carbon Information & External Links - Group 28",
+      "missingAssets": {
+        "apis": [
+          "(프론트엔드)",
+          "POST /api/v1/link/send",
+          "POST /api/v1/link/receive",
+          "POST /api/v1/link/unit-convert"
+        ],
+        "screens": [
+          "(시스템)",
+          "공통"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 4 use cases: 멀티 디바이스 지원, 연계 데이터 수신, 연계 데이터 전송...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 29,
+      "useCaseIds": [
+        "UC-SYS002",
+        "UC-SYS011",
+        "UC-SYS034",
+        "UC-SUP010",
+        "UC-EDU002",
+        "UC-MOB006",
+        "UC-SYS022",
+        "UC-SYS036",
+        "UC-SYS007",
+        "UC-SYS005"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 29",
+      "missingAssets": {
+        "apis": [
+          "POST /api/v1/edu/apply",
+          "CRUD /api/v1/admin/menus",
+          "GET /api/v1/mobile/version",
+          "GET /api/v1/admin/versions",
+          "CRUD /api/v1/admin/api-keys",
+          "GET /api/v1/admin/stats/members",
+          "CRUD /api/v1/admin/reports",
+          "GET /api/v1/admin/logs",
+          "CRUD /api/v1/admin/roles",
+          "GET /api/v1/admin/quality"
+        ],
+        "screens": [
+          "ADMIN-SYSTEM-230",
+          "ADMIN-SYSTEM-040",
+          "ADMIN-SYSTEM-030",
+          "ADMIN-SYSTEM-010",
+          "MOBILE-VERSION-001",
+          "ADMIN-STATS-010",
+          "ADMIN-SYSTEM-120",
+          "USER-EDU-002",
+          "ADMIN-SUPPORT-030",
+          "ADMIN-SYSTEM-210"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 회원 통계 조회, 메뉴 관리, 품질 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 30,
+      "useCaseIds": [
+        "UC-SUP013",
+        "UC-SYS029",
+        "UC-SYS020",
+        "UC-SYS030",
+        "UC-SYS015",
+        "UC-SYS001",
+        "UC-EDU006",
+        "UC-EDU013",
+        "UC-SYS031",
+        "UC-SYS013"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 30",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/admin/performance",
+          "GET /api/v1/admin/database/changes",
+          "CRUD /api/v1/admin/edu/courses",
+          "GET /api/v1/admin/auth-failures",
+          "GET /api/v1/admin/dashboard",
+          "POST /api/v1/admin/backup",
+          "CRUD /api/v1/admin/batch-jobs",
+          "CRUD /api/v1/admin/notification-templates",
+          "CRUD /api/v1/admin/emails",
+          "(교육)"
+        ],
+        "screens": [
+          "ADMIN-SYSTEM-180",
+          "ADMIN-SYSTEM-060",
+          "ADMIN-SYSTEM-080",
+          "ADMIN-SYSTEM-170",
+          "ADMIN-EDU-001",
+          "ADMIN-SUPPORT-060",
+          "USER-EDU-013",
+          "ADMIN-DASH-001",
+          "ADMIN-SYSTEM-110",
+          "ADMIN-SYSTEM-162"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 로그인 실패 이력, 데이터 변경 관리, 백업...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 31,
+      "useCaseIds": [
+        "UC-SYS014",
+        "UC-SYS042",
+        "UC-SYS032",
+        "UC-SYS003",
+        "UC-SYS004",
+        "UC-SYS006",
+        "UC-SYS008",
+        "UC-SYS009",
+        "UC-SYS010",
+        "UC-SYS012"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 31",
+      "missingAssets": {
+        "apis": [
+          "GET/PUT /api/v1/admin/system/config",
+          "CRUD /api/v1/admin/codes",
+          "GET /api/v1/admin/server-monitor",
+          "POST /api/v1/admin/link/test",
+          "GET /api/v1/admin/link/history",
+          "GET /api/v1/admin/stats/access",
+          "CRUD /api/v1/admin/sms",
+          "CRUD /api/v1/admin/access-ips",
+          "GET /api/v1/admin/system/version",
+          "CRUD /api/v1/admin/link/config"
+        ],
+        "screens": [
+          "ADMIN-LINK-010",
+          "ADMIN-SYSTEM-280",
+          "ADMIN-SYSTEM-001",
+          "ADMIN-SYSTEM-020",
+          "ADMIN-STATS-011",
+          "ADMIN-LINK-001",
+          "ADMIN-SYSTEM-070",
+          "ADMIN-LINK-002",
+          "ADMIN-SYSTEM-050",
+          "ADMIN-SYSTEM-190"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: SMS 템플릿 관리, 서버 모니터링, 시스템 버전 정보...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 32,
+      "useCaseIds": [
+        "UC-SYS016",
+        "UC-SYS017",
+        "UC-SYS018",
+        "UC-SYS019",
+        "UC-SYS021",
+        "UC-SYS023",
+        "UC-SYS024",
+        "UC-SYS025",
+        "UC-SYS026",
+        "UC-SYS027"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 32",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/admin/privacy/purge-history",
+          "POST /api/v1/admin/batch-jobs/{param}/execute",
+          "DELETE /api/v1/admin/cache",
+          "POST /api/v1/admin/restore",
+          "GET /api/v1/admin/sessions",
+          "GET /api/v1/admin/usage",
+          "DELETE /api/v1/admin/sessions/{param}",
+          "CRUD /api/v1/admin/data-standards",
+          "GET /api/v1/admin/database/erd",
+          "POST /api/v1/admin/privacy/purge"
+        ],
+        "screens": [
+          "ADMIN-SYSTEM-100",
+          "ADMIN-SYSTEM-101",
+          "ADMIN-SYSTEM-111",
+          "ADMIN-SYSTEM-140",
+          "ADMIN-SYSTEM-151",
+          "ADMIN-SYSTEM-160",
+          "ADMIN-SYSTEM-090",
+          "ADMIN-SYSTEM-081",
+          "ADMIN-SYSTEM-150",
+          "ADMIN-SYSTEM-130"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 배치 작업 실행, 캐시 관리, 세션 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 33,
+      "useCaseIds": [
+        "UC-SYS028",
+        "UC-SYS033",
+        "UC-SYS035",
+        "UC-SYS037",
+        "UC-SYS038",
+        "UC-SYS039",
+        "UC-SYS040",
+        "UC-SYS041",
+        "UC-EDU007",
+        "UC-EDU008"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 33",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/admin/database/tables",
+          "CRUD /api/v1/admin/issues",
+          "CRUD /api/v1/admin/edu/schedule",
+          "CRUD /api/v1/admin/projects",
+          "CRUD /api/v1/admin/governance",
+          "POST /api/v1/admin/database/validate",
+          "GET /api/v1/admin/tech-transfer",
+          "POST /api/v1/admin/upgrade/client",
+          "CRUD /api/v1/admin/edu/instructors",
+          "POST /api/v1/admin/database/value-validate"
+        ],
+        "screens": [
+          "ADMIN-EDU-020",
+          "ADMIN-SYSTEM-250",
+          "ADMIN-SYSTEM-261",
+          "ADMIN-SYSTEM-270",
+          "ADMIN-SYSTEM-161",
+          "ADMIN-EDU-010",
+          "ADMIN-SYSTEM-260",
+          "ADMIN-SYSTEM-220",
+          "ADMIN-SYSTEM-240",
+          "ADMIN-SYSTEM-200"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 테이블 정의서, 데이터 거버넌스, 프로젝트 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 34,
+      "useCaseIds": [
+        "UC-EDU009",
+        "UC-EDU014",
+        "UC-SUP007",
+        "UC-SUP008",
+        "UC-SUP009",
+        "UC-SUP011",
+        "UC-SUP012",
+        "UC-SUP014",
+        "UC-SUP015",
+        "UC-SUP016"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 34",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/admin/support/issues/{param}",
+          "POST /api/v1/admin/security-patches",
+          "CRUD /api/v1/admin/patches",
+          "CRUD /api/v1/admin/support",
+          "GET /api/v1/admin/edu/stats",
+          "PUT /api/v1/admin/env-config",
+          "POST /api/v1/admin/tuning",
+          "GET /api/v1/admin/access-analysis",
+          "POST /api/v1/admin/upgrade",
+          "(교육)"
+        ],
+        "screens": [
+          "ADMIN-SUPPORT-070",
+          "ADMIN-SUPPORT-050",
+          "ADMIN-SUPPORT-090",
+          "ADMIN-SUPPORT-040",
+          "ADMIN-EDU-040",
+          "ADMIN-SUPPORT-020",
+          "ADMIN-SUPPORT-080",
+          "ADMIN-SUPPORT-001",
+          "ADMIN-SUPPORT-010",
+          "ADMIN-EDU-030"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 교육 통계, 운영자 교육, 기술 지원 관리...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "MEDIUM",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 35,
+      "useCaseIds": [
+        "UC-EDU001",
+        "UC-EDU003",
+        "UC-EDU004",
+        "UC-EDU005",
+        "UC-EDU010",
+        "UC-EDU011",
+        "UC-EDU012",
+        "UC-MOB001",
+        "UC-MOB002",
+        "UC-MOB003"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 35",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/edu/courses",
+          "GET /api/v1/edu/manuals",
+          "GET /api/v1/mobile/notifications",
+          "PUT /api/v1/mobile/push-config",
+          "GET /api/v1/edu/my",
+          "GET /api/v1/edu/user-guide",
+          "POST /api/v1/mobile/auth",
+          "GET /api/v1/edu/schedule",
+          "POST /api/v1/edu/consulting",
+          "GET /api/v1/edu/materials"
+        ],
+        "screens": [
+          "USER-EDU-004",
+          "MOBILE-NOTI-001",
+          "USER-EDU-005",
+          "USER-EDU-001",
+          "USER-EDU-010",
+          "USER-EDU-012",
+          "MOBILE-AUTH-001",
+          "USER-EDU-003",
+          "MOBILE-SETTING-001",
+          "USER-EDU-011"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 교육 과정 조회, 내 교육 이력, 교육 일정 조회...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 36,
+      "useCaseIds": [
+        "UC-MOB004",
+        "UC-MOB005",
+        "UC-MOB007",
+        "UC-MOB008",
+        "UC-MOB009",
+        "UC-MOB010",
+        "UC-SUP001",
+        "UC-SUP002",
+        "UC-SUP003",
+        "UC-SUP004"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 36",
+      "missingAssets": {
+        "apis": [
+          "PUT /api/v1/mobile/settings",
+          "(프론트엔드)",
+          "GET /api/v1/mobile/data",
+          "POST /api/v1/support/tech-request",
+          "POST /api/v1/support/issue",
+          "POST /api/v1/support/feedback",
+          "GET /api/v1/mobile/service-notices",
+          "POST /api/v1/mobile/sync",
+          "GET /api/v1/support/my"
+        ],
+        "screens": [
+          "USER-SUPPORT-020",
+          "USER-SUPPORT-023",
+          "USER-SUPPORT-022",
+          "MOBILE-DATA-001",
+          "공통",
+          "USER-SUPPORT-021",
+          "MOBILE-STYLE-001",
+          "MOBILE-SYNC-001",
+          "MOBILE-NOTICE-001",
+          "MOBILE-SETTING-002"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 10 use cases: 모바일 데이터 조회, 오프라인 데이터 동기화, 모바일 설정...",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    },
+    {
+      "priority": 37,
+      "useCaseIds": [
+        "UC-SUP005",
+        "UC-SUP006"
+      ],
+      "title": "Specialized Features (Education, Mobile, Maintenance) - Group 37",
+      "missingAssets": {
+        "apis": [
+          "GET /api/v1/support/maintenance",
+          "POST /api/v1/support/defect"
+        ],
+        "screens": [
+          "USER-SUPPORT-024",
+          "USER-SUPPORT-025"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Implement 2 use cases: 하자보수 요청, 유지보수 일정 조회",
+        "Verify API endpoints exist and return expected responses",
+        "Verify UI screens render correctly",
+        "Test user-to-admin workflow where applicable"
+      ],
+      "risk": "HIGH",
+      "decision": "REVIEW_REQUIRED"
+    }
+  ]
+}
