@@ -19,13 +19,24 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PlatformObservabilityExternalEventSnapshotService {
 
-    private final ObservabilityQueryService observabilityQueryService;
+    private static final long SNAPSHOT_TTL_MILLIS = 15_000L;
 
-    public ExternalEventSnapshot loadSnapshot() {
-        return new ExternalEventSnapshot(
+    private final ObservabilityQueryService observabilityQueryService;
+    private volatile ExternalEventSnapshot cachedSnapshot;
+    private volatile long cachedAtMillis;
+
+    public synchronized ExternalEventSnapshot loadSnapshot() {
+        long now = System.currentTimeMillis();
+        if (cachedSnapshot != null && now - cachedAtMillis < SNAPSHOT_TTL_MILLIS) {
+            return cachedSnapshot;
+        }
+        ExternalEventSnapshot snapshot = new ExternalEventSnapshot(
                 loadAccessEvents(),
                 loadErrorEvents(),
                 loadTraceEvents());
+        cachedSnapshot = snapshot;
+        cachedAtMillis = now;
+        return snapshot;
     }
 
     private List<AccessEventRecordVO> loadAccessEvents() {
