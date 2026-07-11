@@ -5,22 +5,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.security.Principal;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping({"/api/platform/customer-trace", "/en/api/platform/customer-trace"})
 public class CustomerTraceApiController {
+
+    private static final Map<String, Set<String>> APPROVAL_TRANSITIONS = Map.of(
+            "PENDING", Set.of("IN_REVIEW", "REJECTED"),
+            "IN_REVIEW", Set.of("PENDING", "APPROVED", "REJECTED"),
+            "APPROVED", Set.of("IN_REVIEW", "VERIFIED"),
+            "REJECTED", Set.of("IN_REVIEW"),
+            "VERIFIED", Set.of("IN_REVIEW"));
 
     private final ObjectMapper objectMapper;
     private final Path traceRoot;
@@ -119,6 +132,36 @@ public class CustomerTraceApiController {
     @GetMapping("/approval-ledger")
     public JsonNode approvalLedger() throws IOException { return read("customer-approval-ledger.json"); }
 
+    @PostMapping("/approval")
+    public synchronized ResponseEntity<?> updateApproval(
+            @RequestBody ApprovalUpdateRequest request,
+            Principal principal) throws IOException {
+        if (principal == null || safe(principal.getName()).isEmpty()) {
+            return ResponseEntity.status(401).body(Map.of("message", "Authenticated reviewer is required."));
+        }
+        String requestedState = safe(request.state()).toUpperCase(Locale.ROOT);
+        JsonNode ledger = read("customer-approval-ledger.json");
+        JsonNode target = findBy(ledger.path("entries"), "useCaseId", safe(request.useCaseId()));
+        if (target.isMissingNode() || target.isEmpty()) return ResponseEntity.notFound().build();
+        String currentState = target.path("state").asText("PENDING");
+        if (!APPROVAL_TRANSITIONS.getOrDefault(currentState, Set.of()).contains(requestedState)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid approval transition.", "from", currentState, "to", requestedState));
+        }
+        List<String> evidenceRefs = request.evidenceRefs() == null ? List.of() : request.evidenceRefs().stream().map(this::safe).filter(value -> !value.isEmpty()).distinct().toList();
+        if ("VERIFIED".equals(requestedState) && evidenceRefs.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "VERIFIED requires evidenceRefs."));
+        }
+        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("state", requestedState);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("reviewer", principal.getName());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("reviewedAt", OffsetDateTime.now().toString());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) target).put("comment", safe(request.comment()));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) target).set("evidenceRefs", objectMapper.valueToTree(evidenceRefs));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) ledger).set("stateSummary", summarizeStates(ledger.path("entries")));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) ledger).put("generatedAt", OffsetDateTime.now().toString());
+        writeAtomically("customer-approval-ledger.json", ledger);
+        return ResponseEntity.ok(target);
+    }
+
     @GetMapping("/catalog")
     public JsonNode catalog() throws IOException { return read("customer-trace-catalog.json"); }
 
@@ -134,6 +177,28 @@ public class CustomerTraceApiController {
         }
         return objectMapper.createObjectNode();
     }
+
+    private JsonNode summarizeStates(JsonNode rows) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        APPROVAL_TRANSITIONS.keySet().stream().sorted().forEach(state -> counts.put(state, 0));
+        for (JsonNode row : rows) counts.computeIfPresent(row.path("state").asText(), (key, value) -> value + 1);
+        return objectMapper.valueToTree(counts);
+    }
+
+    private void writeAtomically(String fileName, JsonNode value) throws IOException {
+        Path target = traceRoot.resolve(fileName).normalize();
+        if (!target.startsWith(traceRoot)) throw new IOException("Invalid metadata path.");
+        Files.createDirectories(traceRoot);
+        Path temporary = Files.createTempFile(traceRoot, fileName, ".tmp");
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(temporary.toFile(), value);
+        try {
+            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+            Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    public record ApprovalUpdateRequest(String useCaseId, String state, List<String> evidenceRefs, String comment) {}
 
     private String safe(String value) { return value == null ? "" : value.trim(); }
 }

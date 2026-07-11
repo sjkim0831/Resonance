@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
-import { fetchCustomerTrace, fetchCustomerTraceSummary, fetchCustomerTraces, type CustomerTraceDetail } from "../../lib/api/aiManagement";
+import { fetchCustomerTrace, fetchCustomerTraceSummary, fetchCustomerTraces, updateCustomerTraceApproval, type CustomerTraceDetail } from "../../lib/api/aiManagement";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -15,6 +15,10 @@ export function CustomerTracePage() {
   const [domain, setDomain] = useState("");
   const [detail, setDetail] = useState<CustomerTraceDetail | null>(null);
   const [detailError, setDetailError] = useState("");
+  const [approvalState, setApprovalState] = useState("IN_REVIEW");
+  const [approvalComment, setApprovalComment] = useState("");
+  const [evidenceRefs, setEvidenceRefs] = useState("");
+  const [approvalSaving, setApprovalSaving] = useState(false);
   const summary = useAsyncValue(() => fetchCustomerTraceSummary(), []);
   const traces = useAsyncValue(() => fetchCustomerTraces({ domain: domain || undefined, query: query || undefined, limit: "100" }), [domain, query]);
   const runtimeGaps = (summary.value?.runtimeFindings || []).filter((finding) => finding.state !== "HEALTHY");
@@ -23,8 +27,18 @@ export function CustomerTracePage() {
 
   const openDetail = async (useCaseId: string) => {
     setDetailError("");
-    try { setDetail(await fetchCustomerTrace(useCaseId)); }
+    try { const next = await fetchCustomerTrace(useCaseId); setDetail(next); setApprovalComment(next.approval?.comment || ""); setEvidenceRefs((next.approval?.evidenceRefs || []).join("\n")); }
     catch (error) { setDetailError(error instanceof Error ? error.message : String(error)); }
+  };
+
+  const saveApproval = async () => {
+    if (!detail) return;
+    setApprovalSaving(true); setDetailError("");
+    try {
+      await updateCustomerTraceApproval({ useCaseId: detail.binding.useCaseId, state: approvalState, evidenceRefs: evidenceRefs.split("\n").map((value) => value.trim()).filter(Boolean), comment: approvalComment });
+      await openDetail(detail.binding.useCaseId); await summary.reload();
+    } catch (error) { setDetailError(error instanceof Error ? error.message : String(error)); }
+    finally { setApprovalSaving(false); }
   };
 
   return (
@@ -100,6 +114,16 @@ export function CustomerTracePage() {
               <div><h3 className="text-sm font-black text-slate-900">{en ? "API candidates" : "API 후보"}</h3><div className="mt-3 space-y-2">{(detail.binding.apiCandidates || []).map((item) => <div key={`${item.assetId}-${item.contract}`} className="border-l-4 border-emerald-600 bg-slate-50 px-4 py-3"><p className="font-mono text-xs font-bold text-slate-900">{item.contract || item.assetId}</p><p className="mt-1 text-xs text-slate-600">{en ? "agreement" : "합의"} {item.agreementCount ?? 0} · {en ? "confidence" : "신뢰도"} {item.confidence ?? "-"}</p></div>)}</div></div>
             </div>
             <div className="border-t border-[var(--kr-gov-border-light)] px-5 py-5"><h3 className="text-sm font-black text-slate-900">{en ? "Linked SR review requests" : "연결된 SR 검토 요청"}</h3><div className="mt-3 grid gap-2 md:grid-cols-2">{(detail.srRequests || []).map((request) => <div key={request.requestId} className="border border-slate-200 px-4 py-3"><p className="font-mono text-xs font-bold text-[var(--kr-gov-blue)]">{request.requestId}</p><p className="mt-1 text-sm font-bold text-slate-900">{request.summary}</p><p className="mt-1 text-xs text-slate-600">{request.approvalStatus} · auto execute: {String(request.executeAutomatically)}</p></div>)}</div></div>
+            <div className="border-t border-[var(--kr-gov-border-light)] px-5 py-5">
+              <h3 className="text-sm font-black text-slate-900">{en ? "Human approval review" : "사람 승인 검토"}</h3>
+              <div className="mt-3 grid gap-3 lg:grid-cols-[200px_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <select className="gov-select" value={approvalState} onChange={(event) => setApprovalState(event.target.value)}><option value="IN_REVIEW">IN_REVIEW</option><option value="PENDING">PENDING</option><option value="APPROVED">APPROVED</option><option value="REJECTED">REJECTED</option><option value="VERIFIED">VERIFIED</option></select>
+                <textarea className="gov-input min-h-24" value={approvalComment} onChange={(event) => setApprovalComment(event.target.value)} placeholder={en ? "Review comment" : "검토 의견"} />
+                <textarea className="gov-input min-h-24 font-mono text-xs" value={evidenceRefs} onChange={(event) => setEvidenceRefs(event.target.value)} placeholder={en ? "Evidence references, one per line" : "증거 경로 또는 ID, 한 줄에 하나"} />
+                <button className="gov-btn gov-btn-primary self-end" disabled={approvalSaving} type="button" onClick={() => void saveApproval()}>{approvalSaving ? (en ? "Saving" : "저장 중") : (en ? "Save review" : "검토 저장")}</button>
+              </div>
+              <p className="mt-2 text-xs text-slate-600">{en ? "Direct PENDING to APPROVED is blocked. VERIFIED requires evidence." : "PENDING에서 APPROVED로 바로 전환할 수 없으며 VERIFIED에는 증거가 필요합니다."}</p>
+            </div>
           </section>
         ) : null}
       </AdminWorkspacePageFrame>

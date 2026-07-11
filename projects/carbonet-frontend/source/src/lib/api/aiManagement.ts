@@ -47,3 +47,12 @@ async function fetchCustomerTraceData<T>(endpoint: string, filters?: Record<stri
 export function fetchCustomerTraceSummary() { return fetchCustomerTraceData<CustomerTraceSummary>("summary"); }
 export function fetchCustomerTraces(f?: { domain?: string; query?: string; offset?: string; limit?: string }) { return fetchCustomerTraceData<CustomerTraceList>("traces", f as Record<string, string | undefined>); }
 export function fetchCustomerTrace(useCaseId: string) { return fetchCustomerTraceData<CustomerTraceDetail>("trace", { useCaseId }); }
+export async function updateCustomerTraceApproval(payload: { useCaseId: string; state: string; evidenceRefs: string[]; comment: string }) {
+  const response = await apiFetch(buildAdminApiPath("/api/platform/customer-trace/approval"), {
+    method: "POST", credentials: "include", cache: "no-store",
+    headers: { Accept: "application/json", "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error(`Failed to update customer trace approval: ${response.status}`);
+  return readJsonResponse<Record<string, unknown>>(response);
+}
