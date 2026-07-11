@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T05:11:21.457982+00:00",
+  "generatedAt": "2026-07-11T05:27:47.964110+00:00",
   "summary": {
     "routes": 262,
     "apis": 1182,
@@ -37,8 +37,8 @@
       "label": "Login",
       "koPath": "/signin/loginView",
       "enPath": "/en/signin/loginView",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "PublicLoginPage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -47,8 +47,8 @@
       "label": "Auth Choice",
       "koPath": "/signin/authChoice",
       "enPath": "/en/signin/authChoice",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "AuthChoicePage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -57,8 +57,8 @@
       "label": "Find ID",
       "koPath": "/signin/findId",
       "enPath": "/en/signin/findId",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "FindIdPage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -67,8 +67,8 @@
       "label": "Find ID Result",
       "koPath": "/signin/findId/result",
       "enPath": "/en/signin/findId/result",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "FindIdResultPage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -77,8 +77,8 @@
       "label": "Find Password",
       "koPath": "/signin/findPassword",
       "enPath": "/en/signin/findPassword",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "FindPasswordPage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -87,8 +87,8 @@
       "label": "Find Password Result",
       "koPath": "/signin/findPassword/result",
       "enPath": "/en/signin/findPassword/result",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "FindPasswordCompletePage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -97,8 +97,8 @@
       "label": "Forbidden",
       "koPath": "/signin/loginForbidden",
       "enPath": "/en/signin/loginForbidden",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "ForbiddenPage",
+      "modulePath": "../../../features/public-entry/PublicEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -107,8 +107,8 @@
       "label": "Admin Home",
       "koPath": "/admin/",
       "enPath": "/en/admin/",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "AdminHomePage",
+      "modulePath": "../../../features/admin-entry/AdminEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -117,8 +117,8 @@
       "label": "Admin Login",
       "koPath": "/admin/login/loginView",
       "enPath": "/en/admin/login/loginView",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "AdminLoginPage",
+      "modulePath": "../../../features/admin-entry/AdminEntryPages",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -127,8 +127,8 @@
       "label": "Join Status",
       "koPath": "/join/companyJoinStatusSearch",
       "enPath": "/join/en/companyJoinStatusSearch",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "JoinCompanyStatusMigrationPage",
+      "modulePath": "../../../features/join-company-status/JoinCompanyStatusMigrationPage",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -137,8 +137,8 @@
       "label": "Join Status Guide",
       "koPath": "/join/companyJoinStatusGuide",
       "enPath": "/join/en/companyJoinStatusGuide",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "JoinCompanyStatusMigrationPage",
+      "modulePath": "../../../features/join-company-status/JoinCompanyStatusMigrationPage",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {
@@ -147,8 +147,8 @@
       "label": "Join Status Detail",
       "koPath": "/join/companyJoinStatusDetail",
       "enPath": "/join/en/companyJoinStatusDetail",
-      "exportName": "",
-      "modulePath": "",
+      "exportName": "JoinCompanyStatusMigrationPage",
+      "modulePath": "../../../features/join-company-status/JoinCompanyStatusMigrationPage",
       "sourcePath": "/opt/Resonance/projects/carbonet-frontend/source/src/app/routes/families/appOwnedFamily.ts"
     },
     {

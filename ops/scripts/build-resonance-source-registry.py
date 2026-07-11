@@ -7,6 +7,8 @@ from pathlib import Path
 
 ROUTE_RE = re.compile(r'\{\s*id:\s*"([^"]+)"[^}]*?label:\s*"([^"]+)"[^}]*?koPath:\s*"([^"]+)"[^}]*?enPath:\s*"([^"]+)"', re.S)
 LOADER_RE = re.compile(r'\{\s*id:\s*"([^"]+)"[^}]*?exportName:\s*"([^"]+)"[^}]*?import\("([^"]+)"\)', re.S)
+NAMED_LOADER_RE = re.compile(r'\{\s*id:\s*"([^"]+)"[^}]*?exportName:\s*"([^"]+)"[^}]*?loader:\s*([A-Za-z0-9_]+)', re.S)
+LOADER_CONST_RE = re.compile(r'const\s+([A-Za-z0-9_]+)\s*=\s*\(\)\s*=>\s*import\("([^"]+)"\)')
 CLASS_MAPPING_RE = re.compile(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?\{?\s*"([^"]+)"', re.S)
 METHOD_MAPPING_RE = re.compile(r'@(Get|Post|Put|Delete|Patch|Request)Mapping\s*\((.*?)\)', re.S)
 PATH_RE = re.compile(r'"(/[^"]*)"')
@@ -23,6 +25,9 @@ def scan_routes(root: Path) -> list[dict]:
     for path in family_root.glob("*.ts"):
         text = path.read_text(errors="ignore")
         for route_id, export_name, module in LOADER_RE.findall(text): loaders[route_id] = (export_name, module)
+        loader_constants = dict(LOADER_CONST_RE.findall(text))
+        for route_id, export_name, loader_name in NAMED_LOADER_RE.findall(text):
+            if loader_name in loader_constants: loaders[route_id] = (export_name, loader_constants[loader_name])
         for route_id, label, ko_path, en_path in ROUTE_RE.findall(text):
             export_name, module = loaders.get(route_id, ("", ""))
             routes.append({"assetId": "ROUTE-" + route_id.upper(), "routeId": route_id, "label": label, "koPath": ko_path,
