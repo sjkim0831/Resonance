@@ -10,8 +10,10 @@ export type AiQualityPayload = { generatedAt?: string; evaluations?: Array<Recor
 export type AiObservabilityPayload = { generatedAt?: string; traces?: Array<Record<string, unknown>>; prompts?: Array<Record<string, unknown>>; tokenUsage?: Array<Record<string, unknown>>; contextAnalyses?: Array<Record<string, unknown>>; failures?: Array<Record<string, unknown>>; summary?: Record<string, unknown>; };
 export type CustomerRuntimeFinding = { findingId: string; path: string; httpStatus: number; state: string; remediation: string; automaticDeploy: boolean };
 export type CustomerTraceSummary = { traceCount?: number; modelOutputCount?: number; sourceEvidenceCount?: number; httpPathCount?: number; httpSummary?: Record<string, number>; customerMaturity?: { score?: number; grade?: string }; deliveryReadiness?: { score?: number; grade?: string }; srRequestCount?: number; runtimeFindingCount?: number; runtimeFindings?: CustomerRuntimeFinding[]; approvalStateSummary?: Record<string, number>; };
-export type CustomerTraceRow = { useCaseId: string; traceId: string; title: string; domain: string; bindingStatus: string; pageCandidates?: Array<Record<string, unknown>>; apiCandidates?: Array<Record<string, unknown>>; srRequestIds?: string[]; };
+export type CustomerTraceCandidate = { assetId?: string; routePath?: string; contract?: string; agreementCount?: number; confidence?: number; httpEvidence?: { httpStatus?: number; classification?: string; functionalVerification?: string } };
+export type CustomerTraceRow = { useCaseId: string; traceId: string; title: string; domain: string; bindingStatus: string; pageCandidates?: CustomerTraceCandidate[]; apiCandidates?: CustomerTraceCandidate[]; srRequestIds?: string[]; };
 export type CustomerTraceList = { items?: CustomerTraceRow[]; total?: number; offset?: number; limit?: number; };
+export type CustomerTraceDetail = { binding: CustomerTraceRow; approval?: { state?: string; reviewer?: string; reviewedAt?: string; evidenceRefs?: string[]; comment?: string }; srRequests?: Array<{ requestId?: string; summary?: string; approvalStatus?: string; executeAutomatically?: boolean }> };
 
 const AI_API_BASE = "/admin/ai";
 
@@ -44,3 +46,4 @@ async function fetchCustomerTraceData<T>(endpoint: string, filters?: Record<stri
 }
 export function fetchCustomerTraceSummary() { return fetchCustomerTraceData<CustomerTraceSummary>("summary"); }
 export function fetchCustomerTraces(f?: { domain?: string; query?: string; offset?: string; limit?: string }) { return fetchCustomerTraceData<CustomerTraceList>("traces", f as Record<string, string | undefined>); }
+export function fetchCustomerTrace(useCaseId: string) { return fetchCustomerTraceData<CustomerTraceDetail>("trace", { useCaseId }); }

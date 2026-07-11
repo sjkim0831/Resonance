@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
-import { fetchCustomerTraceSummary, fetchCustomerTraces } from "../../lib/api/aiManagement";
+import { fetchCustomerTrace, fetchCustomerTraceSummary, fetchCustomerTraces, type CustomerTraceDetail } from "../../lib/api/aiManagement";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, SummaryMetricCard } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
@@ -13,11 +13,19 @@ export function CustomerTracePage() {
   const en = isEnglish();
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
+  const [detail, setDetail] = useState<CustomerTraceDetail | null>(null);
+  const [detailError, setDetailError] = useState("");
   const summary = useAsyncValue(() => fetchCustomerTraceSummary(), []);
   const traces = useAsyncValue(() => fetchCustomerTraces({ domain: domain || undefined, query: query || undefined, limit: "100" }), [domain, query]);
   const runtimeGaps = (summary.value?.runtimeFindings || []).filter((finding) => finding.state !== "HEALTHY");
 
   useEffect(() => { logGovernanceScope("PAGE", "customer-trace", { language: en ? "en" : "ko" }); }, [en]);
+
+  const openDetail = async (useCaseId: string) => {
+    setDetailError("");
+    try { setDetail(await fetchCustomerTrace(useCaseId)); }
+    catch (error) { setDetailError(error instanceof Error ? error.message : String(error)); }
+  };
 
   return (
     <AdminPageShell
@@ -63,7 +71,7 @@ export function CustomerTracePage() {
               </thead>
               <tbody className="divide-y divide-[var(--kr-gov-border-light)]">
                 {(traces.value?.items || []).map((row) => (
-                  <tr key={row.useCaseId} className="hover:bg-slate-50">
+                  <tr key={row.useCaseId} className="cursor-pointer hover:bg-slate-50" onClick={() => void openDetail(row.useCaseId)}>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-bold text-[var(--kr-gov-blue)]">{row.useCaseId}</td>
                     <td className="px-4 py-3 font-bold text-slate-900">{row.title}</td><td className="px-4 py-3 text-slate-600">{row.domain}</td>
                     <td className="px-4 py-3 text-center font-bold">{row.pageCandidates?.length || 0}</td><td className="px-4 py-3 text-center font-bold">{row.apiCandidates?.length || 0}</td><td className="px-4 py-3 text-center font-bold">{row.srRequestIds?.length || 0}</td>
@@ -74,6 +82,26 @@ export function CustomerTracePage() {
             </table>
           </div>
         </section>
+
+        {detailError ? <PageStatusNotice tone="error">{detailError}</PageStatusNotice> : null}
+        {detail ? (
+          <section className="border border-[var(--kr-gov-border-light)] bg-white" aria-label={en ? "Requirement evidence detail" : "요구사항 근거 상세"}>
+            <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--kr-gov-border-light)] px-5 py-4">
+              <div><p className="font-mono text-xs font-bold text-[var(--kr-gov-blue)]">{detail.binding.useCaseId}</p><h2 className="mt-1 text-lg font-bold text-slate-900">{detail.binding.title}</h2></div>
+              <button className="gov-btn gov-btn-outline" type="button" onClick={() => setDetail(null)}>{en ? "Close" : "닫기"}</button>
+            </header>
+            <div className="grid gap-px bg-slate-200 lg:grid-cols-3">
+              <div className="bg-white p-5"><p className="text-xs font-bold text-slate-500">{en ? "Approval" : "승인 상태"}</p><p className="mt-2 text-base font-black text-amber-800">{detail.approval?.state || "PENDING"}</p><p className="mt-1 text-xs text-slate-600">{detail.approval?.reviewer || (en ? "Reviewer not assigned" : "검토자 미지정")}</p></div>
+              <div className="bg-white p-5"><p className="text-xs font-bold text-slate-500">{en ? "Page evidence" : "페이지 근거"}</p><p className="mt-2 text-2xl font-black text-slate-900">{detail.binding.pageCandidates?.length || 0}</p></div>
+              <div className="bg-white p-5"><p className="text-xs font-bold text-slate-500">{en ? "API evidence / SR" : "API 근거 / SR"}</p><p className="mt-2 text-2xl font-black text-slate-900">{detail.binding.apiCandidates?.length || 0} / {detail.srRequests?.length || 0}</p></div>
+            </div>
+            <div className="grid gap-6 px-5 py-5 xl:grid-cols-2">
+              <div><h3 className="text-sm font-black text-slate-900">{en ? "Page candidates" : "페이지 후보"}</h3><div className="mt-3 space-y-2">{(detail.binding.pageCandidates || []).map((item) => <div key={`${item.assetId}-${item.routePath}`} className="border-l-4 border-[var(--kr-gov-blue)] bg-slate-50 px-4 py-3"><p className="font-mono text-xs font-bold text-slate-900">{item.routePath || item.assetId}</p><p className="mt-1 text-xs text-slate-600">{item.httpEvidence?.classification || "PENDING"} · HTTP {item.httpEvidence?.httpStatus ?? "-"} · {en ? "agreement" : "합의"} {item.agreementCount ?? 0}</p></div>)}</div></div>
+              <div><h3 className="text-sm font-black text-slate-900">{en ? "API candidates" : "API 후보"}</h3><div className="mt-3 space-y-2">{(detail.binding.apiCandidates || []).map((item) => <div key={`${item.assetId}-${item.contract}`} className="border-l-4 border-emerald-600 bg-slate-50 px-4 py-3"><p className="font-mono text-xs font-bold text-slate-900">{item.contract || item.assetId}</p><p className="mt-1 text-xs text-slate-600">{en ? "agreement" : "합의"} {item.agreementCount ?? 0} · {en ? "confidence" : "신뢰도"} {item.confidence ?? "-"}</p></div>)}</div></div>
+            </div>
+            <div className="border-t border-[var(--kr-gov-border-light)] px-5 py-5"><h3 className="text-sm font-black text-slate-900">{en ? "Linked SR review requests" : "연결된 SR 검토 요청"}</h3><div className="mt-3 grid gap-2 md:grid-cols-2">{(detail.srRequests || []).map((request) => <div key={request.requestId} className="border border-slate-200 px-4 py-3"><p className="font-mono text-xs font-bold text-[var(--kr-gov-blue)]">{request.requestId}</p><p className="mt-1 text-sm font-bold text-slate-900">{request.summary}</p><p className="mt-1 text-xs text-slate-600">{request.approvalStatus} · auto execute: {String(request.executeAutomatically)}</p></div>)}</div></div>
+          </section>
+        ) : null}
       </AdminWorkspacePageFrame>
     </AdminPageShell>
   );

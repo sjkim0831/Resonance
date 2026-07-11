@@ -86,9 +86,25 @@ public class CustomerTraceApiController {
     @GetMapping("/trace")
     public ResponseEntity<?> trace(@RequestParam String useCaseId) throws IOException {
         JsonNode bindings = read("customer-sdui-bindings.json").path("bindings");
+        JsonNode approvals = read("customer-approval-ledger.json").path("entries");
+        JsonNode requests = read("customer-sr-workbench-import.json").path("requests");
         if (bindings.isArray()) {
             for (JsonNode row : bindings) {
-                if (useCaseId.equalsIgnoreCase(row.path("useCaseId").asText())) return ResponseEntity.ok(row);
+                if (useCaseId.equalsIgnoreCase(row.path("useCaseId").asText())) {
+                    Map<String, Object> response = new LinkedHashMap<>();
+                    response.put("binding", row);
+                    response.put("approval", findBy(approvals, "useCaseId", useCaseId));
+                    List<JsonNode> linkedRequests = new ArrayList<>();
+                    if (requests.isArray()) {
+                        for (JsonNode request : requests) {
+                            for (JsonNode requestId : row.path("srRequestIds")) {
+                                if (requestId.asText().equals(request.path("requestId").asText())) linkedRequests.add(request);
+                            }
+                        }
+                    }
+                    response.put("srRequests", linkedRequests);
+                    return ResponseEntity.ok(response);
+                }
             }
         }
         return ResponseEntity.notFound().build();
@@ -110,6 +126,13 @@ public class CustomerTraceApiController {
         Path file = traceRoot.resolve(fileName).normalize();
         if (!file.startsWith(traceRoot) || !Files.isRegularFile(file)) return objectMapper.createObjectNode();
         return objectMapper.readTree(file.toFile());
+    }
+
+    private JsonNode findBy(JsonNode rows, String field, String value) {
+        if (rows.isArray()) {
+            for (JsonNode row : rows) if (value.equalsIgnoreCase(row.path(field).asText())) return row;
+        }
+        return objectMapper.createObjectNode();
     }
 
     private String safe(String value) { return value == null ? "" : value.trim(); }
