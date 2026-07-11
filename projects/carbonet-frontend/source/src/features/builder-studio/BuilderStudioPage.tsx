@@ -3,6 +3,7 @@ import type { BuilderComponent, BuilderScreen, BuilderNode } from './types/build
 import * as api from './api/builderApi';
 import { COMPONENT_TYPE_LABELS, CATEGORY_LABELS } from './types/builder';
 import { addSrWorkbenchStackItem, quickExecuteSrTicket } from '../../lib/api/platform';
+import { fetchScreenBuilderPage, publishScreenBuilderDraft, saveScreenBuilderDraft } from '../../lib/api/platform';
 import { getTraceContext } from '../../platform/telemetry/traceContext';
 import { findRouteOwnershipTraceByPath, listRouteOwnershipTraces, type RouteOwnershipTrace } from '../../app/routes/routeCatalog';
 import { PAGE_COMPLETENESS_INVENTORY, type PageCompletenessInventoryRow } from './pageCompletenessInventory';
@@ -66,6 +67,40 @@ type BuilderMenuGroup = 'home' | 'admin';
 type BuilderLayoutRegion = 'content' | 'header' | 'footer';
 type BuilderEditorView = 'design' | 'source';
 type BuilderToolPanel = 'theme' | 'components' | 'sections';
+
+function toSduiComponentType(value: string) {
+  const normalized = String(value || 'section').toLowerCase();
+  if (['form', 'card', 'layout', 'other'].includes(normalized)) return 'section';
+  return normalized;
+}
+
+function mapCanonicalScreen(page: Awaited<ReturnType<typeof fetchScreenBuilderPage>>): BuilderScreen {
+  return {
+    screenId: page.versionId || `sdui-${page.menuCode}`,
+    menuCode: page.menuCode,
+    pageId: page.pageId,
+    menuNm: page.menuTitle,
+    menuUrl: page.menuUrl,
+    templateType: page.templateType,
+    nodes: (page.nodes || []).map((node) => ({
+      nodeId: node.nodeId,
+      componentId: node.componentId || '',
+      parentNodeId: node.parentNodeId || null,
+      componentType: node.componentType,
+      slotName: node.slotName || 'content',
+      sortOrder: node.sortOrder,
+      props: node.props || {},
+    })),
+    events: (page.events || []).map((event) => ({ ...event })),
+    themeId: 'theme-default',
+    customClasses: '',
+    customStyles: '',
+    status: page.versionStatus === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT',
+    version: page.versionHistory?.length || 1,
+    createdAt: page.versionHistory?.[0]?.savedAt || '',
+    updatedAt: page.versionHistory?.[0]?.savedAt || '',
+  };
+}
 
 const SECTION_STORAGE_KEY = 'carbonet:builder:saved-sections';
 const FRONTEND_CANDIDATE_STORAGE_KEY = 'carbonet:builder:frontend-candidates';
@@ -616,6 +651,8 @@ export function BuilderStudioPage() {
       if (screensRes.screens.length > 0) {
         setCurrentScreen(screensRes.screens[0]);
       }
+      const canonicalPage = await fetchScreenBuilderPage(targetContext).catch(() => null);
+      if (canonicalPage?.menuCode) setCurrentScreen(mapCanonicalScreen(canonicalPage));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load data');
     } finally {
@@ -642,13 +679,29 @@ export function BuilderStudioPage() {
     }
   }
 
-  async function handleSave() {
-    if (!currentScreen) return;
+  async function handleSave(): Promise<boolean> {
+    if (!currentScreen) return false;
     try {
       setIsSaving(true);
-      await api.updateScreen(currentScreen.screenId, currentScreen);
+      await saveScreenBuilderDraft({
+        menuCode: currentScreen.menuCode || targetContext.menuCode,
+        pageId: currentScreen.pageId || targetContext.pageId,
+        menuTitle: currentScreen.menuNm || targetContext.menuTitle,
+        menuUrl: currentScreen.menuUrl || targetContext.menuUrl,
+        templateType: currentScreen.templateType || (targetContext.menuUrl.startsWith('/admin') ? 'admin' : 'home'),
+        nodes: currentScreen.nodes.map((node) => ({
+          ...node,
+          parentNodeId: node.parentNodeId || undefined,
+          componentType: toSduiComponentType(node.componentType),
+        })),
+        events: currentScreen.events,
+      });
+      const canonicalPage = await fetchScreenBuilderPage(targetContext);
+      setCurrentScreen(mapCanonicalScreen(canonicalPage));
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -657,8 +710,10 @@ export function BuilderStudioPage() {
   async function handlePublish() {
     if (!currentScreen) return;
     try {
-      const result = await api.publishScreen(currentScreen.screenId);
-      setCurrentScreen(result.screen);
+      if (!(await handleSave())) return;
+      await publishScreenBuilderDraft({ menuCode: currentScreen.menuCode || targetContext.menuCode });
+      const canonicalPage = await fetchScreenBuilderPage(targetContext);
+      setCurrentScreen(mapCanonicalScreen(canonicalPage));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to publish');
     }
