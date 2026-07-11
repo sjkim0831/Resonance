@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T07:16:09.078423+00:00",
+  "generatedAt": "2026-07-11T07:18:42.795096+00:00",
   "valid": true,
   "counts": {
     "bindings": 342,
@@ -9,7 +9,7 @@
     "verificationItems": 342,
     "sourceRoutes": 263,
     "sourceSduiScreens": 250,
-    "sourceApis": 1190,
+    "sourceApis": 1191,
     "danglingPageCandidates": 0,
     "danglingApiCandidates": 0
   },
