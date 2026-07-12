@@ -31,7 +31,12 @@ tracked_source_changes="$(git diff --name-only -- \
   . \
   ':(exclude).gradle/**' \
   ':(exclude)projects/carbonet-assets/static/react-app/**' \
+  ':(exclude)projects/carbonet-backend-metadata/builder/platform-builder-store.json' \
+  ':(exclude)projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json' \
   ':(exclude)projects/carbonet-frontend/src/main/resources/static/react-app/**' \
+  ':(exclude)projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts' \
+  ':(exclude)projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts' \
+  ':(exclude)projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo' \
   ':(exclude)projects/carbonet-frontend/target/**')"
 if [[ -n "$tracked_source_changes" ]]; then
   echo "[auto-deploy] refusing deployment: tracked server files are modified" >&2
@@ -50,7 +55,12 @@ fi
 git restore --worktree -- \
   .gradle \
   projects/carbonet-assets/static/react-app \
+  projects/carbonet-backend-metadata/builder/platform-builder-store.json \
+  projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json \
   projects/carbonet-frontend/src/main/resources/static/react-app \
+  projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts \
+  projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts \
+  projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo \
   projects/carbonet-frontend/target 2>/dev/null || true
 
 timestamp="$(date '+%Y%m%d-%H%M%S')"
