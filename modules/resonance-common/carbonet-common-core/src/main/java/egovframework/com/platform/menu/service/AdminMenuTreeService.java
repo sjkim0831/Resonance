@@ -140,6 +140,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
                 }
                 List<AdminMenuLinkDTO> links = group.getLinks();
                 AdminMenuLinkDTO link = new AdminMenuLinkDTO();
+                link.setCode(code);
                 link.setText(labelKo);
                 link.setTEn(labelEn);
                 link.setU(exposedMenuUrl.isEmpty() ? "#" : exposedMenuUrl);
@@ -154,7 +155,7 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
                 .comparingInt((AdminMenuGroupDTO group) -> effectiveSort(resolveCodeByTitle(groupByCode, group), sortOrderMap))
                 .thenComparing(group -> safeString(group.getTitle()));
         Comparator<AdminMenuLinkDTO> linkComparator = Comparator
-                .comparingInt((AdminMenuLinkDTO link) -> effectiveSort(resolveCodeByUrl(menuRows, link.getU()), sortOrderMap))
+                .comparingInt((AdminMenuLinkDTO link) -> effectiveSort(link.getCode(), sortOrderMap))
                 .thenComparing(link -> safeString(link.getText()));
 
         List<Map.Entry<String, AdminMenuDomainDTO>> orderedDomainEntries = new java.util.ArrayList<>(domainByCode.entrySet());
