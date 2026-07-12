@@ -68,6 +68,7 @@ backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
 echo "[auto-deploy] backing up database to $backup_file"
 kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
   pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
+    -h 127.0.0.1 \
   | gzip -1 > "$backup_file"
 test -s "$backup_file"
 
