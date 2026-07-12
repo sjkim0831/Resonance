@@ -77,7 +77,8 @@ public class HomeMenuServiceImpl implements HomeMenuService {
         Map<String, HomeMenuNode> midMap = new LinkedHashMap<>();
 
         for (MenuInfoDTO row : rows) {
-            if (!"Y".equalsIgnoreCase(safeString(row.getUseAt()))) {
+            if (!"Y".equalsIgnoreCase(safeString(row.getUseAt()))
+                    || !"Y".equalsIgnoreCase(safeString(row.getExpsrAt()))) {
                 continue;
             }
             String value = safeString(row.getCode()).toUpperCase(Locale.ROOT);
