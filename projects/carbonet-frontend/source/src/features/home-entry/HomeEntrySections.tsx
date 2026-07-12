@@ -705,6 +705,41 @@ export function ReferenceHomeLowerSection({ en }: { en: boolean }) {
   );
 }
 
+export function NewsletterSection({ en }: { en: boolean }) {
+  return (
+    <section className="border-y border-blue-200 bg-[#eaf3ff]" data-help-id="home-newsletter">
+      <div className="krds-responsive-container mx-auto max-w-7xl px-4 py-12 lg:px-8 lg:py-16">
+        <div className="krds-auto-layout krds-component overflow-hidden rounded-2xl bg-[#003366] shadow-lg">
+          <div className="grid gap-8 px-6 py-9 sm:px-9 lg:grid-cols-[1fr_auto] lg:items-center lg:px-12 lg:py-11">
+            <div className="flex min-w-0 items-start gap-4 sm:gap-6">
+              <span className="material-symbols-outlined flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-3xl text-white sm:h-14 sm:w-14" aria-hidden="true">mark_email_read</span>
+              <div>
+                <p className="krds-type-label font-black uppercase tracking-[0.18em] text-blue-200">CCUS Newsletter</p>
+                <h2 className="krds-type-title mt-2 font-black text-white">
+                  {en ? "Get Carbon Neutrality News First" : "탄소중립 소식을 가장 먼저 만나보세요"}
+                </h2>
+                <p className="krds-type-body mt-3 max-w-3xl font-medium leading-7 text-blue-100">
+                  {en
+                    ? "Receive policy updates, CCUS technology trends, education schedules, and platform news in one newsletter."
+                    : "정책 변화와 CCUS 기술 동향, 교육 일정, 플랫폼 주요 소식을 뉴스레터 한 편으로 받아보세요."}
+                </p>
+              </div>
+            </div>
+            <a
+              className="krds-control inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--kr-gov-radius)] bg-white px-6 py-3 font-black text-[#003366] transition-colors hover:bg-blue-50 focus-visible lg:w-auto"
+              href={buildLocalizedPath("/mypage/marketing", "/en/mypage/marketing")}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">mail</span>
+              {en ? "Set Newsletter Preferences" : "뉴스레터 수신 설정"}
+              <span className="material-symbols-outlined text-lg" aria-hidden="true">arrow_forward</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function HomeFooter({ content }: { content: LocalizedHomeContent }) {
   const english = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
   return (

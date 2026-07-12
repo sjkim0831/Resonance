@@ -12,6 +12,7 @@ import {
   HomeInlineStyles,
   CoreServiceGrid,
   HeroSection,
+  NewsletterSection,
   SearchSection,
   ReferenceHomeLowerSection,
   SummarySection
@@ -155,6 +156,7 @@ export function HomeLandingPage() {
             <CoreServiceGrid content={content} />
           </section>
           <ReferenceHomeLowerSection en={en} />
+          <NewsletterSection en={en} />
         </main>
         <HomeFooter content={content} />
       </div>
