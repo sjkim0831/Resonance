@@ -1207,10 +1207,10 @@ export function EmissionSurveyReportMigrationPage() {
   const outputMassUnit = outputMassUnitLabel(outputNormalizationRows, en);
   const handlePrintLanguage = (language: "ko" | "en") => {
     setPrintLanguageOpen(false);
-    const target = language === "en"
-      ? "/en/admin/emission/survey-report-print?lang=en"
-      : "/admin/emission/survey-report-print?lang=ko";
-    navigate(target);
+    const printPath = routeEn
+      ? "/en/admin/emission/survey-report-print"
+      : "/admin/emission/survey-report-print";
+    navigate(`${printPath}?lang=${language}&returnLang=${routeEn ? "en" : "ko"}`);
   };
   const handleLcaSummaryPrint = () => {
     navigate(en ? "/en/admin/emission/survey-report-lca-summary?lang=en" : "/admin/emission/survey-report-lca-summary?lang=ko");
@@ -1461,7 +1461,15 @@ export function EmissionSurveyReportPrintPage() {
   const reportArticleRef = useRef<HTMLElement | null>(null);
   const [draftReport, setDraftReport] = useState<EmissionSurveyReportPayload | null>(report);
   const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
-  const language = new URLSearchParams(window.location.search).get("lang");
+  const searchParams = new URLSearchParams(window.location.search);
+  const language = searchParams.get("lang");
+  const returnLanguageParam = searchParams.get("returnLang");
+  const returnLanguage = returnLanguageParam === "en" || returnLanguageParam === "ko"
+    ? returnLanguageParam
+    : (isEnglish() ? "en" : "ko");
+  const reportReturnPath = returnLanguage === "en"
+    ? "/en/admin/emission/survey-report"
+    : "/admin/emission/survey-report";
   const en = language ? language === "en" : isEnglish();
   const effectiveReport = draftReport || report;
   const { englishNameMap, loading: englishMaterialNameLoading } = useEnglishMaterialNames(effectiveReport, en);
@@ -2065,7 +2073,7 @@ export function EmissionSurveyReportPrintPage() {
         `}
       </style>
       <div className="print-hidden mx-auto mb-4 flex max-w-5xl flex-wrap justify-between gap-3">
-        <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report", "/en/admin/emission/survey-report"))} type="button">
+        <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700" onClick={() => navigate(reportReturnPath)} type="button">
           {en ? "Back To Report" : "리포트로 돌아가기"}
         </button>
         <div className="flex flex-wrap items-center gap-3">
