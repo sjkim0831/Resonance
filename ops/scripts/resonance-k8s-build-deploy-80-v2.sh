@@ -722,7 +722,17 @@ verify_runtime() {
   echo -n "  Pod: "
   echo -e "${GREEN}$pod${NC}"
 
-  guard_frontend_overlay verify-http
+  if ! kubectl -n "$NAMESPACE" exec "$pod" -- curl -sf --max-time 15 -o /dev/null "http://localhost:8080/home"; then
+    rollback_and_fail "HOME_SMOKE_TEST_FAILED" "Public home page did not return a successful response" \
+      "kubectl -n $NAMESPACE exec $pod -- curl -i http://localhost:8080/home"
+  fi
+  if ! kubectl -n "$NAMESPACE" exec "$pod" -- curl -sf --max-time 15 -o /dev/null "http://localhost:8080/assets/react/.vite/manifest.json"; then
+    rollback_and_fail "REACT_MANIFEST_SMOKE_TEST_FAILED" "Immutable React manifest is unavailable" \
+      "kubectl -n $NAMESPACE exec $pod -- curl -i http://localhost:8080/assets/react/.vite/manifest.json"
+  fi
+  if [[ "$IMMUTABLE_FRONTEND_IMAGE" != "true" ]]; then
+    guard_frontend_overlay verify-http
+  fi
 
   log_success "Verified"
 }
@@ -845,7 +855,7 @@ main() {
     SKIP_OVERLAY_SYNC=true
     kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
       CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=false \
-      CARBONET_STATIC_FS_OVERRIDE_ENABLED=false
+      CARBONET_STATIC_FS_OVERRIDE_ENABLED=true
     sync_overlay
     build_image
     rollout_image
