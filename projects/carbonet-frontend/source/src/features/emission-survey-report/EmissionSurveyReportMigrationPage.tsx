@@ -33,6 +33,22 @@ function useEnglishTitleCase(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
 
+    const scopeClass = "emission-report-english-title-case";
+    const styleId = "emission-report-english-title-case-style";
+    document.body.classList.add(scopeClass);
+    let titleCaseStyle = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!titleCaseStyle) {
+      titleCaseStyle = document.createElement("style");
+      titleCaseStyle.id = styleId;
+      titleCaseStyle.textContent = `
+        body.${scopeClass} .uppercase,
+        body.${scopeClass} [style*="text-transform: uppercase"] {
+          text-transform: capitalize !important;
+        }
+      `;
+      document.head.appendChild(titleCaseStyle);
+    }
+
     const shouldSkip = (node: Text) => {
       const parent = node.parentElement;
       return !parent || Boolean(parent.closest("script, style, code, pre, textarea, input, [data-preserve-case='true']"));
@@ -69,7 +85,11 @@ function useEnglishTitleCase(enabled: boolean) {
       });
     });
     observer.observe(document.body, { childList: true, characterData: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      document.body.classList.remove(scopeClass);
+      document.getElementById(styleId)?.remove();
+    };
   }, [enabled]);
 }
 
