@@ -18,6 +18,27 @@
   --kr-gov-success: #039855;
   --kr-gov-warning-bg: #fff4f4;
   --kr-gov-warning-border: #fca5a5;
+  /* KRDS responsive type scale: caption, label, body, subtitle, title, display */
+  --krds-type-caption: clamp(0.75rem, 0.72rem + 0.12vw, 0.8125rem);
+  --krds-type-label: clamp(0.8125rem, 0.78rem + 0.16vw, 0.9rem);
+  --krds-type-body: clamp(0.9375rem, 0.9rem + 0.18vw, 1.0625rem);
+  --krds-type-subtitle: clamp(1.0625rem, 0.98rem + 0.32vw, 1.25rem);
+  --krds-type-title: clamp(1.375rem, 1.15rem + 0.9vw, 2rem);
+  --krds-type-display: clamp(1.75rem, 1.3rem + 1.8vw, 3rem);
+  --krds-line-compact: 1.3;
+  --krds-line-body: 1.6;
+  --krds-space-1: clamp(0.25rem, 0.2rem + 0.2vw, 0.5rem);
+  --krds-space-2: clamp(0.5rem, 0.4rem + 0.35vw, 0.75rem);
+  --krds-space-3: clamp(0.75rem, 0.6rem + 0.55vw, 1.125rem);
+  --krds-space-4: clamp(1rem, 0.75rem + 0.9vw, 1.5rem);
+  --krds-space-5: clamp(1.5rem, 1rem + 1.5vw, 2.5rem);
+  --krds-control-height-sm: clamp(2.25rem, 2rem + 0.6vw, 2.5rem);
+  --krds-control-height-md: clamp(2.75rem, 2.4rem + 0.8vw, 3.125rem);
+  --krds-control-height-lg: clamp(3.125rem, 2.7rem + 1vw, 3.75rem);
+  --krds-component-padding: var(--krds-space-4);
+  --krds-layout-gap: var(--krds-space-4);
+  --krds-content-max: 90rem;
+  --krds-grid-min: min(100%, 18rem);
   background: #f2f2f2;
 }
 
@@ -37,6 +58,82 @@ body {
   -webkit-font-smoothing: antialiased;
   background: var(--kr-gov-bg-gray);
   color: var(--kr-gov-text-primary);
+  font-size: var(--krds-type-body);
+  line-height: var(--krds-line-body);
+}
+
+/* KRDS semantic sizing API. Builder-managed screens select meaning, not pixels. */
+.krds-type-caption { font-size: var(--krds-type-caption); line-height: var(--krds-line-compact); }
+.krds-type-label { font-size: var(--krds-type-label); line-height: var(--krds-line-compact); }
+.krds-type-body { font-size: var(--krds-type-body); line-height: var(--krds-line-body); }
+.krds-type-subtitle { font-size: var(--krds-type-subtitle); line-height: 1.45; }
+.krds-type-title { font-size: var(--krds-type-title); line-height: 1.35; }
+.krds-type-display { font-size: var(--krds-type-display); line-height: 1.2; }
+
+.krds-responsive-container {
+  container-type: inline-size;
+  width: min(100%, var(--krds-content-max));
+  margin-inline: auto;
+  padding-inline: var(--krds-space-4);
+}
+
+.krds-auto-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--krds-grid-min), 1fr));
+  gap: var(--krds-layout-gap);
+  align-items: start;
+}
+
+.krds-component {
+  min-width: 0;
+  padding: var(--krds-component-padding);
+  border-radius: var(--kr-gov-radius);
+}
+.krds-span-full { grid-column: 1 / -1; }
+.krds-span-half { grid-column: span 1; }
+.krds-span-third { grid-column: span 1; }
+
+.krds-control,
+.krds-button,
+.krds-input,
+.krds-select {
+  min-height: var(--krds-control-height-md);
+  padding-inline: var(--krds-space-3);
+  font: inherit;
+  font-size: var(--krds-type-label);
+}
+
+[data-krds-density="compact"] {
+  --krds-component-padding: var(--krds-space-2);
+  --krds-layout-gap: var(--krds-space-2);
+  --krds-control-height-md: var(--krds-control-height-sm);
+  --krds-grid-min: min(100%, 15rem);
+}
+
+[data-krds-density="comfortable"] {
+  --krds-component-padding: var(--krds-space-5);
+  --krds-layout-gap: var(--krds-space-5);
+  --krds-control-height-md: var(--krds-control-height-lg);
+  --krds-grid-min: min(100%, 21rem);
+}
+
+@media (max-width: 47.99rem) {
+  :root {
+    --krds-content-max: 100%;
+    --krds-grid-min: 100%;
+    --krds-component-padding: var(--krds-space-3);
+    --krds-layout-gap: var(--krds-space-3);
+  }
+  .krds-responsive-container { padding-inline: var(--krds-space-3); }
+  .krds-auto-layout { grid-template-columns: minmax(0, 1fr); }
+  .krds-span-full, .krds-span-half, .krds-span-third { grid-column: 1 / -1; }
+  .krds-button, .krds-input, .krds-select { max-width: 100%; }
+  table.krds-responsive-table { display: block; max-width: 100%; overflow-x: auto; }
+}
+
+@container (max-width: 32rem) {
+  .krds-auto-layout { grid-template-columns: minmax(0, 1fr); }
+  .krds-component { padding: var(--krds-space-3); }
 }
 
 #root {
