@@ -14,8 +14,9 @@ import type {
 import { normalizeAdminEmissionMenuTree } from "./menuNormalization";
 
 const FRONTEND_SESSION_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}frontend-session`;
-const ADMIN_MENU_TREE_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v5`;
+const ADMIN_MENU_TREE_STORAGE_KEY = `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v6`;
 const LEGACY_ADMIN_MENU_TREE_STORAGE_KEYS = [
+  `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v5`,
   `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v4`,
   `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v3`,
   `${SESSION_STORAGE_CACHE_PREFIX}admin-menu-tree-db-v2`,

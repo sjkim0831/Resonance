@@ -1,6 +1,6 @@
 import { apiFetch, readJsonResponse } from "./core";
 
-export const SESSION_STORAGE_CACHE_PREFIX = "carbonet:api-cache:v3:";
+export const SESSION_STORAGE_CACHE_PREFIX = "carbonet:api-cache:v4:";
 export const DEFAULT_PAGE_CACHE_TTL_MS = 60 * 1000;
 
 function buildJsonRequestHeaders(headers?: HeadersInit): Headers {

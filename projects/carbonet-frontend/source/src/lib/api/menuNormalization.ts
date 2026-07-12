@@ -743,11 +743,10 @@ export function getNormalizedHomeMenu(isEn = false): HomeMenuRecord[] {
 }
 
 export function normalizeHomeEmissionMenu<T extends BootstrappedHomePayload | null | undefined>(payload: T): T {
-  if (!payload) {
-    return payload;
-  }
-  const nextMenu = getNormalizedHomeMenu(Boolean(payload.isEn));
-  return { ...payload, homeMenu: nextMenu as Array<Record<string, unknown>> } as T;
+  // Home navigation is DB-managed. Never replace the server payload with the
+  // historical source-side menu catalog; that made menu-management saves and
+  // Flyway navigation migrations invisible until another frontend release.
+  return payload;
 }
 
 export function normalizeAdminEmissionMenuTree(payload: AdminMenuTreePayload): AdminMenuTreePayload {
