@@ -1,0 +1,12 @@
+[Unit]
+Description=Carbonet main branch automatic build, migration, and deployment
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/auto-deploy-main.sh
+Nice=10
+

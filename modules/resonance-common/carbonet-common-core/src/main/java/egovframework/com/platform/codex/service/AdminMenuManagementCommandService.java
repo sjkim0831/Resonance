@@ -157,7 +157,10 @@ public class AdminMenuManagementCommandService {
                         normalizedIcon, normalizedUseAt, actorId.isEmpty() ? "admin" : actorId);
             }
             ensureDefaultViewFeature(nextPageCode, normalizedName, normalizedNameEn, normalizedUseAt);
-            int sortOrder = requestedSortOrder == null || requestedSortOrder < 1
+            // A newly created child menu is always appended after its siblings. Callers should
+            // not need to inspect the current tree or guess its sort-order scale (10, 20, ...).
+            // An explicit sort order remains available when updating an existing managed page.
+            int sortOrder = existingByUrl == null || requestedSortOrder == null || requestedSortOrder < 1
                     ? resolveNextSiblingSortOrder(normalizedMenuType, normalizedParentCode)
                     : requestedSortOrder;
             menuInfoCommandService.saveMenuOrder(nextPageCode, sortOrder);
