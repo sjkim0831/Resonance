@@ -33,8 +33,6 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
     private static final String ROLE_SYSTEM_MASTER = "ROLE_SYSTEM_MASTER";
     private static final String ROLE_OPERATION_ADMIN = "ROLE_OPERATION_ADMIN";
     private static final Logger log = LoggerFactory.getLogger(AdminMenuTreeService.class);
-    private static final Map<String, String> MENU_LABEL_OVERRIDES_KO = buildMenuLabelOverridesKo();
-    private static final Map<String, String> MENU_LABEL_OVERRIDES_EN = buildMenuLabelOverridesEn();
 
     private final MenuInfoService menuInfoService;
     private final AuthGroupManageService authGroupManageService;
@@ -205,29 +203,12 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
     }
 
     private String resolveMenuLabelKo(MenuInfoDTO row) {
-        String label = safeString(row.getCodeNm());
-        if (!isLikelyCodeLabel(label)) {
-            return label;
-        }
-        String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
-        String override = MENU_LABEL_OVERRIDES_KO.get(code);
-        if (override != null && !override.isEmpty()) {
-            return override;
-        }
-        return label;
+        return safeString(row.getCodeNm());
     }
 
     private String resolveMenuLabelEn(MenuInfoDTO row) {
         String label = safeString(row.getCodeDc());
-        if (!isLikelyCodeLabel(label)) {
-            return label;
-        }
-        String code = safeString(row.getCode()).toUpperCase(Locale.ROOT);
-        String override = MENU_LABEL_OVERRIDES_EN.get(code);
-        if (override != null && !override.isEmpty()) {
-            return override;
-        }
-        return label;
+        return label.isEmpty() ? safeString(row.getCodeNm()) : label;
     }
 
     private boolean isMasterOnlyRoute(String normalizedUri) {
@@ -435,14 +416,19 @@ public class AdminMenuTreeService implements AdminMenuTreeReadPort {
     }
 
     private String resolveCodeByUrl(List<MenuInfoDTO> rows, String menuUrl) {
-        String normalizedUrl = normalizeMenuUrl(menuUrl);
+        String normalizedUrl = stripEnglishPrefix(normalizeMenuUrl(menuUrl));
         for (MenuInfoDTO row : rows) {
-            String rowUrl = normalizeMenuUrl(mapReactAdminMenuUrl(row.getMenuUrl(), false));
+            String rowUrl = stripEnglishPrefix(normalizeMenuUrl(mapReactAdminMenuUrl(row.getMenuUrl(), false)));
             if (rowUrl.equals(normalizedUrl)) {
                 return safeString(row.getCode());
             }
         }
         return "";
+    }
+
+    private String stripEnglishPrefix(String url) {
+        String normalized = normalizeMenuUrl(url);
+        return normalized.startsWith("/en/admin/") ? normalized.substring(3) : normalized;
     }
     private boolean shouldHideMenu(String code, String menuUrl) {
         return false;

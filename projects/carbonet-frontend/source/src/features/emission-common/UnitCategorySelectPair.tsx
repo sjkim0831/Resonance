@@ -28,7 +28,7 @@ export function UnitCategorySelectPair({
 
   return (
     <div
-      className={`grid min-w-[260px] grid-cols-[minmax(112px,0.8fr)_minmax(138px,1fr)] gap-2 ${className}`}
+      className={`grid min-w-0 grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] gap-2 ${className}`}
       data-builder-component="UNIT_CATEGORY_SELECT_PAIR"
     >
       <label className="min-w-0">

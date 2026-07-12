@@ -443,7 +443,9 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
 async function renderReportPdfPages(file: File, onProgress: (progress: number, status: string) => void) {
   const pdfjs = await import("pdfjs-dist");
   const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+  const workerUrl = new URL(workerModule.default, window.location.origin);
+  workerUrl.searchParams.set("mime-fix", "20260712-1");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.toString();
   const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: Blob[] = [];
   for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
@@ -1825,7 +1827,9 @@ export function EmissionSurveyReportPrintPage() {
     setVerificationMessage("");
     try {
       const record = await buildReportVerificationRecord(effectiveReport);
-      await issueSurveyReportVerification(record);
+      await issueSurveyReportVerification(record).catch((error) => {
+        console.warn("Report verification registration failed; continuing PDF download.", error);
+      });
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
       setPdfDesignDraft(draft);
@@ -1897,8 +1901,12 @@ export function EmissionSurveyReportPrintPage() {
           creator: "Carbonet"
         });
         const issuedPdf = pdf.output("blob");
-        const issuedPages = await renderReportPdfPages(new File([issuedPdf], `${record.certificateId}.pdf`, { type: "application/pdf" }), () => undefined);
-        await registerSurveyReportVisualProfile(record.certificateId, await buildReportVisualProfile(issuedPages));
+        try {
+          const issuedPages = await renderReportPdfPages(new File([issuedPdf], `${record.certificateId}.pdf`, { type: "application/pdf" }), () => undefined);
+          await registerSurveyReportVisualProfile(record.certificateId, await buildReportVisualProfile(issuedPages));
+        } catch (error) {
+          console.warn("Report visual profile registration failed; continuing PDF download.", error);
+        }
       });
       await worker.save();
       setVerificationMessage(en ? "PDF file downloaded with hidden verification data." : "숨김 검증 정보가 포함된 PDF 파일을 다운로드했습니다.");
@@ -2337,56 +2345,6 @@ export function EmissionSurveyReportPrintPage() {
             </table>
           </div>
         </section>
-        <section className="pdf-hidden print-card mx-8 mb-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
-                {en ? "Authenticity Evidence" : "진위 식별 정보"}
-              </p>
-              <h2 className="mt-1 text-xl font-black text-slate-950">
-                {en ? "Carbonet Report Certificate" : "Carbonet 리포트 인증서"}
-              </h2>
-              <p className="mt-2 max-w-2xl text-xs font-semibold leading-5 text-slate-600">
-                {en
-                  ? "This report stores three verification signals: certificate ID, SHA-256 report fingerprint, and a machine-readable verification block embedded in this print/PDF."
-                  : "이 리포트는 인증서 ID, SHA-256 리포트 지문, PDF 내 기계 판독용 검증 블록의 3가지 방식으로 진위 여부를 식별합니다."}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-right">
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">{en ? "Status" : "상태"}</p>
-              <p className="mt-1 text-sm font-black text-emerald-900">{verificationRecord ? (en ? "Issued" : "발급됨") : (en ? "Prepare before print" : "인쇄 전 발급 필요")}</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-emerald-100 bg-white p-3">
-              <p className="text-[11px] font-black text-slate-500">{en ? "Certificate ID" : "인증서 ID"}</p>
-              <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{verificationRecord?.certificateId || "-"}</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-100 bg-white p-3">
-              <p className="text-[11px] font-black text-slate-500">{en ? "Report Fingerprint" : "리포트 지문"}</p>
-              <p className="mt-1 break-all font-mono text-xs font-black text-slate-950">{verificationRecord?.payloadHash || "-"}</p>
-            </div>
-            <div className="rounded-2xl border border-emerald-100 bg-white p-3">
-              <p className="text-[11px] font-black text-slate-500">{en ? "Integrity Code" : "무결성 코드"}</p>
-              <p className="mt-1 break-all font-mono text-sm font-black text-slate-950">{verificationRecord?.integrityCode || "-"}</p>
-            </div>
-          </div>
-          {verificationRecord ? (
-            <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-white p-3">
-              <pre aria-hidden="true" className="pdf-machine-readable">
-                {verificationPayloadToBlock(verificationRecord)}
-              </pre>
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700">
-                {en ? "Upload Verification" : "업로드 검증"}
-              </p>
-              <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">
-                {en
-                  ? "Upload this saved PDF on the authenticity page. No login route is embedded in the PDF."
-                  : "저장한 PDF를 진위확인 페이지에 업로드하세요. PDF에는 로그인 경로를 포함하지 않습니다."}
-              </p>
-            </div>
-          ) : null}
-        </section>
         {verificationRecord ? (
           <pre aria-hidden="true" className="pdf-machine-readable">
             {verificationPayloadToBlock(verificationRecord)}
@@ -2397,7 +2355,7 @@ export function EmissionSurveyReportPrintPage() {
   );
 }
 
-export function EmissionSurveyReportVerifyPage() {
+export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?: boolean } = {}) {
   const en = isEnglish();
   const [selectedReportType, setSelectedReportType] = useState<ReportVerificationType>("EMISSION_SURVEY");
   const [manualBlock, setManualBlock] = useState("");
@@ -2493,7 +2451,9 @@ export function EmissionSurveyReportVerifyPage() {
 
   const evaluatePhotographedPages = async (pages: Blob[], sourceLabel: string, preserveDigitalPayload = false) => {
     appendVerificationLog("INFO", en ? "Photographed-page verification started." : "촬영 페이지 검증을 시작했습니다.", `${sourceLabel}, pages=${pages.length}`);
-    setUploadedPayloadFound(false);
+    if (!preserveDigitalPayload) {
+      setUploadedPayloadFound(false);
+    }
     setOcrProgress({ busy: true, percent: 0, status: en ? "Preparing pages" : "페이지 이미지 보정 중" });
     setResultTone("info");
     setResultMessage(en ? `Reading visible report data from ${sourceLabel}...` : `${sourceLabel}의 화면 데이터셋을 읽고 있습니다...`);
@@ -2508,7 +2468,12 @@ export function EmissionSurveyReportVerifyPage() {
       const verification = await verifySurveyReportPhoto(recognized.text, qrEvidence || undefined, visualProfile, selectedReportType);
       appendVerificationLog(verification.photoConsistent ? "OK" : "WARN", en ? "Issued-report candidate comparison completed." : "발급 리포트 후보 대조를 완료했습니다.", `certificate=${verification.certificateId || "-"}, candidates=${verification.comparisons?.length || 0}, exact=${verification.comparisons?.filter((item) => item.overallExactMatch).length || 0}, confidence=${verification.confidence}%, visual=${verification.visualSimilarity ?? 0}%, mismatches=${verification.fieldMismatches?.length || 0}`);
       setPhotoVerification(verification);
-      if (!preserveDigitalPayload) {
+      if (preserveDigitalPayload) {
+        setResultTone(verification.photoConsistent ? "success" : "warning");
+        setResultMessage(verification.photoConsistent
+          ? (en ? `Digital verification and visible OCR cross-check completed (${verification.confidence}%).` : `디지털 진위 확인과 화면 OCR 교차 검증을 완료했습니다(${verification.confidence}%).`)
+          : (en ? `Digital data was verified, but visible OCR requires review (${verification.confidence}%).` : `숨김 데이터는 확인됐지만 화면 OCR 결과는 검토가 필요합니다(${verification.confidence}%).`));
+      } else {
         setPayload(null);
         setResultTone(verification.photoConsistent ? "success" : "warning");
         setResultMessage(verification.photoConsistent
@@ -2556,9 +2521,11 @@ export function EmissionSurveyReportVerifyPage() {
       setOcrProgress({ busy: true, percent: 0, status: en ? "Cross-checking visible PDF data" : "PDF 화면 데이터 교차 검증 중" });
       try {
         const pages = await renderReportPdfPages(file, (percent, status) => setOcrProgress({ busy: true, percent, status }));
+        appendVerificationLog("OK", en ? "PDF pages rendered for OCR cross-check." : "OCR 교차 검증용 PDF 페이지 변환을 완료했습니다.", `pages=${pages.length}`);
         setPhotoPreviewUrls(pages.map((page) => URL.createObjectURL(page)));
         await evaluatePhotographedPages(pages, file.name, true);
       } catch (error) {
+        appendVerificationLog("ERROR", en ? "Visible PDF OCR cross-check failed." : "PDF 화면 OCR 교차 검증에 실패했습니다.", error instanceof Error ? error.message : String(error));
         setOcrProgress((current) => ({ ...current, busy: false }));
         setResultTone("warning");
         setResultMessage(error instanceof Error ? error.message : (en ? "Visible PDF dataset cross-check failed." : "PDF 화면 데이터셋 교차 검증에 실패했습니다."));
@@ -2599,16 +2566,7 @@ export function EmissionSurveyReportVerifyPage() {
       ? "border-amber-200 bg-amber-50 text-amber-950"
       : "border-sky-200 bg-sky-50 text-sky-950";
 
-  return (
-    <AdminPageShell
-      breadcrumbs={[
-        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
-        { label: en ? "Emissions / Survey" : "배출/설문" },
-        { label: en ? "Report Authenticity" : "리포트 진위확인" }
-      ]}
-      title={en ? "Emission Survey Report Authenticity" : "배출 설문 리포트 진위확인"}
-      subtitle={en ? "Upload a downloaded report and compare its certificate tags and complete dataset with the issued registry." : "다운로드한 리포트를 업로드하여 인증 태그와 전체 데이터셋을 발급 원장과 비교합니다."}
-    >
+  const verificationContent = (
       <AdminWorkspacePageFrame>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -3041,6 +2999,21 @@ export function EmissionSurveyReportVerifyPage() {
           </div>
         </section>
       </AdminWorkspacePageFrame>
+  );
+  if (embedded) {
+    return verificationContent;
+  }
+  return (
+    <AdminPageShell
+      breadcrumbs={[
+        { label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") },
+        { label: en ? "Emissions / Survey" : "배출/설문" },
+        { label: en ? "Report Authenticity" : "리포트 진위확인" }
+      ]}
+      title={en ? "Emission Survey Report Authenticity" : "배출 설문 리포트 진위확인"}
+      subtitle={en ? "Upload a downloaded report and compare its certificate tags and complete dataset with the issued registry." : "다운로드한 리포트를 업로드하여 인증 태그와 전체 데이터셋을 발급 원장과 비교합니다."}
+    >
+      {verificationContent}
     </AdminPageShell>
   );
 }
@@ -3156,7 +3129,9 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           }
         }
       });
-      await issueSurveyReportVerification(record);
+      await issueSurveyReportVerification(record).catch((error) => {
+        console.warn("LCA verification registration failed; continuing PDF download.", error);
+      });
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
       setPdfDownloadMode(true);
@@ -3218,7 +3193,10 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         const issuedPdf = pdf.output("blob");
         return renderReportPdfPages(new File([issuedPdf], buildLcaSummaryPdfFileName(report, lcaDocumentTitle), { type: "application/pdf" }), () => undefined)
           .then(buildReportVisualProfile)
-          .then((visualProfile) => registerSurveyReportVisualProfile(record.certificateId, visualProfile));
+          .then((visualProfile) => registerSurveyReportVisualProfile(record.certificateId, visualProfile))
+          .catch((error) => {
+            console.warn("LCA visual profile registration failed; continuing PDF download.", error);
+          });
       });
       await worker.save();
       setDownloadMessage(en ? "LCA summary PDF downloaded with hidden verification data." : "숨김 검증 정보가 포함된 LCA 요약 PDF를 다운로드했습니다.");

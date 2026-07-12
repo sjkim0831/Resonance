@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -88,20 +89,24 @@ public class AdminMenuManagementCommandService {
         return ResponseEntity.ok(response);
     }
 
+    @Transactional
     public ResponseEntity<Map<String, Object>> createMenuManagedPage(
             String menuType,
             String parentCode,
+            String requestedMenuCode,
             String codeNm,
             String codeDc,
             String menuUrl,
             String menuIcon,
             String useAt,
+            Integer requestedSortOrder,
             HttpServletRequest request,
             Locale locale) {
         boolean isEn = isEnglishRequest(request, locale);
         String normalizedMenuType = normalizeMenuType(menuType);
         String codeId = resolveMenuCodeId(normalizedMenuType);
         String normalizedParentCode = safeString(parentCode).toUpperCase(Locale.ROOT);
+        String normalizedRequestedCode = safeString(requestedMenuCode).toUpperCase(Locale.ROOT);
         String normalizedName = safeString(codeNm);
         String normalizedNameEn = safeString(codeDc);
         String normalizedUrl = canonicalMenuUrl(menuUrl);
@@ -123,7 +128,15 @@ public class AdminMenuManagementCommandService {
             return ResponseEntity.badRequest().body(response);
         }
 
-        String nextPageCode = resolveNextPageCode(normalizedMenuType, normalizedParentCode);
+        PageManagementVO existingByUrl = findManagedPageByUrl(codeId, normalizedUrl);
+        String nextPageCode = existingByUrl == null
+                ? (normalizedRequestedCode.isEmpty() ? resolveNextPageCode(normalizedMenuType, normalizedParentCode) : normalizedRequestedCode)
+                : safeString(existingByUrl.getCode()).toUpperCase(Locale.ROOT);
+        if (!nextPageCode.startsWith(normalizedParentCode) || nextPageCode.length() != 8) {
+            response.put("success", false);
+            response.put("message", isEn ? "Menu code must be an 8-character child of parentCode." : "메뉴 코드는 parentCode에 속하는 8자리 코드여야 합니다.");
+            return ResponseEntity.badRequest().body(response);
+        }
         if (nextPageCode.isEmpty()) {
             response.put("success", false);
             response.put("message", isEn
@@ -134,17 +147,20 @@ public class AdminMenuManagementCommandService {
 
         try {
             String actorId = resolveActorId(request);
-            adminCodeManageService.insertPageManagement(
-                    codeId,
-                    nextPageCode,
-                    normalizedName,
-                    normalizedNameEn,
-                    normalizedUrl,
-                    normalizedIcon,
-                    normalizedUseAt,
-                    actorId.isEmpty() ? "admin" : actorId);
+            if (existingByUrl == null) {
+                adminCodeManageService.insertPageManagement(
+                        codeId, nextPageCode, normalizedName, normalizedNameEn, normalizedUrl,
+                        normalizedIcon, normalizedUseAt, actorId.isEmpty() ? "admin" : actorId);
+            } else {
+                adminCodeManageService.updatePageManagement(
+                        nextPageCode, normalizedName, normalizedNameEn, normalizedUrl,
+                        normalizedIcon, normalizedUseAt, actorId.isEmpty() ? "admin" : actorId);
+            }
             ensureDefaultViewFeature(nextPageCode, normalizedName, normalizedNameEn, normalizedUseAt);
-            menuInfoCommandService.saveMenuOrder(nextPageCode, resolveNextSiblingSortOrder(normalizedMenuType, normalizedParentCode));
+            int sortOrder = requestedSortOrder == null || requestedSortOrder < 1
+                    ? resolveNextSiblingSortOrder(normalizedMenuType, normalizedParentCode)
+                    : requestedSortOrder;
+            menuInfoCommandService.saveMenuOrder(nextPageCode, sortOrder);
             String draftPageId = buildManagedDraftPageId(normalizedUrl, nextPageCode);
             Map<String, Object> draftRegistry = uiManifestRegistryPort.ensureManagedPageDraft(
                     draftPageId,
@@ -172,6 +188,8 @@ public class AdminMenuManagementCommandService {
                     loadExactPageManagementRow(codeId, nextPageCode));
             response.put("draftPageId", draftPageId);
             response.put("manifestRegistry", draftRegistry);
+            response.put("operation", existingByUrl == null ? "CREATED" : "UPDATED");
+            response.put("sortOrdr", sortOrder);
         } catch (Exception e) {
             log.error("Failed to create menu managed page. menuType={}, parentCode={}, menuUrl={}",
                     normalizedMenuType, normalizedParentCode, normalizedUrl, e);
@@ -188,6 +206,23 @@ public class AdminMenuManagementCommandService {
                 ? "The page, menu metadata, and default VIEW feature have been created."
                 : "페이지와 메뉴 메타데이터, 기본 VIEW 기능을 함께 생성했습니다.");
         return ResponseEntity.ok(response);
+    }
+
+    private PageManagementVO findManagedPageByUrl(String codeId, String menuUrl) {
+        String normalizedUrl = canonicalMenuUrl(menuUrl);
+        if (normalizedUrl.isEmpty()) {
+            return null;
+        }
+        try {
+            for (PageManagementVO row : adminCodeManageService.selectPageManagementList(codeId, null, normalizedUrl)) {
+                if (normalizedUrl.equalsIgnoreCase(canonicalMenuUrl(row.getMenuUrl()))) {
+                    return row;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to resolve existing menu by URL. codeId={}, url={}", codeId, normalizedUrl, e);
+        }
+        return null;
     }
 
     public ResponseEntity<Map<String, Object>> updateFullStackMenuVisibility(
@@ -335,9 +370,7 @@ public class AdminMenuManagementCommandService {
         if (!baseError.isEmpty()) {
             return baseError;
         }
-        if (hasExistingManagedPageUrl(codeId, menuUrl)) {
-            return isEn ? "The page URL is already registered." : "이미 등록된 페이지 URL입니다.";
-        }
+        // Existing URLs are intentionally accepted and handled as idempotent updates.
         return "";
     }
 

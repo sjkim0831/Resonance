@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,6 +43,7 @@ public class AdminAdminAccountCreateCommandService {
     private final AdminRequestContextSupport adminRequestContextSupport;
     private final AdminRoleAssignmentDbChangeCaptureSupport adminRoleAssignmentDbChangeCaptureSupport;
 
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<Map<String, Object>> submitApi(
             AdminAdminAccountCreateRequestDTO payload,
             HttpServletRequest request,
@@ -219,6 +222,7 @@ public class AdminAdminAccountCreateCommandService {
             payloadBody.put("companyName", institutionInfo == null ? "" : adminAdminAccountCreateSupportService.safeString(institutionInfo.getInsttNm()));
             return ResponseEntity.ok(payloadBody);
         } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             log.error("Failed to create admin account. adminId={}, authorCode={}", adminId, authorCode, e);
             return messageResponse(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, isEn
                     ? "An error occurred while creating the administrator account."

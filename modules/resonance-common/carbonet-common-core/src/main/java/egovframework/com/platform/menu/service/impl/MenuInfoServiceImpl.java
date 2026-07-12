@@ -40,17 +40,10 @@ public class MenuInfoServiceImpl extends EgovAbstractServiceImpl implements Menu
 
     @Override
     public List<MenuInfoDTO> selectMenuTreeList(String codeId) {
-        String normalizedCodeId = safeString(codeId).toUpperCase(Locale.ROOT);
-        long version = menuTreeVersion.get();
-        CachedMenuRows cached = menuTreeCache.get(normalizedCodeId);
-        if (cached != null && cached.version == version) {
-            return cloneMenuRows(cached.rows);
-        }
-
-        List<MenuInfoDTO> sortedRows = sortMenuRows(menuInfoMapper.selectMenuTreeList(codeId));
-        List<MenuInfoDTO> cachedRows = cloneMenuRows(sortedRows);
-        menuTreeCache.put(normalizedCodeId, new CachedMenuRows(version, cachedRows));
-        return cloneMenuRows(cachedRows);
+        // Administrator menus are runtime-managed data. Always read the latest
+        // hierarchy/order/exposure values so DB/API changes require no rebuild,
+        // redeploy, pod-local cache eviction, or browser cache clearing.
+        return sortMenuRows(menuInfoMapper.selectMenuTreeList(codeId));
     }
 
     @Override

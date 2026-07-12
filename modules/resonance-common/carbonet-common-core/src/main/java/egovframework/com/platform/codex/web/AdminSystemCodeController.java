@@ -609,21 +609,25 @@ public class AdminSystemCodeController {
     public ResponseEntity<Map<String, Object>> createMenuManagedPageApi(
             @RequestParam(value = "menuType", defaultValue = "ADMIN") String menuType,
             @RequestParam(value = "parentCode", required = false) String parentCode,
+            @RequestParam(value = "menuCode", required = false) String menuCode,
             @RequestParam(value = "codeNm", required = false) String codeNm,
             @RequestParam(value = "codeDc", required = false) String codeDc,
             @RequestParam(value = "menuUrl", required = false) String menuUrl,
             @RequestParam(value = "menuIcon", required = false) String menuIcon,
             @RequestParam(value = "useAt", required = false) String useAt,
+            @RequestParam(value = "sortOrdr", required = false) Integer sortOrdr,
             HttpServletRequest request,
             Locale locale) {
         return adminMenuManagementCommandService.createMenuManagedPage(
                 menuType,
                 parentCode,
+                menuCode,
                 codeNm,
                 codeDc,
                 menuUrl,
                 menuIcon,
                 useAt,
+                sortOrdr,
                 request,
                 locale);
     }
@@ -633,21 +637,25 @@ public class AdminSystemCodeController {
     public ResponseEntity<Map<String, Object>> createContentMenuManagedPageApi(
             @RequestParam(value = "menuType", defaultValue = "ADMIN") String menuType,
             @RequestParam(value = "parentCode", required = false) String parentCode,
+            @RequestParam(value = "menuCode", required = false) String menuCode,
             @RequestParam(value = "codeNm", required = false) String codeNm,
             @RequestParam(value = "codeDc", required = false) String codeDc,
             @RequestParam(value = "menuUrl", required = false) String menuUrl,
             @RequestParam(value = "menuIcon", required = false) String menuIcon,
             @RequestParam(value = "useAt", required = false) String useAt,
+            @RequestParam(value = "sortOrdr", required = false) Integer sortOrdr,
             HttpServletRequest request,
             Locale locale) {
         return createMenuManagedPageApi(
                 menuType,
                 parentCode,
+                menuCode,
                 codeNm,
                 codeDc,
                 menuUrl,
                 menuIcon,
                 useAt,
+                sortOrdr,
                 request,
                 locale);
     }

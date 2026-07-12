@@ -3,7 +3,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { LOCALIZED_CONTENT, HOME_ENTRY_ASSETS } from "./homeEntryContent";
+import { LOCALIZED_CONTENT } from "./homeEntryContent";
 import {
   HeaderBrand,
   HeaderDesktopNav,
@@ -13,7 +13,7 @@ import {
   CoreServiceGrid,
   HeroSection,
   SearchSection,
-  ServiceMapSection,
+  ReferenceHomeLowerSection,
   SummarySection
 } from "./HomeEntrySections";
 import { HomePayload } from "./homeEntryTypes";
@@ -74,20 +74,9 @@ export function HomeLandingPage() {
       <HomeInlineStyles en={en} />
       <div className="bg-white text-[var(--kr-gov-text-primary)]">
         <a className="skip-link" href="#main-content">{content.skipLink}</a>
-        <div className="bg-[var(--kr-gov-bg-gray)] border-b border-[var(--kr-gov-border-light)]">
-          <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img alt={content.govAlt} className="h-4" src={HOME_ENTRY_ASSETS.GOV_SYMBOL} />
-              <span className="text-[13px] font-medium text-[var(--kr-gov-text-secondary)]">{content.govText}</span>
-            </div>
-            <div className="hidden md:flex items-center gap-4 text-xs font-medium text-[var(--kr-gov-text-secondary)]">
-              <p>{content.govGuide}</p>
-            </div>
-          </div>
-        </div>
-        <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50 shadow-sm">
+        <header className="sticky top-0 z-50 border-b-2 border-[#001e40] bg-white">
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <div className="relative flex items-center h-24">
+            <div className="relative flex h-16 items-center">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
               <HeaderBrand content={content} en={en} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
@@ -137,6 +126,27 @@ export function HomeLandingPage() {
           <div data-help-id="home-search">
             <SearchSection content={content} homeMenu={homeMenu} />
           </div>
+          <div data-help-id="home-summary">
+            <SummarySection content={content} />
+          </div>
+          <section className="border-y border-emerald-200 bg-emerald-50/70">
+            <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+              <div className="flex items-center gap-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-white bg-emerald-600 text-white shadow-md" aria-hidden="true">
+                  <span className="material-symbols-outlined text-[34px]">verified_user</span>
+                </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">{en ? "PUBLIC CERTIFICATE CHECK" : "공개 인증 서비스"}</p>
+                  <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Certificate Authenticity Verification" : "인증서 진위여부 확인"}</h2>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">{en ? "Verify a downloaded certificate without signing in." : "로그인 없이 발급 인증서와 리포트의 진위 여부를 확인하세요."}</p>
+                </div>
+              </div>
+              <a className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--kr-gov-radius)] bg-emerald-700 px-6 py-3 font-black text-white hover:bg-emerald-800 focus-visible" href={buildLocalizedPath("/home/certificate-verify", "/en/home/certificate-verify")}>
+                <span className="material-symbols-outlined">task_alt</span>
+                {en ? "Verify Certificate" : "진위여부 확인하기"}
+              </a>
+            </div>
+          </section>
           <section className="max-w-7xl mx-auto px-4 lg:px-8 py-20" data-help-id="home-services">
             <div className="mb-10">
               <h2 className="text-3xl font-bold text-[var(--kr-gov-text-primary)]">{content.coreServicesTitle}</h2>
@@ -144,10 +154,7 @@ export function HomeLandingPage() {
             </div>
             <CoreServiceGrid content={content} />
           </section>
-          <ServiceMapSection content={content} homeMenu={homeMenu} />
-          <div data-help-id="home-summary">
-            <SummarySection content={content} />
-          </div>
+          <ReferenceHomeLowerSection en={en} />
         </main>
         <HomeFooter content={content} />
       </div>

@@ -71,8 +71,8 @@ function normalizeComparableText(value: unknown) {
 }
 
 function matchesGwpCandidate(row: GwpCandidateRow, keyword: string) {
-  const normalizedKeyword = normalizeText(keyword);
-  if (!normalizedKeyword) {
+  const normalizedKeywords = resolveGwpSearchTerms(keyword).map(normalizeText).filter(Boolean);
+  if (!normalizedKeywords.length) {
     return true;
   }
   return [
@@ -90,7 +90,61 @@ function matchesGwpCandidate(row: GwpCandidateRow, keyword: string) {
     row.englishName,
     row.activityName,
     row.materialName
-  ].some((value) => normalizeText(String(value || "")).includes(normalizedKeyword));
+  ].some((value) => normalizedKeywords.some((keywordValue) => {
+    const candidateValue = normalizeText(String(value || ""));
+    return keywordValue.length <= 3 ? candidateValue === keywordValue : candidateValue.includes(keywordValue);
+  }));
+}
+
+function resolveGwpSearchTerms(keyword: string) {
+  const normalized = normalizeText(keyword).replace(/\s+/g, "");
+  const aliases: Record<string, string[]> = {
+    "이산화탄소": ["carbon dioxide", "co2"],
+    "co2": ["carbon dioxide", "co2"],
+    "일산화탄소": ["carbon monoxide", "co"],
+    "co": ["carbon monoxide", "co"],
+    "질소산화물": ["nitrogen oxides", "nox"],
+    "nox": ["nitrogen oxides", "nox"],
+    "메탄": ["methane", "ch4"],
+    "ch4": ["methane", "ch4"]
+  };
+  return Array.from(new Set([keyword, ...(aliases[normalized] || [])]));
+}
+
+function resolveEcoinventAiSearchTerms(keyword: string) {
+  const normalized = normalizeText(keyword).replace(/\s+/g, "");
+  const aliases: Record<string, string[]> = {
+    "수소": ["market for hydrogen, gaseous, low pressure", "hydrogen, gaseous, low pressure"],
+    "전력": ["market for electricity, medium voltage", "electricity, medium voltage"],
+    "재생전력": ["electricity production, photovoltaic", "electricity production, wind"],
+    "쳔연가스": ["market for natural gas, high pressure", "natural gas"],
+    "천연가스": ["market for natural gas, high pressure", "natural gas"],
+    "폐수오니": ["sewage sludge", "wastewater sludge"],
+    "촉매폐기물": ["spent catalyst", "waste catalyst"],
+    "흡착제,필터": ["spent activated carbon", "waste activated carbon", "used filter"],
+    "촉매": ["catalyst", "market for catalyst"],
+    "수증기": ["market for steam, in chemical industry", "steam, in chemical industry"]
+  };
+  return Array.from(new Set([...(aliases[normalized] || []), keyword])).slice(0, 3);
+}
+
+function resolveEcoinventExactSearch(keyword: string): Array<{ productName?: string; activityName?: string; keyword?: string; geography?: string }> {
+  const normalized = normalizeText(keyword).replace(/\s+/g, "");
+  const searches: Record<string, Array<{ productName?: string; activityName?: string; keyword?: string; geography?: string }>> = {
+    "수소": [{ productName: "hydrogen, gaseous, low pressure", activityName: "market for hydrogen" }],
+    "전력": [{ productName: "electricity, medium voltage", activityName: "market for electricity" }],
+    "재생전력": [
+      { activityName: "electricity production, photovoltaic", geography: "South Korea (KR)" },
+      { activityName: "electricity production, wind" }
+    ],
+    "쳔연가스": [{ productName: "natural gas, high pressure", activityName: "market for natural gas" }],
+    "천연가스": [{ productName: "natural gas, high pressure", activityName: "market for natural gas" }],
+    "폐수오니": [{ productName: "sewage sludge", activityName: "market for sewage sludge" }],
+    "촉매폐기물": [{ productName: "spent catalyst base from ethyleneoxide production", activityName: "market for spent catalyst" }],
+    "흡착제,필터": [{ productName: "spent activated carbon, granular", activityName: "market for spent activated carbon" }],
+    "수증기": [{ productName: "steam, in chemical industry", activityName: "market for steam" }]
+  };
+  return searches[normalized] || [];
 }
 
 function normalizedValue(value: unknown) {
@@ -184,23 +238,36 @@ function mapPriority(row: GwpCandidateRow, keyword: string) {
   const formula = normalizeText(String(row.formula || ""));
   const source = normalizeText(String(row.source || ""));
   const note = normalizeText(String(row.note || ""));
-  const normalizedKeyword = normalizeText(keyword);
-  if (source.includes("ecoinvent") || note.includes("ecoinvent")) {
+  const normalizedKeywords = resolveGwpSearchTerms(keyword).map(normalizeText).filter(Boolean);
+  if (normalizedKeywords.some((value) => commonName === value || formula === value)) {
     return 0;
   }
-  if (commonName === normalizedKeyword) {
+  if (normalizedKeywords.some((value) => commonName.startsWith(value) || formula.startsWith(value))) {
     return 1;
   }
-  if (formula === normalizedKeyword) {
-    return 1;
-  }
-  if (commonName.includes(normalizedKeyword)) {
+  if (normalizedKeywords.some((value) => commonName.includes(value) || formula.includes(value))) {
     return 2;
   }
-  if (formula.includes(normalizedKeyword)) {
-    return 2;
+  if (source.includes("ecoinvent") || note.includes("ecoinvent")) {
+    return 3;
   }
-  return 3;
+  return 4;
+}
+
+function ecoinventSearchPriority(row: GwpCandidateRow, keyword: string) {
+  if (row.exactRecommended) return -1;
+  const query = normalizeText(keyword);
+  if (!query) return 99;
+  const exactFields = [row.koreanName, row.commonName, row.productName, row.materialName, row.casNo]
+    .map((value) => normalizeText(String(value || "")))
+    .filter(Boolean);
+  if (exactFields.some((value) => value === query)) return 0;
+  if (exactFields.some((value) => value.startsWith(query))) return 1;
+  if (exactFields.some((value) => value.includes(query))) return 2;
+  const activity = normalizeText(String(row.activityName || ""));
+  if (activity === query || activity.startsWith(`market for ${query}`)) return 3;
+  if (activity.includes(query)) return 4;
+  return row.aiRecommended ? 5 : 10;
 }
 
 function parseTimePeriod(timePeriod: string | number | undefined): { startYear: number; endYear: number } {
@@ -482,7 +549,7 @@ function createPaddedPreviewRow(
 ) {
   return {
     rowId: stringOf((existingRow || {}) as Record<string, unknown>, "rowId") || `PADDED_ROW_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-    values: sanitizeRowValues(section, {})
+    values: sanitizeRowValues(section, (((existingRow || {}) as Record<string, unknown>).values || {}) as Record<string, string>)
   } satisfies EditablePreviewRow;
 }
 
@@ -588,6 +655,9 @@ function padPreviewSectionsWithExistingRows(
   });
 }
 
+// Kept for compatibility with saved draft comparison, but uploads intentionally use workbook rows only.
+void padPreviewSectionsWithExistingRows;
+
 function renderSectionTable(
   section: Record<string, unknown> | EmissionSurveyAdminSection,
   key: string,
@@ -601,6 +671,9 @@ function renderSectionTable(
     existingSections?: Array<Record<string, unknown>>;
     rowSourceSelections?: Record<string, RowSourceChoice>;
     onSelectRowSource?: (sectionCode: string, rowId: string, source: RowSourceChoice) => void;
+    bulkUnit?: { category: string; unit: string };
+    onBulkUnitChange?: (sectionCode: string, value: { category: string; unit: string }) => void;
+    onApplyBulkUnit?: (sectionIndex: number, sectionCode: string) => void;
   }
 ) {
   const rows = ((section.rows || []) as EditablePreviewRow[]);
@@ -623,7 +696,7 @@ function renderSectionTable(
     if (columnKey === "group") return "w-[140px] min-w-[140px]";
     if (columnKey === "materialName") return "w-[200px] min-w-[200px]";
     if (columnKey === "amount") return "w-[130px] min-w-[130px]";
-    if (columnKey === "annualUnit") return "w-[150px] min-w-[150px]";
+    if (columnKey === "annualUnit") return "w-[280px] min-w-[280px]";
     if (columnKey === "remark") return "w-[220px] min-w-[220px]";
     return "w-[170px] min-w-[170px]";
   };
@@ -638,9 +711,22 @@ function renderSectionTable(
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {editable ? (
-              <MemberButton onClick={() => options?.onAddRow?.(options.sectionIndex || 0)} size="sm" type="button" variant="secondary">
-                행 추가
-              </MemberButton>
+              <>
+                <div className="flex min-w-[360px] items-center gap-2 border border-slate-200 bg-slate-50 p-2">
+                  <span className="shrink-0 text-xs font-bold text-slate-700">단위 전체 적용</span>
+                  <UnitCategorySelectPair
+                    className="min-w-[220px] bg-white"
+                    category={options?.bulkUnit?.category || ""}
+                    onCategoryChange={(category) => options?.onBulkUnitChange?.(stringOf(section as Record<string, unknown>, "sectionCode"), { category, unit: "" })}
+                    onUnitChange={(unit) => options?.onBulkUnitChange?.(stringOf(section as Record<string, unknown>, "sectionCode"), { category: resolveUnitCategory(unit), unit })}
+                    unit={options?.bulkUnit?.unit || ""}
+                  />
+                  <MemberButton disabled={!options?.bulkUnit?.unit} onClick={() => options?.onApplyBulkUnit?.(options.sectionIndex || 0, stringOf(section as Record<string, unknown>, "sectionCode"))} size="sm" type="button" variant="primary">전체 적용</MemberButton>
+                </div>
+                <MemberButton onClick={() => options?.onAddRow?.(options.sectionIndex || 0)} size="sm" type="button" variant="secondary">
+                  행 추가
+                </MemberButton>
+              </>
             ) : null}
             <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">{stringOf(section as Record<string, unknown>, "caseCode") || "CASE_3_1"}</span>
           </div>
@@ -1292,6 +1378,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
   const [previewPayload, setPreviewPayload] = useState<Record<string, unknown> | null>(null);
   const [editablePreviewSections, setEditablePreviewSections] = useState<EditablePreviewSection[]>([]);
   const [rowSourceSelections, setRowSourceSelections] = useState<Record<string, RowSourceChoice>>({});
+  const [bulkUnits, setBulkUnits] = useState<Record<string, { category: string; unit: string }>>({});
+  const [globalBulkUnit, setGlobalBulkUnit] = useState<{ category: string; unit: string }>({ category: "", unit: "" });
   const [mappingTarget, setMappingTarget] = useState<MappingTarget | null>(null);
   const [mappingSearchKeyword, setMappingSearchKeyword] = useState("");
   const [mappingRows, setMappingRows] = useState<GwpCandidateRow[]>([]);
@@ -1336,11 +1424,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
     );
     const results = await Promise.allSettled(
       searchKeywords.map(async (keyword) => {
-        const payload = await fetchEmissionGwpValuesPage({ searchKeyword: keyword });
-        const rows = (((payload.gwpRows || []) as Array<Record<string, string>>))
-          .slice()
-          .sort((left, right) => mapPriority(left, keyword) - mapPriority(right, keyword));
-        const candidate = rows.find((row) => normalizedValue(row.manualInputValue)) || null;
+        const { rows } = await searchEcoinvent(keyword, 0);
+        const candidate = rows.find((row) => normalizedValue(row.score) || normalizedValue(row.manualInputValue)) || null;
         return [keyword, candidate] as const;
       })
     );
@@ -1450,6 +1535,60 @@ export function EmissionSurveyAdminDataMigrationPage() {
     }));
   }
 
+  function handleBulkUnitChange(sectionCode: string, value: { category: string; unit: string }) {
+    setBulkUnits((current) => ({ ...current, [sectionCode]: value }));
+  }
+
+  function handleApplyBulkUnit(sectionIndex: number, sectionCode: string) {
+    const bulkUnit = bulkUnits[sectionCode];
+    if (!bulkUnit?.unit) return;
+    setEditablePreviewSections((current) => current.map((section, currentSectionIndex) => {
+      if (currentSectionIndex !== sectionIndex) return section;
+      return {
+        ...section,
+        rows: ((section.rows || []) as EditablePreviewRow[]).map((row) => {
+          if (rowClientState(row).isDeleted || rowSourceSelections[rowSelectionKey(sectionCode, String(row.rowId || ""))] === "DB") return row;
+          return {
+            ...row,
+            values: sanitizeRowValues(section, {
+              ...((row.values || {}) as Record<string, string>),
+              annualUnitCategory: bulkUnit.category || resolveUnitCategory(bulkUnit.unit),
+              annualUnit: bulkUnit.unit
+            })
+          };
+        })
+      };
+    }));
+    setMessage(`${stringOf(editablePreviewSections[sectionIndex] as Record<string, unknown>, "sectionLabel") || sectionCode}의 현재 값 행에 ${bulkUnit.unit} 단위를 전체 적용했습니다.`);
+  }
+
+  function handleApplyGlobalBulkUnit() {
+    if (!globalBulkUnit.unit) return;
+    setEditablePreviewSections((current) => current.map((section) => {
+      const sectionCode = String(section.sectionCode || "");
+      const hasAnnualUnit = sectionDataColumns(section).some((column) => column.key === "annualUnit");
+      if (!hasAnnualUnit) return section;
+      return {
+        ...section,
+        rows: ((section.rows || []) as EditablePreviewRow[]).map((row) => {
+          if (rowClientState(row).isDeleted || rowSourceSelections[rowSelectionKey(sectionCode, String(row.rowId || ""))] === "DB") return row;
+          return {
+            ...row,
+            values: sanitizeRowValues(section, {
+              ...((row.values || {}) as Record<string, string>),
+              annualUnitCategory: globalBulkUnit.category || resolveUnitCategory(globalBulkUnit.unit),
+              annualUnit: globalBulkUnit.unit
+            })
+          };
+        })
+      };
+    }));
+    setBulkUnits(() => Object.fromEntries(
+      editablePreviewSections.map((section) => [String(section.sectionCode || ""), globalBulkUnit])
+    ));
+    setMessage(`전체 섹션의 현재 값 행에 ${globalBulkUnit.unit} 단위를 적용했습니다.`);
+  }
+
   function handleDeletePreviewRow(sectionIndex: number, rowIndex: number, rowId: string) {
     const sectionCode = stringOf(editablePreviewSections[sectionIndex] as Record<string, unknown>, "sectionCode");
     setEditablePreviewSections((current) => current.map((section, currentSectionIndex) => {
@@ -1495,19 +1634,19 @@ export function EmissionSurveyAdminDataMigrationPage() {
     try {
       const payload = await previewEmissionSurveySharedDataset(nextFile);
       const previewSections = cloneSections(((payload.sections || []) as EmissionSurveyAdminSection[])) as EditablePreviewSection[];
-      const existingSections = ((payload.existingDatasetSectionRows || []) as Array<Record<string, unknown>>);
       const autoMappedSections = normalizeSectionUnits(await autoMapSectionsWithEcoinvent(previewSections));
-      const paddedSections = padPreviewSectionsWithExistingRows(autoMappedSections, existingSections);
-      const totalRows = paddedSections.reduce((sum, section) => sum + (((section.rows || []) as EmissionSurveyAdminRow[]).length), 0);
-      const unmappedRows = paddedSections.reduce(
+      const totalRows = autoMappedSections.reduce((sum, section) => sum + (((section.rows || []) as EmissionSurveyAdminRow[]).length), 0);
+      const unmappedRows = autoMappedSections.reduce(
         (sum, section) =>
           sum + (((section.rows || []) as EmissionSurveyAdminRow[]).filter((row) => needsMappingAttention((row.values || {}) as Record<string, string>)).length),
         0
       );
       setUploadedFile(nextFile);
       setPreviewPayload(payload as Record<string, unknown>);
-      setEditablePreviewSections(paddedSections);
+      setEditablePreviewSections(autoMappedSections);
       setRowSourceSelections({});
+      setBulkUnits({});
+      setGlobalBulkUnit({ category: "", unit: "" });
       setDatasetArVersion("AR6");
       setMessage(
         stringOf((payload as Record<string, unknown>), "previewMessage")
@@ -1564,6 +1703,8 @@ export function EmissionSurveyAdminDataMigrationPage() {
       setPreviewPayload(null);
       setEditablePreviewSections([]);
       setRowSourceSelections({});
+      setBulkUnits({});
+      setGlobalBulkUnit({ category: "", unit: "" });
       setUploadedFile(null);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "업로드 파일을 DB에 반영하지 못했습니다.");
@@ -1595,7 +1736,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     setSelectedCandidateId(String(values.gwpMappedRowId || ""));
     setFactorType(isArFactorType(String(values.gwpValueType || "")) ? datasetArVersion : (String(values.gwpValueType || "ECOINVENT") as FactorType));
     setDirectValue(String(values.gwpDirectValue || values.gwpValue || ""));
-    void handleSearchMapping(nextKeyword, nextTarget, 0);
+    void handleSearchMapping(nextKeyword, nextTarget, 0, isAir ? "GWP" : "ECOINVENT");
   }
 
   function handleSelectRowSource(sectionCode: string, rowId: string, source: RowSourceChoice) {
@@ -1627,24 +1768,40 @@ export function EmissionSurveyAdminDataMigrationPage() {
     });
     let rows = (((response.data || []) as unknown) as GwpCandidateRow[]).slice();
     let total = response.totalCount || response.count || rows.length;
-    if (pageIndex === 0 && /[가-힣]/.test(keyword)) {
+    if (pageIndex === 0 && keyword.trim()) {
       try {
-        const aiResponse = await fetchSurveyEcoinventAiRecommendationPage({
-          materialName: keyword,
-          geography: geography || undefined,
-          timePeriod: timePeriod || undefined,
-          pageIndex: 1,
-          pageSize: Math.min(mappingPageSize, 20)
-        });
-        const aiRows = (((aiResponse.data || []) as unknown) as GwpCandidateRow[]).slice();
+        const [aiResponses, exactResponses] = await Promise.all([
+          Promise.all(resolveEcoinventAiSearchTerms(keyword).map(async (materialName) => {
+            try {
+              return await fetchSurveyEcoinventAiRecommendationPage({ materialName, geography: geography || undefined, timePeriod: timePeriod || undefined, pageIndex: 1, pageSize: Math.min(mappingPageSize, 20) });
+            } catch {
+              return { data: [] } as Awaited<ReturnType<typeof fetchSurveyEcoinventAiRecommendationPage>>;
+            }
+          })),
+          Promise.all(resolveEcoinventExactSearch(keyword).map(async (params) => {
+            try {
+              return await fetchEcoinventDatasetPage({ ...params, geography: geography || params.geography || undefined, timePeriod: timePeriod || undefined, pageIndex: 1, pageSize: Math.min(mappingPageSize, 20) });
+            } catch {
+              return { data: [] } as Awaited<ReturnType<typeof fetchEcoinventDatasetPage>>;
+            }
+          }))
+        ]);
+        const aiRows = aiResponses.flatMap((aiResponse) => ((((aiResponse.data || []) as unknown) as GwpCandidateRow[]).slice()));
+        const exactRows: GwpCandidateRow[] = exactResponses.flatMap((exactResponse) => ((((exactResponse.data || []) as unknown) as GwpCandidateRow[]).map((row) => ({ ...row, exactRecommended: "true" }))));
         const seen = new Set<string>();
-        rows = [...aiRows, ...rows].filter((row) => {
+        rows = [...exactRows, ...aiRows, ...rows].filter((row) => {
           const id = String(row.datasetId || row.rowId || "");
           if (!id || seen.has(id)) return false;
           seen.add(id);
           return true;
+        }).sort((left, right) => {
+          const priority = ecoinventSearchPriority(left, keyword) - ecoinventSearchPriority(right, keyword);
+          if (priority !== 0) return priority;
+          const leftRank = Number(left.aiRank || Number.MAX_SAFE_INTEGER);
+          const rightRank = Number(right.aiRank || Number.MAX_SAFE_INTEGER);
+          return leftRank - rightRank;
         }).slice(0, mappingPageSize);
-        total = Math.max(total, aiResponse.totalCount || aiResponse.count || 0);
+        total = Math.max(total, ...aiResponses.map((aiResponse) => aiResponse.totalCount || aiResponse.count || 0), ...exactResponses.map((exactResponse) => exactResponse.totalCount || exactResponse.count || 0));
       } catch {
         // Keep deterministic results when the local mapping model is unavailable.
       }
@@ -1652,7 +1809,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     return { rows, total };
   }
 
-  async function handleSearchMapping(keywordOverride?: string, targetOverride?: MappingTarget | null, pageOverride?: number) {
+  async function handleSearchMapping(keywordOverride?: string, targetOverride?: MappingTarget | null, pageOverride?: number, sourceOverride?: "GWP" | "ECOINVENT") {
     const currentTarget = targetOverride || mappingTarget;
     if (!currentTarget) {
       return;
@@ -1661,7 +1818,7 @@ export function EmissionSurveyAdminDataMigrationPage() {
     const page = pageOverride ?? mappingPageIndex;
     setMappingLoading(true);
     try {
-      if (mappingSource === "GWP") {
+      if ((sourceOverride || mappingSource) === "GWP") {
         const catalog = await loadGwpCatalogRows();
         const allRows = filterAndSortGwpCandidates(catalog, keyword);
         const start = page * mappingPageSize;
@@ -1883,6 +2040,22 @@ export function EmissionSurveyAdminDataMigrationPage() {
               <div className="px-3 py-6 text-sm text-slate-500">파일에서 읽은 섹션이 없습니다.</div>
             ) : (
               <div className="space-y-4">
+                <div className="flex flex-col gap-3 border border-blue-200 bg-blue-50 p-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-blue-950">전체 섹션 단위 적용</p>
+                    <p className="mt-1 text-xs text-blue-800">업로드된 모든 섹션의 현재 값 행에 같은 단위를 적용합니다.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <UnitCategorySelectPair
+                      className="min-w-[280px] bg-white"
+                      category={globalBulkUnit.category}
+                      onCategoryChange={(category) => setGlobalBulkUnit({ category, unit: "" })}
+                      onUnitChange={(unit) => setGlobalBulkUnit({ category: resolveUnitCategory(unit), unit })}
+                      unit={globalBulkUnit.unit}
+                    />
+                    <MemberButton disabled={!globalBulkUnit.unit} onClick={handleApplyGlobalBulkUnit} type="button" variant="primary">전체 섹션 적용</MemberButton>
+                  </div>
+                </div>
                 {editablePreviewSections.map((section, index) => renderSectionTable(section, `preview-${section.sectionCode || index}`, {
                   editable: true,
                   sectionIndex: index,
@@ -1892,7 +2065,10 @@ export function EmissionSurveyAdminDataMigrationPage() {
                   onChangeValue: handlePreviewValueChange,
                   existingSections: previewExistingSections,
                   rowSourceSelections,
-                  onSelectRowSource: handleSelectRowSource
+                  onSelectRowSource: handleSelectRowSource,
+                  bulkUnit: bulkUnits[String(section.sectionCode || "")] || { category: "", unit: "" },
+                  onBulkUnitChange: handleBulkUnitChange,
+                  onApplyBulkUnit: handleApplyBulkUnit
                 }))}
               </div>
             )}

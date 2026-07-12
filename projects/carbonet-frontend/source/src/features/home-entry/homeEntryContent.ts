@@ -6,7 +6,7 @@ export const HOME_ENTRY_ASSETS = {
   FOOTER_SYMBOL:
     "https://lh3.googleusercontent.com/aida-public/AB6AXuBUw404pm2QFmL61j73Dpfn72GnHGEg-KXTkLQ8WVJYUJ4iekrO0IvqJK8cd0cOSNSIh9Yq1LAodkSNj7oHtVAltdnnymj25ZzOI3l167qrrWmkEoYsZGu3ztT-YGo9se-fFR3NhBG3rZ8DYfs2vna0bxSzVG8VjryTnsz40LCDS2SN3-AeqXrbaPEva2ptmrQzO8iQSwbqSGyGKddlGf7FtnhHT25Cz5a5Xhk8MTve0BF4RWxN-ULiw64ZBbrTASIHQUaURqiZXyE",
   HERO_IMAGE:
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuAKzEmq3B_kHRl3FWheD0HIdd3wasUtuhFVFgeRS05lgvAoyZS3TAjbi14ilZx1_L6i6qxmVk4OP8cNbisdlZRCSUAOwrKOVimb-EXOsS8PU1Sp_cB__QUog96l3-0MOv1ytGr46E0DjQVE-xJZF1mpIl3qWUAcm0bMOOwwT95WOqhuzJ6n0e5xjS85Oh5ccEJ0Qba6PTC5EnaLQDnyXFxNQr1hHjf034PZnFbSRLt8rRWDtjPZZpYhIo1_brXQ_xjIQqT4XK8kvPM",
+    "/img/home/ccus-industrial-facility.png",
   WA_MARK:
     "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y"
 } as const;

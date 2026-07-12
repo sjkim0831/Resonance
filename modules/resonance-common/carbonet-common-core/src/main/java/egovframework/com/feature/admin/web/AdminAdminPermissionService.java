@@ -11,6 +11,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -46,7 +48,8 @@ class AdminAdminPermissionService {
         this.adminAuthorityPagePayloadSupport = adminAuthorityPagePayloadSupport;
     }
 
-    SaveResult saveAdminPermission(
+    @Transactional(rollbackFor = Exception.class)
+    public SaveResult saveAdminPermission(
             String emplyrId,
             String authorCode,
             List<String> featureCodes,
@@ -132,6 +135,7 @@ class AdminAdminPermissionService {
             result.success = true;
             return result;
         } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             log.error("Failed to save admin account permissions. emplyrId={}, authorCode={}", result.emplyrId, result.authorCode, e);
             return result.serverError(isEn
                     ? "An error occurred while saving administrator permissions."

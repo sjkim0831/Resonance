@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
 OUT_DIR="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+LIVE_OUT_DIR="$ROOT_DIR/projects/carbonet-assets/static/react-app"
 RUN_DIR="$ROOT_DIR/var/run"
 LOG_DIR="$ROOT_DIR/var/logs"
 LOCK_FILE="$RUN_DIR/resonance-frontend-auto-build.lock"
@@ -54,28 +55,47 @@ fi
 
   test -f "$staging_dir/index.html"
   test -f "$staging_dir/.vite/manifest.json"
-  mkdir -p "$OUT_DIR/assets" "$OUT_DIR/.vite"
+  # Both paths are mounted by the runtime. Publish the same release to both;
+  # otherwise the static overlay can serve a stale index over the React overlay.
+  for publish_dir in "$OUT_DIR" "$LIVE_OUT_DIR"; do
+    mkdir -p "$publish_dir/assets" "$publish_dir/.vite"
 
-  # Publish immutable hashed assets first. Existing bundles remain available to
-  # in-flight pages until their HTML/bootstrap references move to the new hash.
-  rsync -a "$staging_dir/assets/" "$OUT_DIR/assets/"
-  for optional_dir in api ocr; do
-    if [[ -d "$staging_dir/$optional_dir" ]]; then
-      mkdir -p "$OUT_DIR/$optional_dir"
-      rsync -a "$staging_dir/$optional_dir/" "$OUT_DIR/$optional_dir/"
-    fi
+    # Publish immutable hashed assets first. Existing bundles remain available
+    # to in-flight pages until index.html moves to the new hashes.
+    rsync -a "$staging_dir/assets/" "$publish_dir/assets/"
+    for optional_dir in api ocr; do
+      if [[ -d "$staging_dir/$optional_dir" ]]; then
+        mkdir -p "$publish_dir/$optional_dir"
+        rsync -a "$staging_dir/$optional_dir/" "$publish_dir/$optional_dir/"
+      fi
+    done
+
+    install -m 0644 "$staging_dir/.vite/manifest.json" "$publish_dir/.vite/manifest.json.next"
+    mv -f "$publish_dir/.vite/manifest.json.next" "$publish_dir/.vite/manifest.json"
+    install -m 0644 "$staging_dir/index.html" "$publish_dir/index.html.next"
+    mv -f "$publish_dir/index.html.next" "$publish_dir/index.html"
+    printf '%s\n' "$new_fp" > "$publish_dir/.release-fingerprint"
   done
-
-  install -m 0644 "$staging_dir/.vite/manifest.json" "$OUT_DIR/.vite/manifest.json.next"
-  mv -f "$OUT_DIR/.vite/manifest.json.next" "$OUT_DIR/.vite/manifest.json"
-  install -m 0644 "$staging_dir/index.html" "$OUT_DIR/index.html.next"
-  mv -f "$OUT_DIR/index.html.next" "$OUT_DIR/index.html"
-  printf '%s\n' "$new_fp" > "$STAMP_FILE"
-  echo "[$(date -Is)] frontend build complete: $OUT_DIR"
+  echo "[$(date -Is)] frontend build published: $OUT_DIR + $LIVE_OUT_DIR"
   echo "[$(date -Is)] running bundle integrity check..."
   bash "$ROOT_DIR/ops/scripts/resonance-react-bundle-integrity.sh" || {
     echo "[$(date -Is)] BUNDLE INTEGRITY FAILED — build output does not match index.html references"
     exit 1
   }
+  if [[ "$(sha256sum "$OUT_DIR/index.html" | awk '{print $1}')" != "$(sha256sum "$LIVE_OUT_DIR/index.html" | awk '{print $1}')" ]]; then
+    echo "[$(date -Is)] PUBLISH VERIFICATION FAILED — runtime overlay indexes differ"
+    exit 1
+  fi
+  worker_file="$(find "$LIVE_OUT_DIR/assets" -maxdepth 1 -type f -name 'pdf.worker.min-*.mjs' -printf '%f\n' | sort | tail -1)"
+  if [[ -z "$worker_file" ]]; then
+    echo "[$(date -Is)] MIME VERIFICATION FAILED — PDF worker .mjs asset is missing"
+    exit 1
+  fi
+  worker_content_type="$(curl -fsSI "${FRONTEND_HEALTH_BASE_URL:-http://127.0.0.1}/assets/react/assets/$worker_file" | awk -F': ' 'tolower($1)=="content-type" {gsub("\r", "", $2); print tolower($2)}' | tail -1)"
+  if [[ "$worker_content_type" != application/javascript* && "$worker_content_type" != text/javascript* ]]; then
+    echo "[$(date -Is)] MIME VERIFICATION FAILED — $worker_file served as ${worker_content_type:-missing}"
+    exit 1
+  fi
+  printf '%s\n' "$new_fp" > "$STAMP_FILE"
   echo "[$(date -Is)] bundle integrity OK"
 } >> "$LOG_DIR/resonance-frontend-auto-build.log" 2>&1

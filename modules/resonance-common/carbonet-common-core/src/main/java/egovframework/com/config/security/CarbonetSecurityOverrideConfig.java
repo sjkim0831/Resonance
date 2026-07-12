@@ -47,6 +47,10 @@ public class CarbonetSecurityOverrideConfig {
                 "/react-shell/**",
                 "/home/**",
                 "/en/home/**",
+                "/api/home/certificate-verify/verify",
+                "/api/home/certificate-verify/verify-ocr",
+                "/api/en/home/certificate-verify/verify",
+                "/api/en/home/certificate-verify/verify-ocr",
                 
                 
                 "/emission/**",

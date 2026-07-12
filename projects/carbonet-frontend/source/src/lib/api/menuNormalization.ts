@@ -515,7 +515,8 @@ const EMISSION_ADMIN_DOMAIN = {
         { code: "AMENU_EMISSION_SURVEY_ADMIN", text: "배출 설문 관리", tEn: "Emission Survey", u: "/admin/emission/survey-admin", icon: "assignment" },
         { code: "AMENU_EMISSION_SURVEY_DATA", text: "배출 설문 데이터셋", tEn: "Survey Dataset", u: "/admin/emission/survey-admin-data", icon: "dataset" },
         { code: "AMENU_EMISSION_LCI_CLASS", text: "LCI 분류 관리", tEn: "LCI Classification", u: "/admin/emission/lci-classification", icon: "category" },
-        { code: "AMENU_EMISSION_DEFINITION", text: "배출 정의 관리", tEn: "Emission Definition", u: "/admin/emission/definition-studio", icon: "schema" }
+        { code: "AMENU_EMISSION_DEFINITION", text: "배출 정의 관리", tEn: "Emission Definition", u: "/admin/emission/definition-studio", icon: "schema" },
+        { code: "A0020113", text: "리포트 진위확인", tEn: "Report Authenticity", u: "/admin/emission/survey-report-verify", icon: "verified_user" }
       ]
     }
   ]

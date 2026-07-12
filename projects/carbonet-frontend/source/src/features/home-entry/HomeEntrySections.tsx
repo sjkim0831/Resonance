@@ -194,25 +194,14 @@ export function HeaderMobileMenu({
 
 export function HeroSection({ content }: { content: LocalizedHomeContent }) {
   return (
-    <section className="relative h-[480px] bg-slate-900 overflow-hidden" data-help-id="home-hero">
+    <section className="relative flex h-[400px] items-center overflow-hidden bg-slate-900" data-help-id="home-hero">
       <div className="absolute inset-0">
-        <img alt="Carbon capture facility" className="w-full h-full object-cover opacity-60" src={HOME_ENTRY_ASSETS.HERO_IMAGE} />
-        <div className="absolute inset-0 bg-gradient-to-r from-[var(--kr-gov-blue)]/90 via-[var(--kr-gov-blue)]/40 to-transparent" />
+        <img alt="CCUS Industrial Facility" className="h-full w-full object-cover" src={HOME_ENTRY_ASSETS.HERO_IMAGE} />
+        <div className="absolute inset-0 bg-[#001e40]/60 backdrop-blur-[2px]" />
       </div>
-      <div className="relative max-w-7xl mx-auto px-4 lg:px-8 h-full flex flex-col justify-center items-start text-white">
-        <span className="px-4 py-1.5 rounded-full bg-white/20 border border-white/30 text-sm font-bold mb-6 backdrop-blur-sm">{content.heroBadge}</span>
-        <h2 className="text-5xl font-extrabold mb-4 leading-tight">{content.heroTitle.split("\n").map((line, index) => (<span key={`${line}-${index}`}>{line}{index === 0 ? <br /> : null}</span>))}</h2>
-        <p className="text-xl text-blue-50/90 mb-10 max-w-2xl font-medium leading-relaxed">{content.heroDescription}</p>
-        <div className="flex gap-4">
-          <HomeButton type="button" className="px-8 py-4 text-lg" variant="secondary">
-            {content.heroButton} <span className="material-symbols-outlined">arrow_forward</span>
-          </HomeButton>
-          <div className="flex items-center gap-2 mt-auto self-end pb-4 ml-8">
-            <HomeButton type="button" className="w-10 h-10 rounded-full border-white/30 !bg-transparent !p-0 !text-white hover:!bg-white/10" variant="ghost"><span className="material-symbols-outlined">chevron_left</span></HomeButton>
-            <span className="text-sm font-bold tracking-widest">1 / 4</span>
-            <HomeButton type="button" className="w-10 h-10 rounded-full border-white/30 !bg-transparent !p-0 !text-white hover:!bg-white/10" variant="ghost"><span className="material-symbols-outlined">chevron_right</span></HomeButton>
-          </div>
-        </div>
+      <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 text-center text-white lg:px-8">
+        <h1 className="text-4xl font-black leading-tight tracking-tight lg:text-5xl">{content.heroTitle.replace("\n", " ")}</h1>
+        <p className="mx-auto mt-6 max-w-3xl text-lg font-semibold leading-8 text-blue-100/95">{content.heroDescription}</p>
       </div>
     </section>
   );
@@ -392,11 +381,11 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
   }
 
   return (
-    <section className="bg-[var(--kr-gov-bg-gray)] py-14 border-b border-[var(--kr-gov-border-light)]" data-help-id="home-search">
+    <section className="relative z-20 -mt-32 border-b border-[var(--kr-gov-border-light)] bg-transparent pb-10" data-help-id="home-search">
       <div className="max-w-4xl mx-auto px-4 text-center">
-        <h3 className="text-2xl font-bold mb-8 text-[var(--kr-gov-text-primary)]">{content.searchTitle}</h3>
+        <h3 className="sr-only">{content.searchTitle}</h3>
         <div className="relative group max-w-3xl mx-auto">
-          <HomeInput className="h-16 border-2 border-[var(--kr-gov-blue)] pl-8 pr-20 text-lg shadow-sm placeholder-gray-500 focus:border-[var(--kr-gov-blue)] focus:ring-4 focus:ring-[var(--kr-gov-blue)]/10" placeholder={content.searchPlaceholder} type="text" aria-label={content.searchAria} autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { executeSearch(); } }} />
+          <HomeInput className="h-16 border border-white/40 bg-white/95 pl-8 pr-20 text-lg shadow-2xl backdrop-blur-md placeholder-gray-500 focus:border-white focus:ring-4 focus:ring-white/20" placeholder={content.searchPlaceholder} type="text" aria-label={content.searchAria} autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { executeSearch(); } }} />
           <HomeButton type="button" className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 !p-0" onClick={() => executeSearch()} variant="primary">
             <span className="material-symbols-outlined text-[28px]">search</span>
           </HomeButton>
@@ -411,10 +400,10 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
             </div>
           ) : null}
         </div>
-        <div className="mt-6 flex flex-wrap justify-center items-center gap-3 text-sm">
-          <span className="font-bold text-[var(--kr-gov-text-secondary)]">{content.popularSearches}</span>
+        <div className="mx-auto mt-4 flex w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/20 bg-[#001e40]/55 px-5 py-2.5 text-sm text-white shadow-lg backdrop-blur-md">
+          <span className="mr-1 font-black text-blue-100">{content.popularSearches}</span>
           {content.popularTags.map((tag) => (
-            <HomeButton type="button" className="rounded-full px-3 py-1 text-[13px]" key={tag.label} onClick={() => { setQuery(tag.query || tag.label); executeSearch(tag.query || tag.label, tag); }} variant="secondary">{tag.label}</HomeButton>
+            <HomeButton type="button" className="rounded-full !border-white/30 !bg-white/10 px-3 py-1 text-[13px] !text-white hover:!bg-white/20" key={tag.label} onClick={() => { setQuery(tag.query || tag.label); executeSearch(tag.query || tag.label, tag); }} variant="secondary">{tag.label}</HomeButton>
           ))}
         </div>
       </div>
@@ -435,6 +424,51 @@ export function CoreServiceGrid({ content }: { content: LocalizedHomeContent }) 
         </a>
       ))}
     </div>
+  );
+}
+
+export function RealtimeDashboardSection({ en }: { en: boolean }) {
+  const updatedAt = new Intl.DateTimeFormat(en ? "en-US" : "ko-KR", { dateStyle: "long", timeStyle: "short" }).format(new Date());
+  return (
+    <section className="border-t-4 border-[var(--kr-gov-blue)] bg-white py-14" data-help-id="home-realtime-dashboard">
+      <div className="mx-auto max-w-7xl px-4 lg:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--kr-gov-blue)]">LIVE STATUS</p>
+            <h2 className="mt-2 text-3xl font-black text-slate-950">{en ? "Real-time Status Dashboard" : "실시간 현황 대시보드"}</h2>
+            <p className="mt-2 text-sm font-semibold text-slate-500">{en ? `Latest operational data · ${updatedAt}` : `최신 운영 데이터 · ${updatedAt}`}</p>
+          </div>
+          <a className="inline-flex items-center gap-2 text-sm font-black text-[var(--kr-gov-blue)] hover:underline" href={en ? "/en/monitoring/realtime" : "/monitoring/realtime"}>
+            {en ? "View details" : "상세 분석 보기"}<span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+          </a>
+        </div>
+        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          <article className="rounded-lg border border-slate-300 bg-white p-7">
+            <div className="flex items-center justify-between"><p className="text-sm font-bold text-slate-600">{en ? "Cumulative CO₂ reduction" : "누적 CO₂ 절감량"}</p><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">{en ? "ON TARGET" : "목표 달성 중"}</span></div>
+            <p className="mt-5 text-4xl font-black tabular-nums text-[#002a55]">1,452,890 <span className="text-xl font-semibold">tCO₂</span></p>
+            <p className="mt-3 text-sm font-black text-emerald-700">↗ {en ? "+12.4% from previous month" : "전월 대비 +12.4%"}</p>
+            <div className="mt-7 flex items-center justify-between text-xs font-bold text-slate-600"><span>{en ? "Annual target" : "연간 목표 달성률"}</span><span>72.6%</span></div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full w-[72.6%] rounded-full bg-emerald-700" /></div>
+          </article>
+          <article className="rounded-lg border border-slate-300 bg-white p-7">
+            <p className="text-sm font-bold text-slate-600">{en ? "Projects in progress" : "진행 중인 프로젝트"}</p>
+            <div className="mt-12 grid grid-cols-2 divide-x divide-slate-300">
+              <div><p className="text-4xl font-black tabular-nums text-[#002a55]">18</p><p className="mt-2 text-xs font-bold text-slate-600">{en ? "Commercial" : "상용화 단계"}</p></div>
+              <div className="pl-8"><p className="text-4xl font-black tabular-nums text-[#002a55]">27</p><p className="mt-2 text-xs font-bold text-slate-600">{en ? "Pilot / demonstration" : "실증·파일럿"}</p></div>
+            </div>
+            <div className="mt-10 grid grid-cols-[40%_60%] gap-1"><span className="h-2 bg-[#002a55]" /><span className="h-2 bg-blue-300" /></div>
+          </article>
+          <article className="rounded-lg border border-slate-300 bg-white p-7">
+            <p className="text-sm font-bold text-slate-600">{en ? "Certificate processing" : "인증 처리 상태"}</p>
+            <div className="mt-6 flex items-center justify-center gap-8">
+              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[conic-gradient(#002a55_0_85%,#e2e8f0_85%)]"><div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-white"><strong className="text-2xl text-[#002a55]">85%</strong><span className="text-[10px] font-bold text-slate-500">{en ? "COMPLETE" : "완료율"}</span></div></div>
+              <div className="space-y-3 text-sm font-bold"><p><span className="mr-2 inline-block h-3 w-3 bg-[#002a55]" />124{en ? " completed" : "건 인증 완료"}</p><p><span className="mr-2 inline-block h-3 w-3 bg-blue-300" />22{en ? " reviewing" : "건 검토 중"}</p></div>
+            </div>
+            <a className="mt-5 flex min-h-11 items-center justify-center border border-[#002a55] font-black text-[#002a55] hover:bg-blue-50" href={en ? "/en/home/certificate-verify" : "/home/certificate-verify"}>{en ? "Verify certificate" : "인증서 확인하기"}</a>
+          </article>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -635,6 +669,37 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
             </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function ReferenceHomeLowerSection({ en }: { en: boolean }) {
+  const notices = en ? [
+    ["24", "Carbon transaction guideline revision notice", "Important updates for operators and participating companies."],
+    ["21", "Project monitoring system upgrade", "Scheduled inspection and service enhancement information."],
+    ["18", "Annual CCUS technology symposium", "Registration and presentation schedule announcement."]
+  ] : [
+    ["24", "탄소 거래제 가이드라인 개정 안내", "운영기관 및 참여기업에 적용되는 주요 개정사항을 안내합니다."],
+    ["21", "프로젝트 모니터링 시스템 업그레이드 공지", "정기 점검 및 서비스 고도화 작업 일정을 안내합니다."],
+    ["18", "연례 CCUS 기술 심포지엄 참가 신청", "기술 세미나 참가 등록과 발표 일정을 안내합니다."]
+  ];
+  const supports = en ? [["help", "Help Center", "Frequently asked questions"], ["forum", "Live Chat", "Expert consultation"], ["description", "API Documentation", "Developer guide"], ["mail", "Email Inquiry", "Official support"]] : [["help", "헬프 센터", "자주 묻는 질문"], ["forum", "실시간 채팅", "전문가 즉시 상담"], ["description", "API 문서", "개발자 가이드"], ["mail", "이메일 문의", "공식 서면 지원"]];
+  return (
+    <section className="bg-white py-14">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
+        <article>
+          <div className="flex items-center justify-between border-b border-slate-300 pb-4"><h2 className="text-2xl font-black text-[#001e40]">{en ? "Notices" : "공지사항"}</h2><a className="text-sm font-bold hover:underline" href={en ? "/en/support/notice" : "/support/notice"}>{en ? "View all" : "전체보기"}</a></div>
+          <div className="divide-y divide-slate-200">
+            {notices.map(([day, title, description]) => <a className="grid grid-cols-[54px_1fr] gap-4 py-5 hover:bg-slate-50" href={en ? "/en/support/notice" : "/support/notice"} key={title}><span className="flex h-12 w-12 flex-col items-center justify-center bg-blue-50 text-lg font-black text-[#003366]">{day}<small className="text-[9px]">{en ? "JUL" : "7월"}</small></span><span><strong className="block text-sm text-slate-950">{title}</strong><span className="mt-1 block truncate text-xs text-slate-500">{description}</span></span></a>)}
+          </div>
+        </article>
+        <article className="rounded-xl bg-slate-100 p-7">
+          <h2 className="text-2xl font-black text-[#001e40]">{en ? "Technical Support Center" : "기술 지원 센터"}</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{en ? "Get help with emissions reporting, certification, and system usage." : "배출량 보고, 인증 및 시스템 이용에 필요한 도움을 확인하세요."}</p>
+          <div className="mt-6 grid grid-cols-2 gap-3">{supports.map(([icon, title, description]) => <a className="border border-slate-300 bg-white p-4 hover:border-[#003366]" href={en ? "/en/support/faq" : "/support/faq"} key={title}><span className="material-symbols-outlined text-[#003366]">{icon}</span><strong className="mt-3 block text-sm">{title}</strong><span className="mt-1 block text-xs text-slate-500">{description}</span></a>)}</div>
+          <div className="mt-5 flex items-center gap-4 border border-slate-300 bg-slate-200 p-4"><span className="flex h-10 w-10 items-center justify-center rounded bg-[#003366] text-white material-symbols-outlined">call</span><div><p className="text-xs font-bold text-slate-500">{en ? "Emergency technical line" : "긴급 기술 지원 라인"}</p><strong className="text-xl text-[#001e40]">080-1234-5678</strong></div></div>
+        </article>
       </div>
     </section>
   );

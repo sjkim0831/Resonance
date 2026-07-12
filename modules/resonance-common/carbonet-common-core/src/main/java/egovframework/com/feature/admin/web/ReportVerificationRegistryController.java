@@ -29,6 +29,8 @@ public class ReportVerificationRegistryController {
     }
 
     @PostMapping({
+            "/api/home/certificate-verify/verify",
+            "/api/en/home/certificate-verify/verify",
             "/api/admin/emission-survey-report/verify",
             "/admin/api/admin/emission-survey-report/verify",
             "/en/admin/api/admin/emission-survey-report/verify"
@@ -47,6 +49,8 @@ public class ReportVerificationRegistryController {
     }
 
     @PostMapping({
+            "/api/home/certificate-verify/verify-ocr",
+            "/api/en/home/certificate-verify/verify-ocr",
             "/api/admin/emission-survey-report/verify-ocr",
             "/admin/api/admin/emission-survey-report/verify-ocr",
             "/en/admin/api/admin/emission-survey-report/verify-ocr"

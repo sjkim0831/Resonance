@@ -356,8 +356,11 @@ export async function issueSurveyReportVerification(payload: ReportVerificationD
 }
 
 export async function verifySurveyReportDataset(payload: ReportVerificationDatasetPayload) {
+  const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportDatasetVerificationResponse>(
-    buildLocalizedPath("/admin/api/admin/emission-survey-report/verify", "/en/admin/api/admin/emission-survey-report/verify"),
+    publicHome
+      ? buildLocalizedPath("/api/home/certificate-verify/verify", "/api/en/home/certificate-verify/verify")
+      : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify", "/en/admin/api/admin/emission-survey-report/verify"),
     payload,
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );
@@ -369,8 +372,11 @@ export async function verifySurveyReportPhoto(ocrText: string, qrEvidence?: {
   integrityCode: string;
   datasetHash: string;
 }, visualProfile?: { version: number; columns: number; rows: number; pages: Array<{ values: number[] }> }, reportType: "EMISSION_SURVEY" | "LCA_SUMMARY" = "EMISSION_SURVEY") {
+  const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportPhotoVerificationResponse>(
-    buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
+    publicHome
+      ? buildLocalizedPath("/api/home/certificate-verify/verify-ocr", "/api/en/home/certificate-verify/verify-ocr")
+      : buildLocalizedPath("/admin/api/admin/emission-survey-report/verify-ocr", "/en/admin/api/admin/emission-survey-report/verify-ocr"),
     { ocrText, qrEvidence, visualProfile, reportType },
     { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
   );

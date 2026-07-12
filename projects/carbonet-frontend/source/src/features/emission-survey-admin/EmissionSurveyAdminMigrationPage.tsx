@@ -237,10 +237,45 @@ function geographyPriority(row: EcoinventDatasetRow) {
   return matchedIndex >= 0 ? matchedIndex : GEOGRAPHY_PRIORITY.length;
 }
 
+function resolveEcoinventSearchTerms(keyword: string) {
+  const normalized = normalizeSearchKeyword(keyword).replace(/\s+/g, "");
+  const aliases: Record<string, string[]> = {
+    "co": ["carbon monoxide"],
+    "ch4": ["methane"],
+    "nox": ["NOx retained, by selective catalytic reduction", "nitrogen oxides"],
+    "이산화탄소": ["carbon dioxide"],
+    "수소": ["hydrogen, gaseous, low pressure"],
+    "질소": ["nitrogen, liquid"],
+    "수증기": ["steam, in chemical industry"],
+    "전력": ["electricity, medium voltage"],
+    "재생전력": ["electricity production, photovoltaic", "electricity production, wind"],
+    "천연가스": ["natural gas, high pressure"],
+    "쳔연가스": ["natural gas, high pressure"],
+    "공업용수": ["tap water"],
+    "폐수": ["wastewater, average"],
+    "폐수오니": ["sewage sludge"],
+    "촉매": ["catalyst"],
+    "촉매폐기물": ["spent catalyst"],
+    "흡착제,필터": ["spent activated carbon", "used filter"],
+    "e-케로신": ["kerosene"]
+  };
+  return Array.from(new Set([...(aliases[normalized] || []), keyword].filter(Boolean))).slice(0, 3);
+}
+
+function isRelevantPreviousMapping(row: EcoinventDatasetRow, keyword: string, searchTerms: string[]) {
+  const koreanName = normalizeSearchKeyword(stringValue(row.koreanName));
+  const normalizedKeyword = normalizeSearchKeyword(keyword);
+  if (koreanName && koreanName === normalizedKeyword) return true;
+  const searchable = [row.productName, row.materialName, row.activityName, row.englishName]
+    .map((value) => normalizeSearchKeyword(stringValue(value)))
+    .filter(Boolean);
+  return searchTerms.some((term) => {
+    const normalizedTerm = normalizeSearchKeyword(term);
+    return searchable.some((value) => value === normalizedTerm || value.startsWith(normalizedTerm) || value.includes(normalizedTerm));
+  });
+}
+
 function ecoinventPriority(row: EcoinventDatasetRow, keyword: string) {
-  if (stringValue(row.koreanName)) {
-    return -1;
-  }
   const normalizedKeyword = normalizeSearchKeyword(keyword);
   const productName = normalizeSearchKeyword(stringValue(row.productName));
   const materialName = normalizeSearchKeyword(stringValue(row.materialName));
@@ -287,7 +322,7 @@ function containsKorean(value: string) {
   return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(value);
 }
 
-function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: EcoinventDatasetRow[]) {
+function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: EcoinventDatasetRow[], keyword: string) {
   const nextRows: EcoinventDatasetRow[] = [];
   const seenDatasetIds = new Set<string>();
   [...previousRows, ...searchRows].forEach((row) => {
@@ -303,6 +338,11 @@ function mergeEcoinventRows(previousRows: EcoinventDatasetRow[], searchRows: Eco
     const rightPrevious = stringValue(right.koreanName) ? 0 : 1;
     if (leftPrevious !== rightPrevious) {
       return leftPrevious - rightPrevious;
+    }
+    const leftPriority = ecoinventPriority(left, keyword);
+    const rightPriority = ecoinventPriority(right, keyword);
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
     }
     const leftAiRank = Number(left.aiRank || 0);
     const rightAiRank = Number(right.aiRank || 0);
@@ -342,6 +382,7 @@ function mergeCurrentMappedProductOption(rows: EcoinventDatasetRow[], values: Re
   }
   return [currentOption, ...rows];
 }
+void mergeCurrentMappedProductOption;
 
 function isAutoRecommended(values: Record<string, string>) {
   return values.ecoinventMappingStatus === "AUTO_RECOMMENDED";
@@ -803,6 +844,25 @@ function buildGridTemplate(columns: Array<{ key: string; fullLabel: string }>, s
   return `64px ${widths.join(" ")} 88px`;
 }
 
+function isPrimarySurveyGridColumn(column: { key: string; fullLabel: string }) {
+  const key = column.key;
+  const label = column.fullLabel.replace(/\s+/g, "");
+  return key === "group"
+    || key === "materialName"
+    || key === "amount"
+    || key === "emissionFactor"
+    || key === "ecoinventMappingAction"
+    || key === "remark"
+    || isUnitColumnKey(key)
+    || label.includes("구분")
+    || label.includes("물질명")
+    || label === "양"
+    || label.includes("배출계수")
+    || label.includes("매핑")
+    || label === "단위"
+    || label.includes("비고");
+}
+
 function buildNormalizationContext(
   sections: EmissionSurveyAdminSection[],
   activeCases: SectionCaseState,
@@ -1222,7 +1282,12 @@ function SectionEditor({
   onOpenEcoinventMapping: (rowId: string, materialName: string) => void;
 }) {
   const columns = buildEditableColumns(section);
-  const displayColumns = buildDisplayColumnLabels(columns);
+  const allDisplayColumns = buildDisplayColumnLabels(columns);
+  const [showAdditionalColumns, setShowAdditionalColumns] = useState(false);
+  const additionalColumnCount = allDisplayColumns.filter((column) => !isPrimarySurveyGridColumn(column)).length;
+  const displayColumns = showAdditionalColumns
+    ? allDisplayColumns
+    : allDisplayColumns.filter(isPrimarySurveyGridColumn);
   const gridTemplateColumns = buildGridTemplate(displayColumns, section.sectionCode);
   const headerModel = buildHeaderModel(displayColumns);
   const sectionTitle = stripSectionNumber(section.sectionLabel || "");
@@ -1249,6 +1314,8 @@ function SectionEditor({
       setMappedProductLoading((current) => ({ ...current, [rowId]: false }));
     }
   }
+  void loadMappedProductRows;
+  void onApplyEcoinventMappedFactor;
 
   async function loadChemicalMaterialRows(rowId: string, materialName: string) {
     const keyword = materialName.trim();
@@ -1275,6 +1342,11 @@ function SectionEditor({
             <p className="mt-1 text-xs text-[var(--kr-gov-text-secondary)]">행 수 {activeRows.length}</p>
           </div>
           <div className="flex items-center gap-2">
+            {expanded && additionalColumnCount > 0 ? (
+              <MemberButton className="whitespace-nowrap" onClick={() => setShowAdditionalColumns((current) => !current)} size="xs" type="button" variant="secondary">
+                {showAdditionalColumns ? "추가 컬럼 접기" : `추가 컬럼 펼치기 (${additionalColumnCount})`}
+              </MemberButton>
+            ) : null}
             <MemberButton className="whitespace-nowrap" onClick={onToggleExpanded} size="xs" type="button" variant="secondary">
               {expanded ? "접기" : "펼치기"}
             </MemberButton>
@@ -1354,9 +1426,9 @@ function SectionEditor({
                             unit={value}
                           />
                         ) : column.key === "ecoinventMappingAction" ? (
-                          <div className="space-y-1">
+                          <div>
                             <MemberButton
-                              className="w-full"
+                              className="h-12 min-h-12 w-full"
                               onClick={() => onOpenEcoinventMapping(row.rowId, row.values.materialName || "")}
                               size="sm"
                               type="button"
@@ -1364,11 +1436,6 @@ function SectionEditor({
                             >
                               {isAutoRecommended(row.values) ? "확인" : row.values.ecoinventMappingStatus === "CONFIRMED" ? "수정" : "매핑"}
                             </MemberButton>
-                            {isAutoRecommended(row.values) ? (
-                              <p className="text-center text-[10px] font-black text-amber-700">추천 확인 필요</p>
-                            ) : row.values.ecoinventMappingStatus === "CONFIRMED" ? (
-                              <p className="text-center text-[10px] font-black text-emerald-700">확정</p>
-                            ) : null}
                           </div>
                         ) : column.key === "materialName" && canUseEcoinventMapping ? (
                           <div className="space-y-1.5">
@@ -1376,7 +1443,6 @@ function SectionEditor({
                               list={`chemical-material-${row.rowId}`}
                               onBlur={() => {
                                 void loadChemicalMaterialRows(row.rowId, row.values.materialName || "");
-                                void loadMappedProductRows(row.rowId, row.values.materialName || "");
                               }}
                               onChange={(event) => {
                                 onChangeCell(row.rowId, column.key, event.target.value);
@@ -1384,7 +1450,6 @@ function SectionEditor({
                               }}
                               onFocus={() => {
                                 void loadChemicalMaterialRows(row.rowId, row.values.materialName || "");
-                                void loadMappedProductRows(row.rowId, row.values.materialName || "");
                               }}
                               value={value}
                             />
@@ -1400,33 +1465,6 @@ function SectionEditor({
                             </datalist>
                             {chemicalMaterialLoading[row.rowId] ? (
                               <p className="text-[10px] font-bold text-slate-500">화학물질 사전 검색 중...</p>
-                            ) : null}
-                            {mappedProductLoading[row.rowId] ? (
-                              <p className="text-[10px] font-bold text-slate-500">ecoinvent 매핑 확인 중...</p>
-                            ) : null}
-                            {mergeCurrentMappedProductOption(mappedProductRows[row.rowId] || [], row.values).length > 0 ? (
-                              <select
-                                className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-900 outline-none focus:border-emerald-500"
-                                onChange={(event) => {
-                                  const productRows = mergeCurrentMappedProductOption(mappedProductRows[row.rowId] || [], row.values);
-                                  const selectedRow = productRows.find((candidate) => stringValue(candidate.datasetId) === event.target.value);
-                                  if (selectedRow) {
-                                    onApplyEcoinventMappedFactor(row.rowId, selectedRow);
-                                  }
-                                }}
-                                value={row.values.ecoinventDatasetId || ""}
-                              >
-                                <option value="">매핑된 ecoinvent Product 선택</option>
-                                {mergeCurrentMappedProductOption(mappedProductRows[row.rowId] || [], row.values).map((candidate) => (
-                                  <option key={`${row.rowId}-${candidate.datasetId}`} value={stringValue(candidate.datasetId)}>
-                                    {stringValue(candidate.productName) || "-"}{stringValue(candidate.geography) ? ` / ${stringValue(candidate.geography)}` : ""}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : row.values.ecoinventEnglishName ? (
-                              <p className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800">
-                                {row.values.ecoinventEnglishName}
-                              </p>
                             ) : null}
                           </div>
                         ) : (
@@ -1507,7 +1545,17 @@ export function EmissionSurveyAdminMigrationPage() {
   const outputSections = sections.filter((section) => section.majorCode === "OUTPUT");
   const inputGroup = sectionGroupTitle("INPUT", en);
   const outputGroup = sectionGroupTitle("OUTPUT", en);
-  const productRows = (((page?.productOptions || []) as Array<Record<string, string>>)).map((item) => ({ value: stringOf(item, "value"), label: stringOf(item, "label") }));
+  const productRows = Array.from(
+    new Map(
+      [
+        ...(((pageState.value?.productOptions || []) as Array<Record<string, string>>)),
+        ...(((page?.productOptions || []) as Array<Record<string, string>>))
+      ]
+        .map((item) => ({ value: stringOf(item, "value"), label: stringOf(item, "label") }))
+        .filter((item) => item.value)
+        .map((item) => [normalizeSearchKeyword(item.value), item] as const)
+    ).values()
+  );
   const filteredProductRows = useMemo(() => {
     const normalizedQuery = normalizeSearchKeyword(productSearchQuery);
     if (!normalizedQuery) {
@@ -2043,6 +2091,8 @@ export function EmissionSurveyAdminMigrationPage() {
     try {
       const useKoreanRecommendation = containsKorean(keyword)
         || (!!currentTarget.materialName && normalizeSearchKeyword(keyword) === normalizeSearchKeyword(currentTarget.materialName));
+      const searchTerms = resolveEcoinventSearchTerms(keyword || currentTarget.materialName);
+      const primarySearchTerm = searchTerms[0] || keyword;
       const requestParams = {
         keyword,
         ...filters,
@@ -2051,15 +2101,23 @@ export function EmissionSurveyAdminMigrationPage() {
       };
       const chemicalPromise = fetchChemicalMaterialSuggestions(keyword || currentTarget.materialName)
         .catch(() => [] as ChemicalMaterialRow[]);
-      const aiPromise = fetchSurveyEcoinventAiRecommendationPage({
+      const aiPromise = Promise.all(searchTerms.map((materialName) => fetchSurveyEcoinventAiRecommendationPage({
         ...requestParams,
-        materialName: currentTarget.materialName || keyword,
+        keyword: materialName,
+        materialName,
         pageSize: 12
-      }).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0 }));
-      const [chemicalRows, previousMappings, aiResponse, response] = await Promise.all([
+      }).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0 }))));
+      const exactPromise = Promise.all(searchTerms.map((searchTerm) => fetchEcoinventDatasetPage({
+        keyword: searchTerm,
+        pageIndex: 1,
+        pageSize: 30,
+        ...filters
+      }).catch(() => ({ data: [] as EcoinventDatasetRow[], totalCount: 0 }))));
+      const [chemicalRows, previousMappingsRaw, aiResponses, exactResponses, response] = await Promise.all([
         chemicalPromise,
         fetchEcoinventMappedFactors(keyword || currentTarget.materialName),
         aiPromise,
+        exactPromise,
         useKoreanRecommendation ? fetchSurveyEcoinventRecommendationPage({
           ...requestParams,
           materialName: currentTarget.materialName || keyword
@@ -2067,8 +2125,14 @@ export function EmissionSurveyAdminMigrationPage() {
           ...requestParams
         })
       ]);
-      const aiRows = aiResponse.data || [];
-      const rows = mergeEcoinventRows(mergeEcoinventRows(previousMappings, aiRows), response.data || []);
+      const previousMappings = previousMappingsRaw.filter((row) => isRelevantPreviousMapping(row, keyword, searchTerms));
+      const aiRows = aiResponses.flatMap((aiResponse) => aiResponse.data || []);
+      const exactRows = exactResponses.flatMap((exactResponse) => exactResponse.data || []);
+      const rows = mergeEcoinventRows(
+        mergeEcoinventRows(previousMappings, [...exactRows, ...aiRows], primarySearchTerm),
+        response.data || [],
+        primarySearchTerm
+      );
       setEcoinventChemicalRows(chemicalRows);
       setEcoinventAiMappingRows(aiRows);
       setEcoinventMappingRows(rows);
@@ -2102,7 +2166,7 @@ export function EmissionSurveyAdminMigrationPage() {
           remote: true
         })
       ]);
-      const rows = mergeEcoinventRows(previousMappings, response.data || []);
+      const rows = mergeEcoinventRows(previousMappings, response.data || [], nextKeyword);
       setEcoinventMappingRows(rows);
       setEcoinventMappingTotalCount(Math.max(response.totalCount ?? rows.length, rows.length));
       setEcoinventSelectedDatasetId(rows.length > 0 ? stringValue(rows[0].datasetId) : "");

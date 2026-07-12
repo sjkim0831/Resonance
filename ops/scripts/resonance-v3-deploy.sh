@@ -12,6 +12,7 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 
 OVERLAY_HOST_PATH="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+STATIC_OVERLAY_PATH="$ROOT_DIR/projects/carbonet-assets/static/react-app"
 FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
 MAVEN_DIR="$ROOT_DIR/apps/carbonet-api"
 RUNTIME_PATH="/opt/Resonance/data/carbonet-app/react-app"
@@ -60,11 +61,21 @@ sync_frontend() {
     local start=$(date +%s)
     log_step "Syncing Frontend"
     mkdir -p "$RUNTIME_PATH"
-    if [ -d "$FRONTEND_DIR/dist" ]; then
-        sudo rsync -av --delete "$FRONTEND_DIR/dist/" "$OVERLAY_HOST_PATH/" 2>&1 | tail -2
-        sudo rsync -av --delete "$FRONTEND_DIR/dist/" "$RUNTIME_PATH/" 2>&1 | tail -2
-    elif [ -d "$OVERLAY_HOST_PATH/assets" ]; then
-        sudo rsync -av --delete "$OVERLAY_HOST_PATH/" "$RUNTIME_PATH/" 2>&1 | tail -2
+    if [ -d "$OVERLAY_HOST_PATH/assets" ] && [ -f "$OVERLAY_HOST_PATH/index.html" ]; then
+        mkdir -p "$STATIC_OVERLAY_PATH"
+        # Keep immutable assets available for in-flight pages, then move the
+        # bootstrap files. Both Kubernetes mounts must represent one release.
+        sudo rsync -a "$OVERLAY_HOST_PATH/assets/" "$STATIC_OVERLAY_PATH/assets/"
+        sudo mkdir -p "$STATIC_OVERLAY_PATH/.vite"
+        sudo install -m 0644 "$OVERLAY_HOST_PATH/.vite/manifest.json" "$STATIC_OVERLAY_PATH/.vite/manifest.json.next"
+        sudo mv -f "$STATIC_OVERLAY_PATH/.vite/manifest.json.next" "$STATIC_OVERLAY_PATH/.vite/manifest.json"
+        sudo install -m 0644 "$OVERLAY_HOST_PATH/index.html" "$STATIC_OVERLAY_PATH/index.html.next"
+        sudo mv -f "$STATIC_OVERLAY_PATH/index.html.next" "$STATIC_OVERLAY_PATH/index.html"
+        sudo rsync -a "$OVERLAY_HOST_PATH/" "$RUNTIME_PATH/"
+        test "$(sha256sum "$OVERLAY_HOST_PATH/index.html" | awk '{print $1}')" = "$(sha256sum "$STATIC_OVERLAY_PATH/index.html" | awk '{print $1}')"
+    else
+        log_warn "Frontend overlay output is missing; refusing to publish"
+        return 1
     fi
     local elapsed=$(($(date +%s) - start))
     log_ok "Frontend synced in ${elapsed}s"
@@ -217,8 +228,7 @@ case "$CHANGE_TYPE" in
         log "Config changes detected"
         ;;
     OTHER)
-        log "Other changes detected, treating as backend"
-        CHANGE_TYPE=BACKEND
+        log "Frontend/backend or mixed changes detected"
         ;;
 esac
 
@@ -232,6 +242,11 @@ case "$CHANGE_TYPE" in
         ;;
     CONFIG)
         deploy_config_only
+        ;;
+    OTHER)
+        build_frontend
+        sync_frontend
+        deploy_backend
         ;;
 esac
 
