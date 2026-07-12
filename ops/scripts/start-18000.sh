@@ -39,6 +39,26 @@ START_RETRY_COUNT="${START_RETRY_COUNT:-10}"
 RETRY_DELAY_SECONDS="${RETRY_DELAY_SECONDS:-5}"
 LOG_ROTATE_MAX_BYTES="${LOG_ROTATE_MAX_BYTES:-104857600}"
 
+JAVA_BIN="${JAVA_BIN:-}"
+if [[ -z "$JAVA_BIN" && -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then
+  JAVA_BIN="$JAVA_HOME/bin/java"
+fi
+if [[ -z "$JAVA_BIN" && -x "$HOME/.jdks/temurin-21/bin/java" ]]; then
+  JAVA_BIN="$HOME/.jdks/temurin-21/bin/java"
+fi
+if [[ -z "$JAVA_BIN" ]]; then
+  JAVA_BIN="$(command -v java || true)"
+fi
+if [[ -z "$JAVA_BIN" ]]; then
+  echo "[start-18000] Java 21 runtime was not found" >&2
+  exit 1
+fi
+java_major="$($JAVA_BIN -version 2>&1 | awk -F'[\".]' '/version/ { print $2; exit }')"
+if [[ ! "$java_major" =~ ^[0-9]+$ || "$java_major" -lt 21 ]]; then
+  echo "[start-18000] Java 21+ is required; selected=$JAVA_BIN major=${java_major:-unknown}" >&2
+  exit 1
+fi
+
 resolve_running_pid() {
   ps -eo pid=,args= | awk -v jar_path="$JAR_PATH" -v port="--server.port=${PORT}" '
     index($0, jar_path) && index($0, port) {
@@ -174,7 +194,7 @@ for attempt in $(seq 1 "$START_RETRY_COUNT"); do
     "$([[ -n "${SECURITY_CODEX_RUNNER_PLAN_COMMAND:-}" ]] && echo configured || echo missing)" \
     "$([[ -n "${SECURITY_CODEX_RUNNER_BUILD_COMMAND:-}" ]] && echo configured || echo missing)" \
     >>"$LOG_FILE"
-  setsid bash -c 'exec 9>&-; exec java "$@"' bash \
+  setsid bash -c 'exec 9>&-; exec "$1" "${@:2}"' bash "$JAVA_BIN" \
     -jar "$JAR_PATH" \
     --server.port="$PORT" \
     --server.ssl.enabled="${SERVER_SSL_ENABLED:-false}" \
