@@ -1,0 +1,514 @@
+A001 회원·권한 /admin/member/list N N
+A00101 회원 # N N
+A0010101 회원 목록 /admin/member/list N N
+A0010102 회원 등록 /admin/member/register N N
+A0010103 회원 통계 /admin/member/stats N N
+A0010104 탈퇴 회원 /admin/member/withdrawn N N
+A0010105 휴면 계정 /admin/member/activate N N
+A00102 회원사 # N N
+A0010201 회원사 목록 /admin/member/company_list N N
+A0010202 회원사 계정 /admin/member/company_account N N
+A0010203 회원 승인 /admin/member/approve N N
+A0010204 회원사 승인 /admin/member/company-approve N N
+A00103 관리자·권한 # N N
+A0010301 관리자 목록 /admin/member/admin_list N N
+A0010302 관리자 생성 /admin/member/admin_account N N
+A0010303 관리자 권한 /admin/member/admin_account/permissions N N
+A0010304 권한 그룹 /admin/auth/group N N
+A0010305 권한 변경 /admin/member/auth-change N N
+A0010306 부서 권한 맵핑 /admin/member/dept-role-mapping N N
+A0010307 비밀번호 초기화 /admin/member/reset_password N N
+A002 배출량 관리 /admin/emission/site-management N N
+A00201 기준정보 # N N
+A0020101 배출지·배출원 원장 /admin/emission/site-management N N
+A0020102 배출계수 관리 /admin/emission/factor-management N N
+A0020103 산정식 관리 /admin/emission/calculation-rule N N
+A0020104 입력 템플릿 관리 /admin/emission/input-template N N
+A0020105 배출지 관리 /admin/emission/site-management N N
+A00202 검증·승인 # N N
+A0020201 검증 관리 /admin/emission/validate N N
+A0020202 검증 규칙 관리 /admin/emission/validation-rule N N
+A0020203 승인 워크플로우 관리 /admin/emission/approval-workflow N N
+A00203 산정·보고 # N N
+A0020301 산정 결과 관리 /admin/emission/result_list N N
+A0020302 보고서 템플릿 관리 /admin/emission/report-template N N
+A0020303 GWP 값 관리 /admin/emission/gwp-values N N
+A0020304 ecoinvent 배출계수 관리 /admin/emission/ecoinvent N N
+A00204 증빙·감사·연계 # N N
+A0020401 증빙 관리 /admin/emission/evidence-management N N
+A0020402 데이터 변경 이력 /admin/emission/data_history N N
+A0020403 감사 로그 /admin/emission/audit-log N N
+A0020404 외부 시스템 연계 /admin/emission/system-link N N
+A00205 설문·LCA # N N
+A0020501 배출 설문 관리 /admin/emission/survey-admin N N
+A0020502 배출 설문 데이터셋 /admin/emission/survey-admin-data N N
+A0020503 LCI 분류 관리 /admin/emission/lci-classification N N
+A0020504 배출 정의 관리 /admin/emission/definition-studio N N
+A0020513 리포트 진위확인 /admin/emission/survey-report-verify N N
+A003 거래·결제·인증 /admin/trade/statistics N N
+A00301 거래 관리 # N N
+A0030101 정산 리포트 /admin/trade/statistics N N
+A0030102 이상거래 점검 /admin/trade/duplicate N N
+A0030103 거래 승인 /admin/trade/approve N N
+A0030104 거래 반려 검토 /admin/trade/reject N N
+A00302 결제·환불 # N N
+A0030201 환불 요청 목록 /admin/payment/refund_list N N
+A0030202 환불 처리 /admin/payment/refund_process N N
+A0030203 정산 캘린더 /admin/payment/settlement N N
+A0030204 환불 계좌 검수 /admin/payment/virtual_issue N N
+A00303 인증서 # N N
+A0030301 인증서 발급 대기 /admin/certificate/pending_list N N
+A0030302 인증서 승인 /admin/certificate/approve N N
+A0030303 발급 검토 /admin/certificate/review N N
+A0030304 인증서 통계 /admin/certificate/statistics N N
+A0030305 REC 중복 확인 /admin/certificate/rec_check N N
+A0030306 인증서 감사 로그 /admin/certificate/audit-log N N
+A0030307 이의신청 처리 /admin/certificate/objection_list N N
+A004 콘텐츠·지원 /admin/content/board_list N N
+A00401 게시·공지 # N N
+A0040101 게시판 관리 /admin/content/board_list N N
+A0040102 공지 배포 /admin/content/board_add N N
+A0040103 게시글 목록 /admin/content/post_list N N
+A00402 노출 자산 # N N
+A0040201 배너 목록 /admin/content/banner_list N N
+A0040202 배너 편집 /admin/content/banner_edit N N
+A0040203 팝업 목록 /admin/content/popup_list N N
+A0040204 팝업 스케줄 /admin/content/popup_edit N N
+A00403 지원 콘텐츠 # N N
+A0040301 Q&A 분류 /admin/content/qna N N
+A0040302 FAQ 관리 /admin/content/faq_list N N
+A0040303 FAQ 메뉴 관리 /admin/content/menu N N
+A0040304 파일 관리 /admin/content/file N N
+A0040305 태그 관리 /admin/content/tag N N
+A0040306 관리자 사이트맵 /admin/content/sitemap N N
+A005 외부 연계 /admin/external/connection_list N N
+A00501 연결 설정 # N N
+A0050101 외부 연계 목록 /admin/external/connection_list N N
+A0050102 외부 인증키 관리 /admin/external/keys N N
+A0050103 외부 스키마 /admin/external/schema N N
+A0050104 웹훅 설정 /admin/external/webhooks N N
+A00502 실행·관측 # N N
+A0050201 동기화 실행 /admin/external/sync N N
+A0050202 연계 모니터링 /admin/external/monitoring N N
+A0050203 API 사용량 /admin/external/usage N N
+A0050204 외부 연계 로그 /admin/external/logs N N
+A0050205 점검 관리 /admin/external/maintenance N N
+A0050206 재시도 관리 /admin/external/retry N N
+A006 시스템 /admin/system/menu N N
+A00601 메뉴·화면·빌더 # N N
+A0060101 메뉴 관리 /admin/system/menu N N
+A0060102 페이지 관리 /admin/system/page-management N N
+A0060103 화면 관리 /admin/system/screen-management N N
+A0060104 화면 흐름 관리 /admin/system/screen-flow-management N N
+A0060105 화면-메뉴 귀속 관리 /admin/system/screen-menu-assignment-management N N
+A0060106 빌더 스튜디오 /admin/system/builder-studio N N
+A0060107 섹션 관리 /admin/system/section-management N N
+A0060108 컴포넌트 관리 /admin/system/component-management N N
+A0060109 테마 관리 /admin/system/theme-management N N
+A00602 코드·기능·API # N N
+A0060201 코드 조회 /admin/system/code N N
+A0060202 기능 관리 /admin/system/feature-management N N
+A0060203 함수 콘솔 /admin/system/function-console N N
+A0060204 API 관리 /admin/system/api-management N N
+A0060205 컨트롤러 관리 /admin/system/controller-management N N
+A0060206 컬럼 관리 /admin/system/column-management N N
+A0060207 모듈 관리 /admin/system/module N N
+A00603 보안·로그 # N N
+A0060301 보안 정책 /admin/system/security-policy N N
+A0060302 보안 모니터링 /admin/system/security-monitoring N N
+A0060303 보안 감사 /admin/system/security-audit N N
+A0060304 차단 목록 /admin/system/blocklist N N
+A0060305 IP 화이트리스트 /admin/system/ip_whitelist N N
+A0060306 접속 로그 /admin/system/access_history N N
+A0060307 에러 로그 /admin/system/error-log N N
+A0060308 로그인 이력 /admin/member/login_history N N
+A0060309 알림센터 /admin/system/notification N N
+A00604 운영 모니터링 # N N
+A0060401 모니터링 대시보드 /admin/system/monitoring-dashboard N N
+A0060402 크론 모니터링 /admin/system/cron-monitoring N N
+A0060403 DB 모니터링 /admin/system/db-monitoring N N
+A0060404 배치 모니터링 /admin/system/batch-monitoring N N
+A0060405 깃 빌드 모니터링 /admin/system/git-build-monitoring N N
+A0060406 성능 /admin/system/performance N N
+A0060407 인프라 /admin/system/infra N N
+A00605 백업·런타임 # N N
+A0060501 백업 설정 /admin/system/backup_config N N
+A0060502 백업 실행 /admin/system/backup N N
+A0060503 복구 실행 /admin/system/restore N N
+A0060504 DB 승격 정책 /admin/system/db-promotion-policy N N
+A0060505 DB 동기화 배포 /admin/system/db-sync-deploy N N
+A0060506 프로젝트 버전 관리 /admin/system/version-management N N
+A0060507 패키지 거버넌스 /admin/system/package-governance N N
+A007 운영 /admin/ N N
+A00701 운영 관제 # N N
+A0070101 운영 대시보드 /admin/ N N
+A0070102 운영센터 /admin/monitoring/center N N
+A0070103 SR 작업대 /admin/system/sr-workbench N N
+A00702 운영 자산 # N N
+A0070201 자산 인벤토리 /admin/system/asset-inventory N N
+A0070202 자산 미흡 큐 /admin/system/asset-gap N N
+A0070203 검증 자산 관리 /admin/system/verification-assets N N
+A00703 버전·복구 # N N
+A0070301 프로젝트 버전 관리 /admin/system/version-management N N
+A0070302 복구 작업대 /admin/system/repair-workbench N N
+A0070303 Codex 실행 관리 /admin/system/codex-provision N N
+A00704 모니터링 # N N
+A0070401 모니터링 대시보드 /admin/system/monitoring-dashboard N N
+A0070402 크론 모니터링 /admin/system/cron-monitoring N N
+A0070403 DB 모니터링 /admin/system/db-monitoring N N
+A0070404 배치 모니터링 /admin/system/batch-monitoring N N
+A0070405 깃 빌드 모니터링 /admin/system/git-build-monitoring N N
+A101 운영 대시보드 /admin/system/monitoring-dashboard Y Y
+A10101 관리자 홈 /admin/system/monitoring-dashboard Y Y
+A1010101 통합 운영 대시보드 /admin/system/monitoring-dashboard Y Y
+A1010102 배출량 운영 현황 /admin/emission/management Y Y
+A1010103 시스템 모니터링 /admin/system/monitoring-dashboard N N
+A1010104 오류 로그 /admin/system/error-log N N
+A10102 업무 현황 /admin/system/monitoring-dashboard Y Y
+A1010203 시스템 모니터링 /admin/system/monitoring-dashboard Y Y
+A10103 데이터·사용자 현황 /admin/system/error-log Y Y
+A1010304 오류 로그 /admin/system/error-log Y Y
+A10104 시스템 상태 # Y Y
+A102 회원·기업·권한 /admin/member/list Y Y
+A10201 회원 관리 /admin/member/list Y Y
+A1020101 회원 관리 /admin/member/list Y Y
+A1020102 권한 관리 /admin/system/authority-management N N
+A1020103 기업 관리 /admin/member/company_list N N
+A1020104 관리자 계정 /admin/member/admin_list Y Y
+A1020105 부서·역할 매핑 /admin/member/dept-role-mapping N N
+A1020106 로그인 이력 /admin/member/login_history N N
+A10202 기업 관리 /admin/member/company_list Y Y
+A1020203 기업 관리 /admin/member/company_list Y Y
+A10203 권한 관리 /admin/system/authority-management Y Y
+A1020302 권한 관리 /admin/system/authority-management Y Y
+A1020305 부서·역할 매핑 /admin/member/dept-role-mapping Y Y
+A1020306 로그인 이력 /admin/member/login_history Y Y
+A103 탄소배출 운영 /admin/emission/survey-admin Y Y
+A10301 프로젝트 운영 /admin/emission/survey-admin Y Y
+A1030101 배출량 설문 관리 /admin/emission/survey-admin Y Y
+A1030102 설문 데이터 관리 /admin/emission/survey-admin-data Y Y
+A1030103 배출량 보고서 /admin/emission/survey-report N N
+A1030104 배출계수 관리 /admin/emission/factor-management N N
+A1030105 계산 규칙 /admin/emission/calculation-rule N N
+A1030106 입력 양식 /admin/emission/input-template Y Y
+A1030107 검증 규칙 /admin/emission/validation-rule N N
+A1030108 증빙 관리 /admin/emission/evidence-management N N
+A10302 자료 수집 /admin/emission/factor-management Y Y
+A1030204 배출계수 관리 /admin/emission/factor-management Y Y
+A1030205 계산 규칙 /admin/emission/calculation-rule Y Y
+A10303 검증·승인 /admin/emission/survey-report Y Y
+A1030303 배출량 보고서 /admin/emission/survey-report Y Y
+A1030307 검증 규칙 /admin/emission/validation-rule Y Y
+A1030308 증빙 관리 /admin/emission/evidence-management Y Y
+A10304 결과·보고 # Y Y
+A104 LCA 운영 /admin/emission/survey-admin Y Y
+A10401 LCA 프로젝트 /admin/emission/survey-admin Y Y
+A1040101 LCA 설문 관리 /admin/emission/survey-admin Y Y
+A1040102 인증서 진위 확인 /admin/emission/survey-report-verify N N
+A1040103 LCI 분류 관리 /admin/emission/lci-classification N N
+A1040104 Ecoinvent 관리 /admin/emission/ecoinvent N N
+A1040105 LCA 요약 보고서 /admin/emission/survey-report-lca-summary N N
+A1040106 GWP 값 관리 /admin/emission/gwp-values N N
+A10402 LCA 데이터 /admin/emission/lci-classification Y Y
+A1040203 LCI 분류 관리 /admin/emission/lci-classification Y Y
+A1040204 Ecoinvent 관리 /admin/emission/ecoinvent Y Y
+A1040206 GWP 값 관리 /admin/emission/gwp-values Y Y
+A10403 LCA 산정·보고 /admin/emission/survey-report-verify Y Y
+A1040302 인증서 진위 확인 /admin/emission/survey-report-verify Y Y
+A1040305 LCA 요약 보고서 /admin/emission/survey-report-lca-summary Y Y
+A105 감축 운영 /admin/emission/definition-studio Y Y
+A10501 목표·과제 /admin/emission/definition-studio Y Y
+A1050101 감축 관리 /admin/emission/definition-studio Y Y
+A1050102 감축 정의 관리 /admin/emission/definition-studio Y Y
+A1050103 감축 결과 관리 /admin/emission/result_list N N
+A1050104 감축 데이터 이력 /admin/emission/data_history N N
+A10502 검토·성과 /admin/emission/result_list Y Y
+A1050203 감축 결과 관리 /admin/emission/result_list Y Y
+A10503 기준·비용·보고 /admin/emission/data_history Y Y
+A1050304 감축 데이터 이력 /admin/emission/data_history Y Y
+A106 기준정보 /admin/system/code Y Y
+A10601 조직·배출원 /admin/system/code Y Y
+A1060101 공통코드 관리 /admin/system/code Y Y
+A1060102 페이지 관리 /admin/system/page-management N N
+A1060103 컬럼 관리 /admin/system/column-management Y Y
+A1060104 컴포넌트 관리 /admin/system/component-management N N
+A1060105 테마 관리 /admin/system/theme-management N N
+A1060106 섹션 관리 /admin/system/section-management N N
+A10602 산정 기준 /admin/system/page-management Y Y
+A1060202 페이지 관리 /admin/system/page-management Y Y
+A1060204 컴포넌트 관리 /admin/system/component-management Y Y
+A10603 데이터 기준 /admin/system/theme-management Y Y
+A1060305 테마 관리 /admin/system/theme-management Y Y
+A1060306 섹션 관리 /admin/system/section-management Y Y
+A10604 코드·분류 # Y Y
+A107 검증·워크플로 /admin/emission/approval-workflow Y Y
+A10701 검증 규칙 /admin/emission/validate Y Y
+A1070101 워크플로 관리 /admin/emission/approval-workflow N N
+A1070102 승인 워크플로 /admin/emission/approval-workflow N N
+A1070103 배출량 검증 /admin/emission/validate Y Y
+A1070104 감사 로그 /admin/emission/audit-log N N
+A10702 승인선·워크플로 /admin/emission/approval-workflow Y Y
+A1070201 워크플로 관리 /admin/emission/approval-workflow Y Y
+A1070202 승인 워크플로 /admin/emission/approval-workflow Y Y
+A10703 Task·완료 조건 /admin/emission/audit-log Y Y
+A1070304 감사 로그 /admin/emission/audit-log Y Y
+A10704 마감·자동화 정책 # Y Y
+A108 콘텐츠·교육·지원 /admin/content/board_list Y Y
+A10801 콘텐츠 /admin/content/board_list Y Y
+A1080101 콘텐츠 관리 /admin/content/board_list Y Y
+A1080102 게시판 관리 /admin/content/board_list Y Y
+A1080103 FAQ 관리 /admin/content/faq_list N N
+A1080104 문의 관리 /admin/content/qna N N
+A1080105 배너 관리 /admin/content/banner_list Y Y
+A1080106 사이트맵 관리 /admin/content/sitemap N N
+A10802 교육 /admin/content/faq_list Y Y
+A1080203 FAQ 관리 /admin/content/faq_list Y Y
+A1080206 사이트맵 관리 /admin/content/sitemap Y Y
+A10803 고객지원 /admin/content/qna Y Y
+A1080304 문의 관리 /admin/content/qna Y Y
+A10804 사용자 도움말 # Y Y
+A109 거래·정산·인증 /admin/trade/list Y Y
+A10901 거래 /admin/trade/list Y Y
+A1090101 거래 관리 /admin/trade/list Y Y
+A1090102 거래 승인 /admin/trade/approve Y Y
+A1090103 거래 통계 /admin/trade/statistics N N
+A1090104 정산 관리 /admin/payment/settlement N N
+A1090105 인증서 심사 /admin/certificate/review N N
+A1090106 인증서 통계 /admin/certificate/statistics N N
+A10902 정산·결제 /admin/payment/settlement Y Y
+A1090204 정산 관리 /admin/payment/settlement Y Y
+A10903 인증서 /admin/trade/statistics Y Y
+A1090303 거래 통계 /admin/trade/statistics Y Y
+A1090305 인증서 심사 /admin/certificate/review Y Y
+A1090306 인증서 통계 /admin/certificate/statistics Y Y
+A110 외부 연계 /admin/external/connection_list Y Y
+A11001 연계 시스템 /admin/external/connection_list Y Y
+A1100101 외부 연계 관리 /admin/external/connection_list Y Y
+A1100102 연계 목록 /admin/external/connection_list Y Y
+A1100103 API 키 관리 /admin/external/keys Y Y
+A1100104 연계 모니터링 /admin/external/monitoring N N
+A1100105 동기화 관리 /admin/external/sync N N
+A1100106 웹훅 관리 /admin/external/webhooks N N
+A11002 동기화·웹훅 /admin/external/sync Y Y
+A1100205 동기화 관리 /admin/external/sync Y Y
+A1100206 웹훅 관리 /admin/external/webhooks Y Y
+A11003 모니터링·로그 /admin/external/monitoring Y Y
+A1100304 연계 모니터링 /admin/external/monitoring Y Y
+A111 시스템 관리 /admin/system/menu-management Y Y
+A11101 메뉴·화면 /admin/system/menu-management Y Y
+A1110101 메뉴 관리 /admin/system/menu-management Y Y
+A1110102 기능 관리 /admin/system/feature-management Y Y
+A1110103 화면 관리 /admin/system/screen-management N N
+A1110104 빌더 스튜디오 /admin/system/builder-studio N N
+A1110105 배치 관리 /admin/system/batch N N
+A1110106 백업 관리 /admin/system/backup N N
+A1110107 보안 정책 /admin/system/security-policy N N
+A11102 기능·API /admin/system/screen-management Y Y
+A1110203 화면 관리 /admin/system/screen-management Y Y
+A1110204 빌더 스튜디오 /admin/system/builder-studio Y Y
+A11103 보안·감사 /admin/system/batch Y Y
+A1110305 배치 관리 /admin/system/batch Y Y
+A1110306 백업 관리 /admin/system/backup Y Y
+A1110307 보안 정책 /admin/system/security-policy Y Y
+A11104 운영·배포 # Y Y
+A112 기존 관리자 화면 보관함 /admin/system/menu-management?menuType=LEGACY_ADMIN N N
+A11201 기존 메뉴 /admin/system/menu-management?menuType=LEGACY_ADMIN N N
+A1120101 기존 메뉴 전체 조회 /admin/system/menu-management?menuType=LEGACY_ADMIN Y Y
+A1120102 기존 화면 WBS /admin/system/wbs-management N N
+A1120103 전체 스택 현황 /admin/system/full-stack-management N N
+A11202 화면 인벤토리 /admin/system/wbs-management N N
+A1120202 기존 화면 WBS /admin/system/wbs-management Y Y
+A11203 전체 스택 현황 /admin/system/full-stack-management N N
+A1120303 전체 스택 현황 /admin/system/full-stack-management Y Y
+A190 AI 운영 /admin/ai/dashboard N N
+A19001 AI 관리 # N N
+A1900101 AI 대시보드 /admin/ai/dashboard N N
+A1900102 모델 관리 /admin/ai/models N N
+A1900103 에이전트 관리 /admin/ai/agents N N
+A1900104 RAG 관리 /admin/ai/rag N N
+A1900105 학습 관리 /admin/ai/training N N
+A1900106 품질 관리 /admin/ai/quality N N
+A1900107 로그 관리 /admin/ai/logs N N
+A1900108 AI 관측 /admin/ai/observability N N
+A1900109 Hermes 작업 기억 /admin/system/hermes-workflow N N
+H001 탄소배출 emission/index N N
+H00101 배출량 산정 emission/index N N
+H0010101 배출량 관리 emission/project_list N N
+H0010102 데이터 입력 emission/data_input N N
+H0010103 산정/검증 emission/validate N N
+H0010104 보고서 제출 emission/report_submit N N
+H00102 분석 emission/index N N
+H0010201 LCA 분석 emission/lca N N
+H0010202 LCI DB 조회 emission/lci N N
+H0010203 감축 시나리오 emission/reduction N N
+H0010204 시뮬레이션 emission/simulate N N
+H002 보고서·인증서 certificate/index N N
+H00201 보고서 certificate/index N N
+H0020101 보고서 목록 certificate/report_list N N
+H0020102 보고서 작성 certificate/report_form N N
+H0020103 수정/재제출 certificate/report_edit N N
+H0020104 처리 상태 certificate/index N N
+H00202 인증서 certificate/index N N
+H0020201 인증서 신청 certificate/apply N N
+H0020202 인증서 목록 certificate/list N N
+H0020203 재발급 certificate/reissue N N
+H0020204 인증서 검증 certificate/verify N N
+H003 탄소정보 co2/index N N
+H00301 CO2 정보 co2/index N N
+H0030101 생산 정보 co2/production_list N N
+H0030102 수요 정보 co2/demand_list N N
+H0030103 무결성 추적 co2/integrity N N
+H0030104 크레딧 조회 co2/credits N N
+H00302 연계 co2/index N N
+H0030201 플랫폼 매칭 trade/matching N N
+H0030202 품질지표 co2/analysis N N
+H0030203 MRV 정보 co2/search N N
+H0030204 추적 리포트 monitoring/track N N
+H004 거래 trade/index N N
+H00401 주문/체결 trade/index N N
+H0040101 거래 목록 trade/list N N
+H0040102 구매 요청 trade/buy_request N N
+H0040103 판매 등록 trade/sell N N
+H0040104 체결 현황 trade/complete N N
+H00402 시장 trade/index N N
+H0040201 시장 동향 trade/market N N
+H0040202 가격 알림 trade/price_alert N N
+H0040203 자동 매칭 trade/auto_order N N
+H0040204 거래 리포트 trade/report N N
+H005 모니터링 monitoring/index N N
+H00501 대시보드 monitoring/index N N
+H0050101 통합 대시보드 /monitoring/dashboard N N
+H0050102 실시간 모니터링 /monitoring/realtime N N
+H0050103 성과 추이 monitoring/reduction_trend N N
+H0050104 경보 현황 monitoring/alerts N N
+H00502 분석 리포트 monitoring/index N N
+H0050201 통계 자료 monitoring/statistics N N
+H0050202 ESG 보고서 monitoring/esg N N
+H0050203 이해관계자 공유 monitoring/share N N
+H0050204 내보내기 monitoring/export N N
+H006 결제 payment/index N N
+H00601 결제 payment/index N N
+H0060101 결제 내역 payment/history N N
+H0060102 결제 요청 payment/pay N N
+H0060103 가상계좌 payment/virtual_account N N
+H0060104 영수증 payment/receipt N N
+H00602 환불/정산 payment/index N N
+H0060201 환불 요청 payment/refund N N
+H0060202 환불 계좌 payment/refund_account N N
+H0060203 정산 내역 payment/detail N N
+H0060204 세금계산서 payment/notify N N
+H007 교육 edu/index N N
+H00701 과정 edu/index N N
+H0070101 교육 과정 목록 edu/course_list N N
+H0070102 과정 상세 edu/course_detail N N
+H0070103 교육 신청 edu/apply N N
+H0070104 나의 교육 edu/my_course N N
+H00702 이수 edu/index N N
+H0070201 진도 관리 edu/progress N N
+H0070202 설문 edu/survey N N
+H0070203 수료증 edu/certificate N N
+H0070204 자격 연계 edu/content N N
+H008 마이페이지 mypage/index N N
+H00801 회원 정보 mypage/index N N
+H0080101 내 정보 mypage/profile N N
+H0080102 기업 정보 mypage/company N N
+H0080103 담당자 관리 mypage/staff N N
+H0080104 알림 설정 mypage/notification N N
+H00802 계정 관리 mypage/index N N
+H0080201 비밀번호 변경 mypage/password N N
+H0080202 이메일/전화 변경 mypage/email N N
+H0080203 보안 설정 mypage/index N N
+H0080204 마케팅 수신 mypage/marketing N N
+H009 고객지원 support/index N N
+H00901 고객센터 support/index N N
+H0090101 공지사항 support/notice_list N N
+H0090102 FAQ support/faq N N
+H0090103 Q&A support/qna_list N N
+H0090104 자료실 support/download_list N N
+H00902 문의 support/index N N
+H0090201 1:1 문의 support/inquiry N N
+H0090202 나의 문의 내역 mtn/my_inquiry N N
+H0090203 서비스 상태 mtn/status N N
+H0090204 버전 정보 mtn/version N N
+H101 홈 /home Y Y
+H10101 통합 홈 /home Y Y
+H1010101 통합 홈 /home Y Y
+H1010102 내 업무 요약 /emission/my-tasks Y Y
+H1010103 인증서 진위 확인 /home/certificate-verify Y Y
+H10102 내 업무·일정 # Y Y
+H10103 지표·알림·소식 # Y Y
+H102 탄소배출 관리 /emission/index Y Y
+H10201 현황·프로젝트 /emission/index Y Y
+H1020101 배출량 현황 /emission/index Y Y
+H1020102 배출량 프로젝트 /emission/project_list Y Y
+H1020103 내 업무 /emission/my-tasks Y Y
+H10202 활동자료 /emission/data_input Y Y
+H1020201 활동자료 관리 /emission/data_input Y Y
+H1020202 배출량 산정 /emission/simulate Y Y
+H10203 산정·검증 /emission/validate Y Y
+H1020301 검증 및 보완 /emission/validate Y Y
+H1020302 보고 및 확정 /emission/report_submit Y Y
+H10204 확정·보고 # Y Y
+H103 제품 LCA /emission/lca Y Y
+H10301 LCA 프로젝트 /emission/lca Y Y
+H1030101 LCA 현황·분석 /emission/lca Y Y
+H1030102 LCI 데이터 조회 /emission/lci Y Y
+H1030103 LCA 데이터 수집 /admin/emission/survey-admin Y Y
+H10302 인벤토리 # Y Y
+H10303 산정·분석 # Y Y
+H10304 보고 # Y Y
+H104 감축 관리 /emission/reduction Y Y
+H10401 목표·계획 /emission/reduction Y Y
+H1040101 감축 목표·과제 /emission/reduction Y Y
+H1040102 감축 성과 추이 /monitoring/reduction_trend Y Y
+H10402 감축 과제 # Y Y
+H10403 성과 관리 # Y Y
+H10404 포트폴리오 # Y Y
+H105 모니터링·분석 /monitoring/index Y Y
+H10501 통합 모니터링 /monitoring/index Y Y
+H1050101 통합 모니터링 /monitoring/dashboard Y Y
+H1050102 실시간 현황 /monitoring/realtime Y Y
+H1050103 경보 현황 /monitoring/alerts Y Y
+H10502 데이터 품질·경보 /monitoring/statistics Y Y
+H1050201 통계·분석 /monitoring/statistics Y Y
+H1050202 이해관계자 공유 /monitoring/share Y Y
+H1050203 분석 내보내기 /monitoring/export Y Y
+H10503 분석·공유 # Y Y
+H106 탄소·자원 거래 /co2/index Y Y
+H10601 공급·수요 /co2/index Y Y
+H1060101 CO2 공급 정보 /co2/production_list Y Y
+H1060102 CO2 수요 정보 /co2/demand_list Y Y
+H1060103 거래 검색 /co2/search Y Y
+H10602 거래 /co2/integrity Y Y
+H1060201 무결성 추적 /co2/integrity Y Y
+H1060202 탄소 크레딧 /co2/credit Y Y
+H1060203 입지 분석 /co2/analysis Y Y
+H10603 추적·무결성 # Y Y
+H10604 크레딧·인증 # Y Y
+H107 교육·지원 /edu/index Y Y
+H10701 교육 /edu/index Y Y
+H1070101 교육 과정 /edu/course_list Y Y
+H1070102 내 교육 /edu/my_course Y Y
+H1070103 진도·수료증 /edu/progress Y Y
+H10702 정보 /support/index Y Y
+H1070201 공지·자료 /support/notice Y Y
+H1070202 자주 묻는 질문 /support/faq Y Y
+H10703 지원 # Y Y
+H108 마이페이지 /mypage/index Y Y
+H10801 내 정보·소속 /mypage/index Y Y
+H1080101 내 정보 /mypage/index Y Y
+H1080102 알림 설정 /mypage/notification Y Y
+H1080103 뉴스레터 수신 /mypage/marketing Y Y
+H10802 업무·승인 # Y Y
+H10803 알림·보안·연계 # Y Y
+H109 기존 화면 보관함 /home N N
+H10901 기존 대메뉴 /home N N
+H1090101 기존 탄소배출 /emission/index Y Y
+H1090102 기존 보고서·인증서 /certificate/index Y Y
+H1090103 기존 탄소정보 /co2/index Y Y
+H1090104 기존 거래 /trade/index Y Y
+H1090105 기존 모니터링 /monitoring/index Y Y
+H1090106 기존 결제 /payment/index Y Y
+H1090107 기존 교육 /edu/index Y Y
+H1090108 기존 마이페이지 /mypage/index Y Y
+H1090109 기존 고객지원 /support/index Y Y
