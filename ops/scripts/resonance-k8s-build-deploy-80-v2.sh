@@ -32,6 +32,7 @@ SKIP_MAVEN="${SKIP_MAVEN:-false}"
 SKIP_BACKEND="${SKIP_BACKEND:-$SKIP_MAVEN}"
 SKIP_IMAGE_BUILD="${SKIP_IMAGE_BUILD:-false}"
 SKIP_OVERLAY_SYNC="${SKIP_OVERLAY_SYNC:-false}"
+IMMUTABLE_FRONTEND_IMAGE="${IMMUTABLE_FRONTEND_IMAGE:-false}"
 INCREMENTAL="${INCREMENTAL:-false}"
 PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
 
@@ -491,6 +492,36 @@ build_maven() {
   log_success "Backend built in ${elapsed}s"
 }
 
+prepare_immutable_frontend() {
+  [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]] || return 0
+  local frontend_dir="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+  local backend_dir="$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$frontend_dir"
+  root_cmd rm -rf "$backend_dir"
+  root_cmd mkdir -p "$backend_dir"
+  root_cmd cp -a "$frontend_dir/." "$backend_dir/"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$backend_dir"
+}
+
+verify_immutable_frontend_jar() {
+  [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]] || return 0
+  local jar_path jar_entries expected_file
+  jar_path="$(jbooted project-runtime)"
+  jar_entries="$(mktemp)"
+  expected_file="$(mktemp)"
+  jar tf "$jar_path" > "$jar_entries"
+  find "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" -type f \
+    -printf 'BOOT-INF/classes/static/react-app/%P\n' | sort > "$expected_file"
+  if [[ -n "$(comm -23 "$expected_file" <(sort "$jar_entries") | head -1)" ]]; then
+    rm -f "$jar_entries" "$expected_file"
+    rollback_and_fail "IMMUTABLE_ASSET_JAR_INCOMPLETE" \
+      "Built JAR does not contain the complete React asset closure" \
+      "Inspect the JAR static/react-app entries before rollout"
+  fi
+  rm -f "$jar_entries" "$expected_file"
+  log_success "Immutable React asset closure verified inside JAR"
+}
+
 build_image() {
   log_step "Build Image"
 
@@ -803,6 +834,28 @@ main() {
 
   if [[ "$SKIP_PREFLIGHT" != "true" ]]; then
     preflight_check
+  fi
+
+  if [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]]; then
+    log_step "Immutable Frontend Build"
+    build_frontend
+    prepare_immutable_frontend
+    build_maven
+    verify_immutable_frontend_jar
+    SKIP_OVERLAY_SYNC=true
+    kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
+      CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=false \
+      CARBONET_STATIC_FS_OVERRIDE_ENABLED=false
+    sync_overlay
+    build_image
+    rollout_image
+    ensure_pdb
+    verify_runtime
+    local immutable_total_time=$(( $(date +%s) - start_time ))
+    notify "SUCCESS" "Immutable build deploy completed" ""
+    print_summary "$immutable_total_time"
+    release_lock
+    return 0
   fi
 
   log_step "Parallel Build (Frontend + Backend)"

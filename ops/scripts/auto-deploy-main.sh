@@ -80,6 +80,7 @@ kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
   CARBONET_FLYWAY_ENABLED=true \
   CARBONET_LIQUIBASE_ENABLED=false
 
+IMMUTABLE_FRONTEND_IMAGE=true \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 
