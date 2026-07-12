@@ -1,0 +1,26 @@
+CREATE TEMP TABLE operations_dashboard_link (
+  code varchar(20) PRIMARY KEY, parent_code varchar(20), name_ko varchar(200), name_en varchar(200), menu_url varchar(500), sort_order integer
+) ON COMMIT DROP;
+
+INSERT INTO operations_dashboard_link VALUES
+('A1010101','A10101','관리자 홈','Admin Home','/admin/',1010101),
+('A1010201','A10102','전체 업무 현황','All Work Overview','/admin/monitoring/center',1010201),
+('A1010301','A10103','프로젝트 진행 현황','Project Progress','/admin/emission/management',1010301),
+('A1010401','A10104','승인 대기','Pending Approvals','/admin/emission/approval-workflow',1010401),
+('A1010501','A10105','마감·지연 현황','Deadlines & Delays','/admin/emission/management',1010501),
+('A1010601','A10106','데이터 품질 현황','Data Quality','/admin/emission/validate',1010601),
+('A1010701','A10107','사용자 활동','User Activity','/admin/system/access_history',1010701),
+('A1010801','A10108','시스템 상태','System Status','/admin/system/monitoring-dashboard',1010801),
+('A1010901','A10109','주요 장애·경보','Major Incidents & Alerts','/admin/system/error-log',1010901);
+
+INSERT INTO comtccmmndetailcode(code_id,code,code_nm,code_dc,use_at,frst_regist_pnttm,frst_register_id,last_updt_pnttm,last_updusr_id)
+SELECT 'AMENU1',code,name_ko,name_en,'Y',CURRENT_TIMESTAMP,'MENU_FINAL_IA',CURRENT_TIMESTAMP,'MENU_FINAL_IA' FROM operations_dashboard_link
+ON CONFLICT(code_id,code) DO UPDATE SET code_nm=EXCLUDED.code_nm,code_dc=EXCLUDED.code_dc,use_at='Y',last_updt_pnttm=CURRENT_TIMESTAMP,last_updusr_id='MENU_FINAL_IA';
+
+INSERT INTO comtnmenuinfo(menu_code,menu_nm,menu_nm_en,menu_url,menu_icon,use_at,frst_regist_pnttm,last_updt_pnttm,expsr_at)
+SELECT code,name_ko,name_en,menu_url,'dashboard','Y',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'Y' FROM operations_dashboard_link
+ON CONFLICT(menu_code) DO UPDATE SET menu_nm=EXCLUDED.menu_nm,menu_nm_en=EXCLUDED.menu_nm_en,menu_url=EXCLUDED.menu_url,use_at='Y',expsr_at='Y',last_updt_pnttm=CURRENT_TIMESTAMP;
+
+INSERT INTO comtnmenuorder(menu_code,sort_ordr,frst_regist_pnttm,last_updt_pnttm)
+SELECT code,sort_order,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM operations_dashboard_link
+ON CONFLICT(menu_code) DO UPDATE SET sort_ordr=EXCLUDED.sort_ordr,last_updt_pnttm=CURRENT_TIMESTAMP;
