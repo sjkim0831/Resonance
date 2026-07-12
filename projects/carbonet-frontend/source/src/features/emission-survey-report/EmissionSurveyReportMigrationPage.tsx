@@ -22,6 +22,57 @@ import {
   type EmissionSurveyReportSectionSummary
 } from "./reportSession";
 
+function toEnglishTitleCase(value: string) {
+  return value.replace(/[A-Za-z]+(?:'[A-Za-z]+)?/g, (word) => {
+    const lower = word.toLocaleLowerCase("en-US");
+    return lower.charAt(0).toLocaleUpperCase("en-US") + lower.slice(1);
+  });
+}
+
+function useEnglishTitleCase(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+
+    const shouldSkip = (node: Text) => {
+      const parent = node.parentElement;
+      return !parent || Boolean(parent.closest("script, style, code, pre, textarea, input, [data-preserve-case='true']"));
+    };
+    const normalizeText = (root: Node) => {
+      if (root.nodeType === Node.TEXT_NODE) {
+        const textNode = root as Text;
+        if (!shouldSkip(textNode)) {
+          const normalized = toEnglishTitleCase(textNode.data);
+          if (normalized !== textNode.data) textNode.data = normalized;
+        }
+        return;
+      }
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let current = walker.nextNode();
+      while (current) {
+        const textNode = current as Text;
+        if (!shouldSkip(textNode)) {
+          const normalized = toEnglishTitleCase(textNode.data);
+          if (normalized !== textNode.data) textNode.data = normalized;
+        }
+        current = walker.nextNode();
+      }
+    };
+
+    normalizeText(document.body);
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "characterData") {
+          normalizeText(mutation.target);
+          return;
+        }
+        mutation.addedNodes.forEach(normalizeText);
+      });
+    });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
+  }, [enabled]);
+}
+
 function formatNumber(value: number, digits = 2) {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
@@ -1154,6 +1205,7 @@ export function EmissionSurveyReportMigrationPage() {
   const [printLanguageOpen, setPrintLanguageOpen] = useState(false);
   const [byproductAllocation, setByproductAllocation] = useState<"allocated" | "unallocated">("allocated");
   const en = routeEn;
+  useEnglishTitleCase(en);
   const report = loadEmissionSurveyReportSession();
 
   logGovernanceScope("PAGE", "emission-survey-report", {
@@ -1471,6 +1523,7 @@ export function EmissionSurveyReportPrintPage() {
     ? "/en/admin/emission/survey-report"
     : "/admin/emission/survey-report";
   const en = language ? language === "en" : isEnglish();
+  useEnglishTitleCase(en);
   const effectiveReport = draftReport || report;
   const { englishNameMap, loading: englishMaterialNameLoading } = useEnglishMaterialNames(effectiveReport, en);
   const [originalTotalEmission, setOriginalTotalEmission] = useState(() => {
