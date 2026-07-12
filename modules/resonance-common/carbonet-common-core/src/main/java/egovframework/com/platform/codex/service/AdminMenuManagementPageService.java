@@ -87,12 +87,13 @@ public class AdminMenuManagementPageService {
     }
 
     private void populateMenuManagementPayload(Map<String, Object> target, boolean isEn, String menuType, String codeId) {
-        List<MenuInfoDTO> menuRows = loadMenuTreeRows(codeId);
+        List<MenuInfoDTO> menuRows = filterRowsForMenuType(loadMenuTreeRows(codeId), menuType);
         target.put("menuType", menuType);
         target.put("menuRows", menuRows);
         target.put("menuTypes", List.of(
                 menuTypeOption("USER", isEn ? "Home" : "홈"),
-                menuTypeOption("ADMIN", isEn ? "Admin" : "관리자")
+                menuTypeOption("ADMIN", isEn ? "Admin" : "관리자"),
+                menuTypeOption("LEGACY_ADMIN", isEn ? "Legacy Admin Archive" : "기존 관리자 화면 보관함")
         ));
         target.put("groupMenuOptions", buildGroupMenuOptions(menuRows));
         target.put("iconOptions", buildPageIconOptions());
@@ -170,9 +171,23 @@ public class AdminMenuManagementPageService {
 
     private String normalizeMenuType(String menuType) {
         String normalized = safeString(menuType);
-        return ("USER".equalsIgnoreCase(normalized) || "HOME".equalsIgnoreCase(normalized))
-                ? "USER"
-                : "ADMIN";
+        if ("USER".equalsIgnoreCase(normalized) || "HOME".equalsIgnoreCase(normalized)) {
+            return "USER";
+        }
+        return "LEGACY_ADMIN".equalsIgnoreCase(normalized) ? "LEGACY_ADMIN" : "ADMIN";
+    }
+
+    private List<MenuInfoDTO> filterRowsForMenuType(List<MenuInfoDTO> rows, String menuType) {
+        String normalized = normalizeMenuType(menuType);
+        String requiredPrefix = "USER".equals(normalized) ? "H1"
+                : "LEGACY_ADMIN".equals(normalized) ? "A00" : "A1";
+        List<MenuInfoDTO> filtered = new ArrayList<>();
+        for (MenuInfoDTO row : rows) {
+            if (safeString(row.getCode()).toUpperCase(Locale.ROOT).startsWith(requiredPrefix)) {
+                filtered.add(row);
+            }
+        }
+        return filtered;
     }
 
     private List<String> buildPageIconOptions() {

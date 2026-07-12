@@ -62,7 +62,8 @@ const ICON_LIST = [
 
 function readMenuTypeFromLocation() {
   const requested = (new URLSearchParams(window.location.search).get("menuType") || "ADMIN").toUpperCase();
-  return requested === "HOME" || requested === "USER" ? "USER" : "ADMIN";
+  if (requested === "HOME" || requested === "USER") return "USER";
+  return requested === "LEGACY_ADMIN" ? "LEGACY_ADMIN" : "ADMIN";
 }
 
 function IconPicker({ value, onChange }: { value: string; onChange: (icon: string) => void }) {
@@ -1461,7 +1462,13 @@ const handleSaveOrder = async () => {
               </div>
               <div>
                 <label className="gov-label" htmlFor="menuType">{en ? "Menu Type" : "메뉴 유형"}</label>
-                <select className="gov-select" id="menuType" value={menuType} onChange={(e) => setMenuType(e.target.value)}>
+                <select className="gov-select" id="menuType" value={menuType} onChange={(e) => {
+                  const nextType = e.target.value;
+                  setMenuType(nextType);
+                  const nextUrl = new URL(window.location.href);
+                  nextUrl.searchParams.set("menuType", nextType);
+                  window.history.replaceState({}, "", nextUrl);
+                }}>
                   {menuTypes.map((t) => (
                     <option key={stringOf(t, "value")} value={stringOf(t, "value")}>{stringOf(t, "label")}</option>
                   ))}
