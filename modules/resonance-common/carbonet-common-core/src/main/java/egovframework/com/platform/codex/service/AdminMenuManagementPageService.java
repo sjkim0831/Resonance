@@ -542,6 +542,14 @@ public class AdminMenuManagementPageService {
     private List<MenuInfoDTO> loadMenuTreeRows(String codeId) {
         try {
             List<MenuInfoDTO> rows = new ArrayList<>(menuInfoReadPort.selectMenuTreeList(codeId));
+            // Older home-menu rows can exist in COMTNMENUINFO while their
+            // HMENU1 detail-code relation is missing. The public home still
+            // resolves those rows, so the management screen must not appear
+            // empty. Expose them as recoverable rows and let a subsequent save
+            // recreate the canonical detail-code relation transactionally.
+            if (rows.isEmpty() && "HMENU1".equalsIgnoreCase(codeId)) {
+                rows.addAll(menuInfoReadPort.selectMenuUrlListByPrefix("H"));
+            }
             for (MenuInfoDTO row : rows) {
                 row.setMenuUrl(canonicalMenuUrl(row.getMenuUrl()));
                 normalizeManagedAdminMenuRow(row);

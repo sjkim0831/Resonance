@@ -6,7 +6,15 @@
 <mapper namespace="MenuInfoMapper">
 
     <select id="selectMenuUrlListByPrefix" parameterType="string" resultType="egovframework.com.platform.menu.dto.MenuInfoDTO">
-        SELECT MENU_CODE, MENU_URL
+        SELECT
+            MENU_CODE AS CODE,
+            MENU_CODE,
+            MENU_NM AS CODE_NM,
+            MENU_NM_EN AS CODE_DC,
+            MENU_URL,
+            MENU_ICON,
+            USE_AT,
+            EXPSR_AT
         FROM COMTNMENUINFO
         WHERE MENU_CODE LIKE #{_parameter} || '%'
     </select>

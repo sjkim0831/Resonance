@@ -1173,13 +1173,13 @@ export function MenuManagementMigrationPage() {
     if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
     if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
     if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) return en ? "Admin URL must start with /admin/." : "관리자 URL은 /admin/으로 시작해야 합니다.";
-    if (menuType === "USER" && !menuUrl.startsWith("/home/")) return en ? "Home URL must start with /home/." : "홈 URL은 /home/으로 시작해야 합니다.";
+    if (menuType === "USER" && (!menuUrl.startsWith("/") || menuUrl.startsWith("/admin/"))) return en ? "Home URL must be a non-admin absolute path." : "홈 URL은 /로 시작하는 비관리자 경로여야 합니다.";
     return "";
     if (!codeNm.trim()) return en ? "Enter menu name." : "메뉴명을 입력하세요.";
     if (!menuUrl.trim()) return en ? "Enter URL." : "URL을 입력하세요.";
     if (!menuUrl.startsWith("/")) return en ? "URL must start with /." : "URL은 /로 시작해야 합니다.";
     if (menuType === "ADMIN" && !menuUrl.startsWith("/admin/")) return en ? "Admin URL must start with /admin/." : "관리자 URL은 /admin/으로 시작해야 합니다.";
-    if (menuType === "USER" && !menuUrl.startsWith("/home/")) return en ? "Home URL must start with /home/." : "홈 URL은 /home/으로 시작해야 합니다.";
+    if (menuType === "USER" && (!menuUrl.startsWith("/") || menuUrl.startsWith("/admin/"))) return en ? "Home URL must be a non-admin absolute path." : "홈 URL은 /로 시작하는 비관리자 경로여야 합니다.";
     return "";
   };
 
@@ -1615,7 +1615,7 @@ const handleSaveOrder = async () => {
                     id="menuUrl"
                     value={menuUrl}
                     onChange={(e) => setMenuUrl(e.target.value)}
-                    placeholder={menuType === "USER" ? "/home/..." : "/admin/..."}
+                    placeholder={menuType === "USER" ? "/emission/..." : "/admin/..."}
                   />
                 </div>
 
