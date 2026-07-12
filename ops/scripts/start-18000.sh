@@ -63,6 +63,9 @@ load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.defaults
 load_optional_env "$CONFIG_DIR/carbonet-${PORT}.env"
 load_optional_env "$CONFIG_DIR/carbonet-${PORT}.${CARBONET_RUNTIME_ENV}.env"
 load_optional_env "$CONFIG_DIR/codex-runner.env"
+if [[ -n "${FORCE_SERVER_SSL_ENABLED:-}" ]]; then
+  SERVER_SSL_ENABLED="$FORCE_SERVER_SSL_ENABLED"
+fi
 carbonet_set_curl_args
 
 if [[ "${START_LOCAL_AI:-true}" == "true" ]]; then
@@ -174,6 +177,7 @@ for attempt in $(seq 1 "$START_RETRY_COUNT"); do
   setsid bash -c 'exec 9>&-; exec java "$@"' bash \
     -jar "$JAR_PATH" \
     --server.port="$PORT" \
+    --server.ssl.enabled="${SERVER_SSL_ENABLED:-false}" \
     --spring.datasource.url="$DB_URL" \
     --spring.datasource.username="$DB_USER" \
     --spring.datasource.password="$DB_PASSWORD" \
