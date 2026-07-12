@@ -12,12 +12,24 @@ POSTGRES_POD="${CARBONET_POSTGRES_POD:-postgres-patroni-0}"
 POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 POSTGRES_DB="${POSTGRES_DB:-carbonet}"
 POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
+MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
 
 mkdir -p "$(dirname "$LOCK_FILE")" "$BACKUP_DIR"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
+
+# A deployment must never continue while the HA database has no elected,
+# writable leader. Without this gate pg_dump can emit only an empty gzip
+# header and the rollout then replaces healthy application pods with pods
+# that cannot connect to PostgreSQL.
+ready_patroni="$(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
+  -o jsonpath='{range .items[*]}{.status.containerStatuses[0].ready}{"\n"}{end}' 2>/dev/null | grep -c '^true$' || true)"
+if [[ "$ready_patroni" -lt 2 ]]; then
+  echo "[auto-deploy] refusing deployment: Patroni quorum is not ready ($ready_patroni/3)" >&2
+  exit 10
+fi
 git fetch --prune "$REMOTE" "$BRANCH"
 target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
@@ -71,6 +83,12 @@ kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     -h 127.0.0.1 \
   | gzip -1 > "$backup_file"
 test -s "$backup_file"
+backup_bytes="$(stat -c %s "$backup_file")"
+if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_file"; then
+  rm -f "$backup_file"
+  echo "[auto-deploy] refusing deployment: database backup is invalid or too small (${backup_bytes} bytes)" >&2
+  exit 11
+fi
 
 git merge --ff-only "$target_commit"
 
