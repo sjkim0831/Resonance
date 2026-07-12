@@ -5,7 +5,7 @@ ROOT_DIR="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
-BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-$ROOT_DIR/var/backups/pre-deploy}"
+BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
 POSTGRES_POD="${CARBONET_POSTGRES_POD:-postgres-patroni-0}"
@@ -19,6 +19,17 @@ exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
+
+postgres_data_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
+  -o jsonpath='{.spec.template.spec.volumes[?(@.name=="patroni-data-root")].hostPath.path}' 2>/dev/null || true)"
+postgres_wal_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
+  -o jsonpath='{.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}' 2>/dev/null || true)"
+for protected_path in "$postgres_data_path" "$postgres_wal_path"; do
+  if [[ -z "$protected_path" || "$protected_path" == "$ROOT_DIR"/* || "$protected_path" != /opt/resonance-data/postgresql/* ]]; then
+    echo "[auto-deploy] refusing deployment: PostgreSQL storage is not isolated ($protected_path)" >&2
+    exit 9
+  fi
+done
 
 # A deployment must never continue while the HA database has no elected,
 # writable leader. Without this gate pg_dump can emit only an empty gzip
