@@ -3831,11 +3831,11 @@ function PrintOutputAllocationTable({
                       multiline
                       className="min-h-[3.9rem] resize-none bg-transparent text-sm font-black leading-snug text-slate-950 print:min-h-0 print:whitespace-pre-wrap"
                       onCommit={(value) => onRowTextChange?.(row.rowId, "materialName", value)}
-                      value={en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                      value={en ? toEnglishTitleCase(resolveEnglishMaterialName(row.materialName, englishNameMap || {})) : (row.materialName || "-")}
                     />
                   ) : (
                     <span className="block whitespace-pre-wrap text-sm font-black leading-snug text-slate-950">
-                      {en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                      {en ? toEnglishTitleCase(resolveEnglishMaterialName(row.materialName, englishNameMap || {})) : (row.materialName || "-")}
                     </span>
                   )}
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-amber-100">
@@ -3882,7 +3882,7 @@ function PrintOutputAllocationTable({
                   <div className="inline-flex flex-col items-center justify-center leading-none">
                     <span className="font-mono text-sm font-black text-slate-950">{formatNumber(perTonEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">
-                      kg CO2e/ton of <br />{en ? (productName || "Product") : (productName || "제품")}
+                      kg CO2e/ton of <br />{en ? toEnglishTitleCase(productName || "Product") : (productName || "제품")}
                     </span>
                   </div>
                 </td>
@@ -3926,11 +3926,11 @@ function PrintSectionRows({
               <EditableText
                 className="w-full bg-transparent font-bold leading-tight text-slate-900"
                 onCommit={(value) => onRowChange?.(row.rowId, "materialName", value)}
-                value={en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                value={en ? toEnglishTitleCase(resolveEnglishMaterialName(row.materialName, englishNameMap || {})) : (row.materialName || "-")}
               />
             ) : (
               <span className="block whitespace-nowrap font-bold leading-tight text-slate-900">
-                {en ? resolveEnglishMaterialName(row.materialName, englishNameMap || {}) : (row.materialName || "-")}
+                {en ? toEnglishTitleCase(resolveEnglishMaterialName(row.materialName, englishNameMap || {})) : (row.materialName || "-")}
               </span>
             )}
           </td>
