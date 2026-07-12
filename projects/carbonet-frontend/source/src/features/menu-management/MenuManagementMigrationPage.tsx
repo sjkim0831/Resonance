@@ -61,7 +61,8 @@ const ICON_LIST = [
 ];
 
 function readMenuTypeFromLocation() {
-  return new URLSearchParams(window.location.search).get("menuType") || "ADMIN";
+  const requested = (new URLSearchParams(window.location.search).get("menuType") || "ADMIN").toUpperCase();
+  return requested === "HOME" || requested === "USER" ? "USER" : "ADMIN";
 }
 
 function IconPicker({ value, onChange }: { value: string; onChange: (icon: string) => void }) {

@@ -169,7 +169,10 @@ public class AdminMenuManagementPageService {
     }
 
     private String normalizeMenuType(String menuType) {
-        return "USER".equalsIgnoreCase(safeString(menuType)) ? "USER" : "ADMIN";
+        String normalized = safeString(menuType);
+        return ("USER".equalsIgnoreCase(normalized) || "HOME".equalsIgnoreCase(normalized))
+                ? "USER"
+                : "ADMIN";
     }
 
     private List<String> buildPageIconOptions() {
@@ -547,8 +550,15 @@ public class AdminMenuManagementPageService {
             // resolves those rows, so the management screen must not appear
             // empty. Expose them as recoverable rows and let a subsequent save
             // recreate the canonical detail-code relation transactionally.
-            if (rows.isEmpty() && "HMENU1".equalsIgnoreCase(codeId)) {
-                rows.addAll(menuInfoReadPort.selectMenuUrlListByPrefix("H"));
+            if ("HMENU1".equalsIgnoreCase(codeId)) {
+                Map<String, MenuInfoDTO> homeRowsByCode = new LinkedHashMap<>();
+                for (MenuInfoDTO row : rows) {
+                    homeRowsByCode.put(safeString(row.getCode()).toUpperCase(Locale.ROOT), row);
+                }
+                for (MenuInfoDTO row : menuInfoReadPort.selectMenuUrlListByPrefix("H")) {
+                    homeRowsByCode.putIfAbsent(safeString(row.getCode()).toUpperCase(Locale.ROOT), row);
+                }
+                rows = new ArrayList<>(homeRowsByCode.values());
             }
             for (MenuInfoDTO row : rows) {
                 row.setMenuUrl(canonicalMenuUrl(row.getMenuUrl()));
