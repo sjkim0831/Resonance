@@ -114,7 +114,7 @@ public class CustomerTraceApprovalLedgerService {
         if (!tableExists()) return Map.of();
         List<Map<String, Object>> rows = jdbcTemplate.query("SELECT * FROM carbonet_customer_trace_approval WHERE use_case_id = ?",
                 (resultSet, rowNum) -> mapRow(resultSet), useCaseId);
-        return rows.isEmpty() ? Map.of() : rows.getFirst();
+        return rows.isEmpty() ? Map.of() : rows.get(0);
     }
 
     @Transactional
