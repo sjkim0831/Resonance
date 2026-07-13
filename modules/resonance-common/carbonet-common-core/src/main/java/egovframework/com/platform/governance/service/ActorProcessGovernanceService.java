@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +25,8 @@ public class ActorProcessGovernanceService {
         out.put("runs",jdbc.queryForList("select run_id as \"runId\",case_code as \"caseCode\",process_version as \"processVersion\",result,failure_reason as \"failureReason\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_simulation_run order by run_id desc limit 100"));
         out.put("artifacts",jdbc.queryForList("select artifact_id as \"artifactId\",process_code as \"processCode\",step_code as \"stepCode\",artifact_code as \"artifactCode\",artifact_type as \"artifactType\",artifact_name as \"artifactName\",target_path as \"targetPath\",contract_ref as \"contractRef\",required,delivery_status as \"status\",owner_actor_code as \"ownerActorCode\",acceptance_criteria as \"acceptanceCriteria\",evidence_ref as \"evidenceRef\",notes from framework_process_artifact order by process_code,artifact_type,artifact_code"));
         out.put("developmentRules",jdbc.queryForList("select rule_code as \"ruleCode\",rule_group as \"ruleGroup\",rule_name as \"ruleName\",rule_description as \"ruleDescription\",verification_method as \"verificationMethod\",source_ref as \"sourceRef\",mandatory from framework_development_rule where use_at='Y' order by rule_group,rule_code"));
-        out.put("developmentJobs",jdbc.queryForList("select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\",approval_status as \"approvalStatus\",evidence_ref as \"evidenceRef\",created_at as \"createdAt\" from framework_development_job order by process_code,step_code,job_id"));
+        out.put("developmentJobs",jdbc.queryForList("select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\",approval_status as \"approvalStatus\",worker_id as \"workerId\",lease_until as \"leaseUntil\",attempt_count as \"attemptCount\",evidence_ref as \"evidenceRef\",rollback_ref as \"rollbackRef\",last_error as \"lastError\",created_at as \"createdAt\" from framework_development_job order by process_code,step_code,job_id"));
+        out.put("developmentEvents",jdbc.queryForList("select e.event_id as \"eventId\",e.job_id as \"jobId\",e.event_type as \"eventType\",e.from_status as \"fromStatus\",e.to_status as \"toStatus\",e.worker_id as \"workerId\",e.created_at as \"createdAt\" from framework_development_job_event e order by e.event_id desc limit 200"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
         return out;
     }
@@ -103,6 +105,44 @@ public class ActorProcessGovernanceService {
         jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
         return Map.of("success",true,"approvedJobs",count,"approvedBy",actor);
     }
+
+    @Transactional public Map<String,Object> claimDevelopmentJob(String worker){
+        String order="case job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 else 90 end";
+        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_development_job j where approval_status='APPROVED' and (job_status in ('PLANNED','RETRY') or (job_status='RUNNING' and lease_until<current_timestamp)) and not exists(select 1 from framework_development_job p where p.process_code=j.process_code and p.step_code=j.step_code and ("+order.replace("job_type","p.job_type")+")<("+order.replace("job_type","j.job_type")+") and p.job_status<>'VERIFIED') order by process_code,step_code,"+order+",job_id for update skip locked limit 1");
+        if(rows.isEmpty())return Map.of("success",true,"available",false);
+        Map<String,Object> job=rows.get(0); long id=((Number)job.get("job_id")).longValue(); String from=String.valueOf(job.get("job_status")),token=UUID.randomUUID().toString();
+        jdbc.update("update framework_development_job set job_status='RUNNING',worker_id=?,lease_token=?,lease_until=current_timestamp+interval '10 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp where job_id=?",worker,token,id);
+        event(id,"CLAIMED",from,"RUNNING",worker,"{}");
+        Map<String,Object> out=new LinkedHashMap<>(job);out.put("jobId",id);out.put("leaseToken",token);out.put("available",true);out.put("success",true);return out;
+    }
+
+    @Transactional public Map<String,Object> heartbeatDevelopmentJob(long jobId,String token,String worker){
+        int changed=jdbc.update("update framework_development_job set lease_until=current_timestamp+interval '10 minutes',updated_at=current_timestamp where job_id=? and lease_token=? and worker_id=? and job_status='RUNNING'",jobId,token,worker);
+        if(changed==0)throw new IllegalArgumentException("실행 임대가 만료되었거나 다른 실행기가 소유한 작업입니다.");
+        return Map.of("success",true,"jobId",jobId);
+    }
+
+    @Transactional public Map<String,Object> completeDevelopmentJob(Map<String,Object>b,String worker){
+        long id=Long.parseLong(req(b,"jobId"));String token=req(b,"leaseToken"),result=def(b,"result","VERIFIED");
+        if(!List.of("VERIFIED","FAILED").contains(result))throw new IllegalArgumentException("result must be VERIFIED or FAILED");
+        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_development_job where job_id=? and lease_token=? and worker_id=? and job_status='RUNNING' for update",id,token,worker);
+        if(rows.isEmpty())throw new IllegalArgumentException("실행 임대가 만료되었거나 다른 실행기가 소유한 작업입니다.");
+        Map<String,Object>j=rows.get(0);String process=String.valueOf(j.get("process_code")),step=String.valueOf(j.get("step_code")),type=String.valueOf(j.get("job_type"));
+        jdbc.update("update framework_development_job set job_status=?,result_json=?,evidence_ref=nullif(?,''),rollback_ref=nullif(?,''),last_error=nullif(?,''),completed_at=case when ?='VERIFIED' then current_timestamp else null end,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",result,def(b,"resultJson","{}"),str(b,"evidenceRef"),str(b,"rollbackRef"),str(b,"error"),result,id);
+        event(id,result,"RUNNING",result,worker,def(b,"resultJson","{}"));
+        jdbc.update("update framework_process_artifact set delivery_status=?,evidence_ref=coalesce(nullif(?,''),evidence_ref),updated_at=current_timestamp where process_code=? and step_code=? and contract_ref=?",result,str(b,"evidenceRef"),process,step,"AUTO:"+type);
+        Integer pending=jdbc.queryForObject("select count(*) from framework_development_job where process_code=? and step_code=? and job_status<>'VERIFIED'",Integer.class,process,step);
+        jdbc.update("update framework_process_step set automation_status=? where process_code=? and step_code=?",pending!=null&&pending==0?"VERIFIED":("FAILED".equals(result)?"BLOCKED":"GENERATED"),process,step);
+        return Map.of("success",true,"jobId",id,"status",result,"stepComplete",pending!=null&&pending==0);
+    }
+
+    @Transactional public Map<String,Object> retryDevelopmentJob(long jobId,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList("select job_status from framework_development_job where job_id=? for update",jobId);if(rows.isEmpty())throw new IllegalArgumentException("작업이 존재하지 않습니다.");
+        String from=String.valueOf(rows.get(0).get("job_status"));if(!"FAILED".equals(from))throw new IllegalArgumentException("실패 작업만 재시도할 수 있습니다.");
+        jdbc.update("update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",jobId);event(jobId,"RETRY_REQUESTED",from,"RETRY",actor,"{}");return Map.of("success",true,"jobId",jobId);
+    }
+
+    private void event(long id,String type,String from,String to,String worker,String detail){jdbc.update("insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json) values(?,?,?,?,?,?)",id,type,from,to,worker,detail);}
 
     private int queueJob(String process,String step,String type,String name,String path,String requirement,String actor){
         String safePath=(path==null||"null".equals(path)||path.isBlank())?type.toLowerCase()+"/"+process.toLowerCase()+"/"+step.toLowerCase():path;

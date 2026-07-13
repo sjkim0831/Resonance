@@ -4,9 +4,9 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 
 type Row = Record<string, unknown>;
-type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; summary?: Row };
+type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; summary?: Row };
 type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];duplicates:Row[];recentPreflights:Row[]};
-const empty: Payload = { actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[] };
+const empty: Payload = { actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
 const fieldClass = "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
 
@@ -87,7 +87,9 @@ export function ActorProcessGovernancePage() {
         </Form>
         <Form onSubmit={event=>void submit(event,"development/approve")} cols="lg:grid-cols-4"><Field label="개발계획 승인 프로세스"><select className={fieldClass} name="processCode" required>{data.processes.map(row=><option key={value(row,"processCode")}>{value(row,"processCode")}</option>)}</select></Field><Field label="승인할 절차"><select className={fieldClass} name="stepCode" required>{selectedSteps.map(row=><option key={value(row,"stepCode")} value={value(row,"stepCode")}>{value(row,"stepName")}</option>)}</select></Field><div className="lg:col-span-2 flex items-end"><SaveButton busy={busy} label="개발계획 승인"/></div></Form>
         <Table heads={["프로세스","순서","상위 절차","상세 절차","유형","자동화","화면·API"]} rows={selectedSteps.map(row=>[value(row,"processCode"),value(row,"stepOrder"),value(row,"parentStepCode")||"-",value(row,"stepName"),value(row,"stepType"),value(row,"automationStatus"),[value(row,"userPath"),value(row,"adminPath"),value(row,"apiContract")].filter(Boolean).join(" · ")])}/>
-        <Table heads={["절차","개발 작업","유형","대상","승인","진행 상태","증적"]} rows={data.developmentJobs.filter(row=>!processFilter||value(row,"processCode")===processFilter).map(row=>[value(row,"stepCode"),value(row,"jobName"),value(row,"jobType"),value(row,"targetPath"),value(row,"approvalStatus"),value(row,"jobStatus"),value(row,"evidenceRef")])}/>
+        <Form onSubmit={event=>void submit(event,"development/retry")} cols="lg:grid-cols-4"><Field label="실패 작업 ID"><input className={fieldClass} type="number" min="1" name="jobId" required/></Field><div className="lg:col-span-3 flex items-end"><SaveButton busy={busy} label="복구 기준 확인 후 재시도"/></div></Form>
+        <Table heads={["ID","절차","개발 작업","유형","대상","승인","진행 상태","실행기·시도","복구·오류"]} rows={data.developmentJobs.filter(row=>!processFilter||value(row,"processCode")===processFilter).map(row=>[value(row,"jobId"),value(row,"stepCode"),value(row,"jobName"),value(row,"jobType"),value(row,"targetPath"),value(row,"approvalStatus"),value(row,"jobStatus"),`${value(row,"workerId")||"-"} · ${value(row,"attemptCount")}`,value(row,"rollbackRef")||value(row,"lastError")])}/>
+        <Table heads={["이벤트","작업 ID","상태 변경","실행기","일시"]} rows={data.developmentEvents.map(row=>[value(row,"eventType"),value(row,"jobId"),`${value(row,"fromStatus")} → ${value(row,"toStatus")}`,value(row,"workerId"),value(row,"createdAt")])}/>
       </>}
 
       {tab === "overview" && <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
