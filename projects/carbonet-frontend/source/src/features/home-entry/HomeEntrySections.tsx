@@ -70,13 +70,16 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
         line-height: 1.2;
       }
       .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: block; }
-      .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; background: linear-gradient(180deg,#ffffff 0%,#fbfdff 100%); }
+      .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; background: #fff; }
       .gnb-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .gnb-section { min-width: 0; border-left: 1px solid #e2e8f0; padding: 26px 28px; background: transparent; }
-      .gnb-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #102a4c; margin-bottom: 12px; }
+      .gnb-section-title { display: flex; align-items: center; gap: 8px; font-size: var(--krds-type-subtitle); line-height: var(--krds-line-compact); font-weight: 800; color: #052b57; margin-bottom: var(--krds-space-2); }
       .gnb-section a::after { content: '☆'; margin-left: auto; color: #94a3b8; font-size: 18px; }
       .gnb-section a:focus-visible, .gnb-depth2 aside a:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
       .gnb-section a:hover::after, .gnb-section a:focus-visible::after { color: #006e6a; content: '★'; }
+      .gnb-section a { min-height: var(--krds-control-height-sm); border-radius: 8px; }
+      .gnb-section a:hover { background: #eef5ff; box-shadow: inset 3px 0 0 #246beb; }
+      .gnb-item > a[aria-current='page'] { color: #246beb; border-bottom-color: #246beb; }
       body.mobile-menu-open { overflow: hidden; }
     `}</style>
   );
@@ -101,22 +104,22 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
     <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
       {homeMenu.map((top, index) => (
         <div className="gnb-item h-full relative group min-w-0" key={`${top.label || "top"}-${index}`}>
-          <a className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
+          <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
             {top.label || (en ? "Menu" : "메뉴")}
           </a>
           {top.sections && top.sections.length > 0 ? (
-            <div className="gnb-depth2 hidden fixed left-1/2 top-16 -translate-x-1/2 overflow-hidden border border-blue-100 shadow-[0_24px_60px_rgba(15,42,76,.18)] rounded-b-2xl">
+            <div className="gnb-depth2 hidden fixed left-1/2 top-16 -translate-x-1/2 overflow-hidden border border-slate-300 shadow-[0_12px_32px_rgba(15,42,76,.14)] rounded-b-xl">
               <div className="grid grid-cols-[240px_minmax(0,1fr)]">
-                <aside className="border-r border-blue-900/20 bg-gradient-to-b from-[#062c55] to-[#0a4770] p-5 text-white">
+                <aside className="border-r border-[#164f86] bg-[#063a74] p-5 text-white">
                   <strong className="krds-type-label flex items-center gap-2 font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
-                  <div className="krds-component mt-3 rounded-xl border border-dashed border-white/30 bg-white/10 text-center text-xs font-semibold leading-5 text-blue-100">
+                  <div className="krds-component mt-3 rounded-lg border border-dashed border-white/35 bg-[#0b4b8f] text-center text-xs font-semibold leading-5 text-blue-50">
                     <span className="material-symbols-outlined mb-2 block text-2xl text-teal-300">star</span>
                     {en ? "Select the star next to a menu to add a shortcut." : "메뉴의 별 아이콘을 선택해 즐겨찾기에 추가하세요."}
                   </div>
                   <strong className="krds-type-label mt-5 flex items-center gap-2 border-t border-white/20 pt-5 font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
                   <div className="mt-2 space-y-1">
                     {(top.sections || []).flatMap((section) => section.items || []).slice(0, 5).map((item, recentIndex) => (
-                      <a className="krds-control !min-h-0 flex items-center justify-between rounded-lg !px-2 py-1.5 text-xs font-bold text-blue-50 hover:bg-white/10 hover:text-white" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-teal-300">chevron_right</span></a>
+                      <a className="krds-control flex !min-h-10 items-center justify-between rounded-lg !px-2 text-xs font-bold text-blue-50 hover:bg-white/10 hover:text-white" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-teal-300">chevron_right</span></a>
                     ))}
                   </div>
                   <div className="krds-control mt-5 flex items-center justify-between rounded-xl border border-white/25 bg-white/10 text-xs font-black text-white"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-teal-300 px-2 py-0.5 text-[#062c55]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
