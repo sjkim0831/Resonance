@@ -854,7 +854,7 @@ main() {
     verify_immutable_frontend_jar
     SKIP_OVERLAY_SYNC=true
     kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
-      CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=false \
+      CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=true \
       CARBONET_STATIC_FS_OVERRIDE_ENABLED=true
     sync_overlay
     build_image
