@@ -18,7 +18,7 @@ type FeaturedCard = {
   actionEn: string;
 };
 
-type SupportEntry = {
+export type SupportEntry = {
   id: string;
   kind: "QNA" | "NOTICE" | "RESOURCE";
   titleKo: string;
@@ -74,7 +74,7 @@ const featuredCards: FeaturedCard[] = [
   }
 ];
 
-const supportEntries: SupportEntry[] = [
+export const supportEntries: SupportEntry[] = [
   {
     id: "QNA-240814",
     kind: "QNA",

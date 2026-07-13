@@ -3,6 +3,9 @@ import { useMemo, useState } from "react";
 import { HomeButton, HomeInput, HomeLinkButton } from "../home-ui/common";
 import { HOME_ENTRY_ASSETS, LOCALIZED_CONTENT, LocalizedHomeContent } from "./homeEntryContent";
 import { HomeMenuItem, HomeQuickLink } from "./homeEntryTypes";
+import { noticeItems } from "../notice-list/NoticeListMigrationPage";
+import { supportEntries } from "../qna-list/QnaListMigrationPage";
+import { RESOURCE_ITEMS } from "../download-list/DownloadListMigrationPage";
 
 function getDesktopNavClass(en: boolean) {
   return en
@@ -236,8 +239,9 @@ type SearchSectionProps = {
 
 type SearchCandidate = {
   label: string;
+  description?: string;
   href: string;
-  tone: "menu" | "service" | "tag";
+  tone: "menu" | "work" | "post";
 };
 
 type ServiceMapItem = {
@@ -357,29 +361,40 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase().replace(/#/g, "");
 }
 
-function buildSearchCandidates(content: LocalizedHomeContent, homeMenu: HomeMenuItem[]) {
+function buildSearchCandidates(content: LocalizedHomeContent, homeMenu: HomeMenuItem[], en: boolean) {
   const menuCandidates = homeMenu.flatMap((top) => {
-    const topItem = top.label && top.url ? [{ label: top.label, href: top.url, tone: "menu" as const }] : [];
-    const sectionItems = (top.sections || []).flatMap((section) =>
-      (section.items || [])
-        .filter((item) => item.label && item.url)
-        .map((item) => ({ label: String(item.label), href: String(item.url), tone: "menu" as const }))
-    );
-    return [...topItem, ...sectionItems];
+    const topHref = top.url || top.sections?.flatMap((section) => section.items || []).find((item) => item.url)?.url;
+    const topItem = top.label && topHref ? [{ label: top.label, href: topHref, tone: "menu" as const }] : [];
+    const sections = (top.sections || []).flatMap((section) => {
+      const sectionHref = section.items?.find((item) => item.url)?.url;
+      return section.label && sectionHref
+        ? [{ label: section.label, description: String(top.label || ""), href: sectionHref, tone: "menu" as const }]
+        : [];
+    });
+    return [...topItem, ...sections];
   });
+  const workCandidates = homeMenu.flatMap((top) => (top.sections || []).flatMap((section) =>
+    (section.items || []).filter((item) => item.label && item.url).map((item) => ({
+      label: String(item.label),
+      description: [top.label, section.label].filter(Boolean).join(" · "),
+      href: String(item.url),
+      tone: "work" as const
+    }))
+  ));
   const serviceCandidates = content.services.map((service) => ({
     label: service.title,
+    description: service.description,
     href: service.href,
-    tone: "service" as const
+    tone: "work" as const
   }));
-  const tagCandidates = content.popularTags.map((tag) => ({
-    label: tag.query || tag.label,
-    href: tag.href,
-    tone: "tag" as const
-  }));
+  const postCandidates: SearchCandidate[] = [
+    ...noticeItems.map((item) => ({ label: en ? item.titleEn : item.titleKo, description: en ? item.summaryEn : item.summaryKo, href: buildLocalizedPath(`/support/notice_list?searchKeyword=${encodeURIComponent(en ? item.titleEn : item.titleKo)}`, `/en/support/notice_list?searchKeyword=${encodeURIComponent(en ? item.titleEn : item.titleKo)}`), tone: "post" as const })),
+    ...supportEntries.map((item) => ({ label: en ? item.titleEn : item.titleKo, description: en ? item.summaryEn : item.summaryKo, href: buildLocalizedPath(`/support/qna_list?searchKeyword=${encodeURIComponent(en ? item.titleEn : item.titleKo)}`, `/en/support/qna_list?searchKeyword=${encodeURIComponent(en ? item.titleEn : item.titleKo)}`), tone: "post" as const })),
+    ...RESOURCE_ITEMS.map((item) => ({ label: en ? item.titleEn : item.titleKo, description: en ? item.summaryEn : item.summaryKo, href: buildLocalizedPath(`/support/download_list?searchKeyword=${encodeURIComponent(en ? item.titleEn : item.titleKo)}`, `/en/support/download_list?searchKeyword=${encodeURIComponent(en ? item.titleEn : item.titleKo)}`), tone: "post" as const }))
+  ];
   const deduped = new Map<string, SearchCandidate>();
-  [...menuCandidates, ...serviceCandidates, ...tagCandidates].forEach((candidate) => {
-    deduped.set(`${candidate.label}::${candidate.href}`, candidate);
+  [...menuCandidates, ...workCandidates, ...serviceCandidates, ...postCandidates].forEach((candidate) => {
+    deduped.set(`${candidate.tone}::${candidate.label}::${candidate.href}`, candidate);
   });
   return Array.from(deduped.values());
 }
@@ -397,11 +412,15 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
     { eyebrow: "제품 LCA", title: "인벤토리 데이터와 영향평가를 연결합니다", body: "원료·에너지·운송·제품·부산물 데이터를 체계적으로 관리합니다.", href: "/emission/lca", tone: "from-[#164f86] to-[#4777a8]" },
     { eyebrow: "공공 서비스", title: "인증서 진위 여부를 바로 확인하세요", body: "로그인 없이 발급된 인증서와 보고서의 진위 여부를 검증합니다.", href: "/home/certificate-verify", tone: "from-[#344b65] to-[#246beb]" }
   ];
-  const candidates = useMemo(() => buildSearchCandidates(content, homeMenu), [content, homeMenu]);
+  const candidates = useMemo(() => buildSearchCandidates(content, homeMenu, en), [content, en, homeMenu]);
   const normalizedQuery = normalizeSearchValue(query);
-  const suggestions = normalizedQuery
-    ? candidates.filter((candidate) => normalizeSearchValue(candidate.label).includes(normalizedQuery)).slice(0, 6)
-    : [];
+  const suggestions = normalizedQuery ? candidates.filter((candidate) =>
+    normalizeSearchValue(`${candidate.label} ${candidate.description || ""}`).includes(normalizedQuery)
+  ) : [];
+  const groupedSuggestions = (["menu", "work", "post"] as const).map((tone) => ({
+    tone,
+    items: suggestions.filter((candidate) => candidate.tone === tone)
+  }));
 
   function executeSearch(nextQuery?: string, preferredLink?: HomeQuickLink) {
     const effectiveQuery = normalizeSearchValue(nextQuery ?? query);
@@ -409,8 +428,9 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
       navigate(preferredLink.href);
       return;
     }
-    const match = candidates.find((candidate) => normalizeSearchValue(candidate.label).includes(effectiveQuery));
-    navigate(match?.href || buildLocalizedPath("/home", "/en/home"));
+    const match = candidates.find((candidate) => normalizeSearchValue(candidate.label) === effectiveQuery)
+      || candidates.find((candidate) => normalizeSearchValue(candidate.label).includes(effectiveQuery));
+    if (match) navigate(match.href);
   }
 
   return (
@@ -422,13 +442,23 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
           <HomeButton type="button" className="absolute right-2 top-1/2 h-12 w-12 -translate-y-1/2 !p-0" onClick={() => executeSearch()} variant="primary">
             <span className="material-symbols-outlined text-[28px]">search</span>
           </HomeButton>
-          {suggestions.length > 0 ? (
-            <div className="absolute left-0 right-0 mt-3 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white text-left shadow-xl overflow-hidden">
-              {suggestions.map((candidate) => (
-                <HomeButton key={`${candidate.label}-${candidate.href}`} type="button" className="flex w-full items-center justify-between gap-3 !border-0 !bg-transparent px-5 py-4 text-sm hover:!bg-slate-50" onClick={() => navigate(candidate.href)} variant="ghost">
-                  <span className="font-bold text-[var(--kr-gov-text-primary)]">{candidate.label}</span>
-                  <span className="text-xs font-bold uppercase tracking-wide text-[var(--kr-gov-blue)]">{candidate.tone}</span>
-                </HomeButton>
+          {normalizedQuery ? (
+            <div className="absolute left-0 right-0 z-50 mt-3 max-h-[min(65vh,620px)] overflow-y-auto rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white text-left shadow-2xl">
+              <div className="border-b border-slate-200 px-5 py-3 text-sm font-bold text-slate-600">{en ? `${suggestions.length} integrated search results` : `통합검색 결과 ${suggestions.length}건`}</div>
+              {groupedSuggestions.map((group) => (
+                <section className="border-b border-slate-100 p-3 last:border-0" key={group.tone}>
+                  <div className="flex items-center justify-between px-2 py-2">
+                    <h4 className="font-black text-[#052b57]">{{ menu: en ? "Menus" : "메뉴", work: en ? "Work" : "업무", post: en ? "Posts" : "게시글" }[group.tone]}</h4>
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-[#164f86]">{group.items.length}</span>
+                  </div>
+                  {group.items.length ? group.items.slice(0, 10).map((candidate) => (
+                    <HomeButton key={`${candidate.tone}-${candidate.label}-${candidate.href}`} type="button" className="flex w-full items-start gap-3 !border-0 !bg-transparent px-3 py-3 text-sm hover:!bg-blue-50" onClick={() => navigate(candidate.href)} variant="ghost">
+                      <span className="material-symbols-outlined mt-0.5 text-[20px] text-[#246beb]">{{ menu: "menu", work: "task_alt", post: "article" }[candidate.tone]}</span>
+                      <span className="min-w-0"><span className="block font-bold text-[var(--kr-gov-text-primary)]">{candidate.label}</span>{candidate.description ? <span className="mt-1 block truncate text-xs text-slate-500">{candidate.description}</span> : null}</span>
+                    </HomeButton>
+                  )) : <p className="px-3 py-3 text-sm text-slate-500">{en ? "No matching results." : "일치하는 결과가 없습니다."}</p>}
+                  {group.items.length > 10 ? <p className="px-3 py-2 text-xs font-bold text-slate-500">{en ? `and ${group.items.length - 10} more results` : `외 ${group.items.length - 10}건`}</p> : null}
+                </section>
               ))}
             </div>
           ) : null}

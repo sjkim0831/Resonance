@@ -10,7 +10,7 @@ import {
 
 type ResourceCategory = "ALL" | "MANUAL" | "FORM" | "GUIDE" | "CASE";
 
-type ResourceItem = {
+export type ResourceItem = {
   id: string;
   category: Exclude<ResourceCategory, "ALL">;
   titleKo: string;
@@ -34,7 +34,7 @@ const CATEGORY_OPTIONS: { value: ResourceCategory; labelKo: string; labelEn: str
   { value: "CASE", labelKo: "사례집", labelEn: "Casebooks" }
 ];
 
-const RESOURCE_ITEMS: ResourceItem[] = [
+export const RESOURCE_ITEMS: ResourceItem[] = [
   {
     id: "LIB-2026-001",
     category: "MANUAL",

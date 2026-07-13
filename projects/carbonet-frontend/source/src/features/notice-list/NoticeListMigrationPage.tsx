@@ -8,7 +8,7 @@ import {
   UserPortalHeader
 } from "../../components/user-shell/UserPortalChrome";
 
-type NoticeItem = {
+export type NoticeItem = {
   id: string;
   category: "CRITICAL" | "SYSTEM" | "NOTICE" | "POLICY";
   pinned: boolean;
@@ -29,7 +29,7 @@ const categoryOptions = [
   { value: "POLICY", labelKo: "정책/지침", labelEn: "Policy" }
 ] as const;
 
-const noticeItems: NoticeItem[] = [
+export const noticeItems: NoticeItem[] = [
   {
     id: "NTC-2026-041",
     category: "CRITICAL",
