@@ -69,11 +69,11 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
         margin: 0 !important;
         line-height: 1.2;
       }
-      .gnb-item:hover .gnb-depth2 { display: block; }
-      .gnb-depth2 { width: 560px !important; padding: 10px; }
-      .gnb-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .gnb-section { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; background: #fafafa; }
-      .gnb-section-title { display: block; font-size: 12px; font-weight: 700; color: var(--kr-gov-blue); margin-bottom: 6px; padding: 0 4px; }
+      .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: block; }
+      .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; }
+      .gnb-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .gnb-section { min-width: 0; border-left: 1px solid #e2e8f0; padding: 24px 28px; background: white; }
+      .gnb-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #102a4c; margin-bottom: 12px; }
       body.mobile-menu-open { overflow: hidden; }
     `}</style>
   );
@@ -102,13 +102,13 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
             {top.label || (en ? "Menu" : "메뉴")}
           </a>
           {top.sections && top.sections.length > 0 ? (
-            <div className="gnb-depth2 hidden absolute top-full left-0 w-56 bg-white border border-[var(--kr-gov-border-light)] shadow-lg rounded-b-[var(--kr-gov-radius)] py-2">
+            <div className="gnb-depth2 hidden fixed left-1/2 top-16 -translate-x-1/2 bg-white border border-slate-200 shadow-xl rounded-b-xl p-4">
               <div className="gnb-sections">
                 {top.sections.map((section, sectionIndex) => (
                   <div className="gnb-section" key={`${section.label || "section"}-${sectionIndex}`}>
                     <strong className="gnb-section-title">{section.label || (en ? "Section" : "섹션")}</strong>
                     {(section.items || []).map((item, itemIndex) => (
-                      <a className="block px-4 py-2 hover:bg-gray-50 text-sm" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
+                      <a className="flex items-center rounded-md px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-[var(--kr-gov-blue)]" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
                         {item.label || (en ? "Item" : "항목")}
                       </a>
                     ))}
@@ -593,6 +593,7 @@ export function ServiceMapSection({ content, homeMenu }: { content: LocalizedHom
 }
 
 export function SummarySection({ content }: { content: LocalizedHomeContent }) {
+  const en = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
   return (
     <section className="bg-gray-50 border-y border-[var(--kr-gov-border-light)] py-20" data-help-id="home-summary">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
@@ -624,17 +625,15 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
               <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-[var(--kr-gov-blue)]" style={{ width: content.summaryCards[0].progressWidth }} />
               </div>
+              <div className="mt-6 flex h-20 items-end gap-3 border-b border-slate-200 px-2" aria-label={en ? "Monthly emission trend" : "월별 배출량 추이"}>
+                {[48, 70, 58, 82, 64, 76].map((height, index) => <div className="flex flex-1 items-end gap-1" key={index}><span className="w-1/2 bg-slate-200" style={{ height: `${Math.max(20, height - 12)}%` }} /><span className="w-1/2 bg-blue-700" style={{ height: `${height}%` }} /></div>)}
+              </div>
             </div>
           </div>
           <div className="bg-white p-8 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] hover:shadow-md transition-shadow">
             <h4 className="font-bold text-[var(--kr-gov-text-secondary)] mb-6">{content.summaryCards[1].title}</h4>
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              {(content.summaryCards[1].statBlocks || []).map((block) => (
-                <div className="text-center p-4 bg-gray-50 rounded-[var(--kr-gov-radius)]" key={block.label}>
-                  <p className="text-xs font-bold text-gray-400 mb-1">{block.label}</p>
-                  <p className="text-2xl font-black">{block.value}<span className="text-sm ml-1">{block.unit}</span></p>
-                </div>
-              ))}
+            <div className="mb-6 divide-y divide-slate-200 border-y border-slate-200">
+              {(en ? ["Activity data submission", "Emission calculation review", "Annual report approval", "Evidence supplementation"] : ["활동자료 제출 요청", "배출량 산정 검토", "연간 보고서 승인", "증빙자료 보완"]).map((task, index) => <div className="flex items-center justify-between gap-3 py-3 text-sm" key={task}><span className="truncate font-semibold">{task}</span><span className={`shrink-0 rounded px-2 py-1 text-[11px] font-black ${index < 2 ? "bg-teal-50 text-teal-700" : "bg-blue-50 text-blue-700"}`}>{index < 2 ? (en ? "Active" : "진행중") : (en ? "Planned" : "예정")}</span></div>)}
             </div>
             <div className="flex items-center gap-2 text-sm font-bold text-[var(--kr-gov-blue)]">
               <span className="material-symbols-outlined">trending_up</span>
