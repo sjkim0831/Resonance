@@ -8,7 +8,8 @@ import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from 
 import {
   HeaderBrand,
   HeaderDesktopNav,
-  HeaderMobileMenu
+  HeaderMobileMenu,
+  HomeInlineStyles
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import { HomePayload } from "../home-entry/homeEntryTypes";
@@ -396,6 +397,7 @@ export function EmissionDashboardPage() {
   return (
     <>
       <EmissionDashboardInlineStyles />
+      <HomeInlineStyles en={en} />
       <div className="bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
         <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
