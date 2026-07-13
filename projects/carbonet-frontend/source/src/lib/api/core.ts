@@ -329,7 +329,11 @@ export async function fetchLocalizedPageJson<T>(
     resolveError?: (body: T, status: number) => string;
   }
 ): Promise<T> {
-  const query = options?.query ? `${options.query}` : "";
+  // buildQueryString() already returns a leading '?'. Normalize here because
+  // callers also pass plain query strings. A double '??' makes Spring ignore
+  // parameters such as menuType and silently use its default value.
+  const rawQuery = options?.query ? String(options.query) : "";
+  const query = rawQuery.replace(/^\?+/, "");
   return fetchPageJson<T>(
     buildLocalizedPath(
       `${koPath}${query ? `?${query}` : ""}`,
