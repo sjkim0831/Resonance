@@ -47,13 +47,26 @@ with candidate as (
  from candidate c where j.job_id=c.job_id
  returning j.*
 )
-select job_id||E'\t'||process_code||E'\t'||step_code||E'\t'||job_type||E'\t'||coalesce(target_path,'')||E'\t'||replace(encode(convert_to(coalesce(specification_json,'{}'),'UTF8'),'base64'),E'\n','')||E'\t'||attempt_count from claimed;
+select row_to_json(payload)::text
+from (
+  select job_id,process_code,step_code,job_type,coalesce(target_path,'') as target_path,
+    replace(encode(convert_to(coalesce(specification_json,'{}'),'UTF8'),'base64'),E'\n','') as specification_base64,
+    attempt_count
+  from claimed
+) payload;
 SQL
 )
 
-JOB_ROW="$(psqlq -c "begin; ${claim_sql} commit;")"
-[ -n "$JOB_ROW" ] || exit 0
-IFS=$'\t' read -r JOB_ID PROCESS_CODE STEP_CODE JOB_TYPE TARGET_PATH SPEC_B64 ATTEMPT <<<"$JOB_ROW"
+JOB_JSON="$(psqlq -c "begin; ${claim_sql} commit;")"
+[ -n "$JOB_JSON" ] || exit 0
+jq -e 'type == "object" and (.job_id | type == "number")' <<<"$JOB_JSON" >/dev/null
+JOB_ID="$(jq -r '.job_id' <<<"$JOB_JSON")"
+PROCESS_CODE="$(jq -r '.process_code' <<<"$JOB_JSON")"
+STEP_CODE="$(jq -r '.step_code' <<<"$JOB_JSON")"
+JOB_TYPE="$(jq -r '.job_type' <<<"$JOB_JSON")"
+TARGET_PATH="$(jq -r '.target_path' <<<"$JOB_JSON")"
+SPEC_B64="$(jq -r '.specification_base64' <<<"$JOB_JSON")"
+ATTEMPT="$(jq -r '.attempt_count' <<<"$JOB_JSON")"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$LOG_ROOT/job-${JOB_ID}-${STAMP}.log"
 WT="$WORKTREE_ROOT/job-${JOB_ID}"
@@ -95,7 +108,8 @@ If the specification is too broad, choose the highest-priority missing behavior 
 PROMPT
 
 set +e
-timeout 45m kilo run --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" "$(cat "$WT/.automation-prompt.txt")" >"$LOG_FILE.kilo" 2>&1
+timeout 45m kilo run --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
+  --file "$WT/.automation-prompt.txt" "Implement the attached approved Resonance development job." >"$LOG_FILE.kilo" 2>&1
 KILO_CODE=$?
 set -e
 rm -f "$WT/.automation-prompt.txt"
