@@ -39,6 +39,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/actor-process-governance/ActorProcessGovernancePage.tsx",
+    "effectiveSourcePath": "features/actor-process-governance/ActorProcessGovernancePage.tsx",
+    "effectiveSourcePaths": [
+      "features/actor-process-governance/ActorProcessGovernancePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ActorProcessGovernancePage"
+    ],
+    "routeIds": [
+      "actor-process-governance"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 20,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/admin-account-create/AdminAccountCreateMigrationPage.tsx",
     "effectiveSourcePath": "features/admin-account-create/AdminAccountCreateMigrationPage.tsx",
     "effectiveSourcePaths": [

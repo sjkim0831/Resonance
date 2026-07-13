@@ -67,6 +67,14 @@ const SYSTEM_GOVERNANCE_NAV_ITEMS: GovernanceNavItem[] = [
     icon: "fact_check"
   },
   {
+    id: "actor-process",
+    labelKo: "액터·프로세스",
+    labelEn: "Actors & Processes",
+    koPath: "/admin/system/actor-process",
+    enPath: "/en/admin/system/actor-process",
+    icon: "diversity_3"
+  },
+  {
     id: "assignment",
     labelKo: "화면 메뉴 귀속 관리",
     labelEn: "Screen Menu Binding",

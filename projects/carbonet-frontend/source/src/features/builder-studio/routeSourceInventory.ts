@@ -25,6 +25,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
+    "routeId": "actor-process-governance",
+    "label": "액터·프로세스 관리",
+    "group": "admin",
+    "koPath": "/admin/system/actor-process",
+    "enPath": "/en/admin/system/actor-process",
+    "exportName": "ActorProcessGovernancePage",
+    "sourcePath": "features/actor-process-governance/ActorProcessGovernancePage.tsx",
+    "effectiveExportName": "ActorProcessGovernancePage",
+    "effectiveSourcePath": "features/actor-process-governance/ActorProcessGovernancePage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
     "routeId": "admin-create",
     "label": "관리자 생성",
     "group": "admin",
