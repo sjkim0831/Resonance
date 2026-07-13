@@ -13,6 +13,13 @@ POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 POSTGRES_DB="${POSTGRES_DB:-carbonet}"
 POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
 MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
+KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
+export KUBECONFIG
+
+if [[ ! -r "$KUBECONFIG" ]]; then
+  echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
+  exit 8
+fi
 
 mkdir -p "$(dirname "$LOCK_FILE")" "$BACKUP_DIR"
 exec 9>"$LOCK_FILE"
