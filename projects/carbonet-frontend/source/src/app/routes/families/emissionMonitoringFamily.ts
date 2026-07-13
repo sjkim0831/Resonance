@@ -57,7 +57,8 @@ const EMISSION_MONITORING_ROUTE_DEFINITIONS = [
   { id: "co2-credit", label: "탄소 크레딧", group: "home", koPath: "/co2/credit", enPath: "/en/co2/credit" },
   { id: "co2-analysis", label: "품질 지표", group: "home", koPath: "/co2/analysis", enPath: "/en/co2/analysis" },
   { id: "co2-search", label: "MRV 정보", group: "home", koPath: "/co2/search", enPath: "/en/co2/search" },
-  { id: "emission-home-validate", label: "검증·보정", group: "home", koPath: "/emission/validate", enPath: "/en/emission/validate" }
+  { id: "emission-home-validate", label: "검증·보정", group: "home", koPath: "/emission/validate", enPath: "/en/emission/validate" },
+  { id: "emission-project-create", label: "새 프로젝트 등록", group: "home", koPath: "/emission/project/create", enPath: "/en/emission/project/create" },
 ] as const satisfies RouteDefinitionsOf;
 
 const EMISSION_MONITORING_PAGE_UNITS = [
@@ -116,7 +117,8 @@ const EMISSION_MONITORING_PAGE_UNITS = [
   { id: "co2-credit", exportName: "Co2CreditMigrationPage", loader: () => import("../../../features/co2-credit/Co2CreditMigrationPage") },
   { id: "co2-analysis", exportName: "Co2AnalysisMigrationPage", loader: () => import("../../../features/co2-analysis/Co2AnalysisMigrationPage") },
   { id: "co2-search", exportName: "Co2SearchMigrationPage", loader: () => import("../../../features/co2-search/Co2SearchMigrationPage") },
-  { id: "emission-home-validate", exportName: "EmissionHomeValidateMigrationPage", loader: () => import("../../../features/emission-home-validate/EmissionHomeValidateMigrationPage") }
+  { id: "emission-home-validate", exportName: "EmissionHomeValidateMigrationPage", loader: () => import("../../../features/emission-home-validate/EmissionHomeValidateMigrationPage") },
+  { id: "emission-project-create", exportName: "EmissionProjectCreatePage", loader: () => import("../../../features/emission-project-list/EmissionProjectCreatePage") },
 ] as const satisfies PageUnitsOf<typeof EMISSION_MONITORING_ROUTE_DEFINITIONS>;
 
 export const EMISSION_MONITORING_FAMILY = createRouteFamily(EMISSION_MONITORING_ROUTE_DEFINITIONS, EMISSION_MONITORING_PAGE_UNITS, {
