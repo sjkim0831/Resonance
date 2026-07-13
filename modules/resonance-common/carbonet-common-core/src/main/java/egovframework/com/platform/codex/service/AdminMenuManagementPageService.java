@@ -83,7 +83,8 @@ public class AdminMenuManagementPageService {
     }
 
     public List<MenuInfoDTO> loadMenuTreeRowsByMenuType(String menuType) {
-        return loadMenuTreeRows(resolveMenuCodeId(normalizeMenuType(menuType)));
+        String normalizedMenuType = normalizeMenuType(menuType);
+        return filterRowsForMenuType(loadMenuTreeRows(resolveMenuCodeId(normalizedMenuType)), normalizedMenuType);
     }
 
     private void populateMenuManagementPayload(Map<String, Object> target, boolean isEn, String menuType, String codeId) {
