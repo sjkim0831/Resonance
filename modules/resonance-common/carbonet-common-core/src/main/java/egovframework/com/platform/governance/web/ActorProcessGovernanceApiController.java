@@ -19,6 +19,7 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/processes") public ResponseEntity<?> process(@RequestBody Map<String,Object>b){return run(()->service.createProcess(b));}
     @PostMapping("/steps") public ResponseEntity<?> step(@RequestBody Map<String,Object>b){return run(()->service.addStep(b));}
     @PostMapping("/cases") public ResponseEntity<?> simulationCase(@RequestBody Map<String,Object>b){return run(()->service.createCase(b));}
+    @PostMapping("/artifacts") public ResponseEntity<?> artifact(@RequestBody Map<String,Object>b){return run(()->service.saveArtifact(b));}
     @PostMapping("/runs") public ResponseEntity<?> runCase(@RequestBody Map<String,Object>b, HttpServletRequest request){Principal p=request.getUserPrincipal();return run(()->service.recordRun(b,p==null?"SYSTEM":p.getName()));}
     @PostMapping("/standard-pack") public ResponseEntity<?> standardPack(){try{return ResponseEntity.ok(service.installStandardPack());}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}}
     private ResponseEntity<?> run(Runnable command){try{command.run();return ResponseEntity.ok(Map.of("success",true));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}}
