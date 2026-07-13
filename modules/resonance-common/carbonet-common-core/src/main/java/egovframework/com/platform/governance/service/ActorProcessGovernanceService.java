@@ -153,7 +153,7 @@ public class ActorProcessGovernanceService {
     @Transactional public Map<String,Object> scanReferences(String root,String actor){
         Path base=Path.of(root).normalize();if(!Files.isDirectory(base))throw new IllegalArgumentException("레퍼런스 경로를 읽을 수 없습니다: "+root);
         ensureReferenceProcesses();int files=0,expectations=0,cases=0,jobs=0;
-        try(Stream<Path> paths=Files.walk(base,10)){
+        try(Stream<Path> paths=Files.walk(base)){
             for(Path path:paths.filter(Files::isRegularFile).filter(p->!p.getFileName().toString().endsWith(":Zone.Identifier")).limit(20000).toList()){
                 String name=path.getFileName().toString(),lower=name.toLowerCase(Locale.ROOT),type=extension(lower),screen=classifyScreen(lower),domain=classifyDomain(lower),process=processForDomain(domain);
                 long size=Files.size(path),modified=Files.getLastModifiedTime(path).toMillis();String relative=base.relativize(path).toString().replace('\\','/'),fingerprint=jdbc.queryForObject("select md5(?)",String.class,relative+"|"+size+"|"+modified);
