@@ -32,10 +32,10 @@ public class HomeMenuFallbackController {
             value = {
                     "/emission/**", "/certificate/**", "/co2/**", "/trade/**", "/monitoring/**",
                     "/payment/**", "/edu/**", "/support/**", "/mtn/**",
-                    "/mypage/**",
+                    "/mypage/**", "/home/alerts",
                     "/en/emission/**", "/en/certificate/**", "/en/co2/**", "/en/trade/**", "/en/monitoring/**",
                     "/en/payment/**", "/en/edu/**", "/en/support/**", "/en/mtn/**",
-                    "/en/mypage/**"
+                    "/en/mypage/**", "/en/home/alerts"
             },
             method = { RequestMethod.GET, RequestMethod.POST })
     public String homeMenuPlaceholder(HttpServletRequest request, Locale locale, Model model) {
