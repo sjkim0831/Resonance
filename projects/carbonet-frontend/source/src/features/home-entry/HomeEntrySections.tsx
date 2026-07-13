@@ -386,6 +386,17 @@ function buildSearchCandidates(content: LocalizedHomeContent, homeMenu: HomeMenu
 
 export function SearchSection({ content, homeMenu }: SearchSectionProps) {
   const [query, setQuery] = useState("");
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const en = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
+  const banners = en ? [
+    { eyebrow: "Carbon Operations", title: "Manage emissions projects in one place", body: "Track activity data, calculation, verification, and reporting progress.", href: "/emission/project_list", tone: "from-[#063a74] to-[#246beb]" },
+    { eyebrow: "Product LCA", title: "Connect inventory data to impact assessment", body: "Manage materials, energy, transport, products, and byproducts.", href: "/emission/lca", tone: "from-[#164f86] to-[#4777a8]" },
+    { eyebrow: "Public Service", title: "Verify certificate authenticity instantly", body: "Check issued certificates and reports without signing in.", href: "/home/certificate-verify", tone: "from-[#344b65] to-[#246beb]" }
+  ] : [
+    { eyebrow: "탄소배출 관리", title: "배출량 프로젝트를 한곳에서 관리하세요", body: "활동자료부터 산정·검증·보고까지 업무 진행 상황을 확인합니다.", href: "/emission/project_list", tone: "from-[#063a74] to-[#246beb]" },
+    { eyebrow: "제품 LCA", title: "인벤토리 데이터와 영향평가를 연결합니다", body: "원료·에너지·운송·제품·부산물 데이터를 체계적으로 관리합니다.", href: "/emission/lca", tone: "from-[#164f86] to-[#4777a8]" },
+    { eyebrow: "공공 서비스", title: "인증서 진위 여부를 바로 확인하세요", body: "로그인 없이 발급된 인증서와 보고서의 진위 여부를 검증합니다.", href: "/home/certificate-verify", tone: "from-[#344b65] to-[#246beb]" }
+  ];
   const candidates = useMemo(() => buildSearchCandidates(content, homeMenu), [content, homeMenu]);
   const normalizedQuery = normalizeSearchValue(query);
   const suggestions = normalizedQuery
@@ -428,6 +439,33 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
             <HomeButton type="button" className="rounded-full !border-white/30 !bg-white/10 px-3 py-1 text-[13px] !text-white hover:!bg-white/20" key={tag.label} onClick={() => { setQuery(tag.query || tag.label); executeSearch(tag.query || tag.label, tag); }} variant="secondary">{tag.label}</HomeButton>
           ))}
         </div>
+      </div>
+      <div className="krds-responsive-container mt-8 grid gap-4 lg:grid-cols-[3fr_2fr]">
+        <section className={`relative min-h-[250px] overflow-hidden rounded-xl bg-gradient-to-r ${banners[bannerIndex].tone} p-7 text-left text-white shadow-lg sm:p-9`} aria-roledescription={en ? "carousel" : "배너 슬라이드"}>
+          <div className="relative z-10 max-w-[72%]">
+            <p className="krds-type-label font-black text-blue-100">{banners[bannerIndex].eyebrow}</p>
+            <h2 className="krds-type-title mt-3 font-black text-white">{banners[bannerIndex].title}</h2>
+            <p className="krds-type-body mt-3 font-medium text-blue-50">{banners[bannerIndex].body}</p>
+            <a className="krds-control mt-6 inline-flex items-center gap-2 rounded-lg bg-white font-black text-[#063a74] hover:bg-blue-50" href={banners[bannerIndex].href}>{en ? "Go to service" : "서비스 바로가기"}<span className="material-symbols-outlined text-lg">arrow_forward</span></a>
+          </div>
+          <span className="material-symbols-outlined absolute bottom-4 right-8 text-[118px] text-white/10" aria-hidden="true">monitoring</span>
+          <div className="absolute bottom-5 right-5 z-20 flex items-center gap-1 rounded-full bg-black/25 p-1">
+            <button className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/15 focus-visible" type="button" aria-label={en ? "Previous banner" : "이전 배너"} onClick={() => setBannerIndex((bannerIndex + banners.length - 1) % banners.length)}><span className="material-symbols-outlined">chevron_left</span></button>
+            <span className="min-w-12 text-center text-xs font-black">{bannerIndex + 1} / {banners.length}</span>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/15 focus-visible" type="button" aria-label={en ? "Next banner" : "다음 배너"} onClick={() => setBannerIndex((bannerIndex + 1) % banners.length)}><span className="material-symbols-outlined">chevron_right</span></button>
+          </div>
+        </section>
+        <aside className="krds-component min-h-[250px] rounded-xl border border-slate-300 bg-white text-left shadow-sm">
+          <p className="krds-type-label font-black text-[#246beb]">{en ? "MEMBER SERVICE" : "회원 서비스"}</p>
+          <h2 className="krds-type-subtitle mt-2 font-black text-[#052b57]">{en ? "Sign in to continue your work" : "로그인하고 업무를 이어가세요"}</h2>
+          <p className="krds-type-body mt-2 text-slate-600">{en ? "Review projects, approvals, schedules, and notifications." : "프로젝트, 승인, 일정과 알림을 한곳에서 확인할 수 있습니다."}</p>
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <a className="krds-control col-span-2 inline-flex items-center justify-center rounded-lg bg-[#246beb] font-black text-white hover:bg-[#164f86]" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}>{en ? "Sign in" : "로그인"}</a>
+            <a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] font-black text-[#164f86] hover:bg-blue-50" href={buildLocalizedPath("/join/step1", "/join/en/step1")}>{en ? "Sign up" : "회원가입"}</a>
+            <a className="krds-control inline-flex items-center justify-center rounded-lg border border-slate-300 font-black text-slate-700 hover:bg-slate-50" href={buildLocalizedPath("/signin/findId", "/en/signin/findId")}>{en ? "Find account" : "계정 찾기"}</a>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-200 pt-4 text-xs font-bold text-slate-600"><a className="hover:text-[#246beb] hover:underline" href="/support/notice">{en ? "Notices" : "공지사항"}</a><a className="hover:text-[#246beb] hover:underline" href="/support/faq">FAQ</a><a className="hover:text-[#246beb] hover:underline" href="/home/certificate-verify">{en ? "Verify certificate" : "인증서 진위 확인"}</a></div>
+        </aside>
       </div>
     </section>
   );
