@@ -88,6 +88,7 @@ fail_job() {
   exit 1
 }
 trap 'fail_job "unexpected worker error at line ${LINENO}"' ERR
+trap 'fail_job "worker interrupted by signal"' INT TERM
 
 event "CLAIMED" "PLANNED" "RUNNING" "{\"attempt\":${ATTEMPT}}"
 git -C "$ROOT_DIR" fetch origin main >>"$LOG_FILE" 2>&1
@@ -105,6 +106,9 @@ Read AGENTS.md and obey it. Inspect /opt/reference only as read-only evidence. I
 Implement exactly one bounded, production-useful increment for this job. Reuse registered KRDS theme, sections and components. For page-only work prefer SDUI and project-owned metadata/overlay paths with no build/deploy. Do not edit generated bundles manually.
 Add or update automated tests and evidence. Never modify credentials, backups, database data, Kubernetes state, deployment scripts, CI permissions, or unrelated files. Do not commit or push; the worker will validate and publish.
 If the specification is too broad, choose the highest-priority missing behavior supported by a reference and document the remaining gap in a project-owned markdown or metadata artifact.
+Do not recursively enumerate large reference or repository directories. Use targeted rg/find queries derived from the process and step codes.
+Start creating the bounded deliverable within 15 search/read tool calls. Finish the increment instead of continuing broad research.
+For REFERENCE_ANALYSIS, create or update a structured project-owned analysis artifact under the target path (or the nearest existing metadata/docs path) covering actors, flow, states, permissions, data/API contracts, screens, acceptance tests, reference evidence, and implementation gaps.
 PROMPT
 
 if timeout 45m kilo run "Implement the attached approved Resonance development job." \
