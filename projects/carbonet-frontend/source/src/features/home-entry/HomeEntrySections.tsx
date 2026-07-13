@@ -423,14 +423,11 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
   }));
 
   function executeSearch(nextQuery?: string, preferredLink?: HomeQuickLink) {
-    const effectiveQuery = normalizeSearchValue(nextQuery ?? query);
     if (preferredLink?.href) {
       navigate(preferredLink.href);
       return;
     }
-    const match = candidates.find((candidate) => normalizeSearchValue(candidate.label) === effectiveQuery)
-      || candidates.find((candidate) => normalizeSearchValue(candidate.label).includes(effectiveQuery));
-    if (match) navigate(match.href);
+    if (typeof nextQuery === "string") setQuery(nextQuery);
   }
 
   return (
