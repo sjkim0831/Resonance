@@ -127,6 +127,7 @@ Add or update automated tests and evidence. Never modify credentials, backups, d
 If the specification is too broad, choose the highest-priority missing behavior supported by a reference and document the remaining gap in a project-owned markdown or metadata artifact.
 Do not recursively enumerate large reference or repository directories. Use targeted rg/find queries derived from the process and step codes.
 Start with the precomputed candidate list below. Search outside it only when a concrete missing symbol or contract requires it.
+Repository candidates are paths relative to the current isolated worktree. Never rewrite them to /opt/Resonance and never modify /opt/Resonance directly. All repository reads and writes must remain under the current --dir worktree.
 $(cat "$SEARCH_CONTEXT")
 Start creating the bounded deliverable within 15 search/read tool calls. Finish the increment instead of continuing broad research.
 For REFERENCE_ANALYSIS, create or update a structured project-owned analysis artifact under the target path (or the nearest existing metadata/docs path) covering actors, flow, states, permissions, data/API contracts, screens, acceptance tests, reference evidence, and implementation gaps.

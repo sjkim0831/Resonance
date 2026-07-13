@@ -25,10 +25,11 @@ TMP="$CACHE.tmp.$$"
   printf '\n[repository candidates]\n'
   if [ -n "$TERMS" ]; then
     rg -l -i -m 1 --glob '!**/node_modules/**' --glob '!**/build/**' --glob '!**/.gradle/**' \
-      "$TERMS" "$ROOT_DIR/apps" "$ROOT_DIR/modules" "$ROOT_DIR/projects" "$ROOT_DIR/ops" 2>/dev/null | head -n 100 || true
+      "$TERMS" "$ROOT_DIR/apps" "$ROOT_DIR/modules" "$ROOT_DIR/projects" "$ROOT_DIR/ops" 2>/dev/null | \
+      sed "s#^$ROOT_DIR/##" | head -n 100 || true
   fi
   if [ -n "$TARGET_PATH" ] && [ -e "$ROOT_DIR/$TARGET_PATH" ]; then
-    printf '%s\n' "$ROOT_DIR/$TARGET_PATH"
+    printf '%s\n' "$TARGET_PATH"
   fi
   printf '\n[reference candidates]\n'
   if [ -d "$REFERENCE_ROOT" ] && [ -n "$TERMS" ]; then
