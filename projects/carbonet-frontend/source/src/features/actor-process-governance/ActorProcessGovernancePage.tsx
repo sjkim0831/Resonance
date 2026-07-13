@@ -4,9 +4,9 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 
 type Row = Record<string, unknown>;
-type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; summary?: Row };
+type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; referenceSummary?:Row; summary?: Row };
 type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];duplicates:Row[];recentPreflights:Row[]};
-const empty: Payload = { actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[] };
+const empty: Payload = { actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], screenTypes:[], referenceAssets:[], automationMetrics:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
 const fieldClass = "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
 
@@ -58,7 +58,7 @@ export function ActorProcessGovernancePage() {
   const readiness = Number(data.summary?.readinessPercent ?? 0);
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
-  const tabs = [["overview", "전체 현황"], ["actors", "액터"], ["assignments", "계정 배정"], ["processes", "프로세스"], ["steps", "단계"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
+  const tabs = [["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["actors", "액터"], ["assignments", "계정 배정"], ["processes", "프로세스"], ["steps", "단계"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
@@ -73,6 +73,8 @@ export function ActorProcessGovernancePage() {
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
       <nav className="flex flex-wrap gap-2">{tabs.map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
+
+      {tab === "references" && <><section className="grid gap-4 sm:grid-cols-4">{[["발견 자산","assetCount"],["분석 완료","analyzedCount"],["연결 프로세스","mappedProcesses"],["평균 신뢰도","averageConfidence"]].map(([label,key])=><div key={key} className="rounded-xl border bg-white p-4"><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.referenceSummary||{},key)}{key==="averageConfidence"?"%":""}</strong></div>)}</section><section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">근거 기반 자동설계</h3><p className="mt-1 text-sm text-slate-700">레퍼런스 파일명·형식과 기존 메뉴·페이지·API·DB를 화면 유형 및 업무 도메인으로 분류합니다. 액터·프로세스·정상/예외/권한/격리/복구 기대값을 멱등 등록하고, 구현 차이 분석 작업을 자동 승인 큐에 넣습니다.</p></section><Form onSubmit={event=>void submit(event,"references/scan")} cols="lg:grid-cols-4"><div className="lg:col-span-3"><Field label="레퍼런스 정본 경로"><input className={fieldClass} name="rootPath" defaultValue="/opt/reference" required/></Field></div><SaveButton busy={busy} label="전수조사·자동설계 시작"/></Form><Table heads={["화면 유형","필수 섹션","자동 테스트 기대값","개발 가중치"]} rows={data.screenTypes.map(row=>[`${value(row,"screenTypeName")} (${value(row,"screenType")})`,value(row,"requiredSections"),value(row,"testExpectations"),value(row,"developmentWeight")])}/><Table heads={["레퍼런스","형식","도메인","화면 유형","프로세스","상태","신뢰도"]} rows={data.referenceAssets.map(row=>[value(row,"sourceName"),value(row,"sourceType"),value(row,"domainCode"),value(row,"screenType"),value(row,"processCode"),value(row,"analysisStatus"),`${value(row,"confidence")}%`])}/></>}
 
       {tab === "automation" && <>
         <ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter}/>

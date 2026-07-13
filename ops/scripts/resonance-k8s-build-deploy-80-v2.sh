@@ -658,6 +658,11 @@ rollout_image() {
       "ctr -n k8s.io images list | grep $IMAGE_NAME; docker images | grep $IMAGE_NAME"
   fi
 
+  log_detail "Ensuring the canonical reference library is mounted read-only..."
+  kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
+    -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"reference-root\",\"hostPath\":{\"path\":\"/opt/reference\",\"type\":\"DirectoryOrCreate\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"volumeMounts\":[{\"name\":\"reference-root\",\"mountPath\":\"/opt/reference\",\"readOnly\":true}]}]}}}}" \
+    >/dev/null || rollback_and_fail "REFERENCE_MOUNT_FAILED" "Failed to mount /opt/reference read-only" "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
+
   log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
   if ! kubectl -n "$NAMESPACE" set image "deployment/$DEPLOYMENT" "$CONTAINER=$IMAGE_NAME" 2>"$KUBECTL_ERROR_LOG"; then
     log_error "kubectl set image failed:"

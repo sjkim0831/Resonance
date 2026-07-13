@@ -9,6 +9,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,10 @@ public class ActorProcessGovernanceService {
         out.put("developmentRules",jdbc.queryForList("select rule_code as \"ruleCode\",rule_group as \"ruleGroup\",rule_name as \"ruleName\",rule_description as \"ruleDescription\",verification_method as \"verificationMethod\",source_ref as \"sourceRef\",mandatory from framework_development_rule where use_at='Y' order by rule_group,rule_code"));
         out.put("developmentJobs",jdbc.queryForList("select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\",approval_status as \"approvalStatus\",worker_id as \"workerId\",lease_until as \"leaseUntil\",attempt_count as \"attemptCount\",evidence_ref as \"evidenceRef\",rollback_ref as \"rollbackRef\",last_error as \"lastError\",created_at as \"createdAt\" from framework_development_job order by process_code,step_code,job_id"));
         out.put("developmentEvents",jdbc.queryForList("select e.event_id as \"eventId\",e.job_id as \"jobId\",e.event_type as \"eventType\",e.from_status as \"fromStatus\",e.to_status as \"toStatus\",e.worker_id as \"workerId\",e.created_at as \"createdAt\" from framework_development_job_event e order by e.event_id desc limit 200"));
+        out.put("screenTypes",jdbc.queryForList("select screen_type as \"screenType\",screen_type_name as \"screenTypeName\",required_sections as \"requiredSections\",default_test_expectations as \"testExpectations\",development_weight as \"developmentWeight\" from framework_screen_type where use_at='Y' order by screen_type"));
+        out.put("referenceSummary",jdbc.queryForMap("select count(*) as \"assetCount\",count(distinct process_code) as \"mappedProcesses\",count(*) filter(where analysis_status='ANALYZED') as \"analyzedCount\",coalesce(round(avg(confidence),1),0) as \"averageConfidence\" from framework_reference_asset"));
+        out.put("referenceAssets",jdbc.queryForList("select reference_id as \"referenceId\",source_name as \"sourceName\",source_type as \"sourceType\",domain_code as \"domainCode\",screen_type as \"screenType\",process_code as \"processCode\",analysis_status as \"analysisStatus\",confidence from framework_reference_asset order by reference_id desc limit 300"));
+        out.put("automationMetrics",jdbc.queryForList("select metric_type as \"metricType\",metric_value as \"metricValue\",sample_count as \"sampleCount\",measured_at as \"measuredAt\" from framework_automation_metric order by metric_id desc limit 50"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
         return out;
     }
@@ -141,6 +149,40 @@ public class ActorProcessGovernanceService {
         String from=String.valueOf(rows.get(0).get("job_status"));if(!"FAILED".equals(from))throw new IllegalArgumentException("실패 작업만 재시도할 수 있습니다.");
         jdbc.update("update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",jobId);event(jobId,"RETRY_REQUESTED",from,"RETRY",actor,"{}");return Map.of("success",true,"jobId",jobId);
     }
+
+    @Transactional public Map<String,Object> scanReferences(String root,String actor){
+        Path base=Path.of(root).normalize();if(!Files.isDirectory(base))throw new IllegalArgumentException("레퍼런스 경로를 읽을 수 없습니다: "+root);
+        ensureReferenceProcesses();int files=0,expectations=0,cases=0,jobs=0;
+        try(Stream<Path> paths=Files.walk(base,10)){
+            for(Path path:paths.filter(Files::isRegularFile).filter(p->!p.getFileName().toString().endsWith(":Zone.Identifier")).limit(5000).toList()){
+                String name=path.getFileName().toString(),lower=name.toLowerCase(Locale.ROOT),type=extension(lower),screen=classifyScreen(lower),domain=classifyDomain(lower),process=processForDomain(domain);
+                long size=Files.size(path),modified=Files.getLastModifiedTime(path).toMillis();String relative=base.relativize(path).toString().replace('\\','/'),fingerprint=jdbc.queryForObject("select md5(?)",String.class,relative+"|"+size+"|"+modified);
+                Long id=jdbc.queryForObject("insert into framework_reference_asset(source_path,source_name,source_type,content_fingerprint,file_size,domain_code,screen_type,process_code,analysis_status,confidence,analyzed_at) values(?,?,?,?,?,?,?,?, 'ANALYZED',?,current_timestamp) on conflict(source_path) do update set content_fingerprint=excluded.content_fingerprint,file_size=excluded.file_size,domain_code=excluded.domain_code,screen_type=excluded.screen_type,process_code=excluded.process_code,analysis_status='ANALYZED',confidence=excluded.confidence,analyzed_at=current_timestamp returning reference_id",Long.class,relative,name,type,fingerprint,size,domain,screen,process,confidenceFor(type,screen));
+                files++;
+                String tests=jdbc.queryForObject("select default_test_expectations from framework_screen_type where screen_type=?",String.class,screen);
+                for(String expectation:tests.split(";")){jdbc.update("insert into framework_reference_expectation(reference_id,process_code,expectation_type,expectation_text) values(?,?,?,?) on conflict(reference_id,process_code,expectation_type) do update set expectation_text=excluded.expectation_text",id,process,screen+"_"+Math.abs(expectation.hashCode()),expectation);expectations++;}
+                String caseCode=(process+"_REFERENCE_"+screen).replaceAll("[^A-Za-z0-9_]","_");
+                int changed=jdbc.update("insert into framework_simulation_case(case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json) values(?,?,?,?,?,?,?) on conflict(case_code) do update set assertions_json=excluded.assertions_json,updated_at=current_timestamp",caseCode,process,screen+" 화면 레퍼런스 기대값","REFERENCE","분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨","[]","[\""+jsonEscape(tests.replace(';',','))+"\"]");if(changed>0)cases++;
+            }
+        }catch(Exception e){throw new IllegalStateException("레퍼런스 자동 분석 실패: "+e.getMessage(),e);}
+        for(Map<String,Object> row:jdbc.queryForList("select distinct process_code from framework_reference_asset where process_code is not null")){
+            String process=String.valueOf(row.get("process_code"));List<Map<String,Object>> steps=jdbc.queryForList("select step_code from framework_process_step where process_code=? order by step_order limit 1",process);if(steps.isEmpty())continue;String step=String.valueOf(steps.get(0).get("step_code"));
+            jobs+=queueJob(process,step,"REFERENCE_ANALYSIS","레퍼런스·기존 구현 차이 분석","reference/"+process.toLowerCase(),"레퍼런스 기대값과 현재 페이지·API·DB 구현을 비교하고 누락 작업을 생성",actor);
+            jdbc.update("update framework_development_job set approval_status='APPROVED' where process_code=? and step_code=? and job_type='REFERENCE_ANALYSIS'",process,step);
+        }
+        jdbc.update("insert into framework_automation_metric(metric_type,metric_value,sample_count,detail_json) values('REFERENCE_SCAN',?,?,?)",files,files,"{\"root\":\""+jsonEscape(root)+"\"}");
+        return Map.of("success",true,"assets",files,"expectations",expectations,"simulationCases",cases,"queuedProcesses",jobs);
+    }
+
+    private void ensureReferenceProcesses(){
+        Object[][] rows={{"MEMBER_LIFECYCLE","회원·기업 생애주기","MEMBER","회원 가입부터 승인·권한·휴면·탈퇴까지 관리","회원 업무 요구가 존재","계정 상태와 감사 이력이 일치"},{"CERTIFICATE_ISSUANCE","인증서 신청·발급·검증","CERTIFICATE","신청부터 발급·진위 확인까지 연결","승인된 산출 결과 존재","인증서와 검증 정보가 공개"},{"PAYMENT_SETTLEMENT","수수료·결제·정산","PAYMENT","수수료 결제와 환불·정산을 추적","결제 대상 업무 존재","결제·환불·정산 상태 일치"},{"CONTENT_OPERATION","콘텐츠·교육·지원 운영","CONTENT","콘텐츠와 교육·지원을 게시·운영","게시 요청 존재","공개 상태와 권한 일치"},{"TRADE_EXECUTION","탄소·자원 거래","TRADE","공급·수요부터 계약·정산·추적까지 관리","거래 참여자와 대상 존재","거래 및 MRV 이력 확정"}};
+        for(Object[]r:rows){jdbc.update("insert into framework_process_definition(process_code,process_name,domain_code,goal,start_condition,completion_condition,automation_mode) values(?,?,?,?,?,?,'AUTOMATIC') on conflict(process_code) do nothing",r);String code=String.valueOf(r[0]);Integer count=jdbc.queryForObject("select count(*) from framework_process_step where process_code=?",Integer.class,code);if(count!=null&&count==0){seedSteps(code);seedCases(code);}}
+    }
+    private static String extension(String name){int i=name.lastIndexOf('.');return i<0?"FILE":name.substring(i+1).toUpperCase(Locale.ROOT);}
+    private static String classifyScreen(String n){if(n.contains("로그인")||n.contains("인증")||n.contains("비밀번호")||n.contains("login"))return "AUTH";if(n.contains("업로드")||n.contains("입력")||n.contains("upload"))return "UPLOAD";if(n.contains("보고서")||n.contains("인증서")||n.contains("명세서")||n.contains("report"))return "REPORT";if(n.contains("검색")||n.contains("search"))return "SEARCH";if(n.contains("승인")||n.contains("신청")||n.contains("검증")||n.contains("이의"))return "WORKFLOW";if(n.contains("통계")||n.contains("모니터")||n.contains("시각화")||n.contains("dashboard"))return "DASHBOARD";if(n.contains("등록")||n.contains("작성")||n.contains("설정"))return "FORM";if(n.contains("상세")||n.contains("확인")||n.contains("detail"))return "DETAIL";if(n.contains("목록")||n.contains("내역")||n.contains("현황")||n.contains("list"))return "LIST";if(n.contains("관리")||n.contains("admin"))return "ADMIN";if(n.contains("메인")||n.contains("home"))return "HOME";return "CONTENT";}
+    private static String classifyDomain(String n){if(n.contains("lca")||n.contains("lci")||n.contains("탄소발자국"))return "LCA";if(n.contains("배출")||n.contains("온실가스")||n.contains("ccus"))return "CARBON_EMISSION";if(n.contains("회원")||n.contains("계정")||n.contains("로그인")||n.contains("인증"))return "MEMBER";if(n.contains("결제")||n.contains("수수료")||n.contains("환불")||n.contains("세금"))return "PAYMENT";if(n.contains("인증서"))return "CERTIFICATE";if(n.contains("거래")||n.contains("공급")||n.contains("수요"))return "TRADE";if(n.contains("공지")||n.contains("게시")||n.contains("교육")||n.contains("faq"))return "CONTENT";return "GOVERNANCE";}
+    private static String processForDomain(String d){return switch(d){case "LCA"->"LCA_EXECUTION";case "CARBON_EMISSION"->"EMISSION_PROJECT";case "MEMBER"->"MEMBER_LIFECYCLE";case "PAYMENT"->"PAYMENT_SETTLEMENT";case "CERTIFICATE"->"CERTIFICATE_ISSUANCE";case "TRADE"->"TRADE_EXECUTION";case "CONTENT"->"CONTENT_OPERATION";default->"GOVERNANCE_CHANGE";};}
+    private static double confidenceFor(String type,String screen){double v=List.of("HTML","HTM","TXT","MD").contains(type)?95:80;return "CONTENT".equals(screen)?v-15:v;}
 
     private void event(long id,String type,String from,String to,String worker,String detail){jdbc.update("insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json) values(?,?,?,?,?,?)",id,type,from,to,worker,detail);}
 
