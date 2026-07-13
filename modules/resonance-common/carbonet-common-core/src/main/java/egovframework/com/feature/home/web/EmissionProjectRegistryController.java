@@ -56,6 +56,12 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/activities/auto-map","/en/home/api/emission-projects/{id}/activities/auto-map"})
     public ResponseEntity<?> autoMap(@PathVariable String id,HttpServletRequest request) { if(!authenticated(request))return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));return ResponseEntity.ok(Map.of("success",true,"count",service.autoMap(id))); }
 
+    @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
+    public ResponseEntity<?> calculation(@PathVariable String id) { try{return ResponseEntity.ok(service.calculationResult(id));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
+    @PostMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
+    public ResponseEntity<?> calculate(@PathVariable String id,HttpServletRequest request) { if(!authenticated(request))return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",true,"id",service.calculate(id)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
     @PostMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));

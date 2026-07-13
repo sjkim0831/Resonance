@@ -111,6 +111,35 @@ public class EmissionProjectRegistryService {
         return count;
     }
 
+    public Map<String,Object> calculationResult(String projectId) {
+        Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
+        List<Map<String,Object>> runs=jdbc.queryForList("SELECT calculation_id AS \"id\",version_no AS \"version\",calculation_status AS \"status\",total_emission AS \"totalEmission\",calculated_at AS \"calculatedAt\" FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC",projectId);
+        result.put("runs",runs);
+        if(!runs.isEmpty()) { long id=((Number)runs.get(0).get("id")).longValue(); result.put("items",jdbc.queryForList("SELECT a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",i.quantity,a.unit,f.factor_name AS \"factorName\",i.factor_value AS \"factorValue\",i.emission_value AS \"emissionValue\" FROM emission_calculation_item i JOIN emission_activity_data a ON a.activity_id=i.activity_id JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE i.calculation_id=? ORDER BY i.emission_value DESC",id)); }
+        else result.put("items",List.of());
+        Integer unmapped=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL",Integer.class,projectId);
+        Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=?",Integer.class,projectId);
+        result.put("activityCount",total==null?0:total); result.put("unmappedCount",unmapped==null?0:unmapped);
+        return result;
+    }
+
+    @Transactional
+    public long calculate(String projectId) {
+        detail(projectId);
+        Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=?",Integer.class,projectId);
+        Integer unmapped=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL",Integer.class,projectId);
+        if(total==null||total==0) throw new IllegalArgumentException("산정할 활동자료가 없습니다.");
+        if(unmapped!=null&&unmapped>0) throw new IllegalArgumentException("미매핑 활동자료 "+unmapped+"건을 먼저 처리해 주세요.");
+        Integer version=jdbc.queryForObject("SELECT coalesce(max(version_no),0)+1 FROM emission_calculation_run WHERE project_id=?",Integer.class,projectId);
+        Double sum=jdbc.queryForObject("SELECT coalesce(sum(a.quantity*f.factor_value),0) FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=?",Double.class,projectId);
+        Long id=jdbc.queryForObject("INSERT INTO emission_calculation_run(project_id,version_no,total_emission) VALUES (?,?,?) RETURNING calculation_id",Long.class,projectId,version,sum);
+        jdbc.update("INSERT INTO emission_calculation_item(calculation_id,activity_id,quantity,factor_value,emission_value) SELECT ?,a.activity_id,a.quantity,f.factor_value,a.quantity*f.factor_value FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=?",id,projectId);
+        jdbc.update("UPDATE emission_project_registry SET progress_percent=50,current_step='배출량 산정',project_status='진행',updated_at=current_timestamp WHERE project_id=?",projectId);
+        jdbc.update("UPDATE emission_project_task SET task_status=CASE WHEN task_code IN ('BASIC_INFO','ACTIVITY_DATA') THEN 'DONE' WHEN task_code='CALCULATION' THEN 'IN_PROGRESS' ELSE task_status END WHERE project_id=?",projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'CALCULATED','산정 버전 '||?||'이 생성되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(version),projectId);
+        return id==null?0:id;
+    }
+
     @Transactional
     public String copy(String sourceId) {
         Map<String, Object> source = detail(sourceId);
