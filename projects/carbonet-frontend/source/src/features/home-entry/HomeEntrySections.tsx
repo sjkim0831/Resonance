@@ -75,6 +75,8 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
       .gnb-section { min-width: 0; border-left: 1px solid #e2e8f0; padding: 26px 28px; background: transparent; }
       .gnb-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #102a4c; margin-bottom: 12px; }
       .gnb-section a::after { content: '☆'; margin-left: auto; color: #94a3b8; font-size: 18px; }
+      .gnb-section a:focus-visible, .gnb-depth2 aside a:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+      .gnb-section a:hover::after, .gnb-section a:focus-visible::after { color: #006e6a; content: '★'; }
       body.mobile-menu-open { overflow: hidden; }
     `}</style>
   );
@@ -106,18 +108,18 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
             <div className="gnb-depth2 hidden fixed left-1/2 top-16 -translate-x-1/2 overflow-hidden border border-blue-100 shadow-[0_24px_60px_rgba(15,42,76,.18)] rounded-b-2xl">
               <div className="grid grid-cols-[240px_minmax(0,1fr)]">
                 <aside className="border-r border-blue-900/20 bg-gradient-to-b from-[#062c55] to-[#0a4770] p-5 text-white">
-                  <strong className="flex items-center gap-2 text-sm font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
-                  <div className="mt-3 rounded-xl border border-dashed border-white/30 bg-white/10 p-4 text-center text-xs font-semibold leading-5 text-blue-100">
+                  <strong className="krds-type-label flex items-center gap-2 font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
+                  <div className="krds-component mt-3 rounded-xl border border-dashed border-white/30 bg-white/10 text-center text-xs font-semibold leading-5 text-blue-100">
                     <span className="material-symbols-outlined mb-2 block text-2xl text-teal-300">star</span>
                     {en ? "Select the star next to a menu to add a shortcut." : "메뉴의 별 아이콘을 선택해 즐겨찾기에 추가하세요."}
                   </div>
-                  <strong className="mt-5 flex items-center gap-2 border-t border-white/20 pt-5 text-sm font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
+                  <strong className="krds-type-label mt-5 flex items-center gap-2 border-t border-white/20 pt-5 font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
                   <div className="mt-2 space-y-1">
                     {(top.sections || []).flatMap((section) => section.items || []).slice(0, 5).map((item, recentIndex) => (
-                      <a className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-bold text-blue-50 hover:bg-white/10 hover:text-white" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-teal-300">chevron_right</span></a>
+                      <a className="krds-control !min-h-0 flex items-center justify-between rounded-lg !px-2 py-1.5 text-xs font-bold text-blue-50 hover:bg-white/10 hover:text-white" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-teal-300">chevron_right</span></a>
                     ))}
                   </div>
-                  <div className="mt-5 flex items-center justify-between rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-xs font-black text-white"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-teal-300 px-2 py-0.5 text-[#062c55]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
+                  <div className="krds-control mt-5 flex items-center justify-between rounded-xl border border-white/25 bg-white/10 text-xs font-black text-white"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-teal-300 px-2 py-0.5 text-[#062c55]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
                 </aside>
                 <div className="gnb-sections">
                 {top.sections.map((section, sectionIndex) => (
@@ -546,7 +548,7 @@ export function ServiceMapSection({ content, homeMenu }: { content: LocalizedHom
 
   return (
     <section className="bg-white py-20 border-t border-[var(--kr-gov-border-light)]" data-help-id="home-service-map">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+      <div className="krds-responsive-container max-w-7xl">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--kr-gov-blue)]">{english ? "Full Service Map" : "전체 서비스 맵"}</p>
@@ -613,20 +615,20 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
   const en = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
   return (
     <section className="bg-[#f4f7fb] border-y border-[var(--kr-gov-border-light)] py-12" data-help-id="home-summary">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+      <div className="krds-responsive-container max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-end mb-7 gap-4">
           <div>
-            <p className="mb-2 text-xs font-black uppercase tracking-[.18em] text-teal-700">Carbon Operations</p>
-            <h2 className="text-3xl font-black text-[#062c55] mb-2">{content.summaryTitle}</h2>
-            <p className="text-[var(--kr-gov-text-secondary)] font-medium">{content.summaryDescription}</p>
+            <p className="krds-type-label mb-2 font-black uppercase tracking-[.18em] text-teal-700">Carbon Operations</p>
+            <h2 className="krds-type-title font-black text-[#062c55] mb-2">{content.summaryTitle}</h2>
+            <p className="krds-type-body text-[var(--kr-gov-text-secondary)] font-medium">{content.summaryDescription}</p>
           </div>
           <div className="flex items-center gap-2 text-sm text-[var(--kr-gov-text-secondary)] font-bold">
             <span className="material-symbols-outlined text-[18px]">update</span>
             {content.summaryUpdated}
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white p-6 border border-blue-100 border-t-[3px] border-t-blue-700 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+        <div className="krds-auto-layout !grid-cols-1 lg:!grid-cols-3 !gap-4">
+          <div className="krds-component bg-white border border-blue-100 border-t-[3px] border-t-blue-700 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-6">
               <h4 className="font-bold text-[var(--kr-gov-text-secondary)]">{content.summaryCards[0].title}</h4>
               <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">{content.summaryCards[0].badge}</span>
@@ -648,7 +650,7 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 border border-blue-100 border-t-[3px] border-t-teal-600 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <div className="krds-component bg-white border border-blue-100 border-t-[3px] border-t-teal-600 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <h4 className="font-bold text-[var(--kr-gov-text-secondary)] mb-6">{content.summaryCards[1].title}</h4>
             <div className="mb-6 divide-y divide-slate-200 border-y border-slate-200">
               {(en ? ["Activity data submission", "Emission calculation review", "Annual report approval", "Evidence supplementation"] : ["활동자료 제출 요청", "배출량 산정 검토", "연간 보고서 승인", "증빙자료 보완"]).map((task, index) => <div className="flex items-center justify-between gap-3 py-3 text-sm" key={task}><span className="truncate font-semibold">{task}</span><span className={`shrink-0 rounded px-2 py-1 text-[11px] font-black ${index < 2 ? "bg-teal-50 text-teal-700" : "bg-blue-50 text-blue-700"}`}>{index < 2 ? (en ? "Active" : "진행중") : (en ? "Planned" : "예정")}</span></div>)}
@@ -658,7 +660,7 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
               {content.summaryCards[1].note}
             </div>
           </div>
-          <div className="bg-white p-6 border border-blue-100 border-t-[3px] border-t-amber-500 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <div className="krds-component bg-white border border-blue-100 border-t-[3px] border-t-amber-500 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <h4 className="font-bold text-[var(--kr-gov-text-secondary)] mb-6">{content.summaryCards[2].title}</h4>
             <div className="flex items-center justify-between gap-6">
               <div className="relative w-24 h-24">
