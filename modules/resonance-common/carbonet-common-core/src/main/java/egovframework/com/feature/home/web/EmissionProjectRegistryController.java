@@ -58,6 +58,15 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/activities/auto-map","/en/home/api/emission-projects/{id}/activities/auto-map"})
     public ResponseEntity<?> autoMap(@PathVariable String id,HttpServletRequest request) { if(!authenticated(request))return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));return ResponseEntity.ok(Map.of("success",true,"count",service.autoMap(id))); }
 
+    @GetMapping({"/home/api/emission-projects/{id}/submissions","/en/home/api/emission-projects/{id}/submissions"})
+    public ResponseEntity<?> submissions(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.submissions(id,tenant(context)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/submissions","/en/home/api/emission-projects/{id}/submissions"})
+    public ResponseEntity<?> saveSubmission(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.saveSubmission(id,tenant(context),context.getUserId(),body));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/submit","/en/home/api/emission-projects/{id}/submissions/{submissionId}/submit"})
+    public ResponseEntity<?> submitActivities(@PathVariable String id,@PathVariable long submissionId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.submitActivities(id,submissionId,tenant(context),context.getUserId(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculation(@PathVariable String id) { try{return ResponseEntity.ok(service.calculationResult(id));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
@@ -88,4 +97,5 @@ public class EmissionProjectRegistryController {
         for (var cookie : request.getCookies()) if ("accessToken".equals(cookie.getName()) && !cookie.getValue().isBlank()) return true;
         return false;
     }
+    private String tenant(CurrentUserContextService.CurrentUserContext context) { return context.getInsttId().isBlank()?"DEFAULT":context.getInsttId(); }
 }

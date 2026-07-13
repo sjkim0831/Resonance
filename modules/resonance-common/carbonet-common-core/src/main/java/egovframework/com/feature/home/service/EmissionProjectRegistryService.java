@@ -153,6 +153,51 @@ public class EmissionProjectRegistryService {
 
     @Transactional public int updateTask(long taskId,String status) { if(!List.of("WAITING","IN_PROGRESS","DONE").contains(status))throw new IllegalArgumentException("올바른 상태가 아닙니다.");return jdbc.update("UPDATE emission_project_task SET task_status=?,updated_at=current_timestamp WHERE task_id=?",status,taskId); }
 
+    public Map<String,Object> submissions(String projectId,String tenantId) {
+        detail(projectId);
+        String tenant=requiredValue(tenantId,"tenantId");
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("items",jdbc.queryForList("SELECT submission_id AS \"id\",version_no AS \"version\",submission_state AS \"state\",idempotency_key AS \"idempotencyKey\",deadline_date AS \"deadlineDate\",submitted_actor AS \"submittedActor\",submitted_at AS \"submittedAt\",created_at AS \"createdAt\" FROM emission_activity_submission WHERE project_id=? AND tenant_id=? ORDER BY version_no DESC",projectId,tenant));
+        result.put("events",jdbc.queryForList("SELECT e.event_id AS \"id\",e.submission_id AS \"submissionId\",e.event_type AS \"type\",e.event_actor AS \"actor\",e.event_time AS \"at\",e.previous_state AS \"previousState\",e.new_state AS \"newState\",e.event_note AS \"note\" FROM emission_activity_submission_event e JOIN emission_activity_submission s ON s.submission_id=e.submission_id WHERE s.project_id=? AND s.tenant_id=? ORDER BY e.event_time DESC LIMIT 100",projectId,tenant));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> saveSubmission(String projectId,String tenantId,String actor,Map<String,Object> body) {
+        Map<String,Object> project=detail(projectId);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),key=required(body,"idempotencyKey");
+        List<Map<String,Object>> existing=jdbc.queryForList("SELECT submission_id AS id,submission_state AS state,version_no AS version FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND idempotency_key=?",projectId,tenant,key);
+        if(!existing.isEmpty()) return new LinkedHashMap<>(existing.get(0));
+        LocalDate deadline=project.get("dueDate")==null?null:LocalDate.parse(String.valueOf(project.get("dueDate")));
+        Integer version=jdbc.queryForObject("SELECT coalesce(max(version_no),0)+1 FROM emission_activity_submission WHERE project_id=? AND tenant_id=?",Integer.class,projectId,tenant);
+        Long id=jdbc.queryForObject("INSERT INTO emission_activity_submission(project_id,tenant_id,site_name,version_no,idempotency_key,deadline_date) VALUES (?,?,?,?,?,?) RETURNING submission_id",Long.class,projectId,tenant,String.valueOf(project.get("site")),version,key,deadline);
+        jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'CREATED',?,null,'DRAFT','활동자료 제출 초안 생성')",id,user);
+        return Map.of("id",id==null?0:id,"state","DRAFT","version",version==null?1:version,"created",true);
+    }
+
+    @Transactional
+    public Map<String,Object> submitActivities(String projectId,long submissionId,String tenantId,String actor,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state,deadline_date AS deadline FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
+        if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
+        String state=String.valueOf(rows.get(0).get("state"));
+        if("SUBMITTED".equals(state)) return Map.of("id",submissionId,"state",state,"duplicate",true);
+        Object deadlineValue=rows.get(0).get("deadline");
+        if(deadlineValue!=null&&LocalDate.parse(String.valueOf(deadlineValue)).isBefore(LocalDate.now())&&!Boolean.TRUE.equals(body.get("deadlineExtended"))) throw new IllegalStateException("SUBMISSION_DEADLINE_EXPIRED");
+        Object raw=body.get("activityIds");
+        if(!(raw instanceof List<?> ids)||ids.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
+        for(Object item:ids) {
+            long activityId=Long.parseLong(String.valueOf(item));
+            Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE activity_id=? AND project_id=? AND quantity>=0 AND unit<>''",Integer.class,activityId,projectId);
+            if(count==null||count==0) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
+            jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_name,uploaded_actor) VALUES (?,?,'ACTIVITY_DATA','등록 활동자료',?) ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,activityId,user);
+        }
+        jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,updated_at=current_timestamp WHERE submission_id=?",user,submissionId);
+        jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
+        jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
+        return Map.of("id",submissionId,"state","SUBMITTED","duplicate",false);
+    }
+
     @Transactional
     public String copy(String sourceId) {
         Map<String, Object> source = detail(sourceId);
@@ -185,4 +230,5 @@ public class EmissionProjectRegistryService {
 
     @Transactional public int delete(String id) { return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=?", id); }
     private String required(Map<String,Object> body,String key) { String value=String.valueOf(body.getOrDefault(key,"")).trim(); if(value.isEmpty()) throw new IllegalArgumentException(key+" is required"); return value; }
+    private String requiredValue(String value,String key) { String normalized=value==null?"":value.trim(); if(normalized.isEmpty()) throw new IllegalArgumentException(key+" is required"); return normalized; }
 }
