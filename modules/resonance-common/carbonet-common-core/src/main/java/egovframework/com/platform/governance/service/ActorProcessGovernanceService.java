@@ -28,6 +28,40 @@ public class ActorProcessGovernanceService {
         return out;
     }
 
+    public Map<String,Object> designAssetInventory(){
+        Map<String,Object> out=new LinkedHashMap<>();
+        out.put("counts",jdbc.queryForMap("select (select count(*) from comtnthemedefinition where use_at='Y') as \"themes\",(select count(*) from comtnthemeclassset where use_at='Y') as \"classSets\",(select count(*) from ui_section_registry where active_yn='Y') as \"sections\",(select count(*) from ui_component_registry where active_yn='Y') as \"components\",(select count(*) from ui_page_manifest where active_yn='Y') as \"pages\",(select count(*) from ui_page_component_map) as \"mappings\""));
+        out.put("themes",jdbc.queryForList("select theme_id as \"themeId\",theme_nm as \"themeName\",theme_type as \"themeType\",is_default as \"isDefault\",is_active as \"isActive\" from comtnthemedefinition where use_at='Y' order by sort_order,theme_id"));
+        out.put("sections",jdbc.queryForList("select section_id as \"sectionId\",section_name as \"sectionName\",section_type as \"sectionType\",layout_contract as \"layoutContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",design_reference as \"designReference\" from ui_section_registry where active_yn='Y' order by section_type,section_id"));
+        out.put("components",jdbc.queryForList("select component_id as \"componentId\",component_name as \"componentName\",component_type as \"componentType\",owner_domain as \"ownerDomain\",design_reference as \"designReference\",asset_fingerprint as \"fingerprint\" from ui_component_registry where active_yn='Y' order by component_type,component_name limit 500"));
+        out.put("duplicates",jdbc.queryForList("select asset_fingerprint as fingerprint,count(*) as count,string_agg(component_id,', ' order by component_id) as \"componentIds\" from ui_component_registry where active_yn='Y' and asset_fingerprint is not null group by asset_fingerprint having count(*)>1 order by count(*) desc"));
+        out.put("recentPreflights",jdbc.queryForList("select preflight_id as \"preflightId\",page_id as \"pageId\",route_path as \"routePath\",theme_id as \"themeId\",section_id as \"sectionId\",component_id as \"componentId\",decision,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_design_preflight order by preflight_id desc limit 50"));
+        return out;
+    }
+
+    @Transactional public Map<String,Object> runDesignPreflight(Map<String,Object>b,String actor){
+        String pageId=req(b,"pageId"),route=req(b,"routePath"),pageName=req(b,"pageName"),domain=def(b,"domainCode","COMMON");
+        String themeId=def(b,"themeId","KRDS_GOV_DEFAULT"),sectionId=req(b,"sectionId"),componentName=req(b,"componentName"),componentType=req(b,"componentType");
+        Integer themeCount=jdbc.queryForObject("select count(*) from comtnthemedefinition where theme_id=? and use_at='Y' and is_active='Y'",Integer.class,themeId);
+        if(themeCount==null||themeCount==0)throw new IllegalArgumentException("활성 테마가 존재하지 않습니다: "+themeId);
+        Integer sectionCount=jdbc.queryForObject("select count(*) from ui_section_registry where section_id=? and active_yn='Y'",Integer.class,sectionId);
+        if(sectionCount==null||sectionCount==0)throw new IllegalArgumentException("등록된 섹션을 먼저 선택해야 합니다: "+sectionId);
+        String props=def(b,"propsSchema","{}"),designRef=def(b,"designReference",themeId);
+        String fingerprint=jdbc.queryForObject("select md5(lower(trim(?))||'|'||lower(trim(?))||'|'||?||'|'||?)",String.class,componentType,componentName,props,designRef);
+        jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},fingerprint);
+        List<Map<String,Object>> matches=jdbc.queryForList("select component_id as \"componentId\" from ui_component_registry where active_yn='Y' and asset_fingerprint=? order by component_id limit 1",fingerprint);
+        String componentId,decision;
+        if(matches.isEmpty()){
+            componentId="CMP_"+fingerprint.substring(0,12).toUpperCase(); decision="CREATED";
+            jdbc.update("insert into ui_component_registry(component_id,component_name,component_type,owner_domain,props_schema_json,design_reference,active_yn,category,default_props,asset_fingerprint,created_at,updated_at) values(?,?,?,?,?,?,'Y',?,?,?,current_timestamp,current_timestamp)",componentId,componentName,componentType,domain,props,designRef,def(b,"category","COMMON"),props,fingerprint);
+        }else{componentId=String.valueOf(matches.get(0).get("componentId"));decision="REUSED";}
+        jdbc.update("insert into ui_page_manifest(page_id,page_name,route_path,domain_code,layout_version,design_token_version,active_yn,created_at,updated_at,page_title,page_url,version_status) values(?,?,?,?,'1.0.0',?,'Y',current_timestamp,current_timestamp,?,?, 'DRAFT') on conflict(page_id) do update set page_name=excluded.page_name,route_path=excluded.route_path,domain_code=excluded.domain_code,design_token_version=excluded.design_token_version,active_yn='Y',updated_at=current_timestamp",pageId,pageName,route,domain,themeId,pageName,route);
+        Integer mappingCount=jdbc.queryForObject("select count(*) from ui_page_component_map where page_id=? and component_id=? and layout_zone=?",Integer.class,pageId,componentId,sectionId);
+        if(mappingCount==null||mappingCount==0) jdbc.update("insert into ui_page_component_map(map_id,page_id,layout_zone,component_id,instance_key,display_order,conditional_rule_summary,created_at,updated_at) values(?,?,?,?,?,coalesce((select max(display_order)+1 from ui_page_component_map where page_id=?),1),?,current_timestamp,current_timestamp)","MAP_"+pageId.replaceAll("[^A-Za-z0-9]","")+"_"+componentId,pageId,sectionId,componentId,pageId+"_"+componentId,pageId,"design-preflight");
+        jdbc.update("insert into framework_design_preflight(page_id,route_path,theme_id,section_id,component_id,decision,asset_fingerprint,evidence_json,executed_by) values(?,?,?,?,?,?,?,?,?)",pageId,route,themeId,sectionId,componentId,decision,fingerprint,"{\"themeVerified\":true,\"sectionVerified\":true,\"componentMatched\":true}",actor);
+        return Map.of("success",true,"decision",decision,"componentId",componentId,"fingerprint",fingerprint,"pageId",pageId,"sectionId",sectionId,"themeId",themeId);
+    }
+
     @Transactional public void createActor(Map<String,Object>b){
         jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed) values(?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,updated_at=current_timestamp",req(b,"actorCode"),req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),req(b,"purpose"),str(b,"capabilityCodes"),bool(b,"delegationAllowed"));
     }

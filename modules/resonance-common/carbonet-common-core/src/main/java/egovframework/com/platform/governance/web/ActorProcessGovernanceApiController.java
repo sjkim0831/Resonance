@@ -14,6 +14,8 @@ import java.util.Map;
 public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
     @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
+    @GetMapping("/design-assets") public Map<String,Object> designAssets(){return service.designAssetInventory();}
+    @PostMapping("/design-assets/preflight") public ResponseEntity<?> designPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.runDesignPreflight(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}}
     @PostMapping("/actors") public ResponseEntity<?> actor(@RequestBody Map<String,Object>b){return run(()->service.createActor(b));}
     @PostMapping("/assignments") public ResponseEntity<?> assignment(@RequestBody Map<String,Object>b){return run(()->service.assignActor(b));}
     @PostMapping("/processes") public ResponseEntity<?> process(@RequestBody Map<String,Object>b){return run(()->service.createProcess(b));}
