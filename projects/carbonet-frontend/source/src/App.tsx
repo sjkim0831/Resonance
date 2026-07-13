@@ -20,6 +20,7 @@ import {
   type ScreenCommandPagePayload
 } from "./lib/api/platformTypes";
 import { useProjectTheme } from "./app/hooks/useProjectTheme";
+import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entry/GlobalUserGnbShell";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
 
@@ -178,6 +179,7 @@ export default function App() {
   } = useScreenContextMenu(page, routePath);
   const CurrentPage = getPageComponent(page);
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
+  const useGlobalUserGnb = shouldUseGlobalUserGnb(location.pathname);
 
   usePageTelemetry(page, locale);
 
@@ -500,7 +502,13 @@ export default function App() {
 
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>
-          <CurrentPage key={boundaryResetKey} />
+          {useGlobalUserGnb ? (
+            <GlobalUserGnbShell>
+              <CurrentPage key={boundaryResetKey} />
+            </GlobalUserGnbShell>
+          ) : (
+            <CurrentPage key={boundaryResetKey} />
+          )}
         </Suspense>
       </ErrorBoundary>
     </>
