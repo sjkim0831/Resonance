@@ -1,0 +1,18 @@
+[Unit]
+Description=Resonance process-driven AI development worker
+After=network-online.target containerd.service kubelet.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+EnvironmentFile=/etc/resonance/process-development-worker.env
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/run-process-development-worker.sh
+Nice=15
+CPUQuota=200%
+MemoryMax=8G
+TimeoutStartSec=75min
+
+[Install]
+WantedBy=multi-user.target

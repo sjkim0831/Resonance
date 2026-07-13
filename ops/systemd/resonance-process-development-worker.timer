@@ -1,0 +1,12 @@
+[Unit]
+Description=Run one approved Resonance development job at a time
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=resonance-process-development-worker.service
+
+[Install]
+WantedBy=timers.target
