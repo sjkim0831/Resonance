@@ -8,7 +8,7 @@ MODEL="${KILO_MODEL:-kilo/~openai/gpt-latest}"
 AGENT="${KILO_AGENT:-codex-m27}"
 MAX_FILES="${MAX_CHANGED_FILES:-20}"
 MAX_LINES="${MAX_DIFF_LINES:-3000}"
-LOCK_FILE="${LOCK_FILE:-/tmp/resonance-process-development-worker.lock}"
+LOCK_FILE="${LOCK_FILE:-/tmp/resonance-process-development-worker-${WORKER_SLOT:-0}.lock}"
 : "${PGDATABASE:?PGDATABASE is required}"
 : "${PGUSER:?PGUSER is required}"
 : "${PGPASSWORD:?PGPASSWORD is required}"
@@ -32,12 +32,23 @@ with candidate as (
  select job_id from framework_development_job j
  where approval_status='APPROVED'
    and (job_status in ('PLANNED','RETRY') or (job_status='RUNNING' and lease_until<current_timestamp))
+   and attempt_count < max_attempts
+   and not exists (
+     select 1 from framework_development_job_dependency d
+     join framework_development_job required_job on required_job.job_id=d.depends_on_job_id
+     where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status<>'VERIFIED'
+   )
+   and not exists (
+     select 1 from framework_development_job running_job
+     where running_job.job_status='RUNNING' and running_job.job_id<>j.job_id
+       and coalesce(running_job.target_path,'')<>'' and running_job.target_path=coalesce(j.target_path,'')
+   )
    and not exists (
      select 1 from framework_development_job p
      where p.process_code=j.process_code and p.step_code=j.step_code
        and (case p.job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 when 'REFERENCE_ANALYSIS' then 90 else 100 end)
          < (case j.job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 when 'REFERENCE_ANALYSIS' then 90 else 100 end)
-       and p.job_status<>'VERIFIED'
+       and p.job_status<>'VERIFIED' and j.execution_mode<>'PARALLEL'
    )
  order by process_code,step_code,
    case job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 when 'REFERENCE_ANALYSIS' then 90 else 100 end,job_id
@@ -77,6 +88,12 @@ event() {
   local type="$1" from="$2" to="$3" detail="${4:-{}}"
   psqlq -c "insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json) values(${JOB_ID},'${type}','${from}','${to}','${WORKER_ID}',\$json\$${detail}\$json\$);" >/dev/null
 }
+gate_result() {
+  local gate="$1" result="$2" summary="${3:-}"
+  summary="${summary//$'\n'/ }"
+  summary="${summary:0:1000}"
+  psqlq -c "insert into framework_development_job_gate_result(job_id,gate_code,result,summary,evidence_ref) values(${JOB_ID},'${gate}','${result}',\$summary\$${summary}\$summary\$,'${LOG_FILE}');" >/dev/null || true
+}
 fail_job() {
   trap - ERR
   local message="${1:-worker failed}"
@@ -97,6 +114,8 @@ git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
 git -C "$ROOT_DIR" worktree add -B "$BRANCH" "$WT" "$BASE_COMMIT" >>"$LOG_FILE" 2>&1
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
+SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" /usr/local/sbin/prepare-ai-search-context "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"
+psqlq -c "update framework_development_job set search_context_ref='${SEARCH_CONTEXT}',updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null
 cat >"$WT/.automation-prompt.txt" <<PROMPT
 You are implementing one approved Resonance development job.
 Job: ${JOB_ID}; process=${PROCESS_CODE}; step=${STEP_CODE}; type=${JOB_TYPE}; target=${TARGET_PATH}
@@ -107,6 +126,8 @@ Implement exactly one bounded, production-useful increment for this job. Reuse r
 Add or update automated tests and evidence. Never modify credentials, backups, database data, Kubernetes state, deployment scripts, CI permissions, or unrelated files. Do not commit or push; the worker will validate and publish.
 If the specification is too broad, choose the highest-priority missing behavior supported by a reference and document the remaining gap in a project-owned markdown or metadata artifact.
 Do not recursively enumerate large reference or repository directories. Use targeted rg/find queries derived from the process and step codes.
+Start with the precomputed candidate list below. Search outside it only when a concrete missing symbol or contract requires it.
+$(cat "$SEARCH_CONTEXT")
 Start creating the bounded deliverable within 15 search/read tool calls. Finish the increment instead of continuing broad research.
 For REFERENCE_ANALYSIS, create or update a structured project-owned analysis artifact under the target path (or the nearest existing metadata/docs path) covering actors, flow, states, permissions, data/API contracts, screens, acceptance tests, reference evidence, and implementation gaps.
 When the job type is REFERENCE_ANALYSIS, your first repository mutation must happen before inspecting references: immediately create the artifact skeleton under docs/ai/70-reference/<process-code-lowercase>/<step-code-lowercase>.md, then perform only targeted research and fill that artifact. Do not postpone the first edit.
@@ -153,8 +174,25 @@ while IFS= read -r -d '' source_file; do
   esac
 done < <(git -C "$WT" ls-files --modified --others --exclude-standard -z)
 
+PLACEHOLDER_FAILURE=""
+while IFS= read -r -d '' source_file; do
+  case "$source_file" in
+    *.md|*.txt|*.ts|*.tsx|*.js|*.jsx|*.java|*.kt|*.kts|*.sql|*.xml|*.json|*.yml|*.yaml|*.css|*.scss|*.html|*.sh)
+      if rg -n -i -m 1 '(^|[^A-Za-z])(TBD|FIXME|placeholder|임시 구현)([^A-Za-z]|$)' "$WT/$source_file" >>"$LOG_FILE" 2>&1; then
+        PLACEHOLDER_FAILURE="$source_file"
+        break
+      fi
+      ;;
+  esac
+  [ -s "$WT/$source_file" ] || { gate_result "NON_EMPTY_ARTIFACT" "FAILED" "$source_file is empty"; fail_job "empty artifact: $source_file"; }
+done < <(git -C "$WT" ls-files --modified --others --exclude-standard -z)
+[ -z "$PLACEHOLDER_FAILURE" ] || { gate_result "NO_PLACEHOLDER" "FAILED" "$PLACEHOLDER_FAILURE"; fail_job "unfinished placeholder detected: $PLACEHOLDER_FAILURE"; }
+gate_result "NO_PLACEHOLDER" "PASSED" "changed text contains no unfinished placeholders"
+gate_result "NON_EMPTY_ARTIFACT" "PASSED" "all changed artifacts are non-empty"
+
 git -C "$WT" add -A
-git -C "$WT" diff --cached --check >>"$LOG_FILE" 2>&1 || fail_job "git diff check failed"
+git -C "$WT" diff --cached --check >>"$LOG_FILE" 2>&1 || { gate_result "DIFF_CHECK" "FAILED" "git diff --check"; fail_job "git diff check failed"; }
+gate_result "DIFF_CHECK" "PASSED" "git diff --check"
 git -C "$WT" -c user.name='Resonance AI Worker' -c user.email='ai-worker@resonance.local' commit -m "auto: ${PROCESS_CODE} ${JOB_TYPE} job ${JOB_ID}" >>"$LOG_FILE" 2>&1
 
 git -C "$WT" fetch origin main >>"$LOG_FILE" 2>&1
