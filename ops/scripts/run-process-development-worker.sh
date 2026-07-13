@@ -107,11 +107,13 @@ Add or update automated tests and evidence. Never modify credentials, backups, d
 If the specification is too broad, choose the highest-priority missing behavior supported by a reference and document the remaining gap in a project-owned markdown or metadata artifact.
 PROMPT
 
-set +e
-timeout 45m kilo run --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
-  --file "$WT/.automation-prompt.txt" "Implement the attached approved Resonance development job." >"$LOG_FILE.kilo" 2>&1
-KILO_CODE=$?
-set -e
+if timeout 45m kilo run "Implement the attached approved Resonance development job." \
+  --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
+  --file "$WT/.automation-prompt.txt" >"$LOG_FILE.kilo" 2>&1; then
+  KILO_CODE=0
+else
+  KILO_CODE=$?
+fi
 rm -f "$WT/.automation-prompt.txt"
 [ "$KILO_CODE" -eq 0 ] || fail_job "Kilo exited with code ${KILO_CODE}"
 
