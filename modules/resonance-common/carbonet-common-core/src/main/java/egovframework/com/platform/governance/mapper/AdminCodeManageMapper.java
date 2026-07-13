@@ -134,4 +134,5 @@ public class AdminCodeManageMapper extends BaseMapperSupport {
     public void deletePageMenuFeatures(String code) { delete("AdminCodeManageMapper.deletePageMenuFeatures", code); }
     public void deletePageMenuOrder(String code) { delete("AdminCodeManageMapper.deletePageMenuOrder", code); }
     public void clearDependentScreenReferences(String code) { update("AdminCodeManageMapper.clearDependentScreenReferences", code); }
+    public void deletePageManagementDetailTree(AdminCodeCommandDTO params) { delete("AdminCodeManageMapper.deletePageManagementDetailTree", params); }
 }

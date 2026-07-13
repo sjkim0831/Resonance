@@ -97,20 +97,16 @@ public class AdminMenuManagementCommandService {
         String codeId = resolveMenuCodeId(normalizedMenuType);
         Map<String, Object> response = new LinkedHashMap<>();
         String requiredPrefix = "USER".equals(normalizedMenuType) ? "H" : "A";
-        if (!normalizedCode.startsWith(requiredPrefix) || normalizedCode.length() < 8) {
+        if (!normalizedCode.startsWith(requiredPrefix) || normalizedCode.length() < 6) {
             response.put("success", false);
-            response.put("message", isEn ? "Only a page or dependent screen can be deleted." : "페이지 또는 종속 화면만 삭제할 수 있습니다.");
+            response.put("message", isEn ? "Top-level menus cannot be deleted here." : "대메뉴는 이 기능으로 삭제할 수 없습니다.");
             return ResponseEntity.badRequest().body(response);
         }
         List<MenuInfoDTO> rows = adminMenuManagementPageService.loadMenuTreeRowsByMenuType(normalizedMenuType);
         boolean exists = rows.stream().anyMatch(row -> normalizedCode.equals(safeString(row.getCode()).toUpperCase(Locale.ROOT)));
-        boolean hasChildren = rows.stream().map(row -> safeString(row.getCode()).toUpperCase(Locale.ROOT))
-                .anyMatch(candidate -> candidate.startsWith(normalizedCode) && candidate.length() > normalizedCode.length());
-        if (!exists || hasChildren) {
+        if (!exists) {
             response.put("success", false);
-            response.put("message", !exists
-                    ? (isEn ? "The menu does not exist." : "메뉴가 존재하지 않습니다.")
-                    : (isEn ? "Delete dependent screens first." : "하위 종속 화면을 먼저 삭제해 주십시오."));
+            response.put("message", isEn ? "The menu does not exist." : "메뉴가 존재하지 않습니다.");
             return ResponseEntity.badRequest().body(response);
         }
         try {
@@ -125,7 +121,7 @@ public class AdminMenuManagementCommandService {
         }
         response.put("success", true);
         response.put("deletedCode", normalizedCode);
-        response.put("message", isEn ? "The page and all related mappings were deleted." : "페이지와 관련 매핑을 모두 삭제했습니다.");
+        response.put("message", isEn ? "The menu subtree and all related mappings were deleted." : "메뉴와 하위 항목, 관련 매핑을 모두 삭제했습니다.");
         return ResponseEntity.ok(response);
     }
 

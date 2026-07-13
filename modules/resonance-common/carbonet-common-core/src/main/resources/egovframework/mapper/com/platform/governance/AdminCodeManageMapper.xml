@@ -247,30 +247,37 @@
 
     <delete id="deletePageManagementMenu" parameterType="string">
         DELETE FROM COMTNMENUINFO
-        WHERE MENU_CODE = #{_parameter}
+        WHERE MENU_CODE LIKE #{_parameter} || '%'
     </delete>
 
     <delete id="deletePageAuthorityRelations" parameterType="string">
         DELETE FROM COMTNAUTHORFUNCTIONRELATE
-        WHERE FEATURE_CODE IN (SELECT FEATURE_CODE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE = #{_parameter})
+        WHERE FEATURE_CODE IN (SELECT FEATURE_CODE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE LIKE #{_parameter} || '%')
     </delete>
 
     <delete id="deletePageUserOverrides" parameterType="string">
         DELETE FROM COMTNUSERFEATUREOVERRIDE
-        WHERE FEATURE_CODE IN (SELECT FEATURE_CODE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE = #{_parameter})
+        WHERE FEATURE_CODE IN (SELECT FEATURE_CODE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE LIKE #{_parameter} || '%')
     </delete>
 
     <delete id="deletePageMenuFeatures" parameterType="string">
-        DELETE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE = #{_parameter}
+        DELETE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE LIKE #{_parameter} || '%'
     </delete>
 
     <delete id="deletePageMenuOrder" parameterType="string">
-        DELETE FROM COMTNMENUORDER WHERE MENU_CODE = #{_parameter}
+        DELETE FROM COMTNMENUORDER WHERE MENU_CODE LIKE #{_parameter} || '%'
     </delete>
 
     <update id="clearDependentScreenReferences" parameterType="string">
         UPDATE COMTNMENUINFO SET DEPENDENT_SCREEN_CODE = NULL, LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
-        WHERE DEPENDENT_SCREEN_CODE = #{_parameter}
+        WHERE DEPENDENT_SCREEN_CODE IN (
+            SELECT MENU_CODE FROM COMTNMENUINFO WHERE MENU_CODE LIKE #{_parameter} || '%'
+        )
     </update>
+
+    <delete id="deletePageManagementDetailTree" parameterType="egovframework.com.platform.menu.dto.AdminCodeCommandDTO">
+        DELETE FROM COMTCCMMNDETAILCODE
+        WHERE CODE_ID = #{codeId} AND CODE LIKE #{code} || '%'
+    </delete>
 
 </mapper>

@@ -216,6 +216,6 @@ public class AdminCodeManageServiceImpl extends EgovAbstractServiceImpl implemen
          adminCodeManageMapper.clearDependentScreenReferences(code);
          adminCodeManageMapper.deletePageMenuOrder(code);
          adminCodeManageMapper.deletePageManagementMenu(code);
-         adminCodeManageMapper.deleteDetailCode(params);
+         adminCodeManageMapper.deletePageManagementDetailTree(params);
      }
 }
