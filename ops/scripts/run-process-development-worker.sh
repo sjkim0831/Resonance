@@ -112,7 +112,12 @@ For REFERENCE_ANALYSIS, create or update a structured project-owned analysis art
 When the job type is REFERENCE_ANALYSIS, your first repository mutation must happen before inspecting references: immediately create the artifact skeleton under docs/ai/70-reference/<process-code-lowercase>/<step-code-lowercase>.md, then perform only targeted research and fill that artifact. Do not postpone the first edit.
 PROMPT
 
-if timeout 45m kilo run "Implement the attached approved Resonance development job." \
+INITIAL_MESSAGE="Implement the attached approved Resonance development job."
+if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
+  ARTIFACT_PATH="docs/ai/70-reference/${PROCESS_CODE,,}/${STEP_CODE,,}.md"
+  INITIAL_MESSAGE="Immediately create ${ARTIFACT_PATH} with the required section skeleton before any research. Then implement the attached approved Resonance development job and fill the artifact with targeted evidence."
+fi
+if timeout 45m kilo run "$INITIAL_MESSAGE" \
   --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
   --file "$WT/.automation-prompt.txt" >"$LOG_FILE.kilo" 2>&1; then
   KILO_CODE=0
