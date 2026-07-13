@@ -8,7 +8,8 @@ import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from 
 import {
   HeaderBrand,
   HeaderDesktopNav,
-  HeaderMobileMenu
+  HeaderMobileMenu,
+  HomeInlineStyles
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import { HomePayload } from "../home-entry/homeEntryTypes";
@@ -292,11 +293,6 @@ function EmissionProjectListInlineStyles() {
         margin: 0 !important;
         line-height: 1.2;
       }
-      .gnb-item:hover .gnb-depth2 { display: block; }
-      .gnb-depth2 { width: 560px !important; padding: 10px; }
-      .gnb-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .gnb-section { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px; background: #fafafa; }
-      .gnb-section-title { display: block; font-size: 12px; font-weight: 700; color: var(--kr-gov-blue); margin-bottom: 6px; padding: 0 4px; }
       body.mobile-menu-open { overflow: hidden; }
       @keyframes pulse-ring {
         0%, 100% { opacity: 1; }
@@ -311,13 +307,14 @@ export function EmissionProjectListMigrationPage() {
   const session = useFrontendSession();
   const content = LOCALIZED_CONTENT[en ? "en" : "ko"];
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
+  const emptyPayload = useMemo<HomePayload>(() => ({ isLoggedIn: false, isEn: en, homeMenu: [] }), [en]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
     [en],
     {
-      initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
+      initialValue: initialPayload || emptyPayload,
       onError: () => undefined
     }
   );
@@ -610,6 +607,7 @@ export function EmissionProjectListMigrationPage() {
 
   return (
     <>
+      <HomeInlineStyles en={en} />
       <EmissionProjectListInlineStyles />
       <div className="bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
         <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
