@@ -140,6 +140,19 @@ public class EmissionProjectRegistryService {
         return id==null?0:id;
     }
 
+    public Map<String,Object> myTasks(String actorId,boolean showAll,String status,String period) {
+        String state=status==null?"":status.trim(),range=period==null?"":period.trim();
+        String actor=actorId==null?"":actorId.trim();
+        String where=" WHERE (? OR lower(coalesce(t.assignee_id,''))=lower(?)) AND (?='' OR t.task_status=?) AND (?='' OR (?='TODAY' AND t.due_date=current_date) OR (?='WEEK' AND t.due_date BETWEEN current_date AND current_date+7) OR (?='OVERDUE' AND t.due_date<current_date AND t.task_status<>'DONE'))";
+        Object[] args={showAll,actor,state,state,range,range,range,range};
+        List<Map<String,Object>> items=jdbc.queryForList("SELECT t.task_id AS \"id\",t.project_id AS \"projectId\",p.project_name AS \"projectName\",p.site_name AS \"site\",t.task_name AS \"name\",t.task_type AS \"type\",t.task_status AS \"status\",t.priority,t.assignee_id AS \"assignee\",t.due_date AS \"dueDate\",t.target_url AS \"targetUrl\" FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id"+where+" ORDER BY CASE WHEN t.task_status='DONE' THEN 1 ELSE 0 END,CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,t.due_date,t.step_order",args);
+        Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("actorId",actor);result.put("allVisible",showAll);
+        result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t"+(showAll?"":" WHERE lower(coalesce(t.assignee_id,''))=lower('"+actor.replace("'","''")+"')")));
+        return result;
+    }
+
+    @Transactional public int updateTask(long taskId,String status) { if(!List.of("WAITING","IN_PROGRESS","DONE").contains(status))throw new IllegalArgumentException("올바른 상태가 아닙니다.");return jdbc.update("UPDATE emission_project_task SET task_status=?,updated_at=current_timestamp WHERE task_id=?",status,taskId); }
+
     @Transactional
     public String copy(String sourceId) {
         Map<String, Object> source = detail(sourceId);

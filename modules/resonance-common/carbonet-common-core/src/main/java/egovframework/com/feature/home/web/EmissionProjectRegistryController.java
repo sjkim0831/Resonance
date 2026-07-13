@@ -8,11 +8,13 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.web.multipart.MultipartFile;
+import egovframework.com.feature.auth.service.CurrentUserContextService;
 
 @RestController
 @RequiredArgsConstructor
 public class EmissionProjectRegistryController {
     private final EmissionProjectRegistryService service;
+    private final CurrentUserContextService currentUserContextService;
 
     @GetMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public Map<String, Object> list(@RequestParam(defaultValue = "") String keyword,
@@ -61,6 +63,12 @@ public class EmissionProjectRegistryController {
 
     @PostMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculate(@PathVariable String id,HttpServletRequest request) { if(!authenticated(request))return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",true,"id",service.calculate(id)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
+    @GetMapping({"/home/api/emission-tasks","/en/home/api/emission-tasks"})
+    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));return ResponseEntity.ok(service.myTasks(context.getUserId(),context.isWebmaster(),status,period)); }
+
+    @PostMapping({"/home/api/emission-tasks/{taskId}/status","/en/home/api/emission-tasks/{taskId}/status"})
+    public ResponseEntity<?> updateTask(@PathVariable long taskId,@RequestBody Map<String,Object> body,HttpServletRequest request) {if(!authenticated(request))return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",service.updateTask(taskId,String.valueOf(body.get("status")))>0));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
     @PostMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest request) {
