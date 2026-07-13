@@ -14,7 +14,7 @@ export function ActorProcessGovernancePage() {
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
   const [data, setData] = useState<Payload>(empty);
   const [tab, setTab] = useState("overview");
-  const [processFilter, setProcessFilter] = useState("");
+  const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

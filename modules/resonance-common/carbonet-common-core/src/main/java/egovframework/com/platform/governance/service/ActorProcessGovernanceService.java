@@ -77,8 +77,8 @@ public class ActorProcessGovernanceService {
         for(Object[] p:processes){
             String code=(String)p[0];
             jdbc.update("insert into framework_process_definition(process_code,process_name,domain_code,goal,start_condition,completion_condition) values(?,?,?,?,?,?) on conflict(process_code) do update set process_name=excluded.process_name,domain_code=excluded.domain_code,goal=excluded.goal,start_condition=excluded.start_condition,completion_condition=excluded.completion_condition,updated_at=current_timestamp",p);
-            seedSteps(code);
-            seedCases(code);
+            // EMISSION_PROJECT has a reference-backed seven-stage contract installed by Flyway.
+            if(!"EMISSION_PROJECT".equals(code)) { seedSteps(code); seedCases(code); }
         }
         return Map.of("success",true,"actors",jdbc.queryForObject("select count(*) from framework_actor_definition",Integer.class),"processes",processes.length,"steps",processes.length*4,"cases",processes.length*5);
     }
