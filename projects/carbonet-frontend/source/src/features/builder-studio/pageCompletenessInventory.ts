@@ -627,9 +627,9 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 2,
     "status": "implemented",
-    "lineCount": 2859,
-    "reason": "외부 런타임을 감싸는 관리형 화면이며 상태/조치 UI를 제공합니다.",
-    "hasAsyncData": false,
+    "lineCount": 2912,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
     "hasForm": true,
     "hasTable": true,
     "hasBuilderLink": true
@@ -1160,6 +1160,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": true
   },
   {
+    "sourcePath": "features/customer-trace/CustomerTracePage.tsx",
+    "effectiveSourcePath": "features/customer-trace/CustomerTracePage.tsx",
+    "effectiveSourcePaths": [
+      "features/customer-trace/CustomerTracePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "CustomerTracePage"
+    ],
+    "routeIds": [
+      "customer-trace"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 124,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
     "effectiveSourcePath": "features/db-monitoring/DbMonitoringPage.tsx",
     "effectiveSourcePaths": [
@@ -1446,7 +1467,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 547,
+    "lineCount": 549,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1489,7 +1510,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 890,
+    "lineCount": 33,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1668,24 +1689,128 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
-    "sourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
-    "effectiveSourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
+    "sourcePath": "features/emission-project-list/EmissionDeadlineStatusPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionDeadlineStatusPage.tsx",
     "effectiveSourcePaths": [
-      "features/emission-project-list/EmissionProjectListMigrationPage.tsx"
+      "features/emission-project-list/EmissionDeadlineStatusPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionDeadlineStatusPage"
+    ],
+    "routeIds": [
+      "emission-deadline-status"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 23,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionMyTasksPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionMyTasksPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionMyTasksPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionMyTasksPage"
+    ],
+    "routeIds": [
+      "emission-my-tasks"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 3,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionProjectCreatePage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectCreatePage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionProjectCreatePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionProjectCreatePage"
+    ],
+    "routeIds": [
+      "emission-project-create"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 43,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionProjectDetailPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectDetailPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionProjectDetailPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionProjectDetailPage"
+    ],
+    "routeIds": [
+      "emission-project-detail"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 30,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionProjectListFocusedPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectListFocusedPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionProjectListFocusedPage.tsx"
     ],
     "effectiveExportNames": [
       "EmissionProjectListMigrationPage"
     ],
     "routeIds": [
-      "emission-my-tasks",
       "emission-project-list"
     ],
-    "routeCount": 2,
+    "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1187,
+    "lineCount": 90,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionProjectResultPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionProjectResultPage"
+    ],
+    "routeIds": [
+      "emission-result"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 8,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
     "hasTable": true,
     "hasBuilderLink": false
   },
@@ -1763,10 +1888,9 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionResultListMigrationPage"
     ],
     "routeIds": [
-      "emission-result",
       "emission-result-list"
     ],
-    "routeCount": 2,
+    "routeCount": 1,
     "status": "implemented",
     "lineCount": 376,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1832,7 +1956,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 2,
     "status": "implemented",
-    "lineCount": 1857,
+    "lineCount": 2027,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1853,7 +1977,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 2840,
+    "lineCount": 2871,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1881,7 +2005,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 5,
     "status": "implemented",
-    "lineCount": 3866,
+    "lineCount": 3920,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2333,6 +2457,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/home-entry/HomeCertificateVerifyPage.tsx",
+    "effectiveSourcePath": "features/home-entry/HomeCertificateVerifyPage.tsx",
+    "effectiveSourcePaths": [
+      "features/home-entry/HomeCertificateVerifyPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "HomeCertificateVerifyPage"
+    ],
+    "routeIds": [
+      "home-certificate-verify"
+    ],
+    "routeCount": 1,
+    "status": "thin",
+    "lineCount": 55,
+    "reason": "라우트 화면으로 등록되어 있으나 데이터/폼/표/액션 신호가 부족해 보강 여부 점검이 필요합니다.",
+    "hasAsyncData": false,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/home-entry/HomeEntryPages.tsx",
     "effectiveSourcePath": "features/home-entry/HomeEntryPages.tsx",
     "effectiveSourcePaths": [
@@ -2346,7 +2491,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 149,
+    "lineCount": 158,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -2394,6 +2539,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": true
+  },
+  {
+    "sourcePath": "features/integrated-search/index.ts",
+    "effectiveSourcePath": "features/integrated-search/IntegratedSearchPage.tsx",
+    "effectiveSourcePaths": [
+      "features/integrated-search/IntegratedSearchPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "IntegratedSearchPage"
+    ],
+    "routeIds": [
+      "integrated-search"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 77,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": false,
+    "hasBuilderLink": false
   },
   {
     "sourcePath": "features/ip-whitelist/IpWhitelistMigrationPage.tsx",
@@ -2828,7 +2994,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 1554,
+    "lineCount": 1593,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,

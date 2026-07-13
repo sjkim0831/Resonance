@@ -21,7 +21,8 @@ const EMISSION_HOME_MENU_KO: HomeMenuRecord = {
       items: [
         { label: "탄소 배출 대시보드", url: "/emission/index" },
         { label: "배출량 관리", url: "/emission/project_list" },
-        { label: "내 배출 업무", url: "/emission/my-tasks" }
+        { label: "내 배출 업무", url: "/emission/my-tasks" },
+        { label: "마감·지연 현황", url: "/emission/deadline-status" }
       ]
     },
     {
@@ -60,7 +61,8 @@ const EMISSION_HOME_MENU_EN: HomeMenuRecord = {
       items: [
         { label: "Emission Dashboard", url: "/en/emission/index" },
         { label: "Emission Management", url: "/en/emission/project_list" },
-        { label: "My Emission Tasks", url: "/en/emission/my-tasks" }
+        { label: "My Emission Tasks", url: "/en/emission/my-tasks" },
+        { label: "Deadline & Delay Status", url: "/en/emission/deadline-status" }
       ]
     },
     {

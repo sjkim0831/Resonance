@@ -709,6 +709,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
+    "routeId": "customer-trace",
+    "label": "고객 요구 추적",
+    "group": "admin",
+    "koPath": "/admin/ai/customer-trace",
+    "enPath": "/en/admin/ai/customer-trace",
+    "exportName": "CustomerTracePage",
+    "sourcePath": "features/customer-trace/CustomerTracePage.tsx",
+    "effectiveExportName": "CustomerTracePage",
+    "effectiveSourcePath": "features/customer-trace/CustomerTracePage.tsx",
+    "routeFamilyFile": "app/routes/families/aiManagementFamily.ts"
+  },
+  {
     "routeId": "db-monitoring",
     "label": "DB 모니터링",
     "group": "admin",
@@ -949,6 +961,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-deadline-status",
+    "label": "마감·지연 현황",
+    "group": "home",
+    "koPath": "/emission/deadline-status",
+    "enPath": "/en/emission/deadline-status",
+    "exportName": "EmissionDeadlineStatusPage",
+    "sourcePath": "features/emission-project-list/EmissionDeadlineStatusPage.tsx",
+    "effectiveExportName": "EmissionDeadlineStatusPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionDeadlineStatusPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-definition-studio",
     "label": "배출 정의 관리",
     "group": "admin",
@@ -1098,10 +1122,34 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "home",
     "koPath": "/emission/my-tasks",
     "enPath": "/en/emission/my-tasks",
-    "exportName": "EmissionProjectListMigrationPage",
-    "sourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
-    "effectiveExportName": "EmissionProjectListMigrationPage",
-    "effectiveSourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
+    "exportName": "EmissionMyTasksPage",
+    "sourcePath": "features/emission-project-list/EmissionMyTasksPage.tsx",
+    "effectiveExportName": "EmissionMyTasksPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionMyTasksPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-project-create",
+    "label": "새 프로젝트 등록",
+    "group": "home",
+    "koPath": "/emission/project/create",
+    "enPath": "/en/emission/project/create",
+    "exportName": "EmissionProjectCreatePage",
+    "sourcePath": "features/emission-project-list/EmissionProjectCreatePage.tsx",
+    "effectiveExportName": "EmissionProjectCreatePage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectCreatePage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-project-detail",
+    "label": "배출량 프로젝트 상세",
+    "group": "home",
+    "koPath": "/emission/project/detail",
+    "enPath": "/en/emission/project/detail",
+    "exportName": "EmissionProjectDetailPage",
+    "sourcePath": "features/emission-project-list/EmissionProjectDetailPage.tsx",
+    "effectiveExportName": "EmissionProjectDetailPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectDetailPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1111,9 +1159,9 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "koPath": "/emission/project_list",
     "enPath": "/en/emission/project_list",
     "exportName": "EmissionProjectListMigrationPage",
-    "sourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
+    "sourcePath": "features/emission-project-list/EmissionProjectListFocusedPage.tsx",
     "effectiveExportName": "EmissionProjectListMigrationPage",
-    "effectiveSourcePath": "features/emission-project-list/EmissionProjectListMigrationPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectListFocusedPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1158,10 +1206,10 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "home",
     "koPath": "/emission/result",
     "enPath": "/en/emission/result",
-    "exportName": "EmissionResultListMigrationPage",
-    "sourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
-    "effectiveExportName": "EmissionResultListMigrationPage",
-    "effectiveSourcePath": "features/emission-result-list/EmissionResultListMigrationPage.tsx",
+    "exportName": "EmissionProjectResultPage",
+    "sourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
+    "effectiveExportName": "EmissionProjectResultPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1609,6 +1657,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/appOwnedFamily.ts"
   },
   {
+    "routeId": "home-certificate-verify",
+    "label": "인증서 진위여부 확인",
+    "group": "home",
+    "koPath": "/home/certificate-verify",
+    "enPath": "/en/home/certificate-verify",
+    "exportName": "HomeCertificateVerifyPage",
+    "sourcePath": "features/home-entry/HomeCertificateVerifyPage.tsx",
+    "effectiveExportName": "HomeCertificateVerifyPage",
+    "effectiveSourcePath": "features/home-entry/HomeCertificateVerifyPage.tsx",
+    "routeFamilyFile": "app/routes/families/appOwnedFamily.ts"
+  },
+  {
     "routeId": "home-menu-placeholder",
     "label": "사용자 메뉴 플레이스홀더",
     "group": "home",
@@ -1655,6 +1715,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "effectiveExportName": "InstalledProgramsMigrationPage",
     "effectiveSourcePath": "features/operations-inventory/OperationsInventoryPages.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "integrated-search",
+    "label": "통합검색",
+    "group": "home",
+    "koPath": "/home/search",
+    "enPath": "/en/home/search",
+    "exportName": "IntegratedSearchPage",
+    "sourcePath": "features/integrated-search/index.ts",
+    "effectiveExportName": "IntegratedSearchPage",
+    "effectiveSourcePath": "features/integrated-search/IntegratedSearchPage.tsx",
+    "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
     "routeId": "ip-whitelist",
