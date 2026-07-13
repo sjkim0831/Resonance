@@ -145,6 +145,14 @@ if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(apps|modules)/.*\.(java|kt|sql|xml
 fi
 while IFS= read -r json; do jq empty "$WT/$json" >>"$LOG_FILE" 2>&1 || fail_job "invalid JSON: $json"; done < <(printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -E '\.json$' || true)
 
+while IFS= read -r -d '' source_file; do
+  case "$source_file" in
+    *.md|*.txt|*.ts|*.tsx|*.js|*.jsx|*.java|*.kt|*.kts|*.sql|*.xml|*.json|*.yml|*.yaml|*.css|*.scss|*.html|*.sh)
+      sed -i 's/[[:space:]]\+$//' "$WT/$source_file"
+      ;;
+  esac
+done < <(git -C "$WT" ls-files --modified --others --exclude-standard -z)
+
 git -C "$WT" add -A
 git -C "$WT" diff --cached --check >>"$LOG_FILE" 2>&1 || fail_job "git diff check failed"
 git -C "$WT" -c user.name='Resonance AI Worker' -c user.email='ai-worker@resonance.local' commit -m "auto: ${PROCESS_CODE} ${JOB_TYPE} job ${JOB_ID}" >>"$LOG_FILE" 2>&1
