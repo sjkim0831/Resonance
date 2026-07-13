@@ -250,4 +250,27 @@
         WHERE MENU_CODE = #{_parameter}
     </delete>
 
+    <delete id="deletePageAuthorityRelations" parameterType="string">
+        DELETE FROM COMTNAUTHORFUNCTIONRELATE
+        WHERE FEATURE_CODE IN (SELECT FEATURE_CODE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE = #{_parameter})
+    </delete>
+
+    <delete id="deletePageUserOverrides" parameterType="string">
+        DELETE FROM COMTNUSERFEATUREOVERRIDE
+        WHERE FEATURE_CODE IN (SELECT FEATURE_CODE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE = #{_parameter})
+    </delete>
+
+    <delete id="deletePageMenuFeatures" parameterType="string">
+        DELETE FROM COMTNMENUFUNCTIONINFO WHERE MENU_CODE = #{_parameter}
+    </delete>
+
+    <delete id="deletePageMenuOrder" parameterType="string">
+        DELETE FROM COMTNMENUORDER WHERE MENU_CODE = #{_parameter}
+    </delete>
+
+    <update id="clearDependentScreenReferences" parameterType="string">
+        UPDATE COMTNMENUINFO SET DEPENDENT_SCREEN_CODE = NULL, LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+        WHERE DEPENDENT_SCREEN_CODE = #{_parameter}
+    </update>
+
 </mapper>

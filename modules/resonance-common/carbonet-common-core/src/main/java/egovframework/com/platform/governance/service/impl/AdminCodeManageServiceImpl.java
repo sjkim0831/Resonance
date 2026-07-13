@@ -9,6 +9,7 @@ import egovframework.com.platform.governance.model.vo.PageManagementVO;
 import egovframework.com.platform.governance.service.AdminCodeManageService;
 import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -203,11 +204,17 @@ public class AdminCodeManageServiceImpl extends EgovAbstractServiceImpl implemen
                  && "SYSTEM_BOOTSTRAP".equalsIgnoreCase(actorId == null ? "" : actorId.trim());
      }
  
-     @Override
-     public void deletePageManagement(String codeId, String code) {
+    @Override
+    @Transactional
+    public void deletePageManagement(String codeId, String code) {
          AdminCodeCommandDTO params = new AdminCodeCommandDTO();
          params.setCodeId(codeId);
          params.setCode(code);
+         adminCodeManageMapper.deletePageAuthorityRelations(code);
+         adminCodeManageMapper.deletePageUserOverrides(code);
+         adminCodeManageMapper.deletePageMenuFeatures(code);
+         adminCodeManageMapper.clearDependentScreenReferences(code);
+         adminCodeManageMapper.deletePageMenuOrder(code);
          adminCodeManageMapper.deletePageManagementMenu(code);
          adminCodeManageMapper.deleteDetailCode(params);
      }

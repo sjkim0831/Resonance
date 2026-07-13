@@ -89,6 +89,46 @@ public class AdminMenuManagementCommandService {
         return ResponseEntity.ok(response);
     }
 
+    public ResponseEntity<Map<String, Object>> deleteMenuManagedPage(
+            String menuType, String code, HttpServletRequest request, Locale locale) {
+        boolean isEn = isEnglishRequest(request, locale);
+        String normalizedMenuType = normalizeMenuType(menuType);
+        String normalizedCode = safeString(code).toUpperCase(Locale.ROOT);
+        String codeId = resolveMenuCodeId(normalizedMenuType);
+        Map<String, Object> response = new LinkedHashMap<>();
+        String requiredPrefix = "USER".equals(normalizedMenuType) ? "H" : "A";
+        if (!normalizedCode.startsWith(requiredPrefix) || normalizedCode.length() < 8) {
+            response.put("success", false);
+            response.put("message", isEn ? "Only a page or dependent screen can be deleted." : "페이지 또는 종속 화면만 삭제할 수 있습니다.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        List<MenuInfoDTO> rows = adminMenuManagementPageService.loadMenuTreeRowsByMenuType(normalizedMenuType);
+        boolean exists = rows.stream().anyMatch(row -> normalizedCode.equals(safeString(row.getCode()).toUpperCase(Locale.ROOT)));
+        boolean hasChildren = rows.stream().map(row -> safeString(row.getCode()).toUpperCase(Locale.ROOT))
+                .anyMatch(candidate -> candidate.startsWith(normalizedCode) && candidate.length() > normalizedCode.length());
+        if (!exists || hasChildren) {
+            response.put("success", false);
+            response.put("message", !exists
+                    ? (isEn ? "The menu does not exist." : "메뉴가 존재하지 않습니다.")
+                    : (isEn ? "Delete dependent screens first." : "하위 종속 화면을 먼저 삭제해 주십시오."));
+            return ResponseEntity.badRequest().body(response);
+        }
+        try {
+            adminCodeManageService.deletePageManagement(codeId, normalizedCode);
+            recordMenuManagementAudit(request, normalizedCode, "ADMIN-MENU-MANAGEMENT-DELETE-PAGE", normalizedCode,
+                    "{\"menuType\":\"" + safeJson(normalizedMenuType) + "\"}", "{}");
+        } catch (Exception exception) {
+            log.error("Transactional menu deletion failed. menuType={}, code={}", normalizedMenuType, normalizedCode, exception);
+            response.put("success", false);
+            response.put("message", isEn ? "Deletion failed and all changes were rolled back." : "삭제에 실패하여 모든 변경 사항을 롤백했습니다.");
+            return ResponseEntity.internalServerError().body(response);
+        }
+        response.put("success", true);
+        response.put("deletedCode", normalizedCode);
+        response.put("message", isEn ? "The page and all related mappings were deleted." : "페이지와 관련 매핑을 모두 삭제했습니다.");
+        return ResponseEntity.ok(response);
+    }
+
     @Transactional
     public ResponseEntity<Map<String, Object>> createMenuManagedPage(
             String menuType,

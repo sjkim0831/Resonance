@@ -632,6 +632,16 @@ public class AdminSystemCodeController {
                 locale);
     }
 
+    @PostMapping({"/menu-management/delete-page", "/menu/delete-page"})
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteMenuManagedPageApi(
+            @RequestParam(value = "menuType", defaultValue = "ADMIN") String menuType,
+            @RequestParam(value = "code", required = false) String code,
+            HttpServletRequest request,
+            Locale locale) {
+        return adminMenuManagementCommandService.deleteMenuManagedPage(menuType, code, request, locale);
+    }
+
     @PostMapping({"/admin/content/menu/create-page", "/en/admin/content/menu/create-page"})
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createContentMenuManagedPageApi(
