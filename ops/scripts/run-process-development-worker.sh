@@ -9,16 +9,21 @@ AGENT="${KILO_AGENT:-codex-m27}"
 MAX_FILES="${MAX_CHANGED_FILES:-20}"
 MAX_LINES="${MAX_DIFF_LINES:-3000}"
 LOCK_FILE="${LOCK_FILE:-/run/lock/resonance-process-development-worker.lock}"
-: "${PGHOST:?PGHOST is required}"
 : "${PGDATABASE:?PGDATABASE is required}"
 : "${PGUSER:?PGUSER is required}"
 : "${PGPASSWORD:?PGPASSWORD is required}"
+K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
+POSTGRES_POD="${POSTGRES_POD:-postgres-patroni-0}"
+PGHOST="${PGHOST:-postgres-haproxy}"
 
 mkdir -p "$WORKTREE_ROOT" "$LOG_ROOT" "$(dirname "$LOCK_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || exit 0
 
-psqlq() { psql -X -q -v ON_ERROR_STOP=1 -At "$@"; }
+psqlq() {
+  kubectl -n "$K8S_NAMESPACE" exec "$POSTGRES_POD" -- env PGPASSWORD="$PGPASSWORD" \
+    psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
+}
 WORKER_ID="$(hostname)-kilo-$$"
 LEASE_TOKEN="$(cat /proc/sys/kernel/random/uuid)"
 
