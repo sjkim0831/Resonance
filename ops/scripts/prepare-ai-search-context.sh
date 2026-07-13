@@ -18,7 +18,7 @@ if [ -s "$CACHE" ]; then
   exit 0
 fi
 
-TERMS="$(printf '%s %s %s' "$PROCESS_CODE" "$STEP_CODE" "$TARGET_PATH" | tr '/_-.' '    ' | xargs | tr ' ' '|' | sed 's/|\{2,\}/|/g')"
+TERMS="$(printf '%s %s %s' "$PROCESS_CODE" "$STEP_CODE" "$TARGET_PATH" | tr '/_.-' '    ' | xargs | tr ' ' '|' | sed 's/|\{2,\}/|/g')"
 TMP="$CACHE.tmp.$$"
 {
   printf 'commit=%s\nprocess=%s\nstep=%s\ntype=%s\ntarget=%s\n' "$COMMIT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH"
