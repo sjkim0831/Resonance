@@ -110,19 +110,19 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
           {top.sections && top.sections.length > 0 ? (
             <div className="gnb-depth2 hidden fixed left-1/2 top-16 -translate-x-1/2 overflow-hidden border border-slate-300 shadow-[0_12px_32px_rgba(15,42,76,.14)] rounded-b-xl">
               <div className="grid grid-cols-[240px_minmax(0,1fr)]">
-                <aside className="border-r border-[#164f86] bg-[#063a74] p-5 text-white">
-                  <strong className="krds-type-label flex items-center gap-2 font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
-                  <div className="krds-component mt-3 rounded-lg border border-dashed border-white/35 bg-[#0b4b8f] text-center text-xs font-semibold leading-5 text-blue-50">
-                    <span className="material-symbols-outlined mb-2 block text-2xl text-teal-300">star</span>
+                <aside className="border-r border-[#c6d5e5] bg-[#eef5ff] p-5 text-[#052b57]">
+                  <strong className="krds-type-label flex items-center gap-2 font-black text-[#052b57]"><span className="material-symbols-outlined text-xl text-[#246beb]">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
+                  <div className="krds-component mt-3 rounded-lg border border-dashed border-[#8eabd0] bg-white text-center text-xs font-semibold leading-5 text-[#4c627c]">
+                    <span className="material-symbols-outlined mb-2 block text-2xl text-[#246beb]">star</span>
                     {en ? "Select the star next to a menu to add a shortcut." : "메뉴의 별 아이콘을 선택해 즐겨찾기에 추가하세요."}
                   </div>
-                  <strong className="krds-type-label mt-5 flex items-center gap-2 border-t border-white/20 pt-5 font-black text-white"><span className="material-symbols-outlined text-xl text-teal-300">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
+                  <strong className="krds-type-label mt-5 flex items-center gap-2 border-t border-[#c6d5e5] pt-5 font-black text-[#052b57]"><span className="material-symbols-outlined text-xl text-[#246beb]">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
                   <div className="mt-2 space-y-1">
                     {(top.sections || []).flatMap((section) => section.items || []).slice(0, 5).map((item, recentIndex) => (
-                      <a className="krds-control flex !min-h-10 items-center justify-between rounded-lg !px-2 text-xs font-bold text-blue-50 hover:bg-white/10 hover:text-white" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-teal-300">chevron_right</span></a>
+                      <a className="krds-control flex !min-h-10 items-center justify-between rounded-lg !px-2 text-xs font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>
                     ))}
                   </div>
-                  <div className="krds-control mt-5 flex items-center justify-between rounded-xl border border-white/25 bg-white/10 text-xs font-black text-white"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-teal-300 px-2 py-0.5 text-[#062c55]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
+                  <div className="krds-control mt-5 flex items-center justify-between rounded-lg border border-[#8eabd0] bg-white text-xs font-black text-[#052b57]"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-[#246beb] px-2 py-0.5 text-white">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
                 </aside>
                 <div className="gnb-sections">
                 {top.sections.map((section, sectionIndex) => (
@@ -621,7 +621,7 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
       <div className="krds-responsive-container max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-end mb-7 gap-4">
           <div>
-            <p className="krds-type-label mb-2 font-black uppercase tracking-[.18em] text-teal-700">Carbon Operations</p>
+            <p className="krds-type-label mb-2 font-black text-[#246beb]">{en ? "Integrated Monitoring" : "통합 모니터링"}</p>
             <h2 className="krds-type-title font-black text-[#062c55] mb-2">{content.summaryTitle}</h2>
             <p className="krds-type-body text-[var(--kr-gov-text-secondary)] font-medium">{content.summaryDescription}</p>
           </div>
@@ -634,7 +634,7 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
           <div className="krds-component bg-white border border-blue-100 border-t-[3px] border-t-blue-700 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-6">
               <h4 className="font-bold text-[var(--kr-gov-text-secondary)]">{content.summaryCards[0].title}</h4>
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded">{content.summaryCards[0].badge}</span>
+              <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-bold rounded">{content.summaryCards[0].badge}</span>
             </div>
             <div className="flex items-baseline gap-2 mb-6">
               <span className="text-4xl font-black text-[var(--kr-gov-blue)] tracking-tight">{content.summaryCards[0].value}</span>
@@ -653,10 +653,10 @@ export function SummarySection({ content }: { content: LocalizedHomeContent }) {
               </div>
             </div>
           </div>
-          <div className="krds-component bg-white border border-blue-100 border-t-[3px] border-t-teal-600 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+          <div className="krds-component bg-white border border-blue-100 border-t-[3px] border-t-[#246beb] rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <h4 className="font-bold text-[var(--kr-gov-text-secondary)] mb-6">{content.summaryCards[1].title}</h4>
             <div className="mb-6 divide-y divide-slate-200 border-y border-slate-200">
-              {(en ? ["Activity data submission", "Emission calculation review", "Annual report approval", "Evidence supplementation"] : ["활동자료 제출 요청", "배출량 산정 검토", "연간 보고서 승인", "증빙자료 보완"]).map((task, index) => <div className="flex items-center justify-between gap-3 py-3 text-sm" key={task}><span className="truncate font-semibold">{task}</span><span className={`shrink-0 rounded px-2 py-1 text-[11px] font-black ${index < 2 ? "bg-teal-50 text-teal-700" : "bg-blue-50 text-blue-700"}`}>{index < 2 ? (en ? "Active" : "진행중") : (en ? "Planned" : "예정")}</span></div>)}
+              {(en ? ["Activity data submission", "Emission calculation review", "Annual report approval", "Evidence supplementation"] : ["활동자료 제출 요청", "배출량 산정 검토", "연간 보고서 승인", "증빙자료 보완"]).map((task, index) => <div className="flex items-center justify-between gap-3 py-3 text-sm" key={task}><span className="truncate font-semibold">{task}</span><span className={`shrink-0 rounded px-2 py-1 text-[11px] font-black ${index < 2 ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}>{index < 2 ? (en ? "Active" : "진행중") : (en ? "Planned" : "예정")}</span></div>)}
             </div>
             <div className="flex items-center gap-2 text-sm font-bold text-[var(--kr-gov-blue)]">
               <span className="material-symbols-outlined">trending_up</span>
