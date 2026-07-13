@@ -27,7 +27,7 @@ export function HomeLandingPage() {
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const payloadState = useAsyncValue<HomePayload>(
-    () => fetchHomePayload(),
+    () => initialPayload && !initialPayload.isLoggedIn ? Promise.resolve(initialPayload) : fetchHomePayload(),
     [en],
     {
       initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
