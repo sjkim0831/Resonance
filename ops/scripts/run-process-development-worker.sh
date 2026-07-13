@@ -47,7 +47,7 @@ with candidate as (
  from candidate c where j.job_id=c.job_id
  returning j.*
 )
-select job_id||E'\t'||process_code||E'\t'||step_code||E'\t'||job_type||E'\t'||coalesce(target_path,'')||E'\t'||encode(convert_to(coalesce(specification_json,'{}'),'UTF8'),'base64')||E'\t'||attempt_count from claimed;
+select job_id||E'\t'||process_code||E'\t'||step_code||E'\t'||job_type||E'\t'||coalesce(target_path,'')||E'\t'||replace(encode(convert_to(coalesce(specification_json,'{}'),'UTF8'),'base64'),E'\n','')||E'\t'||attempt_count from claimed;
 SQL
 )
 
