@@ -162,7 +162,7 @@ if printf '%s\n' "$CHANGED" | grep -q 'projects/carbonet-frontend/source/'; then
   "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 || fail_job "frontend type check failed"
 fi
 if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(apps|modules)/.*\.(java|kt|sql|xml)$'; then
-  (cd "$WT" && ./gradlew :apps:carbonet-api:compileJava --no-daemon) >>"$LOG_FILE" 2>&1 || fail_job "backend compile failed"
+  (cd "$WT" && bash ./gradlew :apps:carbonet-api:compileJava --no-daemon) >>"$LOG_FILE" 2>&1 || fail_job "backend compile failed"
 fi
 while IFS= read -r json; do jq empty "$WT/$json" >>"$LOG_FILE" 2>&1 || fail_job "invalid JSON: $json"; done < <(printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -E '\.json$' || true)
 
