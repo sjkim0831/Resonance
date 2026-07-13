@@ -39,6 +39,7 @@ export function EmissionProjectListMigrationPage() {
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({ name: "", site: "", period: "", scope: "Scope 1·2", owner: "", dueDate: "" });
   const payload = payloadState.value || emptyPayload;
+  const initialProjectPayload = useMemo<ProjectPayload>(() => ({ items: PROJECTS, total: PROJECTS.length, page: 1, size: 10, summary: [], sites: Array.from(new Set(PROJECTS.map((row) => row.site))) }), []);
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
@@ -50,7 +51,7 @@ export function EmissionProjectListMigrationPage() {
     const response = await fetch(`${buildLocalizedPath("/home/api/emission-projects", "/en/home/api/emission-projects")}?${search}`, { credentials: "include" });
     if (!response.ok) throw new Error(en ? "Could not load projects." : "프로젝트 목록을 불러오지 못했습니다.");
     return response.json();
-  }, [en, keyword, status, site, pageIndex], { initialValue: { items: PROJECTS, total: PROJECTS.length, page: 1, size: 10, summary: [], sites: Array.from(new Set(PROJECTS.map((row) => row.site))) } });
+  }, [en, keyword, status, site, pageIndex], { initialValue: initialProjectPayload });
   const projectData = projectState.value || { items: [], total: 0, page: 1, size: 10, summary: [], sites: [] };
   const rows = projectData.items;
   const sites = projectData.sites;
