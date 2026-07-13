@@ -3,12 +3,18 @@ package egovframework.com.feature.home.service;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import javax.sql.DataSource;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.io.InputStream;
 
 @Service
 public class EmissionProjectRegistryService {
@@ -50,6 +56,59 @@ public class EmissionProjectRegistryService {
         result.put("members", jdbc.queryForList("SELECT member_name AS \"name\",role_code AS \"role\" FROM emission_project_member WHERE project_id=? ORDER BY created_at", id));
         result.put("history", jdbc.queryForList("SELECT event_type AS \"type\",event_description AS \"description\",actor_name AS \"actor\",created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? ORDER BY created_at DESC LIMIT 30", id));
         return result;
+    }
+
+    public Map<String,Object> activities(String projectId,String keyword) {
+        detail(projectId);
+        String term=keyword==null?"":keyword.trim(), like="%"+term+"%";
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("project", detail(projectId));
+        result.put("items",jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND (?='' OR a.activity_name ILIKE ? OR a.category ILIKE ?) ORDER BY a.activity_period DESC,a.activity_id DESC",projectId,term,like,like));
+        result.put("factors",jdbc.queryForList("SELECT factor_id AS \"id\",factor_name AS \"name\",category,unit,factor_value AS \"value\",source_name AS \"source\" FROM emission_factor_reference ORDER BY category,factor_name"));
+        return result;
+    }
+
+    @Transactional
+    public long saveActivity(String projectId,Map<String,Object> body) {
+        detail(projectId);
+        String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
+        double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
+        String note=String.valueOf(body.getOrDefault("note","")).trim();
+        Long id=jdbc.queryForObject("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?) RETURNING activity_id",Long.class,projectId,name,category,period,quantity,unit,note);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'ACTIVITY_ADDED',?||' 활동자료가 등록되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,name,projectId);
+        return id==null?0:id;
+    }
+
+    @Transactional
+    public int mapFactor(String projectId,long activityId,String factorId) {
+        int changed=jdbc.update("UPDATE emission_activity_data SET factor_id=?,mapping_status='MAPPED',updated_at=current_timestamp WHERE project_id=? AND activity_id=?",factorId,projectId,activityId);
+        if(changed==0) throw new IllegalArgumentException("활동자료를 찾을 수 없습니다.");
+        return changed;
+    }
+
+    @Transactional
+    public int autoMap(String projectId) {
+        int changed=jdbc.update("UPDATE emission_activity_data a SET factor_id=(SELECT r.factor_id FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category ORDER BY CASE WHEN r.unit=a.unit THEN 0 ELSE 1 END,r.factor_id LIMIT 1),mapping_status='MAPPED',updated_at=current_timestamp WHERE a.project_id=? AND a.factor_id IS NULL AND EXISTS (SELECT 1 FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category)",projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'FACTOR_MAPPING',?||'건의 배출계수가 자동 매핑되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(changed),projectId);
+        return changed;
+    }
+
+    @Transactional
+    public int uploadActivities(String projectId,MultipartFile file) throws Exception {
+        detail(projectId); if(file==null||file.isEmpty()) throw new IllegalArgumentException("엑셀 파일을 선택해 주세요.");
+        int count=0; DataFormatter formatter=new DataFormatter();
+        try(InputStream in=file.getInputStream(); XSSFWorkbook workbook=new XSSFWorkbook(in)) {
+            Sheet sheet=workbook.getSheetAt(0);
+            for(int index=1;index<=sheet.getLastRowNum();index++) { Row row=sheet.getRow(index); if(row==null) continue;
+                String name=formatter.formatCellValue(row.getCell(0)).trim(); if(name.isEmpty()) continue;
+                String category=formatter.formatCellValue(row.getCell(1)).trim(), period=formatter.formatCellValue(row.getCell(2)).trim(), quantityText=formatter.formatCellValue(row.getCell(3)).replace(",","").trim(), unit=formatter.formatCellValue(row.getCell(4)).trim(), note=formatter.formatCellValue(row.getCell(5)).trim();
+                if(category.isEmpty()||period.isEmpty()||quantityText.isEmpty()||unit.isEmpty()) throw new IllegalArgumentException((index+1)+"행의 필수값을 확인해 주세요.");
+                double quantity=Double.parseDouble(quantityText);
+                jdbc.update("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?)",projectId,name,category,period,quantity,unit,note); count++;
+            }
+        }
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'EXCEL_UPLOADED',?||'건의 활동자료를 엑셀로 등록했습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(count),projectId);
+        return count;
     }
 
     @Transactional
