@@ -614,23 +614,9 @@ export function EmissionProjectListMigrationPage() {
       <div className="bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
         <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
-        <div className="bg-[var(--kr-gov-bg-gray)] border-b border-[var(--kr-gov-border-light)]">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img alt={en ? "Government symbol" : "대한민국 정부 상징"} className="h-4" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-              <span className="text-[12px] font-medium text-[var(--kr-gov-text-secondary)]">
-                {en ? "Official Government Service | Site Overseer Portal" : "대한민국 정부 공식 서비스 | 현장 감독관 전용 포털"}
-              </span>
-            </div>
-            <div className="hidden md:flex items-center gap-4 text-xs font-medium text-[var(--kr-gov-text-secondary)]">
-              <p>{en ? "Last update detected: just now" : "마지막 업데이트 탐지: 방금 전"}</p>
-            </div>
-          </div>
-        </div>
-
-        <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50 shadow-sm">
+        <header className="fixed inset-x-0 top-0 z-50 border-b-2 border-[#001e40] bg-white">
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <div className="relative flex items-center h-24">
+            <div className="relative flex h-16 items-center">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
               <HeaderBrand content={content} en={en} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
@@ -662,6 +648,7 @@ export function EmissionProjectListMigrationPage() {
             </div>
           </div>
         </header>
+        <div className="h-16" aria-hidden="true" />
         <div id="mobile-menu" className={`${mobileMenuOpen ? "" : "hidden"} xl:hidden fixed inset-0 z-[70]`} aria-hidden={!mobileMenuOpen}>
           <button type="button" id="mobile-menu-backdrop" className="absolute inset-0 bg-black/50" aria-label={content.closeAllMenu} onClick={() => setMobileMenuOpen(false)} />
           <HeaderMobileMenu
