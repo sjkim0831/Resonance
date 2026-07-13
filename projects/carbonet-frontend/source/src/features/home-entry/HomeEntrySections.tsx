@@ -237,7 +237,7 @@ type SearchSectionProps = {
   homeMenu: HomeMenuItem[];
 };
 
-type SearchCandidate = {
+export type SearchCandidate = {
   label: string;
   description?: string;
   href: string;
@@ -361,7 +361,7 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase().replace(/#/g, "");
 }
 
-function buildSearchCandidates(content: LocalizedHomeContent, homeMenu: HomeMenuItem[], en: boolean) {
+export function buildSearchCandidates(content: LocalizedHomeContent, homeMenu: HomeMenuItem[], en: boolean) {
   const menuCandidates = homeMenu.flatMap((top) => {
     const topHref = top.url || top.sections?.flatMap((section) => section.items || []).find((item) => item.url)?.url;
     const topItem = top.label && topHref ? [{ label: top.label, href: topHref, tone: "menu" as const }] : [];
@@ -427,7 +427,8 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
       navigate(preferredLink.href);
       return;
     }
-    if (typeof nextQuery === "string") setQuery(nextQuery);
+    const targetQuery = typeof nextQuery === "string" ? nextQuery : query;
+    navigate(buildLocalizedPath(`/search?q=${encodeURIComponent(targetQuery.trim())}`, `/en/search?q=${encodeURIComponent(targetQuery.trim())}`));
   }
 
   return (
