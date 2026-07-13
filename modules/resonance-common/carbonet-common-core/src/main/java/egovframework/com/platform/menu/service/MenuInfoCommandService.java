@@ -6,5 +6,7 @@ public interface MenuInfoCommandService {
 
     void saveMenuExposure(String menuCode, String expsrAt) throws Exception;
 
+    void saveMenuActivation(String menuCode, String useAt) throws Exception;
+
     void saveDependentScreen(String menuCode, String dependentScreenCode) throws Exception;
 }

@@ -18,6 +18,7 @@ public class RuntimeCommandGatewayServiceImpl implements RuntimeCommandGatewaySe
     private static final Set<String> BUILT_IN_COMMANDS = Set.of(
             "admin.menu.updatePage",
             "admin.menu.toggleExposure",
+            "admin.menu.toggleActivation",
             "admin.menu.updateDependentScreen"
     );
 
@@ -59,6 +60,8 @@ public class RuntimeCommandGatewayServiceImpl implements RuntimeCommandGatewaySe
                 return updateMenuPage(commandId, params, actorId);
             case "admin.menu.toggleExposure":
                 return toggleMenuExposure(commandId, params);
+            case "admin.menu.toggleActivation":
+                return toggleMenuActivation(commandId, params);
             case "admin.menu.updateDependentScreen":
                 return updateDependentScreen(commandId, params);
             default:
@@ -98,6 +101,15 @@ public class RuntimeCommandGatewayServiceImpl implements RuntimeCommandGatewaySe
         String normalizedExposure = "Y".equals(expsrAt) ? "Y" : "N";
         menuInfoService.saveMenuExposure(menuCode, normalizedExposure);
         return success(commandId, Map.of("menuCode", menuCode, "expsrAt", normalizedExposure));
+    }
+
+    private Map<String, Object> toggleMenuActivation(String commandId, Map<String, Object> params) throws Exception {
+        String menuCode = firstNonBlank(safe(params.get("menuCode")), safe(params.get("code"))).toUpperCase(Locale.ROOT);
+        String useAt = safe(params.get("useAt")).toUpperCase(Locale.ROOT);
+        if (menuCode.isEmpty() || useAt.isEmpty()) return failure(commandId, "menuCode and useAt are required");
+        String normalizedUseAt = "Y".equals(useAt) ? "Y" : "N";
+        menuInfoService.saveMenuActivation(menuCode, normalizedUseAt);
+        return success(commandId, Map.of("menuCode", menuCode, "useAt", normalizedUseAt));
     }
 
     private Map<String, Object> updateDependentScreen(String commandId, Map<String, Object> params) throws Exception {

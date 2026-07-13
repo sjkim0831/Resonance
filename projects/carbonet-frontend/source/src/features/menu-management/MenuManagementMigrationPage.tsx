@@ -129,6 +129,7 @@ function EditableMenuItem({
   onMobileDragStart,
   onMobileDrop,
   onToggleVisibility,
+  onToggleActivation,
   onOpenDependentScreen,
   children
 }: {
@@ -144,6 +145,7 @@ function EditableMenuItem({
   onMobileDragStart: (code: string) => void;
   onMobileDrop: (code: string) => void;
   onToggleVisibility: (code: string, currentExpsrAt: string) => void;
+  onToggleActivation: (code: string, currentUseAt: string) => void;
   onOpenDependentScreen: (code: string) => void;
   children: React.ReactNode;
 }) {
@@ -250,6 +252,11 @@ function EditableMenuItem({
               >
                 <span className="material-symbols-outlined text-[18px]">{node.expsrAt === "Y" ? "visibility" : "visibility_off"}</span>
               </button>
+              <button type="button" onClick={() => onToggleActivation(node.code, node.useAt || "Y")}
+                className={`p-1 ${node.useAt === "Y" ? "text-green-600 hover:text-amber-700" : "text-gray-400 hover:text-green-700"}`}
+                title={node.useAt === "Y" ? (en ? "Deactivate menu" : "메뉴 비활성") : (en ? "Activate menu" : "메뉴 활성")}>
+                <span className="material-symbols-outlined text-[18px]">{node.useAt === "Y" ? "toggle_on" : "toggle_off"}</span>
+              </button>
               {node.dependentScreenCode && (
                 <span className="gov-chip bg-blue-100 text-blue-700 text-xs" title={en ? "Mapped screen" : "매핑된 화면"}>
                   {node.dependentScreenCode}
@@ -322,6 +329,7 @@ function MenuTree({
   onMobileDragStart,
   onMobileDrop,
   onToggleVisibility,
+  onToggleActivation,
   onOpenDependentScreen,
   depth = 0
 }: {
@@ -336,6 +344,7 @@ function MenuTree({
   onMobileDragStart: (code: string) => void;
   onMobileDrop: (targetCode: string) => void;
   onToggleVisibility: (code: string, currentExpsrAt: string) => void;
+  onToggleActivation: (code: string, currentUseAt: string) => void;
   onOpenDependentScreen: (code: string) => void;
   depth?: number;
 }) {
@@ -356,6 +365,7 @@ function MenuTree({
           onMobileDragStart={onMobileDragStart}
           onMobileDrop={onMobileDrop}
           onToggleVisibility={onToggleVisibility}
+          onToggleActivation={onToggleActivation}
           onOpenDependentScreen={onOpenDependentScreen}
         >
           {node.children.length > 0 && expandedCodes.has(node.code) && (
@@ -371,6 +381,7 @@ function MenuTree({
               onMobileDragStart={onMobileDragStart}
               onMobileDrop={onMobileDrop}
               onToggleVisibility={onToggleVisibility}
+              onToggleActivation={onToggleActivation}
               onOpenDependentScreen={onOpenDependentScreen}
               depth={depth + 1}
             />
@@ -1114,6 +1125,26 @@ export function MenuManagementMigrationPage() {
     });
   };
 
+  const handleToggleActivation = async (code: string, currentUseAt: string) => {
+    const nextUseAt = currentUseAt === "Y" ? "N" : "Y";
+    if (nextUseAt === "N" && !window.confirm(en
+      ? "Deactivate this menu? Direct URL access and connected functions will stop."
+      : "이 메뉴를 비활성화하시겠습니까? URL 직접 접근과 연결 기능도 중지됩니다.")) return;
+    setActionError(""); setActionMessage("");
+    try {
+      await postLocalizedValidatedJson("/admin/system/runtime-command/execute", "/en/admin/system/runtime-command/execute", {
+        commandId: "admin.menu.toggleActivation", params: { menuType, menuCode: code, useAt: nextUseAt }
+      }, en ? "Failed to update activation." : "메뉴 활성 상태 변경에 실패했습니다.");
+      const update = (nodes: MenuNode[]): MenuNode[] => nodes.map((node) => node.code === code
+        ? { ...node, useAt: nextUseAt }
+        : { ...node, children: update(node.children) });
+      setTreeData(update);
+      refreshAdminMenuTree();
+      setActionMessage(nextUseAt === "Y" ? (en ? "Menu activated." : "메뉴가 활성화되었습니다.") : (en ? "Menu deactivated." : "메뉴가 비활성화되었습니다."));
+      await pageState.reload();
+    } catch (error) { setActionError(error instanceof Error ? error.message : String(error)); }
+  };
+
   const handleOpenDependentScreen = (code: string) => {
     const findNode = (nodes: MenuNode[]): MenuNode | null => {
       for (const node of nodes) {
@@ -1517,6 +1548,7 @@ const handleSaveOrder = async () => {
                     onMobileDragStart={handleMobileDragStart}
                     onMobileDrop={handleMobileDrop}
                     onToggleVisibility={handleToggleVisibility}
+                    onToggleActivation={handleToggleActivation}
                     onOpenDependentScreen={handleOpenDependentScreen}
                   />
                 )}

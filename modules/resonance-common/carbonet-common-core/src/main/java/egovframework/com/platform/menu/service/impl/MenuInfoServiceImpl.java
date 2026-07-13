@@ -69,6 +69,12 @@ public class MenuInfoServiceImpl extends EgovAbstractServiceImpl implements Menu
     }
 
     @Override
+    public void saveMenuActivation(String menuCode, String useAt) {
+        menuInfoMapper.updateMenuActivation(menuCode, useAt);
+        invalidateMenuTreeCache();
+    }
+
+    @Override
     public void saveDependentScreen(String menuCode, String dependentScreenCode) {
         if (menuInfoMapper.countMenuInfoByMenuCode(menuCode) > 0) {
             menuInfoMapper.updateDependentScreen(menuCode, dependentScreenCode);

@@ -55,6 +55,9 @@ public class MenuInfoMapper extends BaseMapperSupport {
     public void updateMenuExposure(String menuCode, String expsrAt) {
         update("MenuInfoMapper.updateMenuExposure", Map.of("menuCode", menuCode, "expsrAt", expsrAt));
     }
+    public void updateMenuActivation(String menuCode, String useAt) {
+        update("MenuInfoMapper.updateMenuActivation", Map.of("menuCode", menuCode, "useAt", useAt));
+    }
 
     public int countMenuInfoByMenuCode(String menuCode) {
         Integer count = selectOne("MenuInfoMapper.countMenuInfoByMenuCode", menuCode);

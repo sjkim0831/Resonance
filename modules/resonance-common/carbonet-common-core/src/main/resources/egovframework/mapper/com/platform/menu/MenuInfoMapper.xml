@@ -178,6 +178,16 @@
         WHERE MENU_CODE = #{menuCode}
     </update>
 
+    <update id="updateMenuActivation">
+        WITH UPDATED_MENU AS (
+            UPDATE COMTNMENUINFO SET USE_AT=#{useAt}, LAST_UPDT_PNTTM=CURRENT_TIMESTAMP
+            WHERE MENU_CODE=#{menuCode} RETURNING MENU_CODE
+        )
+        UPDATE COMTCCMMNDETAILCODE D
+        SET USE_AT=#{useAt}, LAST_UPDT_PNTTM=CURRENT_TIMESTAMP, LAST_UPDUSR_ID='MENU_ACTIVATION'
+        FROM UPDATED_MENU M WHERE D.CODE=M.MENU_CODE
+    </update>
+
     <select id="countMenuInfoByMenuCode" parameterType="string" resultType="int">
         SELECT COUNT(*)
         FROM COMTNMENUINFO
