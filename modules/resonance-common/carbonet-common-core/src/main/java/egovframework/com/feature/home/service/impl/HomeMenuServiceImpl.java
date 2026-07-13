@@ -27,39 +27,16 @@ public class HomeMenuServiceImpl implements HomeMenuService {
     private static final Map<String, String> HOME_MENU_LABEL_OVERRIDES_EN = buildMenuLabelOverridesEn();
 
     private final MenuInfoReadPort menuInfoReadPort;
-    private final Object snapshotMonitor = new Object();
-    private volatile CachedHomeMenuSnapshot koreanSnapshot;
-    private volatile CachedHomeMenuSnapshot englishSnapshot;
-
     @Override
     public List<HomeMenuNode> getHomeMenu(boolean isEn) {
         try {
-            return resolveSnapshot(isEn);
+            // Home navigation is runtime-managed DB data. Reading it directly
+            // prevents one pod from serving a stale menu after Menu Management
+            // changes exposure, activation, hierarchy, or order.
+            return buildHomeMenu(isEn);
         } catch (Exception e) {
             log.error("Failed to build home menu. isEn={}", isEn, e);
             return Collections.emptyList();
-        }
-    }
-
-    private List<HomeMenuNode> resolveSnapshot(boolean isEn) {
-        long version = menuInfoReadPort.getMenuTreeVersion();
-        CachedHomeMenuSnapshot cached = isEn ? englishSnapshot : koreanSnapshot;
-        if (cached != null && cached.version == version) {
-            return cloneMenuNodes(cached.nodes);
-        }
-        synchronized (snapshotMonitor) {
-            cached = isEn ? englishSnapshot : koreanSnapshot;
-            if (cached != null && cached.version == version) {
-                return cloneMenuNodes(cached.nodes);
-            }
-            List<HomeMenuNode> snapshot = buildHomeMenu(isEn);
-            CachedHomeMenuSnapshot refreshed = new CachedHomeMenuSnapshot(version, cloneMenuNodes(snapshot));
-            if (isEn) {
-                englishSnapshot = refreshed;
-            } else {
-                koreanSnapshot = refreshed;
-            }
-            return cloneMenuNodes(refreshed.nodes);
         }
     }
 

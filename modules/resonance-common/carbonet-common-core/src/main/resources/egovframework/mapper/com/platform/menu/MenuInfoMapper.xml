@@ -155,10 +155,20 @@
     </update>
 
     <update id="updateMenuExposure">
-        UPDATE COMTNMENUINFO
-        SET EXPSR_AT = #{expsrAt},
-            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
-        WHERE MENU_CODE = #{menuCode}
+        WITH UPDATED_MENU AS (
+            UPDATE COMTNMENUINFO
+            SET EXPSR_AT = #{expsrAt},
+                USE_AT = CASE WHEN #{expsrAt} = 'Y' THEN 'Y' ELSE USE_AT END,
+                LAST_UPDT_PNTTM = CURRENT_TIMESTAMP
+            WHERE MENU_CODE = #{menuCode}
+            RETURNING MENU_CODE
+        )
+        UPDATE COMTCCMMNDETAILCODE D
+        SET USE_AT = CASE WHEN #{expsrAt} = 'Y' THEN 'Y' ELSE D.USE_AT END,
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
+            LAST_UPDUSR_ID = 'MENU_EXPOSURE'
+        FROM UPDATED_MENU M
+        WHERE D.CODE = M.MENU_CODE
     </update>
 
     <update id="updateDependentScreen">
