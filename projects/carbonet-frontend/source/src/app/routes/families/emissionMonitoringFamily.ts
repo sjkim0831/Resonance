@@ -59,6 +59,7 @@ const EMISSION_MONITORING_ROUTE_DEFINITIONS = [
   { id: "co2-search", label: "MRV 정보", group: "home", koPath: "/co2/search", enPath: "/en/co2/search" },
   { id: "emission-home-validate", label: "검증·보정", group: "home", koPath: "/emission/validate", enPath: "/en/emission/validate" },
   { id: "emission-project-create", label: "새 프로젝트 등록", group: "home", koPath: "/emission/project/create", enPath: "/en/emission/project/create" },
+  { id: "emission-project-detail", label: "배출량 프로젝트 상세", group: "home", koPath: "/emission/project/detail", enPath: "/en/emission/project/detail" },
 ] as const satisfies RouteDefinitionsOf;
 
 const EMISSION_MONITORING_PAGE_UNITS = [
@@ -119,6 +120,7 @@ const EMISSION_MONITORING_PAGE_UNITS = [
   { id: "co2-search", exportName: "Co2SearchMigrationPage", loader: () => import("../../../features/co2-search/Co2SearchMigrationPage") },
   { id: "emission-home-validate", exportName: "EmissionHomeValidateMigrationPage", loader: () => import("../../../features/emission-home-validate/EmissionHomeValidateMigrationPage") },
   { id: "emission-project-create", exportName: "EmissionProjectCreatePage", loader: () => import("../../../features/emission-project-list/EmissionProjectCreatePage") },
+  { id: "emission-project-detail", exportName: "EmissionProjectDetailPage", loader: () => import("../../../features/emission-project-list/EmissionProjectDetailPage") },
 ] as const satisfies PageUnitsOf<typeof EMISSION_MONITORING_ROUTE_DEFINITIONS>;
 
 export const EMISSION_MONITORING_FAMILY = createRouteFamily(EMISSION_MONITORING_ROUTE_DEFINITIONS, EMISSION_MONITORING_PAGE_UNITS, {

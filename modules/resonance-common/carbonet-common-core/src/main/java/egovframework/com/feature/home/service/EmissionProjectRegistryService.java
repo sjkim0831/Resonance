@@ -42,6 +42,26 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
+    public Map<String, Object> detail(String id) {
+        List<Map<String, Object>> projects = jdbc.queryForList("SELECT project_id AS \"id\",project_name AS \"name\",site_name AS \"site\",calculation_period AS \"period\",scope_name AS \"scope\",owner_name AS \"owner\",progress_percent AS \"progress\",current_step AS \"step\",due_date AS \"dueDate\",project_status AS \"status\",reporting_year AS \"reportingYear\",period_start AS \"periodStart\",period_end AS \"periodEnd\" FROM emission_project_registry WHERE project_id=?", id);
+        if (projects.isEmpty()) throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
+        Map<String, Object> result = new LinkedHashMap<>(projects.get(0));
+        result.put("tasks", jdbc.queryForList("SELECT task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
+        result.put("members", jdbc.queryForList("SELECT member_name AS \"name\",role_code AS \"role\" FROM emission_project_member WHERE project_id=? ORDER BY created_at", id));
+        result.put("history", jdbc.queryForList("SELECT event_type AS \"type\",event_description AS \"description\",actor_name AS \"actor\",created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? ORDER BY created_at DESC LIMIT 30", id));
+        return result;
+    }
+
+    @Transactional
+    public String copy(String sourceId) {
+        Map<String, Object> source = detail(sourceId);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", source.get("name") + " - 복사본"); body.put("site", source.get("site")); body.put("owner", source.get("owner"));
+        body.put("reportingYear", source.get("reportingYear")); body.put("periodStart", source.get("periodStart")); body.put("periodEnd", source.get("periodEnd")); body.put("dueDate", source.get("dueDate"));
+        body.put("scopes", List.of(String.valueOf(source.get("scope")).split("·")));
+        return create(body);
+    }
+
     @Transactional
     public String create(Map<String, Object> body) {
         String name = required(body, "name"), site = required(body, "site"), owner = required(body, "owner");

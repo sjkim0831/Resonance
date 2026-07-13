@@ -27,6 +27,19 @@ public class EmissionProjectRegistryController {
     @GetMapping({"/home/api/emission-projects/name-availability", "/en/home/api/emission-projects/name-availability"})
     public Map<String, Object> nameAvailability(@RequestParam String name) { return Map.of("available", service.nameAvailable(name)); }
 
+    @GetMapping({"/home/api/emission-projects/{id}", "/en/home/api/emission-projects/{id}"})
+    public ResponseEntity<?> detail(@PathVariable String id) {
+        try { return ResponseEntity.ok(service.detail(id)); }
+        catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }
+    }
+
+    @PostMapping({"/home/api/emission-projects/{id}/copy", "/en/home/api/emission-projects/{id}/copy"})
+    public ResponseEntity<?> copy(@PathVariable String id, HttpServletRequest request) {
+        if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
+        try { return ResponseEntity.ok(Map.of("success", true, "id", service.copy(id))); }
+        catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }
+    }
+
     @PostMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
