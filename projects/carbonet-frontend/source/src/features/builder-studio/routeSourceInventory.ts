@@ -2833,6 +2833,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
+    "routeId": "system-design-governance",
+    "label": "설계 완성도",
+    "group": "admin",
+    "koPath": "/admin/system/design-governance",
+    "enPath": "/en/admin/system/design-governance",
+    "exportName": "SystemDesignGovernancePage",
+    "sourcePath": "features/system-design-governance/SystemDesignGovernancePage.tsx",
+    "effectiveExportName": "SystemDesignGovernancePage",
+    "effectiveSourcePath": "features/system-design-governance/SystemDesignGovernancePage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
     "routeId": "system-resources",
     "label": "시스템 리소스 관리",
     "group": "admin",

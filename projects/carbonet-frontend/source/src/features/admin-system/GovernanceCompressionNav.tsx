@@ -59,6 +59,14 @@ const SYSTEM_GOVERNANCE_NAV_ITEMS: GovernanceNavItem[] = [
     icon: "timeline"
   },
   {
+    id: "design",
+    labelKo: "설계 완성도",
+    labelEn: "Design Coverage",
+    koPath: "/admin/system/design-governance",
+    enPath: "/en/admin/system/design-governance",
+    icon: "fact_check"
+  },
+  {
     id: "assignment",
     labelKo: "화면 메뉴 귀속 관리",
     labelEn: "Screen Menu Binding",

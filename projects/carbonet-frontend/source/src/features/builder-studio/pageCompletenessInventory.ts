@@ -4233,6 +4233,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/system-design-governance/SystemDesignGovernancePage.tsx",
+    "effectiveSourcePath": "features/system-design-governance/SystemDesignGovernancePage.tsx",
+    "effectiveSourcePaths": [
+      "features/system-design-governance/SystemDesignGovernancePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "SystemDesignGovernancePage"
+    ],
+    "routeIds": [
+      "system-design-governance"
+    ],
+    "routeCount": 1,
+    "status": "delegated",
+    "lineCount": 25,
+    "reason": "라우트는 공통 구현으로 위임됩니다. 위임 대상 화면의 기능으로 관리합니다.",
+    "hasAsyncData": false,
+    "hasForm": false,
+    "hasTable": true,
+    "hasBuilderLink": true
+  },
+  {
     "sourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
     "effectiveSourcePath": "features/system-infra/InfraManagementMigrationPage.tsx",
     "effectiveSourcePaths": [

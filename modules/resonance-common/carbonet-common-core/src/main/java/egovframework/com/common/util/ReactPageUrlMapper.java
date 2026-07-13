@@ -60,6 +60,7 @@ public final class ReactPageUrlMapper {
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin", "/admin/emission/survey-admin", "/admin/emission/survey-admin");
 registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", "/admin/emission/survey-admin-data", "/admin/emission/survey-admin-data");
         registerAdmin(adminPathToRoute, adminRouteToPath, "builder-studio", "/admin/system/builder-studio", "/admin/system/builder-studio");
+        registerAdmin(adminPathToRoute, adminRouteToPath, "system-design-governance", "/admin/system/design-governance", "/admin/system/design-governance");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_list", "/emission/project_list", "/en/emission/project_list", "/emission/project_list");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_create", "/emission/project/create", "/en/emission/project/create", "/emission/project/create");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_detail", "/emission/project/detail", "/en/emission/project/detail", "/emission/project/detail");
