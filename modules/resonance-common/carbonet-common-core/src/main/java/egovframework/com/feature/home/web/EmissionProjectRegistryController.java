@@ -21,6 +21,12 @@ public class EmissionProjectRegistryController {
         return service.list(keyword, status, site, page);
     }
 
+    @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})
+    public Map<String, Object> options(@RequestParam(defaultValue = "") String keyword) { return service.options(keyword); }
+
+    @GetMapping({"/home/api/emission-projects/name-availability", "/en/home/api/emission-projects/name-availability"})
+    public Map<String, Object> nameAvailability(@RequestParam String name) { return Map.of("available", service.nameAvailable(name)); }
+
     @PostMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
