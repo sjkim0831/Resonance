@@ -109,6 +109,7 @@ If the specification is too broad, choose the highest-priority missing behavior 
 Do not recursively enumerate large reference or repository directories. Use targeted rg/find queries derived from the process and step codes.
 Start creating the bounded deliverable within 15 search/read tool calls. Finish the increment instead of continuing broad research.
 For REFERENCE_ANALYSIS, create or update a structured project-owned analysis artifact under the target path (or the nearest existing metadata/docs path) covering actors, flow, states, permissions, data/API contracts, screens, acceptance tests, reference evidence, and implementation gaps.
+When the job type is REFERENCE_ANALYSIS, your first repository mutation must happen before inspecting references: immediately create the artifact skeleton under docs/ai/70-reference/<process-code-lowercase>/<step-code-lowercase>.md, then perform only targeted research and fill that artifact. Do not postpone the first edit.
 PROMPT
 
 if timeout 45m kilo run "Implement the attached approved Resonance development job." \
