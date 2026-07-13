@@ -428,7 +428,7 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
       return;
     }
     const targetQuery = typeof nextQuery === "string" ? nextQuery : query;
-    navigate(buildLocalizedPath(`/search?q=${encodeURIComponent(targetQuery.trim())}`, `/en/search?q=${encodeURIComponent(targetQuery.trim())}`));
+    navigate(buildLocalizedPath(`/home/search?q=${encodeURIComponent(targetQuery.trim())}`, `/en/home/search?q=${encodeURIComponent(targetQuery.trim())}`));
   }
 
   return (

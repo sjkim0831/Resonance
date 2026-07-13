@@ -16,7 +16,7 @@ const CONTENT_SUPPORT_ROUTE_DEFINITIONS = [
   { id: "tag-management", label: "태그 관리", group: "admin", koPath: "/admin/content/tag", enPath: "/en/admin/content/tag" },
   { id: "admin-menu-placeholder", label: "관리자 메뉴 플레이스홀더", group: "admin", koPath: "/admin/placeholder", enPath: "/en/admin/placeholder" },
   { id: "support-index", label: "고객지원 대시보드", group: "home", koPath: "/support/index", enPath: "/en/support/index" },
-  { id: "integrated-search", label: "통합검색", group: "home", koPath: "/search", enPath: "/en/search" },
+  { id: "integrated-search", label: "통합검색", group: "home", koPath: "/home/search", enPath: "/en/home/search" },
   { id: "download-list", label: "자료실", group: "home", koPath: "/support/download_list", enPath: "/en/support/download_list" },
   { id: "notice-list", label: "공지사항", group: "home", koPath: "/support/notice_list", enPath: "/en/support/notice_list" },
   { id: "qna-list", label: "지원 통합검색", group: "home", koPath: "/support/qna_list", enPath: "/en/support/qna_list" },

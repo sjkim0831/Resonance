@@ -46,6 +46,11 @@ public class HomePageController {
         return reactAppViewSupport.render(model, "home-certificate-verify", isEnglishRequest(request), false);
     }
 
+    @RequestMapping(value = { "/home/search", "/en/home/search" }, method = { RequestMethod.GET, RequestMethod.POST })
+    public String integratedSearch(HttpServletRequest request, Model model) {
+        return reactAppViewSupport.render(model, "integrated-search", isEnglishRequest(request), false);
+    }
+
     @RequestMapping(value = { "/ko/home" }, method = { RequestMethod.GET, RequestMethod.POST })
     public String legacyKoHome() {
         return "redirect:/home";
