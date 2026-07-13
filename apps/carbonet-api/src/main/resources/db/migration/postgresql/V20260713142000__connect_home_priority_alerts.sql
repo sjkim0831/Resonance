@@ -1,0 +1,2 @@
+UPDATE comtnmenuinfo SET menu_nm='주요 알림',menu_nm_en='Priority Alerts',menu_url='/home/alerts',menu_icon='notifications_active',use_at='Y',expsr_at='Y',last_updt_pnttm=current_timestamp WHERE menu_code='H1010103';
+UPDATE comtccmmndetailcode SET code_nm='주요 알림',code_dc='/home/alerts',use_at='Y',last_updt_pnttm=current_timestamp,last_updusr_id='HOME_ALERTS' WHERE code_id='HMENU1' AND code='H1010103';

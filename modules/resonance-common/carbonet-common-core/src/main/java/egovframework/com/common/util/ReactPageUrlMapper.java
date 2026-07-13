@@ -62,6 +62,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerAdmin(adminPathToRoute, adminRouteToPath, "builder-studio", "/admin/system/builder-studio", "/admin/system/builder-studio");
         registerAdmin(adminPathToRoute, adminRouteToPath, "system-design-governance", "/admin/system/design-governance", "/admin/system/design-governance");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_list", "/emission/project_list", "/en/emission/project_list", "/emission/project_list");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "home_alerts", "/home/alerts", "/en/home/alerts", "/home/alerts");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_create", "/emission/project/create", "/en/emission/project/create", "/emission/project/create");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_detail", "/emission/project/detail", "/en/emission/project/detail", "/emission/project/detail");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_my_tasks", "/emission/my-tasks", "/en/emission/my-tasks", "/emission/my-tasks");

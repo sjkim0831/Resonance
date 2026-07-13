@@ -2,6 +2,7 @@ import { createRouteFamily, type PageUnitsOf, type RouteDefinitionsOf } from "..
 import { buildManifestBackedRoutePageContracts } from "./manifestBackedPageContracts";
 
 const HOME_EXPERIENCE_ROUTE_DEFINITIONS = [
+  { id: "home-alerts", label: "주요 알림", group: "home", koPath: "/home/alerts", enPath: "/en/home/alerts" },
   { id: "join-company-register", label: "공개 회원사 등록", group: "join", koPath: "/join/companyRegister", enPath: "/join/en/companyRegister" },
   { id: "join-company-register-complete", label: "회원사 등록 완료", group: "join", koPath: "/join/companyRegisterComplete", enPath: "/join/en/companyRegisterComplete" },
   { id: "join-company-reapply", label: "반려 재신청", group: "join", koPath: "/join/companyReapply", enPath: "/join/en/companyReapply" },
@@ -36,6 +37,7 @@ const HOME_EXPERIENCE_ROUTE_DEFINITIONS = [
 ] as const satisfies RouteDefinitionsOf;
 
 const HOME_EXPERIENCE_PAGE_UNITS = [
+  { id: "home-alerts", exportName: "HomeAlertsPage", loader: () => import("../../../features/home-alerts/HomeAlertsPage") },
   { id: "edu-index", exportName: "EduIndexPage", loader: () => import("../../../features/major-menu-index/MajorMenuIndexPage") },
   { id: "edu-course-list", exportName: "EduCourseListMigrationPage", loader: () => import("../../../features/edu-course-list/EduCourseListMigrationPage") },
   { id: "edu-my-course", exportName: "EduMyCourseMigrationPage", loader: () => import("../../../features/edu-my-course/EduMyCourseMigrationPage") },

@@ -2457,6 +2457,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/home-alerts/HomeAlertsPage.tsx",
+    "effectiveSourcePath": "features/home-alerts/HomeAlertsPage.tsx",
+    "effectiveSourcePaths": [
+      "features/home-alerts/HomeAlertsPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "HomeAlertsPage"
+    ],
+    "routeIds": [
+      "home-alerts"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 15,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/home-entry/HomeCertificateVerifyPage.tsx",
     "effectiveSourcePath": "features/home-entry/HomeCertificateVerifyPage.tsx",
     "effectiveSourcePaths": [

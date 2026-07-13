@@ -1657,6 +1657,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/appOwnedFamily.ts"
   },
   {
+    "routeId": "home-alerts",
+    "label": "주요 알림",
+    "group": "home",
+    "koPath": "/home/alerts",
+    "enPath": "/en/home/alerts",
+    "exportName": "HomeAlertsPage",
+    "sourcePath": "features/home-alerts/HomeAlertsPage.tsx",
+    "effectiveExportName": "HomeAlertsPage",
+    "effectiveSourcePath": "features/home-alerts/HomeAlertsPage.tsx",
+    "routeFamilyFile": "app/routes/families/homeExperienceFamily.ts"
+  },
+  {
     "routeId": "home-certificate-verify",
     "label": "인증서 진위여부 확인",
     "group": "home",
