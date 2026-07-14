@@ -23,7 +23,8 @@ public class EmissionProjectRegistryController {
                                     @RequestParam(defaultValue = "") String status,
                                     @RequestParam(defaultValue = "") String site,
                                     @RequestParam(defaultValue = "1") int page,HttpServletRequest request) {
-        return service.list(tenant(currentUserContextService.resolve(request)),keyword,status,site,page);
+        var context=currentUserContextService.resolve(request);
+        return service.listForActor(tenant(context),context.getUserId(),context.isWebmaster(),keyword,status,site,page);
     }
 
     @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})
@@ -41,7 +42,8 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/copy", "/en/home/api/emission-projects/{id}/copy"})
     public ResponseEntity<?> copy(@PathVariable String id, HttpServletRequest request) {
         if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
-        try { return ResponseEntity.ok(Map.of("success",true,"id",service.copy(id,tenant(currentUserContextService.resolve(request))))); }
+        var context=currentUserContextService.resolve(request);
+        try { return ResponseEntity.ok(Map.of("success",true,"id",service.copy(id,tenant(context),context.getUserId(),context.isWebmaster()))); }
         catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }
     }
 
@@ -141,7 +143,9 @@ public class EmissionProjectRegistryController {
     @DeleteMapping({"/home/api/emission-projects/{id}", "/en/home/api/emission-projects/{id}"})
     public ResponseEntity<?> delete(@PathVariable String id, HttpServletRequest request) {
         if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
-        return ResponseEntity.ok(Map.of("success",service.delete(id,tenant(currentUserContextService.resolve(request)))>0));
+        var context=currentUserContextService.resolve(request);
+        try { return ResponseEntity.ok(Map.of("success",service.delete(id,tenant(context),context.getUserId(),context.isWebmaster())>0)); }
+        catch(SecurityException e) { return ResponseEntity.status(403).body(Map.of("success",false,"message",e.getMessage())); }
     }
 
     private boolean authenticated(HttpServletRequest request) {
@@ -161,8 +165,8 @@ public class EmissionProjectRegistryController {
         String remainder=uri.substring(marker+"/emission-projects/".length());
         String projectId=remainder.split("/",2)[0];
         if(projectId.isBlank()||"options".equals(projectId)||"name-availability".equals(projectId)) return;
-        try { service.assertTenantAccess(projectId,tenant(context)); }
-        catch(SecurityException e) { throw new ResponseStatusException(HttpStatus.FORBIDDEN,"PROJECT_TENANT_SCOPE_DENIED"); }
+        try { service.assertProjectParticipant(projectId,tenant(context),context.getUserId(),context.isWebmaster()); }
+        catch(SecurityException e) { throw new ResponseStatusException(HttpStatus.FORBIDDEN,e.getMessage()); }
     }
 
     @ExceptionHandler(ResponseStatusException.class)

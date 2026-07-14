@@ -38,6 +38,22 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
+    public Map<String,Object> listForActor(String tenantId,String actor,boolean override,String keyword,String status,String site,int page) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        String term=keyword==null?"":keyword.trim(),state=status==null?"":status.trim(),siteName=site==null?"":site.trim(),like="%"+term+"%";
+        int pageIndex=Math.max(1,page),size=10;
+        String access="p.tenant_id=? AND (? OR EXISTS (SELECT 1 FROM framework_project_actor_assignment a WHERE a.project_id=p.project_id AND lower(a.user_id)=lower(?) AND a.active_yn='Y'))";
+        String filters=" AND (?='' OR lower(p.project_id||' '||p.project_name||' '||p.site_name||' '||p.owner_name) LIKE lower(?)) AND (?='' OR p.project_status=?) AND (?='' OR p.site_name=?)";
+        Object[] args={tenant,override,user,term,like,state,state,siteName,siteName};
+        Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_project_registry p WHERE "+access+filters,Integer.class,args);
+        List<Object> itemArgs=new ArrayList<>(List.of(args)); itemArgs.add((pageIndex-1)*size);
+        List<Map<String,Object>> items=jdbc.queryForList("SELECT p.project_id AS \"id\",p.project_name AS \"name\",p.site_name AS \"site\",p.calculation_period AS \"period\",p.scope_name AS \"scope\",p.owner_name AS \"owner\",p.progress_percent AS \"progress\",p.current_step AS \"step\",p.due_date AS \"dueDate\",p.project_status AS \"status\" FROM emission_project_registry p WHERE "+access+filters+" ORDER BY p.due_date NULLS LAST,p.created_at DESC LIMIT 10 OFFSET ?",itemArgs.toArray());
+        Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("total",total==null?0:total);result.put("page",pageIndex);result.put("size",size);
+        result.put("summary",jdbc.queryForList("SELECT p.project_status AS status,count(*) AS count FROM emission_project_registry p WHERE "+access+" GROUP BY p.project_status",tenant,override,user));
+        result.put("sites",jdbc.queryForList("SELECT DISTINCT p.site_name FROM emission_project_registry p WHERE "+access+" ORDER BY p.site_name",String.class,tenant,override,user));
+        return result;
+    }
+
     public boolean nameAvailable(String tenantId,String name) {
         Integer count = jdbc.queryForObject("SELECT count(*) FROM emission_project_registry WHERE tenant_id=? AND lower(trim(project_name))=lower(trim(?))", Integer.class, requiredValue(tenantId,"tenantId"),name == null ? "" : name);
         return count == null || count == 0;
@@ -67,6 +83,14 @@ public class EmissionProjectRegistryService {
     public void assertTenantAccess(String projectId,String tenantId) {
         Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_project_registry WHERE project_id=? AND tenant_id=?",Integer.class,projectId,requiredValue(tenantId,"tenantId"));
         if(count==null||count==0) throw new SecurityException("PROJECT_TENANT_SCOPE_DENIED");
+    }
+
+    public void assertProjectParticipant(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccess(projectId,tenant);
+        if(override) return;
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment WHERE project_id=? AND lower(user_id)=lower(?) AND active_yn='Y'",Integer.class,projectId,user);
+        if(count==null||count==0) throw new SecurityException("PROJECT_ACTOR_SCOPE_DENIED");
     }
 
     public Map<String,Object> activities(String projectId,String keyword) {
@@ -485,8 +509,8 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public String copy(String sourceId,String tenantId) {
-        assertTenantAccess(sourceId,tenantId);
+    public String copy(String sourceId,String tenantId,String actor,boolean override) {
+        requireProjectActor(sourceId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
         Map<String, Object> source = detail(sourceId);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", source.get("name") + " - 복사본"); body.put("site", source.get("site")); body.put("owner", source.get("owner"));
@@ -526,7 +550,7 @@ public class EmissionProjectRegistryService {
         return id;
     }
 
-    @Transactional public int delete(String id,String tenantId) { String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(id,tenant); jdbc.update("DELETE FROM framework_account_actor_assignment WHERE project_id=? AND tenant_id=?",id,tenant); return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant); }
+    @Transactional public int delete(String id,String tenantId,String actor,boolean override) { String tenant=requiredValue(tenantId,"tenantId"); requireProjectActor(id,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override); jdbc.update("DELETE FROM framework_account_actor_assignment WHERE project_id=? AND tenant_id=?",id,tenant); return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant); }
     private String required(Map<String,Object> body,String key) { String value=String.valueOf(body.getOrDefault(key,"")).trim(); if(value.isEmpty()) throw new IllegalArgumentException(key+" is required"); return value; }
     private String requiredValue(String value,String key) { String normalized=value==null?"":value.trim(); if(normalized.isEmpty()) throw new IllegalArgumentException(key+" is required"); return normalized; }
 }
