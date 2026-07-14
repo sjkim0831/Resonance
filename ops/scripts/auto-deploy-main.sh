@@ -108,6 +108,20 @@ if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_file"; th
   exit 11
 fi
 
+# Backend-only and migration-only commits reuse the last verified immutable
+# frontend closure. Rebuilding TypeScript for such commits creates avoidable
+# I/O pressure and can starve the running Kubernetes workloads.
+skip_frontend=true
+while IFS= read -r changed_path; do
+  case "$changed_path" in
+    projects/carbonet-frontend/source/*|projects/carbonet-frontend/src/main/resources/static/*|projects/carbonet-assets/*|frontend/*)
+      skip_frontend=false
+      break
+      ;;
+  esac
+done < <(git diff --name-only "$current_commit" "$target_commit")
+echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] && echo no || echo yes)"
+
 git merge --ff-only "$target_commit"
 
 # Flyway is the only schema migration owner. Liquibase stays disabled to avoid
@@ -117,6 +131,7 @@ kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
   CARBONET_LIQUIBASE_ENABLED=false
 
 IMMUTABLE_FRONTEND_IMAGE=true \
+SKIP_FRONTEND="$skip_frontend" \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 
