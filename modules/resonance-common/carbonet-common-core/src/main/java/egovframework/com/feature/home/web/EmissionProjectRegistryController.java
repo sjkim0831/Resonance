@@ -58,6 +58,12 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/activities/auto-map","/en/home/api/emission-projects/{id}/activities/auto-map"})
     public ResponseEntity<?> autoMap(@PathVariable String id,HttpServletRequest request) { if(!authenticated(request))return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));return ResponseEntity.ok(Map.of("success",true,"count",service.autoMap(id))); }
 
+    @GetMapping({"/home/api/emission-projects/{id}/quality","/en/home/api/emission-projects/{id}/quality"})
+    public ResponseEntity<?> latestQuality(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.latestQuality(id,tenant(context)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/quality","/en/home/api/emission-projects/{id}/quality"})
+    public ResponseEntity<?> runQuality(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.runQuality(id,tenant(context),context.getUserId()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @GetMapping({"/home/api/emission-projects/{id}/submissions","/en/home/api/emission-projects/{id}/submissions"})
     public ResponseEntity<?> submissions(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.submissions(id,tenant(context)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 

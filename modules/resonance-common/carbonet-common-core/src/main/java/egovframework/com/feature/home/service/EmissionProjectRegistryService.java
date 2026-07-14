@@ -14,6 +14,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Set;
 import java.io.InputStream;
 
 @Service
@@ -162,6 +164,54 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
+    public Map<String,Object> latestQuality(String projectId,String tenantId) {
+        detail(projectId);
+        String tenant=requiredValue(tenantId,"tenantId");
+        List<Map<String,Object>> runs=jdbc.queryForList("SELECT run_id AS \"runId\",total_count AS \"totalCount\",blocking_count AS \"blockingCount\",warning_count AS \"warningCount\",quality_score AS \"score\",submit_ready AS \"submitReady\",executed_actor AS \"executedActor\",executed_at AS \"executedAt\" FROM emission_activity_quality_run WHERE tenant_id=? AND project_id=? ORDER BY executed_at DESC,run_id DESC LIMIT 1",tenant,projectId);
+        if(runs.isEmpty()) return Map.of("checked",false,"issues",List.of());
+        Map<String,Object> result=new LinkedHashMap<>(runs.get(0));
+        result.put("checked",true);
+        result.put("issues",qualityIssues(((Number)runs.get(0).get("runId")).longValue()));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> runQuality(String projectId,String tenantId,String actor) {
+        Map<String,Object> project=detail(projectId);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",projectId);
+        List<QualityIssue> issues=new ArrayList<>();
+        Set<String> allowedUnits=Set.of("L","Nm3","kWh","ton","kg","km","m3","GJ","MJ");
+        String start=text(project.get("periodStart")),end=text(project.get("periodEnd"));
+        for(Map<String,Object> row:activities) {
+            long id=((Number)row.get("id")).longValue();
+            String name=text(row.get("name")),category=text(row.get("category")),period=text(row.get("period")),unit=text(row.get("unit")),note=text(row.get("note"));
+            if(name.isBlank()) issues.add(issue(id,"REQUIRED_NAME","BLOCKING","name","활동자료명이 없습니다.","원본 행에서 활동자료명을 입력하세요."));
+            if(category.isBlank()) issues.add(issue(id,"REQUIRED_CATEGORY","BLOCKING","category","구분이 없습니다.","원본 행에서 활동자료 구분을 선택하세요."));
+            if(row.get("quantity")==null) issues.add(issue(id,"REQUIRED_QUANTITY","BLOCKING","quantity","활동량이 없습니다.","0 이상의 활동량을 입력하세요."));
+            else if(((Number)row.get("quantity")).doubleValue()==0) issues.add(issue(id,"ZERO_QUANTITY","WARNING","quantity","활동량이 0입니다.","실제 활동이 없었는지 확인하고 근거를 비고에 남기세요."));
+            if(unit.isBlank()||!allowedUnits.contains(unit)) issues.add(issue(id,"INVALID_UNIT","BLOCKING","unit","지원하지 않는 단위입니다: "+(unit.isBlank()?"(없음)":unit),"L, Nm3, kWh, ton, kg, km, m3, GJ, MJ 중 올바른 단위를 선택하세요."));
+            if(row.get("factorId")==null) issues.add(issue(id,"UNMAPPED_FACTOR","BLOCKING","factorId","배출계수가 매핑되지 않았습니다.","배출계수 매핑 탭에서 적합한 계수를 선택하세요."));
+            else if(row.get("factorUnit")!=null&&!unit.equals(text(row.get("factorUnit")))) issues.add(issue(id,"FACTOR_UNIT_MISMATCH","BLOCKING","factorId","활동자료 단위와 배출계수 단위가 다릅니다.","단위를 정정하거나 동일 단위의 배출계수를 다시 매핑하세요."));
+            if(note.isBlank()) issues.add(issue(id,"MISSING_EVIDENCE","WARNING","note","증빙 또는 산정 근거가 없습니다.","증빙자료 설명이나 원본 문서 식별 정보를 입력하세요."));
+            if(!period.matches("\\d{4}-(0[1-9]|1[0-2])")) issues.add(issue(id,"INVALID_PERIOD","BLOCKING","period","기간 형식이 올바르지 않습니다.","YYYY-MM 형식의 기간을 입력하세요."));
+            else if((!start.isBlank()&&period.compareTo(start.substring(0,Math.min(7,start.length())))<0)||(!end.isBlank()&&period.compareTo(end.substring(0,Math.min(7,end.length())))>0)) issues.add(issue(id,"PERIOD_OUT_OF_RANGE","BLOCKING","period","프로젝트 산정기간을 벗어났습니다.","프로젝트 산정기간 안의 월로 정정하세요."));
+        }
+        List<Map<String,Object>> duplicates=jdbc.queryForList("SELECT min(activity_id) AS id,count(*) AS duplicate_count FROM emission_activity_data WHERE project_id=? GROUP BY lower(trim(activity_name)),category,activity_period,unit HAVING count(*)>1",projectId);
+        for(Map<String,Object> duplicate:duplicates) issues.add(issue(((Number)duplicate.get("id")).longValue(),"POSSIBLE_DUPLICATE","WARNING","name","동일한 명칭·구분·기간·단위의 자료가 "+duplicate.get("duplicate_count")+"건 있습니다.","원본 행을 비교하여 중복이면 삭제하고, 별도 자료라면 구분 근거를 비고에 입력하세요."));
+        if(activities.isEmpty()) issues.add(issue(null,"NO_ACTIVITY_DATA","BLOCKING",null,"검사할 활동자료가 없습니다.","활동자료를 직접 입력하거나 엑셀로 업로드하세요."));
+        int blocking=(int)issues.stream().filter(i->"BLOCKING".equals(i.severity())).count(),warning=issues.size()-blocking;
+        int score=Math.max(0,100-(blocking*15)-(warning*5)); boolean ready=blocking==0&&!activities.isEmpty();
+        Long runId=jdbc.queryForObject("INSERT INTO emission_activity_quality_run(tenant_id,project_id,executed_actor,total_count,blocking_count,warning_count,quality_score,submit_ready) VALUES (?,?,?,?,?,?,?,?) RETURNING run_id",Long.class,tenant,projectId,user,activities.size(),blocking,warning,score,ready);
+        for(QualityIssue i:issues) jdbc.update("INSERT INTO emission_activity_quality_issue(run_id,activity_id,rule_code,severity,field_name,issue_message,remediation_message) VALUES (?,?,?,?,?,?,?)",runId,i.activityId(),i.ruleCode(),i.severity(),i.fieldName(),i.message(),i.remediation());
+        Map<String,Object> result=new LinkedHashMap<>(); result.put("checked",true);result.put("runId",runId);result.put("totalCount",activities.size());result.put("blockingCount",blocking);result.put("warningCount",warning);result.put("score",score);result.put("submitReady",ready);result.put("executedActor",user);result.put("executedAt",java.time.LocalDateTime.now());result.put("issues",qualityIssues(runId==null?0:runId));return result;
+    }
+
+    private List<Map<String,Object>> qualityIssues(long runId) { return jdbc.queryForList("SELECT issue_id AS \"issueId\",activity_id AS \"activityId\",rule_code AS \"ruleCode\",severity,field_name AS \"fieldName\",issue_message AS message,remediation_message AS remediation FROM emission_activity_quality_issue WHERE run_id=? ORDER BY CASE severity WHEN 'BLOCKING' THEN 0 ELSE 1 END,activity_id NULLS FIRST,issue_id",runId); }
+    private QualityIssue issue(Long activityId,String ruleCode,String severity,String fieldName,String message,String remediation) { return new QualityIssue(activityId,ruleCode,severity,fieldName,message,remediation); }
+    private String text(Object value) { return value==null?"":String.valueOf(value).trim(); }
+    private record QualityIssue(Long activityId,String ruleCode,String severity,String fieldName,String message,String remediation) {}
+
     @Transactional
     public Map<String,Object> saveSubmission(String projectId,String tenantId,String actor,Map<String,Object> body) {
         Map<String,Object> project=detail(projectId);
@@ -186,6 +236,8 @@ public class EmissionProjectRegistryService {
         if(deadlineValue!=null&&LocalDate.parse(String.valueOf(deadlineValue)).isBefore(LocalDate.now())&&!Boolean.TRUE.equals(body.get("deadlineExtended"))) throw new IllegalStateException("SUBMISSION_DEADLINE_EXPIRED");
         Object raw=body.get("activityIds");
         if(!(raw instanceof List<?> ids)||ids.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
+        Map<String,Object> quality=runQuality(projectId,tenant,user);
+        if(!Boolean.TRUE.equals(quality.get("submitReady"))) throw new IllegalStateException("QUALITY_CHECK_BLOCKED:"+quality.get("blockingCount"));
         for(Object item:ids) {
             long activityId=Long.parseLong(String.valueOf(item));
             Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE activity_id=? AND project_id=? AND quantity>=0 AND unit<>''",Integer.class,activityId,projectId);
