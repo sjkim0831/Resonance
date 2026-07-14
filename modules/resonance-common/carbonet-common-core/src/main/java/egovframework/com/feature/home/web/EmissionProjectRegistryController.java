@@ -105,6 +105,9 @@ public class EmissionProjectRegistryController {
     @GetMapping({"/home/api/report-access-history","/en/home/api/report-access-history"})
     public ResponseEntity<?> accessHistory(HttpServletRequest request){var c=currentUserContextService.resolve(request);return ResponseEntity.ok(service.reportAccessHistory(tenant(c),c.getUserId(),false));}
 
+    @GetMapping({"/home/api/emission-projects/{id}/completion","/en/home/api/emission-projects/{id}/completion"})
+    public ResponseEntity<?> completion(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.projectCompletion(id,tenant(c)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculation(@PathVariable String id) { try{return ResponseEntity.ok(service.calculationResult(id));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 

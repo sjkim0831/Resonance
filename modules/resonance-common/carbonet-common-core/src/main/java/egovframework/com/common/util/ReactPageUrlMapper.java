@@ -56,6 +56,7 @@ public final class ReactPageUrlMapper {
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-validate", "/admin/emission/validate", "/admin/emission/validate");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-report-certificates", "/admin/emission/report-certificates", "/admin/emission/report-certificates");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-report-access-admin", "/admin/emission/report-access-history", "/admin/emission/report-access-history");
+        registerAdmin(adminPathToRoute, adminRouteToPath, "emission-project-completion-admin", "/admin/emission/project-completion", "/admin/emission/project-completion");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-definition-studio", "/admin/emission/definition-studio", "/admin/emission/definition-studio");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-gwp-values", "/admin/emission/gwp-values", "/admin/emission/gwp-values");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-lci-classification", "/admin/emission/lci-classification", "/admin/emission/lci-classification");
@@ -75,6 +76,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_report_submit", "/emission/report_submit", "/en/emission/report_submit", "/emission/report_submit");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_report_download", "/emission/report-download", "/en/emission/report-download", "/emission/report-download");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_report_access_user", "/mypage/download-history", "/en/mypage/download-history", "/mypage/download-history");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_completion_user", "/emission/project-completion", "/en/emission/project-completion", "/emission/project-completion");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_dashboard", "/emission/dashboard", "/en/emission/dashboard", "/emission/dashboard");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_lci", "/emission/lci", "/en/emission/lci", "/emission/lci");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_simulate", "/emission/simulate", "/en/emission/simulate", "/emission/simulate");
