@@ -90,7 +90,7 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
   );
 }
 
-export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en: boolean }) {
+export function HeaderBrand({ content }: { content: LocalizedHomeContent; en: boolean }) {
   return (
     <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex max-w-[190px] items-center gap-2 shrink-0">
       <HomeLinkButton className="max-w-[72vw] xl:max-w-[190px] !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-1.5" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
