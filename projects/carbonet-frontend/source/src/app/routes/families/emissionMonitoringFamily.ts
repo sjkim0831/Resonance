@@ -67,6 +67,7 @@ const EMISSION_MONITORING_ROUTE_DEFINITIONS = [
   { id: "emission-home-validate", label: "검증·보정", group: "home", koPath: "/emission/validate", enPath: "/en/emission/validate" },
   { id: "emission-project-create", label: "새 프로젝트 등록", group: "home", koPath: "/emission/project/create", enPath: "/en/emission/project/create" },
   { id: "emission-project-detail", label: "배출량 프로젝트 상세", group: "home", koPath: "/emission/project/detail", enPath: "/en/emission/project/detail" },
+  { id: "emission-project-progress", label: "프로세스 진행", group: "home", koPath: "/emission/project/progress", enPath: "/en/emission/project/progress" },
 ] as const satisfies RouteDefinitionsOf;
 
 const EMISSION_MONITORING_PAGE_UNITS = [
@@ -135,6 +136,7 @@ const EMISSION_MONITORING_PAGE_UNITS = [
   { id: "emission-home-validate", exportName: "EmissionProjectReviewPage", loader: () => import("../../../features/emission-project-list/EmissionProjectReviewPage") },
   { id: "emission-project-create", exportName: "EmissionProjectCreatePage", loader: () => import("../../../features/emission-project-list/EmissionProjectCreatePage") },
   { id: "emission-project-detail", exportName: "EmissionProjectDetailPage", loader: () => import("../../../features/emission-project-list/EmissionProjectDetailPage") },
+  { id: "emission-project-progress", exportName: "EmissionProjectProgressPage", loader: () => import("../../../features/emission-project-progress/EmissionProjectProgressPage") },
 ] as const satisfies PageUnitsOf<typeof EMISSION_MONITORING_ROUTE_DEFINITIONS>;
 
 export const EMISSION_MONITORING_FAMILY = createRouteFamily(EMISSION_MONITORING_ROUTE_DEFINITIONS, EMISSION_MONITORING_PAGE_UNITS, {
