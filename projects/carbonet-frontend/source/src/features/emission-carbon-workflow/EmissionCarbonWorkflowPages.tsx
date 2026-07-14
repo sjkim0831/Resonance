@@ -33,7 +33,7 @@ function WorkflowPage({pageKey}:{pageKey:PageKey}){
   </main></div></>;
 }
 
-export function EmissionDataRequestPage(){return <WorkflowPage pageKey="request"/>}
+export { EmissionDataRequestFunctionalPage as EmissionDataRequestPage } from "./EmissionDataRequestFunctionalPage";
 export function EmissionExternalDataPage(){return <WorkflowPage pageKey="external"/>}
 export function EmissionFinalizationPage(){return <WorkflowPage pageKey="finalize"/>}
 export function EmissionReportSubmissionPage(){return <WorkflowPage pageKey="submit"/>}

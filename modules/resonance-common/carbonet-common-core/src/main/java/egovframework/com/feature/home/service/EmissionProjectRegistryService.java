@@ -78,8 +78,8 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public long saveActivity(String projectId,Map<String,Object> body) {
-        detail(projectId);
+    public long saveActivity(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"SITE_DATA_OWNER",override);
         String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
         double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
         String note=String.valueOf(body.getOrDefault("note","")).trim();
@@ -103,8 +103,9 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public int uploadActivities(String projectId,MultipartFile file) throws Exception {
-        detail(projectId); if(file==null||file.isEmpty()) throw new IllegalArgumentException("엑셀 파일을 선택해 주세요.");
+    public int uploadActivities(String projectId,String tenantId,String actor,boolean override,MultipartFile file) throws Exception {
+        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"SITE_DATA_OWNER",override);
+        if(file==null||file.isEmpty()) throw new IllegalArgumentException("엑셀 파일을 선택해 주세요.");
         int count=0; DataFormatter formatter=new DataFormatter();
         try(InputStream in=file.getInputStream(); XSSFWorkbook workbook=new XSSFWorkbook(in)) {
             Sheet sheet=workbook.getSheetAt(0);
@@ -201,9 +202,10 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public Map<String,Object> runQuality(String projectId,String tenantId,String actor) {
+    public Map<String,Object> runQuality(String projectId,String tenantId,String actor,boolean override) {
         Map<String,Object> project=detail(projectId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
         List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",projectId);
         List<QualityIssue> issues=new ArrayList<>();
         Set<String> allowedUnits=Set.of("L","Nm3","kWh","ton","kg","km","m3","GJ","MJ");
@@ -238,9 +240,10 @@ public class EmissionProjectRegistryService {
     private record QualityIssue(Long activityId,String ruleCode,String severity,String fieldName,String message,String remediation) {}
 
     @Transactional
-    public Map<String,Object> saveSubmission(String projectId,String tenantId,String actor,Map<String,Object> body) {
+    public Map<String,Object> saveSubmission(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         Map<String,Object> project=detail(projectId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),key=required(body,"idempotencyKey");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
         List<Map<String,Object>> existing=jdbc.queryForList("SELECT submission_id AS id,submission_state AS state,version_no AS version FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND idempotency_key=?",projectId,tenant,key);
         if(!existing.isEmpty()) return new LinkedHashMap<>(existing.get(0));
         LocalDate deadline=project.get("dueDate")==null?null:LocalDate.parse(String.valueOf(project.get("dueDate")));
@@ -251,8 +254,9 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public Map<String,Object> submitActivities(String projectId,long submissionId,String tenantId,String actor,Map<String,Object> body) {
+    public Map<String,Object> submitActivities(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state,deadline_date AS deadline FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
         if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
         String state=String.valueOf(rows.get(0).get("state"));
@@ -261,7 +265,7 @@ public class EmissionProjectRegistryService {
         if(deadlineValue!=null&&LocalDate.parse(String.valueOf(deadlineValue)).isBefore(LocalDate.now())&&!Boolean.TRUE.equals(body.get("deadlineExtended"))) throw new IllegalStateException("SUBMISSION_DEADLINE_EXPIRED");
         Object raw=body.get("activityIds");
         if(!(raw instanceof List<?> ids)||ids.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
-        Map<String,Object> quality=runQuality(projectId,tenant,user);
+        Map<String,Object> quality=runQuality(projectId,tenant,user,override);
         if(!Boolean.TRUE.equals(quality.get("submitReady"))) throw new IllegalStateException("QUALITY_CHECK_BLOCKED:"+quality.get("blockingCount"));
         for(Object item:ids) {
             long activityId=Long.parseLong(String.valueOf(item));
@@ -273,7 +277,42 @@ public class EmissionProjectRegistryService {
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
         jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
         completeWorkflowTask(projectId,"ACTIVITY_DATA",user);
+        jdbc.update("UPDATE emission_activity_request SET request_status='SUBMITTED',updated_at=current_timestamp WHERE project_id=? AND tenant_id=? AND lower(assignee_id)=lower(?) AND request_status IN ('REQUESTED','IN_PROGRESS')",projectId,tenant,user);
         return Map.of("id",submissionId,"state","SUBMITTED","duplicate",false);
+    }
+
+    public Map<String,Object> activityRequests(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccess(projectId,tenant);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("project",detail(projectId));
+        result.put("items",jdbc.queryForList("SELECT request_id AS \"id\",request_title AS \"title\",request_detail AS \"detail\",requested_items AS \"requestedItems\",requester_id AS \"requester\",assignee_id AS \"assignee\",due_date AS \"dueDate\",request_status AS \"status\",created_at AS \"createdAt\" FROM emission_activity_request WHERE tenant_id=? AND project_id=? AND (? OR lower(requester_id)=lower(?) OR lower(assignee_id)=lower(?)) ORDER BY created_at DESC",tenant,projectId,override,user,user));
+        result.put("dataOwners",jdbc.queryForList("SELECT user_id AS \"id\" FROM framework_project_actor_assignment WHERE project_id=? AND actor_code='SITE_DATA_OWNER' AND active_yn='Y' ORDER BY user_id",projectId));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> createActivityRequest(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String title=required(body,"title"),requestDetail=required(body,"detail"),items=required(body,"requestedItems"),assignee=required(body,"assignee");
+        LocalDate due=LocalDate.parse(required(body,"dueDate"));
+        Integer assigned=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment WHERE project_id=? AND actor_code='SITE_DATA_OWNER' AND lower(user_id)=lower(?) AND active_yn='Y'",Integer.class,projectId,assignee);
+        if(!override&&(assigned==null||assigned==0)) throw new IllegalArgumentException("PROJECT_DATA_OWNER_REQUIRED");
+        Long id=jdbc.queryForObject("INSERT INTO emission_activity_request(tenant_id,project_id,request_title,request_detail,requested_items,requester_id,assignee_id,due_date) VALUES (?,?,?,?,?,?,?,?) RETURNING request_id",Long.class,tenant,projectId,title,requestDetail,items,user,assignee,due);
+        jdbc.update("UPDATE emission_project_task SET assignee_id=?,due_date=?,task_status='READY',updated_at=current_timestamp WHERE project_id=? AND task_code='ACTIVITY_DATA' AND task_status<>'DONE'",assignee,due,projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'DATA_REQUESTED',?,?)",projectId,title,user);
+        return Map.of("id",id==null?0:id,"status","REQUESTED");
+    }
+
+    @Transactional
+    public Map<String,Object> startActivityRequest(String projectId,long requestId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
+        int changed=jdbc.update("UPDATE emission_activity_request SET request_status='IN_PROGRESS',updated_at=current_timestamp WHERE request_id=? AND project_id=? AND tenant_id=? AND (? OR lower(assignee_id)=lower(?)) AND request_status='REQUESTED'",requestId,projectId,tenant,override,user);
+        if(changed==0) throw new IllegalStateException("ACTIVITY_REQUEST_NOT_STARTABLE");
+        jdbc.update("UPDATE emission_project_task SET task_status='IN_PROGRESS',started_at=coalesce(started_at,current_timestamp),updated_at=current_timestamp WHERE project_id=? AND task_code='ACTIVITY_DATA'",projectId);
+        return Map.of("id",requestId,"status","IN_PROGRESS");
     }
 
     public Map<String,Object> reviewWorkflow(String projectId,String tenantId) {
@@ -443,6 +482,10 @@ public class EmissionProjectRegistryService {
     public String create(String tenantId,Map<String, Object> body) {
         String tenant=requiredValue(tenantId,"tenantId");
         String name = required(body, "name"), site = required(body, "site"), owner = required(body, "owner");
+        String dataOwner=text(body.get("dataOwner")).isBlank()?owner:text(body.get("dataOwner"));
+        String calculator=text(body.get("calculator")).isBlank()?owner:text(body.get("calculator"));
+        String verifier=text(body.get("verifier")).isBlank()?owner:text(body.get("verifier"));
+        String approver=text(body.get("approver")).isBlank()?owner:text(body.get("approver"));
         LocalDate start = LocalDate.parse(required(body, "periodStart")), end = LocalDate.parse(required(body, "periodEnd")), due = LocalDate.parse(required(body, "dueDate"));
         int year = Integer.parseInt(required(body, "reportingYear"));
         if (end.isBefore(start)) throw new IllegalArgumentException("산정 종료일은 시작일보다 빠를 수 없습니다.");
@@ -459,7 +502,8 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task SET process_code='EMISSION_PROJECT',process_step_code=CASE task_code WHEN 'BASIC_INFO' THEN 'EMISSION_PROJECT_SETUP' WHEN 'ACTIVITY_DATA' THEN 'EMISSION_PROJECT_COLLECT' WHEN 'CALCULATION' THEN 'EMISSION_PROJECT_CALCULATE' WHEN 'VERIFICATION' THEN 'EMISSION_PROJECT_VALIDATE' WHEN 'APPROVAL' THEN 'EMISSION_PROJECT_APPROVE' WHEN 'REPORT' THEN 'EMISSION_PROJECT_REPORT' END,actor_code=CASE task_code WHEN 'BASIC_INFO' THEN 'COMPANY_MANAGER' WHEN 'ACTIVITY_DATA' THEN 'SITE_DATA_OWNER' WHEN 'CALCULATION' THEN 'CALCULATOR' WHEN 'VERIFICATION' THEN 'VERIFIER' WHEN 'APPROVAL' THEN 'APPROVER' WHEN 'REPORT' THEN 'COMPANY_MANAGER' END,predecessor_codes=CASE task_code WHEN 'ACTIVITY_DATA' THEN 'BASIC_INFO' WHEN 'CALCULATION' THEN 'ACTIVITY_DATA' WHEN 'VERIFICATION' THEN 'CALCULATION' WHEN 'APPROVAL' THEN 'VERIFICATION' WHEN 'REPORT' THEN 'APPROVAL' ELSE '' END,completion_rule=CASE task_code WHEN 'BASIC_INFO' THEN '프로젝트 기본정보와 산정기간이 확정됨' WHEN 'ACTIVITY_DATA' THEN '품질검사를 통과한 활동자료가 제출됨' WHEN 'CALCULATION' THEN '배출량 산정 버전이 생성됨' WHEN 'VERIFICATION' THEN '검증 오류가 없고 검증 이력이 생성됨' WHEN 'APPROVAL' THEN '권한 있는 승인자가 결과를 승인함' WHEN 'REPORT' THEN '확정 결과 보고서가 발행됨' END WHERE project_id=?",id);
         jdbc.update("UPDATE emission_project_task SET target_url=CASE task_code WHEN 'BASIC_INFO' THEN '/emission/project/detail?id='||project_id WHEN 'ACTIVITY_DATA' THEN '/emission/data_input?projectId='||project_id WHEN 'CALCULATION' THEN '/emission/simulate?projectId='||project_id WHEN 'VERIFICATION' THEN '/emission/validate?projectId='||project_id WHEN 'APPROVAL' THEN '/emission/validate?projectId='||project_id WHEN 'REPORT' THEN '/emission/report_submit?projectId='||project_id END WHERE project_id=?",id);
         completeWorkflowTask(id,"BASIC_INFO",owner);
-        jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?) ON CONFLICT DO NOTHING",id,owner,id,owner,id,owner);
+        jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?),(?,'VERIFIER',?),(?,'APPROVER',?) ON CONFLICT DO NOTHING",id,owner,id,dataOwner,id,calculator,id,verifier,id,approver);
+        jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;
     }
