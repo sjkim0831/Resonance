@@ -114,7 +114,8 @@ git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
 git -C "$ROOT_DIR" worktree add -B "$BRANCH" "$WT" "$BASE_COMMIT" >>"$LOG_FILE" 2>&1
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
-SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" /usr/local/sbin/prepare-ai-search-context "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"
+SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
+SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"
 psqlq -c "update framework_development_job set search_context_ref='${SEARCH_CONTEXT}',updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null
 cat >"$WT/.automation-prompt.txt" <<PROMPT
 You are implementing one approved Resonance development job.
