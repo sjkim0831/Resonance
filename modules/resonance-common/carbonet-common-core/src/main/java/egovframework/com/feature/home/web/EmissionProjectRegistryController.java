@@ -100,7 +100,10 @@ public class EmissionProjectRegistryController {
     public ResponseEntity<?> issueReport(@PathVariable String id,@PathVariable long reportId,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.issueReportCertificate(id,reportId,tenant(context),context.getUserId()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
     @PostMapping({"/home/api/emission-projects/{id}/reports/{reportId}/download","/en/home/api/emission-projects/{id}/reports/{reportId}/download"})
-    public ResponseEntity<?> recordDownload(@PathVariable String id,@PathVariable long reportId,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{service.recordReportDownload(id,reportId,tenant(context));return ResponseEntity.ok(Map.of("success",true));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+    public ResponseEntity<?> recordDownload(@PathVariable String id,@PathVariable long reportId,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{service.recordReportDownload(id,reportId,tenant(context),context.getUserId(),request.getRemoteAddr(),request.getHeader("User-Agent"));return ResponseEntity.ok(Map.of("success",true));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/report-access-history","/en/home/api/report-access-history"})
+    public ResponseEntity<?> accessHistory(HttpServletRequest request){var c=currentUserContextService.resolve(request);return ResponseEntity.ok(service.reportAccessHistory(tenant(c),c.getUserId(),false));}
 
     @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculation(@PathVariable String id) { try{return ResponseEntity.ok(service.calculationResult(id));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }

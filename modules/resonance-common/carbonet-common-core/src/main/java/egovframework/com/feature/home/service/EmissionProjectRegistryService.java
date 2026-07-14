@@ -334,11 +334,14 @@ public class EmissionProjectRegistryService {
         return Map.of("reportId",reportId,"certificateId",certificate,"integrityHash",hash,"status","ISSUED");
     }
 
-    @Transactional public void recordReportDownload(String projectId,long reportId,String tenantId) {
+    @Transactional public void recordReportDownload(String projectId,long reportId,String tenantId,String actor,String ip,String userAgent) {
         String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
         int changed=jdbc.update("UPDATE emission_project_report SET download_count=download_count+1,last_downloaded_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",reportId,projectId,tenant);
         if(changed==0)throw new IllegalStateException("FINALIZED_REPORT_REQUIRED");
+        jdbc.update("INSERT INTO emission_report_access_ledger(tenant_id,project_id,report_id,certificate_id,action_code,actor_id,client_ip,user_agent) SELECT tenant_id,project_id,report_id,certificate_id,'DOWNLOAD',?,?,? FROM emission_project_report WHERE report_id=?",actor,ip,userAgent,reportId);
     }
+
+    public Map<String,Object> reportAccessHistory(String tenantId,String actor,boolean all) { String tenant=requiredValue(tenantId,"tenantId"); String sql="SELECT l.access_id AS \"id\",l.project_id AS \"projectId\",p.project_name AS \"projectName\",r.report_title AS \"reportTitle\",r.version_no AS version,l.certificate_id AS \"certificateId\",l.action_code AS action,l.actor_id AS actor,l.client_ip AS ip,l.share_expires_at AS \"expiresAt\",l.share_revoked_at AS \"revokedAt\",l.created_at AS \"createdAt\" FROM emission_report_access_ledger l JOIN emission_project_report r ON r.report_id=l.report_id JOIN emission_project_registry p ON p.project_id=l.project_id WHERE l.tenant_id=?"+(all?"":" AND lower(coalesce(l.actor_id,''))=lower(?)")+" ORDER BY l.created_at DESC LIMIT 500"; Map<String,Object>x=new LinkedHashMap<>();x.put("items",jdbc.queryForList(sql,all?new Object[]{tenant}:new Object[]{tenant,actor}));return x; }
 
     public Map<String,Object> verifyReportCertificate(String certificateId) {
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT r.certificate_id AS \"certificateId\",r.integrity_hash AS \"integrityHash\",r.report_title AS title,r.version_no AS version,r.report_language AS language,r.report_status AS status,r.certificate_status AS \"certificateStatus\",r.revoked_at AS \"revokedAt\",r.revocation_reason AS \"revocationReason\",r.issued_at AS \"issuedAt\",p.project_name AS \"projectName\",p.site_name AS site,c.total_emission AS \"totalEmission\" FROM emission_project_report r JOIN emission_project_registry p ON p.project_id=r.project_id JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE r.certificate_id=? OR r.previous_certificate_id=? ORDER BY CASE WHEN r.certificate_id=? THEN 0 ELSE 1 END LIMIT 1",certificateId,certificateId,certificateId);
