@@ -40,7 +40,7 @@ UPDATE emission_project_task SET
    WHEN 'REPORT' THEN '확정 결과 보고서가 발행됨' END
 WHERE task_code IN ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT');
 
-UPDATE emission_project_task t SET task_status='DONE',completed_at=coalesce(completed_at,created_at),completed_by=coalesce(completed_by,p.owner_name)
+UPDATE emission_project_task t SET task_status='DONE',completed_at=coalesce(t.completed_at,t.created_at),completed_by=coalesce(t.completed_by,p.owner_name)
 FROM emission_project_registry p
 WHERE t.project_id=p.project_id AND t.task_code='BASIC_INFO'
   AND p.project_name<>'' AND p.site_name<>'' AND p.period_start IS NOT NULL AND p.period_end IS NOT NULL;
