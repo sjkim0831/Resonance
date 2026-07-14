@@ -43,12 +43,14 @@ public class EmissionProjectRegistryService {
         return count == null || count == 0;
     }
 
-    public Map<String, Object> options(String tenantId,String keyword) {
+    public Map<String, Object> options(String tenantId,String actor,String keyword) {
         String tenant=requiredValue(tenantId,"tenantId");
         String term = keyword == null ? "" : keyword.trim(), like = "%" + term + "%";
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sites", jdbc.queryForList("SELECT DISTINCT site_name FROM emission_project_registry WHERE tenant_id=? AND (?='' OR site_name ILIKE ?) ORDER BY site_name LIMIT 20", String.class,tenant,term,like));
         result.put("owners", jdbc.queryForList("SELECT DISTINCT owner_name FROM emission_project_registry WHERE tenant_id=? AND (?='' OR owner_name ILIKE ?) ORDER BY owner_name LIMIT 20", String.class,tenant,term,like));
+        result.put("accounts", jdbc.queryForList("SELECT account_id AS \"id\",string_agg(DISTINCT actor_code,', ' ORDER BY actor_code) AS \"actors\" FROM framework_account_actor_assignment WHERE tenant_id IN (?, 'DEFAULT') AND assignment_status='ACTIVE' AND (?='' OR account_id ILIKE ?) GROUP BY account_id ORDER BY account_id LIMIT 100",tenant,term,like));
+        result.put("currentUser",requiredValue(actor,"actor"));
         return result;
     }
 
@@ -518,12 +520,13 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task SET target_url=CASE task_code WHEN 'BASIC_INFO' THEN '/emission/project/detail?id='||project_id WHEN 'ACTIVITY_DATA' THEN '/emission/data_input?projectId='||project_id WHEN 'CALCULATION' THEN '/emission/simulate?projectId='||project_id WHEN 'VERIFICATION' THEN '/emission/validate?projectId='||project_id WHEN 'APPROVAL' THEN '/emission/validate?projectId='||project_id WHEN 'REPORT' THEN '/emission/report_submit?projectId='||project_id END WHERE project_id=?",id);
         completeWorkflowTask(id,"BASIC_INFO",owner);
         jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?),(?,'VERIFIER',?),(?,'APPROVER',?) ON CONFLICT DO NOTHING",id,owner,id,dataOwner,id,calculator,id,verifier,id,approver);
+        jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES (?,?,?,'COMPANY_MANAGER',?,'ACTIVE'),(?,?,?,'SITE_DATA_OWNER',?,'ACTIVE'),(?,?,?,'CALCULATOR',?,'ACTIVE'),(?,?,?,'VERIFIER',?,'ACTIVE'),(?,?,?,'APPROVER',?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE'",owner,tenant,id,id,dataOwner,tenant,id,id,calculator,tenant,id,id,verifier,tenant,id,id,approver,tenant,id,id);
         jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;
     }
 
-    @Transactional public int delete(String id,String tenantId) { return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,requiredValue(tenantId,"tenantId")); }
+    @Transactional public int delete(String id,String tenantId) { String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(id,tenant); jdbc.update("DELETE FROM framework_account_actor_assignment WHERE project_id=? AND tenant_id=?",id,tenant); return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant); }
     private String required(Map<String,Object> body,String key) { String value=String.valueOf(body.getOrDefault(key,"")).trim(); if(value.isEmpty()) throw new IllegalArgumentException(key+" is required"); return value; }
     private String requiredValue(String value,String key) { String normalized=value==null?"":value.trim(); if(normalized.isEmpty()) throw new IllegalArgumentException(key+" is required"); return normalized; }
 }

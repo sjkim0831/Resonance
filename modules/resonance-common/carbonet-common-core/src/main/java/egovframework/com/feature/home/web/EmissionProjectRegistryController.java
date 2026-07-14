@@ -27,7 +27,7 @@ public class EmissionProjectRegistryController {
     }
 
     @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})
-    public Map<String, Object> options(@RequestParam(defaultValue = "") String keyword,HttpServletRequest request) { return service.options(tenant(currentUserContextService.resolve(request)),keyword); }
+    public Map<String, Object> options(@RequestParam(defaultValue = "") String keyword,HttpServletRequest request) {var c=currentUserContextService.resolve(request);return service.options(tenant(c),c.getUserId(),keyword); }
 
     @GetMapping({"/home/api/emission-projects/name-availability", "/en/home/api/emission-projects/name-availability"})
     public Map<String, Object> nameAvailability(@RequestParam String name,HttpServletRequest request) { return Map.of("available",service.nameAvailable(tenant(currentUserContextService.resolve(request)),name)); }
@@ -131,8 +131,10 @@ public class EmissionProjectRegistryController {
 
     @PostMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest request) {
-        if (!authenticated(request)) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
-        try { return ResponseEntity.ok(Map.of("success",true,"id",service.create(tenant(currentUserContextService.resolve(request)),body))); }
+        var context=currentUserContextService.resolve(request);
+        if (!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
+        if(!context.isWebmaster()&&!context.getUserId().equalsIgnoreCase(String.valueOf(body.getOrDefault("owner","")))) return ResponseEntity.status(403).body(Map.of("message","PROJECT_OWNER_MUST_BE_CURRENT_USER"));
+        try { return ResponseEntity.ok(Map.of("success",true,"id",service.create(tenant(context),body))); }
         catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }
     }
 
