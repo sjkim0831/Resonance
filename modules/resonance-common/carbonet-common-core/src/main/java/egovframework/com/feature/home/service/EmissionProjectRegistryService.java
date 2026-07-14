@@ -287,6 +287,37 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
+    public Map<String,Object> reportWorkflow(String projectId,String tenantId) {
+        String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
+        Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
+        List<Map<String,Object>> approved=jdbc.queryForList("SELECT s.submission_id AS \"submissionId\",s.version_no AS \"submissionVersion\",s.submission_state AS \"submissionState\",c.calculation_id AS \"calculationId\",c.version_no AS \"calculationVersion\",c.total_emission AS \"totalEmission\",c.locked_at AS \"lockedAt\",c.locked_by AS \"lockedBy\" FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE s.tenant_id=? AND s.project_id=? ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
+        result.put("approved",approved.isEmpty()?null:approved.get(0));
+        result.put("reports",jdbc.queryForList("SELECT report_id AS \"id\",version_no AS \"version\",report_title AS \"title\",report_language AS language,report_status AS status,summary_text AS summary,created_by AS \"createdBy\",created_at AS \"createdAt\",finalized_by AS \"finalizedBy\",finalized_at AS \"finalizedAt\" FROM emission_project_report WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId));
+        return result;
+    }
+
+    @Transactional public Map<String,Object> createReport(String projectId,String tenantId,String actor,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); assertTenantAccess(projectId,tenant);
+        List<Map<String,Object>> source=jdbc.queryForList("SELECT s.submission_id AS submission_id,c.calculation_id AS calculation_id FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE s.tenant_id=? AND s.project_id=? AND s.submission_state='APPROVED' AND c.locked_at IS NOT NULL ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
+        if(source.isEmpty()) throw new IllegalStateException("REPORT_REQUIRES_APPROVED_LOCKED_CALCULATION");
+        Map<String,Object> project=detail(projectId),row=source.get(0); String language=text(body.get("language")); if(!List.of("ko","en").contains(language))language="ko";
+        String title=text(body.get("title")); if(title.isBlank())title=String.valueOf(project.get("name"))+("en".equals(language)?" Emission Report":" 배출량 보고서");
+        String summary=text(body.get("summary")); Integer version=jdbc.queryForObject("SELECT coalesce(max(version_no),0)+1 FROM emission_project_report WHERE tenant_id=? AND project_id=?",Integer.class,tenant,projectId);
+        Long id=jdbc.queryForObject("INSERT INTO emission_project_report(tenant_id,project_id,submission_id,calculation_id,version_no,report_title,report_language,summary_text,created_by) VALUES (?,?,?,?,?,?,?,?,?) RETURNING report_id",Long.class,tenant,projectId,row.get("submission_id"),row.get("calculation_id"),version,title,language,summary,user);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'REPORT_DRAFT_CREATED',?,?)",projectId,"보고서 V"+version+" 초안 생성",user);
+        return Map.of("id",id==null?0:id,"version",version,"status","DRAFT");
+    }
+
+    @Transactional public Map<String,Object> finalizeReport(String projectId,long reportId,String tenantId,String actor) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); assertTenantAccess(projectId,tenant);
+        int changed=jdbc.update("UPDATE emission_project_report SET report_status='FINALIZED',finalized_by=?,finalized_at=current_timestamp,updated_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='DRAFT'",user,reportId,projectId,tenant);
+        if(changed==0) { Integer exists=jdbc.queryForObject("SELECT count(*) FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",Integer.class,reportId,projectId,tenant); if(exists==null||exists==0)throw new IllegalStateException("REPORT_FINALIZE_STATE_INVALID"); }
+        completeWorkflowTask(projectId,"REPORT",user);
+        jdbc.update("UPDATE emission_project_registry SET progress_percent=100,current_step='확정·보고 완료',project_status='완료',updated_at=current_timestamp WHERE project_id=?",projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'REPORT_FINALIZED','최종 배출량 보고서가 확정되었습니다.',?)",projectId,user);
+        return Map.of("id",reportId,"status","FINALIZED");
+    }
+
     @Transactional
     public Map<String,Object> startVerification(String projectId,long submissionId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");

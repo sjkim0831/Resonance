@@ -87,6 +87,15 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision","/en/home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision"})
     public ResponseEntity<?> decideApproval(@PathVariable String id,@PathVariable long submissionId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.decideApproval(id,submissionId,tenant(context),context.getUserId(),context.isWebmaster(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
+    @GetMapping({"/home/api/emission-projects/{id}/reports","/en/home/api/emission-projects/{id}/reports"})
+    public ResponseEntity<?> reports(@PathVariable String id,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.reportWorkflow(id,tenant(context)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/reports","/en/home/api/emission-projects/{id}/reports"})
+    public ResponseEntity<?> createReport(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.createReport(id,tenant(context),context.getUserId(),body));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/reports/{reportId}/finalize","/en/home/api/emission-projects/{id}/reports/{reportId}/finalize"})
+    public ResponseEntity<?> finalizeReport(@PathVariable String id,@PathVariable long reportId,HttpServletRequest request) {var context=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.finalizeReport(id,reportId,tenant(context),context.getUserId()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculation(@PathVariable String id) { try{return ResponseEntity.ok(service.calculationResult(id));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
