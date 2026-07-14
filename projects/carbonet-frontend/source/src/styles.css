@@ -19,13 +19,13 @@
   --kr-gov-warning-bg: #fff4f4;
   --kr-gov-warning-border: #fca5a5;
   /* KRDS responsive type scale: caption, label, body, subtitle, title, display */
-  --krds-type-caption: clamp(0.75rem, 0.72rem + 0.12vw, 0.8125rem);
-  --krds-type-label: clamp(0.8125rem, 0.78rem + 0.16vw, 0.9rem);
-  --krds-type-body-sm: clamp(0.875rem, 0.84rem + 0.14vw, 0.9375rem);
-  --krds-type-body: clamp(0.9375rem, 0.9rem + 0.18vw, 1.0625rem);
-  --krds-type-subtitle: clamp(1.0625rem, 0.98rem + 0.32vw, 1.25rem);
-  --krds-type-title: clamp(1.375rem, 1.15rem + 0.9vw, 2rem);
-  --krds-type-display: clamp(1.75rem, 1.3rem + 1.8vw, 3rem);
+  --krds-type-caption: 0.75rem;    /* 12px */
+  --krds-type-label: 0.875rem;     /* 14px */
+  --krds-type-body-sm: 0.9375rem;  /* 15px */
+  --krds-type-body: 1rem;          /* 16px */
+  --krds-type-subtitle: 1.125rem;  /* 18px */
+  --krds-type-title: 1.5rem;       /* 24px */
+  --krds-type-display: 2rem;       /* 32px */
   --krds-line-compact: 1.3;
   --krds-line-body: 1.6;
   --krds-space-1: clamp(0.25rem, 0.2rem + 0.2vw, 0.5rem);
@@ -80,6 +80,48 @@ body {
 .gov-text-heading-sm { font-size: var(--krds-type-subtitle); line-height: 1.45; }
 .gov-text-heading-md { font-size: var(--krds-type-title); line-height: 1.35; }
 .gov-text-heading-lg { font-size: var(--krds-type-display); line-height: 1.2; }
+
+/*
+ * System-wide fixed GOV type normalization.
+ * Legacy screens may keep their existing Tailwind class names, but their rendered
+ * text is constrained to the seven approved sizes above. Icon glyph sizing is an
+ * independent visual contract and is intentionally excluded.
+ */
+:where([class~="text-xs"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]),
+:where([class~="text-[8px]"], [class~="text-[9px]"], [class~="text-[10px]"], [class~="text-[11px]"], [class~="text-[12px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-caption) !important;
+  line-height: var(--krds-line-compact) !important;
+}
+
+:where([class~="text-sm"], [class~="text-[13px]"], [class~="text-[14px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-label) !important;
+  line-height: var(--krds-line-compact) !important;
+}
+
+:where([class~="text-[15px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-body-sm) !important;
+  line-height: var(--krds-line-body) !important;
+}
+
+:where([class~="text-base"], [class~="text-[16px]"], [class~="text-[17px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-body) !important;
+  line-height: var(--krds-line-body) !important;
+}
+
+:where([class~="text-lg"], [class~="text-xl"], [class~="text-[18px]"], [class~="text-[19px]"], [class~="text-[20px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-subtitle) !important;
+  line-height: 1.45 !important;
+}
+
+:where([class~="text-2xl"], [class~="text-[22px]"], [class~="text-[24px]"], [class~="text-[26px]"], [class~="text-[28px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-title) !important;
+  line-height: 1.35 !important;
+}
+
+:where([class~="text-3xl"], [class~="text-4xl"], [class~="text-5xl"], [class~="text-6xl"], [class~="text-[30px]"], [class~="text-[32px]"], [class~="text-[34px]"], [class~="text-[36px]"], [class~="text-[40px]"], [class~="text-[42px]"], [class~="text-[48px]"], [class~="text-[56px]"], [class~="text-[64px]"]):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-display) !important;
+  line-height: 1.2 !important;
+}
 
 .gov-home-header { min-height: var(--krds-control-height-lg); }
 .gov-home-header-action { min-height: var(--krds-control-height-md); padding-inline: var(--krds-space-3); font-size: var(--krds-type-label); }
@@ -2819,4 +2861,33 @@ dd {
     justify-content: flex-start;
     grid-template-columns: 1fr;
   }
+}
+
+/* Final semantic guard for legacy CSS and inline-sized application text. */
+:where(h1):not(.material-symbols-outlined):not(.material-icons) {
+  font-size: var(--krds-type-display) !important;
+  line-height: 1.2 !important;
+}
+
+:where(h2):not(.material-symbols-outlined):not(.material-icons) {
+  font-size: var(--krds-type-title) !important;
+  line-height: 1.35 !important;
+}
+
+:where(h3, h4, h5, h6):not(.material-symbols-outlined):not(.material-icons) {
+  font-size: var(--krds-type-subtitle) !important;
+  line-height: 1.45 !important;
+}
+
+:where(button, input, select, textarea, label, th, td):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-label) !important;
+}
+
+:where(small, figcaption):not(.material-symbols-outlined):not(.material-icons):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-caption) !important;
+  line-height: var(--krds-line-compact) !important;
+}
+
+:where(code, kbd, samp, pre):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-label) !important;
 }
