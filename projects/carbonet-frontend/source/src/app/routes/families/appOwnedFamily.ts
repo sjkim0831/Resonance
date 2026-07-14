@@ -20,12 +20,14 @@ const APP_OWNED_ROUTE_DEFINITIONS = [
   { id: "join-company-status", label: "Join Status", group: "join", koPath: "/join/companyJoinStatusSearch", enPath: "/join/en/companyJoinStatusSearch" },
   { id: "join-company-status-guide", label: "Join Status Guide", group: "join", koPath: "/join/companyJoinStatusGuide", enPath: "/join/en/companyJoinStatusGuide" },
   { id: "join-company-status-detail", label: "Join Status Detail", group: "join", koPath: "/join/companyJoinStatusDetail", enPath: "/join/en/companyJoinStatusDetail" },
-  { id: "home-certificate-verify", label: "인증서 진위여부 확인", group: "home", koPath: "/home/certificate-verify", enPath: "/en/home/certificate-verify" }
+  { id: "home-certificate-verify", label: "인증서 진위여부 확인", group: "home", koPath: "/home/certificate-verify", enPath: "/en/home/certificate-verify" },
+  { id: "report-certificate-verify", label: "보고서 인증서 진위 확인", group: "home", koPath: "/report/verify", enPath: "/en/report/verify" }
 ] as const satisfies RouteDefinitionsOf;
 
 const APP_OWNED_PAGE_UNITS = [
   { id: "home", exportName: "HomeLandingPage", loader: () => import("../../../features/home-entry/HomeEntryPages") },
   { id: "home-certificate-verify", exportName: "HomeCertificateVerifyPage", loader: () => import("../../../features/home-entry/HomeCertificateVerifyPage") },
+  { id: "report-certificate-verify", exportName: "HomeCertificateVerifyPage", loader: () => import("../../../features/home-entry/HomeCertificateVerifyPage") },
   { id: "flutter-app", exportName: "default", loader: () => import("../../../features/flutter-app/FlutterAppPage") },
   { id: "admin-home", exportName: "AdminHomePage", loader: sharedAdminEntryLoader },
   { id: "signin-login", exportName: "PublicLoginPage", loader: sharedPublicEntryLoader },
