@@ -52,7 +52,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 20,
+    "lineCount": 113,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1475,6 +1475,33 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
+    "effectiveSourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionDataRequestPage",
+      "EmissionExternalDataPage",
+      "EmissionFinalizationPage",
+      "EmissionReportSubmissionPage"
+    ],
+    "routeIds": [
+      "emission-data-request",
+      "emission-external-data",
+      "emission-finalization",
+      "emission-report-submission"
+    ],
+    "routeCount": 4,
+    "status": "implemented",
+    "lineCount": 35,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/emission-dashboard/EmissionDashboardPage.tsx",
     "effectiveSourcePath": "features/emission-dashboard/EmissionDashboardPage.tsx",
     "effectiveSourcePaths": [
@@ -1527,11 +1554,14 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionDataInputMigrationPage"
     ],
     "routeIds": [
-      "emission-data-input"
+      "emission-activity-data",
+      "emission-correction",
+      "emission-data-input",
+      "emission-excel-upload"
     ],
-    "routeCount": 1,
+    "routeCount": 4,
     "status": "implemented",
-    "lineCount": 33,
+    "lineCount": 46,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1602,27 +1632,6 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasAsyncData": true,
     "hasForm": true,
     "hasTable": true,
-    "hasBuilderLink": false
-  },
-  {
-    "sourcePath": "features/emission-home-validate/EmissionHomeValidateMigrationPage.tsx",
-    "effectiveSourcePath": "features/emission-home-validate/EmissionHomeValidateMigrationPage.tsx",
-    "effectiveSourcePaths": [
-      "features/emission-home-validate/EmissionHomeValidateMigrationPage.tsx"
-    ],
-    "effectiveExportNames": [
-      "EmissionHomeValidateMigrationPage"
-    ],
-    "routeIds": [
-      "emission-home-validate"
-    ],
-    "routeCount": 1,
-    "status": "implemented",
-    "lineCount": 726,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": false,
     "hasBuilderLink": false
   },
   {
@@ -1710,6 +1719,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/emission-project-list/AdminReportCertificatePage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/AdminReportCertificatePage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/AdminReportCertificatePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "AdminReportCertificatePage"
+    ],
+    "routeIds": [
+      "emission-report-certificates"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 1,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/emission-project-list/EmissionDeadlineStatusPage.tsx",
     "effectiveSourcePath": "features/emission-project-list/EmissionDeadlineStatusPage.tsx",
     "effectiveSourcePaths": [
@@ -1744,7 +1774,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 3,
+    "lineCount": 299,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1786,7 +1816,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 30,
+    "lineCount": 37,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1815,6 +1845,28 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/emission-project-list/EmissionProjectReportPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectReportPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionProjectReportPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionProjectReportPage"
+    ],
+    "routeIds": [
+      "emission-report-submit",
+      "emission-report-write"
+    ],
+    "routeCount": 2,
+    "status": "implemented",
+    "lineCount": 29,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
     "effectiveSourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
     "effectiveSourcePaths": [
@@ -1824,15 +1876,127 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionProjectResultPage"
     ],
     "routeIds": [
+      "emission-calculation-results",
       "emission-result"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 8,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
     "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionProjectReviewPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectReviewPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionProjectReviewPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionProjectReviewPage"
+    ],
+    "routeIds": [
+      "emission-data-validation",
+      "emission-home-validate",
+      "emission-review-approval"
+    ],
+    "routeCount": 3,
+    "status": "implemented",
+    "lineCount": 37,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/EmissionReportDownloadPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/EmissionReportDownloadPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/EmissionReportDownloadPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionReportDownloadPage"
+    ],
+    "routeIds": [
+      "emission-report-download"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 4,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/ProjectCompletionPages.tsx",
+    "effectiveSourcePath": "features/emission-project-list/ProjectCompletionPages.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/ProjectCompletionPages.tsx"
+    ],
+    "effectiveExportNames": [
+      "AdminProjectCompletionPage",
+      "UserProjectCompletionPage"
+    ],
+    "routeIds": [
+      "emission-project-completion-admin",
+      "emission-project-completion-user"
+    ],
+    "routeCount": 2,
+    "status": "delegated",
+    "lineCount": 1,
+    "reason": "라우트는 공통 구현으로 위임됩니다. 위임 대상 화면의 기능으로 관리합니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/ReportAccessHistoryPages.tsx",
+    "effectiveSourcePath": "features/emission-project-list/ReportAccessHistoryPages.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/ReportAccessHistoryPages.tsx"
+    ],
+    "effectiveExportNames": [
+      "AdminReportAccessHistoryPage",
+      "UserReportAccessHistoryPage"
+    ],
+    "routeIds": [
+      "emission-report-access-admin",
+      "emission-report-access-user"
+    ],
+    "routeCount": 2,
+    "status": "implemented",
+    "lineCount": 1,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-progress/EmissionProjectProgressPage.tsx",
+    "effectiveSourcePath": "features/emission-project-progress/EmissionProjectProgressPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-progress/EmissionProjectProgressPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "EmissionProjectProgressPage"
+    ],
+    "routeIds": [
+      "emission-project-progress"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 301,
+    "reason": "데이터 기반 포털/조회 화면으로 구성되어 있습니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
     "hasBuilderLink": false
   },
   {
@@ -1866,10 +2030,9 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionReportSubmitMigrationPage"
     ],
     "routeIds": [
-      "emission-evidence",
-      "emission-report-submit"
+      "emission-evidence"
     ],
-    "routeCount": 2,
+    "routeCount": 1,
     "status": "implemented",
     "lineCount": 744,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -1930,9 +2093,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionSimulateMigrationPage"
     ],
     "routeIds": [
+      "emission-calculation",
       "emission-simulate"
     ],
-    "routeCount": 1,
+    "routeCount": 2,
     "status": "implemented",
     "lineCount": 583,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
