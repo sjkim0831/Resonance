@@ -54,7 +54,7 @@ public class EmissionProjectRegistryService {
         List<Map<String, Object>> projects = jdbc.queryForList("SELECT project_id AS \"id\",project_name AS \"name\",site_name AS \"site\",calculation_period AS \"period\",scope_name AS \"scope\",owner_name AS \"owner\",progress_percent AS \"progress\",current_step AS \"step\",due_date AS \"dueDate\",project_status AS \"status\",reporting_year AS \"reportingYear\",period_start AS \"periodStart\",period_end AS \"periodEnd\" FROM emission_project_registry WHERE project_id=?", id);
         if (projects.isEmpty()) throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
         Map<String, Object> result = new LinkedHashMap<>(projects.get(0));
-        result.put("tasks", jdbc.queryForList("SELECT task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
+        result.put("tasks", jdbc.queryForList("SELECT task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\",process_code AS \"processCode\",process_step_code AS \"processStepCode\",actor_code AS \"actorCode\",predecessor_codes AS \"predecessorCodes\",completion_rule AS \"completionRule\",blocked_reason AS \"blockedReason\",started_at AS \"startedAt\",completed_at AS \"completedAt\",completed_by AS \"completedBy\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
         result.put("members", jdbc.queryForList("SELECT member_name AS \"name\",role_code AS \"role\" FROM emission_project_member WHERE project_id=? ORDER BY created_at", id));
         result.put("history", jdbc.queryForList("SELECT event_type AS \"type\",event_description AS \"description\",actor_name AS \"actor\",created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? ORDER BY created_at DESC LIMIT 30", id));
         return result;
@@ -137,7 +137,7 @@ public class EmissionProjectRegistryService {
         Long id=jdbc.queryForObject("INSERT INTO emission_calculation_run(project_id,version_no,total_emission) VALUES (?,?,?) RETURNING calculation_id",Long.class,projectId,version,sum);
         jdbc.update("INSERT INTO emission_calculation_item(calculation_id,activity_id,quantity,factor_value,emission_value) SELECT ?,a.activity_id,a.quantity,f.factor_value,a.quantity*f.factor_value FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=?",id,projectId);
         jdbc.update("UPDATE emission_project_registry SET progress_percent=50,current_step='배출량 산정',project_status='진행',updated_at=current_timestamp WHERE project_id=?",projectId);
-        jdbc.update("UPDATE emission_project_task SET task_status=CASE WHEN task_code IN ('BASIC_INFO','ACTIVITY_DATA') THEN 'DONE' WHEN task_code='CALCULATION' THEN 'IN_PROGRESS' ELSE task_status END WHERE project_id=?",projectId);
+        completeWorkflowTask(projectId,"CALCULATION","SYSTEM");
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'CALCULATED','산정 버전 '||?||'이 생성되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(version),projectId);
         return id==null?0:id;
     }
@@ -147,13 +147,30 @@ public class EmissionProjectRegistryService {
         String actor=actorId==null?"":actorId.trim();
         String where=" WHERE (? OR lower(coalesce(t.assignee_id,''))=lower(?)) AND (?='' OR t.task_status=?) AND (?='' OR (?='TODAY' AND t.due_date=current_date) OR (?='WEEK' AND t.due_date BETWEEN current_date AND current_date+7) OR (?='OVERDUE' AND t.due_date<current_date AND t.task_status<>'DONE'))";
         Object[] args={showAll,actor,state,state,range,range,range,range};
-        List<Map<String,Object>> items=jdbc.queryForList("SELECT t.task_id AS \"id\",t.project_id AS \"projectId\",p.project_name AS \"projectName\",p.site_name AS \"site\",t.task_name AS \"name\",t.task_type AS \"type\",t.task_status AS \"status\",t.priority,t.assignee_id AS \"assignee\",t.due_date AS \"dueDate\",t.target_url AS \"targetUrl\" FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id"+where+" ORDER BY CASE WHEN t.task_status='DONE' THEN 1 ELSE 0 END,CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,t.due_date,t.step_order",args);
+        List<Map<String,Object>> items=jdbc.queryForList("SELECT t.task_id AS \"id\",t.project_id AS \"projectId\",p.project_name AS \"projectName\",p.site_name AS \"site\",t.task_name AS \"name\",t.task_type AS \"type\",t.task_status AS \"status\",t.priority,t.assignee_id AS \"assignee\",t.due_date AS \"dueDate\",t.target_url AS \"targetUrl\",t.process_code AS \"processCode\",t.process_step_code AS \"processStepCode\",t.actor_code AS \"actorCode\",t.completion_rule AS \"completionRule\",t.blocked_reason AS \"blockedReason\",(t.task_status IN ('READY','IN_PROGRESS')) AS \"actionable\",coalesce((SELECT string_agg(p2.task_name,', ' ORDER BY p2.step_order) FROM emission_project_task p2 WHERE p2.project_id=t.project_id AND p2.task_code=ANY(string_to_array(nullif(t.predecessor_codes,''),',')) AND p2.task_status<>'DONE'),'') AS \"pendingPredecessors\" FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id"+where+" ORDER BY CASE t.task_status WHEN 'READY' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'BLOCKED' THEN 2 WHEN 'WAITING' THEN 3 ELSE 4 END,CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,t.due_date,t.step_order",args);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("actorId",actor);result.put("allVisible",showAll);
         result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t"+(showAll?"":" WHERE lower(coalesce(t.assignee_id,''))=lower('"+actor.replace("'","''")+"')")));
         return result;
     }
 
-    @Transactional public int updateTask(long taskId,String status) { if(!List.of("WAITING","IN_PROGRESS","DONE").contains(status))throw new IllegalArgumentException("올바른 상태가 아닙니다.");return jdbc.update("UPDATE emission_project_task SET task_status=?,updated_at=current_timestamp WHERE task_id=?",status,taskId); }
+    @Transactional public int updateTask(long taskId,String status,String actor,boolean override) {
+        if(!List.of("READY","IN_PROGRESS").contains(status)) throw new IllegalArgumentException("업무 완료는 실제 업무 처리 결과로만 변경할 수 있습니다.");
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT project_id,assignee_id,predecessor_codes FROM emission_project_task WHERE task_id=? FOR UPDATE",taskId);
+        if(rows.isEmpty()) throw new IllegalArgumentException("업무를 찾을 수 없습니다.");
+        Map<String,Object> task=rows.get(0);String projectId=text(task.get("project_id"));
+        if(!override&&!text(task.get("assignee_id")).equalsIgnoreCase(actor)) throw new SecurityException("TASK_ACTOR_NOT_ASSIGNED");
+        Integer pending=jdbc.queryForObject("SELECT count(*) FROM emission_project_task WHERE project_id=? AND task_code=ANY(string_to_array(nullif(?,''),',')) AND task_status<>'DONE'",Integer.class,projectId,text(task.get("predecessor_codes")));
+        if(pending!=null&&pending>0) throw new IllegalStateException("TASK_PREDECESSOR_INCOMPLETE");
+        return jdbc.update("UPDATE emission_project_task SET task_status=?,started_at=coalesce(started_at,current_timestamp),blocked_reason=null,updated_at=current_timestamp WHERE task_id=?",status,taskId);
+    }
+
+    private void completeWorkflowTask(String projectId,String taskCode,String actor) {
+        jdbc.update("UPDATE emission_project_task SET task_status='DONE',completed_at=current_timestamp,completed_by=?,blocked_reason=null,updated_at=current_timestamp WHERE project_id=? AND task_code=? AND task_status<>'DONE'",actor,projectId,taskCode);
+        jdbc.update("UPDATE emission_project_task n SET task_status='READY',blocked_reason=null,updated_at=current_timestamp WHERE n.project_id=? AND n.task_status IN ('WAITING','BLOCKED') AND NOT EXISTS (SELECT 1 FROM emission_project_task p WHERE p.project_id=n.project_id AND p.task_code=ANY(string_to_array(nullif(n.predecessor_codes,''),',')) AND p.task_status<>'DONE')",projectId);
+        jdbc.update("UPDATE emission_project_task n SET task_status='BLOCKED',blocked_reason='선행 업무가 완료되지 않았습니다.',updated_at=current_timestamp WHERE n.project_id=? AND n.task_status='WAITING' AND EXISTS (SELECT 1 FROM emission_project_task p WHERE p.project_id=n.project_id AND p.task_code=ANY(string_to_array(nullif(n.predecessor_codes,''),',')) AND p.task_status<>'DONE')",projectId);
+        jdbc.update("UPDATE emission_project_registry p SET progress_percent=coalesce((SELECT sum(progress_weight) FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_status='DONE'),0),current_step=coalesce((SELECT task_name FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_status IN ('READY','IN_PROGRESS') ORDER BY step_order LIMIT 1),'완료'),updated_at=current_timestamp WHERE p.project_id=?",projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'WORKFLOW_TRANSITION',?||' 업무 완료로 다음 단계가 개방되었습니다.',?)",projectId,taskCode,actor);
+    }
 
     public Map<String,Object> submissions(String projectId,String tenantId) {
         detail(projectId);
@@ -247,6 +264,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,updated_at=current_timestamp WHERE submission_id=?",user,submissionId);
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
         jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
+        completeWorkflowTask(projectId,"ACTIVITY_DATA",user);
         return Map.of("id",submissionId,"state","SUBMITTED","duplicate",false);
     }
 
@@ -276,6 +294,9 @@ public class EmissionProjectRegistryService {
         jdbc.update("INSERT INTO emission_project_member(project_id,member_name,role_code) VALUES (?,?,'OWNER')", id, owner);
         String[][] tasks = {{"BASIC_INFO","기본정보 확인"},{"ACTIVITY_DATA","활동자료 수집"},{"CALCULATION","배출량 산정"},{"VERIFICATION","데이터 검증"},{"APPROVAL","검토·승인"},{"REPORT","확정·보고"}};
         for (int i=0;i<tasks.length;i++) jdbc.update("INSERT INTO emission_project_task(project_id,task_code,task_name,step_order,task_status,progress_weight,due_date) VALUES (?,?,?,?,?,?,?)",id,tasks[i][0],tasks[i][1],i+1,i==0?"IN_PROGRESS":"WAITING",i==0?10:18,due);
+        jdbc.update("UPDATE emission_project_task SET process_code='EMISSION_PROJECT',process_step_code=CASE task_code WHEN 'BASIC_INFO' THEN 'EMISSION_PROJECT_SETUP' WHEN 'ACTIVITY_DATA' THEN 'EMISSION_PROJECT_COLLECT' WHEN 'CALCULATION' THEN 'EMISSION_PROJECT_CALCULATE' WHEN 'VERIFICATION' THEN 'EMISSION_PROJECT_VALIDATE' WHEN 'APPROVAL' THEN 'EMISSION_PROJECT_APPROVE' WHEN 'REPORT' THEN 'EMISSION_PROJECT_REPORT' END,actor_code=CASE task_code WHEN 'BASIC_INFO' THEN 'COMPANY_MANAGER' WHEN 'ACTIVITY_DATA' THEN 'SITE_DATA_OWNER' WHEN 'CALCULATION' THEN 'CALCULATOR' WHEN 'VERIFICATION' THEN 'VERIFIER' WHEN 'APPROVAL' THEN 'APPROVER' WHEN 'REPORT' THEN 'COMPANY_MANAGER' END,predecessor_codes=CASE task_code WHEN 'ACTIVITY_DATA' THEN 'BASIC_INFO' WHEN 'CALCULATION' THEN 'ACTIVITY_DATA' WHEN 'VERIFICATION' THEN 'CALCULATION' WHEN 'APPROVAL' THEN 'VERIFICATION' WHEN 'REPORT' THEN 'APPROVAL' ELSE '' END,completion_rule=CASE task_code WHEN 'BASIC_INFO' THEN '프로젝트 기본정보와 산정기간이 확정됨' WHEN 'ACTIVITY_DATA' THEN '품질검사를 통과한 활동자료가 제출됨' WHEN 'CALCULATION' THEN '배출량 산정 버전이 생성됨' WHEN 'VERIFICATION' THEN '검증 오류가 없고 검증 이력이 생성됨' WHEN 'APPROVAL' THEN '권한 있는 승인자가 결과를 승인함' WHEN 'REPORT' THEN '확정 결과 보고서가 발행됨' END WHERE project_id=?",id);
+        completeWorkflowTask(id,"BASIC_INFO",owner);
+        jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?) ON CONFLICT DO NOTHING",id,owner,id,owner,id,owner);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;
     }

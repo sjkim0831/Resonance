@@ -20,6 +20,13 @@ type Task = {
   assignee: string;
   dueDate: string;
   targetUrl: string;
+  processCode?: string;
+  processStepCode?: string;
+  actorCode?: string;
+  completionRule?: string;
+  blockedReason?: string;
+  pendingPredecessors?: string;
+  actionable?: boolean;
 };
 type Data = {
   items: Task[];
@@ -130,10 +137,12 @@ export function EmissionMyTasksPage() {
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">{en ? "All statuses" : "전체 상태"}</option>
+                <option value="READY">{en ? "Ready" : "실행 가능"}</option>
                 <option value="WAITING">{en ? "Waiting" : "대기"}</option>
                 <option value="IN_PROGRESS">
                   {en ? "In progress" : "진행 중"}
                 </option>
+                <option value="BLOCKED">{en ? "Blocked" : "차단"}</option>
                 <option value="DONE">{en ? "Done" : "완료"}</option>
               </select>
             </div>
@@ -229,6 +238,9 @@ export function EmissionMyTasksPage() {
                     </td>
                     <td>
                       <strong>{t.name}</strong>
+                      <span className="mt-1 block text-xs font-bold text-slate-500">
+                        {t.actorCode || t.type}
+                      </span>
                       <a
                         className="block text-sm text-blue-700"
                         href={buildLocalizedPath(
@@ -250,28 +262,21 @@ export function EmissionMyTasksPage() {
                     >
                       {t.dueDate}
                     </td>
-                    <td>
-                      <select
-                        className="h-10 rounded border px-2"
-                        value={t.status}
-                        onChange={(e) =>
-                          update(t.id, e.target.value).catch((err) =>
-                            setMessage(err.message),
-                          )
-                        }
-                      >
-                        <option value="WAITING">WAITING</option>
-                        <option value="IN_PROGRESS">IN PROGRESS</option>
-                        <option value="DONE">DONE</option>
-                      </select>
+                    <td className="p-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-black ${t.status === "DONE" ? "bg-green-100 text-green-800" : t.actionable ? "bg-blue-100 text-blue-800" : "bg-slate-200 text-slate-700"}`}>
+                        {t.status}
+                      </span>
+                      {(t.blockedReason || t.pendingPredecessors) && (
+                        <p className="mt-2 max-w-48 text-xs leading-5 text-red-700">
+                          {t.pendingPredecessors || t.blockedReason}
+                        </p>
+                      )}
                     </td>
                     <td>
-                      <a
-                        className="inline-flex rounded-lg bg-[#246beb] px-4 py-2 font-bold text-white"
-                        href={href(t)}
-                      >
-                        {en ? "Open" : "업무 열기"}
-                      </a>
+                      {t.actionable ? <div className="flex flex-col gap-2">
+                        {t.status === "READY" && <button className="rounded-lg border border-[#246beb] bg-white px-4 py-2 font-bold text-[#246beb]" onClick={() => update(t.id,"IN_PROGRESS").catch(err=>setMessage(err.message))}>{en ? "Start" : "업무 시작"}</button>}
+                        <a className="inline-flex justify-center rounded-lg bg-[#246beb] px-4 py-2 font-bold text-white" href={href(t)}>{en ? "Open" : "업무 열기"}</a>
+                      </div> : <span className="text-xs font-bold text-slate-500">{t.status === "DONE" ? (en ? "Completed by workflow" : "프로세스로 완료") : (en ? "Complete prerequisites first" : "선행 업무 완료 필요")}</span>}
                     </td>
                   </tr>
                 ))}
