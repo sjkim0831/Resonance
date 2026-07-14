@@ -55,7 +55,7 @@ fi
 if [[ -z "$POSTGRES_POD" ]]; then
   while IFS= read -r candidate; do
     if [[ "$(kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
-      psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
       POSTGRES_POD="$candidate"
       break
     fi
