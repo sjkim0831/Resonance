@@ -105,52 +105,29 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
 }
 
 export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: HomeMenuItem[] }) {
+  const [selectedMenuIndex, setSelectedMenuIndex] = useState(0);
+  const selectedMenu = homeMenu[selectedMenuIndex] || homeMenu[0];
+  const menuIcons = ["home", "factory", "science", "trending_down", "monitoring", "swap_horiz", "school", "person"];
   return (
     <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
       {homeMenu.slice(0, 6).map((top, index) => (
-        <div className="gnb-item h-full relative group min-w-0" key={`${top.label || "top"}-${index}`}>
+        <div className="gnb-item relative h-full min-w-0" key={`${top.label || "top"}-${index}`}>
           <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
             {top.label || (en ? "Menu" : "메뉴")}
           </a>
-          {top.sections && top.sections.length > 0 ? (
-            <div className="gnb-depth2 hidden fixed left-1/2 top-16 -translate-x-1/2 overflow-hidden border border-slate-300 shadow-[0_12px_32px_rgba(15,42,76,.14)] rounded-b-xl">
-              <div className="grid grid-cols-[240px_minmax(0,1fr)]">
-                <aside className="border-r border-[#c6d5e5] bg-[#eef5ff] p-5 text-[#052b57]">
-                  <strong className="krds-type-label flex items-center gap-2 font-black text-[#052b57]"><span className="material-symbols-outlined text-xl text-[#246beb]">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
-                  <div className="krds-component gov-text-caption mt-3 rounded-lg border border-dashed border-[#8eabd0] bg-white text-center font-semibold text-[#4c627c]">
-                    <span className="material-symbols-outlined mb-2 block text-2xl text-[#246beb]">star</span>
-                    {en ? "Select the star next to a menu to add a shortcut." : "메뉴의 별 아이콘을 선택해 즐겨찾기에 추가하세요."}
-                  </div>
-                  <strong className="krds-type-label mt-5 flex items-center gap-2 border-t border-[#c6d5e5] pt-5 font-black text-[#052b57]"><span className="material-symbols-outlined text-xl text-[#246beb]">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
-                  <div className="mt-2 space-y-1">
-                    {(top.sections || []).flatMap((section) => section.items || []).slice(0, 5).map((item, recentIndex) => (
-                      <a className="krds-control gov-text-caption flex !min-h-10 items-center justify-between rounded-lg !px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>
-                    ))}
-                  </div>
-                  <div className="krds-control mt-5 flex items-center justify-between rounded-lg border border-[#8eabd0] bg-white text-xs font-black text-[#052b57]"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-[#246beb] px-2 py-0.5 text-white">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
-                </aside>
-                <div className="gnb-sections">
-                {top.sections.map((section, sectionIndex) => (
-                  <div className="gnb-section" key={`${section.label || "section"}-${sectionIndex}`}>
-                    <strong className="gnb-section-title">{section.label || (en ? "Section" : "섹션")}</strong>
-                    {(section.items || []).map((item, itemIndex) => (
-                      <a className="gov-text-body-sm flex items-center rounded-md px-2 py-2.5 font-semibold text-slate-700 hover:bg-blue-50 hover:text-[var(--kr-gov-blue)]" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
-                        {item.label || (en ? "Item" : "항목")}
-                      </a>
-                    ))}
-                  </div>
-                ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
         </div>
       ))}
       <details className="group h-full shrink-0">
         <summary className="gov-text-label flex h-full cursor-pointer list-none items-center gap-1 border-b-4 border-transparent px-2.5 font-black text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] 2xl:px-3">{en ? "All menus" : "전체 메뉴"}<span className="material-symbols-outlined text-xl transition-transform group-open:rotate-180">keyboard_arrow_down</span></summary>
-        <div className="fixed left-1/2 top-24 max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 overflow-auto rounded-b-xl border border-slate-300 bg-white p-6 shadow-[0_12px_32px_rgba(15,42,76,.18)]">
-          <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4"><strong className="gov-text-heading-sm text-[#052b57]">{en ? "CCUS services" : "CCUS 전체 서비스"}</strong><span className="gov-text-caption text-slate-500">{en ? "Select a task to continue" : "업무를 선택하면 해당 화면으로 이동합니다"}</span></div>
-          <div className="grid grid-cols-4 gap-5">{homeMenu.map((top, topIndex) => <section className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" key={`all-${top.label}-${topIndex}`}><a className="gov-text-heading-sm flex items-center justify-between font-black text-[#052b57] hover:text-[var(--kr-gov-blue)]" href={top.url || "#"}>{top.label}<span className="material-symbols-outlined text-xl">arrow_forward</span></a><div className="mt-3 space-y-3">{(top.sections || []).map((section, sectionIndex) => <div key={`all-section-${sectionIndex}`}><strong className="gov-text-label text-slate-700">{section.label}</strong><div className="mt-1 space-y-0.5">{(section.items || []).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-9 items-center rounded-md px-2 text-slate-600 hover:bg-white hover:text-[var(--kr-gov-blue)]" href={item.url || "#"} key={`all-item-${itemIndex}`}>{item.label}</a>)}</div></div>)}</div></section>)}</div>
+        <div className="fixed left-1/2 top-24 grid max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-b-xl border border-slate-300 bg-white shadow-[0_12px_32px_rgba(15,42,76,.18)]">
+          <aside className="overflow-auto border-r border-[#c6d5e5] bg-[#eef5ff] p-4" aria-label={en ? "Major menu" : "대메뉴"}>
+            <strong className="gov-text-caption mb-3 block px-2 font-black text-[#526b89]">{en ? "SERVICES" : "전체 서비스"}</strong>
+            <div className="space-y-1">{homeMenu.map((top, topIndex) => <button className={`flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-bold transition-colors ${selectedMenuIndex === topIndex ? "bg-[#00378b] text-white shadow-sm" : "text-[#17375e] hover:bg-white hover:text-[#00378b]"}`} key={`major-${top.label}-${topIndex}`} onClick={() => setSelectedMenuIndex(topIndex)} type="button"><span className="material-symbols-outlined text-xl" aria-hidden="true">{menuIcons[topIndex] || "folder"}</span><span className="gov-text-label flex-1">{top.label}</span><span className="material-symbols-outlined text-lg" aria-hidden="true">chevron_right</span></button>)}</div>
+          </aside>
+          <section className="min-w-0 overflow-auto p-6">
+            <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4"><div><strong className="gov-text-heading-sm text-[#052b57]">{selectedMenu?.label || (en ? "Services" : "서비스")}</strong><p className="gov-text-caption mt-1 text-slate-500">{en ? "Select a task to continue" : "중메뉴와 세부 업무를 선택하세요"}</p></div>{selectedMenu?.url && selectedMenu.url !== "#" ? <a className="gov-text-label flex items-center gap-1 font-black text-[#00378b]" href={selectedMenu.url}>{en ? "Overview" : "대표 화면"}<span className="material-symbols-outlined text-xl">arrow_forward</span></a> : null}</div>
+            <div className="grid grid-cols-3 gap-5">{(selectedMenu?.sections || []).map((section, sectionIndex) => <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" key={`selected-section-${sectionIndex}`}><strong className="gov-text-label block border-b border-slate-200 pb-3 font-black text-[#17375e]">{section.label}</strong><div className="mt-2 space-y-0.5">{(section.items || []).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-10 items-center justify-between rounded-md px-2 text-slate-700 hover:bg-white hover:text-[#00378b]" href={item.url || "#"} key={`selected-item-${itemIndex}`}><span>{item.label}</span><span className="material-symbols-outlined text-base text-slate-400">chevron_right</span></a>)}</div></div>)}</div>
+          </section>
         </div>
       </details>
     </nav>
