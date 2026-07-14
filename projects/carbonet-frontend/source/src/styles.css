@@ -2891,3 +2891,31 @@ dd {
 :where(code, kbd, samp, pre):not([class*="gov-text-"]):not([class*="krds-type-"]) {
   font-size: var(--krds-type-label) !important;
 }
+
+/* Legacy containers without an explicit type token inherit the GOV body scale. */
+:where(div, span, p, section, article, aside, nav, header, footer, main, ul, ol, li, dl, dt, dd, strong, b, em, address)
+  :not(.material-symbols-outlined):not(.material-icons) {
+  font-size: inherit;
+}
+
+:where(div, span, p, section, article, aside, nav, header, footer, main, ul, ol, li, dl, dt, dd, strong, b, em, address):not([class*="text-"]):not([class*="gov-text-"]):not([class*="krds-type-"]):not(.material-symbols-outlined):not(.material-icons) {
+  font-size: inherit !important;
+}
+
+:where(header, nav) {
+  font-size: var(--krds-type-label);
+}
+
+:where(footer) {
+  font-size: var(--krds-type-body-sm);
+}
+
+:where(a):not([class*="text-"]):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-label) !important;
+  line-height: var(--krds-line-compact) !important;
+}
+
+:where(time):not([class*="text-"]):not([class*="gov-text-"]):not([class*="krds-type-"]) {
+  font-size: var(--krds-type-caption) !important;
+  line-height: var(--krds-line-compact) !important;
+}
