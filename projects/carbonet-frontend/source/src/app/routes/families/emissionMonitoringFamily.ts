@@ -120,7 +120,7 @@ const EMISSION_MONITORING_PAGE_UNITS = [
   { id: "co2-credit", exportName: "Co2CreditMigrationPage", loader: () => import("../../../features/co2-credit/Co2CreditMigrationPage") },
   { id: "co2-analysis", exportName: "Co2AnalysisMigrationPage", loader: () => import("../../../features/co2-analysis/Co2AnalysisMigrationPage") },
   { id: "co2-search", exportName: "Co2SearchMigrationPage", loader: () => import("../../../features/co2-search/Co2SearchMigrationPage") },
-  { id: "emission-home-validate", exportName: "EmissionHomeValidateMigrationPage", loader: () => import("../../../features/emission-home-validate/EmissionHomeValidateMigrationPage") },
+  { id: "emission-home-validate", exportName: "EmissionProjectReviewPage", loader: () => import("../../../features/emission-project-list/EmissionProjectReviewPage") },
   { id: "emission-project-create", exportName: "EmissionProjectCreatePage", loader: () => import("../../../features/emission-project-list/EmissionProjectCreatePage") },
   { id: "emission-project-detail", exportName: "EmissionProjectDetailPage", loader: () => import("../../../features/emission-project-list/EmissionProjectDetailPage") },
 ] as const satisfies PageUnitsOf<typeof EMISSION_MONITORING_ROUTE_DEFINITIONS>;

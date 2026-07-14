@@ -276,6 +276,83 @@ public class EmissionProjectRegistryService {
         return Map.of("id",submissionId,"state","SUBMITTED","duplicate",false);
     }
 
+    public Map<String,Object> reviewWorkflow(String projectId,String tenantId) {
+        String tenant=requiredValue(tenantId,"tenantId");
+        assertTenantAccess(projectId,tenant);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("project",detail(projectId));
+        result.put("submissions",jdbc.queryForList("SELECT submission_id AS \"id\",version_no AS \"version\",submission_state AS \"state\",submitted_actor AS \"submittedActor\",submitted_at AS \"submittedAt\" FROM emission_activity_submission WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId));
+        result.put("reviews",jdbc.queryForList("SELECT review_id AS \"id\",submission_id AS \"submissionId\",review_stage AS \"stage\",decision,reviewer_id AS \"reviewer\",comment_text AS comment,issue_count AS \"issueCount\",calculation_id AS \"calculationId\",created_at AS \"createdAt\" FROM emission_submission_review WHERE tenant_id=? AND project_id=? ORDER BY created_at DESC,review_id DESC",tenant,projectId));
+        result.put("actors",jdbc.queryForList("SELECT actor_code AS \"actorCode\",user_id AS \"userId\" FROM framework_project_actor_assignment WHERE project_id=? AND assignment_status='ACTIVE' ORDER BY actor_code,user_id",projectId));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> startVerification(String projectId,long submissionId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"VERIFIER",override);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
+        if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
+        String state=text(rows.get(0).get("state"));
+        if(!List.of("SUBMITTED","IN_VERIFICATION").contains(state)) throw new IllegalStateException("VERIFICATION_STATE_INVALID:"+state);
+        if("SUBMITTED".equals(state)) {
+            jdbc.update("UPDATE emission_activity_submission SET submission_state='IN_VERIFICATION',updated_at=current_timestamp WHERE submission_id=?",submissionId);
+            jdbc.update("INSERT INTO emission_submission_review(tenant_id,project_id,submission_id,review_stage,decision,reviewer_id) VALUES (?,?,?,'VERIFICATION','STARTED',?)",tenant,projectId,submissionId,user);
+            jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'VERIFICATION_STARTED',?,'SUBMITTED','IN_VERIFICATION','검증이 시작되었습니다.')",submissionId,user);
+        }
+        return Map.of("id",submissionId,"state","IN_VERIFICATION");
+    }
+
+    @Transactional
+    public Map<String,Object> decideVerification(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase();
+        requireProjectActor(projectId,tenant,user,"VERIFIER",override);
+        if(!List.of("PASSED","CORRECTION_REQUESTED").contains(decision)) throw new IllegalArgumentException("VERIFICATION_DECISION_INVALID");
+        String comment=text(body.get("comment")); int issues=Integer.parseInt(String.valueOf(body.getOrDefault("issueCount",0)));
+        if("CORRECTION_REQUESTED".equals(decision)&&comment.isBlank()) throw new IllegalArgumentException("CORRECTION_REASON_REQUIRED");
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
+        if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
+        String previous=text(rows.get(0).get("state")); if(!"IN_VERIFICATION".equals(previous)) throw new IllegalStateException("VERIFICATION_STATE_INVALID:"+previous);
+        String next="PASSED".equals(decision)?"VERIFIED":"CORRECTION_REQUIRED";
+        jdbc.update("UPDATE emission_activity_submission SET submission_state=?,updated_at=current_timestamp WHERE submission_id=?",next,submissionId);
+        jdbc.update("INSERT INTO emission_submission_review(tenant_id,project_id,submission_id,review_stage,decision,reviewer_id,comment_text,issue_count) VALUES (?,?,?,'VERIFICATION',?,?,?,?)",tenant,projectId,submissionId,decision,user,comment,issues);
+        jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,?,?,?,?,?)",submissionId,"PASSED".equals(decision)?"VERIFIED":"CORRECTION_REQUESTED",user,previous,next,comment);
+        if("PASSED".equals(decision)) completeWorkflowTask(projectId,"VERIFICATION",user); else reopenForCorrection(projectId,user,comment);
+        return Map.of("id",submissionId,"state",next);
+    }
+
+    @Transactional
+    public Map<String,Object> decideApproval(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase(),comment=text(body.get("comment"));
+        requireProjectActor(projectId,tenant,user,"APPROVER",override);
+        if(!List.of("APPROVED","REJECTED").contains(decision)) throw new IllegalArgumentException("APPROVAL_DECISION_INVALID");
+        if("REJECTED".equals(decision)&&comment.isBlank()) throw new IllegalArgumentException("REJECTION_REASON_REQUIRED");
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
+        if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
+        String previous=text(rows.get(0).get("state")); if(!"VERIFIED".equals(previous)) throw new IllegalStateException("APPROVAL_REQUIRES_VERIFIED");
+        Long calculationId=jdbc.query("SELECT calculation_id FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1",rs->rs.next()?rs.getLong(1):null,projectId);
+        if(calculationId==null) throw new IllegalStateException("APPROVAL_REQUIRES_CALCULATION");
+        String next="APPROVED".equals(decision)?"APPROVED":"CORRECTION_REQUIRED";
+        jdbc.update("UPDATE emission_activity_submission SET submission_state=?,updated_at=current_timestamp WHERE submission_id=?",next,submissionId);
+        jdbc.update("INSERT INTO emission_submission_review(tenant_id,project_id,submission_id,review_stage,decision,reviewer_id,comment_text,calculation_id) VALUES (?,?,?,'APPROVAL',?,?,?,?)",tenant,projectId,submissionId,decision,user,comment,calculationId);
+        jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,?,?,?,?,?)",submissionId,"APPROVED".equals(decision)?"APPROVED":"REJECTED",user,previous,next,comment);
+        if("APPROVED".equals(decision)) { jdbc.update("UPDATE emission_calculation_run SET locked_at=current_timestamp,locked_by=? WHERE calculation_id=? AND locked_at IS NULL",user,calculationId); completeWorkflowTask(projectId,"APPROVAL",user); }
+        else reopenForCorrection(projectId,user,comment);
+        return Map.of("id",submissionId,"state",next,"calculationId",calculationId);
+    }
+
+    private void requireProjectActor(String projectId,String tenant,String user,String actorCode,boolean override) {
+        assertTenantAccess(projectId,tenant); if(override)return;
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment a JOIN emission_project_registry p ON p.project_id=a.project_id WHERE a.project_id=? AND p.tenant_id=? AND lower(a.user_id)=lower(?) AND a.actor_code=? AND a.assignment_status='ACTIVE'",Integer.class,projectId,tenant,user,actorCode);
+        if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+actorCode);
+    }
+
+    private void reopenForCorrection(String projectId,String actor,String reason) {
+        jdbc.update("UPDATE emission_project_task SET task_status=CASE WHEN task_code='ACTIVITY_DATA' THEN 'READY' ELSE 'BLOCKED' END,blocked_reason=CASE WHEN task_code='ACTIVITY_DATA' THEN null ELSE '보완 자료 재제출이 필요합니다.' END,completed_at=null,completed_by=null,updated_at=current_timestamp WHERE project_id=? AND task_code IN ('ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT')",projectId);
+        jdbc.update("UPDATE emission_project_registry SET current_step='보완·재제출',project_status='보완 필요',updated_at=current_timestamp WHERE project_id=?",projectId);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CORRECTION_REQUESTED',?,?)",projectId,reason,actor);
+    }
+
     @Transactional
     public String copy(String sourceId,String tenantId) {
         assertTenantAccess(sourceId,tenantId);
