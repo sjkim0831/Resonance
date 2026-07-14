@@ -270,7 +270,7 @@ org:
       csrfAccessDeniedUrl: /signin/csrfAccessDenied
       defaultTargetUrl: /main
       dataSource: dataSource
-      permitAllList: ^/css/.*$,^/images/.*$,^/img/.*$,^/js/.*$,^/uat/.*$,^/home(?:/.*)?$,^/signin/.*$,^/en/signin/.*$,^/join/.*$,^/en/join/.*$,^/admin/login/.*$,^/en/admin/login/.*$,^/react-shell/.*$,^/assets/react/.*$,^/admin/assets/react/.*$,^/en/admin/assets/react/.*$,^/actuator/.*$,^/api/telemetry/.*$,^/api/frontend/session$,^/api/frontend/error/report$,^/api/app/bootstrap(?:\\?.*)?$,^/en/api/app/bootstrap(?:\\?.*)?$,^/api/admin/app/bootstrap(?:\\?.*)?$,^/en/api/admin/app/bootstrap(?:\\?.*)?$,^/admin(?:/.*)?(?:\\?.*)?$,^/en/admin(?:/.*)?(?:\\?.*)?$
+      permitAllList: ^/css/.*$,^/images/.*$,^/img/.*$,^/js/.*$,^/uat/.*$,^/home(?:/.*)?$,^/signin/.*$,^/en/signin/.*$,^/join/.*$,^/en/join/.*$,^/admin/login/.*$,^/en/admin/login/.*$,^/react-shell/.*$,^/assets/react/.*$,^/admin/assets/react/.*$,^/en/admin/assets/react/.*$,^/actuator/.*$,^/api/telemetry/.*$,^/api/frontend/session$,^/api/frontend/error/report$,^/api/public/report-certificates/.*$,^/en/api/public/report-certificates/.*$,^/api/app/bootstrap(?:\\?.*)?$,^/en/api/app/bootstrap(?:\\?.*)?$,^/api/admin/app/bootstrap(?:\\?.*)?$,^/en/api/admin/app/bootstrap(?:\\?.*)?$,^/admin(?:/.*)?(?:\\?.*)?$,^/en/admin(?:/.*)?(?:\\?.*)?$
       csrf: false
       xframeOptions: sameorigin
       sniff: false
