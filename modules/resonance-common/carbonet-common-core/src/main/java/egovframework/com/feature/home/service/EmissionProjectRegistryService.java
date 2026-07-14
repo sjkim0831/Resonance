@@ -89,14 +89,18 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public int mapFactor(String projectId,long activityId,String factorId) {
+    public int mapFactor(String projectId,long activityId,String factorId,String tenantId,String actor,boolean override) {
+        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"CALCULATOR",override);
+        requireSubmittedActivityData(projectId);
         int changed=jdbc.update("UPDATE emission_activity_data SET factor_id=?,mapping_status='MAPPED',updated_at=current_timestamp WHERE project_id=? AND activity_id=?",factorId,projectId,activityId);
         if(changed==0) throw new IllegalArgumentException("활동자료를 찾을 수 없습니다.");
         return changed;
     }
 
     @Transactional
-    public int autoMap(String projectId) {
+    public int autoMap(String projectId,String tenantId,String actor,boolean override) {
+        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"CALCULATOR",override);
+        requireSubmittedActivityData(projectId);
         int changed=jdbc.update("UPDATE emission_activity_data a SET factor_id=(SELECT r.factor_id FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category ORDER BY CASE WHEN r.unit=a.unit THEN 0 ELSE 1 END,r.factor_id LIMIT 1),mapping_status='MAPPED',updated_at=current_timestamp WHERE a.project_id=? AND a.factor_id IS NULL AND EXISTS (SELECT 1 FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category)",projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'FACTOR_MAPPING',?||'건의 배출계수가 자동 매핑되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(changed),projectId);
         return changed;
@@ -121,7 +125,8 @@ public class EmissionProjectRegistryService {
         return count;
     }
 
-    public Map<String,Object> calculationResult(String projectId) {
+    public Map<String,Object> calculationResult(String projectId,String tenantId) {
+        assertTenantAccess(projectId,requiredValue(tenantId,"tenantId"));
         Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
         List<Map<String,Object>> runs=jdbc.queryForList("SELECT calculation_id AS \"id\",version_no AS \"version\",calculation_status AS \"status\",total_emission AS \"totalEmission\",calculated_at AS \"calculatedAt\" FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC",projectId);
         result.put("runs",runs);
@@ -134,8 +139,10 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public long calculate(String projectId) {
-        detail(projectId);
+    public long calculate(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"CALCULATOR",override);
+        requireSubmittedActivityData(projectId);
         Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=?",Integer.class,projectId);
         Integer unmapped=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL",Integer.class,projectId);
         if(total==null||total==0) throw new IllegalArgumentException("산정할 활동자료가 없습니다.");
@@ -145,9 +152,14 @@ public class EmissionProjectRegistryService {
         Long id=jdbc.queryForObject("INSERT INTO emission_calculation_run(project_id,version_no,total_emission) VALUES (?,?,?) RETURNING calculation_id",Long.class,projectId,version,sum);
         jdbc.update("INSERT INTO emission_calculation_item(calculation_id,activity_id,quantity,factor_value,emission_value) SELECT ?,a.activity_id,a.quantity,f.factor_value,a.quantity*f.factor_value FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=?",id,projectId);
         jdbc.update("UPDATE emission_project_registry SET progress_percent=50,current_step='배출량 산정',project_status='진행',updated_at=current_timestamp WHERE project_id=?",projectId);
-        completeWorkflowTask(projectId,"CALCULATION","SYSTEM");
+        completeWorkflowTask(projectId,"CALCULATION",user);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'CALCULATED','산정 버전 '||?||'이 생성되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(version),projectId);
         return id==null?0:id;
+    }
+
+    private void requireSubmittedActivityData(String projectId) {
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND submission_state IN ('SUBMITTED','IN_VERIFICATION','VERIFIED','APPROVED')",Integer.class,projectId);
+        if(count==null||count==0) throw new IllegalStateException("CALCULATION_REQUIRES_SUBMITTED_ACTIVITY_DATA");
     }
 
     public Map<String,Object> myTasks(String tenantId,String actorId,boolean showAll,String status,String period) {
@@ -218,8 +230,8 @@ public class EmissionProjectRegistryService {
             if(row.get("quantity")==null) issues.add(issue(id,"REQUIRED_QUANTITY","BLOCKING","quantity","활동량이 없습니다.","0 이상의 활동량을 입력하세요."));
             else if(((Number)row.get("quantity")).doubleValue()==0) issues.add(issue(id,"ZERO_QUANTITY","WARNING","quantity","활동량이 0입니다.","실제 활동이 없었는지 확인하고 근거를 비고에 남기세요."));
             if(unit.isBlank()||!allowedUnits.contains(unit)) issues.add(issue(id,"INVALID_UNIT","BLOCKING","unit","지원하지 않는 단위입니다: "+(unit.isBlank()?"(없음)":unit),"L, Nm3, kWh, ton, kg, km, m3, GJ, MJ 중 올바른 단위를 선택하세요."));
-            if(row.get("factorId")==null) issues.add(issue(id,"UNMAPPED_FACTOR","BLOCKING","factorId","배출계수가 매핑되지 않았습니다.","배출계수 매핑 탭에서 적합한 계수를 선택하세요."));
-            else if(row.get("factorUnit")!=null&&!unit.equals(text(row.get("factorUnit")))) issues.add(issue(id,"FACTOR_UNIT_MISMATCH","BLOCKING","factorId","활동자료 단위와 배출계수 단위가 다릅니다.","단위를 정정하거나 동일 단위의 배출계수를 다시 매핑하세요."));
+            if(row.get("factorId")==null) issues.add(issue(id,"UNMAPPED_FACTOR","WARNING","factorId","배출계수가 아직 매핑되지 않았습니다.","제출 후 산정 담당자가 배출계수를 매핑합니다."));
+            else if(row.get("factorUnit")!=null&&!unit.equals(text(row.get("factorUnit")))) issues.add(issue(id,"FACTOR_UNIT_MISMATCH","WARNING","factorId","활동자료 단위와 배출계수 단위가 다릅니다.","산정 담당자가 단위를 확인하고 적합한 배출계수를 선택합니다."));
             if(note.isBlank()) issues.add(issue(id,"MISSING_EVIDENCE","WARNING","note","증빙 또는 산정 근거가 없습니다.","증빙자료 설명이나 원본 문서 식별 정보를 입력하세요."));
             if(!period.matches("\\d{4}-(0[1-9]|1[0-2])")) issues.add(issue(id,"INVALID_PERIOD","BLOCKING","period","기간 형식이 올바르지 않습니다.","YYYY-MM 형식의 기간을 입력하세요."));
             else if((!start.isBlank()&&period.compareTo(start.substring(0,Math.min(7,start.length())))<0)||(!end.isBlank()&&period.compareTo(end.substring(0,Math.min(7,end.length())))>0)) issues.add(issue(id,"PERIOD_OUT_OF_RANGE","BLOCKING","period","프로젝트 산정기간을 벗어났습니다.","프로젝트 산정기간 안의 월로 정정하세요."));
@@ -410,6 +422,8 @@ public class EmissionProjectRegistryService {
         String state=text(rows.get(0).get("state"));
         if(!List.of("SUBMITTED","IN_VERIFICATION").contains(state)) throw new IllegalStateException("VERIFICATION_STATE_INVALID:"+state);
         if("SUBMITTED".equals(state)) {
+            Integer calculations=jdbc.queryForObject("SELECT count(*) FROM emission_calculation_run WHERE project_id=?",Integer.class,projectId);
+            if(calculations==null||calculations==0) throw new IllegalStateException("VERIFICATION_REQUIRES_CALCULATION");
             jdbc.update("UPDATE emission_activity_submission SET submission_state='IN_VERIFICATION',updated_at=current_timestamp WHERE submission_id=?",submissionId);
             jdbc.update("INSERT INTO emission_submission_review(tenant_id,project_id,submission_id,review_stage,decision,reviewer_id) VALUES (?,?,?,'VERIFICATION','STARTED',?)",tenant,projectId,submissionId,user);
             jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'VERIFICATION_STARTED',?,'SUBMITTED','IN_VERIFICATION','검증이 시작되었습니다.')",submissionId,user);
