@@ -73,19 +73,32 @@ public class AuthPageController {
                 if (savedRequest instanceof DefaultSavedRequest) {
                     String redirectUrl = ((DefaultSavedRequest) savedRequest).getRedirectUrl();
                     if (!ObjectUtils.isEmpty(redirectUrl)) {
-                        int queryIndex = redirectUrl.indexOf('?');
-                        String cleanUrl = queryIndex > 0 ? redirectUrl.substring(0, queryIndex) : redirectUrl;
                         String requestUri = request.getRequestURI();
-                        if (!ObjectUtils.isEmpty(requestUri) && !requestUri.equals(cleanUrl)
-                                && !cleanUrl.contains("/signin") && !cleanUrl.contains("/login")
-                                && !cleanUrl.endsWith("/signin") && !cleanUrl.endsWith("/login")) {
-                            return "redirect:" + cleanUrl;
+                        String safePath = safeLocalRedirectPath(redirectUrl);
+                        if (!ObjectUtils.isEmpty(requestUri) && !requestUri.equals(safePath)
+                                && !ObjectUtils.isEmpty(safePath)) {
+                            session.removeAttribute("SPRING_SECURITY_SAVED_REQUEST");
+                            return "redirect:" + safePath;
                         }
                     }
                 }
                 session.removeAttribute("SPRING_SECURITY_SAVED_REQUEST");
             }
-            return "en".equals(resolvedLanguage) ? "redirect:/en/home" : "redirect:/home";
+            return "en".equals(resolvedLanguage) ? "redirect:/en/emission/my-tasks" : "redirect:/emission/my-tasks";
+        }
+    }
+
+    private String safeLocalRedirectPath(String redirectUrl) {
+        try {
+            java.net.URI uri = java.net.URI.create(redirectUrl);
+            String path = uri.getRawPath();
+            if (ObjectUtils.isEmpty(path) || !path.startsWith("/") || path.startsWith("//")
+                    || path.contains("/signin") || path.contains("/login")) {
+                return null;
+            }
+            return ObjectUtils.isEmpty(uri.getRawQuery()) ? path : path + "?" + uri.getRawQuery();
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 

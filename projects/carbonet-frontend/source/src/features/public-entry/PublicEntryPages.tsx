@@ -258,11 +258,19 @@ export function PublicLoginPage() {
       invalidateFrontendSessionCache();
       window.sessionStorage.setItem("loginUserId", body.userId || nextUserId.trim());
       window.sessionStorage.setItem("loginUserSe", body.userSe || "ENT");
+      const requestedReturnUrl = new URLSearchParams(window.location.search).get("returnUrl");
+      const safeReturnUrl = requestedReturnUrl
+        && requestedReturnUrl.startsWith("/")
+        && !requestedReturnUrl.startsWith("//")
+        && !requestedReturnUrl.includes("/signin")
+        && !requestedReturnUrl.includes("/login")
+          ? requestedReturnUrl
+          : null;
       const redirectUrl = body.userSe === "USR"
         ? buildLocalizedPath("/admin/", "/en/admin/")
         : body.certified === false
           ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
-          : buildLocalizedPath("/home", "/en/home");
+          : safeReturnUrl || buildLocalizedPath("/emission/my-tasks", "/en/emission/my-tasks");
       navigate(redirectUrl);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "로그인 요청 중 오류가 발생했습니다.");
