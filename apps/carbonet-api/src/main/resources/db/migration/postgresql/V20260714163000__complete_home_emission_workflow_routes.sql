@@ -35,7 +35,7 @@ WHERE m.menu_code=r.code;
 
 UPDATE comtccmmndetailcode c
 SET code_nm=r.name_ko, code_dc=r.route, use_at='Y',
-    last_updt_pnttm=current_timestamp, last_updusr_id='EMISSION_WORKFLOW_COMPLETE'
+    last_updt_pnttm=current_timestamp, last_updusr_id='EMISSION_WORKFLOW'
 FROM emission_home_route r
 WHERE c.code_id='HMENU1' AND c.code=r.code;
 
