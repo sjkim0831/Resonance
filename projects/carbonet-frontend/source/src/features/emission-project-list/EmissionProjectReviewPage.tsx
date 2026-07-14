@@ -9,14 +9,24 @@ type Submission={id:number;version:number;state:string;submittedActor?:string;su
 type Review={id:number;submissionId:number;stage:string;decision:string;reviewer:string;comment?:string;issueCount:number;createdAt:string};
 type Payload={project:{id:string;name:string;site:string};submissions:Submission[];reviews:Review[];actors:{actorCode:string;userId:string}[]};
 
+async function readApiPayload(response:Response){
+  const text=await response.text();
+  const contentType=response.headers.get("content-type")||"";
+  if(!contentType.includes("application/json")){
+    if(response.status===401||response.redirected) throw new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+    throw new Error(`서버가 JSON 대신 HTML을 반환했습니다. (${response.status})`);
+  }
+  try{return JSON.parse(text)}catch{throw new Error(`서버 JSON 응답 형식이 올바르지 않습니다. (${response.status})`)}
+}
+
 export function EmissionProjectReviewPage(){
   const en=isEnglish(),content=LOCALIZED_CONTENT[en?"en":"ko"],home=useAsyncValue(()=>fetchHomePayload(),[en]);
   const id=new URLSearchParams(location.search).get("projectId")||"";
   const[data,setData]=useState<Payload|null>(null),[selected,setSelected]=useState<number>(0),[comment,setComment]=useState(""),[issues,setIssues]=useState(0),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
   const base=buildLocalizedPath(`/home/api/emission-projects/${id}`,`/en/home/api/emission-projects/${id}`);
-  async function load(){const r=await fetch(`${base}/review-workflow`,{credentials:"include"}),b=await r.json();if(!r.ok)throw new Error(b.message||"Load failed");setData(b);setSelected((value)=>value||b.submissions?.[0]?.id||0)}
+  async function load(){const r=await fetch(`${base}/review-workflow`,{credentials:"include",headers:{Accept:"application/json"}}),b=await readApiPayload(r);if(!r.ok)throw new Error(b.message||"Load failed");setData(b);setSelected((value)=>value||b.submissions?.[0]?.id||0)}
   useEffect(()=>{if(id)void load().catch(e=>setMessage(e.message))},[id]);
-  async function action(path:string,body?:object){if(!selected)return;setBusy(true);setMessage("");try{const r=await fetch(`${base}/submissions/${selected}/${path}`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}),b=await r.json();if(!r.ok)throw new Error(b.message||"Action failed");setMessage(en?"The workflow was updated.":"업무 상태가 변경되었습니다.");setComment("");await load()}catch(e){setMessage(e instanceof Error?e.message:String(e))}finally{setBusy(false)}}
+  async function action(path:string,body?:object){if(!selected)return;setBusy(true);setMessage("");try{const r=await fetch(`${base}/submissions/${selected}/${path}`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(body||{})}),b=await readApiPayload(r);if(!r.ok)throw new Error(b.message||"Action failed");setMessage(en?"The workflow was updated.":"업무 상태가 변경되었습니다.");setComment("");await load()}catch(e){setMessage(e instanceof Error?e.message:String(e))}finally{setBusy(false)}}
   if(!id)return <main className="p-10 font-bold text-red-700">{en?"Select a project first.":"프로젝트를 먼저 선택해 주세요."}</main>;
   const current=data?.submissions.find(x=>x.id===selected);
   return <><HomeInlineStyles en={en}/><div className="min-h-screen bg-[#f5f7fa]"><header className="border-b-2 border-[#001e40] bg-white"><div className="mx-auto flex h-16 max-w-7xl items-center px-4 lg:px-8"><HeaderBrand content={content} en={en}/><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu||[]}/></div></header><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
