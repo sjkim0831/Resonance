@@ -283,7 +283,7 @@ public class EmissionProjectRegistryService {
         result.put("project",detail(projectId));
         result.put("submissions",jdbc.queryForList("SELECT submission_id AS \"id\",version_no AS \"version\",submission_state AS \"state\",submitted_actor AS \"submittedActor\",submitted_at AS \"submittedAt\" FROM emission_activity_submission WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId));
         result.put("reviews",jdbc.queryForList("SELECT review_id AS \"id\",submission_id AS \"submissionId\",review_stage AS \"stage\",decision,reviewer_id AS \"reviewer\",comment_text AS comment,issue_count AS \"issueCount\",calculation_id AS \"calculationId\",created_at AS \"createdAt\" FROM emission_submission_review WHERE tenant_id=? AND project_id=? ORDER BY created_at DESC,review_id DESC",tenant,projectId));
-        result.put("actors",jdbc.queryForList("SELECT actor_code AS \"actorCode\",user_id AS \"userId\" FROM framework_project_actor_assignment WHERE project_id=? AND assignment_status='ACTIVE' ORDER BY actor_code,user_id",projectId));
+        result.put("actors",jdbc.queryForList("SELECT actor_code AS \"actorCode\",user_id AS \"userId\" FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y' ORDER BY actor_code,user_id",projectId));
         return result;
     }
 
@@ -343,7 +343,7 @@ public class EmissionProjectRegistryService {
 
     private void requireProjectActor(String projectId,String tenant,String user,String actorCode,boolean override) {
         assertTenantAccess(projectId,tenant); if(override)return;
-        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment a JOIN emission_project_registry p ON p.project_id=a.project_id WHERE a.project_id=? AND p.tenant_id=? AND lower(a.user_id)=lower(?) AND a.actor_code=? AND a.assignment_status='ACTIVE'",Integer.class,projectId,tenant,user,actorCode);
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment a JOIN emission_project_registry p ON p.project_id=a.project_id WHERE a.project_id=? AND p.tenant_id=? AND lower(a.user_id)=lower(?) AND a.actor_code=? AND a.active_yn='Y'",Integer.class,projectId,tenant,user,actorCode);
         if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+actorCode);
     }
 
