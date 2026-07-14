@@ -9,14 +9,14 @@ import { RESOURCE_ITEMS } from "../download-list/DownloadListMigrationPage";
 
 function getDesktopNavClass(en: boolean) {
   return en
-    ? "hidden xl:flex items-center h-full ml-4 2xl:ml-8 flex-1 justify-center min-w-0"
-    : "hidden xl:flex items-center space-x-1 h-full ml-8 flex-1 justify-center";
+    ? "hidden xl:flex items-center h-full ml-3 2xl:ml-6 flex-1 justify-center min-w-0"
+    : "hidden xl:flex items-center gap-0.5 h-full ml-4 2xl:ml-6 flex-1 justify-center min-w-0";
 }
 
 function getDesktopNavLinkClass(en: boolean) {
   return en
     ? "gov-text-label h-full flex items-center justify-center px-1.5 2xl:px-2 font-bold whitespace-normal text-center break-words max-w-[96px] 2xl:max-w-[108px] tracking-[-0.01em] text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible"
-    : "gov-text-body h-full flex items-center px-4 font-bold text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible";
+    : "gov-text-label h-full flex items-center px-2.5 2xl:px-3 font-bold whitespace-nowrap text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible";
 }
 
 function resolveFooterHref(label: string) {
@@ -72,7 +72,7 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
         margin: 0 !important;
         line-height: 1.2;
       }
-      .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: block; }
+      .gnb-item .gnb-depth2 { display: none !important; }
       .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; background: #fff; }
       .gnb-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .gnb-section { min-width: 0; border-left: 1px solid #e2e8f0; padding: 26px 28px; background: transparent; }
@@ -105,7 +105,7 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
 export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: HomeMenuItem[] }) {
   return (
     <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
-      {homeMenu.map((top, index) => (
+      {homeMenu.slice(0, 6).map((top, index) => (
         <div className="gnb-item h-full relative group min-w-0" key={`${top.label || "top"}-${index}`}>
           <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
             {top.label || (en ? "Menu" : "메뉴")}
@@ -144,6 +144,13 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
           ) : null}
         </div>
       ))}
+      <details className="group h-full shrink-0">
+        <summary className="gov-text-label flex h-full cursor-pointer list-none items-center gap-1 border-b-4 border-transparent px-2.5 font-black text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] 2xl:px-3">{en ? "All menus" : "전체 메뉴"}<span className="material-symbols-outlined text-xl transition-transform group-open:rotate-180">keyboard_arrow_down</span></summary>
+        <div className="fixed left-1/2 top-24 max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 overflow-auto rounded-b-xl border border-slate-300 bg-white p-6 shadow-[0_12px_32px_rgba(15,42,76,.18)]">
+          <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4"><strong className="gov-text-heading-sm text-[#052b57]">{en ? "CCUS services" : "CCUS 전체 서비스"}</strong><span className="gov-text-caption text-slate-500">{en ? "Select a task to continue" : "업무를 선택하면 해당 화면으로 이동합니다"}</span></div>
+          <div className="grid grid-cols-4 gap-5">{homeMenu.map((top, topIndex) => <section className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" key={`all-${top.label}-${topIndex}`}><a className="gov-text-heading-sm flex items-center justify-between font-black text-[#052b57] hover:text-[var(--kr-gov-blue)]" href={top.url || "#"}>{top.label}<span className="material-symbols-outlined text-xl">arrow_forward</span></a><div className="mt-3 space-y-3">{(top.sections || []).map((section, sectionIndex) => <div key={`all-section-${sectionIndex}`}><strong className="gov-text-label text-slate-700">{section.label}</strong><div className="mt-1 space-y-0.5">{(section.items || []).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-9 items-center rounded-md px-2 text-slate-600 hover:bg-white hover:text-[var(--kr-gov-blue)]" href={item.url || "#"} key={`all-item-${itemIndex}`}>{item.label}</a>)}</div></div>)}</div></section>)}</div>
+        </div>
+      </details>
     </nav>
   );
 }
