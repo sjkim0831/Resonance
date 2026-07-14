@@ -550,7 +550,18 @@ public class EmissionProjectRegistryService {
         return id;
     }
 
-    @Transactional public int delete(String id,String tenantId,String actor,boolean override) { String tenant=requiredValue(tenantId,"tenantId"); requireProjectActor(id,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override); jdbc.update("DELETE FROM framework_account_actor_assignment WHERE project_id=? AND tenant_id=?",id,tenant); return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant); }
+    @Transactional
+    public int delete(String id,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId");
+        requireProjectActor(id,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
+        jdbc.update("DELETE FROM emission_project_report WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM emission_submission_review WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM emission_activity_submission WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM emission_calculation_run WHERE project_id=?",id);
+        jdbc.update("DELETE FROM framework_account_actor_assignment WHERE project_id=? AND tenant_id=?",id,tenant);
+        return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant);
+    }
     private String required(Map<String,Object> body,String key) { String value=String.valueOf(body.getOrDefault(key,"")).trim(); if(value.isEmpty()) throw new IllegalArgumentException(key+" is required"); return value; }
     private String requiredValue(String value,String key) { String normalized=value==null?"":value.trim(); if(normalized.isEmpty()) throw new IllegalArgumentException(key+" is required"); return normalized; }
 }
