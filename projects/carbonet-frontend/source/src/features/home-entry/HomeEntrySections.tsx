@@ -83,6 +83,8 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
       .gnb-section a { min-height: var(--krds-control-height-sm); border-radius: 8px; }
       .gnb-section a:hover { background: #eef5ff; box-shadow: inset 3px 0 0 #246beb; }
       .gnb-item > a[aria-current='page'] { color: #246beb; border-bottom-color: #246beb; }
+      .gov-home main article.min-w-0 > .divide-y > a { grid-template-columns: 54px minmax(0, 1fr); min-width: 0; }
+      .gov-home main article.min-w-0 > .divide-y > a > span:last-child { min-width: 0; }
       body.mobile-menu-open { overflow: hidden; }
     `}</style>
   );
@@ -783,13 +785,13 @@ export function ReferenceHomeLowerSection({ en }: { en: boolean }) {
   return (
     <section className="bg-white py-14">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
-        <article>
+        <article className="min-w-0">
           <div className="flex items-center justify-between border-b border-slate-300 pb-4"><h2 className="text-2xl font-black text-[#001e40]">{en ? "Notices" : "공지사항"}</h2><a className="text-sm font-bold hover:underline" href={en ? "/en/support/notice" : "/support/notice"}>{en ? "View all" : "전체보기"}</a></div>
           <div className="divide-y divide-slate-200">
             {notices.map(([day, title, description]) => <a className="grid grid-cols-[54px_1fr] gap-4 py-5 hover:bg-slate-50" href={en ? "/en/support/notice" : "/support/notice"} key={title}><span className="flex h-12 w-12 flex-col items-center justify-center bg-blue-50 text-lg font-black text-[#003366]">{day}<small className="text-[9px]">{en ? "JUL" : "7월"}</small></span><span><strong className="block text-sm text-slate-950">{title}</strong><span className="mt-1 block truncate text-xs text-slate-500">{description}</span></span></a>)}
           </div>
         </article>
-        <article className="rounded-xl bg-slate-100 p-7">
+        <article className="min-w-0 rounded-xl bg-slate-100 p-7">
           <h2 className="text-2xl font-black text-[#001e40]">{en ? "Technical Support Center" : "기술 지원 센터"}</h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">{en ? "Get help with emissions reporting, certification, and system usage." : "배출량 보고, 인증 및 시스템 이용에 필요한 도움을 확인하세요."}</p>
           <div className="mt-6 grid grid-cols-2 gap-3">{supports.map(([icon, title, description]) => <a className="border border-slate-300 bg-white p-4 hover:border-[#003366]" href={en ? "/en/support/faq" : "/support/faq"} key={title}><span className="material-symbols-outlined text-[#003366]">{icon}</span><strong className="mt-3 block text-sm">{title}</strong><span className="mt-1 block text-xs text-slate-500">{description}</span></a>)}</div>
