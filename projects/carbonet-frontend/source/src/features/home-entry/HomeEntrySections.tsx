@@ -15,8 +15,8 @@ function getDesktopNavClass(en: boolean) {
 
 function getDesktopNavLinkClass(en: boolean) {
   return en
-    ? "h-full flex items-center justify-center px-[6px] 2xl:px-2 text-[12px] 2xl:text-[13px] font-bold whitespace-normal text-center leading-[1.15] break-words max-w-[92px] 2xl:max-w-[104px] tracking-[-0.01em] text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible"
-    : "h-full flex items-center px-4 text-[17px] font-bold text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible";
+    ? "gov-text-label h-full flex items-center justify-center px-1.5 2xl:px-2 font-bold whitespace-normal text-center break-words max-w-[96px] 2xl:max-w-[108px] tracking-[-0.01em] text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible"
+    : "gov-text-body h-full flex items-center px-4 font-bold text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible";
 }
 
 function resolveFooterHref(label: string) {
@@ -92,10 +92,10 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
   return (
     <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex items-center gap-3 shrink-0">
       <HomeLinkButton className="max-w-[78vw] xl:max-w-none !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-2" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
-        <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
+        <span className="material-symbols-outlined text-3xl text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
         <div className="home-brand-copy flex flex-col">
-          <h1 className="home-brand-title text-base sm:text-xl font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-tight">{content.logoTitle}</h1>
-          <p className={`home-brand-subtitle ${en ? "hidden 2xl:block" : "hidden sm:block"} text-[10px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider`}>{content.logoSubtitle}</p>
+          <h1 className="home-brand-title gov-text-heading-sm font-bold tracking-tight text-[var(--kr-gov-text-primary)]">{content.logoTitle}</h1>
+          <p className={`home-brand-subtitle gov-text-caption ${en ? "hidden 2xl:block" : "hidden sm:block"} text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider`}>{content.logoSubtitle}</p>
         </div>
       </HomeLinkButton>
     </div>
@@ -115,14 +115,14 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
               <div className="grid grid-cols-[240px_minmax(0,1fr)]">
                 <aside className="border-r border-[#c6d5e5] bg-[#eef5ff] p-5 text-[#052b57]">
                   <strong className="krds-type-label flex items-center gap-2 font-black text-[#052b57]"><span className="material-symbols-outlined text-xl text-[#246beb]">star</span>{en ? "Favorites" : "즐겨찾기"}</strong>
-                  <div className="krds-component mt-3 rounded-lg border border-dashed border-[#8eabd0] bg-white text-center text-xs font-semibold leading-5 text-[#4c627c]">
+                  <div className="krds-component gov-text-caption mt-3 rounded-lg border border-dashed border-[#8eabd0] bg-white text-center font-semibold text-[#4c627c]">
                     <span className="material-symbols-outlined mb-2 block text-2xl text-[#246beb]">star</span>
                     {en ? "Select the star next to a menu to add a shortcut." : "메뉴의 별 아이콘을 선택해 즐겨찾기에 추가하세요."}
                   </div>
                   <strong className="krds-type-label mt-5 flex items-center gap-2 border-t border-[#c6d5e5] pt-5 font-black text-[#052b57]"><span className="material-symbols-outlined text-xl text-[#246beb]">history</span>{en ? "Recent" : "최근 메뉴"}</strong>
                   <div className="mt-2 space-y-1">
                     {(top.sections || []).flatMap((section) => section.items || []).slice(0, 5).map((item, recentIndex) => (
-                      <a className="krds-control flex !min-h-10 items-center justify-between rounded-lg !px-2 text-xs font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>
+                      <a className="krds-control gov-text-caption flex !min-h-10 items-center justify-between rounded-lg !px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url || "#"} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>
                     ))}
                   </div>
                   <div className="krds-control mt-5 flex items-center justify-between rounded-lg border border-[#8eabd0] bg-white text-xs font-black text-[#052b57]"><span>{en ? "All menus" : "전체 메뉴"}</span><span className="rounded-full bg-[#246beb] px-2 py-0.5 text-white">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}{en ? "" : "개"}</span></div>
@@ -132,7 +132,7 @@ export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: Home
                   <div className="gnb-section" key={`${section.label || "section"}-${sectionIndex}`}>
                     <strong className="gnb-section-title">{section.label || (en ? "Section" : "섹션")}</strong>
                     {(section.items || []).map((item, itemIndex) => (
-                      <a className="flex items-center rounded-md px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-[var(--kr-gov-blue)]" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
+                      <a className="gov-text-body-sm flex items-center rounded-md px-2 py-2.5 font-semibold text-slate-700 hover:bg-blue-50 hover:text-[var(--kr-gov-blue)]" href={item.url || "#"} key={`${item.label || "item"}-${itemIndex}`}>
                         {item.label || (en ? "Item" : "항목")}
                       </a>
                     ))}
@@ -168,7 +168,7 @@ export function HeaderMobileMenu({
   return (
     <aside className="absolute top-0 right-0 h-full w-[90%] max-w-[380px] bg-white shadow-2xl border-l border-[var(--kr-gov-border-light)] overflow-y-auto">
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b border-[var(--kr-gov-border-light)] bg-white">
-        <strong className="text-lg font-bold text-[var(--kr-gov-text-primary)]">{content.allMenu}</strong>
+        <strong className="gov-text-heading-sm font-bold text-[var(--kr-gov-text-primary)]">{content.allMenu}</strong>
         <HomeButton id="mobile-menu-close" className="w-10 h-10 !p-0 text-[var(--kr-gov-text-secondary)]" type="button" aria-label={content.closeAllMenu} onClick={onClose}>
           <span className="material-symbols-outlined">close</span>
         </HomeButton>
@@ -196,10 +196,10 @@ export function HeaderMobileMenu({
         <div className="space-y-3">
           {homeMenu.map((top, index) => (
             <section className="border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] p-3" key={`${top.label || "mobile-top"}-${index}`}>
-              <h3 className="text-sm font-extrabold text-[var(--kr-gov-blue)] mb-2">{top.label || (en ? "Menu" : "메뉴")}</h3>
+              <h3 className="gov-text-body font-extrabold text-[var(--kr-gov-blue)] mb-2">{top.label || (en ? "Menu" : "메뉴")}</h3>
               {(top.sections || []).map((section, sectionIndex) => (
                 <div key={`${section.label || "mobile-section"}-${sectionIndex}`}>
-                  <p className="text-xs font-bold text-[var(--kr-gov-text-secondary)] mt-2 mb-1">{section.label || (en ? "Section" : "섹션")}</p>
+                  <p className="gov-text-label font-bold text-[var(--kr-gov-text-secondary)] mt-2 mb-1">{section.label || (en ? "Section" : "섹션")}</p>
                   <div className="space-y-1 text-sm mb-2">
                     {(section.items || []).map((item, itemIndex) => (
                       <a className="block py-1" href={item.url || "#"} key={`${item.label || "mobile-item"}-${itemIndex}`}>
@@ -225,8 +225,8 @@ export function HeroSection({ content }: { content: LocalizedHomeContent }) {
         <div className="absolute inset-0 bg-[#001e40]/60 backdrop-blur-[2px]" />
       </div>
       <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 text-center text-white lg:px-8">
-        <h1 className="text-4xl font-black leading-tight tracking-tight lg:text-5xl">{content.heroTitle.replace("\n", " ")}</h1>
-        <p className="mx-auto mt-6 max-w-3xl text-lg font-semibold leading-8 text-blue-100/95">{content.heroDescription}</p>
+        <h1 className="gov-text-heading-lg font-black tracking-tight">{content.heroTitle.replace("\n", " ")}</h1>
+        <p className="gov-text-body mx-auto mt-5 max-w-3xl font-semibold text-blue-100/95 sm:mt-6">{content.heroDescription}</p>
       </div>
     </section>
   );
@@ -832,19 +832,19 @@ export function HomeFooter({ content }: { content: LocalizedHomeContent }) {
   const english = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
   return (
     <footer className="bg-white border-t border-[var(--kr-gov-border-light)]">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-12 pb-8">
-        <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-[var(--kr-gov-border-light)]">
+      <div className="gov-home-footer max-w-7xl mx-auto px-4 lg:px-8">
+        <div className="flex flex-col justify-between gap-7 border-b border-[var(--kr-gov-border-light)] pb-7 md:flex-row md:gap-10 md:pb-10">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <img alt={content.govAlt} className="h-8 grayscale" src={HOME_ENTRY_ASSETS.FOOTER_SYMBOL} />
-              <span className="text-xl font-black text-[var(--kr-gov-text-primary)]">{content.footerOrg}</span>
+              <span className="gov-text-heading-sm font-black text-[var(--kr-gov-text-primary)]">{content.footerOrg}</span>
             </div>
-            <address className="not-italic text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed">
+            <address className="gov-text-body-sm not-italic text-[var(--kr-gov-text-secondary)]">
               {content.footerAddress}<br />
               {content.footerDesc}
             </address>
           </div>
-          <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
+          <div className="gov-text-body-sm flex flex-wrap gap-x-6 gap-y-3 font-bold md:gap-x-8 md:gap-y-4">
             {content.footerLinks.map((link, index) => (
               <a
                 className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-[var(--kr-gov-text-primary)] hover:underline"}
@@ -861,12 +861,12 @@ export function HomeFooter({ content }: { content: LocalizedHomeContent }) {
             ))}
           </div>
         </div>
-        <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-xs font-medium text-[var(--kr-gov-text-secondary)]">
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 md:mt-8 md:flex-row md:items-center md:gap-6">
+          <div className="gov-text-caption font-medium text-[var(--kr-gov-text-secondary)]">
             <p>© 2025 CCUS Carbon Footprint Platform. All rights reserved.</p>
           </div>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 px-3 py-1 bg-[var(--kr-gov-bg-gray)] rounded-[var(--kr-gov-radius)] text-xs font-bold text-[var(--kr-gov-text-secondary)]">
+            <div className="gov-text-caption flex items-center gap-2 rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-bg-gray)] px-3 py-1 font-bold text-[var(--kr-gov-text-secondary)]">
               <span>{content.lastModified}</span>
               <time dateTime="2025-08-14">{english ? "Aug 14, 2025" : "2025.08.14"}</time>
             </div>

@@ -73,25 +73,25 @@ export function HomeLandingPage() {
   return (
     <>
       <HomeInlineStyles en={en} />
-      <div className="bg-white text-[var(--kr-gov-text-primary)]">
+      <div className="gov-home bg-white text-[var(--kr-gov-text-primary)]">
         <a className="skip-link" href="#main-content">{content.skipLink}</a>
         <header className="sticky top-0 z-50 border-b-2 border-[#001e40] bg-white">
           <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <div className="relative flex h-16 items-center">
+            <div className="gov-home-header relative flex items-center">
               <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
               <HeaderBrand content={content} en={en} />
               <HeaderDesktopNav en={en} homeMenu={homeMenu} />
               <div className={`ml-auto flex items-center ${en ? "gap-2" : "gap-3"} shrink-0`}>
                 <div className="hidden xl:flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/home")}>KO</button>
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate("/en/home")}>EN</button>
+                  <button type="button" className={`gov-text-caption px-2 py-1 font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/home")}>KO</button>
+                  <button type="button" className={`gov-text-caption px-2 py-1 font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate("/en/home")}>EN</button>
                 </div>
                 {payload.isLoggedIn ? (
-                  <button type="button" className="hidden xl:inline-flex px-5 py-2.5 font-bold rounded-[var(--kr-gov-radius)] transition-colors focus-visible outline-none bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)]" onClick={() => void sessionState.logout()}>{content.logout}</button>
+                  <button type="button" className="gov-home-header-action hidden xl:inline-flex items-center font-bold rounded-[var(--kr-gov-radius)] transition-colors focus-visible outline-none bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)]" onClick={() => void sessionState.logout()}>{content.logout}</button>
                 ) : (
                   <>
-                    <a className="hidden xl:inline-flex px-5 py-2.5 font-bold rounded-[var(--kr-gov-radius)] transition-colors focus-visible outline-none bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] items-center" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}>{content.login}</a>
-                    <a className="hidden xl:inline-flex px-5 py-2.5 font-bold rounded-[var(--kr-gov-radius)] transition-colors focus-visible outline-none bg-white text-[var(--kr-gov-blue)] border border-[var(--kr-gov-blue)] hover:bg-[var(--kr-gov-bg-gray)] items-center" href={buildLocalizedPath("/join/step1", "/join/en/step1")}>{content.signup}</a>
+                    <a className="gov-home-header-action hidden xl:inline-flex font-bold rounded-[var(--kr-gov-radius)] transition-colors focus-visible outline-none bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] items-center" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}>{content.login}</a>
+                    <a className="gov-home-header-action hidden xl:inline-flex font-bold rounded-[var(--kr-gov-radius)] transition-colors focus-visible outline-none bg-white text-[var(--kr-gov-blue)] border border-[var(--kr-gov-blue)] hover:bg-[var(--kr-gov-bg-gray)] items-center" href={buildLocalizedPath("/join/step1", "/join/en/step1")}>{content.signup}</a>
                   </>
                 )}
                 <button
@@ -137,9 +137,9 @@ export function HomeLandingPage() {
                   <span className="material-symbols-outlined text-[34px]">verified_user</span>
                 </div>
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">{en ? "PUBLIC CERTIFICATE CHECK" : "공개 인증 서비스"}</p>
-                  <h2 className="mt-1 text-2xl font-black text-slate-950">{en ? "Certificate Authenticity Verification" : "인증서 진위여부 확인"}</h2>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">{en ? "Verify a downloaded certificate without signing in." : "로그인 없이 발급 인증서와 리포트의 진위 여부를 확인하세요."}</p>
+                  <p className="gov-text-caption font-black uppercase tracking-[0.18em] text-emerald-700">{en ? "PUBLIC CERTIFICATE CHECK" : "공개 인증 서비스"}</p>
+                  <h2 className="gov-text-heading-md mt-1 font-black text-slate-950">{en ? "Certificate Authenticity Verification" : "인증서 진위여부 확인"}</h2>
+                  <p className="gov-text-body-sm mt-1 font-semibold text-slate-600">{en ? "Verify a downloaded certificate without signing in." : "로그인 없이 발급 인증서와 리포트의 진위 여부를 확인하세요."}</p>
                 </div>
               </div>
               <a className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--kr-gov-radius)] bg-emerald-700 px-6 py-3 font-black text-white hover:bg-emerald-800 focus-visible" href={buildLocalizedPath("/home/certificate-verify", "/en/home/certificate-verify")}>
@@ -148,10 +148,10 @@ export function HomeLandingPage() {
               </a>
             </div>
           </section>
-          <section className="max-w-7xl mx-auto px-4 lg:px-8 py-20" data-help-id="home-services">
+          <section className="gov-home-section max-w-7xl mx-auto px-4 lg:px-8" data-help-id="home-services">
             <div className="mb-10">
-              <h2 className="text-3xl font-bold text-[var(--kr-gov-text-primary)]">{content.coreServicesTitle}</h2>
-              <p className="text-[var(--kr-gov-text-secondary)] mt-2">{content.coreServicesDescription}</p>
+              <h2 className="gov-text-heading-md font-bold text-[var(--kr-gov-text-primary)]">{content.coreServicesTitle}</h2>
+              <p className="gov-text-body mt-2 text-[var(--kr-gov-text-secondary)]">{content.coreServicesDescription}</p>
             </div>
             <CoreServiceGrid content={content} />
           </section>
