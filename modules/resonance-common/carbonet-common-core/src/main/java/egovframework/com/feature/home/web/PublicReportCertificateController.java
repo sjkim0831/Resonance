@@ -6,6 +6,6 @@ import java.util.Map;
 @RestController @RequiredArgsConstructor
 public class PublicReportCertificateController {
   private final EmissionProjectRegistryService service;
-  @GetMapping({"/public/api/report-certificates/{certificateId}","/en/public/api/report-certificates/{certificateId}"})
+  @GetMapping({"/api/public/report-certificates/{certificateId}","/en/api/public/report-certificates/{certificateId}"})
   public Map<String,Object> verify(@PathVariable String certificateId){return service.verifyReportCertificate(certificateId);}
 }
