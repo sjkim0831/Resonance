@@ -100,16 +100,31 @@ fi
 # The standard build updates tracked generated bundles and Gradle state. They are
 # deployment artifacts, not server-authored source changes, so restore only these
 # known paths before the fast-forward merge.
-git restore --worktree -- \
-  .gradle \
-  projects/carbonet-assets/static/react-app \
-  projects/carbonet-backend-metadata/builder/platform-builder-store.json \
-  projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json \
-  projects/carbonet-frontend/src/main/resources/static/react-app \
-  projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts \
-  projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts \
-  projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo \
-  projects/carbonet-frontend/target 2>/dev/null || true
+generated_paths=(
+  .gradle
+  projects/carbonet-assets/static/react-app
+  projects/carbonet-backend-metadata/builder/platform-builder-store.json
+  projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json
+  projects/carbonet-frontend/src/main/resources/static/react-app
+  projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts
+  projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts
+  projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
+  projects/carbonet-frontend/target
+)
+for generated_path in "${generated_paths[@]}"; do
+  # A missing/ignored path must not cancel restoration of every later path.
+  # This was the cause of repeated merge failures after successful builds.
+  if git ls-files -- "$generated_path" | grep -q .; then
+    git restore --worktree -- "$generated_path"
+  fi
+done
+
+remaining_generated_changes="$(git diff --name-only -- "${generated_paths[@]}")"
+if [[ -n "$remaining_generated_changes" ]]; then
+  echo "[auto-deploy] refusing deployment: generated files could not be restored" >&2
+  printf '%s\n' "$remaining_generated_changes" >&2
+  exit 13
+fi
 
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
