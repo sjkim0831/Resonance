@@ -8,7 +8,7 @@ LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
-POSTGRES_POD="${CARBONET_POSTGRES_POD:-postgres-patroni-0}"
+POSTGRES_POD="${CARBONET_POSTGRES_POD:-}"
 POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 POSTGRES_DB="${POSTGRES_DB:-carbonet}"
 POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
@@ -48,6 +48,24 @@ if [[ "$ready_patroni" -lt 2 ]]; then
   echo "[auto-deploy] refusing deployment: Patroni quorum is not ready ($ready_patroni/3)" >&2
   exit 10
 fi
+
+# Patroni can promote any ordinal. Never assume postgres-patroni-0 is the
+# writable leader: pg_dump on a recovering replica can be cancelled by WAL
+# replay and would unnecessarily block every deployment.
+if [[ -z "$POSTGRES_POD" ]]; then
+  while IFS= read -r candidate; do
+    if [[ "$(kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+      POSTGRES_POD="$candidate"
+      break
+    fi
+  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+fi
+if [[ -z "$POSTGRES_POD" ]]; then
+  echo "[auto-deploy] refusing deployment: writable PostgreSQL leader was not found" >&2
+  exit 12
+fi
+echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 git fetch --prune "$REMOTE" "$BRANCH"
 target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
