@@ -347,8 +347,8 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
-    @Transactional public Map<String,Object> createReport(String projectId,String tenantId,String actor,Map<String,Object> body) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); assertTenantAccess(projectId,tenant);
+    @Transactional public Map<String,Object> createReport(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
         List<Map<String,Object>> source=jdbc.queryForList("SELECT s.submission_id AS submission_id,c.calculation_id AS calculation_id FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE s.tenant_id=? AND s.project_id=? AND s.submission_state='APPROVED' AND c.locked_at IS NOT NULL ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
         if(source.isEmpty()) throw new IllegalStateException("REPORT_REQUIRES_APPROVED_LOCKED_CALCULATION");
         Map<String,Object> project=detail(projectId),row=source.get(0); String language=text(body.get("language")); if(!List.of("ko","en").contains(language))language="ko";
@@ -359,8 +359,8 @@ public class EmissionProjectRegistryService {
         return Map.of("id",id==null?0:id,"version",version,"status","DRAFT");
     }
 
-    @Transactional public Map<String,Object> finalizeReport(String projectId,long reportId,String tenantId,String actor) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); assertTenantAccess(projectId,tenant);
+    @Transactional public Map<String,Object> finalizeReport(String projectId,long reportId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
         int changed=jdbc.update("UPDATE emission_project_report SET report_status='FINALIZED',finalized_by=?,finalized_at=current_timestamp,updated_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='DRAFT'",user,reportId,projectId,tenant);
         if(changed==0) { Integer exists=jdbc.queryForObject("SELECT count(*) FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",Integer.class,reportId,projectId,tenant); if(exists==null||exists==0)throw new IllegalStateException("REPORT_FINALIZE_STATE_INVALID"); }
         completeWorkflowTask(projectId,"REPORT",user);
@@ -369,8 +369,8 @@ public class EmissionProjectRegistryService {
         return Map.of("id",reportId,"status","FINALIZED");
     }
 
-    @Transactional public Map<String,Object> issueReportCertificate(String projectId,long reportId,String tenantId,String actor) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); assertTenantAccess(projectId,tenant);
+    @Transactional public Map<String,Object> issueReportCertificate(String projectId,long reportId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT report_id,version_no,report_title,report_status,certificate_id,integrity_hash FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? FOR UPDATE",reportId,projectId,tenant);
         if(rows.isEmpty())throw new SecurityException("REPORT_SCOPE_DENIED"); Map<String,Object> row=rows.get(0);
         if(!"FINALIZED".equals(text(row.get("report_status"))))throw new IllegalStateException("CERTIFICATE_REQUIRES_FINALIZED_REPORT");
@@ -380,6 +380,7 @@ public class EmissionProjectRegistryService {
             String canonical=tenant+"|"+projectId+"|"+reportId+"|"+row.get("version_no")+"|"+row.get("report_title");
             try { hash=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8))); } catch(Exception e){throw new IllegalStateException("INTEGRITY_HASH_FAILED",e);}
             jdbc.update("UPDATE emission_project_report SET certificate_id=?,integrity_hash=?,issued_by=?,issued_at=current_timestamp,updated_at=current_timestamp WHERE report_id=?",certificate,hash,user,reportId);
+            jdbc.update("INSERT INTO emission_report_certificate_audit(report_id,certificate_id,action_code,actor_id,action_reason) VALUES (?,?,'ISSUED',?,'최종 확정 보고서 인증서 발급')",reportId,certificate,user);
             jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'REPORT_CERTIFICATE_ISSUED',?,?)",projectId,"보고서 인증번호 "+certificate+" 발급",user);
         }
         return Map.of("reportId",reportId,"certificateId",certificate,"integrityHash",hash,"status","ISSUED");
@@ -387,8 +388,8 @@ public class EmissionProjectRegistryService {
 
     @Transactional public void recordReportDownload(String projectId,long reportId,String tenantId,String actor,String ip,String userAgent) {
         String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
-        int changed=jdbc.update("UPDATE emission_project_report SET download_count=download_count+1,last_downloaded_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",reportId,projectId,tenant);
-        if(changed==0)throw new IllegalStateException("FINALIZED_REPORT_REQUIRED");
+        int changed=jdbc.update("UPDATE emission_project_report SET download_count=download_count+1,last_downloaded_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED' AND certificate_id IS NOT NULL AND certificate_status='ACTIVE'",reportId,projectId,tenant);
+        if(changed==0)throw new IllegalStateException("ACTIVE_CERTIFICATE_REQUIRED");
         jdbc.update("INSERT INTO emission_report_access_ledger(tenant_id,project_id,report_id,certificate_id,action_code,actor_id,client_ip,user_agent) SELECT tenant_id,project_id,report_id,certificate_id,'DOWNLOAD',?,?,? FROM emission_project_report WHERE report_id=?",actor,ip,userAgent,reportId);
     }
 
@@ -411,7 +412,7 @@ public class EmissionProjectRegistryService {
 
     @Transactional public Map<String,Object> revokeCertificate(long reportId,String actor,String reason) { String why=requiredValue(reason,"reason"),user=requiredValue(actor,"actor"); int n=jdbc.update("UPDATE emission_project_report SET certificate_status='REVOKED',revoked_by=?,revoked_at=current_timestamp,revocation_reason=?,updated_at=current_timestamp WHERE report_id=? AND certificate_id IS NOT NULL AND certificate_status='ACTIVE'",user,why,reportId); if(n==0)throw new IllegalStateException("ACTIVE_CERTIFICATE_REQUIRED"); jdbc.update("INSERT INTO emission_report_certificate_audit(report_id,certificate_id,action_code,actor_id,action_reason) SELECT report_id,certificate_id,'REVOKED',?,? FROM emission_project_report WHERE report_id=?",user,why,reportId); return Map.of("reportId",reportId,"status","REVOKED"); }
 
-    @Transactional public Map<String,Object> reissueCertificate(long reportId,String actor,String reason) { String why=requiredValue(reason,"reason"),user=requiredValue(actor,"actor"); List<Map<String,Object>> rows=jdbc.queryForList("SELECT project_id,tenant_id,certificate_id FROM emission_project_report WHERE report_id=? AND certificate_status='REVOKED' FOR UPDATE",reportId); if(rows.isEmpty())throw new IllegalStateException("REVOKED_CERTIFICATE_REQUIRED"); Map<String,Object> row=rows.get(0); String old=text(row.get("certificate_id")); jdbc.update("UPDATE emission_project_report SET previous_certificate_id=?,certificate_id=null,integrity_hash=null,certificate_status='ACTIVE',revoked_by=null,revoked_at=null,revocation_reason=null WHERE report_id=?",old,reportId); Map<String,Object> issued=issueReportCertificate(text(row.get("project_id")),reportId,text(row.get("tenant_id")),user); jdbc.update("INSERT INTO emission_report_certificate_audit(report_id,certificate_id,action_code,actor_id,action_reason) VALUES (?,?,'REISSUED',?,?)",reportId,issued.get("certificateId"),user,why); return issued; }
+    @Transactional public Map<String,Object> reissueCertificate(long reportId,String actor,String reason) { String why=requiredValue(reason,"reason"),user=requiredValue(actor,"actor"); List<Map<String,Object>> rows=jdbc.queryForList("SELECT project_id,tenant_id,certificate_id FROM emission_project_report WHERE report_id=? AND certificate_status='REVOKED' FOR UPDATE",reportId); if(rows.isEmpty())throw new IllegalStateException("REVOKED_CERTIFICATE_REQUIRED"); Map<String,Object> row=rows.get(0); String old=text(row.get("certificate_id")); jdbc.update("UPDATE emission_project_report SET previous_certificate_id=?,certificate_id=null,integrity_hash=null,certificate_status='ACTIVE',revoked_by=null,revoked_at=null,revocation_reason=null WHERE report_id=?",old,reportId); Map<String,Object> issued=issueReportCertificate(text(row.get("project_id")),reportId,text(row.get("tenant_id")),user,true); jdbc.update("INSERT INTO emission_report_certificate_audit(report_id,certificate_id,action_code,actor_id,action_reason) VALUES (?,?,'REISSUED',?,?)",reportId,issued.get("certificateId"),user,why); return issued; }
 
     @Transactional
     public Map<String,Object> startVerification(String projectId,long submissionId,String tenantId,String actor,boolean override) {
