@@ -13,6 +13,7 @@ POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 POSTGRES_DB="${POSTGRES_DB:-carbonet}"
 POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
 MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
+BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-1200}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
 
@@ -129,10 +130,15 @@ fi
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
 echo "[auto-deploy] backing up database to $backup_file"
-kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
-    -h 127.0.0.1 \
-  | gzip -1 > "$backup_file"
+if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
+      -h 127.0.0.1 \
+  | gzip -1 > "$backup_file"; then
+  rm -f "$backup_file"
+  echo "[auto-deploy] refusing deployment: database backup failed or exceeded ${BACKUP_TIMEOUT_SECONDS}s" >&2
+  exit 14
+fi
 test -s "$backup_file"
 backup_bytes="$(stat -c %s "$backup_file")"
 if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_file"; then

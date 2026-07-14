@@ -4,7 +4,7 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 
 type Row = Record<string, unknown>;
-type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; referenceSummary?:Row; summary?: Row };
+type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; referenceSummary?:Row; summary?: Row };
 type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];duplicates:Row[];recentPreflights:Row[]};
 const empty: Payload = { actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], jobDependencies:[], qualityGates:[], qualityGateResults:[], processDevelopmentProgress:[], screenTypes:[], referenceAssets:[], automationMetrics:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
@@ -14,7 +14,7 @@ export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
   const [data, setData] = useState<Payload>(empty);
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState("professional");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -72,7 +72,9 @@ export function ActorProcessGovernancePage() {
       </section>
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
-      <nav className="flex flex-wrap gap-2">{tabs.map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
+      <nav className="flex flex-wrap gap-2">{[["professional", en ? "Professional Readiness" : "전문가 준비도"], ...tabs].map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
+
+      {tab === "professional" && <ProfessionalReadinessPanel en={en} rows={data.professionalReadiness ?? []} summary={data.professionalSummary ?? {}} />}
 
       {tab === "references" && <><section className="grid gap-4 sm:grid-cols-4">{[["발견 자산","assetCount"],["분석 완료","analyzedCount"],["연결 프로세스","mappedProcesses"],["평균 신뢰도","averageConfidence"]].map(([label,key])=><div key={key} className="rounded-xl border bg-white p-4"><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.referenceSummary||{},key)}{key==="averageConfidence"?"%":""}</strong></div>)}</section><section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">근거 기반 자동설계</h3><p className="mt-1 text-sm text-slate-700">레퍼런스 파일명·형식과 기존 메뉴·페이지·API·DB를 화면 유형 및 업무 도메인으로 분류합니다. 액터·프로세스·정상/예외/권한/격리/복구 기대값을 멱등 등록하고, 구현 차이 분석 작업을 자동 승인 큐에 넣습니다.</p></section><Form onSubmit={event=>void submit(event,"references/scan")} cols="lg:grid-cols-4"><div className="lg:col-span-3"><Field label="레퍼런스 정본 경로"><input className={fieldClass} name="rootPath" defaultValue="/opt/reference" required/></Field></div><SaveButton busy={busy} label="전수조사·자동설계 시작"/></Form><Table heads={["화면 유형","필수 섹션","자동 테스트 기대값","개발 가중치"]} rows={data.screenTypes.map(row=>[`${value(row,"screenTypeName")} (${value(row,"screenType")})`,value(row,"requiredSections"),value(row,"testExpectations"),value(row,"developmentWeight")])}/><Table heads={["레퍼런스","형식","도메인","화면 유형","프로세스","상태","신뢰도"]} rows={data.referenceAssets.map(row=>[value(row,"sourceName"),value(row,"sourceType"),value(row,"domainCode"),value(row,"screenType"),value(row,"processCode"),value(row,"analysisStatus"),`${value(row,"confidence")}%`])}/></>}
 
@@ -120,6 +122,26 @@ export function ActorProcessGovernancePage() {
       {tab === "simulation" && <><ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter} /><div className="grid gap-4 xl:grid-cols-2"><Form onSubmit={event => void submit(event, "cases")} cols="sm:grid-cols-2"><Field label="시나리오 코드"><input className={fieldClass} name="caseCode" required /></Field><Field label="프로세스"><select className={fieldClass} name="processCode">{data.processes.map(row => <option key={value(row, "processCode")}>{value(row, "processCode")}</option>)}</select></Field><Field label="시나리오명"><input className={fieldClass} name="caseName" required /></Field><Field label="유형"><select className={fieldClass} name="caseType"><option>HAPPY_PATH</option><option>EXCEPTION</option><option>AUTHORITY</option><option>ISOLATION</option><option>RECOVERY</option></select></Field><Field label="사전 조건"><textarea className={`${fieldClass} h-24 py-2`} name="preconditions" required /></Field><Field label="실행 단계 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="stepsJson" defaultValue="[]" required /></Field><div className="sm:col-span-2"><Field label="검증 조건 JSON"><textarea className={`${fieldClass} h-20 py-2`} name="assertionsJson" defaultValue="[]" required /></Field></div><SaveButton busy={busy} label="시나리오 저장" /></Form><Form onSubmit={event => void submit(event, "runs")} cols="sm:grid-cols-2"><Field label="시나리오"><select className={fieldClass} name="caseCode">{data.cases.map(row => <option key={value(row, "caseCode")}>{value(row, "caseCode")}</option>)}</select></Field><Field label="결과"><select className={fieldClass} name="result"><option>PASSED</option><option>FAILED</option><option>BLOCKED</option></select></Field><Field label="실패 사유"><textarea className={`${fieldClass} h-24 py-2`} name="failureReason" /></Field><Field label="증적 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="evidenceJson" defaultValue="{}" /></Field><SaveButton busy={busy} label="실행 결과 기록" /></Form></div><Table heads={["시나리오", "프로세스", "이름", "유형", "상태"]} rows={selectedCases.map(row => [value(row, "caseCode"), value(row, "processCode"), value(row, "caseName"), value(row, "caseType"), value(row, "status")])} /></>}
     </div>
   </AdminPageShell>;
+}
+
+function ProfessionalReadinessPanel({ en, rows, summary }: { en: boolean; rows: Row[]; summary: Row }) {
+  const cards = [
+    [en ? "Average readiness" : "평균 전문가 준비도", `${value(summary, "averageScore") || "0"}%`],
+    [en ? "Expert-ready" : "전문가 운영 가능", value(summary, "expertReadyProcesses") || "0"],
+    [en ? "High-risk processes" : "우선 보완 프로세스", value(summary, "highRiskProcesses") || "0"],
+    [en ? "Total processes" : "전체 프로세스", value(summary, "totalProcesses") || String(rows.length)],
+  ];
+  return <div className="space-y-5">
+    <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+      <h3 className="text-lg font-black text-[#052b57]">{en ? "Professional process governance audit" : "전문가 수준 프로세스 거버넌스 감사"}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-700">{en ? "A process is expert-ready only when ownership, RACI, segregation of duties, regulatory basis, SLA, evidence, five safety scenarios, verified deliverables, and review lifecycle are all controlled." : "소유자·RACI 책임, 직무분리, 규정 근거, SLA, 필수 증적, 5종 안전 시나리오, 검증된 산출물, 정기 검토 생명주기를 모두 갖춰야 전문가 운영 가능으로 판정합니다."}</p>
+    </section>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, metric]) => <article key={label} className="rounded-2xl border bg-white p-5"><span className="text-sm font-bold text-slate-500">{label}</span><strong className="mt-2 block text-3xl font-black text-[#052b57]">{metric}</strong></article>)}</section>
+    <section className="overflow-hidden rounded-2xl border bg-white">
+      <div className="border-b px-5 py-4"><h3 className="font-black text-slate-900">{en ? "Process remediation queue" : "프로세스 보완 우선순위"}</h3><p className="mt-1 text-sm text-slate-500">{en ? "Lower scores are shown first." : "준비도가 낮은 프로세스부터 표시합니다."}</p></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-slate-100"><tr>{(en ? ["Process", "Lifecycle", "Risk", "Score", "Steps", "Scenario types", "Approved cases", "Gaps"] : ["프로세스", "생명주기", "위험도", "준비도", "단계", "시나리오 유형", "승인 테스트", "보완 항목"]).map(head => <th key={head} className="px-4 py-3 font-bold text-slate-700">{head}</th>)}</tr></thead><tbody>{rows.map(row => { const score = Number(row.readinessScore ?? 0); return <tr key={value(row, "processCode")} className="border-t align-top"><td className="px-4 py-4"><b className="text-slate-900">{value(row, "processName")}</b><div className="mt-1 font-mono text-xs text-slate-500">{value(row, "processCode")}</div></td><td className="px-4 py-4">{value(row, "lifecycleStatus")}</td><td className="px-4 py-4">{value(row, "riskLevel")}</td><td className="px-4 py-4"><span className={`rounded-full px-3 py-1 font-black ${score === 100 ? "bg-emerald-100 text-emerald-800" : score >= 80 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{score}%</span></td><td className="px-4 py-4">{value(row, "stepCount")}</td><td className="px-4 py-4">{value(row, "scenarioTypeCount")}/5</td><td className="px-4 py-4">{value(row, "approvedCaseCount")}/{value(row, "caseCount")}</td><td className="max-w-[360px] px-4 py-4 leading-6 text-slate-600">{value(row, "readinessGaps") || (en ? "No gaps" : "보완 항목 없음")}</td></tr>; })}</tbody></table></div>
+    </section>
+  </div>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-1 block text-xs font-bold text-slate-600">{label}</span>{children}</label>; }
