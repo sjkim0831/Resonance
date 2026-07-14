@@ -132,4 +132,12 @@ public class EmissionProjectRegistryController {
         try { service.assertTenantAccess(projectId,tenant(context)); }
         catch(SecurityException e) { throw new ResponseStatusException(HttpStatus.FORBIDDEN,"PROJECT_TENANT_SCOPE_DENIED"); }
     }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String,Object>> handleScopedStatus(ResponseStatusException exception) {
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of(
+            "success",false,
+            "message",exception.getReason()==null?"REQUEST_DENIED":exception.getReason()
+        ));
+    }
 }
