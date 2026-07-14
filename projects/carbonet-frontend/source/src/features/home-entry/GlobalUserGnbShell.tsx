@@ -6,6 +6,7 @@ import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu, HomeInlineStyles } from "./HomeEntrySections";
 import { LOCALIZED_CONTENT } from "./homeEntryContent";
+import { TaskQuestPanel } from "../task-quest/TaskQuestPanel";
 
 const USER_GNB_EXCLUDED_PATHS = [
   "/signin/",
@@ -74,6 +75,7 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
         <button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
         <HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
       </div>
+      {payload.isLoggedIn ? <TaskQuestPanel /> : null}
       <div data-global-user-page="">{children}</div>
     </>
   );
