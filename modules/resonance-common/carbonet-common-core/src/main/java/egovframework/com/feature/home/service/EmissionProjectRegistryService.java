@@ -292,7 +292,7 @@ public class EmissionProjectRegistryService {
         Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
         List<Map<String,Object>> approved=jdbc.queryForList("SELECT s.submission_id AS \"submissionId\",s.version_no AS \"submissionVersion\",s.submission_state AS \"submissionState\",c.calculation_id AS \"calculationId\",c.version_no AS \"calculationVersion\",c.total_emission AS \"totalEmission\",c.locked_at AS \"lockedAt\",c.locked_by AS \"lockedBy\" FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE s.tenant_id=? AND s.project_id=? ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
         result.put("approved",approved.isEmpty()?null:approved.get(0));
-        result.put("reports",jdbc.queryForList("SELECT report_id AS \"id\",version_no AS \"version\",report_title AS \"title\",report_language AS language,report_status AS status,summary_text AS summary,created_by AS \"createdBy\",created_at AS \"createdAt\",finalized_by AS \"finalizedBy\",finalized_at AS \"finalizedAt\" FROM emission_project_report WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId));
+        result.put("reports",jdbc.queryForList("SELECT report_id AS \"id\",version_no AS \"version\",report_title AS \"title\",report_language AS language,report_status AS status,summary_text AS summary,created_by AS \"createdBy\",created_at AS \"createdAt\",finalized_by AS \"finalizedBy\",finalized_at AS \"finalizedAt\",certificate_id AS \"certificateId\",integrity_hash AS \"integrityHash\",issued_by AS \"issuedBy\",issued_at AS \"issuedAt\",download_count AS \"downloadCount\" FROM emission_project_report WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId));
         return result;
     }
 
@@ -316,6 +316,33 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_registry SET progress_percent=100,current_step='확정·보고 완료',project_status='완료',updated_at=current_timestamp WHERE project_id=?",projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'REPORT_FINALIZED','최종 배출량 보고서가 확정되었습니다.',?)",projectId,user);
         return Map.of("id",reportId,"status","FINALIZED");
+    }
+
+    @Transactional public Map<String,Object> issueReportCertificate(String projectId,long reportId,String tenantId,String actor) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); assertTenantAccess(projectId,tenant);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT report_id,version_no,report_title,report_status,certificate_id,integrity_hash FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? FOR UPDATE",reportId,projectId,tenant);
+        if(rows.isEmpty())throw new SecurityException("REPORT_SCOPE_DENIED"); Map<String,Object> row=rows.get(0);
+        if(!"FINALIZED".equals(text(row.get("report_status"))))throw new IllegalStateException("CERTIFICATE_REQUIRES_FINALIZED_REPORT");
+        String certificate=text(row.get("certificate_id")),hash=text(row.get("integrity_hash"));
+        if(certificate.isBlank()) {
+            certificate="CER-"+java.time.LocalDate.now().getYear()+"-"+java.util.UUID.randomUUID().toString().substring(0,12).toUpperCase();
+            String canonical=tenant+"|"+projectId+"|"+reportId+"|"+row.get("version_no")+"|"+row.get("report_title");
+            try { hash=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8))); } catch(Exception e){throw new IllegalStateException("INTEGRITY_HASH_FAILED",e);}
+            jdbc.update("UPDATE emission_project_report SET certificate_id=?,integrity_hash=?,issued_by=?,issued_at=current_timestamp,updated_at=current_timestamp WHERE report_id=?",certificate,hash,user,reportId);
+            jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'REPORT_CERTIFICATE_ISSUED',?,?)",projectId,"보고서 인증번호 "+certificate+" 발급",user);
+        }
+        return Map.of("reportId",reportId,"certificateId",certificate,"integrityHash",hash,"status","ISSUED");
+    }
+
+    @Transactional public void recordReportDownload(String projectId,long reportId,String tenantId) {
+        String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
+        int changed=jdbc.update("UPDATE emission_project_report SET download_count=download_count+1,last_downloaded_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",reportId,projectId,tenant);
+        if(changed==0)throw new IllegalStateException("FINALIZED_REPORT_REQUIRED");
+    }
+
+    public Map<String,Object> verifyReportCertificate(String certificateId) {
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT r.certificate_id AS \"certificateId\",r.integrity_hash AS \"integrityHash\",r.report_title AS title,r.version_no AS version,r.report_language AS language,r.report_status AS status,r.issued_at AS \"issuedAt\",p.project_name AS \"projectName\",p.site_name AS site,c.total_emission AS \"totalEmission\" FROM emission_project_report r JOIN emission_project_registry p ON p.project_id=r.project_id JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE r.certificate_id=?",certificateId);
+        if(rows.isEmpty())return Map.of("valid",false,"certificateId",certificateId); Map<String,Object> result=new LinkedHashMap<>(rows.get(0)); result.put("valid","FINALIZED".equals(result.get("status"))); return result;
     }
 
     @Transactional

@@ -71,6 +71,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_data_input", "/emission/data_input", "/en/emission/data_input", "/emission/data_input");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_result", "/emission/result", "/en/emission/result", "/emission/result");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_report_submit", "/emission/report_submit", "/en/emission/report_submit", "/emission/report_submit");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_report_download", "/emission/report-download", "/en/emission/report-download", "/emission/report-download");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_dashboard", "/emission/dashboard", "/en/emission/dashboard", "/emission/dashboard");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_lci", "/emission/lci", "/en/emission/lci", "/emission/lci");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_simulate", "/emission/simulate", "/en/emission/simulate", "/emission/simulate");
