@@ -7,8 +7,11 @@ DECLARE
   ready_count integer;
   blocked_count integer;
 BEGIN
-  SELECT project_id,owner_name INTO project,owner_name
-  FROM emission_project_registry ORDER BY project_id LIMIT 1;
+  SELECT p.project_id,p.owner_name INTO project,owner_name
+  FROM emission_project_registry p
+  JOIN emission_project_task t ON t.project_id=p.project_id AND t.task_code='CALCULATION'
+  WHERE t.task_status IN ('BLOCKED','WAITING')
+  ORDER BY p.project_id LIMIT 1;
   IF project IS NULL THEN RAISE EXCEPTION 'ORCHESTRATION_PROJECT_FIXTURE_MISSING'; END IF;
 
   IF EXISTS (
