@@ -468,8 +468,8 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
           ))}
         </div>
       </div>
-      <div className="krds-responsive-container mt-8 grid gap-4 lg:grid-cols-[3fr_2fr]">
-        <section className={`relative min-h-[250px] overflow-hidden rounded-xl bg-gradient-to-r ${banners[bannerIndex].tone} p-7 text-left text-white shadow-lg sm:p-9`} aria-roledescription={en ? "carousel" : "배너 슬라이드"}>
+      <div className="krds-responsive-container mt-8 grid w-full max-w-7xl min-w-0 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section className={`relative min-h-[250px] min-w-0 max-w-full overflow-hidden rounded-xl bg-gradient-to-r ${banners[bannerIndex].tone} p-7 text-left text-white shadow-lg sm:p-9`} aria-roledescription={en ? "carousel" : "배너 슬라이드"}>
           <div className="relative z-10 max-w-[72%]">
             <p className="krds-type-label font-black text-blue-100">{banners[bannerIndex].eyebrow}</p>
             <h2 className="krds-type-title mt-3 font-black text-white">{banners[bannerIndex].title}</h2>
@@ -483,11 +483,11 @@ export function SearchSection({ content, homeMenu }: SearchSectionProps) {
             <button className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/15 focus-visible" type="button" aria-label={en ? "Next banner" : "다음 배너"} onClick={() => setBannerIndex((bannerIndex + 1) % banners.length)}><span className="material-symbols-outlined">chevron_right</span></button>
           </div>
         </section>
-        <aside className="krds-component min-h-[250px] rounded-xl border border-slate-300 bg-white text-left shadow-sm">
+        <aside className="krds-component min-h-[250px] min-w-0 max-w-full overflow-hidden rounded-xl border border-slate-300 bg-white text-left shadow-sm">
           <p className="krds-type-label font-black text-[#246beb]">{en ? "MEMBER SERVICE" : "회원 서비스"}</p>
           <h2 className="krds-type-subtitle mt-2 font-black text-[#052b57]">{en ? "Sign in to continue your work" : "로그인하고 업무를 이어가세요"}</h2>
           <p className="krds-type-body mt-2 text-slate-600">{en ? "Review projects, approvals, schedules, and notifications." : "프로젝트, 승인, 일정과 알림을 한곳에서 확인할 수 있습니다."}</p>
-          <div className="mt-6 grid grid-cols-2 gap-2">
+          <div className="mt-6 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
             <a className="krds-control col-span-2 inline-flex items-center justify-center rounded-lg bg-[#246beb] font-black text-white hover:bg-[#164f86]" href={buildLocalizedPath("/signin/loginView", "/en/signin/loginView")}>{en ? "Sign in" : "로그인"}</a>
             <a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] font-black text-[#164f86] hover:bg-blue-50" href={buildLocalizedPath("/join/step1", "/join/en/step1")}>{en ? "Sign up" : "회원가입"}</a>
             <a className="krds-control inline-flex items-center justify-center rounded-lg border border-slate-300 font-black text-slate-700 hover:bg-slate-50" href={buildLocalizedPath("/signin/findId", "/en/signin/findId")}>{en ? "Find account" : "계정 찾기"}</a>
