@@ -153,7 +153,7 @@ export function TaskQuestPanel() {
   const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
 
   return <>
-    <aside className="fixed right-3 top-[4.75rem] z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8" data-task-quest-panel="">
+    <aside className="fixed right-3 top-[6.75rem] z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8" data-task-quest-panel="">
       {!open ? (
         <button className="ml-auto flex min-h-12 items-center gap-2 rounded-full border border-[#16408d] bg-white px-4 py-2 font-bold text-[#12356b] shadow-[0_10px_30px_rgba(15,43,87,.2)]" onClick={toggle} type="button">
           <span className="material-symbols-outlined text-[21px]">assistant_navigation</span>

@@ -72,7 +72,7 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
         margin: 0 !important;
         line-height: 1.2;
       }
-      .gnb-item .gnb-depth2 { display: none !important; }
+      .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: grid; }
       .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; background: #fff; }
       .gnb-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .gnb-section { min-width: 0; border-left: 1px solid #e2e8f0; padding: 26px 28px; background: transparent; }
@@ -92,12 +92,12 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
 
 export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en: boolean }) {
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex items-center gap-3 shrink-0">
-      <HomeLinkButton className="max-w-[78vw] xl:max-w-none !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-2" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
-        <span className="material-symbols-outlined text-3xl text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
+    <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex max-w-[190px] items-center gap-2 shrink-0">
+      <HomeLinkButton className="max-w-[72vw] xl:max-w-[190px] !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-1.5" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
+        <span className="material-symbols-outlined text-2xl text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
         <div className="home-brand-copy flex flex-col">
-          <h1 className="home-brand-title gov-text-heading-sm font-bold tracking-tight text-[var(--kr-gov-text-primary)]">{content.logoTitle}</h1>
-          <p className={`home-brand-subtitle gov-text-caption ${en ? "hidden 2xl:block" : "hidden sm:block"} text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider`}>{content.logoSubtitle}</p>
+          <h1 className="home-brand-title gov-text-label truncate font-black tracking-tight text-[var(--kr-gov-text-primary)]">{content.logoTitle}</h1>
+          <p className="home-brand-subtitle gov-text-caption hidden truncate font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] 2xl:block">{content.logoSubtitle}</p>
         </div>
       </HomeLinkButton>
     </div>
@@ -105,31 +105,25 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
 }
 
 export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: HomeMenuItem[] }) {
-  const [selectedMenuIndex, setSelectedMenuIndex] = useState(0);
-  const selectedMenu = homeMenu[selectedMenuIndex] || homeMenu[0];
-  const menuIcons = ["home", "factory", "science", "trending_down", "monitoring", "swap_horiz", "school", "person"];
   return (
     <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
-      {homeMenu.slice(0, 6).map((top, index) => (
-        <div className="gnb-item relative h-full min-w-0" key={`${top.label || "top"}-${index}`}>
+      {homeMenu.map((top, index) => (
+        <div className="gnb-item group relative h-full min-w-0" key={`${top.label || "top"}-${index}`}>
           <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
             {top.label || (en ? "Menu" : "메뉴")}
           </a>
+          {(top.sections || []).length ? <div className="gnb-depth2 fixed left-1/2 top-24 hidden max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-b-xl border border-slate-300 bg-white shadow-[0_12px_32px_rgba(15,42,76,.18)]">
+            <aside className="overflow-auto border-r border-[#c6d5e5] bg-[#eef5ff] p-5 text-[#052b57]">
+              <strong className="gov-text-label flex items-center gap-2 font-black"><span className="material-symbols-outlined text-xl text-[#246beb]">space_dashboard</span>{en ? "Control panel" : "컨트롤 패널"}</strong>
+              {top.url && top.url !== "#" ? <a className="mt-3 flex min-h-11 items-center justify-between rounded-lg border border-[#8eabd0] bg-white px-3 font-bold text-[#17375e] hover:text-[#00378b]" href={top.url}><span>{top.label}</span><span className="material-symbols-outlined text-xl">arrow_forward</span></a> : null}
+              <div className="mt-4 rounded-lg border border-[#c6d5e5] bg-white p-3"><p className="gov-text-caption font-bold text-[#526b89]">{en ? "Available tasks" : "이용 가능한 업무"}</p><strong className="mt-1 block text-2xl text-[#00378b]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}</strong></div>
+              <strong className="gov-text-label mt-5 flex items-center gap-2 border-t border-[#c6d5e5] pt-5 font-black"><span className="material-symbols-outlined text-xl text-[#246beb]">history</span>{en ? "Recent menu" : "최근 메뉴"}</strong>
+              <div className="mt-2 space-y-1">{(top.sections || []).flatMap((section) => section.items || []).filter((item) => item.url && item.url !== "#").slice(0, 5).map((item, recentIndex) => <a className="gov-text-caption flex min-h-10 items-center justify-between rounded-lg px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>)}</div>
+            </aside>
+            <section className="min-w-0 overflow-auto p-6"><div className="mb-5 border-b border-slate-200 pb-4"><strong className="gov-text-heading-sm text-[#052b57]">{top.label}</strong><p className="gov-text-caption mt-1 text-slate-500">{en ? "Select a task to continue" : "중메뉴와 세부 업무를 선택하세요"}</p></div><div className="grid grid-cols-4 gap-5">{(top.sections || []).map((section, sectionIndex) => <div className="min-w-0 border-l border-slate-200 px-4" key={`hover-section-${sectionIndex}`}><strong className="gov-text-label block pb-3 font-black text-[#17375e]">{section.label}</strong><div className="space-y-0.5">{(section.items || []).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-10 items-center justify-between rounded-md px-2 text-slate-700 hover:bg-blue-50 hover:text-[#00378b]" href={item.url || "#"} key={`hover-item-${itemIndex}`}><span>{item.label}</span><span className="material-symbols-outlined text-base text-slate-400">chevron_right</span></a>)}</div></div>)}</div></section>
+          </div> : null}
         </div>
       ))}
-      <details className="group h-full shrink-0">
-        <summary className="gov-text-label flex h-full cursor-pointer list-none items-center gap-1 border-b-4 border-transparent px-2.5 font-black text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] 2xl:px-3">{en ? "All menus" : "전체 메뉴"}<span className="material-symbols-outlined text-xl transition-transform group-open:rotate-180">keyboard_arrow_down</span></summary>
-        <div className="fixed left-1/2 top-24 grid max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-b-xl border border-slate-300 bg-white shadow-[0_12px_32px_rgba(15,42,76,.18)]">
-          <aside className="overflow-auto border-r border-[#c6d5e5] bg-[#eef5ff] p-4" aria-label={en ? "Major menu" : "대메뉴"}>
-            <strong className="gov-text-caption mb-3 block px-2 font-black text-[#526b89]">{en ? "SERVICES" : "전체 서비스"}</strong>
-            <div className="space-y-1">{homeMenu.map((top, topIndex) => <button className={`flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left font-bold transition-colors ${selectedMenuIndex === topIndex ? "bg-[#00378b] text-white shadow-sm" : "text-[#17375e] hover:bg-white hover:text-[#00378b]"}`} key={`major-${top.label}-${topIndex}`} onClick={() => setSelectedMenuIndex(topIndex)} type="button"><span className="material-symbols-outlined text-xl" aria-hidden="true">{menuIcons[topIndex] || "folder"}</span><span className="gov-text-label flex-1">{top.label}</span><span className="material-symbols-outlined text-lg" aria-hidden="true">chevron_right</span></button>)}</div>
-          </aside>
-          <section className="min-w-0 overflow-auto p-6">
-            <div className="mb-5 flex items-center justify-between border-b border-slate-200 pb-4"><div><strong className="gov-text-heading-sm text-[#052b57]">{selectedMenu?.label || (en ? "Services" : "서비스")}</strong><p className="gov-text-caption mt-1 text-slate-500">{en ? "Select a task to continue" : "중메뉴와 세부 업무를 선택하세요"}</p></div>{selectedMenu?.url && selectedMenu.url !== "#" ? <a className="gov-text-label flex items-center gap-1 font-black text-[#00378b]" href={selectedMenu.url}>{en ? "Overview" : "대표 화면"}<span className="material-symbols-outlined text-xl">arrow_forward</span></a> : null}</div>
-            <div className="grid grid-cols-3 gap-5">{(selectedMenu?.sections || []).map((section, sectionIndex) => <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" key={`selected-section-${sectionIndex}`}><strong className="gov-text-label block border-b border-slate-200 pb-3 font-black text-[#17375e]">{section.label}</strong><div className="mt-2 space-y-0.5">{(section.items || []).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-10 items-center justify-between rounded-md px-2 text-slate-700 hover:bg-white hover:text-[#00378b]" href={item.url || "#"} key={`selected-item-${itemIndex}`}><span>{item.label}</span><span className="material-symbols-outlined text-base text-slate-400">chevron_right</span></a>)}</div></div>)}</div>
-          </section>
-        </div>
-      </details>
     </nav>
   );
 }
