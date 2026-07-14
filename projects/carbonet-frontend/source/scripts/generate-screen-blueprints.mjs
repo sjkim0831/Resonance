@@ -1,0 +1,31 @@
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
+
+const args = Object.fromEntries(process.argv.slice(2).map((value,index,all)=>value.startsWith("--")?[value.slice(2),all[index+1]?.startsWith("--")?"true":all[index+1]]:null).filter(Boolean));
+if (!args.input) throw new Error("Usage: node scripts/generate-screen-blueprints.mjs --input <batch-export.json> [--limit 1000]");
+const input = JSON.parse(await readFile(resolve(args.input), "utf8"));
+if (input.schemaVersion !== "1.0.0" || !Array.isArray(input.blueprints)) throw new Error("Unsupported or invalid blueprint export.");
+const limit = Math.min(1000, Math.max(1, Number(args.limit || 1000)));
+const blueprints = input.blueprints.filter((item) => item.validationStatus === "VALID").slice(0, limit);
+const seenIds = new Set(), seenRoutes = new Set();
+const normalized = blueprints.map((item) => {
+  const id = String(item.pageId).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const routePath = String(item.routePath || "");
+  if (!id || seenIds.has(id)) throw new Error(`Duplicate/invalid page id: ${id}`);
+  if (!routePath.startsWith("/") || seenRoutes.has(routePath)) throw new Error(`Duplicate/invalid route: ${routePath}`);
+  seenIds.add(id); seenRoutes.add(routePath);
+  const parse = (value) => { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { throw new Error(`Invalid JSON contract: ${item.blueprintCode}`); } };
+  return { id, blueprintCode:item.blueprintCode, processCode:item.processCode, stepCode:item.stepCode, actorCode:item.actorCode, audience:item.audience, pageId:item.pageId, pageName:item.pageName, routePath, screenType:item.screenType, templateCode:item.templateCode, specification:parse(item.specificationJson), traceability:parse(item.traceabilityJson) };
+});
+const outDir = resolve(args.outDir || "src/generated/screen-generation"); await mkdir(outDir,{recursive:true});
+const json = (value) => JSON.stringify(value,null,2);
+await writeFile(resolve(outDir,"generatedScreenCatalog.ts"),`export type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; specification:Record<string,unknown>; traceability:Record<string,unknown>; };\nexport const GENERATED_SCREEN_CATALOG = ${json(normalized)} as const satisfies readonly GeneratedScreenDefinition[];\nexport function findGeneratedScreen(pathname:string){const normalized=pathname.replace(/^\\/en(?=\\/)/,"")||"/";return GENERATED_SCREEN_CATALOG.find(screen=>screen.routePath===normalized);}\n`);
+const routes=normalized.map(x=>({id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}));
+const units=normalized.map(x=>`  { id: ${JSON.stringify(x.id)}, exportName: "GeneratedScreenPage", loader: () => import("../../features/generated-screen/GeneratedScreenPage") }`).join(",\n");
+const familyTemplate=await readFile(new URL("../src/generated/screen-generation/generatedScreenFamily.ts",import.meta.url),"utf8");
+const family=familyTemplate.replace(/const GENERATED_SCREEN_ROUTES = [\s\S]*? as const satisfies RouteDefinitionsOf;/,`const GENERATED_SCREEN_ROUTES = ${json(routes)} as const satisfies RouteDefinitionsOf;`).replace(/const GENERATED_SCREEN_PAGE_UNITS = [\s\S]*? as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;/,`const GENERATED_SCREEN_PAGE_UNITS = [\n${units}\n] as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;`);
+await writeFile(resolve(outDir,"generatedScreenFamily.ts"),family);
+const tests=normalized.map(x=>({pageId:x.pageId,actorCode:x.actorCode,routePath:x.routePath,requiredScenarios:Array.isArray(x.traceability.requiredScenarioTypes)?x.traceability.requiredScenarioTypes:[]}));
+await writeFile(resolve(outDir,"generatedScreenTests.ts"),`export type GeneratedScreenTestContract={pageId:string;actorCode:string;routePath:string;requiredScenarios:readonly string[]};\nexport const GENERATED_SCREEN_TESTS=${json(tests)} as const satisfies readonly GeneratedScreenTestContract[];\n`);
+await writeFile(resolve(outDir,"generation-report.json"),json({schemaVersion:input.schemaVersion,batch:input.batch,generatedAt:new Date().toISOString(),screenCount:normalized.length,userScreens:normalized.filter(x=>x.audience==="USER").length,adminScreens:normalized.filter(x=>x.audience==="ADMIN").length}));
+console.log(JSON.stringify({success:true,outDir,screenCount:normalized.length},null,2));

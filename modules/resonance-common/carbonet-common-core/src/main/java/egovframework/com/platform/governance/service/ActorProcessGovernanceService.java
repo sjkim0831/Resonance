@@ -220,6 +220,13 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"batchId",batchId,"queued",queued);
     }
 
+    public Map<String,Object> exportScreenGeneration(long batchId){
+        List<Map<String,Object>> batches=jdbc.queryForList("select batch_id as \"batchId\",batch_code as \"batchCode\",batch_name as \"batchName\",batch_status as \"batchStatus\",compiled_count as \"compiledCount\",valid_count as \"validCount\",invalid_count as \"invalidCount\" from framework_screen_generation_batch where batch_id=?",batchId);
+        if(batches.isEmpty())throw new IllegalArgumentException("생성 배치가 존재하지 않습니다.");
+        List<Map<String,Object>> blueprints=jdbc.queryForList("select b.blueprint_id as \"blueprintId\",b.blueprint_code as \"blueprintCode\",b.process_code as \"processCode\",b.step_code as \"stepCode\",b.actor_code as \"actorCode\",b.audience,b.page_id as \"pageId\",b.page_name as \"pageName\",b.route_path as \"routePath\",b.screen_type as \"screenType\",b.template_code as \"templateCode\",b.specification_json as \"specificationJson\",b.traceability_json as \"traceabilityJson\",b.validation_status as \"validationStatus\",b.validation_message as \"validationMessage\",i.item_order as \"itemOrder\" from framework_screen_generation_batch_item i join framework_screen_blueprint b on b.blueprint_id=i.blueprint_id where i.batch_id=? order by i.item_order",batchId);
+        return Map.of("schemaVersion","1.0.0","generator","carbonet-actor-process-screen-compiler","batch",batches.get(0),"blueprints",blueprints);
+    }
+
     private static String inferScreenType(String name,String route,String audience){String n=(name+" "+route).toLowerCase(Locale.ROOT);if("ADMIN".equals(audience))return "ADMIN";return classifyScreen(n);}
 
     private void ensureReferenceProcesses(){

@@ -9,6 +9,7 @@ import { CONTENT_SUPPORT_FAMILY } from "./contentSupportFamily";
 import { EMISSION_MONITORING_FAMILY } from "./emissionMonitoringFamily";
 import { HOME_EXPERIENCE_FAMILY } from "./homeExperienceFamily";
 import { TRADE_PAYMENT_FAMILY } from "./tradePaymentFamily";
+import { GENERATED_SCREEN_FAMILY } from "../../../generated/screen-generation/generatedScreenFamily";
 
 export const APP_ROUTE_FAMILIES = [
   APP_OWNED_FAMILY,
@@ -18,7 +19,8 @@ export const APP_ROUTE_FAMILIES = [
   ADMIN_SYSTEM_FAMILY,
   AI_MANAGEMENT_FAMILY,
   CONTENT_SUPPORT_FAMILY,
-  HOME_EXPERIENCE_FAMILY
+  HOME_EXPERIENCE_FAMILY,
+  GENERATED_SCREEN_FAMILY
 ] as const;
 
 export const ALL_ROUTE_FAMILIES = [

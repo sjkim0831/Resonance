@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "generator": "carbonet-actor-process-screen-compiler",
+  "batch": { "batchId": 1, "batchCode": "EXAMPLE", "batchStatus": "COMPILED" },
+  "blueprints": [
+    {
+      "blueprintCode": "BP_EXAMPLE_USER",
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_SETUP",
+      "actorCode": "COMPANY_MANAGER",
+      "audience": "USER",
+      "pageId": "EXAMPLE_USER_PAGE",
+      "pageName": "예제 사용자 화면",
+      "routePath": "/generated/example",
+      "screenType": "FORM",
+      "templateCode": "KRDS_FORM",
+      "specificationJson": "{\"designSystem\":\"KRDS_GOV\"}",
+      "traceabilityJson": "{\"requiredScenarioTypes\":[\"HAPPY_PATH\",\"AUTHORITY\",\"ISOLATION\",\"EXCEPTION\",\"RECOVERY\"]}",
+      "validationStatus": "VALID"
+    }
+  ]
+}
