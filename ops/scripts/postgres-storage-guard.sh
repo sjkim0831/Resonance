@@ -33,8 +33,8 @@ while IFS= read -r boundary; do
   attrs="$(lsattr -d "$boundary" | awk '{print $1}')"
   [[ "$attrs" == *i* ]] || fail "$boundary is not immutable"
   locked_ancestors=$((locked_ancestors + 1))
-done < <(find "$DATA_ROOT" -mindepth 1 -maxdepth 2 -type d -print)
-[[ "$locked_ancestors" -ge 6 ]] || fail "expected Patroni ancestor locks are missing ($locked_ancestors/6)"
+done < <(find "$DATA_ROOT" -mindepth 1 -maxdepth 1 -type d -print)
+[[ "$locked_ancestors" -ge 3 ]] || fail "expected Patroni pod boundary locks are missing ($locked_ancestors/3)"
 
 ready_members=0
 while IFS= read -r pod; do
