@@ -21,6 +21,7 @@ const APP_OWNED_ROUTE_DEFINITIONS = [
   { id: "join-company-status-guide", label: "Join Status Guide", group: "join", koPath: "/join/companyJoinStatusGuide", enPath: "/join/en/companyJoinStatusGuide" },
   { id: "join-company-status-detail", label: "Join Status Detail", group: "join", koPath: "/join/companyJoinStatusDetail", enPath: "/join/en/companyJoinStatusDetail" },
   { id: "home-certificate-verify", label: "인증서 진위여부 확인", group: "home", koPath: "/home/certificate-verify", enPath: "/en/home/certificate-verify" }
+  ,{ id: "dynamic-page-runtime", label: "Dynamic Page Runtime", group: "home", koPath: "/runtime/page", enPath: "/en/runtime/page" }
 ] as const satisfies RouteDefinitionsOf;
 
 const APP_OWNED_PAGE_UNITS = [
@@ -39,6 +40,7 @@ const APP_OWNED_PAGE_UNITS = [
   { id: "join-company-status", exportName: "JoinCompanyStatusMigrationPage", loader: sharedJoinCompanyStatusLoader },
   { id: "join-company-status-guide", exportName: "JoinCompanyStatusMigrationPage", loader: sharedJoinCompanyStatusLoader },
   { id: "join-company-status-detail", exportName: "JoinCompanyStatusMigrationPage", loader: sharedJoinCompanyStatusLoader }
+  ,{ id: "dynamic-page-runtime", exportName: "DynamicPageRuntime", loader: () => import("../../../features/dynamic-page/DynamicPageRuntime") }
 ] as const satisfies PageUnitsOf<typeof APP_OWNED_ROUTE_DEFINITIONS>;
 
 export const APP_OWNED_FAMILY = createRouteFamily(APP_OWNED_ROUTE_DEFINITIONS, APP_OWNED_PAGE_UNITS, {
