@@ -1995,10 +1995,7 @@ export function EmissionSurveyReportPrintPage() {
         throw new Error("Report element is not ready.");
       }
       exportClone = element.cloneNode(true) as HTMLElement;
-      exportClone.classList.add("pdf-download-mode");
-      if (draft) {
-        exportClone.classList.add("pdf-design-draft", `pdf-draft-${draft}`);
-      }
+      exportClone.classList.add("pdf-wysiwyg-mode");
       exportClone.setAttribute("aria-hidden", "true");
       exportClone.style.position = "fixed";
       exportClone.style.left = "0";
@@ -2025,10 +2022,10 @@ export function EmissionSurveyReportPrintPage() {
           scale: 2,
           useCORS: true,
           logging: false,
-          width: 794,
-          height: 1123,
-          windowWidth: 794,
-          windowHeight: 1123
+          width: 1024,
+          height: 1448,
+          windowWidth: 1024,
+          windowHeight: 1448
         });
         if (index > 0) {
           pdf.addPage("a4", "portrait");
@@ -2722,6 +2719,57 @@ export function EmissionSurveyReportPrintPage() {
             min-height:1123px!important;
             padding-top:24px!important;
           }
+          /* WYSIWYG export: preserve the visible report design. Only page geometry
+             and editor-control visibility differ from the browser screen. */
+          .report-typography.pdf-wysiwyg-mode{
+            box-sizing:border-box!important;
+            width:1024px!important;
+            max-width:1024px!important;
+            margin:0!important;
+            overflow:visible!important;
+            border:0!important;
+            border-radius:0!important;
+            box-shadow:none!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-wysiwyg-mode .pdf-export-page{
+            box-sizing:border-box!important;
+            width:1024px!important;
+            height:1448px!important;
+            min-height:1448px!important;
+            max-height:1448px!important;
+            margin:0!important;
+            overflow:hidden!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-wysiwyg-mode .pdf-chart-page{
+            display:grid!important;
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+            align-items:start!important;
+          }
+          .report-typography.pdf-wysiwyg-mode .pdf-table-export-page{
+            padding-top:24px!important;
+          }
+          .report-typography.pdf-wysiwyg-mode .print-hidden,
+          .report-typography.pdf-wysiwyg-mode .pdf-hidden,
+          .report-typography.pdf-wysiwyg-mode input.print-input-control,
+          .report-typography.pdf-wysiwyg-mode textarea.print-input-control{
+            display:none!important;
+          }
+          .report-typography.pdf-wysiwyg-mode .print-input-text{
+            display:inline!important;
+            color:inherit!important;
+            font:inherit!important;
+            font-weight:inherit!important;
+            line-height:inherit!important;
+            white-space:pre-wrap!important;
+          }
+          .report-typography.pdf-wysiwyg-mode .print-report-total-card .print-input-text,
+          .report-typography.pdf-wysiwyg-mode .print-metric-card .print-input-text{
+            display:block!important;
+            width:100%!important;
+            text-align:inherit!important;
+          }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
             color:#0f172a!important;
@@ -2844,23 +2892,6 @@ export function EmissionSurveyReportPrintPage() {
           >
             {verificationBusy ? (en ? "Preparing PDF..." : "PDF 생성 중...") : (en ? "Download PDF" : "PDF 다운로드")}
           </button>
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-            {REPORT_PDF_DESIGN_DRAFTS.map((draft) => (
-              <button
-                className={`min-w-40 border px-3 py-2 text-left disabled:cursor-wait disabled:bg-slate-100 disabled:text-slate-500 ${draft.buttonClass}`}
-                disabled={verificationBusy}
-                key={draft.id}
-                onClick={() => handleDownloadPdf(draft.id)}
-                type="button"
-              >
-                <span className="flex items-center gap-2 text-xs font-black">
-                  <span className="material-symbols-outlined text-[18px]">{draft.icon}</span>
-                  {verificationBusy && pdfDesignDraft === draft.id ? (en ? "Preparing..." : "생성 중...") : (en ? draft.enLabel : draft.label)}
-                </span>
-                <span className="mt-1 block text-[10px] font-bold opacity-70">{en ? draft.enDescription : draft.description}</span>
-              </button>
-            ))}
-          </div>
           <button
             className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800"
             onClick={() => navigate(buildLocalizedPath("/admin/emission/survey-report-verify", "/en/admin/emission/survey-report-verify"))}
