@@ -2053,6 +2053,71 @@ export function EmissionSurveyReportPrintPage() {
       </style>
       <style>
         {`
+          .report-typography{
+            --report-type-caption:var(--krds-type-caption);
+            --report-type-label:var(--krds-type-label);
+            --report-type-body:var(--krds-type-body);
+            --report-type-subtitle:var(--krds-type-subtitle);
+            --report-type-title:var(--krds-type-title);
+            --report-type-display:var(--krds-type-display);
+            --report-line-compact:var(--krds-line-compact);
+            --report-line-body:1.5;
+            font-size:var(--report-type-body)!important;
+            line-height:var(--report-line-body)!important;
+          }
+          .report-typography :where(.text-xs,[class~="text-[10px]"],[class~="text-[11px]"],[class~="text-[12px]"]):not(.material-symbols-outlined){font-size:var(--report-type-caption)!important;line-height:var(--report-line-compact)!important}
+          .report-typography :where(.text-sm,[class~="text-[13px]"],[class~="text-[14px]"]):not(.material-symbols-outlined){font-size:var(--report-type-label)!important;line-height:var(--report-line-compact)!important}
+          .report-typography :where(.text-base,[class~="text-[15px]"],[class~="text-[16px]"],[class~="text-[17px]"]):not(.material-symbols-outlined){font-size:var(--report-type-body)!important;line-height:var(--report-line-body)!important}
+          .report-typography :where(.text-lg,.text-xl,[class~="text-[18px]"],[class~="text-[20px]"]):not(.material-symbols-outlined){font-size:var(--report-type-subtitle)!important;line-height:1.35!important}
+          .report-typography :where(.text-2xl,[class~="text-[22px]"],[class~="text-[24px]"]):not(.material-symbols-outlined){font-size:var(--report-type-title)!important;line-height:1.25!important}
+          .report-typography :where(.text-3xl,.text-4xl,.text-5xl):not(.material-symbols-outlined){font-size:var(--report-type-display)!important;line-height:1.15!important}
+          .report-typography .print-table th{line-height:1.3!important}
+          .report-typography .print-table td{line-height:1.4!important}
+          @media(max-width:767px){
+            .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr)!important}
+            .report-typography .print-report-total-card{width:100%!important;justify-self:stretch!important;text-align:left!important}
+            .report-typography .print-report-title-wrap{min-height:auto!important}
+            .report-typography .pdf-chart-page{grid-template-columns:minmax(0,1fr)!important}
+          }
+          @media print{
+            .report-typography,
+            .report-typography.pdf-download-mode{
+              --report-type-caption:9pt;
+              --report-type-label:10.5pt;
+              --report-type-body:11pt;
+              --report-type-subtitle:13.5pt;
+              --report-type-title:17pt;
+              --report-type-display:23pt;
+              --report-line-compact:1.22;
+              --report-line-body:1.38;
+            }
+            .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1.45fr) 235px!important;gap:12pt!important}
+            .report-typography .print-report-total-card{width:235px!important;padding:11pt!important}
+            .report-typography .print-report-title-wrap{min-height:82px!important}
+            .report-typography .print-card{padding:11pt!important}
+            .report-typography .pdf-table-page{padding:0!important}
+            .report-typography .pdf-table-page th{padding:6pt 7pt!important}
+            .report-typography .pdf-table-page td{padding:6pt 7pt!important}
+          }
+          @media screen{
+            .report-typography.pdf-download-mode{
+              --report-type-caption:9pt;
+              --report-type-label:10.5pt;
+              --report-type-body:11pt;
+              --report-type-subtitle:13.5pt;
+              --report-type-title:17pt;
+              --report-type-display:23pt;
+              --report-line-compact:1.22;
+              --report-line-body:1.38;
+            }
+            .report-typography.pdf-download-mode .print-report-hero-grid{grid-template-columns:minmax(0,1.45fr) 235px!important;gap:12pt!important}
+            .report-typography.pdf-download-mode .print-report-total-card{width:235px!important;padding:11pt!important}
+            .report-typography.pdf-download-mode .print-report-title-wrap{min-height:82px!important}
+            .report-typography.pdf-download-mode .print-card{padding:11pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page{padding:0!important}
+            .report-typography.pdf-download-mode .pdf-table-page th{padding:6pt 7pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page td{padding:6pt 7pt!important}
+          }
           .pdf-download-mode .pdf-table-page{
             overflow:visible!important;
             border-radius:18px!important;
@@ -2248,7 +2313,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
       ) : null}
 
-      <article className={`print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? `pdf-download-mode${pdfDesignDraft ? ` pdf-design-draft pdf-draft-${pdfDesignDraft}` : ""}` : ""}`} ref={reportArticleRef}>
+      <article className={`report-typography print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? `pdf-download-mode${pdfDesignDraft ? ` pdf-design-draft pdf-draft-${pdfDesignDraft}` : ""}` : ""}`} ref={reportArticleRef}>
         <div className="print-page">
         <header className="print-ink-bg print-report-hero relative overflow-hidden bg-slate-950 px-8 py-8 text-white">
           <div className="print-report-hero-deco absolute -right-20 -top-28 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
@@ -3836,12 +3901,12 @@ function PrintOutputAllocationTable({
       <table className="print-table w-full table-fixed border-separate border-spacing-0 text-[11px]">
         <thead className="bg-amber-50">
           <tr className="text-left font-black text-amber-900">
-            <th className="w-[12%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-3 py-3 text-center">{en ? "Model name" : "모델명"}</th>
-            <th className="w-[28%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
-            <th className="w-[16%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
+            <th className="w-[10%] whitespace-nowrap rounded-tl-3xl border-b border-amber-200 px-2 py-3 text-center">{en ? "Model name" : "모델명"}</th>
+            <th className="w-[23%] border-b border-amber-200 px-2 py-3">{en ? "Output" : "출력물"}</th>
+            <th className="w-[15%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Process Standard Mass" : "공정기준질량"}</th>
             <th className="w-[10%] whitespace-nowrap border-b border-amber-200 px-2 py-3 text-center">{en ? "Mass Share" : "질량 비중"}</th>
-            <th className="w-[17%] border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission (by Mass Share)" : "질량 비중에 따른 배출량 계산"}</th>
-            <th className="w-[17%] rounded-tr-3xl border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission per ton" : "배출량(1톤 기준)"}</th>
+            <th className="w-[18%] border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission (by Mass Share)" : "질량 비중에 따른 배출량 계산"}</th>
+            <th className="w-[24%] rounded-tr-3xl border-b border-amber-200 px-2 py-3 text-center">{en ? "Emission per ton" : "배출량(1톤 기준)"}</th>
           </tr>
         </thead>
         <tbody>
