@@ -100,11 +100,12 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
 
 function MolecularBrandSymbol() {
   return <svg aria-hidden="true" className="home-brand-symbol-default" fill="none" viewBox="0 0 48 48">
-    <path d="M12 12 24 7l12 7v13L24 41 12 34V12Z" stroke="#082b61" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    <path d="m24 7 5.5 13.5L24 41M12 34l17.5-13.5L36 14" stroke="#246beb" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-    <circle cx="12" cy="12" fill="white" r="3" stroke="#082b61" strokeWidth="2" /><circle cx="24" cy="7" fill="white" r="3" stroke="#082b61" strokeWidth="2" />
-    <circle cx="36" cy="14" fill="white" r="3" stroke="#169c50" strokeWidth="2" /><circle cx="29.5" cy="20.5" fill="white" r="3" stroke="#246beb" strokeWidth="2" />
-    <circle cx="24" cy="41" fill="white" r="3" stroke="#246beb" strokeWidth="2" /><circle cx="12" cy="34" fill="white" r="3" stroke="#082b61" strokeWidth="2" />
+    <path d="M24 5 39 14v20l-15 9-15-9V14L24 5Z" stroke="#082b61" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    <path d="M24 5v18m15-9-15 9M9 14l15 9m15 11-15-11M9 34l15-11m0 20V23" stroke="#246beb" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+    <circle cx="24" cy="5" fill="white" r="2.8" stroke="#082b61" strokeWidth="2" /><circle cx="39" cy="14" fill="white" r="2.8" stroke="#169c50" strokeWidth="2" />
+    <circle cx="39" cy="34" fill="white" r="2.8" stroke="#246beb" strokeWidth="2" /><circle cx="24" cy="43" fill="white" r="2.8" stroke="#246beb" strokeWidth="2" />
+    <circle cx="9" cy="34" fill="white" r="2.8" stroke="#082b61" strokeWidth="2" /><circle cx="9" cy="14" fill="white" r="2.8" stroke="#082b61" strokeWidth="2" />
+    <circle cx="24" cy="23" fill="white" r="3.2" stroke="#246beb" strokeWidth="2" />
   </svg>;
 }
 
