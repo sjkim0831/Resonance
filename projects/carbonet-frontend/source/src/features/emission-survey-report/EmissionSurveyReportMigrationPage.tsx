@@ -4141,13 +4141,13 @@ function SectionContributionPieCard({
         </div>
         <div className="space-y-2">
           {sections.map((section, index) => (
-            <div className="pdf-table-row print-break grid grid-cols-[minmax(0,1fr)_112px] items-center gap-3 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
+            <div className="pdf-table-row print-break rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
-                <span className="min-w-0 whitespace-normal text-xs font-bold leading-4 text-slate-700">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
+                <span className="min-w-0 text-xs font-black leading-4 text-slate-800">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
               </div>
-              <div className="text-right">
-                <p className="inline-flex min-h-5 w-full items-baseline justify-end whitespace-nowrap text-xs font-black leading-5 text-slate-950">
+              <div className="mt-1.5 flex items-baseline justify-end gap-3 text-right">
+                <p className="inline-flex min-h-5 items-baseline justify-end whitespace-nowrap text-xs font-black leading-5 text-slate-950">
                   {onSectionShareChange ? (
                     <>
                       <EditableNumber
@@ -4160,7 +4160,7 @@ function SectionContributionPieCard({
                     </>
                   ) : formatPercent(section.sharePercent)}
                 </p>
-                <p className="inline-flex min-h-4 w-full items-baseline justify-end gap-1 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
+                <p className="inline-flex min-h-4 items-baseline justify-end gap-1 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
                   {onSectionEmissionChange ? (
                     <EditableNumber
                       className="inline-block w-20 bg-transparent text-right font-mono font-bold leading-4 text-slate-500"
