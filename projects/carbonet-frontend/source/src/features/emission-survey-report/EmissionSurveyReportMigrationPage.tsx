@@ -2092,6 +2092,38 @@ export function EmissionSurveyReportPrintPage() {
         }
         control.replaceWith(replacement);
       }
+
+      // Pretendard GOV glyphs are painted a little below their CSS line-box
+      // baseline by html2canvas. Move only the glyph-bearing text nodes upward;
+      // changing padding/line-height here would also move borders and break the
+      // carefully budgeted A4 row heights.
+      const textWalker = document.createTreeWalker(exportClone, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          if (!node.textContent?.trim()) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          const parent = node.parentElement;
+          if (!parent || parent.closest("svg, canvas, script, style, noscript")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const exportTextNodes: Text[] = [];
+      for (let node = textWalker.nextNode(); node; node = textWalker.nextNode()) {
+        exportTextNodes.push(node as Text);
+      }
+      for (const textNode of exportTextNodes) {
+        const baselineFix = document.createElement("span");
+        baselineFix.className = "pdf-text-baseline-fix";
+        baselineFix.style.position = "relative";
+        baselineFix.style.top = "-2px";
+        baselineFix.style.font = "inherit";
+        baselineFix.style.color = "inherit";
+        baselineFix.style.letterSpacing = "inherit";
+        baselineFix.textContent = textNode.textContent;
+        textNode.replaceWith(baselineFix);
+      }
       await nextAnimationFrame();
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
