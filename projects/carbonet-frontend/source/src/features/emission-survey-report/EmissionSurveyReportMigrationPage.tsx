@@ -1976,6 +1976,7 @@ export function EmissionSurveyReportPrintPage() {
     if (!effectiveReport) {
       return;
     }
+    let exportClone: HTMLElement | null = null;
     setVerificationBusy(true);
     setVerificationMessage("");
     try {
@@ -1986,7 +1987,6 @@ export function EmissionSurveyReportPrintPage() {
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
       setPdfDesignDraft(draft);
-      setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
       await waitForReportFonts();
@@ -1994,12 +1994,26 @@ export function EmissionSurveyReportPrintPage() {
       if (!element) {
         throw new Error("Report element is not ready.");
       }
+      exportClone = element.cloneNode(true) as HTMLElement;
+      exportClone.classList.add("pdf-download-mode");
+      if (draft) {
+        exportClone.classList.add("pdf-design-draft", `pdf-draft-${draft}`);
+      }
+      exportClone.setAttribute("aria-hidden", "true");
+      exportClone.style.position = "fixed";
+      exportClone.style.left = "0";
+      exportClone.style.top = "0";
+      exportClone.style.zIndex = "-2147483647";
+      exportClone.style.pointerEvents = "none";
+      exportClone.style.margin = "0";
+      document.body.appendChild(exportClone);
+      await nextAnimationFrame();
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf")
       ]);
       const qrDataUrl = await createReportQrDataUrl(record);
-      const pages = Array.from(element.querySelectorAll<HTMLElement>(".pdf-export-page"));
+      const pages = Array.from(exportClone.querySelectorAll<HTMLElement>(".pdf-export-page"));
       if (pages.length === 0) {
         throw new Error("PDF export pages are not ready.");
       }
@@ -2061,6 +2075,7 @@ export function EmissionSurveyReportPrintPage() {
       console.error(error);
       setVerificationMessage(en ? "PDF download failed. Please try again." : "PDF 다운로드에 실패했습니다. 다시 시도하세요.");
     } finally {
+      exportClone?.remove();
       setPdfDownloadMode(false);
       setPdfDesignDraft(null);
       setVerificationBusy(false);
