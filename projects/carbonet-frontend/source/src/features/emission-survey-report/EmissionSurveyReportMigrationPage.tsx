@@ -855,16 +855,30 @@ function buildSectionBarChartSvg(sections: EmissionSurveyReportSectionSummary[],
 
 function buildSectionPieChartSvg(sections: EmissionSurveyReportSectionSummary[], en: boolean) {
   const width = 900;
-  const height = 520;
+  const legendRows = Math.ceil(sections.length / 3);
+  const height = Math.max(580, 500 + legendRows * 62);
   const slices = buildPieSlices(sections).map((slice) => (
     `<path d="${slice.d}" fill="${slice.color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>`
   )).join("");
+  const legend = sections.map((section, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const x = 54 + column * 276;
+    const y = 478 + row * 62;
+    return `
+      <rect x="${x}" y="${y - 18}" width="254" height="52" rx="10" fill="#f8fafc"/>
+      <circle cx="${x + 17}" cy="${y - 2}" r="6" fill="${sectionSolidColor(index)}"/>
+      <text x="${x + 31}" y="${y + 3}" fill="#334155" font-size="12" font-weight="500">${escapeSvgText(sectionLabel(section.sectionCode, section.sectionLabel, en))}</text>
+      <text x="${x + 31}" y="${y + 24}" fill="#64748b" font-size="11" font-weight="500">${escapeSvgText(formatPercent(section.sharePercent))} · ${escapeSvgText(formatNumber(section.totalEmission))} kg CO2e</text>
+    `;
+  }).join("");
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <rect width="100%" height="100%" rx="28" fill="#ffffff"/>
       <rect x="20" y="20" width="${width - 40}" height="${height - 40}" rx="24" fill="#ffffff" stroke="#d8e0ea"/>
       <text x="44" y="62" fill="#0f172a" font-size="24" font-weight="900">${en ? "Section Contribution Pie" : "섹션별 탄소배출 기여 원그래프"}</text>
       <g transform="translate(280 95) scale(1.55)">${slices}<circle cx="110" cy="110" r="50" fill="#fff" stroke="#e2e8f0"/><text x="110" y="104" text-anchor="middle" fill="#64748b" font-size="11" font-weight="900">${en ? "TOTAL" : "합계"}</text><text x="110" y="130" text-anchor="middle" fill="#0f172a" font-size="22" font-weight="900">100%</text></g>
+      ${legend}
     </svg>
   `;
 }
@@ -4205,6 +4219,27 @@ function SectionContributionPieCard({
           </svg>
         </div>
       </div>
+      {sections.length > 0 ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {sections.map((section, index) => (
+            <div className="min-w-0 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-legend-${section.sectionCode}`}>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
+                <span className="min-w-0 truncate text-xs font-medium text-slate-700" title={sectionLabel(section.sectionCode, section.sectionLabel, en)}>
+                  {sectionLabel(section.sectionCode, section.sectionLabel, en)}
+                </span>
+              </div>
+              <p className="mt-1 flex min-w-0 items-baseline gap-1 pl-[18px] text-[11px] font-medium leading-4 text-slate-500">
+                <span className="shrink-0 whitespace-nowrap">{formatPercent(section.sharePercent)}</span>
+                <span aria-hidden="true">·</span>
+                <span className="min-w-0 truncate" title={`${formatNumber(section.totalEmission)} kg CO2e`}>
+                  {formatNumber(section.totalEmission)} kg CO2e
+                </span>
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
