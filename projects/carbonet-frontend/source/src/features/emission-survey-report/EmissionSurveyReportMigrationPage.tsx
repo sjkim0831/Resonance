@@ -650,6 +650,21 @@ function nextAnimationFrame() {
   return new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
+async function waitForReportFonts() {
+  if (!document.fonts) {
+    return;
+  }
+  await Promise.all([
+    document.fonts.load('400 16px "Pretendard GOV"'),
+    document.fonts.load('500 16px "Pretendard GOV"'),
+    document.fonts.load('600 16px "Pretendard GOV"'),
+    document.fonts.load('700 16px "Pretendard GOV"'),
+    document.fonts.load('800 16px "Pretendard GOV"'),
+    document.fonts.load('900 16px "Pretendard GOV"'),
+    document.fonts.ready
+  ]);
+}
+
 type ReportPdfDesignDraft = "agency" | "summary" | "table" | "compact";
 
 const REPORT_PDF_DESIGN_DRAFTS: Array<{ id: ReportPdfDesignDraft; label: string; enLabel: string; description: string; enDescription: string; icon: string; buttonClass: string }> = [
@@ -1955,17 +1970,7 @@ export function EmissionSurveyReportPrintPage() {
       setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
-      if (document.fonts) {
-        await Promise.all([
-          document.fonts.load('400 16px "Pretendard GOV"'),
-          document.fonts.load('500 16px "Pretendard GOV"'),
-          document.fonts.load('600 16px "Pretendard GOV"'),
-          document.fonts.load('700 16px "Pretendard GOV"'),
-          document.fonts.load('800 16px "Pretendard GOV"'),
-          document.fonts.load('900 16px "Pretendard GOV"'),
-          document.fonts.ready
-        ]);
-      }
+      await waitForReportFonts();
       const element = reportArticleRef.current;
       if (!element) {
         throw new Error("Report element is not ready.");
@@ -3406,6 +3411,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
       setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
+      await waitForReportFonts();
       const element = lcaArticleRef.current;
       if (!element) {
         throw new Error("LCA summary element is not ready.");
@@ -3570,6 +3576,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
             .lca-page-2~.lca-section .lca-table .lca-data-quality-cell{height:84px!important;min-height:84px!important;padding-top:4px!important;padding-bottom:6px!important}
             .lca-overview-copy{font-size:9px!important;line-height:1.45!important}
             .lca-pdf-download-mode{padding-bottom:0!important}
+            .lca-pdf-download-mode,.lca-pdf-download-mode *{font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important}
             .lca-pdf-download-mode .print-hidden{display:none!important}
             .lca-pdf-download-mode .print-input-control{display:none!important}
             .lca-pdf-download-mode .print-input-text{display:inline!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}
