@@ -814,8 +814,9 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
-      { componentId: "JoinTermsAllAgree", instanceKey: "join-step2-all-agree", layoutZone: "content", propsSummary: ["agreeTerms", "agreePrivacy"] },
+      { componentId: "JoinTermsAllAgree", instanceKey: "join-step2-all-agree", layoutZone: "content", propsSummary: ["agreeTerms", "agreePrivacy", "agreeGwp"] },
       { componentId: "JoinRequiredTerms", instanceKey: "join-step2-required-terms", layoutZone: "content", propsSummary: ["requiredTermsAccepted"] },
+      { componentId: "JoinGwpConsent", instanceKey: "join-step2-gwp-consent", layoutZone: "content", propsSummary: ["agreeGwp"] },
       { componentId: "JoinMarketingConsent", instanceKey: "join-step2-marketing", layoutZone: "content", propsSummary: ["marketingAgree"] }
     ]
   },

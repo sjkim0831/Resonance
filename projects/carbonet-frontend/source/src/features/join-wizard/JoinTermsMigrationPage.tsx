@@ -19,6 +19,13 @@ const TERMS_KO = {
   privacyTitle: "개인정보 수집 및 이용 동의",
   privacyBody: `탄소중립 CCUS 통합관리 포털은 「개인정보 보호법」 등 관련 법령에 따라 이용자의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 다음과 같이 개인정보 처리방침을 수립·공개합니다.\n\n1. 개인정보의 수집 및 이용 목적: 회원 가입의사 확인, 회원제 서비스 제공에 따른 본인 식별·인증, 회원자격 유지·관리, 서비스 부정이용 방지, 각종 고지·통지 등.\n\n2. 수집하는 개인정보 항목: 성명, 아이디, 비밀번호, 이메일 주소, 전화번호, 소속 기관 정보 등.\n\n3. 개인정보의 보유 및 이용 기간: 회원 탈퇴 시까지 또는 서비스 종료 시까지 보유하며, 관계 법령의 규정에 따라 보존할 필요가 있는 경우 해당 기간 동안 보관합니다.`,
   privacyAgree: "개인정보 수집 및 이용에 동의합니다.",
+  gwpTitle: "GWP 및 CCUS 정보 제공·법적 효력 확인",
+  gwpBody: `회원은 온실가스 배출량 및 감축량 산정에 사용되는 GWP(Global Warming Potential, 지구온난화지수) 관련 정보와 CCUS 사업·시설·활동자료를 정확하고 완전하게 CCUS 통합관리 포털에 제공해야 합니다.
+
+제공된 정보는 배출량 산정, 감축 성과 검증, 보고서 및 인증서 생성, 관련 행정업무의 기초자료로 활용될 수 있습니다. 회원은 허위·누락·오류 정보로 인해 발생하는 산정 및 검증 결과의 오류에 대한 책임이 정보 제공자에게 있음을 확인합니다.
+
+CCUS 통합관리 포털에 제공·등록되지 않은 정보는 포털을 통한 신고, 검증, 승인, 보고 및 증빙의 근거로 인정되지 않으며 이에 따른 법적·행정적 효력이 발생하지 않음을 확인합니다. 관계 법령 또는 관할 기관이 별도의 제출 방법이나 효력을 정한 경우에는 해당 규정을 우선 적용합니다.`,
+  gwpAgree: "GWP 관련 정보 제공 의무와 CCUS에 제공하지 않은 정보에는 법적·행정적 효력이 발생하지 않음을 확인하고 동의합니다.",
   marketingTitle: "마케팅 정보 수신 동의",
   marketingBody: "CCUS 관련 정책 뉴스레터, 세미나 안내 등 유익한 정보를 이메일 또는 SMS로 수신하시겠습니까? (미동의 시에도 서비스 이용이 가능합니다.)",
   marketingAgree: "마케팅 정보 수신에 동의합니다.",
@@ -42,6 +49,13 @@ const TERMS_EN = {
   privacyTitle: "Personal Information Collection and Use",
   privacyBody: `The Carbon Neutrality CCUS Integrated Management Portal establishes and discloses the following personal information processing policy to protect users' personal information in accordance with relevant laws such as the Personal Information Protection Act, and to handle related complaints promptly and smoothly.\n\n1. Purpose of collection and use: Verification of membership registration intent, identity verification and authentication for membership services, maintenance and management of membership, prevention of unauthorized use of services, various notices and notifications, etc.\n\n2. Items collected: Name, user ID, password, email address, phone number, affiliated organization information, etc.\n\n3. Retention period: Retained until membership withdrawal or service termination; retained for the required period if preservation is required by relevant laws and regulations.`,
   privacyAgree: "I agree to the collection and use of personal information.",
+  gwpTitle: "GWP and CCUS Information Provision and Legal Effect",
+  gwpBody: `Members must provide accurate and complete GWP (Global Warming Potential) information used to calculate greenhouse gas emissions and reductions, as well as CCUS project, facility, and activity data, through the CCUS Integrated Management Portal.
+
+The submitted information may be used as the basis for emissions calculation, reduction-performance verification, report and certificate generation, and related administrative work. The information provider is responsible for calculation or verification errors caused by false, omitted, or inaccurate information.
+
+Information not submitted and registered through the CCUS Integrated Management Portal will not be recognized by the Portal as a basis for filing, verification, approval, reporting, or evidence and will have no resulting legal or administrative effect. Where applicable laws or competent authorities prescribe a separate submission method or legal effect, those requirements take precedence.`,
+  gwpAgree: "I acknowledge and agree to the GWP information-provision obligation and that information not provided to the CCUS Portal has no resulting legal or administrative effect.",
   marketingTitle: "Marketing Information Consent",
   marketingBody: "Would you like to receive useful information such as CCUS-related policy newsletters and seminar announcements by email or SMS? (Service is available even without consent.)",
   marketingAgree: "I agree to receive marketing information.",
@@ -56,6 +70,7 @@ export function JoinTermsMigrationPage() {
   const copy = en ? TERMS_EN : TERMS_KO;
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
+  const [agreeGwp, setAgreeGwp] = useState(false);
   const [marketingAgree, setMarketingAgree] = useState(false);
   const [actionError, setActionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -77,9 +92,10 @@ export function JoinTermsMigrationPage() {
       component: "join-step2-required-terms",
       agreeTerms,
       agreePrivacy,
+      agreeGwp,
       marketingAgree
     });
-  }, [agreePrivacy, agreeTerms, marketingAgree, session?.canViewStep2]);
+  }, [agreeGwp, agreePrivacy, agreeTerms, marketingAgree, session?.canViewStep2]);
 
   async function handleHome() {
     await resetJoinSession();
@@ -106,9 +122,10 @@ export function JoinTermsMigrationPage() {
     logGovernanceScope("ACTION", "join-step2-next", {
       agreeTerms,
       agreePrivacy,
+      agreeGwp,
       marketingAgree
     });
-    if (!agreeTerms || !agreePrivacy) {
+    if (!agreeTerms || !agreePrivacy || !agreeGwp) {
       setActionError(en ? "Please agree to the required terms." : "필수 약관에 동의해 주세요.");
       return;
     }
@@ -124,7 +141,7 @@ export function JoinTermsMigrationPage() {
     }
   }
 
-  const allChecked = agreeTerms && agreePrivacy;
+  const allChecked = agreeTerms && agreePrivacy && agreeGwp;
 
   return (
     <div className="join-step2-screen bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
@@ -208,6 +225,7 @@ export function JoinTermsMigrationPage() {
                   onChange={(event) => {
                     setAgreeTerms(event.target.checked);
                     setAgreePrivacy(event.target.checked);
+                    setAgreeGwp(event.target.checked);
                   }}
                 />
                 <span className="ml-3 text-lg font-bold text-[var(--kr-gov-blue)]">{copy.allAgree}</span>
@@ -246,6 +264,22 @@ export function JoinTermsMigrationPage() {
                   <label className="flex items-center cursor-pointer">
                     <AppCheckbox checked={agreePrivacy} className="term-check" id="agree-privacy" name="agreePrivacy" onChange={(event) => setAgreePrivacy(event.target.checked)} required />
                     <span className="ml-2 text-[15px] font-medium text-[var(--kr-gov-text-secondary)]">{copy.privacyAgree}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-4" data-help-id="join-step2-gwp-consent">
+                <div className="flex justify-between items-end">
+                  <label className="flex items-center">
+                    <span className="px-2 py-0.5 bg-[#d32f2f] text-white text-[11px] font-bold rounded mr-2">{copy.required}</span>
+                    <span className="text-lg font-bold text-[var(--kr-gov-text-primary)]">{copy.gwpTitle}</span>
+                  </label>
+                </div>
+                <div aria-label={copy.gwpTitle} className="terms-scroll whitespace-pre-line" role="region" tabIndex={0}>{copy.gwpBody}</div>
+                <div className="flex justify-end">
+                  <label className="flex items-center cursor-pointer">
+                    <AppCheckbox checked={agreeGwp} className="term-check" id="agree-gwp" name="agreeGwp" onChange={(event) => setAgreeGwp(event.target.checked)} required />
+                    <span className="ml-2 text-[15px] font-medium text-[var(--kr-gov-text-secondary)]">{copy.gwpAgree}</span>
                   </label>
                 </div>
               </div>

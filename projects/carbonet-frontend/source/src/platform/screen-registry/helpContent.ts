@@ -1341,7 +1341,8 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
     summary: "필수 약관과 선택 항목을 검토하고 동의 상태를 관리합니다.",
     items: [
       { id: "all", title: "전체 동의", body: "필수 약관을 한 번에 선택할 수 있지만, 내용 확인 후 동의하는 것이 좋습니다.", anchorSelector: '[data-help-id="join-step2-all-agree"]' },
-      { id: "terms", title: "필수 약관", body: "이용약관과 개인정보 수집 및 이용 동의는 필수입니다.", anchorSelector: '[data-help-id="join-step2-required-terms"]' },
+      { id: "terms", title: "필수 약관", body: "이용약관, 개인정보 수집·이용, GWP 및 CCUS 정보 제공·법적 효력 확인 동의는 필수입니다.", anchorSelector: '[data-help-id="join-step2-required-terms"]' },
+      { id: "gwp", title: "GWP·CCUS 정보 동의", body: "GWP 관련 정보 제공 의무와 포털에 등록하지 않은 정보의 법적·행정적 효력 제한을 확인합니다.", anchorSelector: '[data-help-id="join-step2-gwp-consent"]' },
       { id: "marketing", title: "마케팅 수신", body: "선택 항목이며 미동의 상태여도 다음 단계로 진행할 수 있습니다.", anchorSelector: '[data-help-id="join-step2-marketing"]' }
     ]
   },
