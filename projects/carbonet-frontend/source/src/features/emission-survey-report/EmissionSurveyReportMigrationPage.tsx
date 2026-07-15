@@ -2004,6 +2004,94 @@ export function EmissionSurveyReportPrintPage() {
       exportClone.style.pointerEvents = "none";
       exportClone.style.margin = "0";
       document.body.appendChild(exportClone);
+      exportClone.style.setProperty("width", "1024px", "important");
+      exportClone.style.setProperty("max-width", "1024px", "important");
+      exportClone.style.setProperty("background", "#ffffff", "important");
+
+      for (const page of Array.from(exportClone.querySelectorAll<HTMLElement>(".pdf-export-page"))) {
+        page.style.setProperty("box-sizing", "border-box", "important");
+        page.style.setProperty("width", "1024px", "important");
+        page.style.setProperty("height", "1448px", "important");
+        page.style.setProperty("min-height", "1448px", "important");
+        page.style.setProperty("max-height", "1448px", "important");
+        page.style.setProperty("margin", "0", "important");
+        page.style.setProperty("overflow", "hidden", "important");
+        page.style.setProperty("background", "#ffffff", "important");
+      }
+      const heroGrid = exportClone.querySelector<HTMLElement>(".print-report-hero-grid");
+      if (heroGrid) {
+        heroGrid.style.setProperty("display", "grid", "important");
+        heroGrid.style.setProperty("grid-template-columns", "minmax(0,1.4fr) 320px", "important");
+        heroGrid.style.setProperty("align-items", "center", "important");
+      }
+      const totalCard = exportClone.querySelector<HTMLElement>(".print-report-total-card");
+      if (totalCard) {
+        totalCard.style.setProperty("width", "320px", "important");
+        totalCard.style.setProperty("justify-self", "end", "important");
+      }
+      const chartPage = exportClone.querySelector<HTMLElement>(".pdf-chart-page");
+      if (chartPage) {
+        chartPage.style.setProperty("display", "grid", "important");
+        chartPage.style.setProperty("grid-template-columns", "repeat(2,minmax(0,1fr))", "important");
+        chartPage.style.setProperty("align-items", "start", "important");
+      }
+      for (const row of Array.from(exportClone.querySelectorAll<HTMLElement>(".report-bar-row"))) {
+        row.style.setProperty("display", "block", "important");
+        row.style.setProperty("min-height", "84px", "important");
+        row.style.setProperty("overflow", "visible", "important");
+        const header = row.children.item(0) as HTMLElement | null;
+        const bar = row.children.item(1) as HTMLElement | null;
+        const percent = row.children.item(2) as HTMLElement | null;
+        if (header) {
+          header.style.setProperty("display", "flex", "important");
+          header.style.setProperty("min-height", "24px", "important");
+          header.style.setProperty("align-items", "center", "important");
+          header.style.setProperty("justify-content", "space-between", "important");
+        }
+        if (bar) {
+          bar.style.setProperty("display", "block", "important");
+          bar.style.setProperty("height", "8px", "important");
+          bar.style.setProperty("margin", "8px 0 6px", "important");
+        }
+        if (percent) {
+          percent.style.setProperty("min-height", "20px", "important");
+          percent.style.setProperty("margin", "0", "important");
+          percent.style.setProperty("line-height", "20px", "important");
+        }
+      }
+      for (const cell of Array.from(exportClone.querySelectorAll<HTMLElement>(".pdf-table-page th, .pdf-table-page td"))) {
+        cell.style.setProperty("vertical-align", "middle", "important");
+      }
+
+      const editorControls = Array.from(exportClone.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("input.print-input-control, textarea.print-input-control"));
+      for (const control of editorControls) {
+        const computed = window.getComputedStyle(control);
+        const value = control instanceof HTMLTextAreaElement ? control.value : control.value;
+        const replacement = document.createElement("span");
+        replacement.className = "pdf-static-value";
+        replacement.textContent = value || "-";
+        replacement.style.display = "inline-block";
+        replacement.style.width = "auto";
+        replacement.style.maxWidth = "100%";
+        replacement.style.margin = "0";
+        replacement.style.padding = "0";
+        replacement.style.border = "0";
+        replacement.style.background = "transparent";
+        replacement.style.color = computed.color;
+        replacement.style.fontFamily = computed.fontFamily;
+        replacement.style.fontSize = computed.fontSize;
+        replacement.style.fontWeight = computed.fontWeight;
+        replacement.style.letterSpacing = computed.letterSpacing;
+        replacement.style.lineHeight = computed.lineHeight === "normal" ? "1.25" : computed.lineHeight;
+        replacement.style.textAlign = computed.textAlign;
+        replacement.style.verticalAlign = "middle";
+        replacement.style.whiteSpace = control instanceof HTMLTextAreaElement ? "pre-wrap" : "nowrap";
+        const duplicate = control.nextElementSibling;
+        if (duplicate?.classList.contains("print-input-text")) {
+          duplicate.remove();
+        }
+        control.replaceWith(replacement);
+      }
       await nextAnimationFrame();
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
