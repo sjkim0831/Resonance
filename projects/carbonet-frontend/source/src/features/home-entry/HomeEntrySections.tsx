@@ -73,6 +73,14 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
         line-height: 1.2;
       }
       .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: grid; }
+      .home-brand-symbol { position: relative; width: 42px; height: 42px; flex: 0 0 42px; }
+      .home-brand-symbol svg { position: absolute; inset: 0; width: 42px; height: 42px; transition: opacity .2s ease, transform .2s ease; }
+      .home-brand-symbol .home-brand-symbol-hover { opacity: 0; transform: scale(.86) rotate(-8deg); }
+      .home-brand-link:hover .home-brand-symbol-default,
+      .home-brand-link:focus-visible .home-brand-symbol-default { opacity: 0; transform: scale(.86) rotate(8deg); }
+      .home-brand-link:hover .home-brand-symbol-hover,
+      .home-brand-link:focus-visible .home-brand-symbol-hover { opacity: 1; transform: scale(1) rotate(0); }
+      @media (prefers-reduced-motion: reduce) { .home-brand-symbol svg { transition: none; } }
       .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; background: #fff; }
       .gnb-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .gnb-section { min-width: 0; border-left: 1px solid #e2e8f0; padding: 26px 28px; background: transparent; }
@@ -90,14 +98,33 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
   );
 }
 
-export function HeaderBrand({ content }: { content: LocalizedHomeContent; en: boolean }) {
+function MolecularBrandSymbol() {
+  return <svg aria-hidden="true" className="home-brand-symbol-default" fill="none" viewBox="0 0 48 48">
+    <path d="M12 12 24 7l12 7v13L24 41 12 34V12Z" stroke="#082b61" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.6" />
+    <path d="m24 7 5.5 13.5L24 41M12 34l17.5-13.5L36 14" stroke="#246beb" strokeLinecap="round" strokeWidth="2.4" />
+    <circle cx="12" cy="12" fill="#082b61" r="4.2" /><circle cx="24" cy="7" fill="#082b61" r="4.2" />
+    <circle cx="36" cy="14" fill="#00a878" r="4.5" /><circle cx="29.5" cy="20.5" fill="#246beb" r="4.1" />
+    <circle cx="24" cy="41" fill="#246beb" r="4.2" /><circle cx="12" cy="34" fill="#082b61" r="4.2" />
+  </svg>;
+}
+
+function CirculationBrandSymbol() {
+  return <svg aria-hidden="true" className="home-brand-symbol-hover" fill="none" viewBox="0 0 48 48">
+    <path d="M8.2 25.6C6.7 15.8 13.9 7 23.7 6.3c6.5-.5 12.6 2.7 15.9 8" stroke="#246beb" strokeLinecap="round" strokeWidth="5" />
+    <path d="M39.8 22.4C41.3 32.2 34.1 41 24.3 41.7c-6.5.5-12.6-2.7-15.9-8" stroke="#169c50" strokeLinecap="round" strokeWidth="5" />
+    <path d="m36.5 8.7 3.7 5.8-6.8.5M11.5 39.3l-3.7-5.8 6.8-.5" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.7" />
+    <path d="M18 27.5c5.8 1.2 9.9-1.5 12-7.8 1.7 6.8-.9 12-7.8 14.3-3.2 1.1-6.2.3-8.4-1.6 1.2-2.1 2.6-3.7 4.2-4.9Z" fill="#fff" opacity=".95" />
+  </svg>;
+}
+
+export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en: boolean }) {
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex max-w-[190px] items-center gap-2 shrink-0">
-      <HomeLinkButton className="max-w-[72vw] xl:max-w-[190px] !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-1.5" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
-        <span className="material-symbols-outlined text-2xl text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
-        <div className="home-brand-copy flex flex-col">
-          <h1 className="home-brand-title gov-text-label truncate font-black tracking-tight text-[var(--kr-gov-text-primary)]">{content.logoTitle}</h1>
-          <p className="home-brand-subtitle gov-text-caption hidden truncate font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] 2xl:block">{content.logoSubtitle}</p>
+    <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex w-[210px] max-w-[72vw] items-center shrink-0">
+      <HomeLinkButton aria-label={content.logoTitle} className="home-brand-link w-full !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-2.5" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
+        <span className="home-brand-symbol"><MolecularBrandSymbol /><CirculationBrandSymbol /></span>
+        <div className="home-brand-copy min-w-0 flex flex-col text-left">
+          <strong className="leading-none text-[21px] font-black tracking-[-.03em] text-[#082b61]">CCUS</strong>
+          <span className="mt-1 whitespace-nowrap text-[12px] font-extrabold leading-none tracking-[-.025em] text-[#246beb]">{en ? "Carbon Neutrality Platform" : "탄소중립 플랫폼"}</span>
         </div>
       </HomeLinkButton>
     </div>
