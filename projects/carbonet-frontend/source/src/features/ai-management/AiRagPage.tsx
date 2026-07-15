@@ -6,10 +6,10 @@ import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
-import { fetchAiRag } from "../../lib/api/aiManagement";
+import { fetchAiRag, generateKrdsCode, type KrdsCodeGenerationResult } from "../../lib/api/aiManagement";
 import { SimpleTable, SummaryCards, TabBar, text, rowsOf, Badge } from "./aiShared";
 
-type TabKey = "documents" | "chunks" | "vectordb" | "verify";
+type TabKey = "generator" | "documents" | "chunks" | "vectordb" | "verify";
 
 interface DocumentModalProps {
   doc: Record<string, unknown> | null;
@@ -115,12 +115,17 @@ function ChunkDetailModal({ chunk, onClose }: ChunkDetailModalProps) {
 export function AiRagPage() {
   const en = isEnglish();
   const session = useFrontendSession();
-  const [tab, setTab] = useState<TabKey>("documents");
+  const [tab, setTab] = useState<TabKey>("generator");
   const [status, setStatus] = useState("ALL");
   const [source, setSource] = useState("ALL");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedChunk, setSelectedChunk] = useState<Record<string, unknown> | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [generationPrompt, setGenerationPrompt] = useState("");
+  const [generationTarget, setGenerationTarget] = useState<"REACT_TSX" | "HTML" | "SECTION" | "COMPONENT">("REACT_TSX");
+  const [generationResult, setGenerationResult] = useState<KrdsCodeGenerationResult | null>(null);
+  const [generationError, setGenerationError] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   const state = useAsyncValue(() => fetchAiRag({ status: status === "ALL" ? undefined : status, source: source === "ALL" ? undefined : source }), [status, source]);
   const payload = state.value;
@@ -138,6 +143,7 @@ export function AiRagPage() {
   }, [state, session]);
 
   const tabs = [
+    { key: "generator", label: en ? "KRDS Code Generator" : "KRDS 코드 생성" },
     { key: "documents", label: en ? "Documents" : "문서" },
     { key: "chunks", label: en ? "Chunks" : "청크" },
     { key: "vectordb", label: en ? "Vector DB" : "벡터DB" },
@@ -153,6 +159,7 @@ export function AiRagPage() {
   );
 
   const cols: Record<TabKey, any[]> = {
+    generator: [],
     documents: [
       { key: "name", label: en ? "Name" : "문서명" },
       { key: "type", label: en ? "Type" : "유형" },
@@ -192,6 +199,20 @@ export function AiRagPage() {
     setShowUploadModal(false);
   }, []);
 
+  const handleGenerate = useCallback(async () => {
+    if (!generationPrompt.trim() || generating) return;
+    setGenerating(true);
+    setGenerationError("");
+    setGenerationResult(null);
+    try {
+      setGenerationResult(await generateKrdsCode({ prompt: generationPrompt.trim(), target: generationTarget }));
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setGenerating(false);
+    }
+  }, [generationPrompt, generationTarget, generating]);
+
   return (
     <AdminPageShell
       breadcrumbs={[
@@ -228,7 +249,7 @@ export function AiRagPage() {
             tabs={tabs}
             active={tab}
             setActive={(k) => setTab(k as TabKey)}
-            extra={
+            extra={tab === "generator" ? undefined : (
               <div className="flex gap-2">
                 <input
                   className="gov-input w-48 text-sm"
@@ -253,8 +274,53 @@ export function AiRagPage() {
                   </select>
                 )}
               </div>
-            }
+            )}
           />
+
+          {tab === "generator" && (
+            <div className="space-y-6 p-5 lg:p-7">
+              <ol className="grid gap-3 md:grid-cols-4" aria-label={en ? "Generation pipeline" : "코드 생성 파이프라인"}>
+                {(en
+                  ? ["1. Retrieve KRDS tokens", "2. Inject system prompt", "3. Call fine-tuned LLM", "4. WCAG 2.1 AA gate"]
+                  : ["1. KRDS 토큰 검색", "2. 시스템 프롬프트 주입", "3. 파인튜닝 LLM 호출", "4. WCAG 2.1 AA 검증"]
+                ).map((label) => <li className="krds-component rounded-xl border border-blue-200 bg-blue-50 p-4 font-bold text-blue-950" key={label}>{label}</li>)}
+              </ol>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+                <div>
+                  <label className="gov-text-label font-bold" htmlFor="krds-generation-prompt">{en ? "Page or component request" : "화면·컴포넌트 요청"}</label>
+                  <textarea id="krds-generation-prompt" className="gov-input mt-2 min-h-40 w-full" value={generationPrompt}
+                    onChange={(event) => setGenerationPrompt(event.target.value)} maxLength={6000}
+                    placeholder={en ? "Describe the task, actor, data, states, and actions." : "업무 목적, 액터, 데이터, 상태와 액션을 구체적으로 입력하세요."} />
+                  <p className="gov-text-body-sm mt-2 text-slate-600">{generationPrompt.length.toLocaleString()} / 6,000</p>
+                </div>
+                <div>
+                  <label className="gov-text-label font-bold" htmlFor="krds-generation-target">{en ? "Output type" : "출력 유형"}</label>
+                  <select id="krds-generation-target" className="gov-select mt-2 w-full" value={generationTarget}
+                    onChange={(event) => setGenerationTarget(event.target.value as typeof generationTarget)}>
+                    <option value="REACT_TSX">React TSX</option><option value="HTML">HTML</option>
+                    <option value="SECTION">Section</option><option value="COMPONENT">Component</option>
+                  </select>
+                  <button className="gov-btn gov-btn-primary mt-4 min-h-11 w-full" type="button" disabled={generating || !generationPrompt.trim()} onClick={handleGenerate}>
+                    {generating ? (en ? "Generating and validating..." : "생성·검증 중...") : (en ? "Generate KRDS code" : "KRDS 코드 생성")}
+                  </button>
+                </div>
+              </div>
+              <div aria-live="polite">
+                {generationError && <PageStatusNotice tone="error">{generationError}</PageStatusNotice>}
+                {generationResult && <div className="rounded-xl border border-slate-200 bg-slate-950 p-5 text-white">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div><p className="gov-text-label text-slate-300">{generationResult.generationId} · {generationResult.model}</p>
+                      <h3 className="gov-text-heading-sm mt-1 font-black">WCAG 2.1 AA: {generationResult.wcagStatus}</h3></div>
+                    {generationResult.code && <button className="gov-btn gov-btn-outline bg-white text-slate-950" type="button"
+                      onClick={() => navigator.clipboard.writeText(generationResult.code)}>{en ? "Copy code" : "코드 복사"}</button>}
+                  </div>
+                  <p className="gov-text-body-sm mt-3 text-slate-300">{generationResult.message} · RAG {generationResult.retrievedSources.length} · {generationResult.durationMs.toLocaleString()}ms</p>
+                  {generationResult.violations.length > 0 && <ul className="mt-3 list-disc pl-5 text-red-300">{generationResult.violations.map((item) => <li key={item}>{item}</li>)}</ul>}
+                  {generationResult.code && <pre className="mt-4 max-h-[620px] overflow-auto rounded-lg bg-black p-4 text-sm"><code>{generationResult.code}</code></pre>}
+                </div>}
+              </div>
+            </div>
+          )}
 
           {tab === "documents" && (
             <SimpleTable
