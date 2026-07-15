@@ -2098,8 +2098,9 @@ export function EmissionSurveyReportPrintPage() {
             .report-typography .print-report-title-wrap{min-height:82px!important}
             .report-typography .print-card{padding:11pt!important}
             .report-typography .pdf-table-page{padding:0!important}
-            .report-typography .pdf-table-page th{padding:5pt 7pt!important}
-            .report-typography .pdf-table-page td{padding:4.5pt 7pt!important}
+            .report-typography .pdf-table-page th{padding:4pt 7pt!important}
+            .report-typography .pdf-table-page tbody tr:not(:last-child) td{padding:2.75pt 7pt!important}
+            .report-typography .pdf-table-page tbody tr:last-child td{padding:6pt 7pt!important}
           }
           @media screen{
             .report-typography.pdf-download-mode{
@@ -2117,8 +2118,9 @@ export function EmissionSurveyReportPrintPage() {
             .report-typography.pdf-download-mode .print-report-title-wrap{min-height:82px!important}
             .report-typography.pdf-download-mode .print-card{padding:11pt!important}
             .report-typography.pdf-download-mode .pdf-table-page{padding:0!important}
-            .report-typography.pdf-download-mode .pdf-table-page th{padding:5pt 7pt!important}
-            .report-typography.pdf-download-mode .pdf-table-page td{padding:4.5pt 7pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page th{padding:4pt 7pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page tbody tr:not(:last-child) td{padding:2.75pt 7pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page tbody tr:last-child td{padding:6pt 7pt!important}
           }
           .pdf-download-mode .pdf-table-page{
             overflow:visible!important;
@@ -2350,7 +2352,7 @@ export function EmissionSurveyReportPrintPage() {
               <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Normalization Base" : "정규화 기준"}</p>
               <h2 className="mt-1 text-xl font-black">{en ? "Product And Byproduct Mass Basis" : "제품 및 부산물 질량 기준"}</h2>
             </div>
-            <div className="min-w-[160px] bg-white rounded-xl p-1 shadow-sm border border-amber-200 print:hidden">
+            <div className="pdf-hidden min-w-[160px] bg-white rounded-xl p-1 shadow-sm border border-amber-200 print:hidden">
               <label className="block p-1">
                 <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-amber-800">{en ? "Byproduct Allocation" : "부산물 할당 여부"}</span>
                 <AdminSelect
