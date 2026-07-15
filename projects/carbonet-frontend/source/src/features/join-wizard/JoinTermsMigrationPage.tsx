@@ -106,16 +106,11 @@ export function JoinTermsMigrationPage() {
     navigate(nextEn ? "/join/en/step1" : "/join/step1");
   }
 
-  async function handleMarketingChange(checked: boolean) {
+  function handleMarketingChange(checked: boolean) {
     logGovernanceScope("ACTION", "join-step2-marketing", {
       marketingAgree: checked
     });
     setMarketingAgree(checked);
-    try {
-      await saveJoinStep2(checked ? "Y" : "N");
-    } catch (nextError) {
-      setActionError(nextError instanceof Error ? nextError.message : "Failed to save join step2");
-    }
   }
 
   async function handleNext() {
@@ -132,7 +127,7 @@ export function JoinTermsMigrationPage() {
     setSubmitting(true);
     setActionError("");
     try {
-      await saveJoinStep2(marketingAgree ? "Y" : "N");
+      await saveJoinStep2(marketingAgree ? "Y" : "N", true);
       navigate(buildLocalizedPath("/join/step3", "/join/en/step3"));
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : "Failed to save join step2");
@@ -294,7 +289,7 @@ export function JoinTermsMigrationPage() {
                 <div className="p-5 bg-gray-50 border border-[var(--kr-gov-border-light)] text-sm text-[var(--kr-gov-text-secondary)]">{copy.marketingBody}</div>
                 <div className="flex justify-end">
                   <label className="flex items-center cursor-pointer">
-                    <AppCheckbox checked={marketingAgree} id="marketing_agree" onChange={(event) => void handleMarketingChange(event.target.checked)} />
+                    <AppCheckbox checked={marketingAgree} id="marketing_agree" onChange={(event) => handleMarketingChange(event.target.checked)} />
                     <span className="ml-2 text-[15px] font-medium text-[var(--kr-gov-text-secondary)]">{copy.marketingAgree}</span>
                   </label>
                 </div>

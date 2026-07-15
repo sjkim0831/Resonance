@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import egovframework.com.feature.member.service.EnterpriseMemberService;
+import egovframework.com.feature.member.service.MemberConsentHistoryService;
 import egovframework.com.feature.member.model.vo.EntrprsMberFileVO;
 import egovframework.com.feature.member.model.vo.EntrprsManageVO;
 import egovframework.com.feature.member.model.vo.InstitutionStatusVO;
@@ -47,6 +48,9 @@ public class MemberJoinController {
 
     @Resource
     private ReactAppViewSupport reactAppViewSupport;
+
+    @Resource
+    private MemberConsentHistoryService memberConsentHistoryService;
 
     @GetMapping("/api/session")
     @ResponseBody
@@ -205,7 +209,13 @@ public class MemberJoinController {
 
     @PostMapping("/api/step2")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> saveStep2Api(@RequestParam("marketing_yn") String marketingYn, HttpSession session) {
+    public ResponseEntity<Map<String, Object>> saveStep2Api(
+            @RequestParam("marketing_yn") String marketingYn,
+            @RequestParam("agree_terms") String agreeTerms,
+            @RequestParam("agree_privacy") String agreePrivacy,
+            @RequestParam("agree_gwp") String agreeGwp,
+            HttpSession session,
+            HttpServletRequest request) {
         Map<String, Object> response = new java.util.LinkedHashMap<>();
         if (getJoinStep(session) < 1) {
             response.put("success", false);
@@ -216,7 +226,18 @@ public class MemberJoinController {
         if (joinVO == null) {
             joinVO = new EntrprsManageVO();
         }
+        boolean termsAgreed = "Y".equalsIgnoreCase(agreeTerms);
+        boolean privacyAgreed = "Y".equalsIgnoreCase(agreePrivacy);
+        boolean gwpAgreed = "Y".equalsIgnoreCase(agreeGwp);
+        if (!termsAgreed || !privacyAgreed || !gwpAgreed) {
+            response.put("success", false);
+            response.put("message", "필수 약관에 모두 동의해 주세요.");
+            return ResponseEntity.badRequest().body(response);
+        }
         joinVO.setMarketingYn(marketingYn);
+        memberConsentHistoryService.recordJoinConsents(
+                session.getId(), joinVO.getEntrprsSeCode(), termsAgreed, privacyAgreed, gwpAgreed,
+                "Y".equalsIgnoreCase(marketingYn), request);
         session.setAttribute(SESSION_JOIN_VO, joinVO);
         setJoinStep(session, 2);
         response.put("success", true);
@@ -333,6 +354,7 @@ public class MemberJoinController {
         entrprsManageService.insertEntrprsmber(joinVO);
         entrprsManageService.insertEntrprsMberFiles(evidenceFiles);
         entrprsManageService.ensureEnterpriseSecurityMapping(joinVO.getUniqId());
+        memberConsentHistoryService.linkMember(session.getId(), joinVO.getEntrprsmberId());
 
         response.put("success", true);
         response.put("mberId", joinVO.getEntrprsmberId());
@@ -494,6 +516,7 @@ public class MemberJoinController {
         entrprsManageService.insertEntrprsmber(joinVO);
         entrprsManageService.insertEntrprsMberFiles(evidenceFiles);
         entrprsManageService.ensureEnterpriseSecurityMapping(joinVO.getUniqId());
+        memberConsentHistoryService.linkMember(session.getId(), joinVO.getEntrprsmberId());
 
         model.addAttribute("mberId", joinVO.getEntrprsmberId());
         model.addAttribute("mberNm", joinVO.getApplcntNm());

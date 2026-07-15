@@ -147,8 +147,13 @@ export async function saveJoinStep1(membershipType: string) {
   return postJoinStep("/join/api/step1", { membership_type: membershipType }, "Failed to save join step1");
 }
 
-export async function saveJoinStep2(marketingYn: string) {
-  return postJoinStep("/join/api/step2", { marketing_yn: marketingYn }, "Failed to save join step2");
+export async function saveJoinStep2(marketingYn: string, requiredConsents = true) {
+  return postJoinStep("/join/api/step2", {
+    marketing_yn: marketingYn,
+    agree_terms: requiredConsents ? "Y" : "N",
+    agree_privacy: requiredConsents ? "Y" : "N",
+    agree_gwp: requiredConsents ? "Y" : "N"
+  }, "Failed to save join step2");
 }
 
 export async function saveJoinStep3(authMethod: string) {
