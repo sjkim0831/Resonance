@@ -2408,6 +2408,76 @@ export function EmissionSurveyReportPrintPage() {
             font-size:var(--pdf-label)!important;
             line-height:1.25!important;
           }
+          /* Layout v2: typography establishes the box height; every visible cell has
+             one centering container instead of relying on table padding/baselines. */
+          .report-typography.pdf-download-mode .print-metric-card{
+            grid-template-rows:auto auto auto!important;
+            align-content:center!important;
+            justify-items:stretch!important;
+            row-gap:5pt!important;
+            min-height:82pt!important;
+          }
+          .report-typography.pdf-download-mode .print-metric-label{
+            min-height:13pt!important;
+            font-size:var(--pdf-label)!important;
+            line-height:13pt!important;
+          }
+          .report-typography.pdf-download-mode .print-metric-value{
+            min-height:21pt!important;
+            font-size:var(--pdf-subtitle)!important;
+            line-height:21pt!important;
+          }
+          .report-typography.pdf-download-mode .print-metric-note{
+            display:flex!important;
+            min-height:26pt!important;
+            align-items:center!important;
+            justify-content:center!important;
+            font-size:var(--pdf-label)!important;
+            line-height:13pt!important;
+          }
+          .report-typography.pdf-download-mode .print-output-section .print-table td{
+            height:58pt!important;
+            padding:0!important;
+          }
+          .report-typography.pdf-download-mode .print-output-cell-inner{
+            box-sizing:border-box!important;
+            display:flex!important;
+            width:100%!important;
+            min-height:58pt!important;
+            padding:6pt!important;
+            align-items:center!important;
+            justify-content:center!important;
+            line-height:1.3!important;
+          }
+          .report-typography.pdf-download-mode .print-output-cell-inner.output-name{
+            flex-direction:column!important;
+            align-items:stretch!important;
+            justify-content:center!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tbody tr:not(:last-child) td{
+            height:28pt!important;
+            padding:0!important;
+          }
+          .report-typography.pdf-download-mode .detail-cell-inner{
+            box-sizing:border-box!important;
+            display:flex!important;
+            width:100%!important;
+            min-height:28pt!important;
+            padding:0 7pt!important;
+            align-items:center!important;
+            justify-content:flex-start!important;
+            overflow:visible!important;
+            line-height:1.25!important;
+          }
+          .report-typography.pdf-download-mode .detail-cell-inner.center{
+            justify-content:center!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tr.bg-blue-50 .detail-cell-inner{
+            min-height:24pt!important;
+          }
+          .report-typography.pdf-download-mode .detail-cell-inner .report-value-unit{
+            margin:0!important;
+          }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
             color:#0f172a!important;
@@ -4122,8 +4192,8 @@ function PrintMetric({
 }) {
   return (
     <div className="print-metric-card rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
-      <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
-      <p className="mt-1 text-center font-mono text-lg font-black text-slate-950">
+      <p className="print-metric-label text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="print-metric-value mt-1 text-center font-mono text-lg font-black text-slate-950">
         {editable && typeof value === "number" && onCommit ? (
 	          <EditableNumber
 	            className="w-full bg-transparent text-center font-mono text-lg font-black text-slate-950"
@@ -4133,7 +4203,7 @@ function PrintMetric({
 	          />
         ) : value}
       </p>
-      {note ? <p className="mt-0.5 text-center text-[10px] font-bold text-slate-500">{note}</p> : null}
+      {note ? <p className="print-metric-note mt-0.5 text-center text-[10px] font-bold text-slate-500">{note}</p> : <span className="print-metric-note" />}
     </div>
   );
 }
@@ -4197,9 +4267,10 @@ function PrintOutputAllocationTable({
             return (
               <tr className="pdf-table-row border-b border-amber-100 align-middle" key={row.rowId}>
                 <td className="px-3 py-3 align-middle text-slate-600 font-bold text-center bg-slate-50/40">
-                  {groupLabel(row, en)}
+                  <div className="print-output-cell-inner">{groupLabel(row, en)}</div>
                 </td>
                 <td className="px-3 py-3 align-middle">
+                  <div className="print-output-cell-inner output-name">
                   {editable ? (
                     <EditableText
                       multiline
@@ -4215,8 +4286,10 @@ function PrintOutputAllocationTable({
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-amber-100">
                     <div className="h-full rounded-full bg-amber-600" style={{ width: `${Math.max(2, Math.min(displaySharePercent, 100))}%` }} />
                   </div>
+                  </div>
                 </td>
                 <td className="px-2 py-3 text-center">
+                  <div className="print-output-cell-inner">
                   <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap font-mono text-[11px] font-black text-slate-900">
                     {editable ? (
                       <EditableNumber
@@ -4230,8 +4303,10 @@ function PrintOutputAllocationTable({
                     )}
                     <span className="text-[9px] font-bold text-slate-500">{row.unit || ""}</span>
                   </span>
+                  </div>
                 </td>
                 <td className="whitespace-nowrap px-2 py-3 text-center font-mono font-black">
+                  <div className="print-output-cell-inner">
                   <span className="inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap text-slate-950">
                     {editable ? (
                       <EditableNumber
@@ -4245,19 +4320,24 @@ function PrintOutputAllocationTable({
                     )}
                     <span>%</span>
                   </span>
+                  </div>
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
+                  <div className="print-output-cell-inner">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
                     <span className="font-mono text-sm font-black text-slate-950">{formatNumber(massShareEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">kg CO2e</span>
                   </div>
+                  </div>
                 </td>
                 <td className="px-2 py-3 text-center align-middle">
+                  <div className="print-output-cell-inner">
                   <div className="inline-flex flex-col items-center justify-center leading-none">
                     <span className="font-mono text-sm font-black text-slate-950">{formatNumber(perTonEmission, 2)}</span>
                     <span className="mt-1 text-[9px] font-bold text-slate-500 whitespace-nowrap">
                       kg CO2e/ton of <br />{en ? toEnglishTitleCase(productName || "Product") : (productName || "제품")}
                     </span>
+                  </div>
                   </div>
                 </td>
               </tr>
@@ -4290,12 +4370,13 @@ function PrintSectionRows({
     <>
       <tr className="pdf-table-row bg-blue-50">
         <td className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700" colSpan={4}>
-          {sectionLabel(sectionCode, group.sectionLabel, en)}
+          <div className="detail-cell-inner">{sectionLabel(sectionCode, group.sectionLabel, en)}</div>
         </td>
       </tr>
       {group.rows.map((row) => (
         <tr className="pdf-table-row border-b border-slate-100 align-middle" key={row.rowId}>
           <td className="w-[40%] px-3 py-2">
+            <div className="detail-cell-inner">
             {editable ? (
               <EditableText
                 className="w-full bg-transparent font-bold leading-tight text-slate-900"
@@ -4307,8 +4388,10 @@ function PrintSectionRows({
                 {en ? toEnglishTitleCase(resolveEnglishMaterialName(row.materialName, englishNameMap || {})) : (row.materialName || "-")}
               </span>
             )}
+            </div>
           </td>
           <td className="px-3 py-2 text-center">
+            <div className="detail-cell-inner center">
             <div className="report-value-unit inline-flex max-w-full items-baseline justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-50 px-2 py-1 font-mono">
                 {editable ? (
                   <EditableNumber
@@ -4322,8 +4405,10 @@ function PrintSectionRows({
                 )}
                 <span>{row.unit || ""}</span>
             </div>
+            </div>
           </td>
           <td className="px-3 py-2">
+            <div className="detail-cell-inner">
             {editable ? (
               <EditableNumber
                 className="inline-block w-24 bg-transparent font-mono"
@@ -4334,8 +4419,10 @@ function PrintSectionRows({
             ) : (
               <span className="font-mono">{formatNumber(row.emissionFactor, 2)}</span>
             )}
+            </div>
           </td>
           <td className="px-3 py-2 font-black">
+            <div className="detail-cell-inner">
             {row.calculated && editable ? (
               <EditableNumber
                 className="w-20 bg-transparent font-black"
@@ -4345,6 +4432,7 @@ function PrintSectionRows({
             ) : row.calculated ? (
               <span className="font-mono">{formatNumber(row.originalAmount * row.emissionFactor, 2)}</span>
             ) : "-"}
+            </div>
           </td>
         </tr>
       ))}
