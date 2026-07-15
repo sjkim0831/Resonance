@@ -2252,6 +2252,162 @@ export function EmissionSurveyReportPrintPage() {
             line-height:1!important;
             text-align:right!important;
           }
+          /* PDF capture uses one deterministic type/spacing scale. Inputs are removed
+             from layout completely so html2canvas cannot paint their glyphs twice. */
+          .report-typography.pdf-download-mode{
+            background:#fff!important;
+            --pdf-caption:8.5pt;
+            --pdf-label:9.5pt;
+            --pdf-body:10pt;
+            --pdf-subtitle:13pt;
+            --pdf-title:18pt;
+            --pdf-display:22pt;
+          }
+          .report-typography.pdf-download-mode input.print-input-control,
+          .report-typography.pdf-download-mode textarea.print-input-control{
+            display:none!important;
+            visibility:hidden!important;
+            position:absolute!important;
+            width:0!important;
+            height:0!important;
+            min-width:0!important;
+            min-height:0!important;
+            overflow:hidden!important;
+            opacity:0!important;
+          }
+          .report-typography.pdf-download-mode .print-input-text{
+            display:inline-block!important;
+            width:auto!important;
+            height:auto!important;
+            min-width:0!important;
+            margin:0!important;
+            padding:0!important;
+            background:transparent!important;
+            line-height:1.25!important;
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .krds-type-report-cover-title{
+            font-size:var(--pdf-display)!important;
+            line-height:1.12!important;
+          }
+          .report-typography.pdf-download-mode .print-report-total-card{
+            min-height:90px!important;
+            padding:12pt 14pt!important;
+            gap:4pt!important;
+          }
+          .report-typography.pdf-download-mode .print-report-total-label{
+            font-size:var(--pdf-label)!important;
+            line-height:1.3!important;
+          }
+          .report-typography.pdf-download-mode .krds-type-report-total{
+            margin:0!important;
+            font-size:var(--pdf-title)!important;
+            line-height:1.15!important;
+          }
+          .report-typography.pdf-download-mode .print-report-total-unit{
+            font-size:var(--pdf-label)!important;
+            line-height:1.3!important;
+          }
+          .report-typography.pdf-download-mode .print-metric-grid{
+            grid-auto-rows:1fr!important;
+            align-items:stretch!important;
+          }
+          .report-typography.pdf-download-mode .print-metric-card{
+            display:grid!important;
+            grid-template-rows:minmax(16pt,auto) minmax(22pt,auto) minmax(22pt,auto)!important;
+            align-items:center!important;
+            min-height:78pt!important;
+            padding:9pt!important;
+          }
+          .report-typography.pdf-download-mode .print-metric-card>*{
+            margin:0!important;
+            align-self:center!important;
+            line-height:1.25!important;
+          }
+          .report-typography.pdf-download-mode .print-output-section .print-table th{
+            height:34pt!important;
+            padding:0 6pt!important;
+            vertical-align:middle!important;
+            line-height:1.25!important;
+          }
+          .report-typography.pdf-download-mode .print-output-section .print-table td{
+            height:54pt!important;
+            padding:0 6pt!important;
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .print-output-section .print-table td>*,
+          .report-typography.pdf-download-mode .print-output-section .print-table td>*>*{
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .pdf-chart-page{
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+            gap:12pt!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-list{margin-top:12pt!important}
+          .report-typography.pdf-download-mode .report-bar-row{
+            display:grid!important;
+            grid-template-rows:minmax(18pt,auto) 6pt minmax(16pt,auto)!important;
+            align-items:center!important;
+            row-gap:4pt!important;
+            min-height:54pt!important;
+            padding:6pt 8pt!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row>*{margin:0!important}
+          .report-typography.pdf-download-mode .report-pie-visual{margin-top:10pt!important}
+          .report-typography.pdf-download-mode .report-pie-visual-inner{max-width:190px!important}
+          .report-typography.pdf-download-mode .report-pie-legend{
+            margin-top:10pt!important;
+            grid-template-columns:minmax(0,1fr)!important;
+            gap:5pt!important;
+          }
+          .report-typography.pdf-download-mode .report-pie-legend-item{
+            min-height:34pt!important;
+            padding:6pt 7pt!important;
+            color:#334155!important;
+          }
+          .report-typography.pdf-download-mode .report-pie-legend-item *{
+            color:#475569!important;
+            opacity:1!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page table{
+            table-layout:fixed!important;
+            border-collapse:separate!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page th{
+            height:30pt!important;
+            padding:0 7pt!important;
+            line-height:1.25!important;
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tbody tr:not(:last-child) td{
+            height:27pt!important;
+            padding:0 7pt!important;
+            line-height:1.25!important;
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tr.bg-blue-50 td{
+            height:24pt!important;
+          }
+          .report-typography.pdf-download-mode .report-value-unit{
+            min-height:20pt!important;
+            padding:0 6pt!important;
+            align-items:center!important;
+            line-height:1.2!important;
+          }
+          .report-typography.pdf-download-mode .print-total-value{
+            min-width:180px!important;
+            padding:9pt 12pt!important;
+          }
+          .report-typography.pdf-download-mode .print-total-value .print-input-text{
+            font-size:var(--pdf-title)!important;
+            line-height:1.15!important;
+          }
+          .report-typography.pdf-download-mode .print-total-value-unit{
+            margin-top:4pt!important;
+            font-size:var(--pdf-label)!important;
+            line-height:1.25!important;
+          }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
             color:#0f172a!important;
@@ -2460,7 +2616,6 @@ export function EmissionSurveyReportPrintPage() {
         <section className="pdf-avoid print-card print-soft-bg mt-7 rounded-3xl border border-amber-200 bg-[linear-gradient(135deg,#fffbeb,#fff7ed)] p-5">
           <div className="flex flex-wrap justify-between gap-3 items-start">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Normalization Base" : "정규화 기준"}</p>
               <h2 className="mt-1 text-xl font-black">{en ? "Product And Byproduct Mass Basis" : "제품 및 부산물 질량 기준"}</h2>
             </div>
             <div className="pdf-hidden min-w-[160px] bg-white rounded-xl p-1 shadow-sm border border-amber-200 print:hidden">
@@ -2476,7 +2631,7 @@ export function EmissionSurveyReportPrintPage() {
               </label>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="print-metric-grid mt-4 grid gap-3 sm:grid-cols-3">
             <PrintMetric
               editable
               label={en ? "Total Output Mass" : "총 산출물 질량"}
@@ -2503,10 +2658,9 @@ export function EmissionSurveyReportPrintPage() {
           </div>
         </section>
 
-        <section className="pdf-avoid print-card mt-7 rounded-3xl border border-slate-200 bg-white p-5">
+        <section className="print-output-section pdf-avoid print-card mt-7 rounded-3xl border border-slate-200 bg-white p-5">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">{en ? "Emission Detail" : "배출량 상세"}</p>
 	              <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">{en ? "Emissions By Product And Byproduct" : "제품 및 부산물 별 배출량"}</h2>
             </div>
           </div>
@@ -2556,9 +2710,9 @@ export function EmissionSurveyReportPrintPage() {
                 </button>
               </div>
             </div>
-            <div className="mt-4 space-y-3">
+            <div className="report-bar-list mt-4 space-y-3">
               {chartSections.map((section, index) => (
-                <div className="pdf-table-row print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
+                <div className="report-bar-row pdf-table-row print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
                   <div className="grid grid-cols-[minmax(0,1fr)_max-content] items-center gap-3 text-sm font-black">
                     <span className="min-w-0 leading-5">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
 	                    <span className="report-chart-metric inline-flex items-baseline justify-end gap-1 whitespace-nowrap font-mono text-right leading-5 text-slate-950">
@@ -2635,7 +2789,7 @@ export function EmissionSurveyReportPrintPage() {
                           onCommit={updateTotalEmission}
                           value={totalEmission}
                         />
-                        <div className="mt-1 whitespace-nowrap text-xs font-black text-slate-600">ton of {effectiveReport.productName || (en ? "Product" : "제품")}</div>
+                        <div className="print-total-value-unit mt-1 whitespace-nowrap text-xs font-black text-slate-600">ton of {effectiveReport.productName || (en ? "Product" : "제품")}</div>
                       </div>
                     </div>
                   </td>
@@ -3967,7 +4121,7 @@ function PrintMetric({
   onCommit?: (value: number) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
+    <div className="print-metric-card rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
       <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
       <p className="mt-1 text-center font-mono text-lg font-black text-slate-950">
         {editable && typeof value === "number" && onCommit ? (
@@ -4225,8 +4379,8 @@ function SectionContributionPieCard({
           </button>
         ) : null}
       </div>
-      <div className="mt-5 flex w-full justify-center">
-        <div className="relative aspect-square w-full max-w-[340px]">
+      <div className="report-pie-visual mt-5 flex w-full justify-center">
+        <div className="report-pie-visual-inner relative aspect-square w-full max-w-[340px]">
           <svg aria-label={title} className="h-full w-full" role="img" viewBox="0 0 220 220">
             <circle cx="110" cy="110" fill="#e2e8f0" r="104" />
             {pieSlices.map((slice) => (
@@ -4243,9 +4397,9 @@ function SectionContributionPieCard({
         </div>
       </div>
       {sections.length > 0 ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="report-pie-legend mt-4 grid gap-2 sm:grid-cols-2">
           {sections.map((section, index) => (
-            <div className="min-w-0 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-legend-${section.sectionCode}`}>
+            <div className="report-pie-legend-item min-w-0 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-legend-${section.sectionCode}`}>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
                 <span className="min-w-0 truncate text-xs font-medium text-slate-700" title={sectionLabel(section.sectionCode, section.sectionLabel, en)}>
