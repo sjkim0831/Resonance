@@ -2073,6 +2073,8 @@ export function EmissionSurveyReportPrintPage() {
           .report-typography :where(.text-3xl,.text-4xl,.text-5xl):not(.material-symbols-outlined){font-size:var(--report-type-display)!important;line-height:1.15!important}
           .report-typography .print-table th{line-height:1.3!important}
           .report-typography .print-table td{line-height:1.4!important}
+          .report-typography .print-report-total-card .print-input-control,
+          .report-typography .print-report-total-card .print-input-text{display:block!important;width:100%!important;margin-top:8px!important;line-height:1.05!important;white-space:nowrap!important}
           @media(max-width:767px){
             .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr)!important}
             .report-typography .print-report-total-card{width:100%!important;justify-self:stretch!important;text-align:left!important}
@@ -2085,9 +2087,9 @@ export function EmissionSurveyReportPrintPage() {
               --report-type-caption:9pt;
               --report-type-label:10.5pt;
               --report-type-body:11pt;
-              --report-type-subtitle:13.5pt;
-              --report-type-title:17pt;
-              --report-type-display:23pt;
+              --report-type-subtitle:15pt;
+              --report-type-title:20pt;
+              --report-type-display:28pt;
               --report-line-compact:1.22;
               --report-line-body:1.38;
             }
@@ -2096,17 +2098,17 @@ export function EmissionSurveyReportPrintPage() {
             .report-typography .print-report-title-wrap{min-height:82px!important}
             .report-typography .print-card{padding:11pt!important}
             .report-typography .pdf-table-page{padding:0!important}
-            .report-typography .pdf-table-page th{padding:6pt 7pt!important}
-            .report-typography .pdf-table-page td{padding:6pt 7pt!important}
+            .report-typography .pdf-table-page th{padding:5pt 7pt!important}
+            .report-typography .pdf-table-page td{padding:4.5pt 7pt!important}
           }
           @media screen{
             .report-typography.pdf-download-mode{
               --report-type-caption:9pt;
               --report-type-label:10.5pt;
               --report-type-body:11pt;
-              --report-type-subtitle:13.5pt;
-              --report-type-title:17pt;
-              --report-type-display:23pt;
+              --report-type-subtitle:15pt;
+              --report-type-title:20pt;
+              --report-type-display:28pt;
               --report-line-compact:1.22;
               --report-line-body:1.38;
             }
@@ -2115,8 +2117,8 @@ export function EmissionSurveyReportPrintPage() {
             .report-typography.pdf-download-mode .print-report-title-wrap{min-height:82px!important}
             .report-typography.pdf-download-mode .print-card{padding:11pt!important}
             .report-typography.pdf-download-mode .pdf-table-page{padding:0!important}
-            .report-typography.pdf-download-mode .pdf-table-page th{padding:6pt 7pt!important}
-            .report-typography.pdf-download-mode .pdf-table-page td{padding:6pt 7pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page th{padding:5pt 7pt!important}
+            .report-typography.pdf-download-mode .pdf-table-page td{padding:4.5pt 7pt!important}
           }
           .pdf-download-mode .pdf-table-page{
             overflow:visible!important;
