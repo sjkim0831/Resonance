@@ -2478,6 +2478,120 @@ export function EmissionSurveyReportPrintPage() {
           .report-typography.pdf-download-mode .detail-cell-inner .report-value-unit{
             margin:0!important;
           }
+          /* A4 layout v3: one page is 595x842pt. With 8mm side margins the usable
+             content width is 550pt; table row heights are budgeted to stay below
+             the 785pt usable page height. */
+          .report-typography.pdf-download-mode{
+            --report-type-caption:8pt;
+            --report-type-label:9pt;
+            --report-type-body:9.5pt;
+            --report-type-subtitle:12pt;
+            --report-type-title:16pt;
+            --report-type-display:24pt;
+            --pdf-caption:8pt;
+            --pdf-label:9pt;
+            --pdf-body:9.5pt;
+            --pdf-subtitle:12pt;
+            --pdf-title:16pt;
+            --pdf-display:24pt;
+          }
+          .report-typography.pdf-download-mode .pdf-chart-page{
+            box-sizing:border-box!important;
+            display:grid!important;
+            grid-template-columns:repeat(2,minmax(0,1fr))!important;
+            width:100%!important;
+            min-height:0!important;
+            padding:18pt!important;
+            gap:12pt!important;
+            align-items:stretch!important;
+            break-inside:avoid!important;
+            page-break-inside:avoid!important;
+          }
+          .report-typography.pdf-download-mode .pdf-chart-panel{
+            box-sizing:border-box!important;
+            min-width:0!important;
+            height:100%!important;
+            padding:11pt!important;
+            break-inside:auto!important;
+            page-break-inside:auto!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row{
+            grid-template-rows:minmax(15pt,auto) 5pt minmax(13pt,auto)!important;
+            row-gap:3pt!important;
+            min-height:43pt!important;
+            padding:5pt 7pt!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row .text-sm{
+            font-size:9.5pt!important;
+            line-height:13pt!important;
+          }
+          .report-typography.pdf-download-mode .report-pie-visual-inner{max-width:162px!important}
+          .report-typography.pdf-download-mode .report-pie-legend{gap:4pt!important}
+          .report-typography.pdf-download-mode .report-pie-legend-item{
+            min-height:28pt!important;
+            padding:4pt 6pt!important;
+          }
+          .report-typography.pdf-download-mode .pie-legend-label,
+          .report-typography.pdf-download-mode .pie-legend-metric{
+            display:block!important;
+            overflow:visible!important;
+            color:#334155!important;
+            -webkit-text-fill-color:#334155!important;
+            opacity:1!important;
+            text-overflow:clip!important;
+            white-space:normal!important;
+          }
+          .report-typography.pdf-download-mode .pie-legend-label{
+            font-size:8.5pt!important;
+            line-height:11pt!important;
+          }
+          .report-typography.pdf-download-mode .pie-legend-metric{
+            font-size:8pt!important;
+            line-height:10pt!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page>div:first-child{
+            min-height:36pt!important;
+            padding:0 12pt!important;
+            display:flex!important;
+            align-items:center!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page th{
+            height:25pt!important;
+            padding:0 6pt!important;
+            font-size:9pt!important;
+            line-height:11pt!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tbody tr:not(:last-child) td{
+            height:21pt!important;
+            padding:0!important;
+            font-size:9.5pt!important;
+            line-height:12pt!important;
+          }
+          .report-typography.pdf-download-mode .detail-cell-inner{
+            min-height:21pt!important;
+            padding:0 6pt!important;
+            font-size:9.5pt!important;
+            line-height:12pt!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tr.bg-blue-50 td,
+          .report-typography.pdf-download-mode .pdf-table-page tr.bg-blue-50 .detail-cell-inner{
+            height:19pt!important;
+            min-height:19pt!important;
+            font-size:9pt!important;
+            line-height:11pt!important;
+          }
+          .report-typography.pdf-download-mode .report-value-unit{
+            min-height:16pt!important;
+            padding:0 5pt!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tbody tr:last-child td{
+            height:52pt!important;
+            padding:0 10pt!important;
+          }
+          .report-typography.pdf-download-mode .print-total-value{
+            min-width:160px!important;
+            padding:7pt 10pt!important;
+          }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
             color:#0f172a!important;
@@ -2752,8 +2866,8 @@ export function EmissionSurveyReportPrintPage() {
         </div>
         </div>
 
-        <section className="pdf-page-content pdf-chart-page grid gap-4 px-8 py-7 lg:grid-cols-2">
-          <div className="pdf-avoid print-card print-soft-bg rounded-3xl border border-slate-200 bg-slate-50 p-5">
+        <section className="pdf-avoid pdf-page-content pdf-chart-page grid gap-4 px-8 py-7 lg:grid-cols-2">
+          <div className="pdf-chart-panel print-soft-bg rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black">{en ? "Section Contribution Bars" : "섹션별 탄소배출 기여 그래프"}</h2>
@@ -4456,7 +4570,7 @@ function SectionContributionPieCard({
 }) {
   const pieSlices = buildPieSlices(sections);
   return (
-    <div className="pdf-avoid rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="pdf-chart-panel rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="mt-1 text-lg font-black tracking-[-0.03em] text-slate-950">{title}</h3>
@@ -4490,14 +4604,14 @@ function SectionContributionPieCard({
             <div className="report-pie-legend-item min-w-0 rounded-lg bg-slate-50 px-3 py-2" key={`${title}-legend-${section.sectionCode}`}>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
-                <span className="min-w-0 truncate text-xs font-medium text-slate-700" title={sectionLabel(section.sectionCode, section.sectionLabel, en)}>
+                <span className="pie-legend-label min-w-0 text-xs font-medium text-slate-700" title={sectionLabel(section.sectionCode, section.sectionLabel, en)}>
                   {sectionLabel(section.sectionCode, section.sectionLabel, en)}
                 </span>
               </div>
-              <p className="mt-1 flex min-w-0 items-baseline gap-1 pl-[18px] text-[11px] font-medium leading-4 text-slate-500">
+              <p className="pie-legend-metric mt-1 min-w-0 pl-[18px] text-[11px] font-medium leading-4 text-slate-500">
                 <span className="shrink-0 whitespace-nowrap">{formatPercent(section.sharePercent)}</span>
                 <span aria-hidden="true">·</span>
-                <span className="min-w-0 truncate" title={`${formatNumber(section.totalEmission)} kg CO2e`}>
+                <span className="min-w-0" title={`${formatNumber(section.totalEmission)} kg CO2e`}>
                   {formatNumber(section.totalEmission)} kg CO2e
                 </span>
               </p>
