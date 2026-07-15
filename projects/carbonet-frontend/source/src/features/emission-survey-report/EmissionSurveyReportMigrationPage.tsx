@@ -1994,42 +1994,35 @@ export function EmissionSurveyReportPrintPage() {
       if (!element) {
         throw new Error("Report element is not ready.");
       }
-      const module = await import("html2pdf.js");
-      const html2pdf = module.default || module;
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf")
+      ]);
       const qrDataUrl = await createReportQrDataUrl(record);
-      const pdfOptions: Record<string, unknown> = {
-          filename: buildReportPdfFileName(effectiveReport, draft),
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            backgroundColor: "#ffffff",
-            scale: 2,
-            useCORS: true,
-            windowWidth: element.scrollWidth
-          },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          margin: [8, 8, 0, 8],
-          pagebreak: {
-            mode: ["css", "legacy"],
-            before: [".pdf-page-start"],
-            after: [],
-            avoid: [".pdf-avoid", ".print-break", ".print-card", ".pdf-table-row"]
-          }
-        };
-      const worker = html2pdf()
-        .set(pdfOptions)
-        .from(element)
-        .toPdf();
-      await worker.get("pdf").then(async (pdf: {
-        internal: { getNumberOfPages: () => number };
-        setPage: (page: number) => void;
-        setFontSize: (size: number) => void;
-        setTextColor: (r: number, g: number, b: number) => void;
-        text: (text: string, x: number, y: number, options?: Record<string, unknown>) => void;
-        addImage: (image: string, format: string, x: number, y: number, width: number, height: number) => void;
-        output: (type: "blob") => Blob;
-        setProperties?: (properties: Record<string, string>) => void;
-      }) => {
-        const pageCount = Math.max(1, pdf.internal.getNumberOfPages());
+      const pages = Array.from(element.querySelectorAll<HTMLElement>(".pdf-export-page"));
+      if (pages.length === 0) {
+        throw new Error("PDF export pages are not ready.");
+      }
+      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
+      for (let index = 0; index < pages.length; index += 1) {
+        const page = pages[index];
+        const canvas = await html2canvas(page, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          width: 794,
+          height: 1123,
+          windowWidth: 794,
+          windowHeight: 1123
+        });
+        if (index > 0) {
+          pdf.addPage("a4", "portrait");
+        }
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 0, 0, 210, 297, undefined, "FAST");
+      }
+      {
+        const pageCount = pages.length;
         const qrTone: [number, number, number] = draft === "summary"
           ? [143, 47, 54]
           : draft === "compact"
@@ -2044,7 +2037,7 @@ export function EmissionSurveyReportPrintPage() {
           pdf.text(`DIGITAL VERIFICATION ${page}/${pageCount}`, 187, 274);
           pdf.addImage(qrDataUrl, "PNG", 187, 276, 18, 18);
         }
-        pdf.setPage(Math.max(1, pdf.internal.getNumberOfPages()));
+        pdf.setPage(Math.max(1, pdf.getNumberOfPages()));
         pdf.setFontSize(1);
         pdf.setTextColor(255, 255, 255);
         pdf.text(verificationPayloadToBlock(record), 1, 1, { maxWidth: 1 });
@@ -2061,8 +2054,8 @@ export function EmissionSurveyReportPrintPage() {
         } catch (error) {
           console.warn("Report visual profile registration failed; continuing PDF download.", error);
         }
-      });
-      await worker.save();
+      }
+      pdf.save(buildReportPdfFileName(effectiveReport, draft));
       setVerificationMessage(en ? "PDF file downloaded with hidden verification data." : "숨김 검증 정보가 포함된 PDF 파일을 다운로드했습니다.");
     } catch (error) {
       console.error(error);
@@ -2684,6 +2677,36 @@ export function EmissionSurveyReportPrintPage() {
             height:auto!important;
             padding:9pt 10pt!important;
           }
+          .report-typography.pdf-download-mode{
+            box-sizing:border-box!important;
+            width:794px!important;
+            max-width:794px!important;
+            margin:0 auto!important;
+            overflow:visible!important;
+            border:0!important;
+            border-radius:0!important;
+            box-shadow:none!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-download-mode .pdf-export-page{
+            box-sizing:border-box!important;
+            display:block!important;
+            width:794px!important;
+            height:1123px!important;
+            min-height:1123px!important;
+            max-height:1123px!important;
+            margin:0!important;
+            overflow:hidden!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-download-mode .pdf-export-page.pdf-chart-page{
+            display:grid!important;
+            min-height:1123px!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-export-page{
+            min-height:1123px!important;
+            padding-top:24px!important;
+          }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
             color:#0f172a!important;
@@ -2861,7 +2884,7 @@ export function EmissionSurveyReportPrintPage() {
       ) : null}
 
       <article className={`report-typography print-sheet mx-auto max-w-5xl overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.22)] ${pdfDownloadMode ? `pdf-download-mode${pdfDesignDraft ? ` pdf-design-draft pdf-draft-${pdfDesignDraft}` : ""}` : ""}`} ref={reportArticleRef}>
-        <div className="print-page">
+        <div className="pdf-export-page print-page">
         <header className="print-ink-bg print-report-hero relative overflow-hidden bg-slate-950 px-8 py-8 text-white">
           <div className="print-report-hero-deco absolute -right-20 -top-28 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
           <div className="print-report-hero-deco absolute bottom-0 right-0 h-36 w-72 rounded-tl-full bg-emerald-400/10" />
@@ -2958,7 +2981,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
         </div>
 
-        <section className="pdf-avoid pdf-page-content pdf-chart-page grid gap-4 px-8 py-7 lg:grid-cols-2">
+        <section className="pdf-export-page pdf-avoid pdf-page-content pdf-chart-page grid gap-4 px-8 py-7 lg:grid-cols-2">
           <div className="pdf-chart-panel print-soft-bg rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -3027,6 +3050,7 @@ export function EmissionSurveyReportPrintPage() {
           />
         </section>
 
+        <div className="pdf-export-page pdf-table-export-page">
         <section className="pdf-page-start pdf-page-content pdf-table-page print-card print-table mx-8 mb-7 overflow-visible rounded-3xl border border-slate-200 bg-white print:overflow-visible">
           <div className="border-b border-slate-200 px-4 py-3">
             <h2 className="text-lg font-black">{en ? "Detailed Calculation Inventory" : "상세 계산 결과표"}</h2>
@@ -3074,6 +3098,7 @@ export function EmissionSurveyReportPrintPage() {
             </table>
           </div>
         </section>
+        </div>
         {verificationRecord ? (
           <pre aria-hidden="true" className="pdf-machine-readable">
             {verificationPayloadToBlock(verificationRecord)}
