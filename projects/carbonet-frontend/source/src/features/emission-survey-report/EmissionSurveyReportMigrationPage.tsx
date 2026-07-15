@@ -840,17 +840,19 @@ function buildSectionBarChartSvg(sections: EmissionSurveyReportSectionSummary[],
 
 function buildSectionPieChartSvg(sections: EmissionSurveyReportSectionSummary[], en: boolean) {
   const width = 900;
-  const height = 520;
+  const legendRowHeight = 58;
+  const height = Math.max(520, 126 + sections.length * legendRowHeight + 48);
   const slices = buildPieSlices(sections).map((slice) => (
     `<path d="${slice.d}" fill="${slice.color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>`
   )).join("");
   const legend = sections.map((section, index) => {
-    const y = 126 + index * 42;
+    const y = 126 + index * legendRowHeight;
     return `
-      <rect x="492" y="${y - 14}" width="352" height="30" rx="10" fill="#f8fafc"/>
-      <circle cx="512" cy="${y}" r="6" fill="${sectionSolidColor(index)}"/>
-      <text x="528" y="${y + 5}" fill="#334155" font-size="13" font-weight="800">${escapeSvgText(sectionLabel(section.sectionCode, section.sectionLabel, en))}</text>
-      <text x="828" y="${y + 5}" fill="#0f172a" font-size="13" font-weight="900" text-anchor="end">${escapeSvgText(formatPercent(section.sharePercent))}</text>
+      <rect x="492" y="${y - 18}" width="352" height="50" rx="10" fill="#f8fafc"/>
+      <circle cx="512" cy="${y - 3}" r="6" fill="${sectionSolidColor(index)}"/>
+      <text x="528" y="${y + 2}" fill="#334155" font-size="13" font-weight="800">${escapeSvgText(sectionLabel(section.sectionCode, section.sectionLabel, en))}</text>
+      <text x="528" y="${y + 22}" fill="#0f172a" font-size="12" font-weight="900">${escapeSvgText(formatPercent(section.sharePercent))}</text>
+      <text x="828" y="${y + 22}" fill="#64748b" font-size="11" font-weight="700" text-anchor="end">${escapeSvgText(formatNumber(section.totalEmission))} kg CO2e</text>
     `;
   }).join("");
   return `
@@ -4213,12 +4215,12 @@ function SectionContributionPieCard({
         <div className="space-y-2">
           {sections.map((section, index) => (
             <div className="pdf-table-row print-break rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="grid min-w-0 grid-cols-[12px_minmax(0,1fr)] items-start gap-2">
                 <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
-                <span className="min-w-0 text-xs font-black leading-4 text-slate-800">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
+                <span className="min-w-0 break-words text-xs font-black leading-4 text-slate-800">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
               </div>
-              <div className="mt-1.5 flex items-baseline justify-end gap-3 text-right">
-                <p className="report-chart-metric inline-flex min-h-5 items-baseline justify-end whitespace-nowrap text-xs font-black leading-5 text-slate-950">
+              <div className="mt-1.5 flex items-baseline justify-between gap-3 pl-5">
+                <p className="report-chart-metric inline-flex min-h-5 items-baseline whitespace-nowrap text-xs font-black leading-5 text-slate-950">
                   {onSectionShareChange ? (
                     <>
                       <EditableNumber
@@ -4231,7 +4233,7 @@ function SectionContributionPieCard({
                     </>
                   ) : formatPercent(section.sharePercent)}
                 </p>
-                <p className="report-chart-metric inline-flex min-h-4 items-baseline justify-end gap-1 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
+                <p className="report-chart-metric inline-flex min-h-4 items-baseline justify-end gap-1 whitespace-nowrap text-right text-[10px] font-bold leading-4 text-slate-500">
                   {onSectionEmissionChange ? (
                     <EditableNumber
                       className="inline-block w-20 bg-transparent text-right font-mono font-bold leading-4 text-slate-500"
