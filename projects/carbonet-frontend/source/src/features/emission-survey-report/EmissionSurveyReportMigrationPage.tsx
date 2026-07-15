@@ -2460,26 +2460,28 @@ export function EmissionSurveyReportPrintPage() {
             <div className="mt-4 space-y-3">
               {chartSections.map((section, index) => (
                 <div className="pdf-table-row print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
-                  <div className="grid grid-cols-[minmax(0,1fr)_150px] items-start gap-3 text-sm font-black">
-                    <span className="min-w-0 whitespace-normal leading-5">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
-	                    <span className="font-mono text-right leading-5 text-slate-950">
+                  <div className="grid grid-cols-[minmax(0,1fr)_max-content] items-center gap-3 text-sm font-black">
+                    <span className="min-w-0 leading-5">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
+	                    <span className="inline-flex items-baseline justify-end gap-1 whitespace-nowrap font-mono text-right leading-5 text-slate-950">
                       <EditableNumber
                         className="inline-block w-24 bg-transparent text-right font-mono font-black leading-5"
                         onCommit={(value) => updateSectionEmission(section.sectionCode, value)}
                         value={section.totalEmission}
-                      /> kg CO2e
+                      />
+                      <span>kg CO2e</span>
                     </span>
                   </div>
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-white">
                     <div className="h-full rounded-full" style={{ backgroundColor: sectionSolidColor(index), width: `${Math.max(4, Math.min(section.sharePercent, 100))}%` }} />
                   </div>
-	                  <p className="mt-1 flex min-h-5 items-center justify-end text-xs font-bold leading-5 text-slate-500">
+	                  <p className="mt-1 flex min-h-5 items-center justify-end whitespace-nowrap text-xs font-bold leading-5 text-slate-500">
                     <EditableNumber
                       className="inline-block w-16 bg-transparent text-right font-mono font-bold leading-5 text-slate-500"
                       digits={1}
                       onCommit={(value) => updateDraftSectionShare(section.sectionCode, value)}
                       value={sectionShareInputs[section.sectionCode] ?? section.sharePercent}
-                    />%
+                    />
+                    <span>%</span>
                   </p>
                 </div>
               ))}
@@ -4047,10 +4049,8 @@ function PrintSectionRows({
               </span>
             )}
           </td>
-          <td className="px-3 py-2">
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1">
-              <span className="min-w-12 text-[10px] font-bold text-slate-500">{en ? "Mass" : "질량"}</span>
-              <span className="whitespace-nowrap font-mono">
+          <td className="px-3 py-2 text-center">
+            <div className="inline-flex max-w-full items-baseline justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-50 px-2 py-1 font-mono">
                 {editable ? (
                   <EditableNumber
                     className="inline-block w-20 bg-transparent text-right font-mono"
@@ -4060,8 +4060,8 @@ function PrintSectionRows({
                   />
                 ) : (
                   <span>{formatNumber(row.originalAmount, 2)}</span>
-                )} {row.unit || ""}
-              </span>
+                )}
+                <span>{row.unit || ""}</span>
             </div>
           </td>
           <td className="px-3 py-2">
@@ -4147,7 +4147,7 @@ function SectionContributionPieCard({
                 <span className="min-w-0 whitespace-normal text-xs font-bold leading-4 text-slate-700">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
               </div>
               <div className="text-right">
-                <p className="min-h-5 whitespace-nowrap text-xs font-black leading-5 text-slate-950">
+                <p className="inline-flex min-h-5 w-full items-baseline justify-end whitespace-nowrap text-xs font-black leading-5 text-slate-950">
                   {onSectionShareChange ? (
                     <>
                       <EditableNumber
@@ -4155,18 +4155,20 @@ function SectionContributionPieCard({
                         digits={1}
                         onCommit={(value) => onSectionShareChange(section.sectionCode, value)}
                         value={sectionShareInputs[section.sectionCode] ?? section.sharePercent}
-                      />%
+                      />
+                      <span>%</span>
                     </>
                   ) : formatPercent(section.sharePercent)}
                 </p>
-                <p className="min-h-4 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
+                <p className="inline-flex min-h-4 w-full items-baseline justify-end gap-1 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
                   {onSectionEmissionChange ? (
                     <EditableNumber
                       className="inline-block w-20 bg-transparent text-right font-mono font-bold leading-4 text-slate-500"
                       onCommit={(value) => onSectionEmissionChange(section.sectionCode, value)}
                       value={section.totalEmission}
                     />
-                  ) : formatNumber(section.totalEmission)} kg CO2e
+                  ) : formatNumber(section.totalEmission)}
+                  <span>kg CO2e</span>
                 </p>
               </div>
             </div>
