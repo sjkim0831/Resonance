@@ -50,6 +50,17 @@ if [[ "$ready_patroni" -lt 2 ]]; then
   exit 10
 fi
 
+# Readiness alone is insufficient: a running Patroni process can report a
+# recoverable state after its hostPath was unlinked. Require the PostgreSQL
+# control marker on every member before any backup or rollout is attempted.
+while IFS= read -r candidate; do
+  if ! kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
+    test -s "/home/postgres/pgdata/${candidate}/pgroot/data/PG_VERSION"; then
+    echo "[auto-deploy] refusing deployment: PostgreSQL data directory is missing on $candidate" >&2
+    exit 15
+  fi
+done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+
 # Patroni can promote any ordinal. Never assume postgres-patroni-0 is the
 # writable leader: pg_dump on a recovering replica can be cancelled by WAL
 # replay and would unnecessarily block every deployment.
@@ -129,6 +140,21 @@ fi
 
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
+roles_backup_file="$BACKUP_DIR/postgres-roles-$timestamp-$current_commit.sql.gz"
+echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"
+if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    pg_dumpall -U "$POSTGRES_USER" --roles-only -h 127.0.0.1 \
+  | gzip -1 > "$roles_backup_file"; then
+  rm -f "$roles_backup_file"
+  echo "[auto-deploy] refusing deployment: PostgreSQL role backup failed" >&2
+  exit 16
+fi
+if [[ "$(stat -c %s "$roles_backup_file")" -lt 100 ]] || ! gzip -t "$roles_backup_file"; then
+  rm -f "$roles_backup_file"
+  echo "[auto-deploy] refusing deployment: PostgreSQL role backup is invalid" >&2
+  exit 17
+fi
 echo "[auto-deploy] backing up database to $backup_file"
 if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
   kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
