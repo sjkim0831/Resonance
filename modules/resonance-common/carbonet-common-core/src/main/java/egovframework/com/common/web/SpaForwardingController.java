@@ -23,7 +23,9 @@ public class SpaForwardingController {
             "/admin/**",
             "/en/admin/**",
             "/app/**",
-            "/en/app/**"
+            "/en/app/**",
+            "/runtime/**",
+            "/en/runtime/**"
     })
     public String forward(HttpServletRequest request, Model model) {
         String requestPath = request == null || request.getRequestURI() == null ? "/" : request.getRequestURI();
