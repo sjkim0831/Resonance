@@ -2117,7 +2117,7 @@ export function EmissionSurveyReportPrintPage() {
         const baselineFix = document.createElement("span");
         baselineFix.className = "pdf-text-baseline-fix";
         baselineFix.style.position = "relative";
-        baselineFix.style.top = "-2px";
+        baselineFix.style.top = "-5px";
         baselineFix.style.font = "inherit";
         baselineFix.style.color = "inherit";
         baselineFix.style.letterSpacing = "inherit";

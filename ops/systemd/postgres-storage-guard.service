@@ -1,0 +1,12 @@
+[Unit]
+Description=Protect and verify PostgreSQL Patroni hostPath storage
+After=kubelet.service network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Environment=KUBECONFIG=/etc/kubernetes/admin.conf
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/postgres-storage-guard.sh
+
+[Install]
+WantedBy=multi-user.target
