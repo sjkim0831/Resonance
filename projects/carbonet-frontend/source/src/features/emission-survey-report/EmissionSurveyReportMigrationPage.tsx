@@ -2116,8 +2116,11 @@ export function EmissionSurveyReportPrintPage() {
       for (const textNode of exportTextNodes) {
         const baselineFix = document.createElement("span");
         baselineFix.className = "pdf-text-baseline-fix";
-        baselineFix.style.position = "relative";
-        baselineFix.style.top = "-5px";
+        // html2canvas does not consistently paint `top` offsets on inline
+        // descendants. An inline-block transform is reflected in the canvas
+        // bitmap, so the exported PDF receives the requested 5 px lift.
+        baselineFix.style.display = "inline-block";
+        baselineFix.style.transform = "translateY(-5px)";
         baselineFix.style.font = "inherit";
         baselineFix.style.color = "inherit";
         baselineFix.style.letterSpacing = "inherit";
@@ -2165,7 +2168,9 @@ export function EmissionSurveyReportPrintPage() {
           pdf.setPage(page);
           pdf.setFontSize(5);
           pdf.setTextColor(...qrTone);
-          pdf.text(`DIGITAL VERIFICATION ${page}/${pageCount}`, 187, 274);
+          // Keep the jsPDF-drawn verification label aligned with the 5 px
+          // upward baseline correction applied to the captured page text.
+          pdf.text(`DIGITAL VERIFICATION ${page}/${pageCount}`, 187, 272.68);
           pdf.addImage(qrDataUrl, "PNG", 187, 276, 18, 18);
         }
         pdf.setPage(Math.max(1, pdf.getNumberOfPages()));
