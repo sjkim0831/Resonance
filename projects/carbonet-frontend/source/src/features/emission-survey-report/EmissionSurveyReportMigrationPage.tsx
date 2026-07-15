@@ -2592,6 +2592,98 @@ export function EmissionSurveyReportPrintPage() {
             min-width:160px!important;
             padding:7pt 10pt!important;
           }
+          /* Capture-safe flow: html2canvas is reliable with normal block/table flow,
+             but not with nested constrained grids. Keep the two outer chart columns
+             and use natural block flow inside each panel. */
+          .report-typography.pdf-download-mode .pdf-chart-page{
+            min-height:760px!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-download-mode .pdf-chart-panel{
+            height:auto!important;
+            min-height:610px!important;
+            align-self:start!important;
+            overflow:visible!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-list{
+            display:block!important;
+            margin-top:12pt!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row{
+            display:block!important;
+            min-height:0!important;
+            margin:0 0 8pt!important;
+            padding:7pt 8pt!important;
+            overflow:visible!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row>div:first-child{
+            display:flex!important;
+            min-height:16pt!important;
+            align-items:center!important;
+            justify-content:space-between!important;
+            gap:6pt!important;
+            font-size:8.5pt!important;
+            line-height:12pt!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row>div:nth-child(2){
+            display:block!important;
+            height:5pt!important;
+            margin:6pt 0 4pt!important;
+          }
+          .report-typography.pdf-download-mode .report-bar-row>p{
+            min-height:12pt!important;
+            margin:0!important;
+            font-size:8.5pt!important;
+            line-height:12pt!important;
+          }
+          .report-typography.pdf-download-mode .report-chart-metric{
+            flex:0 0 auto!important;
+            max-width:52%!important;
+            font-size:8.5pt!important;
+            line-height:12pt!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page{
+            min-height:760px!important;
+            background:#fff!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page th{
+            height:auto!important;
+            padding:7pt 6pt!important;
+            font-size:9pt!important;
+            line-height:12pt!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tbody tr:not(:last-child) td{
+            height:auto!important;
+            padding:0!important;
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .detail-cell-inner{
+            box-sizing:border-box!important;
+            display:block!important;
+            width:100%!important;
+            min-height:28px!important;
+            padding:6px 7px!important;
+            overflow:visible!important;
+            font-size:9pt!important;
+            line-height:16px!important;
+            white-space:normal!important;
+          }
+          .report-typography.pdf-download-mode .detail-cell-inner.center{
+            display:flex!important;
+            align-items:center!important;
+            justify-content:center!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tr.bg-blue-50 td,
+          .report-typography.pdf-download-mode .pdf-table-page tr.bg-blue-50 .detail-cell-inner{
+            height:auto!important;
+            min-height:28px!important;
+            font-size:9pt!important;
+            line-height:16px!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page tbody tr:last-child td{
+            height:auto!important;
+            padding:9pt 10pt!important;
+          }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
             color:#0f172a!important;
