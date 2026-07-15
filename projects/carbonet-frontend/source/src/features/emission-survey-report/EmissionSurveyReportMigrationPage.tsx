@@ -2072,11 +2072,11 @@ export function EmissionSurveyReportPrintPage() {
           .report-typography :where(.text-2xl,[class~="text-[22px]"],[class~="text-[24px]"]):not(.material-symbols-outlined){font-size:var(--report-type-title)!important;line-height:1.25!important}
           .report-typography :where(.text-3xl,.text-4xl,.text-5xl):not(.material-symbols-outlined){font-size:var(--report-type-display)!important;line-height:1.15!important}
           .report-typography .print-report-title,
-          .report-typography input.print-report-title{font-size:40px!important;line-height:1.08!important}
+          .report-typography input.print-report-title{font-size:clamp(40px,5vw,52px)!important;line-height:1.05!important}
           .report-typography .print-table th{line-height:1.3!important}
           .report-typography .print-table td{line-height:1.4!important}
           .report-typography .print-report-total-card .print-input-control,
-          .report-typography .print-report-total-card .print-input-text{width:100%!important;margin-top:8px!important;line-height:1.05!important;white-space:nowrap!important}
+          .report-typography .print-report-total-card .print-input-text{width:100%!important;margin-top:8px!important;font-size:44px!important;line-height:1!important;white-space:nowrap!important}
           @media(max-width:767px){
             .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr)!important}
             .report-typography .print-report-total-card{width:100%!important;justify-self:stretch!important;text-align:left!important}
@@ -2096,12 +2096,14 @@ export function EmissionSurveyReportPrintPage() {
               --report-line-body:1.38;
             }
             .report-typography .print-report-title,
-            .report-typography input.print-report-title{font-size:32pt!important;line-height:1.05!important}
+            .report-typography input.print-report-title{font-size:40pt!important;line-height:1.02!important}
+            .report-typography .print-report-total-card .print-input-control,
+            .report-typography .print-report-total-card .print-input-text{font-size:34pt!important;line-height:1!important}
             .report-typography .print-input-control{display:none!important}
             .report-typography .print-input-text{display:inline!important}
             .report-typography .print-report-total-card .print-input-text{display:block!important}
-            .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1.45fr) 235px!important;gap:12pt!important}
-            .report-typography .print-report-total-card{width:235px!important;padding:11pt!important}
+            .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr) 270px!important;gap:12pt!important}
+            .report-typography .print-report-total-card{width:270px!important;padding:11pt!important}
             .report-typography .print-report-title-wrap{min-height:82px!important}
             .report-typography .print-card{padding:11pt!important}
             .report-typography .pdf-table-page{padding:0!important}
@@ -2126,9 +2128,11 @@ export function EmissionSurveyReportPrintPage() {
               --report-line-body:1.38;
             }
             .report-typography.pdf-download-mode .print-report-title,
-            .report-typography.pdf-download-mode input.print-report-title{font-size:32pt!important;line-height:1.05!important}
-            .report-typography.pdf-download-mode .print-report-hero-grid{grid-template-columns:minmax(0,1.45fr) 235px!important;gap:12pt!important}
-            .report-typography.pdf-download-mode .print-report-total-card{width:235px!important;padding:11pt!important}
+            .report-typography.pdf-download-mode input.print-report-title{font-size:40pt!important;line-height:1.02!important}
+            .report-typography.pdf-download-mode .print-report-total-card .print-input-control,
+            .report-typography.pdf-download-mode .print-report-total-card .print-input-text{font-size:34pt!important;line-height:1!important}
+            .report-typography.pdf-download-mode .print-report-hero-grid{grid-template-columns:minmax(0,1fr) 270px!important;gap:12pt!important}
+            .report-typography.pdf-download-mode .print-report-total-card{width:270px!important;padding:11pt!important}
             .report-typography.pdf-download-mode .print-report-title-wrap{min-height:82px!important}
             .report-typography.pdf-download-mode .print-card{padding:11pt!important}
             .report-typography.pdf-download-mode .pdf-table-page{padding:0!important}
