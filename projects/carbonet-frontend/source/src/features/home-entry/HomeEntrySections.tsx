@@ -75,11 +75,11 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
       .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: grid; }
       .home-brand-symbol { position: relative; width: 42px; height: 42px; flex: 0 0 42px; }
       .home-brand-symbol svg { position: absolute; inset: 0; width: 42px; height: 42px; transition: opacity .2s ease, transform .2s ease; }
-      .home-brand-symbol .home-brand-symbol-hover { opacity: 0; transform: scale(.86) rotate(-8deg); }
+      .home-brand-symbol .home-brand-symbol-hover { opacity: 0; transform: scale(.94); }
       .home-brand-link:hover .home-brand-symbol-default,
-      .home-brand-link:focus-visible .home-brand-symbol-default { opacity: 0; transform: scale(.86) rotate(8deg); }
+      .home-brand-link:focus-visible .home-brand-symbol-default { opacity: 0; transform: scale(.94); }
       .home-brand-link:hover .home-brand-symbol-hover,
-      .home-brand-link:focus-visible .home-brand-symbol-hover { opacity: 1; transform: scale(1) rotate(0); }
+      .home-brand-link:focus-visible .home-brand-symbol-hover { opacity: 1; transform: scale(1); }
       @media (prefers-reduced-motion: reduce) { .home-brand-symbol svg { transition: none; } }
       .gnb-depth2 { width: min(1400px, calc(100vw - 32px)) !important; max-height: 520px; overflow: auto; background: #fff; }
       .gnb-sections { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -100,11 +100,11 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
 
 function MolecularBrandSymbol() {
   return <svg aria-hidden="true" className="home-brand-symbol-default" fill="none" viewBox="0 0 48 48">
-    <path d="M12 12 24 7l12 7v13L24 41 12 34V12Z" stroke="#082b61" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.6" />
-    <path d="m24 7 5.5 13.5L24 41M12 34l17.5-13.5L36 14" stroke="#246beb" strokeLinecap="round" strokeWidth="2.4" />
-    <circle cx="12" cy="12" fill="#082b61" r="4.2" /><circle cx="24" cy="7" fill="#082b61" r="4.2" />
-    <circle cx="36" cy="14" fill="#00a878" r="4.5" /><circle cx="29.5" cy="20.5" fill="#246beb" r="4.1" />
-    <circle cx="24" cy="41" fill="#246beb" r="4.2" /><circle cx="12" cy="34" fill="#082b61" r="4.2" />
+    <path d="M12 12 24 7l12 7v13L24 41 12 34V12Z" stroke="#082b61" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    <path d="m24 7 5.5 13.5L24 41M12 34l17.5-13.5L36 14" stroke="#246beb" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+    <circle cx="12" cy="12" fill="white" r="3" stroke="#082b61" strokeWidth="2" /><circle cx="24" cy="7" fill="white" r="3" stroke="#082b61" strokeWidth="2" />
+    <circle cx="36" cy="14" fill="white" r="3" stroke="#169c50" strokeWidth="2" /><circle cx="29.5" cy="20.5" fill="white" r="3" stroke="#246beb" strokeWidth="2" />
+    <circle cx="24" cy="41" fill="white" r="3" stroke="#246beb" strokeWidth="2" /><circle cx="12" cy="34" fill="white" r="3" stroke="#082b61" strokeWidth="2" />
   </svg>;
 }
 
