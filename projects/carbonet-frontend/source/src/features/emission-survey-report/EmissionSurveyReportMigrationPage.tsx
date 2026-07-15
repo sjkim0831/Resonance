@@ -855,28 +855,16 @@ function buildSectionBarChartSvg(sections: EmissionSurveyReportSectionSummary[],
 
 function buildSectionPieChartSvg(sections: EmissionSurveyReportSectionSummary[], en: boolean) {
   const width = 900;
-  const legendRowHeight = 58;
-  const height = Math.max(520, 126 + sections.length * legendRowHeight + 48);
+  const height = 520;
   const slices = buildPieSlices(sections).map((slice) => (
     `<path d="${slice.d}" fill="${slice.color}" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>`
   )).join("");
-  const legend = sections.map((section, index) => {
-    const y = 126 + index * legendRowHeight;
-    return `
-      <rect x="492" y="${y - 18}" width="352" height="50" rx="10" fill="#f8fafc"/>
-      <circle cx="512" cy="${y - 3}" r="6" fill="${sectionSolidColor(index)}"/>
-      <text x="528" y="${y + 2}" fill="#334155" font-size="13" font-weight="800">${escapeSvgText(sectionLabel(section.sectionCode, section.sectionLabel, en))}</text>
-      <text x="528" y="${y + 22}" fill="#0f172a" font-size="12" font-weight="900">${escapeSvgText(formatPercent(section.sharePercent))}</text>
-      <text x="828" y="${y + 22}" fill="#64748b" font-size="11" font-weight="700" text-anchor="end">${escapeSvgText(formatNumber(section.totalEmission))} kg CO2e</text>
-    `;
-  }).join("");
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <rect width="100%" height="100%" rx="28" fill="#ffffff"/>
       <rect x="20" y="20" width="${width - 40}" height="${height - 40}" rx="24" fill="#ffffff" stroke="#d8e0ea"/>
       <text x="44" y="62" fill="#0f172a" font-size="24" font-weight="900">${en ? "Section Contribution Pie" : "섹션별 탄소배출 기여 원그래프"}</text>
-      <g transform="translate(120 120)">${slices}<circle cx="110" cy="110" r="50" fill="#fff" stroke="#e2e8f0"/><text x="110" y="104" text-anchor="middle" fill="#64748b" font-size="11" font-weight="900">${en ? "TOTAL" : "합계"}</text><text x="110" y="130" text-anchor="middle" fill="#0f172a" font-size="22" font-weight="900">100%</text></g>
-      ${legend}
+      <g transform="translate(280 95) scale(1.55)">${slices}<circle cx="110" cy="110" r="50" fill="#fff" stroke="#e2e8f0"/><text x="110" y="104" text-anchor="middle" fill="#64748b" font-size="11" font-weight="900">${en ? "TOTAL" : "합계"}</text><text x="110" y="130" text-anchor="middle" fill="#0f172a" font-size="22" font-weight="900">100%</text></g>
     </svg>
   `;
 }
@@ -4177,10 +4165,7 @@ function SectionContributionPieCard({
   sections,
   title,
   en,
-  onCopy,
-  onSectionEmissionChange,
-  onSectionShareChange,
-  sectionShareInputs = {}
+  onCopy
 }: {
   sections: EmissionSurveyReportSectionSummary[];
   title: string;
@@ -4192,7 +4177,7 @@ function SectionContributionPieCard({
 }) {
   const pieSlices = buildPieSlices(sections);
   return (
-    <div className="pdf-avoid rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="pdf-avoid rounded-[calc(var(--kr-gov-radius)+4px)] border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="mt-1 text-lg font-black tracking-[-0.03em] text-slate-950">{title}</h3>
@@ -4203,8 +4188,8 @@ function SectionContributionPieCard({
           </button>
         ) : null}
       </div>
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 sm:items-center">
-        <div className="relative mx-auto aspect-square w-full max-w-[220px]">
+      <div className="mt-5 flex w-full justify-center">
+        <div className="relative aspect-square w-full max-w-[340px]">
           <svg aria-label={title} className="h-full w-full" role="img" viewBox="0 0 220 220">
             <circle cx="110" cy="110" fill="#e2e8f0" r="104" />
             {pieSlices.map((slice) => (
@@ -4218,46 +4203,6 @@ function SectionContributionPieCard({
               100%
             </text>
           </svg>
-        </div>
-        <div className="space-y-2">
-          {sections.map((section, index) => (
-            <div className="pdf-table-row print-break rounded-lg bg-slate-50 px-3 py-2" key={`${title}-${section.sectionCode}`}>
-              <div className="grid min-w-0 grid-cols-[12px_minmax(0,1fr)] items-start gap-2">
-                <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: sectionSolidColor(index) }} />
-                <span className="min-w-0 break-words text-xs font-black leading-4 text-slate-800">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
-              </div>
-              <div className="mt-1.5 flex items-baseline justify-between gap-3 pl-5">
-                <p className="report-chart-metric inline-flex min-h-5 items-baseline whitespace-nowrap text-xs font-black leading-5 text-slate-950">
-                  {onSectionShareChange ? (
-                    <>
-                      <EditableNumber
-                        className="inline-block w-14 bg-transparent text-right font-mono font-black leading-5"
-                        digits={1}
-                        onCommit={(value) => onSectionShareChange(section.sectionCode, value)}
-                        value={sectionShareInputs[section.sectionCode] ?? section.sharePercent}
-                      />
-                      <span>%</span>
-                    </>
-                  ) : formatPercent(section.sharePercent)}
-                </p>
-                <p className="report-chart-metric inline-flex min-h-4 items-baseline justify-end gap-1 whitespace-nowrap text-right text-[10px] font-bold leading-4 text-slate-500">
-                  {onSectionEmissionChange ? (
-                    <EditableNumber
-                      className="inline-block w-20 bg-transparent text-right font-mono font-bold leading-4 text-slate-500"
-                      onCommit={(value) => onSectionEmissionChange(section.sectionCode, value)}
-                      value={section.totalEmission}
-                    />
-                  ) : formatNumber(section.totalEmission)}
-                  <span>kg CO2e</span>
-                </p>
-              </div>
-            </div>
-          ))}
-          {sections.length === 0 ? (
-            <p className="rounded-lg bg-slate-50 px-3 py-4 text-sm font-bold text-slate-500">
-              {en ? "No calculated section emission is available." : "계산된 섹션 배출량이 없습니다."}
-            </p>
-          ) : null}
         </div>
       </div>
     </div>
