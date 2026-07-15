@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Pretendard GOV";
+  src: url("/assets/fonts/PretendardGOVVariable.woff2") format("woff2-variations");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   font-family: "Pretendard GOV", "Noto Sans KR", sans-serif;
   color: #10233f;

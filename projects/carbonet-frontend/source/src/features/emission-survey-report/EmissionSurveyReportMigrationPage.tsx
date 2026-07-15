@@ -1953,6 +1953,17 @@ export function EmissionSurveyReportPrintPage() {
       setPdfDownloadMode(true);
       await nextAnimationFrame();
       await nextAnimationFrame();
+      if (document.fonts) {
+        await Promise.all([
+          document.fonts.load('400 16px "Pretendard GOV"'),
+          document.fonts.load('500 16px "Pretendard GOV"'),
+          document.fonts.load('600 16px "Pretendard GOV"'),
+          document.fonts.load('700 16px "Pretendard GOV"'),
+          document.fonts.load('800 16px "Pretendard GOV"'),
+          document.fonts.load('900 16px "Pretendard GOV"'),
+          document.fonts.ready
+        ]);
+      }
       const element = reportArticleRef.current;
       if (!element) {
         throw new Error("Report element is not ready.");
@@ -2074,6 +2085,7 @@ export function EmissionSurveyReportPrintPage() {
           .report-typography .krds-type-report-cover-title{font-size:40px!important;line-height:1.08!important}
           .report-typography .print-table th{line-height:1.3!important}
           .report-typography .print-table td{line-height:1.4!important}
+          .report-typography .font-mono{font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important}
           .report-typography .krds-type-report-total{width:100%!important;margin-top:8px!important;font-size:32px!important;line-height:1.05!important;white-space:nowrap!important}
           @media(max-width:767px){
             .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr)!important}
