@@ -276,6 +276,8 @@ function canonicalReportForVerification(report: EmissionSurveyReportPayload, byp
     rows: report.rows.map((row) => ({
       rowId: row.rowId,
       sectionCode: row.sectionCode,
+      sectionLabel: row.sectionLabel,
+      group: row.group,
       materialName: row.materialName,
       amount: row.amount,
       amountDisplay: formatNumber(row.amount, 2),

@@ -377,7 +377,16 @@ public class ReportVerificationRegistryService {
                 boolean rowMatched = materialMatched && fieldMatches.values().stream().allMatch(Boolean.TRUE::equals);
                 Map<String, Object> comparison = new LinkedHashMap<>();
                 comparison.put("rowIndex", rowIndex + 1);
-                comparison.put("sectionLabel", row.path("sectionLabel").asText());
+                String sectionLabel = row.path("sectionLabel").asText();
+                if (sectionLabel.isBlank() && dataset.path("sectionSummaries").isArray()) {
+                    for (JsonNode section : dataset.path("sectionSummaries")) {
+                        if (row.path("sectionCode").asText().equals(section.path("sectionCode").asText())) {
+                            sectionLabel = section.path("sectionLabel").asText();
+                            break;
+                        }
+                    }
+                }
+                comparison.put("sectionLabel", sectionLabel);
                 comparison.put("materialName", materialName);
                 comparison.put("rowMatched", rowMatched);
                 comparison.put("materialMatched", materialMatched);
@@ -405,8 +414,27 @@ public class ReportVerificationRegistryService {
             summaryLabels.put("totalOutputMass", "총 산출물 질량");
             summaryLabels.put("productGwp", "제품 GWP");
             summaryLabels.put("processGwp", "공정 GWP");
+            JsonNode legacyOutputRows = dataset.path("rows");
+            double legacyTotalEmission = dataset.path("summary").path("totalEmission").asDouble(0);
+            double legacyOutputMass = dataset.path("normalization").path("outputQuantityTotal").asDouble(0);
+            List<JsonNode> legacyOutputs = new ArrayList<>();
+            if (legacyOutputRows.isArray()) {
+                legacyOutputRows.forEach(row -> {
+                    if ("OUTPUT_PRODUCTS".equals(row.path("sectionCode").asText()) && row.path("originalAmount").asDouble(0) > 0) legacyOutputs.add(row);
+                });
+            }
+            double legacyProductGwp = !legacyOutputs.isEmpty() && legacyOutputMass > 0
+                    ? legacyTotalEmission * legacyOutputs.get(0).path("originalAmount").asDouble(0) / legacyOutputMass : 0;
+            double legacyProcessGwp = legacyOutputMass > 0 ? legacyTotalEmission / legacyOutputMass : 0;
+            Map<String, Double> legacySummaryValues = Map.of(
+                    "totalCarbonEmission", legacyTotalEmission,
+                    "totalOutputMass", legacyOutputMass,
+                    "productGwp", legacyProductGwp,
+                    "processGwp", legacyProcessGwp
+            );
             for (Map.Entry<String, String> entry : summaryLabels.entrySet()) {
                 JsonNode value = verificationSummary.path(entry.getKey());
+                if (!value.isNumber() && legacySummaryValues.containsKey(entry.getKey())) value = objectMapper.valueToTree(legacySummaryValues.get(entry.getKey()));
                 if (!value.isNumber()) continue;
                 boolean matched = containsDisplayedNumber(normalizedText, verificationSummary, entry.getKey(), value);
                 numberCount++;
@@ -419,19 +447,33 @@ public class ReportVerificationRegistryService {
                 reportSummaryComparisons.add(comparison);
             }
             JsonNode outputRows = dataset.path("outputRows");
-            if (outputRows.isArray()) {
-                for (int rowIndex = 0; rowIndex < outputRows.size(); rowIndex++) {
-                    JsonNode row = outputRows.get(rowIndex);
+            int outputCount = outputRows.isArray() && !outputRows.isEmpty() ? outputRows.size() : legacyOutputs.size();
+            if (outputCount > 0) {
+                for (int rowIndex = 0; rowIndex < outputCount; rowIndex++) {
+                    boolean legacyRow = !outputRows.isArray() || outputRows.isEmpty();
+                    JsonNode row = legacyRow ? legacyOutputs.get(rowIndex) : outputRows.get(rowIndex);
                     String materialName = row.path("materialName").asText();
                     boolean materialMatched = containsText(normalizedText, materialName);
                     Map<String, Object> comparison = new LinkedHashMap<>();
                     comparison.put("rowIndex", rowIndex + 1);
-                    comparison.put("outputType", row.path("outputType").asText());
+                    comparison.put("outputType", legacyRow ? (rowIndex == 0 ? "PRODUCT" : "BYPRODUCT") : row.path("outputType").asText());
                     comparison.put("materialName", materialName);
                     comparison.put("materialMatched", materialMatched);
                     boolean rowMatched = materialMatched;
                     for (String field : List.of("processReferenceMass", "massSharePercent", "allocatedEmission", "emissionPerTon")) {
                         JsonNode value = row.path(field);
+                        if (legacyRow) {
+                            double mass = row.path("originalAmount").asDouble(0);
+                            double share = legacyOutputMass > 0 ? mass / legacyOutputMass : 0;
+                            double derivedValue = switch (field) {
+                                case "processReferenceMass" -> mass;
+                                case "massSharePercent" -> share * 100;
+                                case "allocatedEmission" -> legacyTotalEmission * share;
+                                case "emissionPerTon" -> legacyOutputMass > 0 ? (legacyTotalEmission / legacyOutputMass) * share : legacyTotalEmission * share;
+                                default -> 0;
+                            };
+                            value = objectMapper.valueToTree(derivedValue);
+                        }
                         boolean matched = !value.isNumber() || containsDisplayedNumber(normalizedText, row, field, value);
                         comparison.put(field + "Display", displayValue(row, field, value));
                         comparison.put(field + "Matched", matched);
