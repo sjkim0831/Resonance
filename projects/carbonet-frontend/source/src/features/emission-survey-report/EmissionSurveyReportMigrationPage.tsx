@@ -512,11 +512,11 @@ async function recognizeReportPhotos(files: Blob[], onProgress: (progress: numbe
 }
 
 async function renderReportPdfPages(file: File, onProgress: (progress: number, status: string) => void) {
+  // Bundle the worker implementation into the application chunk. PDF.js detects
+  // globalThis.pdfjsWorker and uses it directly, so verification never depends on
+  // a separately fetched .mjs URL, proxy MIME rules, or a stale worker asset.
+  await import("pdfjs-dist/build/pdf.worker.min.mjs");
   const pdfjs = await import("pdfjs-dist");
-  const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-  const workerUrl = new URL(workerModule.default, window.location.origin);
-  workerUrl.searchParams.set("mime-fix", "20260712-1");
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl.toString();
   const pdfDocument = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: Blob[] = [];
   for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
