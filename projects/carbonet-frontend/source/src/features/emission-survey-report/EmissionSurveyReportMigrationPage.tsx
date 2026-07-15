@@ -2071,12 +2071,10 @@ export function EmissionSurveyReportPrintPage() {
           .report-typography :where(.text-lg,.text-xl,[class~="text-[18px]"],[class~="text-[20px]"]):not(.material-symbols-outlined){font-size:var(--report-type-subtitle)!important;line-height:1.35!important}
           .report-typography :where(.text-2xl,[class~="text-[22px]"],[class~="text-[24px]"]):not(.material-symbols-outlined){font-size:var(--report-type-title)!important;line-height:1.25!important}
           .report-typography :where(.text-3xl,.text-4xl,.text-5xl):not(.material-symbols-outlined){font-size:var(--report-type-display)!important;line-height:1.15!important}
-          .report-typography .print-report-title,
-          .report-typography input.print-report-title{font-size:clamp(40px,5vw,52px)!important;line-height:1.05!important}
+          .report-typography .krds-type-report-cover-title{font-size:clamp(40px,5vw,52px)!important;line-height:1.05!important}
           .report-typography .print-table th{line-height:1.3!important}
           .report-typography .print-table td{line-height:1.4!important}
-          .report-typography .print-report-total-card .print-input-control,
-          .report-typography .print-report-total-card .print-input-text{width:100%!important;margin-top:8px!important;font-size:44px!important;line-height:1!important;white-space:nowrap!important}
+          .report-typography .krds-type-report-total{width:100%!important;margin-top:8px!important;font-size:44px!important;line-height:1!important;white-space:nowrap!important}
           @media(max-width:767px){
             .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr)!important}
             .report-typography .print-report-total-card{width:100%!important;justify-self:stretch!important;text-align:left!important}
@@ -2095,10 +2093,8 @@ export function EmissionSurveyReportPrintPage() {
               --report-line-compact:1.22;
               --report-line-body:1.38;
             }
-            .report-typography .print-report-title,
-            .report-typography input.print-report-title{font-size:40pt!important;line-height:1.02!important}
-            .report-typography .print-report-total-card .print-input-control,
-            .report-typography .print-report-total-card .print-input-text{font-size:34pt!important;line-height:1!important}
+            .report-typography .krds-type-report-cover-title{font-size:40pt!important;line-height:1.02!important}
+            .report-typography .krds-type-report-total{font-size:34pt!important;line-height:1!important}
             .report-typography .print-input-control{display:none!important}
             .report-typography .print-input-text{display:inline!important}
             .report-typography .print-report-total-card .print-input-text{display:block!important}
@@ -2127,10 +2123,8 @@ export function EmissionSurveyReportPrintPage() {
               --report-line-compact:1.22;
               --report-line-body:1.38;
             }
-            .report-typography.pdf-download-mode .print-report-title,
-            .report-typography.pdf-download-mode input.print-report-title{font-size:40pt!important;line-height:1.02!important}
-            .report-typography.pdf-download-mode .print-report-total-card .print-input-control,
-            .report-typography.pdf-download-mode .print-report-total-card .print-input-text{font-size:34pt!important;line-height:1!important}
+            .report-typography.pdf-download-mode .krds-type-report-cover-title{font-size:40pt!important;line-height:1.02!important}
+            .report-typography.pdf-download-mode .krds-type-report-total{font-size:34pt!important;line-height:1!important}
             .report-typography.pdf-download-mode .print-report-hero-grid{grid-template-columns:minmax(0,1fr) 270px!important;gap:12pt!important}
             .report-typography.pdf-download-mode .print-report-total-card{width:270px!important;padding:11pt!important}
             .report-typography.pdf-download-mode .print-report-title-wrap{min-height:82px!important}
@@ -2343,9 +2337,9 @@ export function EmissionSurveyReportPrintPage() {
           <p className="print-report-title-tag relative text-xs font-black uppercase tracking-[0.24em] text-cyan-200">{en ? "Product / Byproduct Emission Factor Report" : "제품/부산물 배출계수 리포트"}</p>
           <div className="print-report-hero-grid relative mt-4 grid items-center gap-5 lg:grid-cols-[minmax(0,1.4fr)_320px]">
             <div className="print-report-title-wrap flex min-h-28 items-center">
-              <h1 className="print-report-title max-w-2xl text-4xl font-black leading-tight tracking-[-0.055em]">
+              <h1 className="krds-type-report-cover-title print-report-title max-w-2xl text-4xl font-black leading-tight tracking-[-0.055em]">
                 <EditableText
-                  className="print-report-title max-w-2xl bg-transparent text-4xl font-black leading-tight tracking-[-0.055em] text-white"
+                  className="krds-type-report-cover-title print-report-title max-w-2xl bg-transparent text-4xl font-black leading-tight tracking-[-0.055em] text-white"
                   onCommit={(value) => setDraftReport((current) => current ? { ...current, productName: value } : current)}
                   value={en ? resolveEnglishMaterialName(effectiveReport.productName || effectiveReport.pageTitle, englishNameMap) : (effectiveReport.productName || effectiveReport.pageTitle)}
                 />
@@ -2354,7 +2348,7 @@ export function EmissionSurveyReportPrintPage() {
             <div className="print-report-total-card rounded-3xl border border-white/15 bg-white/10 p-4 text-right shadow-2xl backdrop-blur">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100">{en ? "Total Footprint" : "총 탄소배출량"}</p>
               <EditableNumber
-                className="mt-3 inline-block w-32 max-w-full bg-transparent text-right text-3xl font-black tracking-[-0.05em] text-white"
+                className="krds-type-report-total mt-3 inline-block w-32 max-w-full bg-transparent text-right text-3xl font-black tracking-[-0.05em] text-white"
                 onCommit={updateTotalEmission}
                 value={totalEmission}
               />
