@@ -59,7 +59,7 @@ export function HomeLandingPage() {
   const homeMenu = payload.homeMenu || [];
 
   useEffect(() => {
-    fetch(buildLocalizedPath("/api/home/composition?variant=PUBLIC", "/en/api/home/composition?variant=PUBLIC"), { credentials: "include" })
+    fetch(buildLocalizedPath("/home/api/composition?variant=PUBLIC", "/en/home/api/composition?variant=PUBLIC"), { credentials: "include" })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("composition unavailable")))
       .then((body) => setPublishedSections(new Set<string>((body.sections || []).map((section: { sectionCode: string }) => section.sectionCode))))
       .catch(() => undefined);

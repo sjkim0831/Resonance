@@ -30,6 +30,6 @@ public class HomeCompositionApiController {
         catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()));}
     }
 
-    @GetMapping({"/api/home/composition","/en/api/home/composition"})
+    @GetMapping({"/home/api/composition","/en/home/api/composition"})
     public Map<String,Object> publicComposition(@RequestParam(defaultValue="PUBLIC") String variant){return service.published(variant);}
 }
