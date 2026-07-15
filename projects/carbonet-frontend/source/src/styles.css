@@ -71,8 +71,8 @@ body {
 .krds-type-subtitle { font-size: var(--krds-type-subtitle); line-height: 1.45; }
 .krds-type-title { font-size: var(--krds-type-title); line-height: 1.35; }
 .krds-type-display { font-size: var(--krds-type-display); line-height: 1.2; }
-.krds-type-report-cover-title { font-size: clamp(2.5rem, 5vw, 3.25rem); line-height: 1.05; }
-.krds-type-report-total { font-size: 2.75rem; line-height: 1; }
+.krds-type-report-cover-title { font-size: 2.5rem; line-height: 1.08; }
+.krds-type-report-total { font-size: 2rem; line-height: 1.05; }
 
 /* GOV seven-step typography contract. Application screens use meaning, never local pixels. */
 .gov-text-caption { font-size: var(--krds-type-caption); line-height: var(--krds-line-compact); }
