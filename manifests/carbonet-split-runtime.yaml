@@ -42,7 +42,12 @@ data:
     events { worker_connections 2048; }
     http {
       include /etc/nginx/mime.types;
+      types { application/javascript mjs; }
       default_type application/octet-stream;
+      map $uri $react_asset_cache_control {
+        default "public, max-age=31536000, immutable";
+        ~*\.mjs$ "no-cache, no-store, max-age=0, must-revalidate";
+      }
       access_log /dev/stdout;
       error_log /dev/stderr warn;
       sendfile on;
@@ -67,7 +72,7 @@ data:
           alias /srv/react-app/;
           try_files $uri @carbonet_api;
           add_header X-Carbonet-Served-By "carbonet-web" always;
-          add_header Cache-Control "public, max-age=31536000, immutable" always;
+          add_header Cache-Control $react_asset_cache_control always;
         }
 
         location ~ ^/(download|downloads|error|img)/ {

@@ -22,4 +22,9 @@ case "$content_type" in
   application/javascript*|text/javascript*) ;;
   *) echo "ERROR: $worker_file served as ${content_type:-missing}" >&2; exit 1 ;;
 esac
+cache_control="$(curl -fsSI "$BASE_URL/assets/react/assets/$worker_file" | awk -F': ' 'tolower($1)=="cache-control" {gsub("\r", "", $2); print tolower($2)}' | tail -1)"
+case "$cache_control" in
+  *no-store*) ;;
+  *) echo "ERROR: $worker_file uses unsafe cache policy ${cache_control:-missing}" >&2; exit 1 ;;
+esac
 echo "OK: $worker_file -> $content_type"
