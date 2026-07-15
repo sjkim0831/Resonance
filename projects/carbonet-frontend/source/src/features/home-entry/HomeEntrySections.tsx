@@ -43,6 +43,15 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
         --kr-gov-radius: 5px;
       }
       body { font-family: ${en ? "'Public Sans', 'Noto Sans KR', sans-serif" : "'Noto Sans KR', 'Public Sans', sans-serif"}; -webkit-font-smoothing: antialiased; }
+      .gov-home {
+        --krds-type-caption: .875rem;
+        --krds-type-label: 1rem;
+        --krds-type-body-sm: 1rem;
+        --krds-type-body: 1.125rem;
+        --krds-type-subtitle: 1.25rem;
+        --krds-type-title: 1.75rem;
+        --krds-type-display: 2.5rem;
+      }
       .skip-link {
         position: absolute;
         top: -100px;
@@ -65,12 +74,13 @@ export function HomeInlineStyles({ en }: { en: boolean }) {
       .home-brand-copy { min-width: 0; }
       .home-brand-title {
         margin: 0 !important;
-        font-size: inherit !important;
-        line-height: 1.2 !important;
+        font-size: clamp(1.625rem, 1.4rem + .5vw, 1.875rem) !important;
+        line-height: 1 !important;
       }
       .home-brand-subtitle {
         margin: 0 !important;
-        line-height: 1.2;
+        font-size: clamp(.875rem, .82rem + .15vw, .9375rem) !important;
+        line-height: 1.15 !important;
       }
       .gnb-item:hover .gnb-depth2, .gnb-item:focus-within .gnb-depth2 { display: grid; }
       .home-brand-symbol { position: relative; width: 42px; height: 42px; flex: 0 0 42px; }
@@ -107,8 +117,8 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
           <img alt="" className="home-brand-symbol-hover" src="/assets/react/img/brand/ccus-symbol-concept-04.png" />
         </span>
         <div className="home-brand-copy min-w-0 flex flex-col text-left">
-          <strong className="leading-none text-[24px] font-black tracking-[-.03em] text-[#082b61] sm:text-[27px]">CCUS</strong>
-          <span className="mt-1 whitespace-nowrap text-[13px] font-extrabold leading-none tracking-[-.025em] text-[#246beb] sm:text-[14px]">{en ? "Carbon Neutrality Platform" : "탄소중립 플랫폼"}</span>
+          <strong className="home-brand-title font-black tracking-[-.03em] text-[#082b61]">CCUS</strong>
+          <span className="home-brand-subtitle mt-1 whitespace-nowrap font-extrabold tracking-[-.025em] text-[#246beb]">{en ? "Carbon Neutrality Platform" : "탄소중립 플랫폼"}</span>
         </div>
       </HomeLinkButton>
     </div>
