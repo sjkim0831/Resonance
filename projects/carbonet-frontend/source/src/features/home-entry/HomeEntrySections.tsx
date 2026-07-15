@@ -103,8 +103,8 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
     <div className="absolute left-1/2 -translate-x-1/2 xl:static xl:translate-x-0 flex w-[210px] max-w-[72vw] items-center shrink-0">
       <HomeLinkButton aria-label={content.logoTitle} className="home-brand-link w-full !min-h-0 !border-0 !bg-transparent !p-0 !text-inherit !font-inherit hover:!bg-transparent focus-visible flex items-center gap-2.5" href={buildLocalizedPath("/home", "/en/home")} variant="ghost">
         <span aria-hidden="true" className="home-brand-symbol">
-          <img alt="" className="home-brand-symbol-default" src="/img/brand/ccus-symbol-concept-02.png" />
-          <img alt="" className="home-brand-symbol-hover" src="/img/brand/ccus-symbol-concept-04.png" />
+          <img alt="" className="home-brand-symbol-default" src="/assets/react/img/brand/ccus-symbol-concept-02.png" />
+          <img alt="" className="home-brand-symbol-hover" src="/assets/react/img/brand/ccus-symbol-concept-04.png" />
         </span>
         <div className="home-brand-copy min-w-0 flex flex-col text-left">
           <strong className="leading-none text-[21px] font-black tracking-[-.03em] text-[#082b61]">CCUS</strong>
