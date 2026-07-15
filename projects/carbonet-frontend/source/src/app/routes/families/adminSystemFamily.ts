@@ -23,7 +23,7 @@ const ADMIN_SYSTEM_ROUTE_DEFINITIONS = [
   { id: "screen-management", label: "화면 관리", group: "admin", koPath: "/admin/system/screen-management", enPath: "/en/admin/system/screen-management" },
   { id: "screen-builder-dashboard", label: "빌더 대시보드", group: "admin", koPath: "/admin/system/screen-builder-dashboard", enPath: "/en/admin/system/screen-builder-dashboard" },
   { id: "wbs-management", label: "WBS 관리", group: "admin", koPath: "/admin/system/wbs-management", enPath: "/en/admin/system/wbs-management" },
-  { id: "home-page-workbench", label: "홈 페이지 작업대", group: "admin", koPath: "/admin/system/home-page-workbench", enPath: "/en/admin/system/home-page-workbench" },
+  { id: "home-page-workbench", label: "홈 구성 스튜디오", group: "admin", koPath: "/admin/system/home-page-workbench", enPath: "/en/admin/system/home-page-workbench" },
   { id: "new-page", label: "새 페이지", group: "admin", koPath: "/admin/system/new-page", enPath: "/en/admin/system/new-page" },
   { id: "ip-whitelist", label: "IP 화이트리스트", group: "admin", koPath: "/admin/system/ip_whitelist", enPath: "/en/admin/system/ip_whitelist" },
   { id: "access-history", label: "접속 로그", group: "admin", koPath: "/admin/system/access_history", enPath: "/en/admin/system/access_history" },

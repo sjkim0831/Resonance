@@ -1,298 +1,37 @@
-import { useMemo, useState } from "react";
-import { PAGE_COMPLETENESS_INVENTORY } from "../builder-studio/pageCompletenessInventory";
-import { ROUTE_SOURCE_INVENTORY } from "../builder-studio/routeSourceInventory";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { useEffect, useMemo, useState } from "react";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
-type WorkStatus = "unchecked" | "empty" | "thin" | "expanding" | "done" | "deferred";
-type WorkRecord = {
-  status: WorkStatus;
-  sectionGroup: string;
-  proposedMenuName: string;
-  nextPageIdea: string;
-  memo: string;
-  commitHash: string;
-  updatedAt: string;
+type HomeSection = {
+  sectionCode: string; sectionName: string; sectionNameEn: string; categoryCode: string;
+  description: string; componentKey: string; implementationStatus: string; dataStatus: string;
+  designReference: string; enabled: boolean; sortOrder: number; audienceCodes: string;
 };
+type Version = { versionId: number; versionNo: number; publishedBy: string; publishedAt: string };
+type Payload = { variant: string; sections: HomeSection[]; versions: Version[] };
 
-const STORAGE_KEY = "carbonet:home-page-workbench:v1";
-
-const STATUS_LABELS: Record<WorkStatus, { ko: string; en: string }> = {
-  unchecked: { ko: "미점검", en: "Unchecked" },
-  empty: { ko: "내용 없음", en: "Empty" },
-  thin: { ko: "기능 부족", en: "Thin" },
-  expanding: { ko: "확장 중", en: "Expanding" },
-  done: { ko: "완료", en: "Done" },
-  deferred: { ko: "보류", en: "Deferred" }
-};
-
-const DEFAULT_NEXT_PAGE_IDEAS: Record<string, string> = {
-  "교육/자격": "교육 이수 현황 통합, 수료증 검증, 자격 갱신 안내",
-  "가입/온보딩": "가입 심사 진행 현황, 반려 사유 보완, 기업 담당자 초대",
-  "마이페이지/회원": "내 기업 권한, 알림 이력, 보안 설정 통합",
-  "고객지원/민원": "공지/FAQ/Q&A 통합 검색, 문의 등록, 처리 이력",
-  "배출/탄소": "배출 프로젝트 개요, 데이터 입력 가이드, 검증 체크리스트",
-  "거래/정산": "거래 요약, 정산 상태, 증빙 다운로드",
-  "홈 공통": "홈 대시보드, 사이트맵, 사용자 안내"
-};
-
-function readRecords(): Record<string, WorkRecord> {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) as Record<string, WorkRecord> : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeRecords(records: Record<string, WorkRecord>) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
-
-function inferSectionGroup(routeId: string, label: string, path: string) {
-  const source = `${routeId} ${label} ${path}`.toLowerCase();
-  if (source.includes("edu/") || source.includes("edu-") || source.includes("교육")) return "교육/자격";
-  if (source.includes("join/") || source.includes("join-") || source.includes("회원가입")) return "가입/온보딩";
-  if (source.includes("mypage") || source.includes("마이")) return "마이페이지/회원";
-  if (source.includes("support") || source.includes("mtn") || source.includes("faq") || source.includes("문의")) return "고객지원/민원";
-  if (source.includes("emission") || source.includes("co2") || source.includes("배출")) return "배출/탄소";
-  if (source.includes("trade") || source.includes("payment") || source.includes("정산")) return "거래/정산";
-  return "홈 공통";
-}
-
-function inferDefaultStatus(routeId: string) {
-  const completeness = PAGE_COMPLETENESS_INVENTORY.find((row) => row.routeIds.includes(routeId));
-  if (!completeness) return "unchecked" as WorkStatus;
-  if (completeness.status === "missing") return "empty" as WorkStatus;
-  if (completeness.status === "thin" || completeness.status === "placeholder-managed") return "thin" as WorkStatus;
-  return "unchecked" as WorkStatus;
-}
-
-function statusClass(status: WorkStatus) {
-  if (status === "done") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (status === "expanding") return "border-blue-200 bg-blue-50 text-blue-800";
-  if (status === "empty") return "border-red-200 bg-red-50 text-red-800";
-  if (status === "thin") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (status === "deferred") return "border-slate-200 bg-slate-100 text-slate-700";
-  return "border-slate-200 bg-white text-slate-700";
-}
+const CATEGORY_LABELS: Record<string,string> = { DATA:"데이터·지표", SERVICE:"공개 서비스", NAVIGATION:"빠른 이동", WORK:"내 업무", CONTENT:"콘텐츠·지원" };
+const STATUS_STYLE: Record<string,string> = { IMPLEMENTED:"bg-emerald-100 text-emerald-800", PLANNED:"bg-slate-100 text-slate-700", CONNECTED:"bg-blue-100 text-blue-800", SAMPLE:"bg-amber-100 text-amber-800", NOT_CONNECTED:"bg-rose-100 text-rose-800" };
 
 export function HomePageWorkbenchMigrationPage() {
-  const en = isEnglish();
-  const [records, setRecords] = useState<Record<string, WorkRecord>>(() => readRecords());
-  const [keyword, setKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState<WorkStatus | "all">("all");
-  const [groupFilter, setGroupFilter] = useState("all");
-
-  const rows = useMemo(() => {
-    return ROUTE_SOURCE_INVENTORY
-      .filter((route) => route.group === "home" || route.group === "join")
-      .map((route) => {
-        const group = inferSectionGroup(route.routeId, route.label, route.koPath);
-        const defaultStatus = inferDefaultStatus(route.routeId);
-        const record = records[route.routeId];
-        return {
-          ...route,
-          completeness: PAGE_COMPLETENESS_INVENTORY.find((item) => item.routeIds.includes(route.routeId)),
-          status: record?.status || defaultStatus,
-          sectionGroup: record?.sectionGroup || group,
-          proposedMenuName: record?.proposedMenuName || route.label,
-          nextPageIdea: record?.nextPageIdea || "",
-          memo: record?.memo || "",
-          commitHash: record?.commitHash || "",
-          updatedAt: record?.updatedAt || ""
-        };
-      })
-      .sort((left, right) => left.sectionGroup.localeCompare(right.sectionGroup, "ko") || left.koPath.localeCompare(right.koPath));
-  }, [records]);
-
-  const groups = useMemo(() => Array.from(new Set(rows.map((row) => row.sectionGroup))).sort((a, b) => a.localeCompare(b, "ko")), [rows]);
-  const filteredRows = rows.filter((row) => {
-    const haystack = `${row.routeId} ${row.label} ${row.koPath} ${row.sectionGroup} ${row.proposedMenuName} ${row.memo}`.toLowerCase();
-    return (!keyword || haystack.includes(keyword.toLowerCase()))
-      && (statusFilter === "all" || row.status === statusFilter)
-      && (groupFilter === "all" || row.sectionGroup === groupFilter);
-  });
-
-  const summary = rows.reduce<Record<WorkStatus, number>>((acc, row) => {
-    acc[row.status] = (acc[row.status] || 0) + 1;
-    return acc;
-  }, { unchecked: 0, empty: 0, thin: 0, expanding: 0, done: 0, deferred: 0 });
-
-  const groupPlans = useMemo(() => {
-    return groups.map((group) => {
-      const groupRows = rows.filter((row) => row.sectionGroup === group);
-      const pending = groupRows.filter((row) => row.status !== "done" && row.status !== "deferred");
-      const ideas = Array.from(new Set(groupRows.flatMap((row) => row.nextPageIdea.split(/\n|,/).map((idea) => idea.trim()).filter(Boolean))));
-      return {
-        group,
-        total: groupRows.length,
-        pending: pending.length,
-        emptyOrThin: groupRows.filter((row) => row.status === "empty" || row.status === "thin").length,
-        ideas: ideas.length ? ideas : [DEFAULT_NEXT_PAGE_IDEAS[group] || DEFAULT_NEXT_PAGE_IDEAS["홈 공통"]]
-      };
-    });
-  }, [groups, rows]);
-
-  function exportPlan() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      summary,
-      groups: groupPlans,
-      rows: rows.map((row) => ({
-        routeId: row.routeId,
-        label: row.label,
-        path: row.koPath,
-        status: row.status,
-        sectionGroup: row.sectionGroup,
-        proposedMenuName: row.proposedMenuName,
-        nextPageIdea: row.nextPageIdea,
-        memo: row.memo,
-        commitHash: row.commitHash,
-        sourcePath: row.effectiveSourcePath
-      }))
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `home-page-workbench-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function updateRecord(routeId: string, patch: Partial<WorkRecord>) {
-    setRecords((current) => {
-      const route = rows.find((item) => item.routeId === routeId);
-      const previous = current[routeId];
-      const next = {
-        ...current,
-        [routeId]: {
-          status: previous?.status || route?.status || "unchecked",
-          sectionGroup: previous?.sectionGroup || route?.sectionGroup || "홈 공통",
-          proposedMenuName: previous?.proposedMenuName || route?.label || "",
-          nextPageIdea: previous?.nextPageIdea || "",
-          memo: previous?.memo || "",
-          commitHash: previous?.commitHash || "",
-          updatedAt: new Date().toISOString(),
-          ...patch
-        }
-      };
-      writeRecords(next);
-      return next;
-    });
-  }
-
-  return (
-    <AdminPageShell
-      subtitle={en ? "Track, group, rename, and expand every home-facing menu page." : "홈 메뉴 전체를 점검하고 유사 섹션별로 묶어 확장 작업을 누적합니다."}
-      title={en ? "Home Page Workbench" : "홈 페이지 작업대"}
-    >
-      <div className="space-y-6">
-        <section className="grid gap-3 md:grid-cols-6">
-          {(Object.keys(STATUS_LABELS) as WorkStatus[]).map((status) => (
-            <button
-              className={`rounded-lg border px-4 py-3 text-left text-sm font-black ${statusClass(status)}`}
-              key={status}
-              onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
-              type="button"
-            >
-              <span className="block text-xs opacity-70">{en ? STATUS_LABELS[status].en : STATUS_LABELS[status].ko}</span>
-              <span className="text-2xl">{summary[status] || 0}</span>
-            </button>
-          ))}
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="grid gap-3 lg:grid-cols-[1fr_220px_220px_auto]">
-            <input className="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder={en ? "Search route, menu, memo" : "라우트, 메뉴, 메모 검색"} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-            <select className="rounded-lg border border-slate-300 px-3 py-2 text-sm" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as WorkStatus | "all")}>
-              <option value="all">{en ? "All Status" : "전체 상태"}</option>
-              {(Object.keys(STATUS_LABELS) as WorkStatus[]).map((status) => <option key={status} value={status}>{en ? STATUS_LABELS[status].en : STATUS_LABELS[status].ko}</option>)}
-            </select>
-            <select className="rounded-lg border border-slate-300 px-3 py-2 text-sm" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-              <option value="all">{en ? "All Groups" : "전체 그룹"}</option>
-              {groups.map((group) => <option key={group} value={group}>{group}</option>)}
-            </select>
-            <button className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-black text-white" onClick={() => navigate(buildLocalizedPath("/admin/system/menu?menuType=USER", "/en/admin/system/menu?menuType=USER"))} type="button">
-              {en ? "Open Menu Admin" : "메뉴 관리 열기"}
-            </button>
-          </div>
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-black text-slate-950">{en ? "Grouped Work Board" : "유사 페이지 묶음 보드"}</h3>
-                <p className="mt-1 text-xs font-semibold text-slate-500">{en ? "Use this board to decide which pages should be expanded together or split into a new menu." : "함께 확장하거나 새 메뉴로 분리할 후보를 섹션 그룹별로 누적합니다."}</p>
-              </div>
-              <button className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-black text-slate-700" onClick={exportPlan} type="button">
-                {en ? "Export Plan" : "작업 목록 내보내기"}
-              </button>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {groupPlans.map((plan) => (
-                <article className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={plan.group}>
-                  <div className="flex items-center justify-between gap-3">
-                    <strong className="text-sm text-slate-950">{plan.group}</strong>
-                    <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-600">{plan.pending}/{plan.total}</span>
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-slate-500">{en ? "Empty or thin" : "내용 없음/기능 부족"}: {plan.emptyOrThin}</p>
-                  <ul className="mt-3 space-y-1 text-xs font-semibold text-slate-600">
-                    {plan.ideas.slice(0, 3).map((idea) => <li key={idea}>- {idea}</li>)}
-                  </ul>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="text-base font-black text-slate-950">{en ? "Operating Rule" : "작업 운영 기준"}</h3>
-            <div className="mt-3 space-y-3 text-sm font-semibold text-slate-600">
-              <p>{en ? "1. Mark empty or thin pages first, then group related pages before changing menu names." : "1. 내용 없음/기능 부족 페이지를 먼저 표시하고, 메뉴명 변경 전 연관 페이지를 먼저 묶습니다."}</p>
-              <p>{en ? "2. Keep the proposed name and next page candidate before using Menu Admin or Builder." : "2. 메뉴 관리나 빌더 반영 전 제안 메뉴명과 추가 페이지 후보를 남깁니다."}</p>
-              <p>{en ? "3. Record the commit hash after each completed page so later admin-page work can start from verified evidence." : "3. 페이지 완료 후 커밋 해시를 남겨 이후 관리자 페이지 작업의 근거로 사용합니다."}</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="grid grid-cols-[160px_1fr_150px_160px_220px_220px] gap-0 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black text-slate-600">
-            <span>{en ? "Status" : "상태"}</span>
-            <span>{en ? "Menu / Route" : "메뉴 / 라우트"}</span>
-            <span>{en ? "Group" : "섹션 그룹"}</span>
-            <span>{en ? "Proposed Name" : "제안 메뉴명"}</span>
-            <span>{en ? "Next Page Candidate" : "추가 페이지 후보"}</span>
-            <span>{en ? "Memo / Commit" : "메모 / 커밋"}</span>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {filteredRows.map((row) => (
-              <div className="grid grid-cols-[160px_1fr_150px_160px_220px_220px] gap-3 px-4 py-4 text-sm" key={row.routeId}>
-                <select className={`h-9 rounded-lg border px-2 text-xs font-black ${statusClass(row.status)}`} value={row.status} onChange={(event) => updateRecord(row.routeId, { status: event.target.value as WorkStatus })}>
-                  {(Object.keys(STATUS_LABELS) as WorkStatus[]).map((status) => <option key={status} value={status}>{en ? STATUS_LABELS[status].en : STATUS_LABELS[status].ko}</option>)}
-                </select>
-                <div>
-                  <p className="font-black text-slate-950">{row.label}</p>
-                  <p className="mt-1 break-all font-mono text-xs text-slate-500">{row.koPath}</p>
-                  <p className="mt-1 text-xs text-slate-500">{row.routeId} · {row.completeness?.status || "unknown"} · {row.effectiveSourcePath}</p>
-                  <div className="mt-2 flex gap-2">
-                    <button className="rounded-md border border-slate-300 px-2 py-1 text-xs font-bold" onClick={() => navigate(row.koPath)} type="button">{en ? "Open" : "열기"}</button>
-                    <button className="rounded-md border border-slate-300 px-2 py-1 text-xs font-bold" onClick={() => navigate(buildLocalizedPath(`/admin/system/builder-studio?pageId=${encodeURIComponent(row.routeId)}&menuTitle=${encodeURIComponent(row.label)}&menuUrl=${encodeURIComponent(row.koPath)}`, `/en/admin/system/builder-studio?pageId=${encodeURIComponent(row.routeId)}&menuTitle=${encodeURIComponent(row.label)}&menuUrl=${encodeURIComponent(row.enPath)}`))} type="button">{en ? "Builder" : "빌더"}</button>
-                  </div>
-                </div>
-                <input className="h-9 rounded-lg border border-slate-300 px-2 text-xs" value={row.sectionGroup} onChange={(event) => updateRecord(row.routeId, { sectionGroup: event.target.value })} />
-                <input className="h-9 rounded-lg border border-slate-300 px-2 text-xs" value={row.proposedMenuName} onChange={(event) => updateRecord(row.routeId, { proposedMenuName: event.target.value })} />
-                <textarea className="min-h-20 rounded-lg border border-slate-300 px-2 py-2 text-xs" value={row.nextPageIdea} onChange={(event) => updateRecord(row.routeId, { nextPageIdea: event.target.value })} placeholder={en ? "Related page/menu to add" : "묶어서 추가할 페이지/메뉴"} />
-                <div className="space-y-2">
-                  <textarea className="min-h-14 w-full rounded-lg border border-slate-300 px-2 py-2 text-xs" value={row.memo} onChange={(event) => updateRecord(row.routeId, { memo: event.target.value })} placeholder={en ? "Work memo" : "작업 메모"} />
-                  <input className="h-8 w-full rounded-lg border border-slate-300 px-2 text-xs" value={row.commitHash} onChange={(event) => updateRecord(row.routeId, { commitHash: event.target.value })} placeholder="commit hash" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+  const en=isEnglish(), base=buildLocalizedPath("/admin/api/system/home-composition","/en/admin/api/system/home-composition");
+  const [data,setData]=useState<Payload|null>(null),[variant,setVariant]=useState("PUBLIC"),[filter,setFilter]=useState("ALL"),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+  async function load(){const r=await fetch(`${base}?variant=${variant}`,{credentials:"include"}),b=await r.json();if(!r.ok)throw new Error(b.message||"홈 구성을 불러오지 못했습니다.");setData(b);}
+  useEffect(()=>{void load().catch(e=>setMessage(e.message));},[variant]);
+  async function save(sections:HomeSection[]){setData(current=>current?{...current,sections}:current);setMessage(en?"Saving draft...":"초안을 자동 저장하고 있습니다.");const r=await fetch(`${base}/draft`,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({variant,sections})}),b=await r.json();if(!r.ok)throw new Error(b.message);setMessage(en?"Draft saved automatically.":"초안이 자동 저장되었습니다.");}
+  async function toggle(code:string){if(!data)return;const next=data.sections.map(s=>s.sectionCode===code?{...s,enabled:!s.enabled}:s);await save(next);}
+  async function move(code:string,direction:-1|1){if(!data)return;const ordered=[...data.sections].sort((a,b)=>a.sortOrder-b.sortOrder),index=ordered.findIndex(s=>s.sectionCode===code),target=index+direction;if(index<0||target<0||target>=ordered.length)return;[ordered[index],ordered[target]]=[ordered[target],ordered[index]];const next=ordered.map((s,i)=>({...s,sortOrder:(i+1)*10}));await save(next);}
+  async function publish(){if(!confirm(en?"Publish this composition to the home page?":"현재 초안을 홈페이지에 발행하시겠습니까?"))return;setBusy(true);try{const r=await fetch(`${base}/publish`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({variant})}),b=await r.json();if(!r.ok)throw new Error(b.message);setMessage(en?`Version ${b.versionNo} published.`:`버전 ${b.versionNo}을 발행했습니다.`);await load();}catch(e){setMessage(e instanceof Error?e.message:String(e));}finally{setBusy(false)}}
+  const visible=useMemo(()=>data?.sections.filter(s=>filter==="ALL"||s.categoryCode===filter)||[],[data,filter]);
+  const enabled=data?.sections.filter(s=>s.enabled).length||0, connected=data?.sections.filter(s=>s.dataStatus==="CONNECTED").length||0, implemented=data?.sections.filter(s=>s.implementationStatus==="IMPLEMENTED").length||0;
+  return <AdminPageShell title={en?"Home Composition Studio":"홈 구성 스튜디오"} subtitle={en?"Select, order, preview, and publish governed home sections.":"홈 섹션을 선택·정렬·미리보기하고 발행 버전으로 관리합니다."}>
+    <div className="space-y-5">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["전체 섹션",data?.sections.length||0],["선택됨",enabled],["UI 구현",implemented],["실데이터 연결",connected]].map(([label,value])=><article className="rounded-xl border border-slate-200 bg-white p-5" key={String(label)}><p className="text-sm font-bold text-slate-500">{label}</p><strong className="mt-2 block text-3xl text-[#052b57]">{value}</strong></article>)}</section>
+      <section className="rounded-xl border border-slate-200 bg-white p-4"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div className="flex flex-wrap gap-2"><select className="h-11 rounded-lg border px-3 font-bold" value={variant} onChange={e=>setVariant(e.target.value)}><option value="PUBLIC">비로그인 홈</option><option value="AUTHENTICATED">로그인 홈</option><option value="ADMIN">관리자 홈</option></select>{["ALL",...Object.keys(CATEGORY_LABELS)].map(code=><button className={`rounded-full border px-4 py-2 text-sm font-bold ${filter===code?"border-blue-700 bg-blue-700 text-white":"border-slate-300 bg-white"}`} key={code} onClick={()=>setFilter(code)}>{code==="ALL"?"전체":CATEGORY_LABELS[code]}</button>)}</div><div className="flex gap-2"><a className="rounded-lg border border-blue-700 px-4 py-3 font-black text-blue-800" href={buildLocalizedPath("/home","/en/home")} target="_blank" rel="noreferrer">홈 미리보기</a><button className="rounded-lg bg-[#246beb] px-5 py-3 font-black text-white disabled:opacity-50" disabled={busy} onClick={publish}>현재 초안 발행</button></div></div>{message&&<p className="mt-3 rounded-lg bg-blue-50 p-3 text-sm font-bold text-blue-800">{message}</p>}</section>
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white"><div className="border-b bg-slate-50 px-5 py-4"><h2 className="text-lg font-black">섹션 카탈로그</h2><p className="mt-1 text-sm text-slate-500">체크 변경과 순서 변경은 초안에 즉시 저장됩니다. 미구현 섹션도 개발 대상으로 선택할 수 있습니다.</p></div><div className="divide-y">{visible.map(section=><article className="grid gap-4 p-5 md:grid-cols-[auto_1fr_auto] md:items-center" key={section.sectionCode}><input aria-label={`${section.sectionName} 사용`} className="h-5 w-5 accent-blue-700" type="checkbox" checked={section.enabled} onChange={()=>void toggle(section.sectionCode).catch(e=>setMessage(e.message))}/><div><div className="flex flex-wrap items-center gap-2"><strong className="text-base text-slate-950">{en?section.sectionNameEn:section.sectionName}</strong><span className={`rounded-full px-2 py-1 text-[11px] font-black ${STATUS_STYLE[section.implementationStatus]||STATUS_STYLE.PLANNED}`}>{section.implementationStatus}</span><span className={`rounded-full px-2 py-1 text-[11px] font-black ${STATUS_STYLE[section.dataStatus]||STATUS_STYLE.NOT_CONNECTED}`}>{section.dataStatus}</span></div><p className="mt-1 text-sm text-slate-600">{section.description}</p><p className="mt-2 font-mono text-xs text-slate-400">{section.componentKey} · {section.designReference}</p></div><div className="flex items-center gap-2"><span className="w-9 text-center text-sm font-black">{section.sortOrder}</span><button className="h-9 w-9 rounded border" aria-label="위로" onClick={()=>void move(section.sectionCode,-1)}>↑</button><button className="h-9 w-9 rounded border" aria-label="아래로" onClick={()=>void move(section.sectionCode,1)}>↓</button></div></article>)}</div></section>
+        <aside className="space-y-5"><section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="text-lg font-black">발행 미리보기</h2><div className="mt-4 space-y-2">{data?.sections.filter(s=>s.enabled).sort((a,b)=>a.sortOrder-b.sortOrder).map((s,i)=><div className="flex items-center gap-3 rounded-lg border bg-slate-50 p-3" key={s.sectionCode}><span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-700 text-sm font-black text-white">{i+1}</span><div><strong className="text-sm">{s.sectionName}</strong><p className="text-xs text-slate-500">{s.implementationStatus} · {s.dataStatus}</p></div></div>)}</div></section><section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="text-lg font-black">발행 이력</h2><div className="mt-4 space-y-3">{data?.versions.map(v=><div className="border-b pb-3 text-sm" key={v.versionId}><strong>Version {v.versionNo}</strong><p className="mt-1 text-xs text-slate-500">{v.publishedBy} · {new Date(v.publishedAt).toLocaleString()}</p></div>)}</div></section></aside>
       </div>
-    </AdminPageShell>
-  );
+    </div>
+  </AdminPageShell>;
 }

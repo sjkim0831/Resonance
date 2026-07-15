@@ -13,6 +13,7 @@ import {
   CoreServiceGrid,
   HeroSection,
   NewsletterSection,
+  RealtimeDashboardSection,
   SearchSection,
   ReferenceHomeLowerSection,
   SummarySection
@@ -26,6 +27,7 @@ export function HomeLandingPage() {
   const content = en ? LOCALIZED_CONTENT.en : LOCALIZED_CONTENT.ko;
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [publishedSections, setPublishedSections] = useState(() => new Set(["SUMMARY", "CERTIFICATE_VERIFY", "CORE_SERVICES", "NOTICE_SUPPORT", "NEWSLETTER"]));
   const payloadState = useAsyncValue<HomePayload>(
     () => initialPayload && !initialPayload.isLoggedIn ? Promise.resolve(initialPayload) : fetchHomePayload(),
     [en],
@@ -55,6 +57,15 @@ export function HomeLandingPage() {
 
   const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
   const homeMenu = payload.homeMenu || [];
+
+  useEffect(() => {
+    fetch(buildLocalizedPath("/api/home/composition?variant=PUBLIC", "/en/api/home/composition?variant=PUBLIC"), { credentials: "include" })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("composition unavailable")))
+      .then((body) => setPublishedSections(new Set<string>((body.sections || []).map((section: { sectionCode: string }) => section.sectionCode))))
+      .catch(() => undefined);
+  }, [en]);
+
+  const hasSection = (code: string) => publishedSections.has(code);
 
   useEffect(() => {
     logGovernanceScope("PAGE", "home-landing", {
@@ -127,10 +138,11 @@ export function HomeLandingPage() {
           <div data-help-id="home-search">
             <SearchSection content={content} homeMenu={homeMenu} />
           </div>
-          <div data-help-id="home-summary">
+          {hasSection("SUMMARY") ? <div data-help-id="home-summary">
             <SummarySection content={content} />
-          </div>
-          <section className="border-y border-emerald-200 bg-emerald-50/70">
+          </div> : null}
+          {hasSection("REALTIME_DASHBOARD") ? <RealtimeDashboardSection en={en} /> : null}
+          {hasSection("CERTIFICATE_VERIFY") ? <section className="border-y border-emerald-200 bg-emerald-50/70">
             <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 lg:flex-row lg:items-center lg:justify-between lg:px-8">
               <div className="flex items-center gap-5">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-white bg-emerald-600 text-white shadow-md" aria-hidden="true">
@@ -147,16 +159,16 @@ export function HomeLandingPage() {
                 {en ? "Verify Certificate" : "진위여부 확인하기"}
               </a>
             </div>
-          </section>
-          <section className="gov-home-section max-w-7xl mx-auto px-4 lg:px-8" data-help-id="home-services">
+          </section> : null}
+          {hasSection("CORE_SERVICES") ? <section className="gov-home-section max-w-7xl mx-auto px-4 lg:px-8" data-help-id="home-services">
             <div className="mb-10">
               <h2 className="gov-text-heading-md font-bold text-[var(--kr-gov-text-primary)]">{content.coreServicesTitle}</h2>
               <p className="gov-text-body mt-2 text-[var(--kr-gov-text-secondary)]">{content.coreServicesDescription}</p>
             </div>
             <CoreServiceGrid content={content} />
-          </section>
-          <ReferenceHomeLowerSection en={en} />
-          <NewsletterSection en={en} />
+          </section> : null}
+          {hasSection("NOTICE_SUPPORT") ? <ReferenceHomeLowerSection en={en} /> : null}
+          {hasSection("NEWSLETTER") ? <NewsletterSection en={en} /> : null}
         </main>
         <HomeFooter content={content} />
       </div>
