@@ -2853,15 +2853,15 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   {en ? "Three-way equality" : "3자 데이터 일치"}: {datasetVerification?.datasetMatch && photoVerification?.photoConsistent ? "OK" : datasetVerification ? (en ? "OCR REVIEW" : "OCR 검토") : (en ? "EMBEDDED DATA UNAVAILABLE" : "내장 데이터 없음")}
                 </span>
               </div>
-              {datasetVerification?.differences?.length ? (
-                <div className="mt-3 max-h-48 space-y-2 overflow-y-auto">
-                  {datasetVerification.differences.slice(0, 10).map((difference) => (
-                    <div className="rounded-lg border border-rose-100 bg-rose-50 p-2 text-xs" key={`${difference.path}-${difference.actual}`}>
-                      <p className="break-all font-mono font-black text-rose-900">{difference.path}</p>
-                      <p className="mt-1 break-all text-rose-700">{en ? "Issued" : "발급"}: {difference.expected}</p>
-                      <p className="break-all text-rose-700">{en ? "Uploaded" : "업로드"}: {difference.actual}</p>
-                    </div>
-                  ))}
+              {datasetVerification?.fieldComparisons?.length ? (
+                <div className="mt-3">
+                  <p className="font-black text-slate-800">{en ? "Complete field comparison" : "전체 항목 상세 대조"}: {datasetVerification.matchedFieldCount || 0}/{datasetVerification.fieldCount || 0}</p>
+                  <div className="mt-2 max-h-80 overflow-auto border border-slate-200">
+                    <table className="w-full min-w-[760px] text-left text-xs">
+                      <thead className="sticky top-0 bg-slate-100"><tr><th className="p-2">{en ? "Path" : "항목 경로"}</th><th className="p-2">{en ? "Issued" : "발급값"}</th><th className="p-2">{en ? "Uploaded" : "업로드값"}</th><th className="p-2">{en ? "Result" : "판정"}</th></tr></thead>
+                      <tbody>{datasetVerification.fieldComparisons.map((field) => <tr className={field.matched ? "border-t border-emerald-100 bg-emerald-50/40" : "border-t border-rose-100 bg-rose-50"} key={field.path}><td className="break-all p-2 font-mono font-bold">{field.path}</td><td className="max-w-64 break-all p-2">{field.expected}</td><td className="max-w-64 break-all p-2">{field.actual}</td><td className={`p-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td></tr>)}</tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
@@ -2936,7 +2936,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                         <strong className={item.contentMatch ? "text-emerald-700" : item.confidence >= 55 ? "text-amber-700" : "text-rose-700"}>{item.confidence}%</strong>
                         <p className="mt-1 text-slate-500">{item.contentMatch ? (en ? "MATCH" : "일치") : item.confidence >= 55 ? (en ? "REVIEW" : "검토") : (en ? "MISMATCH" : "불일치")}</p>
                       </td>
-                      <td className="px-4 py-3 align-top leading-5 text-slate-700">
+                      <td className="px-4 py-3 align-top leading-5 text-slate-700" colSpan={6}>
                         <p className={`mb-2 font-black ${item.datasetExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Dataset" : "데이터셋"}: {item.datasetExactMatch ? "EXACT" : "MISMATCH"}</p>
                         <p>{en ? "Product" : "제품"}: {item.productMatched ? "OK" : "-"}</p>
                         <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p>
@@ -2948,6 +2948,10 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                           <p>{en ? "Materials" : "물질"}: {item.matchedMaterialCount}/{item.materialCount}</p>
                           <p>{en ? "Numbers" : "수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
                         </>}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className={`px-2 py-1 font-black ${item.tagExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Verification tags" : "검증 태그"}: {item.tagExactMatch ? "EXACT" : "MISMATCH"}</span>
+                          <span className={`px-2 py-1 font-black ${item.overallExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>{en ? "Final result" : "최종 판정"}: {item.overallExactMatch ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}</span>
+                        </div>
                         <details className="mt-3 min-w-72 border border-slate-200 bg-white">
                           <summary className="cursor-pointer select-none px-3 py-2 font-black text-slate-800 hover:bg-slate-50">
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
@@ -2968,6 +2972,18 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 </span>
                               ))}
                             </div>
+                            {item.allDatasetComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="font-black text-slate-900">{en ? "All report dataset fields" : "레포트 전체 데이터 항목"}</p>
+                                <span className="bg-slate-100 px-2 py-1 font-black text-slate-700">{item.matchedAllDatasetFieldCount || 0}/{item.allDatasetFieldCount || item.allDatasetComparisons.length}</span>
+                              </div>
+                              <div className="mt-2 max-h-[32rem] overflow-auto border border-slate-200">
+                                <table className="w-full min-w-[900px] text-left text-xs">
+                                  <thead className="sticky top-0 z-10 bg-slate-100"><tr><th className="p-2">{en ? "Dataset path" : "데이터 경로"}</th><th className="p-2">{en ? "Type" : "유형"}</th><th className="p-2">{en ? "Issued report value" : "발급 레포트 값"}</th><th className="p-2">{en ? "OCR result" : "OCR 판정"}</th></tr></thead>
+                                  <tbody>{item.allDatasetComparisons.map((field) => <tr className={field.matched ? "border-t border-emerald-100 bg-emerald-50/40" : "border-t border-rose-100 bg-rose-50"} key={`${item.certificateId}-all-${field.path}`}><td className="break-all p-2 font-mono font-bold">{field.path}</td><td className="p-2 text-slate-500">{field.valueType}</td><td className="max-w-md break-all p-2">{field.expected}</td><td className={`p-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH / NOT READ"}</td></tr>)}</tbody>
+                                </table>
+                              </div>
+                            </div> : null}
                             {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
                               <div className="mt-3 space-y-4">
                                 <div>
@@ -3034,23 +3050,6 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                             </div> : null}
                           </div>
                         </details>
-                      </td>
-                      {[
-                        [item.certificateId, item.certificateIdMatch],
-                        [item.payloadHash, item.payloadHashMatch],
-                        [item.integrityCode, item.integrityCodeMatch],
-                        [item.datasetHash, item.datasetHashMatch]
-                      ].map(([value, matched], index) => (
-                        <td className="px-4 py-3 align-top" key={`${item.certificateId}-${index}`}>
-                          <span className={`inline-block px-2 py-1 font-black ${matched ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>{matched ? "MATCH" : "NOT READ"}</span>
-                          <p className="mt-2 max-w-40 break-all font-mono text-[10px] text-slate-500">{value ? `${String(value).slice(0, 16)}...${String(value).slice(-8)}` : "-"}</p>
-                        </td>
-                      ))}
-                      <td className="px-4 py-3 align-top">
-                        <p className={`font-black ${item.tagExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Tag" : "태그"}: {item.tagExactMatch ? "EXACT" : "MISMATCH"}</p>
-                        <span className={`mt-2 inline-block px-2 py-1 font-black ${item.overallExactMatch ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
-                          {item.overallExactMatch ? (en ? "EXACT MATCH" : "일치") : (en ? "MISMATCH" : "불일치")}
-                        </span>
                       </td>
                     </tr>
                   ))}

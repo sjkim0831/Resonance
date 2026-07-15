@@ -224,7 +224,18 @@ export type ReportDatasetVerificationResponse = {
   datasetMatch?: boolean;
   differenceCount?: number;
   differences?: Array<{ path: string; expected: string; actual: string }>;
+  fieldCount?: number;
+  matchedFieldCount?: number;
+  fieldComparisons?: ReportDatasetFieldComparison[];
   message?: string;
+};
+
+export type ReportDatasetFieldComparison = {
+  path: string;
+  valueType: string;
+  expected: string;
+  actual: string;
+  matched: boolean;
 };
 
 export type ReportPhotoVerificationResponse = {
@@ -320,6 +331,9 @@ export type ReportOcrComparison = {
   matchedLcaFieldCount?: number;
   lcaFieldCount?: number;
   lcaFieldComparisons?: ReportLcaFieldComparison[];
+  allDatasetFieldCount?: number;
+  matchedAllDatasetFieldCount?: number;
+  allDatasetComparisons?: ReportDatasetFieldComparison[];
   fieldComparisons?: Array<{
     rowIndex: number;
     sectionLabel?: string;

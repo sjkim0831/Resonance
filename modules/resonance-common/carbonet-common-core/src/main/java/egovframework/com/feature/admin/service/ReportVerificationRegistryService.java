@@ -109,8 +109,10 @@ public class ReportVerificationRegistryService {
         JsonNode storedDataset = readJson(stored.get("dataset_json"));
         boolean datasetPresent = uploadedDataset != null && !uploadedDataset.isNull() && uploadedDataset.isObject();
         List<Map<String, Object>> differences = new ArrayList<>();
+        List<Map<String, Object>> fieldComparisons = new ArrayList<>();
         if (datasetPresent) {
             compare("$", storedDataset, uploadedDataset, differences);
+            compareAll("$", storedDataset, uploadedDataset, fieldComparisons);
         }
         boolean datasetMatch = datasetPresent && differences.isEmpty();
         boolean valid = fingerprintMatch && integrityMatch && datasetMatch;
@@ -121,8 +123,11 @@ public class ReportVerificationRegistryService {
         response.put("integrityMatch", integrityMatch);
         response.put("datasetPresent", datasetPresent);
         response.put("datasetMatch", datasetMatch);
-        response.put("differenceCount", differences.size());
+        response.put("differenceCount", fieldComparisons.stream().filter(item -> !Boolean.TRUE.equals(item.get("matched"))).count());
         response.put("differences", differences);
+        response.put("fieldComparisons", fieldComparisons);
+        response.put("fieldCount", fieldComparisons.size());
+        response.put("matchedFieldCount", fieldComparisons.stream().filter(item -> Boolean.TRUE.equals(item.get("matched"))).count());
         response.put("storedDatasetHash", stored.get("dataset_hash"));
         response.put("issuedAt", stored.get("issued_at"));
         response.put("reportTitle", stored.get("report_title"));
@@ -473,7 +478,29 @@ public class ReportVerificationRegistryService {
         result.put("lcaFieldComparisons", lcaFieldComparisons);
         result.put("fieldComparisons", allFieldComparisons);
         result.put("fieldMismatches", fieldMismatches);
+        List<Map<String, Object>> allDatasetComparisons = new ArrayList<>();
+        collectOcrDatasetComparisons("$", dataset, normalizedText, allDatasetComparisons);
+        result.put("allDatasetComparisons", allDatasetComparisons);
+        result.put("allDatasetFieldCount", allDatasetComparisons.size());
+        result.put("matchedAllDatasetFieldCount", allDatasetComparisons.stream().filter(item -> Boolean.TRUE.equals(item.get("matched"))).count());
         return result;
+    }
+
+    private void collectOcrDatasetComparisons(String path, JsonNode node, String normalizedText, List<Map<String, Object>> comparisons) {
+        if (node == null || node.isNull()) {
+            addFieldComparison(path, node, node, false, "NULL", comparisons);
+            return;
+        }
+        if (node.isObject()) {
+            node.fieldNames().forEachRemaining(name -> collectOcrDatasetComparisons(path + "." + name, node.get(name), normalizedText, comparisons));
+            return;
+        }
+        if (node.isArray()) {
+            for (int index = 0; index < node.size(); index++) collectOcrDatasetComparisons(path + "[" + index + "]", node.get(index), normalizedText, comparisons);
+            return;
+        }
+        boolean matched = node.isNumber() ? containsNumber(normalizedText, node) : containsText(normalizedText, node.asText());
+        addFieldComparison(path, node, node, matched, node.getNodeType().name(), comparisons);
     }
 
     private String normalizeText(String value) {
@@ -689,6 +716,34 @@ public class ReportVerificationRegistryService {
         if (!expected.equals(actual)) {
             addDifference(path, expected, actual, differences);
         }
+    }
+
+    private void compareAll(String path, JsonNode expected, JsonNode actual, List<Map<String, Object>> comparisons) {
+        if (expected == null || actual == null || expected.getNodeType() != actual.getNodeType()) {
+            addFieldComparison(path, expected, actual, false, expected == null ? "MISSING" : expected.getNodeType().name(), comparisons);
+            return;
+        }
+        if (expected.isObject()) {
+            expected.fieldNames().forEachRemaining(name -> compareAll(path + "." + name, expected.get(name), actual.get(name), comparisons));
+            actual.fieldNames().forEachRemaining(name -> { if (!expected.has(name)) addFieldComparison(path + "." + name, null, actual.get(name), false, "EXTRA", comparisons); });
+            return;
+        }
+        if (expected.isArray()) {
+            int maximum = Math.max(expected.size(), actual.size());
+            for (int index = 0; index < maximum; index++) compareAll(path + "[" + index + "]", expected.get(index), actual.get(index), comparisons);
+            return;
+        }
+        addFieldComparison(path, expected, actual, expected.equals(actual), expected.getNodeType().name(), comparisons);
+    }
+
+    private void addFieldComparison(String path, JsonNode expected, JsonNode actual, boolean matched, String valueType, List<Map<String, Object>> comparisons) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("path", path);
+        item.put("valueType", valueType);
+        item.put("expected", expected == null ? "<missing>" : expected.isTextual() ? expected.asText() : expected.toString());
+        item.put("actual", actual == null ? "<missing>" : actual.isTextual() ? actual.asText() : actual.toString());
+        item.put("matched", matched);
+        comparisons.add(item);
     }
 
     private void addDifference(String path, Object expected, Object actual, List<Map<String, Object>> differences) {
