@@ -797,7 +797,7 @@ function escapeSvgText(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-async function copySvgToClipboard(svg: string) {
+async function copySvgToClipboard(svg: string, fileName: string): Promise<"copied" | "downloaded"> {
   const image = new Image();
   const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(svgBlob);
@@ -820,7 +820,24 @@ async function copySvgToClipboard(svg: string) {
     const pngBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Chart image could not be created.")), "image/png");
     });
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+    if (window.isSecureContext && navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+        return "copied";
+      } catch {
+        // Fall through to PNG download when image clipboard access is blocked.
+      }
+    }
+    const pngUrl = URL.createObjectURL(pngBlob);
+    const link = document.createElement("a");
+    link.href = pngUrl;
+    link.download = fileName;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(pngUrl), 1000);
+    return "downloaded";
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -1913,45 +1930,53 @@ export function EmissionSurveyReportPrintPage() {
     });
   };
   const updateDraftSectionShare = (sectionCode: string, sharePercent: number) => {
-    setDraftSectionShares((current) => ({
-      ...current,
-      [sectionCode]: Math.max(sharePercent, 0)
-    }));
     setSectionShareMessage("");
-  };
-  const applyDraftSectionShares = () => {
+    setDraftSectionShares((current) => {
+      if (!(sectionCode in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[sectionCode];
+      return next;
+    });
     setDraftReport((current) => {
       if (!current) {
         return current;
       }
-      const targetSections = current.sectionSummaries.filter((section) => section.totalEmission > 0 || section.sharePercent > 0);
-      const shareTotal = targetSections.reduce((sum, section) => {
-        const share = draftSectionShares[section.sectionCode] ?? section.sharePercent;
-        return sum + Math.max(share || 0, 0);
-      }, 0);
-      if (Math.abs(shareTotal - 100) >= 0.01) {
-        const diff = 100 - shareTotal;
-        setSectionShareMessage(
-          en
-            ? `Current total is ${formatNumber(shareTotal, 2)}%. ${diff > 0 ? formatNumber(diff, 2) + "% short" : formatNumber(Math.abs(diff), 2) + "% over"}.`
-            : `현재 합계 ${formatNumber(shareTotal, 2)}%입니다. ${diff > 0 ? formatNumber(diff, 2) + "% 부족" : formatNumber(Math.abs(diff), 2) + "% 초과"}입니다.`
-        );
+      const total = current.summary.totalEmission || 0;
+      if (total <= 0) {
         return current;
       }
-      const total = current.summary.totalEmission || 0;
-      const nextRows = current.sectionSummaries.reduce((rows, section) => {
-        if (draftSectionShares[section.sectionCode] === undefined) {
-          return rows;
-        }
-        const nextSectionEmission = total * Math.max(draftSectionShares[section.sectionCode], 0) / 100;
-        return redistributeRowsBySectionEmission(rows, section.sectionCode, nextSectionEmission, current.normalization?.factor || 1);
-      }, current.rows);
-      const nextReport = syncReportFromRows({
+      const targetShare = Math.max(0, Math.min(sharePercent, 100)) / 100;
+      const targetEmission = total * targetShare;
+      const remainingEmission = Math.max(total - targetEmission, 0);
+      const otherSections = current.sectionSummaries.filter((section) => section.sectionCode !== sectionCode);
+      const otherTotal = otherSections.reduce((sum, section) => sum + Math.max(section.totalEmission || 0, 0), 0);
+      const equalOtherShare = otherSections.length > 0 ? 1 / otherSections.length : 0;
+      const nextSectionTotals = new Map(current.sectionSummaries.map((section) => [
+        section.sectionCode,
+        section.sectionCode === sectionCode
+          ? targetEmission
+          : remainingEmission * (otherTotal > 0 ? Math.max(section.totalEmission || 0, 0) / otherTotal : equalOtherShare)
+      ]));
+      const nextRows = current.sectionSummaries.reduce((rows, section) => redistributeRowsBySectionEmission(
+        rows,
+        section.sectionCode,
+        nextSectionTotals.get(section.sectionCode) || 0,
+        current.normalization?.factor || 1
+      ), current.rows);
+      const synchronized = syncReportFromRows({
         ...current,
         rows: nextRows
       });
-      setDraftSectionShares({});
-      setSectionShareMessage(en ? "Section ratios applied." : "섹션 비율을 적용했습니다.");
+      const nextReport = normalizeReportSectionShares({
+        ...synchronized,
+        sectionSummaries: synchronized.sectionSummaries.map((section) => {
+          const hasCalculatedRows = current.rows.some((row) => row.sectionCode === section.sectionCode && row.calculated && row.sectionCode !== "OUTPUT_PRODUCTS");
+          return hasCalculatedRows ? section : { ...section, totalEmission: nextSectionTotals.get(section.sectionCode) || 0 };
+        })
+      });
+      setOriginalTotalEmission((nextReport.summary.totalEmission || 0) / (nextReport.normalization?.factor || 1));
       return nextReport;
     });
   };
@@ -2059,8 +2084,10 @@ export function EmissionSurveyReportPrintPage() {
   const handleCopyChart = async (type: "bar" | "pie") => {
     try {
       const svg = type === "bar" ? buildSectionBarChartSvg(chartSections, en) : buildSectionPieChartSvg(chartSections, en);
-      await copySvgToClipboard(svg);
-      setChartCopyMessage(en ? "Chart copied as image." : "그래프 이미지를 복사했습니다.");
+      const result = await copySvgToClipboard(svg, type === "bar" ? "section-contribution-bars.png" : "section-contribution-pie.png");
+      setChartCopyMessage(result === "copied"
+        ? (en ? "Chart copied as image." : "그래프 이미지를 복사했습니다.")
+        : (en ? "Image clipboard is unavailable, so the chart was downloaded as PNG." : "이미지 복사를 지원하지 않아 PNG 파일로 다운로드했습니다."));
     } catch {
       setChartCopyMessage(en ? "Could not copy image in this browser." : "이 브라우저에서 이미지 복사를 사용할 수 없습니다.");
     }
@@ -2527,13 +2554,6 @@ export function EmissionSurveyReportPrintPage() {
                   type="button"
                 >
                   {en ? "Copy Image" : "이미지 복사"}
-                </button>
-                <button
-                  className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white"
-                  onClick={applyDraftSectionShares}
-                  type="button"
-                >
-                  {en ? "Apply Ratios" : "비율 적용"}
                 </button>
               </div>
             </div>
@@ -3852,7 +3872,11 @@ function EditableNumber({
           setFocused(false);
           onCommit(parseEditableNumber(draft));
         }}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => {
+          const nextDraft = event.target.value;
+          setDraft(nextDraft);
+          onCommit(parseEditableNumber(nextDraft));
+        }}
         onFocus={() => setFocused(true)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
