@@ -2151,7 +2151,66 @@ export function EmissionSurveyReportPrintPage() {
             min-height:30px!important;
           }
           .pdf-download-mode .pdf-table-page .print-input-text{
-            white-space:normal!important;
+            display:inline-block!important;
+            width:auto!important;
+            min-width:0!important;
+            height:auto!important;
+            margin:0!important;
+            padding:0!important;
+            background:transparent!important;
+            line-height:1.25!important;
+            vertical-align:middle!important;
+            white-space:nowrap!important;
+            transform:none!important;
+          }
+          .report-typography.pdf-download-mode,
+          .report-typography.pdf-download-mode *{
+            font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important;
+          }
+          .report-typography.pdf-download-mode .pdf-table-page th,
+          .report-typography.pdf-download-mode .pdf-table-page td{
+            vertical-align:middle!important;
+          }
+          .report-typography.pdf-download-mode .report-value-unit{
+            display:inline-flex!important;
+            align-items:center!important;
+            justify-content:center!important;
+            gap:4px!important;
+            min-height:20px!important;
+            line-height:1.25!important;
+            vertical-align:middle!important;
+            white-space:nowrap!important;
+          }
+          .report-typography.pdf-download-mode .report-chart-metric{
+            display:inline-flex!important;
+            align-items:baseline!important;
+            justify-content:flex-end!important;
+            gap:4px!important;
+            line-height:1.25!important;
+            white-space:nowrap!important;
+          }
+          .report-typography.pdf-download-mode .print-report-total-card{
+            display:flex!important;
+            min-height:112px!important;
+            flex-direction:column!important;
+            align-items:flex-end!important;
+            justify-content:center!important;
+            text-align:right!important;
+          }
+          .report-typography.pdf-download-mode .print-report-total-label,
+          .report-typography.pdf-download-mode .print-report-total-unit{
+            display:block!important;
+            width:100%!important;
+            margin:0!important;
+            line-height:1.25!important;
+            text-align:right!important;
+          }
+          .report-typography.pdf-download-mode .krds-type-report-total{
+            display:block!important;
+            width:100%!important;
+            margin:5pt 0 4pt!important;
+            line-height:1!important;
+            text-align:right!important;
           }
           .pdf-download-mode.pdf-design-draft .print-report-hero{
             background:#ffffff!important;
@@ -2346,13 +2405,13 @@ export function EmissionSurveyReportPrintPage() {
               </h1>
             </div>
             <div className="print-report-total-card rounded-3xl border border-white/15 bg-white/10 p-4 text-right shadow-2xl backdrop-blur">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100">{en ? "Total Footprint" : "총 탄소배출량"}</p>
+              <p className="print-report-total-label text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100">{en ? "Total Footprint" : "총 탄소배출량"}</p>
               <EditableNumber
                 className="krds-type-report-total mt-3 inline-block w-32 max-w-full bg-transparent text-right text-3xl font-black tracking-[-0.05em] text-white"
                 onCommit={updateTotalEmission}
                 value={totalEmission}
               />
-              <p className="mt-1 text-xs text-slate-300">kg CO2e</p>
+              <p className="print-report-total-unit mt-1 text-xs text-slate-300">kg CO2e</p>
             </div>
           </div>
         </header>
@@ -2462,7 +2521,7 @@ export function EmissionSurveyReportPrintPage() {
                 <div className="pdf-table-row print-break rounded-xl bg-white/70 px-3 py-2" key={section.sectionCode}>
                   <div className="grid grid-cols-[minmax(0,1fr)_max-content] items-center gap-3 text-sm font-black">
                     <span className="min-w-0 leading-5">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
-	                    <span className="inline-flex items-baseline justify-end gap-1 whitespace-nowrap font-mono text-right leading-5 text-slate-950">
+	                    <span className="report-chart-metric inline-flex items-baseline justify-end gap-1 whitespace-nowrap font-mono text-right leading-5 text-slate-950">
                       <EditableNumber
                         className="inline-block w-24 bg-transparent text-right font-mono font-black leading-5"
                         onCommit={(value) => updateSectionEmission(section.sectionCode, value)}
@@ -4035,7 +4094,7 @@ function PrintSectionRows({
         </td>
       </tr>
       {group.rows.map((row) => (
-        <tr className="pdf-table-row border-b border-slate-100 align-top" key={row.rowId}>
+        <tr className="pdf-table-row border-b border-slate-100 align-middle" key={row.rowId}>
           <td className="w-[40%] px-3 py-2">
             {editable ? (
               <EditableText
@@ -4050,7 +4109,7 @@ function PrintSectionRows({
             )}
           </td>
           <td className="px-3 py-2 text-center">
-            <div className="inline-flex max-w-full items-baseline justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-50 px-2 py-1 font-mono">
+            <div className="report-value-unit inline-flex max-w-full items-baseline justify-center gap-1 whitespace-nowrap rounded-lg bg-slate-50 px-2 py-1 font-mono">
                 {editable ? (
                   <EditableNumber
                     className="inline-block w-20 bg-transparent text-right font-mono"
@@ -4147,7 +4206,7 @@ function SectionContributionPieCard({
                 <span className="min-w-0 text-xs font-black leading-4 text-slate-800">{sectionLabel(section.sectionCode, section.sectionLabel, en)}</span>
               </div>
               <div className="mt-1.5 flex items-baseline justify-end gap-3 text-right">
-                <p className="inline-flex min-h-5 items-baseline justify-end whitespace-nowrap text-xs font-black leading-5 text-slate-950">
+                <p className="report-chart-metric inline-flex min-h-5 items-baseline justify-end whitespace-nowrap text-xs font-black leading-5 text-slate-950">
                   {onSectionShareChange ? (
                     <>
                       <EditableNumber
@@ -4160,7 +4219,7 @@ function SectionContributionPieCard({
                     </>
                   ) : formatPercent(section.sharePercent)}
                 </p>
-                <p className="inline-flex min-h-4 items-baseline justify-end gap-1 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
+                <p className="report-chart-metric inline-flex min-h-4 items-baseline justify-end gap-1 whitespace-nowrap text-[10px] font-bold leading-4 text-slate-500">
                   {onSectionEmissionChange ? (
                     <EditableNumber
                       className="inline-block w-20 bg-transparent text-right font-mono font-bold leading-4 text-slate-500"
