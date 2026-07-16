@@ -8,9 +8,17 @@ type Note = {
 
 const EMPTY: Note = { routeKey: "", routePath: "", pageId: "", pageTitle: "", designNote: "", functionNote: "", acceptanceNote: "", status: "DRAFT", version: 0 };
 
+class DesignNoteAuthenticationError extends Error {}
+
 async function readJson(response: Response) {
   const type=response.headers.get("content-type")||"";
-  if(!type.includes("application/json"))throw new Error(`서버 응답 형식이 올바르지 않습니다. (${response.status})`);
+  const finalPath=(()=>{try{return new URL(response.url).pathname;}catch{return "";}})();
+  if(response.redirected&&finalPath.includes("/login"))throw new DesignNoteAuthenticationError("관리자 로그인이 필요합니다.");
+  if(!type.includes("application/json")){
+    const raw=await response.text();
+    if(/^\s*<!doctype|^\s*<html/i.test(raw))throw new DesignNoteAuthenticationError("관리자 로그인 세션을 확인해 주세요.");
+    throw new Error(`서버 응답 형식이 올바르지 않습니다. (${response.status})`);
+  }
   return response.json();
 }
 
@@ -25,23 +33,26 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
   useEffect(()=>{
     let cancelled=false;
     setOpen(false);setMessage("");
-    fetch(`${endpoint}?routePath=${encodeURIComponent(routePath)}`,{credentials:"include"})
+    fetch(`${endpoint}?routePath=${encodeURIComponent(routePath)}`,{credentials:"include",headers:{Accept:"application/json"}})
       .then(async response=>{
         if(response.status===401||response.status===403){if(!cancelled)setAvailable(false);return null;}
         const body=await readJson(response);if(!response.ok)throw new Error(body.message||"화면 설계를 불러오지 못했습니다.");return body;
       })
       .then(body=>{if(!cancelled&&body){setAvailable(true);setNote({...EMPTY,...body,pageId:body.pageId||pageId,pageTitle:body.pageTitle||document.title});}})
-      .catch(error=>{if(!cancelled){setAvailable(true);setMessage(error instanceof Error?error.message:String(error));}});
+      .catch(error=>{if(!cancelled){
+        if(error instanceof DesignNoteAuthenticationError){setAvailable(false);return;}
+        setAvailable(true);setMessage(error instanceof Error?error.message:String(error));
+      }});
     return()=>{cancelled=true;};
   },[pageId,routePath]);
 
   async function save(){
     setBusy(true);setMessage("");
     try{
-      const response=await fetch(endpoint,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({...note,pageId,routePath,pageTitle:note.pageTitle||document.title})});
+      const response=await fetch(endpoint,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({...note,pageId,routePath,pageTitle:note.pageTitle||document.title})});
       const body=await readJson(response);if(!response.ok)throw new Error(body.message||"화면 설계를 저장하지 못했습니다.");
       setNote({...EMPTY,...body});setMessage(`화면 설계 v${body.version}을 개발 기준으로 저장했습니다.`);
-    }catch(error){setMessage(error instanceof Error?error.message:String(error));}
+    }catch(error){setMessage(error instanceof DesignNoteAuthenticationError?"관리자 로그인 세션이 만료되었습니다. 다시 로그인해 주세요.":error instanceof Error?error.message:String(error));}
     finally{setBusy(false);}
   }
 
