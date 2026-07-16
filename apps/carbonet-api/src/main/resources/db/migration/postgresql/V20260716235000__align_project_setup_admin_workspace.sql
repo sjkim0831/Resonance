@@ -1,5 +1,5 @@
 UPDATE framework_process_step
-SET admin_path='/admin/emission/project-operations',updated_at=current_timestamp
+SET admin_path='/admin/emission/project-operations'
 WHERE process_code='EMISSION_PROJECT' AND step_code='EMISSION_PROJECT_SETUP';
 
 UPDATE framework_professional_screen_contract
