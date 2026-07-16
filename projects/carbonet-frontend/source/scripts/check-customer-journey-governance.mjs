@@ -31,6 +31,12 @@ const checks = [
     ],
     message: "Generated pages require valid build, authority, and traceability closeouts.",
   },
+  {
+    file: "src/features/actor-process-governance/ActorProcessGovernancePage.tsx",
+    forbidden: [],
+    required: [/actorProcessMenus/, /actorProcessMenuSummary/, /액터·프로세스 메뉴/],
+    message: "Every navigable menu must expose its process step and responsible actor binding.",
+  },
 ];
 
 const failures = [];
