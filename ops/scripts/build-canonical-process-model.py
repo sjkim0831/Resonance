@@ -8,8 +8,8 @@ ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'docs/architecture/executable-webapp/generated'
 
 DESIGN_TO_IMPLEMENTED={
- 'IDENTITY_SIGNUP':['A10201','A10202'], 'IDENTITY_ACCESS':['A10201'], 'MEMBER_RECOVERY':['A10201','H10801'],
- 'MEMBER_LIFECYCLE':['A10201','H10801'], 'COMPANY_ONBOARDING':['A10202'], 'ROLE_ASSIGNMENT':['A10203'],
+ 'IDENTITY_SIGNUP':['MEMBER_SIGNUP_PUBLIC','A10201'], 'IDENTITY_ACCESS':['A10201'], 'MEMBER_RECOVERY':['A10201','H10801'],
+ 'MEMBER_LIFECYCLE':['A10201','H10801'], 'COMPANY_ONBOARDING':['COMPANY_REGISTRATION_PUBLIC','COMPANY_REAPPLICATION_PUBLIC','A10202'], 'ROLE_ASSIGNMENT':['A10203'],
  'EMISSION_PROJECT':['H10201','A10301'], 'ACTIVITY_REQUEST':['H10202','A10302'], 'ACTIVITY_DATA':['H10202','A10302'],
  'EVIDENCE_MANAGEMENT':['H10202','A10302'], 'FACTOR_MAPPING':['H10203','A10602'], 'EMISSION_CALCULATION':['H10203','A10303'],
  'EMISSION_VALIDATION':['H10203','A10303','A10701'], 'EMISSION_APPROVAL':['H10204','A10303'], 'STATEMENT_REPORT':['H10204','A10304'],
@@ -27,6 +27,15 @@ DESIGN_TO_IMPLEMENTED={
 ACTOR_BY_ROOT={'H101':'COMPANY_MANAGER','H102':'COMPANY_MANAGER','H103':'LCA_PRACTITIONER','H104':'REDUCTION_MANAGER','H105':'VERIFIER','H106':'COMPANY_MANAGER','H107':'COMPANY_MANAGER','H108':'COMPANY_MANAGER','A101':'PLATFORM_OPERATOR','A102':'COMPANY_MANAGER','A103':'COMPANY_MANAGER','A104':'LCA_PRACTITIONER','A105':'REDUCTION_MANAGER','A106':'PLATFORM_OPERATOR','A107':'VERIFIER','A108':'PLATFORM_OPERATOR','A109':'PLATFORM_OPERATOR','A110':'SYSTEM_INTEGRATOR','A111':'PLATFORM_OPERATOR','A112':'PLATFORM_OPERATOR'}
 ACTOR_BY_GROUP={'H10101':'MEMBER','H10201':'COMPANY_MANAGER','H10202':'SITE_DATA_OWNER','H10203':'CALCULATOR','H10204':'APPROVER','H10301':'LCA_PRACTITIONER','H10302':'LCA_PRACTITIONER','H10303':'LCA_PRACTITIONER','H10304':'LCA_PRACTITIONER','H10401':'REDUCTION_MANAGER','H10402':'REDUCTION_MANAGER','H10403':'REDUCTION_MANAGER','H10404':'REDUCTION_MANAGER','H10501':'VERIFIER','H10601':'TRADER','H10602':'TRADER','H10603':'AUDITOR','H10604':'CERTIFICATE_ISSUER','H10701':'CONTENT_MANAGER','H10702':'CONTENT_MANAGER','H10703':'SUPPORT_AGENT','H10801':'MEMBER','A10203':'PLATFORM_OPERATOR','A10302':'SITE_DATA_OWNER','A10303':'VERIFIER','A10304':'APPROVER','A10601':'DATA_STEWARD','A10602':'DATA_STEWARD','A10603':'DATA_STEWARD','A10604':'DATA_STEWARD','A10701':'VERIFIER','A10801':'CONTENT_MANAGER','A10802':'CONTENT_MANAGER','A10803':'SUPPORT_AGENT','A10901':'TRADER','A10902':'SETTLEMENT_OFFICER','A10903':'CERTIFICATE_ISSUER','A11001':'SYSTEM_INTEGRATOR','A11103':'SECURITY_ADMIN'}
 EXTRA_PARTICIPANTS={'COMPANY_ONBOARDING':['COMPANY_REPRESENTATIVE','ORGANIZATION_MANAGER','SITE_MANAGER'],'EMISSION_VALIDATION':['EXTERNAL_VERIFIER','VERIFICATION_MANAGER'],'STATEMENT_REPORT':['REGULATOR'],'CERTIFICATE_ISSUANCE':['AUDITOR'],'PRIVACY_RIGHTS':['PRIVACY_OFFICER'],'SECURITY_INCIDENT':['PRIVACY_OFFICER','AUDITOR']}
+TEST_VARIANTS={'HAPPY_PATH':['STANDARD'],'VALIDATION':['EMPTY_REQUIRED','MALFORMED','BELOW_MIN','ABOVE_MAX','UNIT_MISMATCH'],'AUTHORITY':['UNASSIGNED_ACTOR','EXPIRED_ASSIGNMENT','SEGREGATION_CONFLICT','DELEGATION_EXPIRED'],'ISOLATION':['OTHER_TENANT','OTHER_COMPANY','OTHER_SITE','OTHER_PROJECT'],'STATE':['INVALID_TRANSITION','STALE_VERSION','LOCKED_RECORD','ALREADY_COMPLETED'],'IDEMPOTENCY':['DUPLICATE_COMMAND','RETRY_AFTER_TIMEOUT'],'CONCURRENCY':['OPTIMISTIC_LOCK','PARALLEL_APPROVAL'],'DEADLINE':['DUE_SOON','OVERDUE','ESCALATED'],'INTEGRATION':['TIMEOUT','INVALID_RESPONSE','PARTIAL_SUCCESS','RETRY_EXHAUSTED'],'PRIVACY':['MASKING','PURPOSE_LIMIT','RETENTION_EXPIRED','CONSENT_WITHDRAWN'],'AUDIT':['EVIDENCE_REQUIRED','HASH_MISMATCH','MISSING_ACCESS_LOG'],'RECOVERY':['ROLLBACK','REOPEN','RESUME_FROM_CHECKPOINT'],'ACCESSIBILITY':['KEYBOARD','SCREEN_READER','MOBILE_REFLOW']}
+PUBLIC_PROCESS_DEFINITIONS=[
+ {'processCode':'MEMBER_SIGNUP_PUBLIC','processName':'공개 일반 회원가입','domainCode':'PUBLIC_JOIN 회원가입','ownerActorCode':'APPLICANT','participantActorCodes':['COMPANY_MANAGER','PRIVACY_OFFICER'],'modelType':'IMPLEMENTED_PARTIAL_CANONICAL','source':'MemberJoinController + homeExperienceFamily','steps':[
+  ('회원유형 선택','/join/step1','/join/api/step1','VERIFIED'),('필수 약관·개인정보·GWP 동의','/join/step2','/join/api/step2','VERIFIED'),('실명 본인·법인 인증','/join/step3','/join/api/step3','PARTIAL'),('회원·소속·증빙 정보 입력','/join/step4','/join/api/step4/submit','VERIFIED'),('가입 신청 저장·보안 매핑','/join/step4','/join/api/step4/submit','VERIFIED'),('승인·활성화 결과 확인','/join/step5','UNRESOLVED','NOT_IMPLEMENTED')]},
+ {'processCode':'COMPANY_REGISTRATION_PUBLIC','processName':'공개 회원사 등록·승인','domainCode':'PUBLIC_JOIN 회원사','ownerActorCode':'COMPANY_REPRESENTATIVE','participantActorCodes':['COMPANY_MANAGER','APPROVER'],'modelType':'IMPLEMENTED_PARTIAL_CANONICAL','source':'MemberJoinController companyRegister','steps':[
+  ('회원사 중복 검색·유형 확인','/join/companyRegister','/join/searchCompany','VERIFIED'),('법인·대표·담당자 정보 입력','/join/companyRegister','/join/api/company-register','VERIFIED'),('사업자 증빙 업로드','/join/companyRegister','/join/api/company-register','VERIFIED'),('가입 신청 저장','/join/companyRegister','/join/api/company-register','VERIFIED'),('가입 상태 조회','/join/companyJoinStatusSearch','/join/api/company-status/detail','VERIFIED'),('관리자 검토·승인·반려','/admin/member/company-approve','UNRESOLVED','PARTIAL'),('승인 결과·활성화 통지','/join/companyJoinStatusDetail','/join/api/company-status/detail','PARTIAL')]},
+ {'processCode':'COMPANY_REAPPLICATION_PUBLIC','processName':'회원사 반려·보완·재신청','domainCode':'PUBLIC_JOIN 회원사','ownerActorCode':'COMPANY_REPRESENTATIVE','participantActorCodes':['COMPANY_MANAGER','APPROVER'],'modelType':'IMPLEMENTED_CANONICAL','source':'MemberJoinController companyReapply','steps':[
+  ('신청 건·대표자 식별','/join/companyJoinStatusSearch','/join/api/company-status/detail','VERIFIED'),('반려 상태·사유 확인','/join/companyJoinStatusDetail','/join/api/company-status/detail','VERIFIED'),('기존 정보·증빙 불러오기','/join/companyReapply','/join/api/company-reapply/page','VERIFIED'),('정보·증빙 보완','/join/companyReapply','/join/api/company-reapply','VERIFIED'),('재신청 저장·상태 전환','/join/companyReapply','/join/api/company-reapply','VERIFIED'),('재심사 결과 확인','/join/companyJoinStatusDetail','/join/api/company-status/detail','VERIFIED')]}
+]
 MERGE_INTO={'A10103':'A10101','A10104':'A10101','A10105':'A10101','A10106':'A10101','A10107':'A10101','A10108':'A10101','A10109':'A10101','A10604':'A10603','A10704':'A10701','A10804':'A10803'}
 
 def normalize_steps(process):
@@ -64,6 +73,12 @@ def main():
    steps.append({'stepCode':cap['menuCode'],'stepOrder':i,'stepName':cap['name'],'actorCode':actor,'fromState':'READY' if i==1 else f'S{i-1:02d}_DONE','toState':f'S{i:02d}_DONE','commandCode':f"OPEN_{cap['menuCode']}",'screenCode':bp.get('page_id') or route or 'UNRESOLVED','apiCode':binding.get('api_contract') or 'UNRESOLVED','implementationStatus':status,'implementationEvidence':{'menuCode':cap.get('sourceMenuCode') or cap['menuCode'],'routeMatch':cap.get('routeTrace',{}).get('routeMatch','NONE'),'bindingCount':len(cap.get('bindings') or []),'blueprintCount':len(cap.get('screenBlueprints') or [])},'completionRules':['routeResolved','businessActionVerified','auditEvidenceProduced'],'failureTransitions':['ROUTE_MISSING','AUTHORITY_DENIED','CONTRACT_MISSING'],'rollbackCommand':f"RETURN_{cap['menuCode']}"})
   processes.append({'processCode':group['menuCode'],'processName':group['name'],'domainCode':f"{group['parentCode']} {roots.get(group['parentCode'],{}).get('name','')}",'ownerActorCode':ACTOR_BY_GROUP.get(group['menuCode']) or ACTOR_BY_ROOT.get(group['parentCode'],'PLATFORM_OPERATOR'),'participantActorCodes':[],'modelType':'IMPLEMENTED_CANONICAL','source':'CURRENT_SYSTEM_DB_MENU','steps':steps})
   all_steps.extend(steps)
+ for definition in PUBLIC_PROCESS_DEFINITIONS:
+  steps=[]
+  for i,(name,screen,api,status) in enumerate(definition['steps'],1):
+   code=f"{definition['processCode']}_{i:02d}"
+   steps.append({'stepCode':code,'stepOrder':i,'stepName':name,'actorCode':definition['ownerActorCode'],'fromState':'READY' if i==1 else f'S{i-1:02d}_DONE','toState':f'S{i:02d}_DONE','commandCode':f'EXECUTE_{code}','screenCode':screen,'apiCode':api,'implementationStatus':status,'implementationEvidence':{'source':definition['source'],'screenPath':screen,'apiPath':api},'completionRules':['requiredInputValid','stateTransitionCommitted','evidencePersisted'],'failureTransitions':['VALIDATION_FAILED','SESSION_EXPIRED','DUPLICATE','AUTHORITY_DENIED'],'rollbackCommand':f'ROLLBACK_{code}'})
+  processes.append({**{k:v for k,v in definition.items() if k!='steps'},'steps':steps});all_steps.extend(steps)
  process_map={p['processCode']:p for p in processes}
  for source,target in MERGE_INTO.items():
   if source in process_map and target in process_map:
@@ -81,7 +96,8 @@ def main():
     suffix=f'_{chunk_index}' if len(chunks)>1 else ''
     item={'processCode':f'A112_{category}{suffix}','processName':f"기존 화면 보관 · {category.replace('_',' ')}{suffix}",'domainCode':archive['domainCode'],'ownerActorCode':archive['ownerActorCode'],'modelType':'IMPLEMENTED_CANONICAL_SPLIT','source':'CURRENT_SYSTEM_DB_MENU_COMPLEXITY_SPLIT','steps':chunk};normalize_steps(item);processes.append(item)
  design_codes={p['processCode'] for p in designed};mapped=set(DESIGN_TO_IMPLEMENTED);missing_mapping=sorted(design_codes-mapped)
- unresolved_targets=sorted({target for vals in DESIGN_TO_IMPLEMENTED.values() for target in vals if target not in groups})
+ special_codes={p['processCode'] for p in processes if p.get('modelType','').startswith('IMPLEMENTED_PARTIAL') or p.get('domainCode','').startswith('PUBLIC_JOIN')}
+ unresolved_targets=sorted({target for vals in DESIGN_TO_IMPLEMENTED.values() for target in vals if target not in groups and target not in special_codes})
  additions=[]
  for proc in designed:
   if proc['processCode'] in DESIGN_TO_IMPLEMENTED:continue
@@ -97,6 +113,12 @@ def main():
  canonical_tests=[]
  for test in implemented['scenarioCandidates']:
   copy=dict(test);copy['processCode']=capability_to_process.get(test.get('capabilityCode'),test['processCode']);canonical_tests.append(copy)
+ for process in processes:
+  if not process.get('domainCode','').startswith('PUBLIC_JOIN'):continue
+  for step in process['steps']:
+   for family,variants in TEST_VARIANTS.items():
+    for variant in variants:
+     canonical_tests.append({'caseCode':f"TC_{step['stepCode']}_{family}_{variant}",'processCode':process['processCode'],'stepCode':step['stepCode'],'caseType':family,'variant':variant,'severity':'CRITICAL' if family in {'AUTHORITY','ISOLATION','PRIVACY','AUDIT'} else 'MAJOR','given':['publicJoinSession',f"state={step['fromState']}",f"variant={variant}"],'when':{'commandCode':step['commandCode'],'screenCode':step['screenCode'],'apiCode':step['apiCode']},'then':['expectedStateOrControlledFailure','noPartialWrite','auditEvidenceProduced'],'status':'IMPLEMENTED_TEST_REQUIRED'})
  canonical_tests += [t for t in tests if t['processCode'] in {p['processCode'] for p in additions}]
  duplicate_codes=sorted({p['processCode'] for p in processes if sum(x['processCode']==p['processCode'] for x in processes)>1})
  empty=sorted(p['processCode'] for p in processes if not p['steps'])
