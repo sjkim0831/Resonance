@@ -10,7 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping({"/api/platform/screen-development-note","/en/api/platform/screen-development-note"})
+@RequestMapping({"/admin/api/system/screen-development-note","/en/admin/api/system/screen-development-note"})
 public class ScreenDevelopmentNoteApiController {
     private final ScreenDevelopmentNoteService service;
 

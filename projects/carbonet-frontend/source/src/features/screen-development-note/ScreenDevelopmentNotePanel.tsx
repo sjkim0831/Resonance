@@ -20,7 +20,7 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
   const [note,setNote]=useState<Note>(EMPTY);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
-  const endpoint="/api/platform/screen-development-note";
+  const endpoint="/admin/api/system/screen-development-note";
 
   useEffect(()=>{
     let cancelled=false;
