@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class ActorProcessGovernanceService {
     private final JdbcTemplate jdbc;
+    private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
 
     public Map<String,Object> dashboard() {
         Map<String,Object> out=new LinkedHashMap<>();
@@ -164,6 +165,10 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> approveDevelopmentPlan(String process,String step,String actor){
+        List<String> missingNotes=jdbc.queryForList("select target_path from framework_development_job where process_code=? and step_code=? and job_status='PLANNED' and job_type in ('FRONTEND_USER','FRONTEND_ADMIN')",String.class,process,step).stream()
+            .filter(path->screenDevelopmentNoteService.developmentBasis(path).contains("미등록"))
+            .toList();
+        if(!missingNotes.isEmpty())throw new IllegalStateException("화면 설계 메모를 먼저 등록해야 개발계획을 승인할 수 있습니다: "+String.join(", ",missingNotes));
         int count=jdbc.update("update framework_development_job set approval_status='APPROVED',updated_at=current_timestamp where process_code=? and step_code=? and job_status='PLANNED'",process,step);
         jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
         return Map.of("success",true,"approvedJobs",count,"approvedBy",actor);
@@ -321,7 +326,9 @@ public class ActorProcessGovernanceService {
 
     private int queueJob(String process,String step,String type,String name,String path,String requirement,String actor){
         String safePath=(path==null||"null".equals(path)||path.isBlank())?type.toLowerCase()+"/"+process.toLowerCase()+"/"+step.toLowerCase():path;
-        int changed=jdbc.update("insert into framework_development_job(process_code,step_code,job_type,job_name,target_path,specification_json,created_by) values(?,?,?,?,?,?,?) on conflict(process_code,step_code,job_type,target_path) do update set job_name=excluded.job_name,specification_json=excluded.specification_json,updated_at=current_timestamp",process,step,type,name,safePath,"{\"requirement\":\""+jsonEscape(requirement)+"\"}",actor);
+        String designBasis=type.startsWith("FRONTEND")?screenDevelopmentNoteService.developmentBasis(safePath):"화면 작업이 아닌 개발 작업";
+        String specification="{\"requirement\":\""+jsonEscape(requirement)+"\",\"screenDevelopmentBasis\":\""+jsonEscape(designBasis)+"\",\"noteRequiredBeforeImplementation\":"+type.startsWith("FRONTEND")+"}";
+        int changed=jdbc.update("insert into framework_development_job(process_code,step_code,job_type,job_name,target_path,specification_json,created_by) values(?,?,?,?,?,?,?) on conflict(process_code,step_code,job_type,target_path) do update set job_name=excluded.job_name,specification_json=excluded.specification_json,updated_at=current_timestamp",process,step,type,name,safePath,specification,actor);
         String artifactType=switch(type){case "DATABASE"->"DATA";case "FRONTEND_USER","FRONTEND_ADMIN"->"PAGE";case "INTEGRATION"->"OPERATION";default->type;};
         jdbc.update("insert into framework_process_artifact(process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,notes) values(?,?,?,?,?,?,?,true,'PLANNED',(select actor_code from framework_process_step where process_code=? and step_code=?),?,?) on conflict(process_code,artifact_code) do update set artifact_name=excluded.artifact_name,target_path=excluded.target_path,acceptance_criteria=excluded.acceptance_criteria,updated_at=current_timestamp",process,step,(process+"_"+step+"_"+type).replaceAll("[^A-Za-z0-9_]","_"),artifactType,name,safePath,"AUTO:"+type,process,step,requirement+" 구현 및 자동 테스트 통과","프로세스 단계에서 자동 도출");
         return changed>0?1:0;

@@ -22,6 +22,7 @@ import {
 import { useProjectTheme } from "./app/hooks/useProjectTheme";
 import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entry/GlobalUserGnbShell";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
+import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
 
@@ -450,6 +451,8 @@ export default function App() {
       >
         도움말
       </button>
+
+      <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} />
 
       {helpOpen ? (
         <Suspense fallback={null}>
