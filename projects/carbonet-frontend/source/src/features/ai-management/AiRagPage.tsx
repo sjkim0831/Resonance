@@ -281,8 +281,8 @@ export function AiRagPage() {
             <div className="space-y-6 p-5 lg:p-7">
               <ol className="grid gap-3 md:grid-cols-4" aria-label={en ? "Generation pipeline" : "코드 생성 파이프라인"}>
                 {(en
-                  ? ["1. Retrieve KRDS tokens", "2. Inject system prompt", "3. Call fine-tuned LLM", "4. WCAG 2.1 AA gate"]
-                  : ["1. KRDS 토큰 검색", "2. 시스템 프롬프트 주입", "3. 파인튜닝 LLM 호출", "4. WCAG 2.1 AA 검증"]
+                  ? ["1. Retrieve KRDS tokens", "2. Inject system prompt", "3. Call governed LLM API", "4. WCAG 2.1 AA gate"]
+                  : ["1. KRDS 토큰 검색", "2. 시스템 프롬프트 주입", "3. 관리형 LLM API 호출", "4. WCAG 2.1 AA 검증"]
                 ).map((label) => <li className="krds-component rounded-xl border border-blue-200 bg-blue-50 p-4 font-bold text-blue-950" key={label}>{label}</li>)}
               </ol>
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">

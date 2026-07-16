@@ -28,11 +28,11 @@ public class KrdsCodeGenerationService {
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
 
-    @Value("${CARBONET_KRDS_AI_BASE_URL:http://172.16.1.232:24453/v1}")
+    @Value("${CARBONET_KRDS_AI_BASE_URL:http://172.16.1.232:24451/v1}")
     private String baseUrl;
     @Value("${CARBONET_KRDS_AI_API_KEY:qwer1234}")
     private String apiKey;
-    @Value("${CARBONET_KRDS_AI_MODEL:qwen3.6-40b-hermes-framework-qlora}")
+    @Value("${CARBONET_KRDS_AI_MODEL:gemma4-e4b-gpu-shadow}")
     private String model;
 
     public Map<String, Object> generate(String userPrompt, String target, boolean en) {
@@ -62,7 +62,7 @@ public class KrdsCodeGenerationService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("generationId", generationId);
         result.put("model", model);
-        result.put("pipeline", List.of("KRDS_RAG", "SYSTEM_PROMPT", "FINE_TUNED_LLM", "WCAG_2_1_AA_GATE"));
+        result.put("pipeline", List.of("KRDS_RAG", "SYSTEM_PROMPT", "LLM_API", "WCAG_2_1_AA_GATE"));
         result.put("retrievedSources", sources);
         result.put("wcagStatus", passed ? "PASS" : "REJECTED");
         result.put("violations", violations);

@@ -11,7 +11,7 @@ fi
 API_KEY="${MODEL_API_KEY:-qwer1234}"
 WARMUP_SECONDS="${WARMUP_SECONDS:-2}"
 MODEL_RUNTIME_FILE="${RESONANCE_MODEL_RUNTIME_REGISTRY:-/opt/Resonance/var/ai-model-runtime/model-runtime-registry.json}"
-PRIMARY_PROFILE="${RESONANCE_PRIMARY_AI_PROFILE:-krds-qwen40}"
+PRIMARY_PROFILE="${RESONANCE_PRIMARY_AI_PROFILE:-gemma4}"
 if [ "$(id -u)" -eq 0 ]; then
   SYSTEMCTL=(systemctl)
 else
