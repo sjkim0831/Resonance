@@ -38,6 +38,8 @@ export function EmissionProjectCreatePage() {
     [options, setOptions] = useState<Options>({ sites: [], owners: [], accounts: [], currentUser: "" }),
     [saving, setSaving] = useState(false),
     [message, setMessage] = useState(""),
+    [optionsLoading, setOptionsLoading] = useState(true),
+    [optionsError, setOptionsError] = useState(""),
     [nameState, setNameState] = useState<"" | "ok" | "duplicate">("");
   const api = (path: string) =>
     buildLocalizedPath(
@@ -46,9 +48,26 @@ export function EmissionProjectCreatePage() {
     );
   useEffect(() => {
     fetch(api("/options"), { credentials: "include" })
-      .then((r) => r.json())
-      .then((value:Options)=>{setOptions(value);setForm(current=>({...current,owner:current.owner||value.currentUser}))})
-      .catch(() => setOptions({ sites: [], owners: [], accounts: [], currentUser: "" }));
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((value:Partial<Options>)=>{
+        const normalized:Options={
+          sites:Array.isArray(value.sites)?value.sites:[],
+          owners:Array.isArray(value.owners)?value.owners:[],
+          accounts:Array.isArray(value.accounts)?value.accounts:[],
+          currentUser:typeof value.currentUser==="string"?value.currentUser:"",
+        };
+        setOptions(normalized);
+        setForm(current=>({...current,owner:current.owner||normalized.currentUser}));
+        setOptionsError("");
+      })
+      .catch(() => {
+        setOptions({ sites: [], owners: [], accounts: [], currentUser: "" });
+        setOptionsError(en ? "Reference data could not be loaded. You can still enter values directly." : "기준정보를 불러오지 못했습니다. 필요한 값은 직접 입력할 수 있습니다.");
+      })
+      .finally(()=>setOptionsLoading(false));
   }, []);
 
   async function checkName() {
@@ -162,7 +181,9 @@ export function EmissionProjectCreatePage() {
               ? "Set the project scope, owner, and working period."
               : "업무를 시작하는 데 필요한 범위, 담당자, 일정을 설정합니다."}
           </p>
-          <form className="mt-7 space-y-5" onSubmit={submit}>
+          {optionsLoading&&<p className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900" role="status">{en?"Loading project reference data...":"프로젝트 기준정보를 불러오는 중입니다."}</p>}
+          {optionsError&&<p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900" role="alert">{optionsError}</p>}
+          <form className="mt-7 space-y-5" data-testid="emission-project-create-form" onSubmit={submit} noValidate>
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-black text-[#052b57]">
                 1. {en ? "Basic information" : "기본정보"}
@@ -173,6 +194,9 @@ export function EmissionProjectCreatePage() {
                   <span className="ml-1 text-red-600">*</span>
                   <input
                     className={input}
+                    aria-describedby="project-name-status"
+                    aria-invalid={nameState === "duplicate"}
+                    required
                     value={form.name}
                     onChange={(e) => {
                       setForm({ ...form, name: e.target.value });
@@ -182,6 +206,7 @@ export function EmissionProjectCreatePage() {
                   />
                   {nameState && (
                     <span
+                      id="project-name-status"
                       className={`mt-1 block text-xs ${nameState === "ok" ? "text-blue-700" : "text-red-700"}`}
                     >
                       {nameState === "ok"
@@ -199,6 +224,7 @@ export function EmissionProjectCreatePage() {
                   <span className="ml-1 text-red-600">*</span>
                   <input
                     className={input}
+                    required
                     list="project-sites"
                     value={form.site}
                     onChange={(e) => setForm({ ...form, site: e.target.value })}
@@ -240,6 +266,7 @@ export function EmissionProjectCreatePage() {
                         className="flex min-h-12 min-w-32 items-center gap-2 rounded-lg border border-slate-300 px-4 font-bold"
                       >
                         <input
+                          aria-label={v}
                           checked={form.scopes.includes(v)}
                           onChange={() => scope(v)}
                           type="checkbox"
@@ -253,6 +280,7 @@ export function EmissionProjectCreatePage() {
                   {en ? "Start date" : "산정 시작일"}
                   <input
                     className={input}
+                    required
                     type="date"
                     value={form.periodStart}
                     onChange={(e) =>
@@ -264,6 +292,7 @@ export function EmissionProjectCreatePage() {
                   {en ? "End date" : "산정 종료일"}
                   <input
                     className={input}
+                    required
                     type="date"
                     value={form.periodEnd}
                     onChange={(e) =>
@@ -283,6 +312,7 @@ export function EmissionProjectCreatePage() {
                   <span className="ml-1 text-red-600">*</span>
                   <input
                     className={input}
+                    required
                     list="project-owners"
                     value={form.owner}
                     onChange={(e) =>
@@ -300,6 +330,7 @@ export function EmissionProjectCreatePage() {
                   <span className="ml-1 text-red-600">*</span>
                   <input
                     className={input}
+                    required
                     type="date"
                     value={form.dueDate}
                     onChange={(e) =>
@@ -318,13 +349,13 @@ export function EmissionProjectCreatePage() {
                   ["calculator", en ? "Emission calculator" : "배출량 산정 담당자", en ? "Maps factors and runs calculations" : "배출계수 매핑·배출량 산정"],
                   ["verifier", en ? "Verifier" : "검증 담당자", en ? "Verifies results and requests corrections" : "결과 검증·보완 요청"],
                   ["approver", en ? "Approver" : "승인 담당자", en ? "Approves the verified calculation" : "검증 완료 산정 결과 승인"],
-                ] as const).map(([key,label,help])=><label className="text-sm font-bold" key={key}>{label}<span className="ml-1 text-red-600">*</span><input className={input} list="project-actor-accounts" value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/><small className="mt-1 block font-normal text-slate-500">{help}</small></label>)}
+                ] as const).map(([key,label,help])=><label className="text-sm font-bold" key={key}>{label}<span className="ml-1 text-red-600">*</span><input className={input} list="project-actor-accounts" required value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/><small className="mt-1 block font-normal text-slate-500">{help}</small></label>)}
                 <datalist id="project-actor-accounts">{options.accounts.map(account=><option key={account.id} value={account.id}>{account.actors}</option>)}{options.owners.map(value=><option key={value} value={value}/>)}</datalist>
               </div>
               {form.calculator&&form.verifier&&form.calculator===form.verifier?<p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">{en ? "The calculator and verifier are the same account. Separate them when segregation of duties is required." : "산정자와 검증자가 동일 계정입니다. 직무 분리가 필요한 프로젝트에서는 서로 다른 계정을 배정하세요."}</p>:null}
             </section>
             {message && (
-              <p className="rounded-lg bg-red-50 p-4 text-sm font-bold text-red-700">
+              <p aria-live="assertive" className="rounded-lg bg-red-50 p-4 text-sm font-bold text-red-700" role="alert">
                 {message}
               </p>
             )}
