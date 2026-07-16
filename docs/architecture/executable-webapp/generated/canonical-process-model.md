@@ -3,11 +3,11 @@
 기개발 중메뉴 프로세스를 기준으로 유지하고 신규 전문 설계는 기존 프로세스에 추적 연결합니다. 대응 프로세스가 없는 업무만 같은 레벨로 신규 추가합니다.
 
 ## 검증
-- canonicalProcesses: 64
+- canonicalProcesses: 66
 - implementedProcesses: 60
-- newRequiredProcesses: 5
-- canonicalSteps: 436
-- canonicalScenarios: 18,695
+- newRequiredProcesses: 7
+- canonicalSteps: 454
+- canonicalScenarios: 19,073
 - designProcessesReusedThroughExisting: 38
 - designProcessesAddedAsNew: 5
 - unmappedDesignProcesses: 0
@@ -16,6 +16,7 @@
 - emptyProcesses: 0
 - processesBelowComplexityFloor: 0
 - processesAboveComplexityCeiling: 0
+- preservedImplementedCapabilities: 390
 - canonicalActors: 32
 - usedActors: 32
 - unusedActors: 0
