@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { ScreenHtmlMockupManager, type ScreenHtmlMockup } from "./ScreenHtmlMockupManager";
 
 type Note = {
   routeKey: string; routePath: string; pageId: string; pageTitle: string;
   designNote: string; functionNote: string; acceptanceNote: string;
   status: string; version: number; updatedBy?: string; updatedAt?: string;
+  mockups?: ScreenHtmlMockup[];
 };
 
 const EMPTY: Note = { routeKey: "", routePath: "", pageId: "", pageTitle: "", designNote: "", functionNote: "", acceptanceNote: "", status: "DRAFT", version: 0 };
@@ -68,6 +70,7 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">필요 기능·업무 규칙</span><textarea className="gov-input mt-1 min-h-28 py-3" placeholder="액터의 행동, 입력·조회·저장·승인, API·DB 연계와 예외 처리를 기록합니다." value={note.functionNote} onChange={event=>setNote(current=>({...current,functionNote:event.target.value}))}/></label>
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">완료·테스트 기준</span><textarea className="gov-input mt-1 min-h-24 py-3" placeholder="정상·예외·권한·격리·복구 테스트의 기대값을 기록합니다." value={note.acceptanceNote} onChange={event=>setNote(current=>({...current,acceptanceNote:event.target.value}))}/></label>
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">설계 상태</span><select className="gov-select mt-1" value={note.status} onChange={event=>setNote(current=>({...current,status:event.target.value}))}><option value="DRAFT">초안</option><option value="READY">개발 준비</option><option value="IN_DEVELOPMENT">개발 중</option><option value="VERIFIED">검증 완료</option></select></label>
+        <div className="mt-5"><ScreenHtmlMockupManager routePath={routePath} pageId={pageId} mockups={note.mockups||[]} onChanged={body=>setNote(current=>({...current,...body as Partial<Note>}))} compact/></div>
         {note.updatedAt?<p className="mt-3 text-xs text-slate-500">최근 저장: {note.updatedAt} · {note.updatedBy||"-"}</p>:null}
         {message?<p className={`mt-3 rounded-lg p-3 text-sm font-bold ${message.includes("저장했습니다")?"bg-emerald-50 text-emerald-800":"bg-rose-50 text-rose-800"}`} role="status">{message}</p>:null}
       </div>

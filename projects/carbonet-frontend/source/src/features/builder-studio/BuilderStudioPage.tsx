@@ -8,6 +8,7 @@ import { getTraceContext } from '../../platform/telemetry/traceContext';
 import { findRouteOwnershipTraceByPath, listRouteOwnershipTraces, type RouteOwnershipTrace } from '../../app/routes/routeCatalog';
 import { PAGE_COMPLETENESS_INVENTORY, type PageCompletenessInventoryRow } from './pageCompletenessInventory';
 import { ROUTE_SOURCE_INVENTORY, type RouteSourceInventoryRow } from './routeSourceInventory';
+import { ScreenHtmlMockupManager } from '../screen-development-note/ScreenHtmlMockupManager';
 
 
 type BuilderAgentId = 'HERMES' | 'KILO' | 'CODEX';
@@ -580,6 +581,7 @@ export function BuilderStudioPage() {
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [isSaving, setIsSaving] = useState(false);
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [showHtmlMockupPanel, setShowHtmlMockupPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [targetContext, setTargetContext] = useState<BuilderTargetContext>(() => readBuilderTargetContext());
@@ -1647,6 +1649,12 @@ export function BuilderStudioPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowHtmlMockupPanel(!showHtmlMockupPanel)}
+            className="px-4 py-1.5 text-sm bg-[#052b57] text-white rounded hover:bg-[#0b3f73] flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">preview</span> HTML 시안 5개
+          </button>
+          <button
             onClick={() => setShowAiPanel(!showAiPanel)}
             className="px-4 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2"
           >
@@ -1698,6 +1706,18 @@ export function BuilderStudioPage() {
               </div>
               <button onClick={() => setShowAiPanel(false)} className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">닫기</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showHtmlMockupPanel && (
+        <div className="max-h-[72vh] overflow-auto border-b border-slate-200 bg-white p-4">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-3 flex items-start justify-between gap-4">
+              <div><h2 className="text-lg font-black text-[#052b57]">현재 화면 HTML 시안 관리</h2><p className="text-sm text-slate-500">선택 시안과 반영 요청 상태는 화면 설계 카드 및 자동 개발 명세와 동일한 DB 기준을 사용합니다.</p></div>
+              <button type="button" onClick={()=>setShowHtmlMockupPanel(false)} className="rounded border px-3 py-2 text-sm font-bold">닫기</button>
+            </div>
+            <ScreenHtmlMockupManager routePath={targetContext.menuUrl||currentScreen?.menuUrl||'/admin/system/builder-studio'} pageId={targetContext.pageId||currentScreen?.pageId||'builder-studio'}/>
           </div>
         </div>
       )}

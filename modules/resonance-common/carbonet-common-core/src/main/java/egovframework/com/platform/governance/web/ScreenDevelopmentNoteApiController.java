@@ -23,4 +23,14 @@ public class ScreenDevelopmentNoteApiController {
         if(principal==null)return ResponseEntity.status(401).body(Map.of("success",false,"message","로그인이 필요합니다."));
         try{return ResponseEntity.ok(service.save(body,principal.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()));}
     }
+
+    @PutMapping("/mockups/{slotNo}") public ResponseEntity<?> saveMockup(@PathVariable int slotNo,@RequestBody Map<String,Object> body,Principal principal){
+        if(principal==null)return ResponseEntity.status(401).body(Map.of("success",false,"message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(service.saveMockup(slotNo,body,principal.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()));}
+    }
+
+    @PostMapping("/mockups/{slotNo}/select") public ResponseEntity<?> selectMockup(@PathVariable int slotNo,@RequestBody Map<String,Object> body,Principal principal){
+        if(principal==null)return ResponseEntity.status(401).body(Map.of("success",false,"message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(service.selectMockup(slotNo,body,principal.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()));}
+    }
 }

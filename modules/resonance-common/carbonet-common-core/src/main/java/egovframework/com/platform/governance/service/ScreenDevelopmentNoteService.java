@@ -18,10 +18,14 @@ public class ScreenDevelopmentNoteService {
     public Map<String,Object> find(String routePath) {
         String routeKey=routeKey(routePath);
         List<Map<String,Object>> rows=jdbc.queryForList("select route_key as \"routeKey\",route_path as \"routePath\",page_id as \"pageId\",page_title as \"pageTitle\",coalesce(design_note,'') as \"designNote\",coalesce(function_note,'') as \"functionNote\",coalesce(acceptance_note,'') as \"acceptanceNote\",development_status as status,note_version as version,updated_by as \"updatedBy\",updated_at as \"updatedAt\" from framework_screen_development_note where route_key=?",routeKey);
-        if(!rows.isEmpty())return rows.get(0);
+        if(!rows.isEmpty()){
+            Map<String,Object> result=new LinkedHashMap<>(rows.get(0));
+            result.put("mockups",findMockups(routeKey));
+            return result;
+        }
         Map<String,Object> empty=new LinkedHashMap<>();
         empty.put("routeKey",routeKey);empty.put("routePath",cleanRoute(routePath));empty.put("pageId","");empty.put("pageTitle","");
-        empty.put("designNote","");empty.put("functionNote","");empty.put("acceptanceNote","");empty.put("status","DRAFT");empty.put("version",0);
+        empty.put("designNote","");empty.put("functionNote","");empty.put("acceptanceNote","");empty.put("status","DRAFT");empty.put("version",0);empty.put("mockups",List.of());
         return empty;
     }
 
@@ -42,7 +46,46 @@ public class ScreenDevelopmentNoteService {
         List<Map<String,Object>> rows=jdbc.queryForList("select coalesce(design_note,'') as design,coalesce(function_note,'') as function,coalesce(acceptance_note,'') as acceptance,note_version as version from framework_screen_development_note where route_key=?",routeKey(routePath));
         if(rows.isEmpty())return "[화면 설계 메모] 미등록 - 구현 착수 전에 해당 화면의 설계 버튼에서 기준을 등록해야 함";
         Map<String,Object> row=rows.get(0);
-        return "[화면 설계 메모 v"+row.get("version")+"] 설계="+row.get("design")+" | 기능="+row.get("function")+" | 완료기준="+row.get("acceptance");
+        String basis="[화면 설계 메모 v"+row.get("version")+"] 설계="+row.get("design")+" | 기능="+row.get("function")+" | 완료기준="+row.get("acceptance");
+        List<Map<String,Object>> selected=jdbc.queryForList("select slot_no as \"slotNo\",mockup_title as title,prompt_text as prompt,html_content as html,mockup_version as version,mockup_status as status from framework_screen_html_mockup where route_key=? and selected=true",routeKey(routePath));
+        if(!selected.isEmpty()){
+            Map<String,Object> mockup=selected.get(0);
+            String html=String.valueOf(mockup.get("html"));
+            if(html.length()>12000)html=html.substring(0,12000)+"<!-- truncated -->";
+            basis+=" | [선택 HTML 시안 #"+mockup.get("slotNo")+" v"+mockup.get("version")+"] 제목="+mockup.get("title")+" | 프롬프트="+mockup.get("prompt")+" | 상태="+mockup.get("status")+" | HTML="+html;
+        }
+        return basis;
+    }
+
+    @Transactional public Map<String,Object> saveMockup(int slotNo,Map<String,Object> body,String actor){
+        if(slotNo<1||slotNo>5)throw new IllegalArgumentException("시안 번호는 1~5만 사용할 수 있습니다.");
+        String routePath=required(body,"routePath"),routeKey=routeKey(routePath),prompt=required(body,"prompt"),html=required(body,"html");
+        String title=text(body,"title").isBlank()?"HTML 시안 "+slotNo:text(body,"title");
+        jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},routeKey);
+        jdbc.update("insert into framework_screen_html_mockup(route_key,route_path,page_id,slot_no,mockup_title,prompt_text,html_content,updated_by) values(?,?,?,?,?,?,?,?) on conflict(route_key,slot_no) do update set route_path=excluded.route_path,page_id=excluded.page_id,mockup_title=excluded.mockup_title,prompt_text=excluded.prompt_text,html_content=excluded.html_content,mockup_version=framework_screen_html_mockup.mockup_version+1,updated_by=excluded.updated_by,updated_at=current_timestamp",routeKey,cleanRoute(routePath),text(body,"pageId"),slotNo,title,prompt,html,actor);
+        recordMockupHistory(routeKey,slotNo,actor);
+        return find(routePath);
+    }
+
+    @Transactional public Map<String,Object> selectMockup(int slotNo,Map<String,Object> body,String actor){
+        if(slotNo<1||slotNo>5)throw new IllegalArgumentException("시안 번호는 1~5만 사용할 수 있습니다.");
+        String routePath=required(body,"routePath"),routeKey=routeKey(routePath);
+        boolean requestApply=Boolean.parseBoolean(String.valueOf(body.getOrDefault("requestApply",false)));
+        jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},routeKey);
+        Integer count=jdbc.queryForObject("select count(*) from framework_screen_html_mockup where route_key=? and slot_no=?",Integer.class,routeKey,slotNo);
+        if(count==null||count==0)throw new IllegalArgumentException("선택할 HTML 시안이 없습니다.");
+        jdbc.update("update framework_screen_html_mockup set selected=false,mockup_status='DRAFT',updated_by=?,updated_at=current_timestamp where route_key=? and selected=true",actor,routeKey);
+        jdbc.update("update framework_screen_html_mockup set selected=true,mockup_status=?,updated_by=?,updated_at=current_timestamp where route_key=? and slot_no=?",requestApply?"APPLY_REQUESTED":"SELECTED",actor,routeKey,slotNo);
+        recordMockupHistory(routeKey,slotNo,actor);
+        return find(routePath);
+    }
+
+    private List<Map<String,Object>> findMockups(String routeKey){
+        return jdbc.queryForList("select mockup_id as \"mockupId\",slot_no as \"slotNo\",mockup_title as title,prompt_text as prompt,html_content as html,mockup_status as status,selected,mockup_version as version,updated_by as \"updatedBy\",updated_at as \"updatedAt\" from framework_screen_html_mockup where route_key=? order by slot_no",routeKey);
+    }
+
+    private void recordMockupHistory(String routeKey,int slotNo,String actor){
+        jdbc.update("insert into framework_screen_html_mockup_history(mockup_id,route_key,route_path,page_id,slot_no,mockup_title,prompt_text,html_content,mockup_status,selected,mockup_version,changed_by) select mockup_id,route_key,route_path,page_id,slot_no,mockup_title,prompt_text,html_content,mockup_status,selected,mockup_version,? from framework_screen_html_mockup where route_key=? and slot_no=?",actor,routeKey,slotNo);
     }
 
     static String routeKey(String value){return cleanRoute(value).toLowerCase();}
