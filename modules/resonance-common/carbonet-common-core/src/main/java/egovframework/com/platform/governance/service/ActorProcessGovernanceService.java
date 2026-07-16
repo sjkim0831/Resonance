@@ -176,7 +176,7 @@ public class ActorProcessGovernanceService {
     @Transactional public Map<String,Object> runScreenDevelopmentPreflight(String process,String step,String actor){
         Integer stepCount=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
         if(stepCount==null||stepCount==0)throw new IllegalArgumentException("프로세스에 해당 절차가 존재하지 않습니다: "+process+" / "+step);
-        List<Map<String,Object>> jobs=jdbc.queryForList("select min(job_id) as job_id,min(job_type) as job_type,target_path from framework_development_job where process_code=? and step_code=? and job_type in ('FRONTEND_USER','FRONTEND_ADMIN') group by target_path order by min(job_id)",process,step);
+        List<Map<String,Object>> jobs=jdbc.queryForList("select min(job_id) as job_id,min(job_type) as job_type,min(target_path) as target_path from framework_development_job where process_code=? and step_code=? and job_type in ('FRONTEND_USER','FRONTEND_ADMIN') group by lower(split_part(target_path,'?',1)) order by min(job_id)",process,step);
         if(jobs.isEmpty()){
             jobs=jdbc.queryForList("select 0 as job_id,'FRONTEND_USER' as job_type,unnest(array_remove(array[user_path,admin_path],null)) as target_path from framework_process_step where process_code=? and step_code=?",process,step);
         }
