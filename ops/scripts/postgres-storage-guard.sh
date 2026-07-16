@@ -54,4 +54,13 @@ latest_role_backup="$(find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'postgres-ro
 gzip -t "$latest_data_backup" || fail "latest data backup is corrupt"
 gzip -t "$latest_role_backup" || fail "latest role backup is corrupt"
 
+# A failed guard deliberately pauses deployments. Once every storage boundary,
+# quorum marker, and backup check is healthy again, recover the timer as well.
+# Without this self-healing step a transient storage incident leaves automatic
+# deployment disabled indefinitely even though the database is safe again.
+if ! systemctl is-active --quiet "$DEPLOY_TIMER"; then
+  systemctl start "$DEPLOY_TIMER" 2>/dev/null \
+    || echo "[postgres-storage-guard] WARN: could not restart $DEPLOY_TIMER" >&2
+fi
+
 echo "[postgres-storage-guard] OK: boundaries, quorum, control markers, and backups verified"
