@@ -10,6 +10,7 @@ prose-only documentation.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -450,6 +451,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--reference-inventory", type=Path)
+    parser.add_argument("--viewer-out", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     actors = actor_records()
@@ -480,6 +482,12 @@ def main():
         with (args.out / "test-scenarios.jsonl").open("w", encoding="utf-8") as fh:
             for test in tests:
                 fh.write(json.dumps(test, ensure_ascii=False, separators=(",", ":")) + "\n")
+        if args.viewer_out:
+            args.viewer_out.mkdir(parents=True, exist_ok=True)
+            pack = {"manifest": result, "actors": actors, "processes": processes, "tests": tests}
+            with gzip.open(args.viewer_out / "spec-data.json.gz", "wt", encoding="utf-8", compresslevel=9) as fh:
+                json.dump(pack, fh, ensure_ascii=False, separators=(",", ":"))
+            write_json(args.viewer_out / "manifest.json", result)
         digest = hashlib.sha256()
         for file in sorted(args.out.glob("*.json*")):
             if file.name != "checksums.sha256": digest.update(file.read_bytes())

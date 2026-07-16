@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>액터·프로세스·테스트 전체 지도</title>
+  <style>
+    :root{--primary:#246beb;--navy:#052b57;--line:#d7e1ef;--bg:#f5f7fa;--text:#1d2733;--muted:#59697c;--danger:#d32f2f}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Pretendard GOV,Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,select{font:inherit}.mast{background:#eef2f7;border-bottom:1px solid var(--line);padding:7px 24px;font-size:12px;color:var(--muted)}
+    header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);padding:18px 24px}.header-row{display:flex;align-items:center;gap:18px;justify-content:space-between;max-width:1800px;margin:auto}.title h1{font-size:24px;margin:0;color:var(--navy)}.title p{margin:5px 0 0;color:var(--muted);font-size:14px}.counts{display:flex;gap:8px;flex-wrap:wrap}.badge{background:#e9f1ff;color:#174ea6;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:800}
+    main{max-width:1800px;margin:auto;padding:20px}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 16px #2038580b}.filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;padding:16px}.filters input,.filters select{height:44px;border:1px solid #b8c5d6;border-radius:9px;background:#fff;padding:0 12px}.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;margin-top:16px}.process-list{max-height:calc(100vh - 220px);overflow:auto;padding:8px;position:sticky;top:150px}.process-button{display:block;width:100%;border:0;border-radius:9px;background:transparent;text-align:left;padding:11px;color:var(--text);cursor:pointer}.process-button:hover{background:#eef5ff}.process-button.active{background:var(--primary);color:#fff}.process-button small{display:block;opacity:.75;margin-top:3px}
+    .content{min-width:0}.section{padding:20px;margin-bottom:16px}.section h2{margin:0 0 5px;color:var(--navy);font-size:20px}.meta{color:var(--muted);font-size:13px}.flow-wrap{overflow:auto;padding:15px 0 6px}.flow{display:flex;align-items:stretch;min-width:max-content;gap:26px}.node{position:relative;width:210px;min-height:128px;padding:14px;border:1px solid #b8cee9;border-radius:12px;background:#f8fbff}.node:not(:last-child):after{content:"→";position:absolute;right:-22px;top:46%;font-size:20px;color:var(--primary)}.node strong{display:block;color:var(--navy);line-height:1.35}.node code{display:block;margin-top:8px;color:#315273;font-size:11px}.node button{border:0;background:transparent;color:var(--primary);padding:8px 0 0;cursor:pointer;font-weight:800}
+    .scenario-head{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.pagination{display:flex;gap:6px;align-items:center}.pagination button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 10px;cursor:pointer}.pagination button:disabled{opacity:.4}.scenario{border-top:1px solid #e5ebf3;padding:13px 2px;display:grid;grid-template-columns:180px 145px minmax(240px,1fr) 100px;gap:12px;align-items:start;font-size:13px}.scenario:first-child{border-top:0}.scenario code{overflow-wrap:anywhere}.severity{font-weight:900}.severity.CRITICAL{color:var(--danger)}.empty{padding:50px;text-align:center;color:var(--muted)}.loading{min-height:70vh;display:grid;place-items:center;font-weight:800;color:var(--navy)}
+    dialog{border:0;border-radius:16px;max-width:900px;width:calc(100% - 32px);padding:0;box-shadow:0 24px 80px #081a3344}dialog::backdrop{background:#081a3388}.dialog-head{display:flex;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}.dialog-body{padding:20px;max-height:70vh;overflow:auto}.close{border:0;background:#eef2f7;border-radius:8px;padding:8px 12px;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f7fa;padding:12px;border-radius:8px;font-size:12px}
+    @media(max-width:1000px){.filters{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.process-list{position:static;max-height:240px}.scenario{grid-template-columns:1fr 1fr}.counts{display:none}}
+    @media(max-width:600px){header,.mast,main{padding-left:12px;padding-right:12px}.filters{grid-template-columns:1fr}.scenario{grid-template-columns:1fr}.title h1{font-size:20px}}
+  </style>
+</head>
+<body>
+  <div class="mast">대한민국정부 공식 누리집 · Carbonet 설계 검토</div>
+  <header><div class="header-row"><div class="title"><h1>액터·프로세스·테스트 전체 지도</h1><p>모든 업무 단계와 연결 시나리오를 한 화면에서 검토합니다.</p></div><div class="counts" id="counts"></div></div></header>
+  <main>
+    <section class="panel filters">
+      <select id="domain"><option value="">전체 업무 영역</option></select>
+      <select id="process"><option value="">전체 프로세스</option></select>
+      <select id="actor"><option value="">전체 액터</option></select>
+      <select id="caseType"><option value="">전체 시나리오 유형</option></select>
+      <input id="query" type="search" placeholder="프로세스·단계·시나리오 검색">
+    </section>
+    <div id="app" class="loading">전체 실행 명세를 불러오는 중입니다.</div>
+  </main>
+  <dialog id="detail"><div class="dialog-head"><strong id="detailTitle"></strong><button class="close" onclick="detail.close()">닫기</button></div><div class="dialog-body" id="detailBody"></div></dialog>
+  <script>
+    const PAGE_SIZE=100,state={data:null,processCode:"",page:1};
+    const $=id=>document.getElementById(id),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    async function load(){
+      const response=await fetch("./spec-data.json.gz",{cache:"no-store"});if(!response.ok)throw new Error(`명세 데이터 조회 실패 (${response.status})`);
+      let text;if(typeof DecompressionStream!=="undefined"){text=await new Response(response.body.pipeThrough(new DecompressionStream("gzip"))).text()}else{throw new Error("이 브라우저는 압축 명세 해제를 지원하지 않습니다.")}
+      state.data=JSON.parse(text);initialize();render();
+    }
+    function initialize(){const d=state.data,m=d.manifest.counts;
+      $("counts").innerHTML=[["액터",m.actors],["프로세스",m.processes],["단계·화면",m.steps],["테스트",m.tests.toLocaleString()]].map(x=>`<span class="badge">${x[0]} ${x[1]}</span>`).join("");
+      fill("domain",[...new Set(d.processes.map(p=>p.domainCode))]);fill("process",d.processes.map(p=>[p.processCode,p.processName]));fill("actor",d.actors.map(a=>[a.actorCode,a.actorName]));fill("caseType",[...new Set(d.tests.map(t=>t.caseType))]);
+      ["domain","process","actor","caseType","query"].forEach(id=>$(id).addEventListener(id==="query"?"input":"change",()=>{state.page=1;if(id==="process")state.processCode=$(id).value;render()}));
+    }
+    function fill(id,items){const el=$(id);for(const item of items){const o=document.createElement("option");o.value=Array.isArray(item)?item[0]:item;o.textContent=Array.isArray(item)?`${item[1]} (${item[0]})`:item;el.appendChild(o)}}
+    function selectedProcesses(){const d=state.data,domain=$("domain").value,process=$("process").value,actor=$("actor").value,q=$("query").value.trim().toLowerCase();return d.processes.filter(p=>(!domain||p.domainCode===domain)&&(!process||p.processCode===process)&&(!actor||p.ownerActorCode===actor)&&(!q||`${p.processCode} ${p.processName} ${p.steps.map(s=>s.stepName).join(" ")}`.toLowerCase().includes(q)))}
+    function selectedTests(processCodes){const typ=$("caseType").value,actor=$("actor").value,q=$("query").value.trim().toLowerCase(),set=new Set(processCodes);return state.data.tests.filter(t=>set.has(t.processCode)&&(!typ||t.caseType===typ)&&(!actor||state.data.processes.find(p=>p.processCode===t.processCode)?.ownerActorCode===actor)&&(!q||JSON.stringify(t).toLowerCase().includes(q)))}
+    function render(){const processes=selectedProcesses();if(!state.processCode||!processes.some(p=>p.processCode===state.processCode))state.processCode=processes[0]?.processCode||"";const current=processes.find(p=>p.processCode===state.processCode);const tests=selectedTests(processes.map(p=>p.processCode));
+      if(!current){$("app").className="panel empty";$("app").textContent="조건에 맞는 프로세스가 없습니다.";return}
+      $("app").className="layout";$("app").innerHTML=`<aside class="panel process-list">${processes.map(p=>`<button class="process-button ${p.processCode===current.processCode?'active':''}" data-process="${p.processCode}">${esc(p.processName)}<small>${p.processCode} · ${p.steps.length}단계</small></button>`).join("")}</aside><div class="content"><section class="panel section"><h2>${esc(current.processName)}</h2><p class="meta">${current.processCode} · ${current.domainCode} · 담당 ${current.ownerActorCode} · 근거 ${current.legalSourceIds.join(", ")}</p><div class="flow-wrap"><div class="flow">${current.steps.map(s=>`<article class="node"><strong>${s.stepOrder}. ${esc(s.stepName)}</strong><code>${s.fromState} → ${s.toState}</code><code>${s.screenCode}</code><button data-step="${s.stepCode}">계약 상세</button></article>`).join("")}</div></div></section><section class="panel section"><div class="scenario-head"><div><h2>연결 테스트 시나리오</h2><p class="meta">현재 필터 결과 ${tests.length.toLocaleString()}건 · 100건씩 표시</p></div><div class="pagination" id="pagination"></div></div><div id="scenarioList"></div></section></div>`;
+      document.querySelectorAll("[data-process]").forEach(b=>b.onclick=()=>{state.processCode=b.dataset.process;state.page=1;render()});document.querySelectorAll("[data-step]").forEach(b=>b.onclick=()=>showStep(current.steps.find(s=>s.stepCode===b.dataset.step)));
+      renderTests(tests,current.processCode);
+    }
+    function renderTests(all,currentCode){const own=all.filter(t=>t.processCode===currentCode),pages=Math.max(1,Math.ceil(own.length/PAGE_SIZE));state.page=Math.min(state.page,pages);const rows=own.slice((state.page-1)*PAGE_SIZE,state.page*PAGE_SIZE);$("scenarioList").innerHTML=rows.length?rows.map(t=>`<article class="scenario"><code>${esc(t.caseCode)}</code><div><strong>${esc(t.caseType)}</strong><br>${esc(t.variant)}</div><div>Given ${esc(t.given?.join(" · "))}<br><strong>Then</strong> ${esc(t.then?.join(" · "))}</div><button class="close severity ${t.severity}" data-case="${esc(t.caseCode)}">${esc(t.severity)}</button></article>`).join(""):`<div class="empty">이 프로세스에 해당하는 시나리오가 없습니다.</div>`;
+      $("pagination").innerHTML=`<button ${state.page<=1?'disabled':''} id="prev">이전</button><span>${state.page} / ${pages}</span><button ${state.page>=pages?'disabled':''} id="next">다음</button>`;$("prev").onclick=()=>{state.page--;renderTests(all,currentCode)};$("next").onclick=()=>{state.page++;renderTests(all,currentCode)};document.querySelectorAll("[data-case]").forEach(b=>b.onclick=()=>showCase(state.data.tests.find(t=>t.caseCode===b.dataset.case)));
+    }
+    function showStep(step){$("detailTitle").textContent=step.stepName;$("detailBody").innerHTML=`<pre>${esc(JSON.stringify(step,null,2))}</pre>`;$("detail").showModal()}
+    function showCase(test){$("detailTitle").textContent=test.caseCode;$("detailBody").innerHTML=`<pre>${esc(JSON.stringify(test,null,2))}</pre>`;$("detail").showModal()}
+    load().catch(e=>{$("app").className="panel empty";$("app").textContent=e.message});
+  </script>
+</body></html>
