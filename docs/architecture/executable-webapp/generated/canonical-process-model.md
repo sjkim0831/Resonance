@@ -17,6 +17,11 @@
 - processesBelowComplexityFloor: 0
 - processesAboveComplexityCeiling: 0
 - preservedImplementedCapabilities: 390
+- implementedStepsWithScreenEvidence: 187
+- implementedStepsWithApiEvidence: 153
+- implementedStepsWithDatabaseEvidence: 82
+- implementedStepsWithAuthorityEvidence: 180
+- implementedStepsWithTestEvidence: 78
 - canonicalActors: 32
 - usedActors: 32
 - unusedActors: 0

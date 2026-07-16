@@ -11,6 +11,11 @@
 - boundCapabilities: 180
 - exactRouteCapabilities: 185
 - blueprintedCapabilities: 185
+- screenEvidenceCapabilities: 187
+- apiEvidenceCapabilities: 153
+- databaseEvidenceCapabilities: 82
+- authorityEvidenceCapabilities: 180
+- testEvidenceCapabilities: 78
 - scenarioCandidates: 16,380
 - orphanHierarchyNodes: 2
 

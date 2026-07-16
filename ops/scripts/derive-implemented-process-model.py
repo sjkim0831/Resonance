@@ -24,9 +24,11 @@ TEST_FAMILIES={
 }
 
 def main():
- ap=argparse.ArgumentParser();ap.add_argument('--db',type=Path,default=OUT/'runtime-db-inventory.json');ap.add_argument('--trace',type=Path,default=OUT/'current-system-trace.json');ap.add_argument('--out',type=Path,default=OUT);args=ap.parse_args()
+ ap=argparse.ArgumentParser();ap.add_argument('--db',type=Path,default=OUT/'runtime-db-inventory.json');ap.add_argument('--trace',type=Path,default=OUT/'current-system-trace.json');ap.add_argument('--evidence',type=Path,default=OUT/'implemented-evidence-graph.json');ap.add_argument('--out',type=Path,default=OUT);args=ap.parse_args()
  db=json.loads(args.db.read_text(encoding='utf-8-sig')); trace=json.loads(args.trace.read_text(encoding='utf-8-sig'))
  route_trace={x['menuCode']:x for x in trace['menuTraces']}; orders={x['menu_code']:x['sort_ordr'] for x in db.get('menuOrders',[])}
+ evidence=json.loads(args.evidence.read_text(encoding='utf-8-sig')) if args.evidence.exists() else {'menuTraces':[]}
+ evidence_by_menu={x['menuCode']:x for x in evidence.get('menuTraces',[])}
  bindings=defaultdict(list)
  for row in db.get('menuProcessBindings',[]):bindings[row['menu_code']].append(row)
  blueprints=defaultdict(list)
@@ -34,7 +36,7 @@ def main():
  menus={m['code']:m for m in db['menus'] if m.get('useAt')=='Y'}
  roots=[]; groups=[]; capabilities=[]; orphans=[]
  for code,menu in sorted(menus.items(),key=lambda kv:(orders.get(kv[0],999999999),kv[0])):
-  rec={'menuCode':code,'name':menu.get('name'),'url':menu.get('url'),'visible':menu.get('exposureAt') in {None,'Y'},'sortOrder':orders.get(code),'bindings':bindings.get(code,[]),'routeTrace':route_trace.get(code,{}),'screenBlueprints':blueprints.get(menu.get('url') or '',[])}
+  rec={'menuCode':code,'name':menu.get('name'),'url':menu.get('url'),'visible':menu.get('exposureAt') in {None,'Y'},'sortOrder':orders.get(code),'bindings':bindings.get(code,[]),'routeTrace':route_trace.get(code,{}),'screenBlueprints':blueprints.get(menu.get('url') or '',[]),'implementationEvidence':evidence_by_menu.get(code,{})}
   if len(code)==4:roots.append(rec)
   elif len(code)==6:
    rec['parentCode']=code[:4];groups.append(rec)
@@ -52,14 +54,14 @@ def main():
  for g in groups:
   if not g['capabilityCodes']:
    self_code=g['menuCode']+'_SELF'
-   capabilities.append({'menuCode':self_code,'sourceMenuCode':g['menuCode'],'name':g['name'],'url':g['url'],'visible':g['visible'],'sortOrder':g['sortOrder'],'bindings':g['bindings'],'routeTrace':g['routeTrace'],'screenBlueprints':g['screenBlueprints'],'parentCode':g['menuCode'],'derivedReason':'MID_MENU_IS_EXECUTABLE_LEAF'})
+   capabilities.append({'menuCode':self_code,'sourceMenuCode':g['menuCode'],'name':g['name'],'url':g['url'],'visible':g['visible'],'sortOrder':g['sortOrder'],'bindings':g['bindings'],'routeTrace':g['routeTrace'],'screenBlueprints':g['screenBlueprints'],'implementationEvidence':g.get('implementationEvidence',{}),'parentCode':g['menuCode'],'derivedReason':'MID_MENU_IS_EXECUTABLE_LEAF'})
    g['capabilityCodes'].append(self_code)
  scenario_candidates=[]
  for cap in capabilities:
   for family,variants in TEST_FAMILIES.items():
    for variant in variants:
     scenario_candidates.append({'caseCode':f"TC_IMPL_{cap['menuCode']}_{family}_{variant}",'processCode':cap['parentCode'],'capabilityCode':cap['menuCode'],'caseType':family,'variant':variant,'severity':'CRITICAL' if family in {'AUTHORITY','ISOLATION','PRIVACY','AUDIT'} else 'MAJOR','status':'CANDIDATE_REQUIRES_CONTRACT_BINDING','given':['implementedMenuAndRoute','syntheticTenantProjectActorContext',f'variant={variant}'],'when':{'menuUrl':cap.get('url'),'menuCode':cap['menuCode']},'then':['routeAndScreenResolve','authorizedDataScopeOnly','businessActionTraceable','auditEvidenceProduced']})
- stats={'implementedDomains':len(roots),'implementedSubprocesses':len(groups),'implementedCapabilities':len(capabilities),'visibleCapabilities':sum(c['visible'] for c in capabilities),'boundCapabilities':sum(bool(c['bindings']) for c in capabilities),'exactRouteCapabilities':sum(c['routeTrace'].get('routeMatch')=='EXACT' for c in capabilities),'blueprintedCapabilities':sum(bool(c['screenBlueprints']) for c in capabilities),'scenarioCandidates':len(scenario_candidates),'orphanHierarchyNodes':len(orphans)}
+ stats={'implementedDomains':len(roots),'implementedSubprocesses':len(groups),'implementedCapabilities':len(capabilities),'visibleCapabilities':sum(c['visible'] for c in capabilities),'boundCapabilities':sum(bool(c['bindings']) for c in capabilities),'exactRouteCapabilities':sum(c['routeTrace'].get('routeMatch')=='EXACT' for c in capabilities),'blueprintedCapabilities':sum(bool(c['screenBlueprints']) for c in capabilities),'screenEvidenceCapabilities':sum(c.get('implementationEvidence',{}).get('coverage',{}).get('screen',False) for c in capabilities),'apiEvidenceCapabilities':sum(c.get('implementationEvidence',{}).get('coverage',{}).get('api',False) for c in capabilities),'databaseEvidenceCapabilities':sum(c.get('implementationEvidence',{}).get('coverage',{}).get('database',False) for c in capabilities),'authorityEvidenceCapabilities':sum(c.get('implementationEvidence',{}).get('coverage',{}).get('authority',False) for c in capabilities),'testEvidenceCapabilities':sum(c.get('implementationEvidence',{}).get('coverage',{}).get('test',False) for c in capabilities),'scenarioCandidates':len(scenario_candidates),'orphanHierarchyNodes':len(orphans)}
  model={'stats':stats,'domains':roots,'subprocesses':groups,'capabilities':capabilities,'scenarioCandidates':scenario_candidates,'hierarchyGaps':orphans}
  (args.out/'implemented-process-model.json').write_text(json.dumps(model,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
  lines=['# 기개발 시스템 업무 모델','','메뉴를 구현 증거로 사용하여 대메뉴=업무영역, 중메뉴=서브프로세스, 소메뉴=업무 기능 후보로 도출했습니다. 화면·API·DB 연결 확정 전에는 프로세스 완료로 간주하지 않습니다.','','## 계수','']+[f'- {k}: {v:,}' for k,v in stats.items()]+['','## 업무 영역과 서브프로세스','']
