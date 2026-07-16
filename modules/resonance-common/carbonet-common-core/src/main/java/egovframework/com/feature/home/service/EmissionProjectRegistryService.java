@@ -230,10 +230,12 @@ public class EmissionProjectRegistryService {
         String step=stepMap.get(taskCode);if(step==null)return;
         Map<String,Object> found=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
         if(!Boolean.TRUE.equals(found.get("found"))){
-            if(!"BASIC_INFO".equals(taskCode))return;
             Map<String,Object> started=processGovernanceService.startProcessExecution(Map.of("tenantId",tenant,"projectId",projectId,"processCode","EMISSION_PROJECT","actorCode","COMPANY_MANAGER"),user);
             Object id=started.get("executionId");if(id==null&&started.get("execution") instanceof Map<?,?> execution)id=execution.get("executionId");
             found=new LinkedHashMap<>();found.put("executionId",id);
+            List<Map<String,Object>> completed=jdbc.queryForList("select task_code from emission_project_task where project_id=? and task_status='DONE' order by step_order",projectId);
+            for(Map<String,Object> completedTask:completed)synchronizeProcessExecution(projectId,String.valueOf(completedTask.get("task_code")),user,"");
+            return;
         }
         if("ACTIVITY_DATA".equals(taskCode)&&"EMISSION_PROJECT_CORRECT".equals(String.valueOf(found.get("currentStepCode")))){
             step="EMISSION_PROJECT_CORRECT";
