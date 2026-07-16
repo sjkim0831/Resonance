@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -24,6 +25,8 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/development/bootstrap-process") public ResponseEntity<?> bootstrapProcess(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.bootstrapProcessDevelopment(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/approve") public ResponseEntity<?> approve(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.approveDevelopmentPlan(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/preflight") public ResponseEntity<?> developmentPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.runScreenDevelopmentPreflight(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
+    @PostMapping("/executions/start") public ResponseEntity<?> startExecution(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.startProcessExecution(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
+    @PostMapping("/executions/{executionId}/commands") public ResponseEntity<?> executeCommand(@PathVariable UUID executionId,@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.executeProcessCommand(executionId,b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/claim") public ResponseEntity<?> claim(@RequestBody Map<String,Object>b){try{return ResponseEntity.ok(service.claimDevelopmentJob(String.valueOf(b.getOrDefault("workerId","AI_RUNNER"))));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/heartbeat") public ResponseEntity<?> heartbeat(@RequestBody Map<String,Object>b){try{return ResponseEntity.ok(service.heartbeatDevelopmentJob(Long.parseLong(String.valueOf(b.get("jobId"))),String.valueOf(b.get("leaseToken")),String.valueOf(b.getOrDefault("workerId","AI_RUNNER"))));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/complete") public ResponseEntity<?> complete(@RequestBody Map<String,Object>b){try{return ResponseEntity.ok(service.completeDevelopmentJob(b,String.valueOf(b.getOrDefault("workerId","AI_RUNNER"))));}catch(Exception e){return bad(e);}}
