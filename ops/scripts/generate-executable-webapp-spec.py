@@ -488,7 +488,9 @@ def main():
             implemented=json.loads(implemented_path.read_text(encoding="utf-8-sig")) if implemented_path.exists() else None
             canonical_path=args.out / "canonical-process-model.json"
             canonical=json.loads(canonical_path.read_text(encoding="utf-8-sig")) if canonical_path.exists() else None
-            pack = {"manifest": result, "actors": actors, "processes": processes, "tests": tests, "implementedModel": implemented, "canonicalModel": canonical}
+            evidence_path=args.out / "implemented-evidence-graph.json"
+            evidence=json.loads(evidence_path.read_text(encoding="utf-8-sig")) if evidence_path.exists() else None
+            pack = {"manifest": result, "actors": actors, "processes": processes, "tests": tests, "implementedModel": implemented, "canonicalModel": canonical, "evidenceModel": evidence}
             with gzip.open(args.viewer_out / "spec-data.json.gz", "wt", encoding="utf-8", compresslevel=9) as fh:
                 json.dump(pack, fh, ensure_ascii=False, separators=(",", ":"))
             write_json(args.viewer_out / "manifest.json", result)

@@ -17,6 +17,8 @@
 - processesBelowComplexityFloor: 0
 - processesAboveComplexityCeiling: 0
 - preservedImplementedCapabilities: 390
+- immutableImplementedProcesses: 59
+- immutableImplementedSteps: 408
 - implementedStepsWithScreenEvidence: 187
 - implementedStepsWithApiEvidence: 153
 - implementedStepsWithDatabaseEvidence: 82

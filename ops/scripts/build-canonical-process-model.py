@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Merge professional design into implemented subprocesses without duplication."""
 from __future__ import annotations
-import argparse,json,re
+import argparse,hashlib,json,re
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -66,6 +66,13 @@ def balanced_chunks(items,maximum=10):
 def compact_evidence(cap):
  graph=cap.get('implementationEvidence') or {};coverage=graph.get('coverage',{})
  return {'menuCode':cap.get('sourceMenuCode') or cap['menuCode'],'routeMatch':cap.get('routeTrace',{}).get('routeMatch','NONE'),'bindingCount':len(cap.get('bindings') or []),'blueprintCount':len(cap.get('screenBlueprints') or []),'traceStatus':graph.get('traceStatus','UNRESOLVED'),'coverage':coverage,'screenSources':[x.get('sourcePath') for x in graph.get('screenEvidence',[])][:5],'apiEndpoints':[x.get('path') for x in graph.get('apiEvidence',[])][:10],'databaseObjects':graph.get('databaseEvidence',[])[:20],'authorities':graph.get('authorityEvidence',[])[:20],'testSources':[x.get('sourcePath') for x in graph.get('testEvidence',[])][:10]}
+
+def lock_implemented_process(process):
+ process['readOnly']=True;process['mutationPolicy']='SOURCE_OF_TRUTH_REGENERATION_ONLY';process['lockReason']='기개발 구현은 설계 병합이나 빌더에서 수정할 수 없습니다. 실제 소스 또는 DB 변경 후 자동 재수집으로만 갱신합니다.'
+ for step in process['steps']:
+  step['readOnly']=True;step['mutationPolicy']='SOURCE_OF_TRUTH_REGENERATION_ONLY'
+ semantic={'processCode':process['processCode'],'processName':process['processName'],'domainCode':process['domainCode'],'steps':[{k:s.get(k) for k in ('stepCode','stepOrder','stepName','actorCode','screenCode','apiCode','implementationStatus')} for s in process['steps']]}
+ process['sourceFingerprint']='sha256:'+hashlib.sha256(json.dumps(semantic,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--implemented',type=Path,default=OUT/'implemented-process-model.json');ap.add_argument('--design',type=Path,default=OUT/'processes.json');ap.add_argument('--design-actors',type=Path,default=OUT/'actors.json');ap.add_argument('--runtime-db',type=Path,default=OUT/'runtime-db-inventory.json');ap.add_argument('--design-tests',type=Path,default=OUT/'test-scenarios.jsonl');ap.add_argument('--out',type=Path,default=OUT);args=ap.parse_args()
@@ -134,6 +141,9 @@ def main():
     for variant in variants:
      canonical_tests.append({'caseCode':f"TC_{step['stepCode']}_{family}_{variant}",'processCode':process['processCode'],'stepCode':step['stepCode'],'caseType':family,'variant':variant,'severity':'CRITICAL' if family in {'AUTHORITY','ISOLATION','PRIVACY','AUDIT'} else 'MAJOR','given':['publicJoinSession',f"state={step['fromState']}",f"variant={variant}"],'when':{'commandCode':step['commandCode'],'screenCode':step['screenCode'],'apiCode':step['apiCode']},'then':['expectedStateOrControlledFailure','noPartialWrite','auditEvidenceProduced'],'status':'IMPLEMENTED_TEST_REQUIRED'})
  canonical_tests += [t for t in tests if t['processCode'] in {p['processCode'] for p in additions}]
+ for process in processes:
+  if process.get('modelType','').startswith('IMPLEMENTED') or process.get('source','').startswith('CURRENT_SYSTEM'):
+   lock_implemented_process(process)
  duplicate_codes=sorted({p['processCode'] for p in processes if sum(x['processCode']==p['processCode'] for x in processes)>1})
  empty=sorted(p['processCode'] for p in processes if not p['steps'])
  all_steps=[s for p in processes for s in p['steps']]
@@ -143,8 +153,11 @@ def main():
  implemented_steps=[s for p in processes if p.get('source','').startswith('CURRENT_SYSTEM') for s in p['steps']]
  coverage_keys=('screen','api','database','authority','test')
  evidence_counts={f"implementedStepsWith{key.title()}Evidence":sum(bool(s.get('implementationEvidence',{}).get('coverage',{}).get(key)) for s in implemented_steps) for key in coverage_keys}
- stats={'canonicalProcesses':len(processes),'implementedProcesses':len(implemented['subprocesses']),'newRequiredProcesses':len(new_required),'canonicalSteps':len(all_steps),'canonicalScenarios':len(canonical_tests),'designProcessesReusedThroughExisting':len(mapped & design_codes),'designProcessesAddedAsNew':len(added_codes),'unmappedDesignProcesses':len(unmapped_not_added),'unresolvedMappingTargets':len(unresolved_targets),'duplicateProcessCodes':len(duplicate_codes),'emptyProcesses':len(empty),'processesBelowComplexityFloor':len(too_small),'processesAboveComplexityCeiling':len(too_large),'preservedImplementedCapabilities':len(canonical_implemented_codes),**evidence_counts}
- validation={'duplicateProcessCodes':duplicate_codes,'emptyProcesses':empty,'unmappedDesignProcesses':unmapped_not_added,'unresolvedMappingTargets':unresolved_targets,'processesBelowComplexityFloor':too_small,'processesAboveComplexityCeiling':too_large,'missingImplementedCapabilityCodes':missing_implemented}
+ immutable_processes=[p for p in processes if p.get('readOnly')]
+ unlocked_implemented=[p['processCode'] for p in processes if (p.get('modelType','').startswith('IMPLEMENTED') or p.get('source','').startswith('CURRENT_SYSTEM')) and not p.get('readOnly')]
+ unlocked_implemented_steps=[s['stepCode'] for p in immutable_processes for s in p['steps'] if not s.get('readOnly')]
+ stats={'canonicalProcesses':len(processes),'implementedProcesses':len(implemented['subprocesses']),'newRequiredProcesses':len(new_required),'canonicalSteps':len(all_steps),'canonicalScenarios':len(canonical_tests),'designProcessesReusedThroughExisting':len(mapped & design_codes),'designProcessesAddedAsNew':len(added_codes),'unmappedDesignProcesses':len(unmapped_not_added),'unresolvedMappingTargets':len(unresolved_targets),'duplicateProcessCodes':len(duplicate_codes),'emptyProcesses':len(empty),'processesBelowComplexityFloor':len(too_small),'processesAboveComplexityCeiling':len(too_large),'preservedImplementedCapabilities':len(canonical_implemented_codes),'immutableImplementedProcesses':len(immutable_processes),'immutableImplementedSteps':sum(len(p['steps']) for p in immutable_processes),**evidence_counts}
+ validation={'duplicateProcessCodes':duplicate_codes,'emptyProcesses':empty,'unmappedDesignProcesses':unmapped_not_added,'unresolvedMappingTargets':unresolved_targets,'processesBelowComplexityFloor':too_small,'processesAboveComplexityCeiling':too_large,'missingImplementedCapabilityCodes':missing_implemented,'unlockedImplementedProcessCodes':unlocked_implemented,'unlockedImplementedStepCodes':unlocked_implemented_steps}
  validation['status']='PASSED' if not any(validation.values()) else 'FAILED'
  actor_map={a['actorCode']:a for a in designed_actors}
  for row in runtime_db.get('actors',[]):
@@ -152,7 +165,7 @@ def main():
  used_actors={p['ownerActorCode'] for p in processes}|{a for p in processes for a in p.get('participantActorCodes',[])}|{s['actorCode'] for p in processes for s in p['steps']}
  validation.pop('status',None);validation['unknownActorCodes']=sorted(used_actors-set(actor_map));validation['unusedDesignedActorCodes']=sorted(set(actor_map)-used_actors);validation['status']='PASSED' if not any(validation.values()) else 'FAILED'
  stats['canonicalActors']=len(actor_map);stats['usedActors']=len(used_actors);stats['unusedActors']=len(validation['unusedDesignedActorCodes'])
- model={'precedencePolicy':'IMPLEMENTED_FIRST; REQUIRED_GAPS_ARE_SEPARATE_NEW_PROCESSES','stats':stats,'actors':list(actor_map.values()),'processes':processes,'tests':canonical_tests,'designTrace':DESIGN_TO_IMPLEMENTED,'newProcessCodes':[p['processCode'] for p in new_required],'validation':validation}
+ model={'precedencePolicy':'IMPLEMENTED_FIRST; REQUIRED_GAPS_ARE_SEPARATE_NEW_PROCESSES','implementedMutationPolicy':'READ_ONLY; SOURCE_OF_TRUTH_REGENERATION_ONLY','stats':stats,'actors':list(actor_map.values()),'processes':processes,'tests':canonical_tests,'designTrace':DESIGN_TO_IMPLEMENTED,'newProcessCodes':[p['processCode'] for p in new_required],'validation':validation}
  (args.out/'canonical-process-model.json').write_text(json.dumps(model,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
  (args.out/'canonical-process-summary.json').write_text(json.dumps({'precedencePolicy':model['precedencePolicy'],'stats':stats,'validation':validation},ensure_ascii=False,separators=(',',':')),encoding='utf-8')
  lines=['# 기개발 우선 정규 프로세스 모델','','기개발 중메뉴 프로세스를 기준으로 유지하고 신규 전문 설계는 기존 프로세스에 추적 연결합니다. 대응 프로세스가 없는 업무만 같은 레벨로 신규 추가합니다.','','## 검증']+[f'- {k}: {v:,}' for k,v in stats.items()]+['',f"- status: {model['validation']['status']}",'','## 신규 필요 프로세스']+[f"- {p['processCode']}: {p['processName']}" for p in additions]

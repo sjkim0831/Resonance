@@ -229,11 +229,22 @@ def main() -> None:
                 ],
             }
             trace["coverage"]["authority"] = True
+    registered_screen_sources = {x["sourcePath"] for trace in traces for x in trace["screenEvidence"]}
+    registered_endpoint_ids = {x["endpointId"] for trace in traces for x in trace["apiEvidence"]}
+    registered_tables = {x for trace in traces for x in trace["databaseEvidence"]}
+    registered_test_sources = {x["sourcePath"] for trace in traces for x in trace["testEvidence"]}
+    unregistered = {
+        "frontendScreens": sorted({x["sourcePath"] for x in screens} - registered_screen_sources),
+        "javaEndpoints": sorted({x["endpointId"] for x in endpoints} - registered_endpoint_ids),
+        "databaseObjects": sorted(known_tables - registered_tables),
+        "testSources": sorted({x["sourcePath"] for x in tests} - registered_test_sources),
+    }
     coverage = {key: sum(t["coverage"][key] for t in traces) for key in ("screen", "api", "database", "authority", "test")}
-    stats = {"implementedMenus": len(traces), "frontendScreens": len(screens), "frontendApiCalls": len(calls), "javaControllers": len(controllers), "javaEndpoints": len(endpoints), "testSources": len(tests), **{f"menusWith{key.title()}Evidence": value for key, value in coverage.items()}}
+    unregistered_stat_names = {"frontendScreens": "unregisteredFrontendScreens", "javaEndpoints": "unregisteredJavaEndpoints", "databaseObjects": "unregisteredDatabaseObjects", "testSources": "unregisteredTestSources"}
+    stats = {"implementedMenus": len(traces), "frontendScreens": len(screens), "frontendApiCalls": len(calls), "javaControllers": len(controllers), "javaEndpoints": len(endpoints), "databaseObjects": len(known_tables), "testSources": len(tests), **{f"menusWith{key.title()}Evidence": value for key, value in coverage.items()}, **{unregistered_stat_names[key]: len(value) for key, value in unregistered.items()}}
     validation = {"duplicateMenuTraces": len(traces) - len({t["menuCode"] for t in traces}), "unknownDatabaseObjects": sum(1 for t in traces for table in t["databaseEvidence"] if table not in known_tables)}
     validation["status"] = "PASSED" if not any(value for key, value in validation.items() if key != "status") else "FAILED"
-    model = {"precedencePolicy": "IMPLEMENTED_EVIDENCE_FIRST", "stats": stats, "validation": validation, "menuTraces": traces}
+    model = {"precedencePolicy": "IMPLEMENTED_EVIDENCE_FIRST", "stats": stats, "validation": validation, "unregisteredImplementedAssets": unregistered, "menuTraces": traces}
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "implemented-evidence-graph.json").write_text(json.dumps(model, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     lines = ["# 기개발 구현 증거 그래프", "", "화면, API, DB, 권한, 테스트를 실제 소스의 경로와 이름으로 연결한 자동 조사 결과입니다.", "", "## 수치", ""]
