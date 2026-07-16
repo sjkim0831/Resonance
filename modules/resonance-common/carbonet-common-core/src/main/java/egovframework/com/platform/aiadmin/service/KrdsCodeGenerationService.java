@@ -50,10 +50,11 @@ public class KrdsCodeGenerationService {
         String request = "Target: " + safeTarget(target) + "\nUser request:\n" + userPrompt;
 
         String code = callModel(systemPrompt, request);
-        List<String> violations = validate(code);
+        String outputTarget = safeTarget(target);
+        List<String> violations = validate(code, outputTarget);
         if (!violations.isEmpty()) {
             code = callModel(systemPrompt, request + "\n\nRepair the previous output. Violations: " + String.join("; ", violations) + "\nPrevious output:\n" + code);
-            violations = validate(code);
+            violations = validate(code, outputTarget);
         }
         boolean passed = violations.isEmpty();
         String generationId = "KRDS-GEN-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
@@ -131,7 +132,7 @@ public class KrdsCodeGenerationService {
         }
     }
 
-    private List<String> validate(String code) {
+    private List<String> validate(String code, String target) {
         String value = normalizeCode(code);
         List<String> failures = new ArrayList<>();
         if (!(value.contains("<main") || value.contains("<section") || value.contains("<form"))) failures.add("semantic landmark is required");
@@ -144,6 +145,12 @@ public class KrdsCodeGenerationService {
         if (value.matches("(?s).*<gov-[a-z][^>]*>.*")) failures.add("gov-* names are CSS classes, not custom HTML elements; use native controls");
         if (value.contains("<table") && !(value.contains("<caption") && value.contains("<th"))) failures.add("data tables require caption and headers");
         if (!value.contains("gov-") && !value.contains("krds-")) failures.add("KRDS/GOV component classes are required");
+        if (!"HTML".equals(target)) {
+            if (value.matches("(?s).*\\sclass=.*")) failures.add("React output must use className instead of class");
+            if (value.matches("(?s).*<label[^>]*\\sfor=.*")) failures.add("React labels must use htmlFor instead of for");
+        }
+        if ("REACT_TSX".equals(target) && !value.contains("<h1")) failures.add("a page component requires one semantic h1");
+        if (value.contains("Simulate API") || value.contains("setTimeout(resolve")) failures.add("fake API behavior is forbidden; expose a typed submit contract instead");
         return failures;
     }
 
