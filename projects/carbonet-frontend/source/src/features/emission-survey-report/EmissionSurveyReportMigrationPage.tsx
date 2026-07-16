@@ -1626,6 +1626,7 @@ export function EmissionSurveyReportPrintPage() {
   const [draftSectionShares, setDraftSectionShares] = useState<Record<string, number>>({});
   const [sectionShareMessage, setSectionShareMessage] = useState("");
   const [verificationRecord, setVerificationRecord] = useState<ReportVerificationRecord | null>(null);
+  const [verificationQrDataUrl, setVerificationQrDataUrl] = useState("");
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
@@ -1976,6 +1977,40 @@ export function EmissionSurveyReportPrintPage() {
     if (!effectiveReport) {
       return;
     }
+    setVerificationBusy(true);
+    setVerificationMessage("");
+    try {
+      const record = await buildReportVerificationRecord(effectiveReport, { byproductAllocation });
+      await issueSurveyReportVerification(record).catch((error) => {
+        console.warn("Report verification registration failed; continuing native PDF print.", error);
+      });
+      saveReportVerificationRecord(record);
+      setVerificationRecord(record);
+      setVerificationQrDataUrl(await createReportQrDataUrl(record));
+      setPdfDesignDraft(draft);
+      setPdfDownloadMode(false);
+      await nextAnimationFrame();
+      await nextAnimationFrame();
+      await waitForReportFonts();
+      if (!reportArticleRef.current) {
+        throw new Error("Report element is not ready.");
+      }
+      window.print();
+      setVerificationMessage(en
+        ? "The browser print dialog opened. Choose Save as PDF to preserve the report layout."
+        : "브라우저 인쇄 창을 열었습니다. 리포트 디자인을 유지하려면 'PDF로 저장'을 선택하세요.");
+    } catch (error) {
+      console.error(error);
+      setVerificationMessage(en ? "PDF print failed. Please try again." : "PDF 인쇄에 실패했습니다. 다시 시도하세요.");
+    } finally {
+      setVerificationBusy(false);
+    }
+  };
+
+  const handleDownloadPdfLegacy = async (draft: ReportPdfDesignDraft | null = null) => {
+    if (!effectiveReport) {
+      return;
+    }
     let exportClone: HTMLElement | null = null;
     setVerificationBusy(true);
     setVerificationMessage("");
@@ -2203,6 +2238,9 @@ export function EmissionSurveyReportPrintPage() {
       setVerificationBusy(false);
     }
   };
+  // Kept temporarily as a rollback path while native Chromium printing is
+  // verified in production. It is deliberately not connected to the UI.
+  void handleDownloadPdfLegacy;
   const handleCopyChart = async (type: "bar" | "pie") => {
     try {
       const svg = type === "bar" ? buildSectionBarChartSvg(chartSections, en) : buildSectionPieChartSvg(chartSections, en);
@@ -3271,9 +3309,21 @@ export function EmissionSurveyReportPrintPage() {
         </section>
         </div>
         {verificationRecord ? (
-          <pre aria-hidden="true" className="pdf-machine-readable">
-            {verificationPayloadToBlock(verificationRecord)}
-          </pre>
+          <>
+            <footer className="report-verification-footer flex items-center justify-between gap-5 border-t border-slate-200 bg-white px-8 py-5">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700">DIGITAL VERIFICATION</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {en ? "Scan to verify this issued report." : "발급된 리포트의 진위 여부를 확인할 수 있습니다."}
+                </p>
+                <p className="mt-1 font-mono text-[10px] text-slate-500">{verificationRecord.certificateId}</p>
+              </div>
+              {verificationQrDataUrl ? <img alt={en ? "Report verification QR code" : "리포트 진위 확인 QR 코드"} className="h-[18mm] w-[18mm] shrink-0" src={verificationQrDataUrl} /> : null}
+            </footer>
+            <pre aria-hidden="true" className="pdf-machine-readable">
+              {verificationPayloadToBlock(verificationRecord)}
+            </pre>
+          </>
         ) : null}
       </article>
     </main>
