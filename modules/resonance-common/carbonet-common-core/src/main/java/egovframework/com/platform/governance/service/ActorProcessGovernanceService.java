@@ -54,6 +54,7 @@ public class ActorProcessGovernanceService {
         out.put("professionalScreenContracts",jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness order by process_code,step_code,audience"));
         out.put("professionalScreenSummary",jdbc.queryForMap("select count(*) as \"totalScreens\",count(*) filter(where readiness_score=100) as \"completeScreens\",count(*) filter(where readiness_score<100) as \"blockedScreens\",coalesce(round(avg(readiness_score),1),0) as \"averageScore\" from framework_professional_screen_readiness"));
         out.put("professionalFactoryRuns",jdbc.queryForList("select run_id as \"runId\",process_code as \"processCode\",requested_actor_code as \"requestedActorCode\",run_status as \"runStatus\",menu_count as \"menuCount\",screen_count as \"screenCount\",scenario_count as \"scenarioCount\",development_job_count as \"developmentJobCount\",blocked_step_count as \"blockedStepCount\",requested_by as \"requestedBy\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_professional_factory_run order by started_at desc limit 50"));
+        out.put("screenAssetAssemblies",jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",asset_count as \"assetCount\",ready_asset_count as \"readyAssetCount\",gap_asset_count as \"gapAssetCount\",assembly_score as \"assemblyScore\",assembly_status as \"assemblyStatus\" from framework_screen_asset_assembly_summary order by process_code,step_code,audience"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
         return out;
     }
@@ -79,6 +80,7 @@ public class ActorProcessGovernanceService {
         jdbc.update("insert into framework_professional_factory_run(run_id,process_code,requested_actor_code,requested_by) values(?,?,?,?)",runId,process,requestedActor,user);
         ensureProfessionalContracts(process,user);
         int menus=provisionProcessMenus(process,user);
+        Map<String,Object> assembly=assembleScreenAssets(process,user);
         Map<String,Object> bootstrap=bootstrapProcessDevelopment(Map.of("processCode",process,"approveJobs",true,"queueScreens",true),user);
         int screens=jdbc.queryForObject("select count(*) from framework_professional_screen_contract where process_code=?",Integer.class,process);
         int scenarios=jdbc.queryForObject("select count(*) from framework_simulation_case where process_code=?",Integer.class,process);
@@ -91,8 +93,28 @@ public class ActorProcessGovernanceService {
         out.put("success",true);out.put("runId",runId);out.put("processCode",process);out.put("actorCode",requestedActor);
         out.put("status",status);out.put("menuCount",menus);out.put("screenCount",screens);out.put("scenarioCount",scenarios);
         out.put("developmentJobCount",jobs);out.put("blockedStepCount",blocked);out.put("bootstrap",bootstrap);
+        out.put("assetAssembly",assembly);
         out.put("nextAction",blocked==0?"승인된 개발 작업과 E2E 테스트를 실행합니다.":"차단된 화면 계약과 시안을 보완한 뒤 같은 요청을 재실행합니다.");
         return out;
+    }
+
+    @Transactional public Map<String,Object> assembleScreenAssets(String process,String user){
+        List<Map<String,Object>> contracts=jdbc.queryForList("select contract_id,route_path,api_contract,data_contract from framework_professional_screen_contract where process_code=? order by contract_id",process);
+        int ready=0,gaps=0;
+        for(Map<String,Object> contract:contracts){
+            long id=((Number)contract.get("contract_id")).longValue();String route=String.valueOf(contract.get("route_path"));
+            boolean theme=Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from comtnthemedefinition where theme_id='KRDS_GOV_DEFAULT' and use_at='Y')",Boolean.class));
+            boolean sections=Boolean.TRUE.equals(jdbc.queryForObject("select count(*)>=5 from ui_section_registry where active_yn='Y' and section_id in ('PAGE_HEADER','SUMMARY_METRICS','SEARCH_FILTER','WORK_TABLE','DETAIL_WORKSPACE')",Boolean.class));
+            boolean components=Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from ui_component_registry where active_yn='Y')",Boolean.class));
+            boolean design=Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from framework_screen_html_mockup where route_key=lower(?) and selected=true)",Boolean.class,route));
+            boolean frontend=Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) and validation_status='VALID')",Boolean.class,route));
+            boolean api=!"[]".equals(String.valueOf(contract.get("api_contract")));
+            boolean database=!"[]".equals(String.valueOf(contract.get("data_contract")));
+            boolean tests=Boolean.TRUE.equals(jdbc.queryForObject("select count(distinct case_type)>=5 from framework_simulation_case where process_code=?",Boolean.class,process));
+            String[][] assets={{"THEME","KRDS_GOV_DEFAULT","/admin/system/theme-management",theme?"REUSED":"MISSING"},{"SECTION","PAGE_HEADER,SUMMARY_METRICS,SEARCH_FILTER,WORK_TABLE,DETAIL_WORKSPACE","/admin/system/section-management",sections?"REUSED":"MISSING"},{"COMPONENT","ui_component_registry","/admin/system/component-management",components?"REUSED":"MISSING"},{"DESIGN",route+"#selected-mockup","/admin/system/design-management",design?"LINKED":"MISSING"},{"FRONTEND",route,"/admin/system/screen-management",frontend?"LINKED":"REPAIR_REQUIRED"},{"API",String.valueOf(contract.get("api_contract")),"/admin/system/api-management",api?"LINKED":"MISSING"},{"BACKEND",process+":"+route,"/admin/system/controller-management",api?"LINKED":"MISSING"},{"DATABASE",String.valueOf(contract.get("data_contract")),"/admin/system/db-table-management",database?"LINKED":"MISSING"},{"TEST",process+":5-safety-scenarios","/admin/system/verification-asset-management",tests?"LINKED":"MISSING"}};
+            for(String[] asset:assets){jdbc.update("insert into framework_screen_asset_assembly(contract_id,asset_layer,asset_ref,management_route,decision,evidence_ref,protected,updated_by) values(?,?,?,?,?,?,?,?) on conflict(contract_id,asset_layer) do update set asset_ref=excluded.asset_ref,management_route=excluded.management_route,decision=excluded.decision,evidence_ref=excluded.evidence_ref,protected=excluded.protected,updated_by=excluded.updated_by,updated_at=current_timestamp",id,asset[0],asset[1],asset[2],asset[3],"factory:"+process+":"+route,"REUSED".equals(asset[3])||"LINKED".equals(asset[3]),user);if("MISSING".equals(asset[3])||"REPAIR_REQUIRED".equals(asset[3]))gaps++;else ready++;}
+        }
+        return Map.of("success",true,"processCode",process,"screenCount",contracts.size(),"readyAssets",ready,"gapAssets",gaps,"totalAssets",ready+gaps);
     }
 
     @Transactional public Map<String,Object> recordProfessionalEvidence(Map<String,Object>b,String user){
