@@ -116,6 +116,53 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"generatedJobs",created,"processCode",process,"stepCode",step);
     }
 
+    /**
+     * Makes one process development-ready in a single transaction: safety scenarios,
+     * implementation jobs, approvals, and screen blueprints are kept in sync.
+     */
+    @Transactional public Map<String,Object> bootstrapProcessDevelopment(Map<String,Object>b,String actor){
+        String process=req(b,"processCode");
+        boolean approve=!"false".equalsIgnoreCase(str(b,"approveJobs"));
+        boolean queue=!"false".equalsIgnoreCase(str(b,"queueScreens"));
+        Integer processCount=jdbc.queryForObject("select count(*) from framework_process_definition where process_code=?",Integer.class,process);
+        if(processCount==null||processCount==0)throw new IllegalArgumentException("프로세스를 찾을 수 없습니다: "+process);
+
+        String[][] scenarios={
+            {"HAPPY","정상 업무 완료","HAPPY_PATH","담당 액터와 프로젝트 데이터가 준비됨","[\"순서대로 업무 수행\",\"완료 조건 검증\",\"다음 업무 개방\"]","[\"최종 상태가 완료됨\",\"필수 산출물과 감사 이력이 존재함\"]"},
+            {"AUTH","권한 없는 작업 차단","AUTHORITY","서로 다른 역할의 계정이 준비됨","[\"권한 없는 액션 시도\",\"담당 액터의 정상 액션 수행\"]","[\"비인가 액션은 차단됨\",\"거부 시도가 감사 기록에 남음\"]"},
+            {"ISOLATION","테넌트·프로젝트 데이터 격리","ISOLATION","서로 다른 테넌트와 프로젝트가 준비됨","[\"교차 조회와 수정을 시도\",\"자기 프로젝트를 조회\"]","[\"교차 접근은 403 또는 404\",\"자기 프로젝트 데이터만 반환됨\"]"},
+            {"EXCEPTION","필수 데이터 누락과 보완","EXCEPTION","필수 입력이 누락된 업무가 준비됨","[\"불완전 데이터 제출\",\"보완 요청\",\"재제출\"]","[\"불완전 제출은 확정되지 않음\",\"보완 후 다음 단계가 개방됨\"]"},
+            {"RECOVERY","실패 후 안전한 재처리","RECOVERY","중간 단계 실패를 재현할 수 있음","[\"처리 실패\",\"동일 요청 재시도\",\"복구 결과 확인\"]","[\"중복 데이터가 생성되지 않음\",\"실패 원인과 복구 이력이 보존됨\"]"}
+        };
+        for(String[]s:scenarios){
+            jdbc.update("insert into framework_simulation_case(case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json,case_status) values(?,?,?,?,?,?,?,'READY') on conflict(case_code) do update set case_name=excluded.case_name,case_type=excluded.case_type,preconditions=excluded.preconditions,steps_json=excluded.steps_json,assertions_json=excluded.assertions_json,case_status=case when framework_simulation_case.case_status='APPROVED' then 'APPROVED' else 'READY' end,updated_at=current_timestamp",process+"_"+s[0],process,s[1],s[2],s[3],s[4],s[5]);
+        }
+
+        List<Map<String,Object>> steps=jdbc.queryForList("select step_code from framework_process_step where process_code=? order by step_order",process);
+        if(steps.isEmpty())throw new IllegalStateException("프로세스 단계가 정의되지 않았습니다: "+process);
+        int generated=0,approved=0;
+        for(Map<String,Object>row:steps){
+            String step=String.valueOf(row.get("step_code"));
+            generated+=((Number)generateDevelopmentPlan(process,step,actor).get("generatedJobs")).intValue();
+            if(approve)approved+=((Number)approveDevelopmentPlan(process,step,actor).get("approvedJobs")).intValue();
+        }
+        Map<String,Object> compiled=compileScreenBlueprints(Map.of("processCode",process,"maxScreens",200,"dryRun",false),actor);
+        long batchId=((Number)compiled.get("batchId")).longValue();
+        int queued=0;
+        if(queue&&((Number)compiled.get("valid")).intValue()>0){
+            queued=((Number)queueScreenGeneration(batchId,actor).get("queued")).intValue();
+        }
+        jdbc.update("update framework_process_definition set process_status='IN_DEVELOPMENT',automation_mode='AUTOMATIC',updated_at=current_timestamp where process_code=? and process_status<>'DEVELOPMENT_READY'",process);
+        Integer totalJobs=jdbc.queryForObject("select count(*) from framework_development_job where process_code=?",Integer.class,process);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("processCode",process);result.put("stepCount",steps.size());
+        result.put("scenarioCount",scenarios.length);result.put("generatedJobs",generated);result.put("approvedJobs",approved);
+        result.put("totalJobs",totalJobs==null?0:totalJobs);result.put("batchId",batchId);
+        result.put("compiledScreens",compiled.get("compiled"));result.put("validScreens",compiled.get("valid"));
+        result.put("queuedScreens",queued);result.put("nextAction","승인된 개발 작업을 claim하여 구현하고 품질 게이트 증적과 함께 complete 하십시오.");
+        return result;
+    }
+
     @Transactional public Map<String,Object> approveDevelopmentPlan(String process,String step,String actor){
         int count=jdbc.update("update framework_development_job set approval_status='APPROVED',updated_at=current_timestamp where process_code=? and step_code=? and job_status='PLANNED'",process,step);
         jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);

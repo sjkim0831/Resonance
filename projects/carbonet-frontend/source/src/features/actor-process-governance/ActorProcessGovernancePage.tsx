@@ -40,7 +40,11 @@ export function ActorProcessGovernancePage() {
       const response = await fetch(`${base}/${path}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "저장에 실패했습니다.");
-      setMessage(path === "standard-pack" ? `표준 업무팩을 반영했습니다. 프로세스 ${result.processes ?? 0}개, 단계 ${result.steps ?? 0}개, 시나리오 ${result.cases ?? 0}개가 준비되었습니다.` : "저장되었습니다.");
+      setMessage(path === "standard-pack"
+        ? `표준 업무팩을 반영했습니다. 프로세스 ${result.processes ?? 0}개, 단계 ${result.steps ?? 0}개, 시나리오 ${result.cases ?? 0}개가 준비되었습니다.`
+        : path === "development/bootstrap-process"
+          ? `${result.processCode} 자동 준비가 완료되었습니다. 시나리오 ${result.scenarioCount ?? 0}개, 개발 작업 ${result.totalJobs ?? 0}개, 유효 화면 ${result.validScreens ?? 0}개를 연결했습니다.`
+          : "저장되었습니다.");
       await load();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "저장에 실패했습니다."); }
     finally { setBusy(false); }
@@ -91,6 +95,14 @@ export function ActorProcessGovernancePage() {
 
       {tab === "automation" && <>
         <ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter}/>
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <h3 className="text-lg font-black text-[#052b57]">프로세스 개발 자동 준비</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-700">선택한 프로세스의 정상·예외·권한·격리·복구 시나리오, 단계별 DB·API·화면·알림·테스트 작업, 화면 설계와 실행 큐를 한 트랜잭션으로 멱등 생성합니다.</p>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="자동 준비할 프로세스"><select className={`${fieldClass} sm:min-w-80`} value={processFilter} onChange={event=>setProcessFilter(event.target.value)}><option value="">프로세스를 선택하십시오</option>{data.processes.map(row=><option key={value(row,"processCode")} value={value(row,"processCode")}>{value(row,"processName")} ({value(row,"processCode")})</option>)}</select></Field>
+            <button className="h-11 rounded-lg bg-[#0f7b49] px-5 font-black text-white disabled:cursor-not-allowed disabled:opacity-50" disabled={busy||!processFilter} onClick={()=>void post("development/bootstrap-process",{processCode:processFilter,approveJobs:true,queueScreens:true})} type="button">시나리오·개발계획·화면 한 번에 준비</button>
+          </div>
+        </section>
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="text-lg font-black text-[#052b57]">상세 절차를 넣으면 개발 작업을 자동 도출합니다</h3><p className="mt-1 text-sm text-slate-700">원하는 순서에 절차를 삽입하면 후속 순서를 재계산하고 DB·API·백엔드·사용자 화면·관리자 화면·알림·테스트·통합 작업과 필수 산출물을 생성합니다. 상위 단계 코드를 지정하면 서브 절차가 됩니다.</p></section>
         <Form onSubmit={event=>void submit(event,"processes")} cols="lg:grid-cols-4"><Field label="서브프로세스 코드"><input className={fieldClass} name="processCode" required/></Field><Field label="서브프로세스명"><input className={fieldClass} name="processName" required/></Field><Field label="상위 프로세스"><select className={fieldClass} name="parentProcessCode" required>{data.processes.map(row=><option key={value(row,"processCode")}>{value(row,"processCode")}</option>)}</select></Field><Field label="도메인"><input className={fieldClass} name="domainCode" required/></Field><Field label="버전"><input className={fieldClass} name="version" defaultValue="1.0.0" required/></Field><Field label="자동화 방식"><select className={fieldClass} name="automationMode"><option>ASSISTED</option><option>AUTOMATIC</option><option>MANUAL</option></select></Field><div className="lg:col-span-2"><Field label="목표"><input className={fieldClass} name="goal" required/></Field></div><div className="lg:col-span-2"><Field label="시작 조건"><input className={fieldClass} name="startCondition" required/></Field></div><div className="lg:col-span-2"><Field label="완료 조건"><input className={fieldClass} name="completionCondition" required/></Field></div><SaveButton busy={busy} label="서브프로세스 등록"/></Form>
         <Form onSubmit={event=>void submit(event,"steps")} cols="lg:grid-cols-4">
