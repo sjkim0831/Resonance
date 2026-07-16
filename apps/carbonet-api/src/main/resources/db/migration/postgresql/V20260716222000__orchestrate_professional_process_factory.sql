@@ -18,6 +18,8 @@ ON CONFLICT(process_code,audience) DO UPDATE SET
  domain_code=excluded.domain_code,domain_name=excluded.domain_name,domain_name_en=excluded.domain_name_en,
  group_code=excluded.group_code,group_name=excluded.group_name,group_name_en=excluded.group_name_en,icon_name=excluded.icon_name;
 
+DROP VIEW IF EXISTS framework_professional_screen_readiness;
+
 ALTER TABLE framework_professional_screen_contract
   ADD COLUMN IF NOT EXISTS menu_code varchar(8),
   ADD COLUMN IF NOT EXISTS menu_visibility varchar(20) NOT NULL DEFAULT 'HIDDEN',
