@@ -79,7 +79,7 @@ public class ReportPdfIssuanceService {
             Files.writeString(source, html, StandardCharsets.UTF_8);
             Process process = new ProcessBuilder(
                     chromiumBin,
-                    "--headless=new",
+                    "--headless",
                     "--no-sandbox",
                     "--disable-dev-shm-usage",
                     "--disable-gpu",
