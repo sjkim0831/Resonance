@@ -55,6 +55,49 @@
   box-sizing: border-box;
 }
 
+/* Framework-wide layout safety contract. Responsive section ordering remains
+ * owned by each grid; these rules only prevent content from escaping its box. */
+:where(main, section, article, aside, header, footer, nav, form, fieldset, div, ul, ol, li) {
+  min-width: 0;
+}
+
+:where(h1, h2, h3, h4, h5, h6, p, span, a, button, label, legend, th, td, dt, dd, li) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+:where(input, select, textarea, button, img, svg, canvas, video, iframe) {
+  max-width: 100%;
+}
+
+:where(img, svg, canvas, video)[data-krds-fluid="true"] {
+  height: auto;
+}
+
+:where(button, .gov-btn, .krds-button) {
+  min-width: 0;
+  white-space: normal;
+}
+
+[data-krds-overflow="wrap"] {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+[data-krds-table-viewport="true"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-krds-table-viewport="true"] > table {
+  min-width: max-content;
+}
+
 html,
 body,
 #root {

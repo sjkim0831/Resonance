@@ -21,6 +21,7 @@ import {
 } from "./lib/api/platformTypes";
 import { useProjectTheme } from "./app/hooks/useProjectTheme";
 import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entry/GlobalUserGnbShell";
+import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
 
@@ -150,6 +151,7 @@ function fallbackHelpContent(pageId: string): PageHelpContent {
 }
 
 export default function App() {
+  useLayoutOverflowGuard();
   useProjectTheme();
   useTelemetryTransport();
   useGlobalErrorHandler();
