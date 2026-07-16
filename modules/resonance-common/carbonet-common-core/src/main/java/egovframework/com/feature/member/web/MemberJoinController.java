@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
@@ -52,6 +53,9 @@ public class MemberJoinController {
     @Resource
     private MemberConsentHistoryService memberConsentHistoryService;
 
+    @Value("${security.join.allow-unverified-identity:false}")
+    private boolean allowUnverifiedIdentity;
+
     @GetMapping("/api/session")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> joinSessionApi(HttpSession session) {
@@ -68,6 +72,7 @@ public class MemberJoinController {
         response.put("step", step);
         response.put("joinVO", joinVO);
         response.put("verifiedIdentity", hasVerifiedIdentity(joinVO));
+        response.put("identityVerificationMode", allowUnverifiedIdentity ? "DEVELOPMENT_BYPASS" : "PROVIDER_REQUIRED");
         response.put("requiredSessionReady", hasRequiredJoinSessionValues(joinVO));
         response.put("membershipType", expandMembershipCode(joinVO.getEntrprsSeCode()));
         response.put("canViewStep1", true);
@@ -267,6 +272,11 @@ public class MemberJoinController {
             return ResponseEntity.badRequest().body(response);
         }
         joinVO.setAuthTy(normalizeAuthType(authMethod));
+        if (!hasVerifiedIdentity(joinVO)) {
+            response.put("success", false);
+            response.put("message", "IDENTITY_PROVIDER_VERIFICATION_REQUIRED");
+            return ResponseEntity.status(409).body(response);
+        }
         session.setAttribute(SESSION_JOIN_VO, joinVO);
         setJoinStep(session, 4);
         response.put("success", true);
@@ -406,6 +416,10 @@ public class MemberJoinController {
 
         // 본인확인 수단 코드만 저장한다.
         joinVO.setAuthTy(normalizeAuthType(authMethod));
+
+        if (!hasVerifiedIdentity(joinVO)) {
+            return "redirect:/join/step3?verificationRequired=1";
+        }
 
         session.setAttribute(SESSION_JOIN_VO, joinVO);
         setJoinStep(session, 4);
@@ -1224,7 +1238,17 @@ public class MemberJoinController {
     }
 
     private boolean hasVerifiedIdentity(EntrprsManageVO joinVO) {
-        return hasText(joinVO.getAuthTy());
+        if (joinVO == null || !hasText(joinVO.getAuthTy())) {
+            return false;
+        }
+        if (allowUnverifiedIdentity) {
+            return true;
+        }
+        return isLiveIdentityValue(joinVO.getAuthCi()) && isLiveIdentityValue(joinVO.getAuthDi());
+    }
+
+    private boolean isLiveIdentityValue(String value) {
+        return hasText(value) && !value.trim().toUpperCase().startsWith("MOCK-");
     }
 
     private boolean hasRequiredJoinSessionValues(EntrprsManageVO joinVO) {

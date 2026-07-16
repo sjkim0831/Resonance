@@ -130,6 +130,10 @@ token:
   refreshExpiration: 3600000
 
 security:
+  join:
+    # Development environments may explicitly opt in. The production-safe default
+    # is fail-closed until a provider result supplies non-mock CI/DI evidence.
+    allow-unverified-identity: ${SECURITY_JOIN_ALLOW_UNVERIFIED_IDENTITY:false}
   gateway:
     enabled: ${SECURITY_GATEWAY_ENABLED:false}
     code-id: ${SECURITY_GATEWAY_CODE_ID:}
