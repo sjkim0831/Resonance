@@ -5,6 +5,7 @@ ROOT_DIR="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
+DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
@@ -22,7 +23,7 @@ if [[ ! -r "$KUBECONFIG" ]]; then
   exit 8
 fi
 
-mkdir -p "$(dirname "$LOCK_FILE")" "$BACKUP_DIR"
+mkdir -p "$(dirname "$LOCK_FILE")" "$BACKUP_DIR" "$(dirname "$DEPLOY_STATE_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
@@ -81,10 +82,26 @@ echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 git fetch --prune "$REMOTE" "$BRANCH"
 target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
+deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
+  deployed_commit="$current_commit"
+fi
 
-if [[ "$current_commit" == "$target_commit" ]]; then
-  echo "[auto-deploy] already current: $current_commit"
+if [[ "$deployed_commit" == "$target_commit" ]]; then
+  echo "[auto-deploy] already deployed: $deployed_commit"
   exit 0
+fi
+
+root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+if [[ "$root_usage" -ge 88 ]]; then
+  echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker images before build"
+  sudo docker image prune -a -f >/dev/null
+  sudo apt-get clean
+  root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+fi
+if [[ "$root_usage" -ge 88 ]]; then
+  echo "[auto-deploy] refusing deployment: root disk usage remains ${root_usage}%" >&2
+  exit 16
 fi
 
 tracked_source_changes="$(git diff --name-only -- \
@@ -184,7 +201,7 @@ while IFS= read -r changed_path; do
       break
       ;;
   esac
-done < <(git diff --name-only "$current_commit" "$target_commit")
+done < <(git diff --name-only "$deployed_commit" "$target_commit")
 echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] && echo no || echo yes)"
 
 git merge --ff-only "$target_commit"
@@ -201,4 +218,12 @@ SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 
 kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT" --timeout=600s
+health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
+if [[ "$health_status" != *'"status":"UP"'* ]]; then
+  echo "[auto-deploy] refusing success marker: health check is not UP" >&2
+  exit 17
+fi
+printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
+mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+sudo docker image prune -a -f >/dev/null || true
 echo "[auto-deploy] deployed $target_commit with Flyway enabled"
