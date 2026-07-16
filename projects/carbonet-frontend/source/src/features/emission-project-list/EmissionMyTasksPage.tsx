@@ -72,8 +72,10 @@ export function EmissionMyTasksPage() {
   }
 
   function taskHref(task: Task) {
-    const glue = task.targetUrl.includes("?") ? "&" : "?";
-    const path = `${task.targetUrl}${glue}projectId=${encodeURIComponent(task.projectId)}&taskId=${task.id}`;
+    const target = new URL(task.targetUrl, window.location.origin);
+    target.searchParams.set("projectId", task.projectId);
+    target.searchParams.set("taskId", String(task.id));
+    const path = `${target.pathname}${target.search}`;
     return buildLocalizedPath(path, `/en${path}`);
   }
 
