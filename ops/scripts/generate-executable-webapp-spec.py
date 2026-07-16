@@ -484,7 +484,9 @@ def main():
                 fh.write(json.dumps(test, ensure_ascii=False, separators=(",", ":")) + "\n")
         if args.viewer_out:
             args.viewer_out.mkdir(parents=True, exist_ok=True)
-            pack = {"manifest": result, "actors": actors, "processes": processes, "tests": tests}
+            implemented_path=args.out / "implemented-process-model.json"
+            implemented=json.loads(implemented_path.read_text(encoding="utf-8-sig")) if implemented_path.exists() else None
+            pack = {"manifest": result, "actors": actors, "processes": processes, "tests": tests, "implementedModel": implemented}
             with gzip.open(args.viewer_out / "spec-data.json.gz", "wt", encoding="utf-8", compresslevel=9) as fh:
                 json.dump(pack, fh, ensure_ascii=False, separators=(",", ":"))
             write_json(args.viewer_out / "manifest.json", result)
