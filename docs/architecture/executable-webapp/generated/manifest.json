@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "specVersion": "1.0.0",
+    "status": "GENERATED_BASELINE_REQUIRES_DOMAIN_APPROVAL",
+    "generator": "generate-executable-webapp-spec.py"
+  },
+  "counts": {
+    "legalSources": 14,
+    "referenceAssets": 12763,
+    "unclassifiedReferenceAssets": 9396,
+    "actors": 31,
+    "processes": 43,
+    "steps": 313,
+    "screens": 313,
+    "apis": 313,
+    "dataContracts": 45,
+    "tests": 13189
+  },
+  "qualityGates": {
+    "duplicateIds": 0,
+    "orphanSteps": 0,
+    "missingContracts": 0,
+    "missingScenarioFamilies": 0,
+    "machineValidation": "PASSED",
+    "domainApproval": "PENDING"
+  }
+}
