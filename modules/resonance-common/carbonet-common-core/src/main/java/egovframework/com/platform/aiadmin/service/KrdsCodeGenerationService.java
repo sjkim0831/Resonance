@@ -140,7 +140,8 @@ public class KrdsCodeGenerationService {
         if (value.matches("(?s).*<div[^>]*onClick=.*")) failures.add("interactive div is not keyboard accessible");
         if (value.matches("(?s).*<button(?![^>]*type=)[^>]*>.*")) failures.add("button type is required");
         if (value.contains("outline-none") && !value.contains("focus-visible:")) failures.add("visible keyboard focus is required");
-        if (value.matches("(?s).*(text|bg)-\\[#(?:[0-9a-fA-F]{3}){1,2}\\].*")) failures.add("raw colors are forbidden; use KRDS tokens");
+        if (value.matches("(?s).*#[0-9a-fA-F]{3,8}.*")) failures.add("raw colors are forbidden; use KRDS semantic tokens");
+        if (value.matches("(?s).*<gov-[a-z][^>]*>.*")) failures.add("gov-* names are CSS classes, not custom HTML elements; use native controls");
         if (value.contains("<table") && !(value.contains("<caption") && value.contains("<th"))) failures.add("data tables require caption and headers");
         if (!value.contains("gov-") && !value.contains("krds-")) failures.add("KRDS/GOV component classes are required");
         return failures;
