@@ -146,13 +146,31 @@ public class ActorProcessGovernanceService {
         for(Map<String,Object>row:steps){
             String step=String.valueOf(row.get("step_code"));
             generated+=((Number)generateDevelopmentPlan(process,step,actor).get("generatedJobs")).intValue();
-            if(approve)approved+=((Number)approveDevelopmentPlan(process,step,actor).get("approvedJobs")).intValue();
         }
         Map<String,Object> compiled=compileScreenBlueprints(Map.of("processCode",process,"maxScreens",200,"dryRun",false),actor);
         long batchId=((Number)compiled.get("batchId")).longValue();
         int queued=0;
         if(queue&&((Number)compiled.get("valid")).intValue()>0){
             queued=((Number)queueScreenGeneration(batchId,actor).get("queued")).intValue();
+        }
+        List<Map<String,Object>> blockedSteps=new java.util.ArrayList<>();
+        if(approve){
+            for(Map<String,Object>row:steps){
+                String step=String.valueOf(row.get("step_code"));
+                Map<String,Object> preflight=runScreenDevelopmentPreflight(process,step,actor);
+                if(Boolean.TRUE.equals(preflight.get("passed"))){
+                    int count=jdbc.update("update framework_development_job set approval_status='APPROVED',updated_at=current_timestamp where process_code=? and step_code=? and job_status='PLANNED'",process,step);
+                    jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
+                    approved+=count;
+                }else{
+                    Map<String,Object> blocked=new LinkedHashMap<>();
+                    blocked.put("stepCode",step);
+                    blocked.put("failureSummary",preflight.get("failureSummary"));
+                    blocked.put("checkedRoutes",preflight.get("checkedRoutes"));
+                    blockedSteps.add(blocked);
+                    jdbc.update("update framework_process_step set automation_status='PLANNED' where process_code=? and step_code=?",process,step);
+                }
+            }
         }
         jdbc.update("update framework_process_definition set process_status='IN_DEVELOPMENT',automation_mode='AUTOMATIC',updated_at=current_timestamp where process_code=? and process_status<>'DEVELOPMENT_READY'",process);
         Integer totalJobs=jdbc.queryForObject("select count(*) from framework_development_job where process_code=?",Integer.class,process);
@@ -161,7 +179,9 @@ public class ActorProcessGovernanceService {
         result.put("scenarioCount",scenarios.length);result.put("generatedJobs",generated);result.put("approvedJobs",approved);
         result.put("totalJobs",totalJobs==null?0:totalJobs);result.put("batchId",batchId);
         result.put("compiledScreens",compiled.get("compiled"));result.put("validScreens",compiled.get("valid"));
-        result.put("queuedScreens",queued);result.put("nextAction","승인된 개발 작업을 claim하여 구현하고 품질 게이트 증적과 함께 complete 하십시오.");
+        result.put("queuedScreens",queued);result.put("blockedStepCount",blockedSteps.size());result.put("blockedSteps",blockedSteps);
+        result.put("factoryStatus",blockedSteps.isEmpty()?"READY_TO_EXECUTE":"DESIGN_REQUIRED");
+        result.put("nextAction",blockedSteps.isEmpty()?"승인된 개발 작업을 실행기에 배정하십시오.":"차단 단계의 화면 설계·선택 HTML 시안을 보강한 뒤 자동 준비를 다시 실행하십시오.");
         return result;
     }
 

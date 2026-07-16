@@ -51,7 +51,7 @@ export function ActorProcessGovernancePage() {
       setMessage(path === "standard-pack"
         ? `표준 업무팩을 반영했습니다. 프로세스 ${result.processes ?? 0}개, 단계 ${result.steps ?? 0}개, 시나리오 ${result.cases ?? 0}개가 준비되었습니다.`
         : path === "development/bootstrap-process"
-          ? `${result.processCode} 자동 준비가 완료되었습니다. 시나리오 ${result.scenarioCount ?? 0}개, 개발 작업 ${result.totalJobs ?? 0}개, 유효 화면 ${result.validScreens ?? 0}개를 연결했습니다.`
+          ? `${result.processCode} 자동공장 준비가 완료되었습니다. 시나리오 ${result.scenarioCount ?? 0}개, 개발 작업 ${result.totalJobs ?? 0}개, 유효 화면 ${result.validScreens ?? 0}개를 연결했습니다. ${result.blockedStepCount ? `설계·시안 보강 대기 ${result.blockedStepCount}단계` : "모든 단계 실행 가능"}.`
           : "저장되었습니다.");
       await load();
     } catch (reason) { setError(reason instanceof Error ? reason.message : "저장에 실패했습니다."); }
