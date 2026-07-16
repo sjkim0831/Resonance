@@ -1,5 +1,8 @@
 package egovframework.com.platform.governance.service;
 
+import egovframework.com.platform.codex.model.CodexProvisionResponse;
+import egovframework.com.platform.codex.service.CodexProvisioningService;
+import egovframework.com.platform.request.codex.CodexProvisionRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import java.util.stream.Stream;
 public class ActorProcessGovernanceService {
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
+    private final CodexProvisioningService codexProvisioningService;
 
     public Map<String,Object> dashboard() {
         Map<String,Object> out=new LinkedHashMap<>();
@@ -49,6 +53,7 @@ public class ActorProcessGovernanceService {
         out.put("professionalSummary",jdbc.queryForMap("select count(*) as \"totalProcesses\",count(*) filter(where readiness_score=100) as \"expertReadyProcesses\",count(*) filter(where readiness_score<80) as \"highRiskProcesses\",coalesce(round(avg(readiness_score),1),0) as \"averageScore\" from framework_process_professional_readiness"));
         out.put("professionalScreenContracts",jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness order by process_code,step_code,audience"));
         out.put("professionalScreenSummary",jdbc.queryForMap("select count(*) as \"totalScreens\",count(*) filter(where readiness_score=100) as \"completeScreens\",count(*) filter(where readiness_score<100) as \"blockedScreens\",coalesce(round(avg(readiness_score),1),0) as \"averageScore\" from framework_professional_screen_readiness"));
+        out.put("professionalFactoryRuns",jdbc.queryForList("select run_id as \"runId\",process_code as \"processCode\",requested_actor_code as \"requestedActorCode\",run_status as \"runStatus\",menu_count as \"menuCount\",screen_count as \"screenCount\",scenario_count as \"scenarioCount\",development_job_count as \"developmentJobCount\",blocked_step_count as \"blockedStepCount\",requested_by as \"requestedBy\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_professional_factory_run order by started_at desc limit 50"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
         return out;
     }
@@ -61,6 +66,71 @@ public class ActorProcessGovernanceService {
         Map<String,Object> readiness=jdbc.queryForMap("select contract_id as \"contractId\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness where contract_id=?",id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
         return Map.of("success",true,"contract",readiness);
+    }
+
+    @Transactional public Map<String,Object> executeProfessionalFactory(Map<String,Object>b,String user) throws Exception {
+        String process=req(b,"processCode"), requestedActor=req(b,"actorCode");
+        Integer actorSteps=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and actor_code=?",Integer.class,process,requestedActor);
+        if(actorSteps==null||actorSteps==0)throw new IllegalArgumentException("선택한 액터가 이 프로세스에 참여하지 않습니다: "+requestedActor+" / "+process);
+        Integer policyCount=jdbc.queryForObject("select count(*) from framework_process_menu_policy where process_code=?",Integer.class,process);
+        if(policyCount==null||policyCount<2)throw new IllegalStateException("사용자·관리자 메뉴 정책이 모두 필요합니다: "+process);
+
+        UUID runId=UUID.randomUUID();
+        jdbc.update("insert into framework_professional_factory_run(run_id,process_code,requested_actor_code,requested_by) values(?,?,?,?)",runId,process,requestedActor,user);
+        ensureProfessionalContracts(process,user);
+        int menus=provisionProcessMenus(process,user);
+        Map<String,Object> bootstrap=bootstrapProcessDevelopment(Map.of("processCode",process,"approveJobs",true,"queueScreens",true),user);
+        int screens=jdbc.queryForObject("select count(*) from framework_professional_screen_contract where process_code=?",Integer.class,process);
+        int scenarios=jdbc.queryForObject("select count(*) from framework_simulation_case where process_code=?",Integer.class,process);
+        int jobs=jdbc.queryForObject("select count(*) from framework_development_job where process_code=?",Integer.class,process);
+        int blocked=((Number)bootstrap.getOrDefault("blockedStepCount",0)).intValue();
+        String status=blocked==0?"READY_TO_EXECUTE":"QUALITY_GATES_BLOCKED";
+        String result="{\"factoryStatus\":\""+status+"\",\"menus\":"+menus+",\"screens\":"+screens+",\"scenarios\":"+scenarios+",\"jobs\":"+jobs+",\"blockedSteps\":"+blocked+"}";
+        jdbc.update("update framework_professional_factory_run set run_status=?,menu_count=?,screen_count=?,scenario_count=?,development_job_count=?,blocked_step_count=?,result_json=?,completed_at=current_timestamp where run_id=?",status,menus,screens,scenarios,jobs,blocked,result,runId);
+        Map<String,Object> out=new LinkedHashMap<>();
+        out.put("success",true);out.put("runId",runId);out.put("processCode",process);out.put("actorCode",requestedActor);
+        out.put("status",status);out.put("menuCount",menus);out.put("screenCount",screens);out.put("scenarioCount",scenarios);
+        out.put("developmentJobCount",jobs);out.put("blockedStepCount",blocked);out.put("bootstrap",bootstrap);
+        out.put("nextAction",blocked==0?"승인된 개발 작업과 E2E 테스트를 실행합니다.":"차단된 화면 계약과 시안을 보완한 뒤 같은 요청을 재실행합니다.");
+        return out;
+    }
+
+    private void ensureProfessionalContracts(String process,String user){
+        jdbc.update("insert into framework_professional_screen_contract(process_code,step_code,audience,route_path,screen_name,actor_code,business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,field_contract,command_contract,api_contract,data_contract,evidence_contract,updated_by) select s.process_code,s.step_code,x.audience,x.route_path,s.step_name||case x.audience when 'ADMIN' then ' 관리자 업무 화면' else ' 사용자 업무 화면' end,s.actor_code,coalesce(nullif(s.requirement_text,''),s.step_name||' 업무를 완료한다.'),s.from_state||' 상태이며 해당 액터가 프로젝트에 배정되어 있다.',coalesce(nullif(s.completion_rule,''),s.to_state||' 상태로 전이된다.'),'[\"진행률\",\"마감·지연\",\"차단 오류\",\"담당자\"]','[\"업무 문맥·진행 상태\",\"검색·필터\",\"핵심 데이터 작업공간\",\"증적·이력\",\"다음 업무\"]','[\"업무 식별자\",\"상태\",\"담당자\",\"버전\",\"변경 일시\"]',json_build_array(s.command_code,'임시저장','증적첨부','다음 업무 이동')::text,coalesce(nullif(s.api_contract,''),'[\"업무 조회\",\"검증\",\"저장·명령\",\"이력 조회\"]'),'[\"tenantId\",\"projectId\",\"processCode\",\"stepCode\",\"actorCode\",\"version\",\"audit fields\"]','[\"요청·응답 증적\",\"상태 전이\",\"권한 판정\",\"감사 이벤트\",\"화면 E2E\"]',? from framework_process_step s cross join lateral(values('USER',nullif(s.user_path,'')),('ADMIN',nullif(s.admin_path,''))) x(audience,route_path) where s.process_code=? and x.route_path is not null on conflict(process_code,step_code,audience,route_path) do update set actor_code=excluded.actor_code,business_purpose=excluded.business_purpose,entry_condition=excluded.entry_condition,exit_condition=excluded.exit_condition,updated_by=excluded.updated_by,updated_at=current_timestamp",user,process);
+    }
+
+    private int provisionProcessMenus(String process,String user) throws Exception {
+        List<Map<String,Object>> contracts=jdbc.queryForList("select c.contract_id,c.audience,c.route_path,c.screen_name,c.menu_visibility,p.domain_code,p.domain_name,p.domain_name_en,p.group_code,p.group_name,p.group_name_en,p.icon_name from framework_professional_screen_contract c join framework_process_menu_policy p on p.process_code=c.process_code and p.audience=c.audience where c.process_code=? order by c.audience,c.step_code,c.contract_id",process);
+        int verified=0;
+        for(Map<String,Object> contract:contracts){
+            long contractId=((Number)contract.get("contract_id")).longValue();String route=String.valueOf(contract.get("route_path"));
+            List<Map<String,Object>> existing=jdbc.queryForList("select menu_code from comtnmenuinfo where length(menu_code)=8 and lower(split_part(menu_url,'?',1))=lower(split_part(?,'?',1)) order by case when use_at='Y' then 0 else 1 end,menu_code limit 1",route);
+            String menuCode;boolean created=existing.isEmpty();
+            if(existing.isEmpty()){
+                String group=String.valueOf(contract.get("group_code"));
+                jdbc.queryForList("select pg_advisory_xact_lock(hashtext(?))","professional-menu:"+group);
+                menuCode=jdbc.queryForObject("select ?||lpad(n::text,2,'0') from generate_series(1,99) n where not exists(select 1 from comtnmenuinfo where menu_code=?||lpad(n::text,2,'0')) order by n limit 1",String.class,group,group);
+                if(menuCode==null)throw new IllegalStateException("메뉴 코드 공간이 부족합니다: "+group);
+                CodexProvisionRequest request=professionalMenuRequest(contract,menuCode,route,user);
+                CodexProvisionResponse response=codexProvisioningService.provision(request);
+                if(!"success".equalsIgnoreCase(response.getStatus()))throw new IllegalStateException("메뉴 등록 실패: "+route);
+            }else menuCode=String.valueOf(existing.get(0).get("menu_code"));
+            boolean visible="VISIBLE".equals(String.valueOf(contract.get("menu_visibility")));
+            if(created||visible)jdbc.update("update comtnmenuinfo set use_at='Y',expsr_at=?,last_updt_pnttm=current_timestamp where menu_code=?",visible?"Y":"N",menuCode);
+            jdbc.update("update framework_professional_screen_contract set menu_code=?,menu_verified=true,updated_by=?,updated_at=current_timestamp where contract_id=?",menuCode,user,contractId);
+            verified++;
+        }
+        return verified;
+    }
+
+    private CodexProvisionRequest professionalMenuRequest(Map<String,Object> row,String menuCode,String route,String user){
+        CodexProvisionRequest.PageRequest page=new CodexProvisionRequest.PageRequest();
+        page.setDomainCode(String.valueOf(row.get("domain_code")));page.setDomainName(String.valueOf(row.get("domain_name")));page.setDomainNameEn(String.valueOf(row.get("domain_name_en")));
+        page.setGroupCode(String.valueOf(row.get("group_code")));page.setGroupName(String.valueOf(row.get("group_name")));page.setGroupNameEn(String.valueOf(row.get("group_name_en")));
+        page.setCode(menuCode);page.setCodeNm(String.valueOf(row.get("screen_name")));page.setCodeDc(String.valueOf(row.get("screen_name")));page.setMenuUrl(route);page.setMenuIcon(String.valueOf(row.get("icon_name")));page.setUseAt("Y");
+        CodexProvisionRequest.FeatureRequest feature=new CodexProvisionRequest.FeatureRequest();feature.setMenuCode(menuCode);feature.setFeatureCode(menuCode+"_VIEW");feature.setFeatureNm(page.getCodeNm()+" 조회");feature.setFeatureNmEn("View "+page.getCodeDc());feature.setFeatureDc("Actor-process governed screen access");feature.setUseAt("Y");
+        CodexProvisionRequest.AuthorRequest author=new CodexProvisionRequest.AuthorRequest();String admin="ADMIN".equals(String.valueOf(row.get("audience")))?"ROLE_SYSTEM_ADMIN":"ROLE_USER";author.setAuthorCode(admin);author.setAuthorNm(admin);author.setAuthorDc("Professional factory default access");author.setFeatureCodes(List.of(feature.getFeatureCode()));
+        CodexProvisionRequest request=new CodexProvisionRequest();request.setRequestId("PROFESSIONAL-FACTORY-"+menuCode);request.setActorId(user);request.setTargetApiPath(route);request.setMenuType("USER".equals(String.valueOf(row.get("audience")))?"USER":"ADMIN");request.setReloadSecurityMetadata(true);request.setPage(page);request.setFeatures(List.of(feature));request.setAuthors(List.of(author));return request;
     }
 
     public Map<String,Object> designAssetInventory(){
