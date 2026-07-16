@@ -36,6 +36,7 @@ public class ActorProcessGovernanceService {
         out.put("qualityGateResults",jdbc.queryForList("select result_id as \"resultId\",job_id as \"jobId\",gate_code as \"gateCode\",result,summary,evidence_ref as \"evidenceRef\",checked_at as \"executedAt\" from framework_development_job_gate_result order by result_id desc limit 300"));
         out.put("processDevelopmentProgress",jdbc.queryForList("select process_code as \"processCode\",required_jobs as \"requiredJobs\",verified_jobs as \"verifiedJobs\",failed_jobs as \"failedJobs\",parallel_jobs as \"parallelJobs\",completion_percent as \"completionPercent\" from framework_process_development_progress order by process_code"));
         out.put("developmentEvents",jdbc.queryForList("select e.event_id as \"eventId\",e.job_id as \"jobId\",e.event_type as \"eventType\",e.from_status as \"fromStatus\",e.to_status as \"toStatus\",e.worker_id as \"workerId\",e.created_at as \"createdAt\" from framework_development_job_event e order by e.event_id desc limit 200"));
+        out.put("screenDevelopmentGates",jdbc.queryForList("select gate_run_id as \"gateRunId\",process_code as \"processCode\",step_code as \"stepCode\",route_path as \"routePath\",page_id as \"pageId\",gate_status as \"gateStatus\",readiness_score as \"readinessScore\",design_note_passed as \"designNotePassed\",selected_mockup_passed as \"selectedMockupPassed\",actor_contract_passed as \"actorContractPassed\",safety_tests_passed as \"safetyTestsPassed\",design_asset_checked as \"designAssetChecked\",failure_summary as \"failureSummary\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_screen_development_gate_run order by gate_run_id desc limit 300"));
         out.put("screenTypes",jdbc.queryForList("select screen_type as \"screenType\",screen_type_name as \"screenTypeName\",required_sections as \"requiredSections\",default_test_expectations as \"testExpectations\",development_weight as \"developmentWeight\" from framework_screen_type where use_at='Y' order by screen_type"));
         out.put("referenceSummary",jdbc.queryForMap("select count(*) as \"assetCount\",count(distinct process_code) as \"mappedProcesses\",count(*) filter(where analysis_status='ANALYZED') as \"analyzedCount\",coalesce(round(avg(confidence),1),0) as \"averageConfidence\" from framework_reference_asset"));
         out.put("referenceAssets",jdbc.queryForList("select reference_id as \"referenceId\",source_name as \"sourceName\",source_type as \"sourceType\",domain_code as \"domainCode\",screen_type as \"screenType\",process_code as \"processCode\",analysis_status as \"analysisStatus\",confidence from framework_reference_asset order by reference_id desc limit 300"));
@@ -165,13 +166,42 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> approveDevelopmentPlan(String process,String step,String actor){
-        List<String> missingNotes=jdbc.queryForList("select target_path from framework_development_job where process_code=? and step_code=? and job_status='PLANNED' and job_type in ('FRONTEND_USER','FRONTEND_ADMIN')",String.class,process,step).stream()
-            .filter(path->screenDevelopmentNoteService.developmentBasis(path).contains("미등록"))
-            .toList();
-        if(!missingNotes.isEmpty())throw new IllegalStateException("화면 설계 메모를 먼저 등록해야 개발계획을 승인할 수 있습니다: "+String.join(", ",missingNotes));
+        Map<String,Object> preflight=runScreenDevelopmentPreflight(process,step,actor);
+        if(!Boolean.TRUE.equals(preflight.get("passed")))throw new IllegalStateException("화면 개발 사전검사를 통과해야 승인할 수 있습니다: "+preflight.get("failureSummary"));
         int count=jdbc.update("update framework_development_job set approval_status='APPROVED',updated_at=current_timestamp where process_code=? and step_code=? and job_status='PLANNED'",process,step);
         jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
         return Map.of("success",true,"approvedJobs",count,"approvedBy",actor);
+    }
+
+    @Transactional public Map<String,Object> runScreenDevelopmentPreflight(String process,String step,String actor){
+        Integer stepCount=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
+        if(stepCount==null||stepCount==0)throw new IllegalArgumentException("프로세스에 해당 절차가 존재하지 않습니다: "+process+" / "+step);
+        List<Map<String,Object>> jobs=jdbc.queryForList("select job_id,job_type,target_path from framework_development_job where process_code=? and step_code=? and job_type in ('FRONTEND_USER','FRONTEND_ADMIN') order by job_id",process,step);
+        if(jobs.isEmpty()){
+            jobs=jdbc.queryForList("select 0 as job_id,'FRONTEND_USER' as job_type,unnest(array_remove(array[user_path,admin_path],null)) as target_path from framework_process_step where process_code=? and step_code=?",process,step);
+        }
+        if(jobs.isEmpty())return Map.of("success",true,"passed",true,"checkedRoutes",0,"failureSummary","화면 개발 대상 없음");
+        Integer actorCount=jdbc.queryForObject("select count(*) from framework_process_step s join framework_actor_definition a on a.actor_code=s.actor_code and a.use_at='Y' where s.process_code=? and s.step_code=?",Integer.class,process,step);
+        Integer safetyTypes=jdbc.queryForObject("select count(distinct case_type) from framework_simulation_case where process_code=? and case_type in ('HAPPY_PATH','EXCEPTION','AUTHORITY','ISOLATION','RECOVERY') and case_status in ('READY','APPROVED')",Integer.class,process);
+        boolean actorPassed=actorCount!=null&&actorCount>0,safetyPassed=safetyTypes!=null&&safetyTypes>=5;
+        int passedRoutes=0;List<String> failures=new java.util.ArrayList<>();
+        for(Map<String,Object> job:jobs){
+            String route=String.valueOf(job.get("target_path"));
+            Map<String,Object> readiness=screenDevelopmentNoteService.developmentReadiness(route);
+            boolean notePassed=Boolean.TRUE.equals(readiness.get("designNotePassed"));
+            boolean mockupPassed=Boolean.TRUE.equals(readiness.get("selectedMockupPassed"));
+            Integer designAssetCount=jdbc.queryForObject("select count(*) from framework_design_preflight where lower(route_path)=lower(?)",Integer.class,ScreenDevelopmentNoteService.cleanRoute(route));
+            boolean designChecked=designAssetCount!=null&&designAssetCount>0;
+            int score=(notePassed?30:0)+(mockupPassed?30:0)+(actorPassed?20:0)+(safetyPassed?20:0);
+            boolean passed=notePassed&&mockupPassed&&actorPassed&&safetyPassed;
+            List<String> gaps=new java.util.ArrayList<>();
+            if(!notePassed)gaps.add("설계·기능·완료 기준");if(!mockupPassed)gaps.add("선택 HTML 시안");if(!actorPassed)gaps.add("액터 계약");if(!safetyPassed)gaps.add("5대 안전 테스트");
+            String summary=String.join(", ",gaps);
+            String detail="{\"designNote\":"+notePassed+",\"selectedMockup\":"+mockupPassed+",\"actorContract\":"+actorPassed+",\"safetyScenarioTypes\":"+(safetyTypes==null?0:safetyTypes)+",\"designAssetChecked\":"+designChecked+"}";
+            jdbc.update("insert into framework_screen_development_gate_run(process_code,step_code,route_path,page_id,gate_status,readiness_score,design_note_passed,selected_mockup_passed,actor_contract_passed,safety_tests_passed,design_asset_checked,check_result_json,failure_summary,executed_by) values(?,?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),?)",process,step,ScreenDevelopmentNoteService.cleanRoute(route),"",passed?"PASSED":"FAILED",score,notePassed,mockupPassed,actorPassed,safetyPassed,designChecked,detail,summary,actor);
+            if(passed)passedRoutes++;else failures.add(ScreenDevelopmentNoteService.cleanRoute(route)+" ["+summary+"]");
+        }
+        return Map.of("success",true,"passed",passedRoutes==jobs.size(),"checkedRoutes",jobs.size(),"passedRoutes",passedRoutes,"failureSummary",String.join("; ",failures));
     }
 
     @Transactional public Map<String,Object> claimDevelopmentJob(String worker){

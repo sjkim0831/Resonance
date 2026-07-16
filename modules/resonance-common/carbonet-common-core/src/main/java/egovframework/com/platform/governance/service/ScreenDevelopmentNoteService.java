@@ -57,6 +57,18 @@ public class ScreenDevelopmentNoteService {
         return basis;
     }
 
+    public Map<String,Object> developmentReadiness(String routePath){
+        String key=routeKey(routePath);
+        Integer noteCount=jdbc.queryForObject("select count(*) from framework_screen_development_note where route_key=? and nullif(trim(design_note),'') is not null and nullif(trim(function_note),'') is not null and nullif(trim(acceptance_note),'') is not null and development_status in ('READY','IN_DEVELOPMENT','VERIFIED')",Integer.class,key);
+        List<Map<String,Object>> mockups=jdbc.queryForList("select slot_no as \"slotNo\",mockup_title as title,prompt_text as prompt,html_content as html,mockup_version as version,mockup_status as status from framework_screen_html_mockup where route_key=? and selected=true and nullif(trim(prompt_text),'') is not null and nullif(trim(html_content),'') is not null",key);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("routePath",cleanRoute(routePath));
+        result.put("designNotePassed",noteCount!=null&&noteCount>0);
+        result.put("selectedMockupPassed",!mockups.isEmpty());
+        result.put("selectedMockup",mockups.isEmpty()?Map.of():mockups.get(0));
+        return result;
+    }
+
     @Transactional public Map<String,Object> saveMockup(int slotNo,Map<String,Object> body,String actor){
         if(slotNo<1||slotNo>5)throw new IllegalArgumentException("시안 번호는 1~5만 사용할 수 있습니다.");
         String routePath=required(body,"routePath"),routeKey=routeKey(routePath),prompt=required(body,"prompt"),html=required(body,"html");
