@@ -66,6 +66,11 @@ public class AuthServiceImpl extends EgovAbstractServiceImpl implements AuthServ
                     LoginResponseDTO employeeUser = fallbackEmployeeLogin(userId, loginVO.getUserPw());
                     return employeeUser;
                 }
+                if (!"A".equalsIgnoreCase(enterpriseUser.getMemberStatus())) {
+                    log.warn("Blocked enterprise login before approval: userId={}, status={}", userId,
+                            enterpriseUser.getMemberStatus());
+                    return null;
+                }
                 if (!matchesPassword(loginVO.getUserPw(), userId, enterpriseUser.getUserPw())) {
                     return null;
                 }

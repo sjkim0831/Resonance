@@ -557,19 +557,11 @@ public class EmissionProjectRegistryService {
     @Transactional
     public String create(String tenantId,Map<String, Object> body) {
         String tenant=requiredValue(tenantId,"tenantId");
-        String name = required(body, "name"), site = required(body, "site"), owner = required(body, "owner");
-        String dataOwner=text(body.get("dataOwner")).isBlank()?owner:text(body.get("dataOwner"));
-        String calculator=text(body.get("calculator")).isBlank()?owner:text(body.get("calculator"));
-        String verifier=text(body.get("verifier")).isBlank()?owner:text(body.get("verifier"));
-        String approver=text(body.get("approver")).isBlank()?owner:text(body.get("approver"));
-        LocalDate start = LocalDate.parse(required(body, "periodStart")), end = LocalDate.parse(required(body, "periodEnd")), due = LocalDate.parse(required(body, "dueDate"));
-        int year = Integer.parseInt(required(body, "reportingYear"));
-        if (end.isBefore(start)) throw new IllegalArgumentException("산정 종료일은 시작일보다 빠를 수 없습니다.");
-        if (due.isBefore(start)) throw new IllegalArgumentException("마감일은 산정 시작일보다 빠를 수 없습니다.");
+        EmissionProjectCreationPolicy.Contract contract=EmissionProjectCreationPolicy.validate(body);
+        String name=contract.name(),site=contract.site(),owner=contract.owner(),dataOwner=contract.dataOwner(),calculator=contract.calculator(),verifier=contract.verifier(),approver=contract.approver();
+        LocalDate start=contract.periodStart(),end=contract.periodEnd(),due=contract.dueDate();int year=contract.reportingYear();
         if (!nameAvailable(tenant,name)) throw new IllegalArgumentException("이미 등록된 프로젝트명입니다.");
-        Object raw = body.get("scopes");
-        if (!(raw instanceof List<?> values) || values.isEmpty()) throw new IllegalArgumentException("산정 Scope를 하나 이상 선택해 주세요.");
-        String scope = values.stream().map(String::valueOf).filter(v -> v.matches("Scope [123]")).distinct().sorted().reduce((a,b) -> a + "·" + b).orElseThrow(() -> new IllegalArgumentException("유효한 Scope를 선택해 주세요."));
+        String scope=contract.scopes().stream().sorted().reduce((a,b)->a+"·"+b).orElseThrow();
         String id = "PRJ-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0,6).toUpperCase();
         jdbc.update("INSERT INTO emission_project_registry(project_id,tenant_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,reporting_year,period_start,period_end) VALUES (?,?,?,?,?,?,?,0,'프로젝트 생성',?,'진행',?,?,?)", id,tenant,name,site,start+" ~ "+end,scope,owner,due,year,start,end);
         jdbc.update("INSERT INTO emission_project_member(project_id,member_name,role_code) VALUES (?,?,'OWNER')", id, owner);

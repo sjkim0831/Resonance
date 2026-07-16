@@ -15,7 +15,7 @@
 - apiEvidenceCapabilities: 153
 - databaseEvidenceCapabilities: 82
 - authorityEvidenceCapabilities: 180
-- testEvidenceCapabilities: 76
+- testEvidenceCapabilities: 92
 - scenarioCandidates: 16,380
 - orphanHierarchyNodes: 2
 

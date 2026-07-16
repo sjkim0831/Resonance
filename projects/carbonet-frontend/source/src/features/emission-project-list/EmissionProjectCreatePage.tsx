@@ -120,6 +120,12 @@ export function EmissionProjectCreatePage() {
           ? "The end date must be after the start date."
           : "산정 종료일은 시작일보다 빠를 수 없습니다.",
       );
+    if (form.periodStart.slice(0, 4) !== form.reportingYear || form.periodEnd.slice(0, 4) !== form.reportingYear)
+      return setMessage(en ? "The inventory period must be within the reporting year." : "산정기간은 보고연도 안에 있어야 합니다.");
+    if (form.dueDate < form.periodEnd)
+      return setMessage(en ? "The due date must be on or after the inventory period end date." : "마감일은 산정기간 종료일 이후여야 합니다.");
+    if (form.calculator === form.verifier || form.calculator === form.approver || form.verifier === form.approver)
+      return setMessage(en ? "Calculator, verifier, and approver must be different accounts." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다.");
     setSaving(true);
     try {
       const response = await fetch(api(""), {
@@ -352,7 +358,7 @@ export function EmissionProjectCreatePage() {
                 ] as const).map(([key,label,help])=><label className="text-sm font-bold" key={key}>{label}<span className="ml-1 text-red-600">*</span><input className={input} list="project-actor-accounts" required value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/><small className="mt-1 block font-normal text-slate-500">{help}</small></label>)}
                 <datalist id="project-actor-accounts">{options.accounts.map(account=><option key={account.id} value={account.id}>{account.actors}</option>)}{options.owners.map(value=><option key={value} value={value}/>)}</datalist>
               </div>
-              {form.calculator&&form.verifier&&form.calculator===form.verifier?<p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">{en ? "The calculator and verifier are the same account. Separate them when segregation of duties is required." : "산정자와 검증자가 동일 계정입니다. 직무 분리가 필요한 프로젝트에서는 서로 다른 계정을 배정하세요."}</p>:null}
+              {form.calculator&&form.verifier&&form.approver&&(form.calculator===form.verifier||form.calculator===form.approver||form.verifier===form.approver)?<p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800" role="alert">{en ? "Calculator, verifier, and approver must be different accounts. The server will reject this assignment." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다. 이 배정은 저장할 수 없습니다."}</p>:null}
             </section>
             {message && (
               <p aria-live="assertive" className="rounded-lg bg-red-50 p-4 text-sm font-bold text-red-700" role="alert">

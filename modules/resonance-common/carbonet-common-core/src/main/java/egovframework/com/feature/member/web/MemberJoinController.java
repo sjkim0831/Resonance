@@ -345,7 +345,7 @@ public class MemberJoinController {
         joinVO.setEntrprsMiddleTelno(tel2);
         joinVO.setEntrprsEndTelno(tel3);
         joinVO.setApplcntEmailAdres(email);
-        joinVO.setEntrprsMberSttus("A");
+        joinVO.setEntrprsMberSttus("P");
         joinVO.setDeptNm(trimToLen(joinVO.getDeptNm(), 60));
         applyJoinDbDefaults(joinVO);
         List<EntrprsMberFileVO> evidenceFiles = saveJoinEvidenceFiles(joinVO.getEntrprsmberId(), fileUploads);
@@ -506,7 +506,7 @@ public class MemberJoinController {
         joinVO.setEntrprsMiddleTelno(tel2);
         joinVO.setEntrprsEndTelno(tel3);
         joinVO.setApplcntEmailAdres(email);
-        joinVO.setEntrprsMberSttus("A");
+        joinVO.setEntrprsMberSttus("P");
         joinVO.setDeptNm(trimToLen(joinVO.getDeptNm(), 60));
         applyJoinDbDefaults(joinVO);
         List<EntrprsMberFileVO> evidenceFiles = saveJoinEvidenceFiles(joinVO.getEntrprsmberId(), fileUploads);
@@ -644,7 +644,7 @@ public class MemberJoinController {
         joinVO.setEntrprsMiddleTelno(tel2);
         joinVO.setEntrprsEndTelno(tel3);
         joinVO.setApplcntEmailAdres(email);
-        joinVO.setEntrprsMberSttus("A");
+        joinVO.setEntrprsMberSttus("P");
         joinVO.setDeptNm(trimToLen(joinVO.getDeptNm(), 60));
         applyJoinDbDefaults(joinVO);
         List<EntrprsMberFileVO> evidenceFiles = saveJoinEvidenceFiles(joinVO.getEntrprsmberId(), fileUploads);
@@ -1517,7 +1517,7 @@ public class MemberJoinController {
         }
 
         if (!hasText(joinVO.getEntrprsMberSttus())) {
-            joinVO.setEntrprsMberSttus("A");
+            joinVO.setEntrprsMberSttus("P");
         }
     }
 

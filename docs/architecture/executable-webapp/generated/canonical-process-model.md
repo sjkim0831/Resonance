@@ -26,7 +26,7 @@
 - implementedStepsWithApiEvidence: 1,164
 - implementedStepsWithDatabaseEvidence: 218
 - implementedStepsWithAuthorityEvidence: 180
-- implementedStepsWithTestEvidence: 86
+- implementedStepsWithTestEvidence: 102
 - canonicalActors: 32
 - usedActors: 32
 - unusedActors: 0

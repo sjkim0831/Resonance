@@ -53,7 +53,7 @@
                 <if test="projectId != null and projectId != ''">
                   AND EM.PROJECT_ID = #{projectId}
                 </if>
-                  AND EM.ENTRPRS_MBER_STTUS IN ('A', 'P', 'R')
+                  AND EM.ENTRPRS_MBER_STTUS = 'A'
             </when>
             <otherwise>
                 SELECT
@@ -131,7 +131,7 @@
         <if test="projectId != null and projectId != ''">
           AND EM.PROJECT_ID = #{projectId}
         </if>
-          AND EM.ENTRPRS_MBER_STTUS IN ('A', 'P', 'R')
+          AND EM.ENTRPRS_MBER_STTUS = 'A'
     </select>
 
     <select id="selectEmployeeLoginUser" parameterType="string"
