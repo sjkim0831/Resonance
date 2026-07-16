@@ -12,7 +12,7 @@ import { ScreenHtmlMockupManager } from '../screen-development-note/ScreenHtmlMo
 
 
 type BuilderAgentId = 'HERMES' | 'KILO' | 'CODEX';
-type BuilderWorkspaceTab = 'unified-workspace' | 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'ui-recommendations' | 'full-stack-workbench' | 'page-quality' | 'environment-audit';
+type BuilderWorkspaceTab = 'unified-workspace' | 'target-preview' | 'builder-canvas' | 'sections' | 'asset-registry' | 'ui-recommendations' | 'full-stack-workbench' | 'page-quality' | 'environment-audit' | 'development-automation';
 
 type BuilderTargetContext = {
   menuCode: string;
@@ -205,6 +205,44 @@ const ENVIRONMENT_BUILDER_SURFACES = [
   { id: 'new-page', title: '새 페이지 생성', route: '/admin/system/new-page', layer: 'builder', assetType: 'new-page', status: '컨트롤러/프론트/메타데이터 경로 일관 생성', readiness: 'needs-review' },
 ];
 
+type DevelopmentAutomationCapability = {
+  group: string;
+  name: string;
+  description: string;
+  route: string;
+  state: 'ACTIVE' | 'CONNECTED' | 'PLANNED';
+  builderUse: string;
+};
+
+const DEVELOPMENT_AUTOMATION_CAPABILITIES: DevelopmentAutomationCapability[] = [
+  { group: '업무 설계', name: '액터 관리', description: '역할·책임·권한 범위를 업무 액터로 정의합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '화면별 사용 액터 연결' },
+  { group: '업무 설계', name: '계정·액터 배정', description: '계정과 프로젝트에 액터 계약을 배정합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '미리보기 권한 문맥' },
+  { group: '업무 설계', name: '프로세스·서브프로세스', description: '업무 목표, 시작·완료 조건과 상세 절차를 정의합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '페이지 흐름 생성 기준' },
+  { group: '업무 설계', name: '시나리오·테스트 기대값', description: '정상·예외·권한·격리·복구 시나리오와 기대값을 관리합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '생성 화면 완료 기준' },
+  { group: '업무 설계', name: 'Task·산출물 추적', description: '프로세스별 DB·API·화면·테스트 작업과 산출물을 추적합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '작업 큐와 결과 귀속' },
+  { group: '화면 설계', name: '화면 설계 메모', description: 'URL별 설계, 기능, 완료 기준과 개발 메모를 DB에 저장합니다.', route: '/admin/system/design-governance', state: 'ACTIVE', builderUse: 'AI 개발 요청의 기준 명세' },
+  { group: '화면 설계', name: 'HTML 시안 5종', description: '프롬프트 기반 시안을 버전 관리하고 선택·반영 요청합니다.', route: '/admin/system/builder-studio?tab=ui-recommendations', state: 'ACTIVE', builderUse: '선택 시안을 캔버스로 적용' },
+  { group: '화면 설계', name: '화면 유형·패턴', description: '목록·상세·등록·대시보드 등 화면 유형별 개발 패턴을 관리합니다.', route: '/admin/system/development-pattern-management', state: 'CONNECTED', builderUse: '초기 레이아웃 자동 조립' },
+  { group: '화면 설계', name: '메뉴·라우트·화면 연결', description: 'DB 메뉴와 실제 라우트, 화면 소유 소스를 연결합니다.', route: '/admin/system/screen-menu-assignment-management', state: 'ACTIVE', builderUse: '대상 화면 선택과 발행' },
+  { group: '디자인 시스템', name: '테마 관리', description: 'KRDS 토큰, 색상, 간격, 타이포그래피를 관리합니다.', route: '/admin/system/theme-management', state: 'ACTIVE', builderUse: '화면 공통 스타일 적용' },
+  { group: '디자인 시스템', name: '섹션 관리', description: '재사용 가능한 업무 섹션을 등록하고 화면에 배치합니다.', route: '/admin/system/section-management', state: 'ACTIVE', builderUse: '섹션 드래그·재사용' },
+  { group: '디자인 시스템', name: '컴포넌트 관리', description: '표준 컴포넌트와 속성·상태를 카탈로그화합니다.', route: '/admin/system/component-management', state: 'ACTIVE', builderUse: '컴포넌트 팔레트' },
+  { group: '디자인 시스템', name: '화면 요소·이벤트', description: '화면 요소, 이벤트, 함수 연결을 관리합니다.', route: '/admin/system/screen-elements-management', state: 'CONNECTED', builderUse: '상호작용 자동 연결' },
+  { group: '풀스택 생성', name: '페이지 제너레이터', description: '설계와 패턴을 바탕으로 페이지 초안을 생성합니다.', route: '/admin/system/new-page', state: 'CONNECTED', builderUse: '신규 화면 생성' },
+  { group: '풀스택 생성', name: '대량 화면 생성', description: '프로세스 단계와 화면 명세를 배치 단위로 생성합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '생성 배치 실행·진행률' },
+  { group: '풀스택 생성', name: 'API·컨트롤러 관리', description: '화면 이벤트에 API 계약과 Java 컨트롤러를 연결합니다.', route: '/admin/system/api-management', state: 'CONNECTED', builderUse: '프론트·백엔드 계약 생성' },
+  { group: '풀스택 생성', name: 'DB·컬럼 계약', description: '테이블, 컬럼, 입력 계약과 마이그레이션 범위를 관리합니다.', route: '/admin/system/db-table-management', state: 'CONNECTED', builderUse: 'DB 변경 작업 생성' },
+  { group: '풀스택 생성', name: 'AI 개발 작업 요청', description: 'Codex·Kilo 등 실행기에 문맥을 포함한 개발 작업을 전달합니다.', route: '/admin/system/ai-developer-team', state: 'CONNECTED', builderUse: '선택 요소·화면 개발 요청' },
+  { group: '품질·안전', name: '개발 사전검사', description: '설계·선택 시안·액터 계약·5대 안전 테스트를 검사합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '개발계획 승인 차단' },
+  { group: '품질·안전', name: '디자인 자산 사전검사', description: '기존 테마·섹션·컴포넌트 재사용 가능성을 확인합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '중복 자산 생성 방지' },
+  { group: '품질·안전', name: '페이지 완성도', description: '플레이스홀더, 미연결 API와 부실 화면을 식별합니다.', route: '/admin/system/builder-studio?tab=page-quality', state: 'ACTIVE', builderUse: '보강 대상 큐' },
+  { group: '품질·안전', name: '품질 게이트', description: '컴파일·타입·콘텐츠·테스트·배포 검증 결과를 관리합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '발행 전 통과 조건' },
+  { group: '운영·배포', name: '작업 임대·하트비트·재시도', description: '병렬 실행기의 작업 점유, 생존 확인과 실패 재시도를 관리합니다.', route: '/admin/system/actor-process', state: 'ACTIVE', builderUse: '자동개발 실행 상태' },
+  { group: '운영·배포', name: 'Git·빌드·자동배포', description: '커밋 이후 백업, 빌드, Flyway, 무중단 배포를 수행합니다.', route: '/admin/system/automation-studio', state: 'ACTIVE', builderUse: '발행 후 운영 반영' },
+  { group: '운영·배포', name: '버전·롤백 지점', description: '화면 후보와 변경 파일 기준의 복구 지점을 관리합니다.', route: '/admin/system/version-management', state: 'CONNECTED', builderUse: '적용 실패 시 복구' },
+  { group: '운영·배포', name: '자산 영향도·미흡 큐', description: '변경 영향과 누락 자산을 추적합니다.', route: '/admin/system/asset-deficiency-queue', state: 'CONNECTED', builderUse: '후속 보강 작업 생성' },
+];
+
 function readBuilderTargetContext(): BuilderTargetContext {
   const params = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
   const menuUrl = params.get('menuUrl') || '';
@@ -241,6 +279,7 @@ function readInitialBuilderTab(): BuilderWorkspaceTab {
   if (tab === 'full-stack-workbench') return 'full-stack-workbench';
   if (tab === 'page-quality') return 'page-quality';
   if (tab === 'environment-audit') return 'environment-audit';
+  if (tab === 'development-automation') return 'development-automation';
   return 'unified-workspace';
 }
 
@@ -610,6 +649,18 @@ export function BuilderStudioPage() {
   const [isWorkbenchBusy, setIsWorkbenchBusy] = useState(false);
   const [builderToast, setBuilderToast] = useState('');
   const [pageQualityFilter, setPageQualityFilter] = useState<PageCompletenessInventoryRow['status'] | 'all'>('all');
+  const [automationCapabilitySearch, setAutomationCapabilitySearch] = useState('');
+  const [automationCapabilityGroup, setAutomationCapabilityGroup] = useState('전체');
+
+  const automationCapabilityGroups = useMemo(() => ['전체', ...Array.from(new Set(DEVELOPMENT_AUTOMATION_CAPABILITIES.map(item => item.group)))], []);
+  const filteredAutomationCapabilities = useMemo(() => {
+    const keyword = automationCapabilitySearch.trim().toLowerCase();
+    return DEVELOPMENT_AUTOMATION_CAPABILITIES.filter(item => {
+      const groupMatches = automationCapabilityGroup === '전체' || item.group === automationCapabilityGroup;
+      const keywordMatches = !keyword || [item.group, item.name, item.description, item.route, item.builderUse].join(' ').toLowerCase().includes(keyword);
+      return groupMatches && keywordMatches;
+    });
+  }, [automationCapabilityGroup, automationCapabilitySearch]);
 
   useEffect(() => {
     loadInitialData();
@@ -1734,6 +1785,7 @@ export function BuilderStudioPage() {
             ['full-stack-workbench', '전체 개발'],
             ['page-quality', '페이지 완성도'],
             ['environment-audit', '환경 기능 확인'],
+            ['development-automation', '개발 자동화 전체'],
           ].map(([id, label]) => (
             <button key={id} onClick={() => setActiveWorkspaceTab(id as BuilderWorkspaceTab)} className={`rounded px-3 py-1.5 text-sm font-bold ${activeWorkspaceTab === id ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{label}</button>
           ))}
@@ -2638,6 +2690,67 @@ export function BuilderStudioPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : null}
+
+      {activeWorkspaceTab === 'development-automation' ? (
+        <div className="flex-1 overflow-auto bg-slate-50 p-6">
+          <div className="mx-auto max-w-[1600px]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Development Automation Map</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950">프레임워크·프로젝트 개발 자동화 전체</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">업무 설계부터 화면 조립, 풀스택 생성, 품질 검증, 무중단 배포와 복구까지 현재 시스템에 구축된 기능을 한곳에서 찾고 빌더 작업으로 연결합니다.</p>
+              </div>
+              <a href="/admin/system/actor-process" className="rounded bg-blue-700 px-4 py-2.5 text-sm font-black text-white hover:bg-blue-800">프로세스 자동개발 실행</a>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded border bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">전체 기능</p><p className="mt-1 text-3xl font-black text-slate-950">{DEVELOPMENT_AUTOMATION_CAPABILITIES.length}</p></div>
+              <div className="rounded border bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">실행 가능</p><p className="mt-1 text-3xl font-black text-emerald-700">{DEVELOPMENT_AUTOMATION_CAPABILITIES.filter(item => item.state === 'ACTIVE').length}</p></div>
+              <div className="rounded border bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">빌더 연결</p><p className="mt-1 text-3xl font-black text-blue-700">{DEVELOPMENT_AUTOMATION_CAPABILITIES.filter(item => item.state === 'CONNECTED').length}</p></div>
+              <div className="rounded border bg-white p-4 shadow-sm"><p className="text-xs font-bold text-slate-500">계획</p><p className="mt-1 text-3xl font-black text-amber-700">{DEVELOPMENT_AUTOMATION_CAPABILITIES.filter(item => item.state === 'PLANNED').length}</p></div>
+            </div>
+
+            <div className="mt-5 rounded border bg-white p-4 shadow-sm">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+                <input value={automationCapabilitySearch} onChange={event => setAutomationCapabilitySearch(event.target.value)} className="rounded border border-slate-300 px-3 py-2.5 text-sm" placeholder="기능명, 설명, 경로, 빌더 활용 검색" />
+                <select value={automationCapabilityGroup} onChange={event => setAutomationCapabilityGroup(event.target.value)} className="rounded border border-slate-300 px-3 py-2.5 text-sm font-bold">
+                  {automationCapabilityGroups.map(group => <option key={group} value={group}>{group}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded border bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-[1100px] w-full text-left text-sm">
+                  <thead className="bg-slate-100 text-xs font-black text-slate-700">
+                    <tr><th className="px-4 py-3">영역</th><th className="px-4 py-3">자동화 기능</th><th className="px-4 py-3">역할</th><th className="px-4 py-3">빌더 활용</th><th className="px-4 py-3">상태</th><th className="px-4 py-3 text-right">이동</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredAutomationCapabilities.map(item => (
+                      <tr key={`${item.group}-${item.name}`} className="align-top hover:bg-slate-50">
+                        <td className="px-4 py-4 font-black text-blue-800">{item.group}</td>
+                        <td className="px-4 py-4"><p className="font-black text-slate-950">{item.name}</p><p className="mt-1 break-all font-mono text-[11px] text-slate-400">{item.route}</p></td>
+                        <td className="px-4 py-4 leading-6 text-slate-600">{item.description}</td>
+                        <td className="px-4 py-4 font-bold text-slate-700">{item.builderUse}</td>
+                        <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${item.state === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : item.state === 'CONNECTED' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>{item.state}</span></td>
+                        <td className="px-4 py-4 text-right"><a href={item.route} className="inline-flex rounded border border-blue-200 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">기능 열기</a></td>
+                      </tr>
+                    ))}
+                    {filteredAutomationCapabilities.length === 0 ? <tr><td colSpan={6} className="px-4 py-12 text-center font-bold text-slate-400">검색된 자동화 기능이 없습니다.</td></tr> : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <section className="mt-5 rounded border border-blue-200 bg-blue-50 p-5">
+              <h3 className="font-black text-blue-950">빌더 자동개발 표준 흐름</h3>
+              <ol className="mt-3 grid gap-3 text-sm text-blue-950 md:grid-cols-3 xl:grid-cols-6">
+                {['액터·프로세스 정의', '설계·HTML 시안 선택', '테마·섹션·컴포넌트 조립', 'DB·API·화면 생성', '안전 테스트·품질 게이트', '백업·배포·검증·복구'].map((label, index) => <li key={label} className="rounded bg-white p-3 font-bold shadow-sm"><span className="mr-2 text-blue-600">{index + 1}</span>{label}</li>)}
+              </ol>
+            </section>
           </div>
         </div>
       ) : null}
