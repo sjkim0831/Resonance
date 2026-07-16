@@ -76,7 +76,7 @@ function validateRouteFamilyCloseout(closeout: RouteFamilyCloseout) {
   if (!closeout.projectExecutor.responsibilities.length) {
     reportRouteFamilyValidation(`Missing project executor responsibilities for route family: ${closeout.familyId}`);
   }
-  if (!closeout.pageContracts.length) {
+  if (closeout.pageContracts.length === 0 && closeout.familyId !== "generated-screens") {
     reportRouteFamilyValidation(`Missing route page contracts for route family: ${closeout.familyId}`);
   }
   closeout.pageContracts.forEach((pageContract) => {

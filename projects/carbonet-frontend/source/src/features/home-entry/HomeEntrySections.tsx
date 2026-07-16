@@ -125,23 +125,31 @@ export function HeaderBrand({ content, en }: { content: LocalizedHomeContent; en
   );
 }
 
+function isNavigableMenuUrl(url?: string) {
+  return Boolean(url && url !== "#" && url.startsWith("/"));
+}
+
+function UnavailableMenuLabel({ label, en, className }: { label: string; en: boolean; className?: string }) {
+  return <span aria-disabled="true" className={className} title={en ? "This service is being prepared." : "준비 중인 서비스입니다."}>{label}<span className="sr-only"> ({en ? "Coming soon" : "준비 중"})</span></span>;
+}
+
 export function HeaderDesktopNav({ en, homeMenu }: { en: boolean; homeMenu: HomeMenuItem[] }) {
   return (
     <nav className={getDesktopNavClass(en)} aria-label={en ? LOCALIZED_CONTENT.en.navAria : LOCALIZED_CONTENT.ko.navAria}>
       {homeMenu.map((top, index) => (
         <div className="gnb-item group relative h-full min-w-0" key={`${top.label || "top"}-${index}`}>
-          <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url || "#"}>
+          {isNavigableMenuUrl(top.url) ? <a aria-current={typeof window !== "undefined" && top.url && window.location.pathname.startsWith(top.url) ? "page" : undefined} className={getDesktopNavLinkClass(en)} href={top.url}>
             {top.label || (en ? "Menu" : "메뉴")}
-          </a>
+          </a> : <UnavailableMenuLabel className={`${getDesktopNavLinkClass(en)} cursor-default text-slate-500`} en={en} label={top.label || (en ? "Menu" : "메뉴")} />}
           {(top.sections || []).length ? <div className="gnb-depth2 fixed left-1/2 top-24 hidden max-h-[calc(100vh-112px)] w-[min(1400px,calc(100vw-32px))] -translate-x-1/2 grid-cols-[220px_minmax(0,1fr)] overflow-hidden rounded-b-xl border border-slate-300 bg-white shadow-[0_12px_32px_rgba(15,42,76,.18)]">
             <aside className="overflow-auto border-r border-[#c6d5e5] bg-[#eef5ff] p-5 text-[#052b57]">
               <strong className="gov-text-label flex items-center gap-2 font-black"><span className="material-symbols-outlined text-xl text-[#246beb]">space_dashboard</span>{en ? "Control panel" : "컨트롤 패널"}</strong>
-              {top.url && top.url !== "#" ? <a className="mt-3 flex min-h-11 items-center justify-between rounded-lg border border-[#8eabd0] bg-white px-3 font-bold text-[#17375e] hover:text-[#00378b]" href={top.url}><span>{top.label}</span><span className="material-symbols-outlined text-xl">arrow_forward</span></a> : null}
+              {isNavigableMenuUrl(top.url) ? <a className="mt-3 flex min-h-11 items-center justify-between rounded-lg border border-[#8eabd0] bg-white px-3 font-bold text-[#17375e] hover:text-[#00378b]" href={top.url}><span>{top.label}</span><span className="material-symbols-outlined text-xl">arrow_forward</span></a> : null}
               <div className="mt-4 rounded-lg border border-[#c6d5e5] bg-white p-3"><p className="gov-text-caption font-bold text-[#526b89]">{en ? "Available tasks" : "이용 가능한 업무"}</p><strong className="mt-1 block text-2xl text-[#00378b]">{(top.sections || []).reduce((sum, section) => sum + (section.items || []).length, 0)}</strong></div>
               <strong className="gov-text-label mt-5 flex items-center gap-2 border-t border-[#c6d5e5] pt-5 font-black"><span className="material-symbols-outlined text-xl text-[#246beb]">history</span>{en ? "Recent menu" : "최근 메뉴"}</strong>
-              <div className="mt-2 space-y-1">{(top.sections || []).flatMap((section) => section.items || []).filter((item) => item.url && item.url !== "#").slice(0, 5).map((item, recentIndex) => <a className="gov-text-caption flex min-h-10 items-center justify-between rounded-lg px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>)}</div>
+              <div className="mt-2 space-y-1">{(top.sections || []).flatMap((section) => section.items || []).filter((item) => isNavigableMenuUrl(item.url)).slice(0, 5).map((item, recentIndex) => <a className="gov-text-caption flex min-h-10 items-center justify-between rounded-lg px-2 font-bold text-[#334e6f] hover:bg-white hover:text-[#164f86]" href={item.url} key={`recent-${recentIndex}`}><span className="truncate">{item.label}</span><span className="material-symbols-outlined text-base text-[#246beb]">chevron_right</span></a>)}</div>
             </aside>
-            <section className="min-w-0 overflow-auto p-6"><div className="mb-5 border-b border-slate-200 pb-4"><strong className="gov-text-heading-sm text-[#052b57]">{top.label}</strong><p className="gov-text-caption mt-1 text-slate-500">{en ? "Select a task to continue" : "중메뉴와 세부 업무를 선택하세요"}</p></div><div className="grid grid-cols-4 gap-5">{(top.sections || []).map((section, sectionIndex) => <div className="min-w-0 border-l border-slate-200 px-4" key={`hover-section-${sectionIndex}`}><strong className="gov-text-label block pb-3 font-black text-[#17375e]">{section.label}</strong><div className="space-y-0.5">{(section.items || []).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-10 items-center justify-between rounded-md px-2 text-slate-700 hover:bg-blue-50 hover:text-[#00378b]" href={item.url || "#"} key={`hover-item-${itemIndex}`}><span>{item.label}</span><span className="material-symbols-outlined text-base text-slate-400">chevron_right</span></a>)}</div></div>)}</div></section>
+            <section className="min-w-0 overflow-auto p-6"><div className="mb-5 border-b border-slate-200 pb-4"><strong className="gov-text-heading-sm text-[#052b57]">{top.label}</strong><p className="gov-text-caption mt-1 text-slate-500">{en ? "Select a task to continue" : "중메뉴와 세부 업무를 선택하세요"}</p></div><div className="grid grid-cols-4 gap-5">{(top.sections || []).map((section, sectionIndex) => <div className="min-w-0 border-l border-slate-200 px-4" key={`hover-section-${sectionIndex}`}><strong className="gov-text-label block pb-3 font-black text-[#17375e]">{section.label}</strong><div className="space-y-0.5">{(section.items || []).filter((item) => isNavigableMenuUrl(item.url)).map((item, itemIndex) => <a className="gov-text-body-sm flex min-h-10 items-center justify-between rounded-md px-2 text-slate-700 hover:bg-blue-50 hover:text-[#00378b]" href={item.url} key={`hover-item-${itemIndex}`}><span>{item.label}</span><span className="material-symbols-outlined text-base text-slate-400">chevron_right</span></a>)}</div></div>)}</div></section>
           </div> : null}
         </div>
       ))}
@@ -202,8 +210,8 @@ export function HeaderMobileMenu({
                 <div key={`${section.label || "mobile-section"}-${sectionIndex}`}>
                   <p className="gov-text-label font-bold text-[var(--kr-gov-text-secondary)] mt-2 mb-1">{section.label || (en ? "Section" : "섹션")}</p>
                   <div className="space-y-1 text-sm mb-2">
-                    {(section.items || []).map((item, itemIndex) => (
-                      <a className="block py-1" href={item.url || "#"} key={`${item.label || "mobile-item"}-${itemIndex}`}>
+                    {(section.items || []).filter((item) => isNavigableMenuUrl(item.url)).map((item, itemIndex) => (
+                      <a className="block py-1" href={item.url} key={`${item.label || "mobile-item"}-${itemIndex}`}>
                         {item.label || (en ? "Item" : "항목")}
                       </a>
                     ))}

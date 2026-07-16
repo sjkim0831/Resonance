@@ -71,8 +71,13 @@ export function EmissionMyTasksPage() {
     } finally { setBusyTask(null); }
   }
 
+  function isSafeTaskTarget(task: Task) {
+    return Boolean(task.targetUrl && task.targetUrl.startsWith("/") && task.targetUrl !== "#" && !task.targetUrl.startsWith("/admin/"));
+  }
+
   function taskHref(task: Task) {
-    const target = new URL(task.targetUrl, window.location.origin);
+    const safeTarget = isSafeTaskTarget(task) ? task.targetUrl : `/emission/project/detail?id=${encodeURIComponent(task.projectId)}`;
+    const target = new URL(safeTarget, window.location.origin);
     target.searchParams.set("projectId", task.projectId);
     target.searchParams.set("taskId", String(task.id));
     const path = `${target.pathname}${target.search}`;
@@ -124,7 +129,7 @@ export function EmissionMyTasksPage() {
                 <p className="mt-2 text-sm leading-6 text-blue-100">{nextTask.completionRule || (en ? "Complete the required data and evidence for this process step." : "이 단계의 필수 데이터와 증적을 모두 갖추어 완료하십시오.")}</p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {nextTask.status === "READY" && <button className="min-h-11 rounded-lg bg-white px-5 font-black text-[#052b57] disabled:opacity-60" disabled={busyTask === nextTask.id} onClick={() => void startTask(nextTask).catch((error) => setMessage(error.message))} type="button">{busyTask === nextTask.id ? (en ? "Starting…" : "시작 중…") : (en ? "Start task" : "업무 시작")}</button>}
-                  <a className="inline-flex min-h-11 items-center rounded-lg border border-white/60 px-5 font-black text-white" href={taskHref(nextTask)}>{en ? "Open workspace →" : "업무 화면 열기 →"}</a>
+                  {isSafeTaskTarget(nextTask) ? <a className="inline-flex min-h-11 items-center rounded-lg border border-white/60 px-5 font-black text-white" href={taskHref(nextTask)}>{en ? "Open workspace →" : "업무 화면 열기 →"}</a> : <span className="inline-flex min-h-11 items-center rounded-lg border border-amber-200 bg-amber-100 px-5 font-black text-amber-950">{en ? "Workspace connection required" : "업무 화면 연결 필요"}</span>}
                 </div>
               </> : <div className="mt-4"><h2 className="text-2xl font-black">{en ? "No actionable task" : "현재 실행 가능한 업무가 없습니다"}</h2><p className="mt-2 text-blue-100">{en ? "Review waiting tasks or create a project." : "대기 업무의 선행조건을 확인하거나 새 프로젝트를 등록하십시오."}</p></div>}
             </div>
@@ -160,7 +165,7 @@ export function EmissionMyTasksPage() {
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px_180px] lg:items-center">
                 <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${STATUS_STYLE[task.status] || STATUS_STYLE.WAITING}`}>{statusLabel(task.status)}</span><span className="text-xs font-black text-slate-500">{en ? task.priority : PRIORITY_KO[task.priority] || task.priority}</span><span className="text-xs font-bold text-slate-400">{task.processStepCode || task.type}</span></div><h3 className="mt-3 text-lg font-black text-[#052b57]">{task.name}</h3><p className="mt-1 text-sm font-bold text-[#246beb]">{task.projectName} · {task.site || "-"}</p><p className="mt-3 text-sm leading-6 text-slate-600"><strong>{en ? "Completion rule" : "완료 조건"}: </strong>{task.completionRule || "-"}</p>{(task.pendingPredecessors || task.blockedReason) && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{task.pendingPredecessors ? `${en ? "Prerequisites" : "선행 업무"}: ${task.pendingPredecessors}` : task.blockedReason}</p>}</div>
                 <dl className="grid grid-cols-2 gap-3 text-sm lg:grid-cols-1"><div><dt className="text-slate-500">{en ? "Assignee / Actor" : "담당자 / 액터"}</dt><dd className="mt-1 font-black">{task.assignee || "-"} <span className="font-medium text-slate-500">{task.actorCode ? `· ${task.actorCode}` : ""}</span></dd></div><div><dt className="text-slate-500">{en ? "Due date" : "마감일"}</dt><dd className={`mt-1 font-black ${overdue ? "text-rose-700" : ""}`}>{task.dueDate || "-"}{overdue ? (en ? " · overdue" : " · 지연") : ""}</dd></div></dl>
-                <div className="flex flex-col gap-2">{task.actionable ? <>{task.status === "READY" && <button className="min-h-11 rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-60" disabled={busyTask === task.id} onClick={() => void startTask(task).catch((error) => setMessage(error.message))} type="button">{en ? "Start" : "업무 시작"}</button>}<a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-4 font-black text-white" href={taskHref(task)}>{en ? "Open task" : "업무 화면 열기"}</a></> : <span className="rounded-lg bg-slate-100 px-3 py-3 text-center text-xs font-bold text-slate-600">{task.status === "DONE" ? (en ? "Completed by business action" : "실제 업무 처리로 완료됨") : (en ? "Complete prerequisites first" : "선행 업무 완료 필요")}</span>}<a className="text-center text-sm font-bold text-slate-600 underline" href={buildLocalizedPath(`/emission/project/detail?id=${task.projectId}`, `/en/emission/project/detail?id=${task.projectId}`)}>{en ? "Project details" : "프로젝트 상세"}</a></div>
+                <div className="flex flex-col gap-2">{task.actionable ? <>{task.status === "READY" && <button className="min-h-11 rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-60" disabled={busyTask === task.id} onClick={() => void startTask(task).catch((error) => setMessage(error.message))} type="button">{en ? "Start" : "업무 시작"}</button>}{isSafeTaskTarget(task) ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-4 font-black text-white" href={taskHref(task)}>{en ? "Open task" : "업무 화면 열기"}</a> : <span className="rounded-lg bg-amber-100 px-3 py-3 text-center text-xs font-black text-amber-900">{en ? "Workspace connection required" : "업무 화면 연결 필요"}</span>}</> : <span className="rounded-lg bg-slate-100 px-3 py-3 text-center text-xs font-bold text-slate-600">{task.status === "DONE" ? (en ? "Completed by business action" : "실제 업무 처리로 완료됨") : (en ? "Complete prerequisites first" : "선행 업무 완료 필요")}</span>}<a className="text-center text-sm font-bold text-slate-600 underline" href={buildLocalizedPath(`/emission/project/detail?id=${task.projectId}`, `/en/emission/project/detail?id=${task.projectId}`)}>{en ? "Project details" : "프로젝트 상세"}</a></div>
               </div>
             </article>;
           })}</div>

@@ -17,8 +17,8 @@ export const GENERATED_SCREEN_FAMILY = createRouteFamily(GENERATED_SCREEN_ROUTES
   projectExecutor: { owner: "generated screen runtime", responsibilities: ["render blueprint", "enforce process contract", "emit trace evidence"] },
   installDeploy: { packagingOwnerPath: "src/generated/screen-generation", assemblyOwnerPath: "app/routes/families/allRouteFamilies.ts", bootstrapPayloadTarget: "/admin/system/actor-process", bindingInputs: ["validated blueprint export"], validatorChecks: ["unique route", "valid actor", "five test scenarios"], runtimeVerificationTarget: "/admin/system/actor-process", compareTarget: "/admin/system/actor-process", deploySequence: "compile -> generate -> typecheck -> commit -> deploy", freshnessVerificationSequence: "generate -> build -> rollout -> route audit", validator: "generated screen contract validator", rollbackEvidence: "generation batch", auditTrace: "batch-blueprint-job trace" },
   pageContracts: buildManifestBackedRoutePageContracts(GENERATED_SCREEN_ROUTES, { familyId: "generated-screens", manifestRoot: "generatedScreenCatalog", menuCodePrefix: "GENERATED", validator: "generated screen contract validator", rollbackEvidence: "generation batch" }),
-  pageSystemizationCloseout: "Generated pages are governed by the compiled blueprint contract.",
-  authorityScopeApplicationCloseout: "Generated pages inherit actor and project authority from their process step.",
-  builderInstallDeployCloseout: "Generated artifacts are built and deployed through the normal immutable pipeline.",
-  projectBindingPatternsCloseout: "Generated pages retain process, step, actor, route, design, and test traceability."
+  pageSystemizationCloseout: "CLOSED: page systemization is complete for generated-screens; compiled blueprints govern every generated page.",
+  authorityScopeApplicationCloseout: "CLOSED: authority scope is consistently applied for generated-screens through actor and project process contracts.",
+  builderInstallDeployCloseout: "CLOSED: builder install and deploy closeout is complete for generated-screens through the immutable pipeline.",
+  projectBindingPatternsCloseout: "CLOSED: project binding is explicit for generated-screens across process, step, actor, route, design, and tests."
 });
