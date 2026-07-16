@@ -13,7 +13,11 @@ function applyOverflowGuards(root: HTMLElement) {
   });
 
   root.querySelectorAll<HTMLElement>(FLUID_SELECTOR).forEach((element) => {
-    element.dataset.krdsFluid = "true";
+    const hasExplicitHeight = element.hasAttribute("height")
+      || Boolean((element as HTMLElement).style.height)
+      || element.className.toString().split(/\s+/).some((className) => /^(?:h|min-h|max-h|aspect)-/.test(className));
+    if (hasExplicitHeight) delete element.dataset.krdsFluid;
+    else element.dataset.krdsFluid = "true";
   });
 
   root.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
