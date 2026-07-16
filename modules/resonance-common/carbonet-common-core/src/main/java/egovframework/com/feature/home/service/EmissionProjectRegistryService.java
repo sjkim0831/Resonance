@@ -1,5 +1,6 @@
 package egovframework.com.feature.home.service;
 
+import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +22,8 @@ import java.io.InputStream;
 @Service
 public class EmissionProjectRegistryService {
     private final JdbcTemplate jdbc;
-    public EmissionProjectRegistryService(DataSource dataSource) { this.jdbc = new JdbcTemplate(dataSource); }
+    private final ActorProcessGovernanceService processGovernanceService;
+    public EmissionProjectRegistryService(DataSource dataSource,ActorProcessGovernanceService processGovernanceService) { this.jdbc = new JdbcTemplate(dataSource);this.processGovernanceService=processGovernanceService; }
 
     public Map<String, Object> list(String tenantId, String keyword, String status, String site, int page) {
         String tenant = requiredValue(tenantId, "tenantId");
@@ -217,6 +219,32 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task n SET task_status='BLOCKED',blocked_reason='선행 업무가 완료되지 않았습니다.',updated_at=current_timestamp WHERE n.project_id=? AND n.task_status='WAITING' AND EXISTS (SELECT 1 FROM emission_project_task p WHERE p.project_id=n.project_id AND p.task_code=ANY(string_to_array(nullif(n.predecessor_codes,''),',')) AND p.task_status<>'DONE')",projectId);
         jdbc.update("UPDATE emission_project_registry p SET progress_percent=coalesce((SELECT sum(progress_weight) FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_status='DONE'),0),current_step=coalesce((SELECT task_name FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_status IN ('READY','IN_PROGRESS') ORDER BY step_order LIMIT 1),'완료'),updated_at=current_timestamp WHERE p.project_id=?",projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'WORKFLOW_TRANSITION',?||' 업무 완료로 다음 단계가 개방되었습니다.',?)",projectId,taskCode,actor);
+        synchronizeProcessExecution(projectId,taskCode,actor,"");
+    }
+
+    private void synchronizeProcessExecution(String projectId,String taskCode,String user,String requestedToState){
+        String tenant=jdbc.queryForObject("select tenant_id from emission_project_registry where project_id=?",String.class,projectId);
+        Map<String,String> stepMap=Map.of("BASIC_INFO","EMISSION_PROJECT_SETUP","ACTIVITY_DATA","EMISSION_PROJECT_COLLECT","CALCULATION","EMISSION_PROJECT_CALCULATE","VERIFICATION","EMISSION_PROJECT_VALIDATE","APPROVAL","EMISSION_PROJECT_APPROVE","REPORT","EMISSION_PROJECT_REPORT");
+        Map<String,String> actorMap=Map.of("BASIC_INFO","COMPANY_MANAGER","ACTIVITY_DATA","SITE_DATA_OWNER","CALCULATION","CALCULATOR","VERIFICATION","VERIFIER","APPROVAL","APPROVER","REPORT","COMPANY_MANAGER");
+        Map<String,String> commandMap=Map.of("BASIC_INFO","CONFIRM_SCOPE","ACTIVITY_DATA","SUBMIT_ACTIVITY_DATA","CALCULATION","CALCULATE","VERIFICATION","VALIDATE","APPROVAL","APPROVE","REPORT","PUBLISH_REPORT");
+        String step=stepMap.get(taskCode);if(step==null)return;
+        Map<String,Object> found=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
+        if(!Boolean.TRUE.equals(found.get("found"))){
+            if(!"BASIC_INFO".equals(taskCode))return;
+            Map<String,Object> started=processGovernanceService.startProcessExecution(Map.of("tenantId",tenant,"projectId",projectId,"processCode","EMISSION_PROJECT","actorCode","COMPANY_MANAGER"),user);
+            Object id=started.get("executionId");if(id==null&&started.get("execution") instanceof Map<?,?> execution)id=execution.get("executionId");
+            found=new LinkedHashMap<>();found.put("executionId",id);
+        }
+        if("ACTIVITY_DATA".equals(taskCode)&&"EMISSION_PROJECT_CORRECT".equals(String.valueOf(found.get("currentStepCode")))){
+            step="EMISSION_PROJECT_CORRECT";
+            actorMap=new LinkedHashMap<>(actorMap);actorMap.put("ACTIVITY_DATA","SITE_DATA_OWNER");
+            commandMap=new LinkedHashMap<>(commandMap);commandMap.put("ACTIVITY_DATA","RESUBMIT");
+        }
+        if(!step.equals(String.valueOf(found.get("currentStepCode")))&&found.containsKey("currentStepCode"))return;
+        Integer sequence=jdbc.queryForObject("select count(*)+1 from framework_process_execution_event where execution_id=? and step_code=?",Integer.class,UUID.fromString(String.valueOf(found.get("executionId"))),step);
+        Map<String,Object> body=new LinkedHashMap<>();body.put("tenantId",tenant);body.put("projectId",projectId);body.put("processCode","EMISSION_PROJECT");body.put("stepCode",step);body.put("actorCode",actorMap.get(taskCode));body.put("commandCode",commandMap.get(taskCode));body.put("idempotencyKey","TASK-"+projectId+"-"+taskCode+"-"+sequence);body.put("requestJson","{\"source\":\"emission-project-service\"}");
+        if(!requestedToState.isBlank())body.put("requestedToState",requestedToState);
+        processGovernanceService.executeProcessCommand(UUID.fromString(String.valueOf(found.get("executionId"))),body,user);
     }
 
     public Map<String,Object> submissions(String projectId,String tenantId) {
@@ -506,6 +534,11 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task SET task_status=CASE WHEN task_code='ACTIVITY_DATA' THEN 'READY' ELSE 'BLOCKED' END,blocked_reason=CASE WHEN task_code='ACTIVITY_DATA' THEN null ELSE '보완 자료 재제출이 필요합니다.' END,completed_at=null,completed_by=null,updated_at=current_timestamp WHERE project_id=? AND task_code IN ('ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT')",projectId);
         jdbc.update("UPDATE emission_project_registry SET current_step='보완·재제출',project_status='보완 필요',updated_at=current_timestamp WHERE project_id=?",projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CORRECTION_REQUESTED',?,?)",projectId,reason,actor);
+        String tenant=jdbc.queryForObject("select tenant_id from emission_project_registry where project_id=?",String.class,projectId);
+        Map<String,Object> execution=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
+        String current=String.valueOf(execution.get("currentStepCode"));
+        if("EMISSION_PROJECT_VALIDATE".equals(current))synchronizeProcessExecution(projectId,"VERIFICATION",actor,"CORRECTION_REQUIRED");
+        else if("EMISSION_PROJECT_APPROVE".equals(current))synchronizeProcessExecution(projectId,"APPROVAL",actor,"CORRECTION_REQUIRED");
     }
 
     @Transactional
@@ -542,10 +575,10 @@ public class EmissionProjectRegistryService {
         for (int i=0;i<tasks.length;i++) jdbc.update("INSERT INTO emission_project_task(project_id,task_code,task_name,step_order,task_status,progress_weight,due_date) VALUES (?,?,?,?,?,?,?)",id,tasks[i][0],tasks[i][1],i+1,i==0?"IN_PROGRESS":"WAITING",i==0?10:18,due);
         jdbc.update("UPDATE emission_project_task SET process_code='EMISSION_PROJECT',process_step_code=CASE task_code WHEN 'BASIC_INFO' THEN 'EMISSION_PROJECT_SETUP' WHEN 'ACTIVITY_DATA' THEN 'EMISSION_PROJECT_COLLECT' WHEN 'CALCULATION' THEN 'EMISSION_PROJECT_CALCULATE' WHEN 'VERIFICATION' THEN 'EMISSION_PROJECT_VALIDATE' WHEN 'APPROVAL' THEN 'EMISSION_PROJECT_APPROVE' WHEN 'REPORT' THEN 'EMISSION_PROJECT_REPORT' END,actor_code=CASE task_code WHEN 'BASIC_INFO' THEN 'COMPANY_MANAGER' WHEN 'ACTIVITY_DATA' THEN 'SITE_DATA_OWNER' WHEN 'CALCULATION' THEN 'CALCULATOR' WHEN 'VERIFICATION' THEN 'VERIFIER' WHEN 'APPROVAL' THEN 'APPROVER' WHEN 'REPORT' THEN 'COMPANY_MANAGER' END,predecessor_codes=CASE task_code WHEN 'ACTIVITY_DATA' THEN 'BASIC_INFO' WHEN 'CALCULATION' THEN 'ACTIVITY_DATA' WHEN 'VERIFICATION' THEN 'CALCULATION' WHEN 'APPROVAL' THEN 'VERIFICATION' WHEN 'REPORT' THEN 'APPROVAL' ELSE '' END,completion_rule=CASE task_code WHEN 'BASIC_INFO' THEN '프로젝트 기본정보와 산정기간이 확정됨' WHEN 'ACTIVITY_DATA' THEN '품질검사를 통과한 활동자료가 제출됨' WHEN 'CALCULATION' THEN '배출량 산정 버전이 생성됨' WHEN 'VERIFICATION' THEN '검증 오류가 없고 검증 이력이 생성됨' WHEN 'APPROVAL' THEN '권한 있는 승인자가 결과를 승인함' WHEN 'REPORT' THEN '확정 결과 보고서가 발행됨' END WHERE project_id=?",id);
         jdbc.update("UPDATE emission_project_task SET target_url=CASE task_code WHEN 'BASIC_INFO' THEN '/emission/project/detail?id='||project_id WHEN 'ACTIVITY_DATA' THEN '/emission/data_input?projectId='||project_id WHEN 'CALCULATION' THEN '/emission/simulate?projectId='||project_id WHEN 'VERIFICATION' THEN '/emission/validate?projectId='||project_id WHEN 'APPROVAL' THEN '/emission/validate?projectId='||project_id WHEN 'REPORT' THEN '/emission/report_submit?projectId='||project_id END WHERE project_id=?",id);
-        completeWorkflowTask(id,"BASIC_INFO",owner);
         jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?),(?,'VERIFIER',?),(?,'APPROVER',?) ON CONFLICT DO NOTHING",id,owner,id,dataOwner,id,calculator,id,verifier,id,approver);
         jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES (?,?,?,'COMPANY_MANAGER',?,'ACTIVE'),(?,?,?,'SITE_DATA_OWNER',?,'ACTIVE'),(?,?,?,'CALCULATOR',?,'ACTIVE'),(?,?,?,'VERIFIER',?,'ACTIVE'),(?,?,?,'APPROVER',?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE'",owner,tenant,id,id,dataOwner,tenant,id,id,calculator,tenant,id,id,verifier,tenant,id,id,approver,tenant,id,id);
         jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
+        completeWorkflowTask(id,"BASIC_INFO",owner);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;
     }

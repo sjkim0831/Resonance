@@ -253,6 +253,12 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("단계 계약이 없습니다.");
         Map<String,Object> contract=contracts.get(0);String requiredActor=String.valueOf(contract.get("actor_code")),requiredCommand=String.valueOf(contract.get("command_code")),from=String.valueOf(contract.get("from_state")),to=String.valueOf(contract.get("to_state"));
+        String requestedToState=str(b,"requestedToState");
+        if(!requestedToState.isBlank()){
+            boolean correctionDecision=("EMISSION_PROJECT_VALIDATE".equals(step)||"EMISSION_PROJECT_APPROVE".equals(step))&&"CORRECTION_REQUIRED".equals(requestedToState);
+            if(!correctionDecision)throw new IllegalArgumentException("허용되지 않은 결과 상태입니다: "+requestedToState);
+            to=requestedToState;
+        }
         if(!requiredActor.equals(actor))throw new IllegalArgumentException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
         if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
         if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
@@ -268,6 +274,15 @@ public class ActorProcessGovernanceService {
     private void requireActorAssignment(String tenant,String project,String actor){
         Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor);
         if(count==null||count==0)throw new IllegalArgumentException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
+    }
+
+    public Map<String,Object> findProcessExecution(String tenant,String project,String process){
+        List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
+        if(rows.isEmpty())return Map.of("found",false);
+        Map<String,Object> out=new LinkedHashMap<>(rows.get(0));
+        out.put("found",true);
+        out.put("events",jdbc.queryForList("select event_id as \"eventId\",step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\",executed_at as \"executedAt\" from framework_process_execution_event where execution_id=? order by event_id",rows.get(0).get("executionId")));
+        return out;
     }
 
     @Transactional public Map<String,Object> claimDevelopmentJob(String worker){
