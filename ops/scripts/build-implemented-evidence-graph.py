@@ -157,12 +157,13 @@ def java_inventory() -> tuple[list[dict], list[dict], dict[str, set[str]]]:
 def test_inventory() -> list[dict]:
     rows = []
     roots = [ROOT / "apps", ROOT / "modules", FRONT]
+    source_test_suffixes = {".java", ".kt", ".ts", ".tsx", ".js", ".jsx"}
     for root in roots:
         if not root.exists():
             continue
         for path in root.rglob("*"):
             source = path.as_posix()
-            if not path.is_file() or not any(marker in source for marker in TEST_MARKERS):
+            if not path.is_file() or path.suffix.lower() not in source_test_suffixes or not any(marker in source for marker in TEST_MARKERS):
                 continue
             body = text(path)
             paths = sorted({normalize_path(x) for x in ROUTE_RE.findall(body)})

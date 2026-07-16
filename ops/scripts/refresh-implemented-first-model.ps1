@@ -45,6 +45,9 @@ try {
         steps = $canonical.stats.canonicalSteps
         scenarios = $canonical.stats.canonicalScenarios
         preservedImplementedCapabilities = $canonical.stats.preservedImplementedCapabilities
+        registeredImplementedAssets = $canonical.stats.registeredImplementedAssets
+        unregisteredImplementedAssets = $canonical.stats.unregisteredImplementedAssets
+        implementedAssetCatalogProcesses = $canonical.stats.implementedAssetCatalogProcesses
         screenEvidence = $canonical.stats.implementedStepsWithScreenEvidence
         apiEvidence = $canonical.stats.implementedStepsWithApiEvidence
         databaseEvidence = $canonical.stats.implementedStepsWithDatabaseEvidence

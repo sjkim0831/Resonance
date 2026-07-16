@@ -42,7 +42,7 @@
       state.data=JSON.parse(text);initialize();render();
     }
     function initialize(){const d=state.data,m=d.manifest.counts;
-      const im=d.implementedModel?.stats||{},cm=d.canonicalModel?.stats||{},em=d.evidenceModel?.stats||{},unregistered=(em.unregisteredFrontendScreens||0)+(em.unregisteredJavaEndpoints||0)+(em.unregisteredDatabaseObjects||0)+(em.unregisteredTestSources||0);$("counts").innerHTML=[["정규 프로세스",cm.canonicalProcesses||0],["기개발 기반",cm.implementedProcesses||0],["기개발 잠금",cm.immutableImplementedProcesses||0],["미등록 자산",unregistered],["신규 필요",cm.newRequiredProcesses||0],["정규 단계",cm.canonicalSteps||0],["정규 시나리오",(cm.canonicalScenarios||0).toLocaleString()]].map(x=>`<span class="badge">${x[0]} ${x[1]}</span>`).join("");
+      const im=d.implementedModel?.stats||{},cm=d.canonicalModel?.stats||{};$("counts").innerHTML=[["정규 프로세스",cm.canonicalProcesses||0],["기개발 기반",cm.implementedProcesses||0],["기개발 잠금",cm.immutableImplementedProcesses||0],["기개발 자산 등록",cm.registeredImplementedAssets||0],["미등록 자산",cm.unregisteredImplementedAssets||0],["신규 필요",cm.newRequiredProcesses||0],["정규 단계",cm.canonicalSteps||0],["정규 시나리오",(cm.canonicalScenarios||0).toLocaleString()]].map(x=>`<span class="badge">${x[0]} ${x[1]}</span>`).join("");
       fill("actor",(d.canonicalModel?.actors||d.actors).map(a=>[a.actorCode,a.actorName]));fill("caseType",[...new Set([...d.tests,...(d.implementedModel?.scenarioCandidates||[])].map(t=>t.caseType))]);refreshModelOptions();
       ["mode","domain","process","actor","caseType","query"].forEach(id=>$(id).addEventListener(id==="query"?"input":"change",()=>{state.page=1;if(id==="mode")refreshModelOptions();if(id==="process")state.processCode=$(id).value;render()}));
     }
