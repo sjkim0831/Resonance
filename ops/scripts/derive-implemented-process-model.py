@@ -7,7 +7,21 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'docs/architecture/executable-webapp/generated'
-TEST_FAMILIES=['HAPPY_PATH','VALIDATION','AUTHORITY','ISOLATION','STATE','IDEMPOTENCY','CONCURRENCY','DEADLINE','INTEGRATION','PRIVACY','AUDIT','RECOVERY','ACCESSIBILITY']
+TEST_FAMILIES={
+ 'HAPPY_PATH':['STANDARD'],
+ 'VALIDATION':['EMPTY_REQUIRED','MALFORMED','BELOW_MIN','ABOVE_MAX','UNIT_MISMATCH'],
+ 'AUTHORITY':['UNASSIGNED_ACTOR','EXPIRED_ASSIGNMENT','SEGREGATION_CONFLICT','DELEGATION_EXPIRED'],
+ 'ISOLATION':['OTHER_TENANT','OTHER_COMPANY','OTHER_SITE','OTHER_PROJECT'],
+ 'STATE':['INVALID_TRANSITION','STALE_VERSION','LOCKED_RECORD','ALREADY_COMPLETED'],
+ 'IDEMPOTENCY':['DUPLICATE_COMMAND','RETRY_AFTER_TIMEOUT'],
+ 'CONCURRENCY':['OPTIMISTIC_LOCK','PARALLEL_APPROVAL'],
+ 'DEADLINE':['DUE_SOON','OVERDUE','ESCALATED'],
+ 'INTEGRATION':['TIMEOUT','INVALID_RESPONSE','PARTIAL_SUCCESS','RETRY_EXHAUSTED'],
+ 'PRIVACY':['MASKING','PURPOSE_LIMIT','RETENTION_EXPIRED','CONSENT_WITHDRAWN'],
+ 'AUDIT':['EVIDENCE_REQUIRED','HASH_MISMATCH','MISSING_ACCESS_LOG'],
+ 'RECOVERY':['ROLLBACK','REOPEN','RESUME_FROM_CHECKPOINT'],
+ 'ACCESSIBILITY':['KEYBOARD','SCREEN_READER','MOBILE_REFLOW'],
+}
 
 def main():
  ap=argparse.ArgumentParser();ap.add_argument('--db',type=Path,default=OUT/'runtime-db-inventory.json');ap.add_argument('--trace',type=Path,default=OUT/'current-system-trace.json');ap.add_argument('--out',type=Path,default=OUT);args=ap.parse_args()
@@ -42,8 +56,9 @@ def main():
    g['capabilityCodes'].append(self_code)
  scenario_candidates=[]
  for cap in capabilities:
-  for family in TEST_FAMILIES:
-   scenario_candidates.append({'caseCode':f"TC_IMPL_{cap['menuCode']}_{family}",'processCode':cap['parentCode'],'capabilityCode':cap['menuCode'],'caseType':family,'variant':'IMPLEMENTATION_AUDIT','severity':'CRITICAL' if family in {'AUTHORITY','ISOLATION','PRIVACY','AUDIT'} else 'MAJOR','status':'CANDIDATE_REQUIRES_CONTRACT_BINDING','given':['implementedMenuAndRoute','syntheticTenantProjectActorContext'],'when':{'menuUrl':cap.get('url'),'menuCode':cap['menuCode']},'then':['routeAndScreenResolve','authorizedDataScopeOnly','businessActionTraceable','auditEvidenceProduced']})
+  for family,variants in TEST_FAMILIES.items():
+   for variant in variants:
+    scenario_candidates.append({'caseCode':f"TC_IMPL_{cap['menuCode']}_{family}_{variant}",'processCode':cap['parentCode'],'capabilityCode':cap['menuCode'],'caseType':family,'variant':variant,'severity':'CRITICAL' if family in {'AUTHORITY','ISOLATION','PRIVACY','AUDIT'} else 'MAJOR','status':'CANDIDATE_REQUIRES_CONTRACT_BINDING','given':['implementedMenuAndRoute','syntheticTenantProjectActorContext',f'variant={variant}'],'when':{'menuUrl':cap.get('url'),'menuCode':cap['menuCode']},'then':['routeAndScreenResolve','authorizedDataScopeOnly','businessActionTraceable','auditEvidenceProduced']})
  stats={'implementedDomains':len(roots),'implementedSubprocesses':len(groups),'implementedCapabilities':len(capabilities),'visibleCapabilities':sum(c['visible'] for c in capabilities),'boundCapabilities':sum(bool(c['bindings']) for c in capabilities),'exactRouteCapabilities':sum(c['routeTrace'].get('routeMatch')=='EXACT' for c in capabilities),'blueprintedCapabilities':sum(bool(c['screenBlueprints']) for c in capabilities),'scenarioCandidates':len(scenario_candidates),'orphanHierarchyNodes':len(orphans)}
  model={'stats':stats,'domains':roots,'subprocesses':groups,'capabilities':capabilities,'scenarioCandidates':scenario_candidates,'hierarchyGaps':orphans}
  (args.out/'implemented-process-model.json').write_text(json.dumps(model,ensure_ascii=False,separators=(',',':')),encoding='utf-8')

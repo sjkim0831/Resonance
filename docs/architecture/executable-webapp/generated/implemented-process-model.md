@@ -11,7 +11,7 @@
 - boundCapabilities: 180
 - exactRouteCapabilities: 185
 - blueprintedCapabilities: 185
-- scenarioCandidates: 5,070
+- scenarioCandidates: 16,380
 - orphanHierarchyNodes: 2
 
 ## 업무 영역과 서브프로세스
