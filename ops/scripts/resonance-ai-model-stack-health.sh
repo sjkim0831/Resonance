@@ -11,6 +11,7 @@ fi
 API_KEY="${MODEL_API_KEY:-qwer1234}"
 WARMUP_SECONDS="${WARMUP_SECONDS:-2}"
 MODEL_RUNTIME_FILE="${RESONANCE_MODEL_RUNTIME_REGISTRY:-/opt/Resonance/var/ai-model-runtime/model-runtime-registry.json}"
+PRIMARY_PROFILE="${RESONANCE_PRIMARY_AI_PROFILE:-krds-qwen40}"
 if [ "$(id -u)" -eq 0 ]; then
   SYSTEMCTL=(systemctl)
 else
@@ -23,6 +24,10 @@ check_model() {
   local expected_model="$3"
   local status
   status="$(systemctl is-active "$service" 2>/dev/null || true)"
+  if [ "$status" = "activating" ]; then
+    echo "warming: $service is activating"
+    return 0
+  fi
   if [ "$status" != "active" ]; then
     echo "restart: $service was $status"
     "${SYSTEMCTL[@]}" restart "$service"
@@ -38,13 +43,22 @@ check_model() {
   fi
 }
 
-for service in codex-qwen36 resonance-shadow-qwen14 resonance-shadow-qwen3-exl2-gpu resonance-hermes-framework-qwen40-exl3; do
-  if systemctl is-active --quiet "$service"; then
-    echo "stop GPU conflict: $service"
-    "${SYSTEMCTL[@]}" stop "$service"
-  fi
-done
-
-check_model resonance-shadow-gemma4-e4b 24451 gemma4-e4b-gpu-shadow
-
-echo "resonance ai model stack OK: Gemma E4B always-on"
+if [ "$PRIMARY_PROFILE" = "krds-qwen40" ]; then
+  for service in codex-qwen36 resonance-shadow-qwen14 resonance-shadow-qwen3-exl2-gpu resonance-shadow-gemma4-e4b; do
+    if systemctl is-active --quiet "$service"; then
+      echo "stop GPU conflict: $service"
+      "${SYSTEMCTL[@]}" stop "$service"
+    fi
+  done
+  check_model resonance-hermes-framework-qwen40-exl3 24453 qwen3.6-40b-hermes-framework-qlora
+  echo "resonance ai model stack OK: KRDS Qwen40 primary"
+else
+  for service in codex-qwen36 resonance-shadow-qwen14 resonance-shadow-qwen3-exl2-gpu resonance-hermes-framework-qwen40-exl3; do
+    if systemctl is-active --quiet "$service"; then
+      echo "stop GPU conflict: $service"
+      "${SYSTEMCTL[@]}" stop "$service"
+    fi
+  done
+  check_model resonance-shadow-gemma4-e4b 24451 gemma4-e4b-gpu-shadow
+  echo "resonance ai model stack OK: Gemma E4B primary"
+fi
