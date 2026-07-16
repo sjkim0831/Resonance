@@ -16,6 +16,8 @@ export function ActorProcessGovernancePage() {
   const [data, setData] = useState<Payload>(empty);
   const [tab, setTab] = useState("professional");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
+  const [preflightProcess,setPreflightProcess]=useState("");
+  const [preflightStep,setPreflightStep]=useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,6 +33,12 @@ export function ActorProcessGovernancePage() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "조회에 실패했습니다."); }
   }, [base]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(()=>{
+    const process=preflightProcess||value(data.processes[0]||{},"processCode");
+    if(process&&!preflightProcess)setPreflightProcess(process);
+    const steps=data.steps.filter(row=>value(row,"processCode")===process);
+    if(steps.length&&!steps.some(row=>value(row,"stepCode")===preflightStep))setPreflightStep(value(steps[0],"stepCode"));
+  },[data.processes,data.steps,preflightProcess,preflightStep]);
   const loadDesign=useCallback(async()=>{const response=await fetch(`${base}/design-assets`,{credentials:"include"}),body=await response.json();if(!response.ok)throw new Error(body.message||"디자인 자산 조회 실패");setDesign(body)},[base]);
   useEffect(()=>{void loadDesign().catch(reason=>setError(reason instanceof Error?reason.message:String(reason)))},[loadDesign]);
 
@@ -113,7 +121,7 @@ export function ActorProcessGovernancePage() {
           <div className="lg:col-span-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[["requiresDatabase","DB"],["requiresApi","API·백엔드"],["requiresUserPage","사용자 화면"],["requiresAdminPage","관리자 화면"],["requiresNotification","알림"]].map(([name,label])=><label key={name} className="flex min-h-11 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-bold"><input type="checkbox" name={name} value="true"/>{label}</label>)}</div><SaveButton busy={busy} label="절차 삽입·개발계획 생성"/>
         </Form>
         <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5"><h3 className="text-lg font-black text-amber-950">화면 자동개발 사전검사</h3><p className="mt-1 text-sm leading-6 text-amber-900">화면 설계·기능·완료 기준, 선택된 HTML 시안, 액터 계약, 정상·예외·권한·격리·복구 테스트를 모두 통과해야 개발계획을 승인할 수 있습니다. 테마·섹션·컴포넌트 사전검사 여부도 함께 기록합니다.</p></section>
-        <Form onSubmit={event=>void submit(event,"development/preflight")} cols="lg:grid-cols-4"><Field label="사전검사 프로세스"><select className={fieldClass} name="processCode" required>{data.processes.map(row=><option key={value(row,"processCode")}>{value(row,"processCode")}</option>)}</select></Field><Field label="검사할 절차"><select className={fieldClass} name="stepCode" required>{data.steps.map(row=><option key={`${value(row,"processCode")}-${value(row,"stepCode")}`} value={value(row,"stepCode")}>{value(row,"processCode")} · {value(row,"stepName")}</option>)}</select></Field><div className="lg:col-span-2 flex items-end"><SaveButton busy={busy} label="설계·시안·액터·테스트 검사"/></div></Form>
+        <Form onSubmit={event=>void submit(event,"development/preflight")} cols="lg:grid-cols-4"><Field label="사전검사 프로세스"><select className={fieldClass} name="processCode" required value={preflightProcess} onChange={event=>setPreflightProcess(event.target.value)}>{data.processes.map(row=><option key={value(row,"processCode")}>{value(row,"processCode")}</option>)}</select></Field><Field label="검사할 절차"><select className={fieldClass} name="stepCode" required value={preflightStep} onChange={event=>setPreflightStep(event.target.value)}>{data.steps.filter(row=>value(row,"processCode")===preflightProcess).map(row=><option key={`${value(row,"processCode")}-${value(row,"stepCode")}`} value={value(row,"stepCode")}>{value(row,"stepName")}</option>)}</select></Field><div className="lg:col-span-2 flex items-end"><SaveButton busy={busy} label="설계·시안·액터·테스트 검사"/></div></Form>
         <Form onSubmit={event=>void submit(event,"development/approve")} cols="lg:grid-cols-4"><Field label="개발계획 승인 프로세스"><select className={fieldClass} name="processCode" required>{data.processes.map(row=><option key={value(row,"processCode")}>{value(row,"processCode")}</option>)}</select></Field><Field label="승인할 절차"><select className={fieldClass} name="stepCode" required>{selectedSteps.map(row=><option key={value(row,"stepCode")} value={value(row,"stepCode")}>{value(row,"stepName")}</option>)}</select></Field><div className="lg:col-span-2 flex items-end"><SaveButton busy={busy} label="사전검사 통과 후 승인"/></div></Form>
         <Table heads={["상태","점수","프로세스·절차","화면","설계","선택 시안","액터","5대 테스트","디자인 자산","미충족 항목"]} rows={data.screenDevelopmentGates.filter(row=>!processFilter||value(row,"processCode")===processFilter).map(row=>[value(row,"gateStatus"),`${value(row,"readinessScore")}%`,`${value(row,"processCode")} · ${value(row,"stepCode")}`,value(row,"routePath"),value(row,"designNotePassed"),value(row,"selectedMockupPassed"),value(row,"actorContractPassed"),value(row,"safetyTestsPassed"),value(row,"designAssetChecked"),value(row,"failureSummary")||"-"])}/>
         <Table heads={["프로세스","순서","상위 절차","상세 절차","유형","자동화","화면·API"]} rows={selectedSteps.map(row=>[value(row,"processCode"),value(row,"stepOrder"),value(row,"parentStepCode")||"-",value(row,"stepName"),value(row,"stepType"),value(row,"automationStatus"),[value(row,"userPath"),value(row,"adminPath"),value(row,"apiContract")].filter(Boolean).join(" · ")])}/>
