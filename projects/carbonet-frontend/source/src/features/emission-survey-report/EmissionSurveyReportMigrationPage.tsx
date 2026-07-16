@@ -4,6 +4,7 @@ import {
   fetchSurveyEcoinventAiRecommendationPage,
   fetchSurveyMaterialEnglishNames,
   issueSurveyReportVerification,
+  proofreadSurveyReportLabels,
   registerSurveyReportVisualProfile,
   verifySurveyReportDataset,
   verifySurveyReportPhoto,
@@ -17,6 +18,7 @@ import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { AdminSelect, MemberButton, MemberButtonGroup } from "../member/common";
 import {
   loadEmissionSurveyReportSession,
+  saveEmissionSurveyReportSession,
   type EmissionSurveyReportPayload,
   type EmissionSurveyReportRow,
   type EmissionSurveyReportSectionSummary
@@ -609,6 +611,67 @@ async function buildReportVisualProfile(pages: Blob[]) {
 
 function resolveVerificationPayload(raw: string): ReportVerificationPayload | null {
   return extractVerificationPayload(raw) || findPayloadFromVisibleVerificationFields(raw);
+}
+
+function collectReportProofreadingLabels(report: EmissionSurveyReportPayload) {
+  const labels = [
+    report.productName, report.pageTitle,
+    report.classification.majorLabel, report.classification.middleLabel, report.classification.smallLabel,
+    report.calculationScope.categoryName, report.calculationScope.tierLabel,
+    report.summary.topContributorLabel,
+    ...report.sectionSummaries.flatMap((section) => [section.sectionLabel]),
+    ...report.rows.flatMap((row) => [row.sectionLabel, row.group, row.materialName, row.note, row.warning]),
+    ...report.scenarios.flatMap((scenario) => [scenario.label, scenario.description]),
+    ...report.alerts.flatMap((alert) => [alert.title, alert.description])
+  ];
+  return Array.from(new Set(labels.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
+}
+
+function applyReportProofreading(report: EmissionSurveyReportPayload, corrections: Record<string, string>) {
+  const text = (value: string) => corrections[value] || value;
+  return {
+    ...report,
+    productName: text(report.productName),
+    pageTitle: text(report.pageTitle),
+    classification: {
+      ...report.classification,
+      majorLabel: text(report.classification.majorLabel),
+      middleLabel: text(report.classification.middleLabel),
+      smallLabel: text(report.classification.smallLabel)
+    },
+    calculationScope: {
+      ...report.calculationScope,
+      categoryName: text(report.calculationScope.categoryName),
+      tierLabel: text(report.calculationScope.tierLabel)
+    },
+    summary: { ...report.summary, topContributorLabel: text(report.summary.topContributorLabel) },
+    sectionSummaries: report.sectionSummaries.map((section) => ({ ...section, sectionLabel: text(section.sectionLabel) })),
+    rows: report.rows.map((row) => ({
+      ...row,
+      sectionLabel: text(row.sectionLabel),
+      group: text(row.group),
+      materialName: text(row.materialName),
+      note: text(row.note),
+      warning: text(row.warning)
+    })),
+    scenarios: report.scenarios.map((scenario) => ({ ...scenario, label: text(scenario.label), description: text(scenario.description) })),
+    alerts: report.alerts.map((alert) => ({ ...alert, title: text(alert.title), description: text(alert.description) }))
+  };
+}
+
+async function proofreadReportForIssuance(report: EmissionSurveyReportPayload) {
+  try {
+    const result = await proofreadSurveyReportLabels(collectReportProofreadingLabels(report));
+    return {
+      report: applyReportProofreading(report, result.corrections || {}),
+      model: result.model || "Gemma E4B",
+      changedCount: result.changedCount || 0,
+      applied: result.success
+    };
+  } catch (error) {
+    console.warn("Report proofreading unavailable; preserving the original issuance dataset.", error);
+    return { report, model: "Gemma E4B", changedCount: 0, applied: false };
+  }
 }
 
 async function buildReportVerificationRecord(report: EmissionSurveyReportPayload, options?: {
@@ -1980,7 +2043,11 @@ export function EmissionSurveyReportPrintPage() {
     setVerificationBusy(true);
     setVerificationMessage("");
     try {
-      const record = await buildReportVerificationRecord(effectiveReport, { byproductAllocation });
+      const proofreading = await proofreadReportForIssuance(effectiveReport);
+      const issuedReport = proofreading.report;
+      setDraftReport(issuedReport);
+      saveEmissionSurveyReportSession(issuedReport);
+      const record = await buildReportVerificationRecord(issuedReport, { byproductAllocation });
       await issueSurveyReportVerification(record).catch((error) => {
         console.warn("Report verification registration failed; continuing native PDF print.", error);
       });
@@ -1997,8 +2064,8 @@ export function EmissionSurveyReportPrintPage() {
       }
       window.print();
       setVerificationMessage(en
-        ? "The browser print dialog opened. Choose Save as PDF to preserve the report layout."
-        : "브라우저 인쇄 창을 열었습니다. 리포트 디자인을 유지하려면 'PDF로 저장'을 선택하세요.");
+        ? `The browser print dialog opened. ${proofreading.changedCount} text correction(s) were applied by ${proofreading.model}.`
+        : `브라우저 인쇄 창을 열었습니다. ${proofreading.model}이 오탈자 ${proofreading.changedCount}건을 교정했고 동일 데이터셋으로 발급했습니다.`);
     } catch (error) {
       console.error(error);
       setVerificationMessage(en ? "PDF print failed. Please try again." : "PDF 인쇄에 실패했습니다. 다시 시도하세요.");

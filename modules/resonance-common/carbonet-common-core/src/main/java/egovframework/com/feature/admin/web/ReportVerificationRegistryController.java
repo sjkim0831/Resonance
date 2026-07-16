@@ -1,6 +1,7 @@
 package egovframework.com.feature.admin.web;
 
 import egovframework.com.feature.admin.service.ReportVerificationRegistryService;
+import egovframework.com.feature.admin.service.ReportProofreadingService;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class ReportVerificationRegistryController {
 
     private final ReportVerificationRegistryService reportVerificationRegistryService;
+    private final ReportProofreadingService reportProofreadingService;
     private final CurrentUserContextService currentUserContextService;
 
     @PostMapping({
@@ -26,6 +28,15 @@ public class ReportVerificationRegistryController {
     public ResponseEntity<Map<String, Object>> issue(@RequestBody Map<String, Object> payload,
                                                       HttpServletRequest request) {
         return ResponseEntity.ok(reportVerificationRegistryService.issue(payload, resolveActorId(request)));
+    }
+
+    @PostMapping({
+            "/api/admin/emission-survey-report/proofread",
+            "/admin/api/admin/emission-survey-report/proofread",
+            "/en/admin/api/admin/emission-survey-report/proofread"
+    })
+    public ResponseEntity<Map<String, Object>> proofread(@RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(reportProofreadingService.proofread(payload));
     }
 
     @PostMapping({

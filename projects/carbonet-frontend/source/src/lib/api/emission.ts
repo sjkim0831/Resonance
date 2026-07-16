@@ -391,6 +391,14 @@ export async function issueSurveyReportVerification(payload: ReportVerificationD
   );
 }
 
+export async function proofreadSurveyReportLabels(labels: string[]) {
+  return postJson<{ success: boolean; model: string; corrections: Record<string, string>; changedCount: number; message?: string }>(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/proofread", "/en/admin/api/admin/emission-survey-report/proofread"),
+    { labels },
+    { headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" } }
+  );
+}
+
 export async function verifySurveyReportDataset(payload: ReportVerificationDatasetPayload) {
   const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportDatasetVerificationResponse>(
