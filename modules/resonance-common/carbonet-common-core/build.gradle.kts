@@ -88,4 +88,8 @@ dependencies {
     compileOnly("commons-io:commons-io:2.20.0")
     implementation("org.apache.commons:commons-text:1.14.0")
     compileOnly("commons-beanutils:commons-beanutils:1.11.0")
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.mockito:mockito-core")
 }
+
+tasks.test { useJUnitPlatform() }

@@ -61,6 +61,8 @@ public class ActorProcessGovernanceService {
         out.put("customerJourneySummary",jdbc.queryForMap("select total_gaps as \"totalGaps\",blocker_gaps as \"blockerGaps\",warning_gaps as \"warningGaps\",dead_menu_gaps as \"deadMenuGaps\",task_route_gaps as \"taskRouteGaps\",registration_gaps as \"registrationGaps\" from framework_customer_journey_quality_summary"));
         out.put("actorProcessMenus",jdbc.queryForList("select menu_code as \"menuCode\",menu_nm as \"menuName\",menu_url as \"menuUrl\",audience,process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",binding_status as \"bindingStatus\" from framework_actor_process_menu_coverage order by audience,menu_code"));
         out.put("actorProcessMenuSummary",jdbc.queryForMap("select navigable_menu_count as \"navigableMenuCount\",bound_menu_count as \"boundMenuCount\",missing_menu_count as \"missingMenuCount\",connected_process_count as \"connectedProcessCount\",connected_actor_count as \"connectedActorCount\" from framework_actor_process_menu_summary"));
+        out.put("backendProcessReadiness",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",owner_actor_code as \"ownerActorCode\",step_count as \"stepCount\",contracted_steps as \"contractedSteps\",passed_backend_tests as \"passedBackendTests\",backend_test_count as \"backendTestCount\",backend_readiness_score as \"backendReadinessScore\",backend_gaps as \"backendGaps\" from framework_backend_process_readiness order by backend_readiness_score,process_code"));
+        out.put("backendProcessSummary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where backend_readiness_score=100) as \"completeCount\",count(*) filter(where backend_readiness_score<100) as \"incompleteCount\",coalesce(round(avg(backend_readiness_score),1),0) as \"averageScore\" from framework_backend_process_readiness"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
         return out;
     }
@@ -355,7 +357,7 @@ public class ActorProcessGovernanceService {
         if(steps.isEmpty())throw new IllegalArgumentException("프로세스 단계가 없습니다: "+process);
         Map<String,Object> first=steps.get(0);String requiredActor=String.valueOf(first.get("actor_code"));
         if(!requiredActor.equals(actor))throw new IllegalArgumentException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
-        requireActorAssignment(tenant,project,actor);
+        requireActorAssignment(tenant,project,actor,user);
         List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_status='RUNNING'",tenant,project,process);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
         UUID id=UUID.randomUUID();String step=String.valueOf(first.get("step_code")),state=String.valueOf(first.get("from_state"));
@@ -363,15 +365,23 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"created",true,"executionId",id,"processCode",process,"currentStepCode",step,"currentState",state,"actorCode",actor);
     }
 
+    @Transactional public Map<String,Object> verifyBackendProcessContracts(String sourceCommit,String user){
+        List<Map<String,Object>> rows=jdbc.queryForList("select process_code as \"processCode\",case_type as \"caseType\",test_status as \"testStatus\",evidence_hash as \"evidenceHash\" from run_framework_backend_contract_tests(?)",sourceCommit==null?"":sourceCommit);
+        long passed=rows.stream().filter(row->"PASSED".equals(String.valueOf(row.get("testStatus")))).count();
+        jdbc.update("insert into framework_backend_verification_audit(source_commit,passed_count,total_count,verification_status,executed_by) values(?,?,?,?,?)",sourceCommit==null?"":sourceCommit,passed,rows.size(),passed==rows.size()?"VERIFIED":"FAILED",user);
+        return Map.of("success",passed==rows.size(),"passed",passed,"total",rows.size(),"results",rows);
+    }
+
     @Transactional public Map<String,Object> executeProcessCommand(UUID executionId,Map<String,Object>b,String user){
         String tenant=req(b,"tenantId"),project=req(b,"projectId"),process=req(b,"processCode"),step=req(b,"stepCode"),actor=req(b,"actorCode"),command=req(b,"commandCode"),key=req(b,"idempotencyKey");
-        List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
-        if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
         List<Map<String,Object>> executions=jdbc.queryForList("select * from framework_process_execution where execution_id=? for update",executionId);
         if(executions.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
         Map<String,Object> execution=executions.get(0);
         if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new IllegalArgumentException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
+        requireActorAssignment(tenant,project,actor,user);
+        List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
+        if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
         if(!step.equals(String.valueOf(execution.get("current_step_code"))))throw new IllegalStateException("현재 실행 단계는 "+execution.get("current_step_code")+"입니다.");
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("단계 계약이 없습니다.");
@@ -385,7 +395,6 @@ public class ActorProcessGovernanceService {
         if(!requiredActor.equals(actor))throw new IllegalArgumentException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
         if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
         if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
-        requireActorAssignment(tenant,project,actor);
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
         int order=((Number)contract.get("step_order")).intValue();
         List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
@@ -394,8 +403,8 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"idempotent",false,"eventId",eventId,"fromState",from,"toState",to,"executionStatus",next.isEmpty()?"COMPLETED":"RUNNING","nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")),"nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
     }
 
-    private void requireActorAssignment(String tenant,String project,String actor){
-        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor);
+    private void requireActorAssignment(String tenant,String project,String actor,String user){
+        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new IllegalArgumentException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
     }
 
