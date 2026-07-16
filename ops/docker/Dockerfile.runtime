@@ -7,9 +7,20 @@
 FROM eclipse-temurin:21-jre
 ARG PROJECT_ID=P003
 
+# Report PDFs are rendered by the same Chromium print engine used by the web UI.
+# Noto fonts keep Korean report text and OCR source glyphs deterministic.
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       ca-certificates curl fonts-noto-cjk fonts-noto-color-emoji \
+    && curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o /tmp/chrome.deb \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /tmp/chrome.deb \
+    && rm -f /tmp/chrome.deb \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PROJECT_ID=${PROJECT_ID}
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
 ENV SERVER_PORT=8080
+ENV CARBONET_CHROMIUM_BIN=/usr/bin/google-chrome
 
 RUN mkdir -p /app/config /app/lib /app/db /opt/reference /var/logs
 WORKDIR /app

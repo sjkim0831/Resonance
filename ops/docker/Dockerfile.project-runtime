@@ -1,6 +1,14 @@
 # Base image using Eclipse Temurin (Java 21)
 FROM eclipse-temurin:21-jre
 
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       ca-certificates curl fonts-noto-cjk fonts-noto-color-emoji \
+    && curl -fsSL https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb -o /tmp/chrome.deb \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends /tmp/chrome.deb \
+    && rm -f /tmp/chrome.deb \
+    && rm -rf /var/lib/apt/lists/*
+
 ARG BUILDKIT_INLINE_CACHE=1
 
 # Arguments for flexible builds
@@ -8,6 +16,7 @@ ARG PROJECT_ID
 ENV PROJECT_ID=${PROJECT_ID}
 ENV SERVER_PORT=8080
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
+ENV CARBONET_CHROMIUM_BIN=/usr/bin/google-chrome
 
 # Create standard directory
 RUN mkdir -p /app/config /app/lib /app/db /opt/reference /var/logs/project-runtime/${PROJECT_ID}

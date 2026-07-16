@@ -2,9 +2,12 @@ package egovframework.com.feature.admin.web;
 
 import egovframework.com.feature.admin.service.ReportVerificationRegistryService;
 import egovframework.com.feature.admin.service.ReportProofreadingService;
+import egovframework.com.feature.admin.service.ReportPdfIssuanceService;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +21,7 @@ public class ReportVerificationRegistryController {
 
     private final ReportVerificationRegistryService reportVerificationRegistryService;
     private final ReportProofreadingService reportProofreadingService;
+    private final ReportPdfIssuanceService reportPdfIssuanceService;
     private final CurrentUserContextService currentUserContextService;
 
     @PostMapping({
@@ -28,6 +32,23 @@ public class ReportVerificationRegistryController {
     public ResponseEntity<Map<String, Object>> issue(@RequestBody Map<String, Object> payload,
                                                       HttpServletRequest request) {
         return ResponseEntity.ok(reportVerificationRegistryService.issue(payload, resolveActorId(request)));
+    }
+
+    @PostMapping({
+            "/api/admin/emission-survey-report/issue-pdf",
+            "/admin/api/admin/emission-survey-report/issue-pdf",
+            "/en/admin/api/admin/emission-survey-report/issue-pdf"
+    })
+    public ResponseEntity<byte[]> issuePdf(@RequestBody Map<String, Object> payload,
+                                            HttpServletRequest request) {
+        ReportPdfIssuanceService.IssuedPdf issued = reportPdfIssuanceService.issue(payload, resolveActorId(request));
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=carbonet-report-" + issued.certificateId() + ".pdf")
+                .header("X-Carbonet-Certificate-Id", issued.certificateId())
+                .header("X-Carbonet-Visual-Pages", String.valueOf(issued.pageCount()))
+                .body(issued.bytes());
     }
 
     @PostMapping({

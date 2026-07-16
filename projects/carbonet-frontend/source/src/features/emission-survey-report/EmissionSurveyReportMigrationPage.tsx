@@ -3,6 +3,7 @@ import { logGovernanceScope } from "../../app/policy/debug";
 import {
   fetchSurveyEcoinventAiRecommendationPage,
   fetchSurveyMaterialEnglishNames,
+  issueSurveyReportPdf,
   issueSurveyReportVerification,
   proofreadSurveyReportLabels,
   registerSurveyReportVisualProfile,
@@ -2048,9 +2049,6 @@ export function EmissionSurveyReportPrintPage() {
       setDraftReport(issuedReport);
       saveEmissionSurveyReportSession(issuedReport);
       const record = await buildReportVerificationRecord(issuedReport, { byproductAllocation });
-      await issueSurveyReportVerification(record).catch((error) => {
-        console.warn("Report verification registration failed; continuing native PDF print.", error);
-      });
       saveReportVerificationRecord(record);
       setVerificationRecord(record);
       setVerificationQrDataUrl(await createReportQrDataUrl(record));
@@ -2059,16 +2057,38 @@ export function EmissionSurveyReportPrintPage() {
       await nextAnimationFrame();
       await nextAnimationFrame();
       await waitForReportFonts();
-      if (!reportArticleRef.current) {
+      const article = reportArticleRef.current;
+      if (!article) {
         throw new Error("Report element is not ready.");
       }
-      window.print();
+      const printableHead = Array.from(document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style'))
+        .map((node) => node.outerHTML)
+        .join("\n");
+      const reportHtml = [
+        "<!doctype html><html lang=\"" + (en ? "en" : "ko") + "\"><head>",
+        "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+        `<base href="${window.location.origin}/">`,
+        printableHead,
+        "<style>html,body{margin:0!important;background:#fff!important}body{padding:0!important}.print-sheet{margin:0 auto!important}</style>",
+        "</head><body class=\"" + document.body.className.replace(/"/g, "") + "\">",
+        article.outerHTML,
+        "</body></html>"
+      ].join("");
+      const issuedPdf = await issueSurveyReportPdf(record, reportHtml);
+      const downloadUrl = URL.createObjectURL(issuedPdf);
+      const download = document.createElement("a");
+      download.href = downloadUrl;
+      download.download = buildReportPdfFileName(issuedReport, draft);
+      document.body.appendChild(download);
+      download.click();
+      download.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 30_000);
       setVerificationMessage(en
-        ? `The browser print dialog opened. ${proofreading.changedCount} text correction(s) were applied by ${proofreading.model}.`
-        : `브라우저 인쇄 창을 열었습니다. ${proofreading.model}이 오탈자 ${proofreading.changedCount}건을 교정했고 동일 데이터셋으로 발급했습니다.`);
+        ? `The verified PDF was downloaded. Its dataset, OCR source, and ${proofreading.changedCount} text correction(s) were registered from the final PDF.`
+        : `검증 PDF를 다운로드했습니다. 최종 PDF 기준 시각 지문·OCR 원문·데이터셋과 오탈자 ${proofreading.changedCount}건을 함께 등록했습니다.`);
     } catch (error) {
       console.error(error);
-      setVerificationMessage(en ? "PDF print failed. Please try again." : "PDF 인쇄에 실패했습니다. 다시 시도하세요.");
+      setVerificationMessage(en ? "PDF issuance failed. Please try again." : "PDF 발급에 실패했습니다. 다시 시도하세요.");
     } finally {
       setVerificationBusy(false);
     }

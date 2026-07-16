@@ -399,6 +399,23 @@ export async function proofreadSurveyReportLabels(labels: string[]) {
   );
 }
 
+export async function issueSurveyReportPdf(record: ReportVerificationDatasetPayload, html: string) {
+  const response = await fetch(
+    buildLocalizedPath("/admin/api/admin/emission-survey-report/issue-pdf", "/en/admin/api/admin/emission-survey-report/issue-pdf"),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", Accept: "application/pdf", "X-Requested-With": "XMLHttpRequest" },
+      body: JSON.stringify({ record, html })
+    }
+  );
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || `PDF issuance failed (${response.status})`);
+  }
+  return response.blob();
+}
+
 export async function verifySurveyReportDataset(payload: ReportVerificationDatasetPayload) {
   const publicHome = window.location.pathname.startsWith("/home/") || window.location.pathname.startsWith("/en/home/");
   return postJson<ReportDatasetVerificationResponse>(
