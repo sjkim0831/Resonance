@@ -2370,6 +2370,10 @@ export function EmissionSurveyReportPrintPage() {
           .report-typography .print-table td{line-height:1.4!important}
           .report-typography .font-mono{font-family:"Pretendard GOV","Noto Sans KR",sans-serif!important}
           .report-typography .krds-type-report-total{width:100%!important;margin-top:8px!important;font-size:32px!important;line-height:1.05!important;white-space:nowrap!important}
+          .report-typography .pdf-chart-bar-page,
+          .report-typography .pdf-chart-pie-page{grid-template-columns:minmax(0,1fr)!important}
+          .report-typography .pdf-chart-pie-page .pdf-chart-panel{width:100%!important}
+          .report-typography .pdf-chart-pie-page .report-pie-visual-inner{max-width:430px!important}
           @media(max-width:767px){
             .report-typography .print-report-hero-grid{grid-template-columns:minmax(0,1fr)!important}
             .report-typography .print-report-total-card{width:100%!important;justify-self:stretch!important;text-align:left!important}
@@ -3277,7 +3281,7 @@ export function EmissionSurveyReportPrintPage() {
         </div>
         </div>
 
-        <section className="pdf-export-page pdf-avoid pdf-page-content pdf-chart-page grid gap-4 px-8 py-7 lg:grid-cols-2">
+        <section className="pdf-export-page pdf-avoid pdf-page-start pdf-page-end pdf-page-content pdf-chart-page pdf-chart-bar-page grid gap-4 px-8 py-7">
           <div className="pdf-chart-panel print-soft-bg rounded-3xl border border-slate-200 bg-slate-50 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -3335,6 +3339,9 @@ export function EmissionSurveyReportPrintPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        <section className="pdf-export-page pdf-avoid pdf-page-start pdf-page-end pdf-page-content pdf-chart-page pdf-chart-pie-page grid px-8 py-7">
           <SectionContributionPieCard
             en={en}
             onCopy={() => handleCopyChart("pie")}
