@@ -10,6 +10,7 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 PROJECT_ID="${PROJECT_ID:-P003}"
 SERVICE_NODE_PORT="${SERVICE_NODE_PORT:-80}"
 CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
+E4B_RUNTIME_BASE_URL="${CARBONET_KRDS_AI_BASE_URL:-http://172.16.1.232:24451/v1}"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_USER="${DB_USER:-dba}"
 DB_PASSWORD="${DB_PASSWORD:-}"
@@ -62,6 +63,7 @@ apply_runtime_config() {
     --from-literal=CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=true \
     --from-literal=CARBONET_REACT_APP_FS_OVERRIDE_PATH=/app/react-app-overlay \
     --from-literal=CARBONET_AI_RECOMMENDATION_ENABLED=false \
+    --from-literal=CARBONET_KRDS_AI_BASE_URL="$E4B_RUNTIME_BASE_URL" \
     --dry-run=client -o yaml | kubectl apply -f -
 
   cat > "$K8S_DIR/carbonet-runtime-manifest.json" <<JSON

@@ -21,6 +21,7 @@ CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 PROJECT_ID="${PROJECT_ID:-P003}"
 CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
+E4B_RUNTIME_BASE_URL="${CARBONET_KRDS_AI_BASE_URL:-http://172.16.1.232:24451/v1}"
 IMAGE_NAME="${IMAGE_NAME:-localhost:5000/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-gradle)}"
 RUNTIME_BASE_IMAGE="${RUNTIME_BASE_IMAGE:-localhost:5000/carbonet-runtime-base:java21-chrome-noto-v1}"
 PUSH_IMAGE="${PUSH_IMAGE:-true}"
@@ -698,11 +699,12 @@ rollout_image() {
     "resonance.ai/image=$IMAGE_NAME" "resonance.ai/released-at=$(date -Iseconds)" \
     --overwrite >/dev/null 2>&1
 
-  log_detail "Ensuring runtime SERVER_PORT matches Kubernetes probes..."
-  kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" SERVER_PORT=8080 \
+  log_detail "Ensuring runtime port and E4B generator selector endpoint..."
+  kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
+    SERVER_PORT=8080 CARBONET_KRDS_AI_BASE_URL="$E4B_RUNTIME_BASE_URL" \
     >/dev/null 2>&1 || rollback_and_fail "SET_ENV_FAILED" \
-      "Failed to set SERVER_PORT=8080" \
-      "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT SERVER_PORT=8080"
+      "Failed to set runtime port or E4B endpoint" \
+      "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT SERVER_PORT=8080 CARBONET_KRDS_AI_BASE_URL=$E4B_RUNTIME_BASE_URL"
 
   log_detail "Waiting for rollout (timeout: 600s)..."
   if ! kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=600s 2>"$KUBECTL_ERROR_LOG"; then
