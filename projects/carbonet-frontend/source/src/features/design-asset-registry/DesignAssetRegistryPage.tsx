@@ -13,9 +13,10 @@ type Payload = {
   designs?: Row[];
   syncRuns?: Row[];
 };
-type Kind = "theme" | "section" | "component" | "design";
+type Kind = "theme" | "css" | "section" | "component" | "design";
 
 const META: Record<Kind, { ko: string; en: string; key: keyof Payload; icon: string; columns: Array<[string, string, string]> }> = {
+  css: { ko: "CSS 관리", en: "CSS Management", key: "classSets", icon: "css", columns: [["classSetId","CSS ID","CSS ID"],["classSetName","CSS 이름","Name"],["targetComponent","대상 컴포넌트","Target component"],["baseClasses","기본 클래스","Base classes"],["responsiveClasses","반응형 클래스","Responsive classes"]] },
   theme: { ko: "테마 관리", en: "Theme Management", key: "themes", icon: "palette", columns: [["themeId","테마 ID","Theme ID"],["themeName","테마명","Name"],["themeType","유형","Type"],["isDefault","기본","Default"],["isActive","활성","Active"]] },
   section: { ko: "섹션 관리", en: "Section Management", key: "sections", icon: "view_agenda", columns: [["sectionId","섹션 ID","Section ID"],["sectionName","섹션명","Name"],["sectionType","영역","Zone"],["layoutContract","레이아웃 계약","Layout contract"],["designReference","테마","Theme"]] },
   component: { ko: "컴포넌트 관리", en: "Component Management", key: "components", icon: "widgets", columns: [["componentId","컴포넌트 ID","Component ID"],["componentName","컴포넌트명","Name"],["componentType","유형","Type"],["ownerDomain","도메인","Domain"],["designReference","테마","Theme"]] },
@@ -24,6 +25,7 @@ const META: Record<Kind, { ko: string; en: string; key: keyof Payload; icon: str
 
 function currentKind(): Kind {
   const path = window.location.pathname;
+  if (path.includes("css-management")) return "css";
   if (path.includes("section-management")) return "section";
   if (path.includes("component-management")) return "component";
   if (path.includes("design-management")) return "design";
@@ -52,12 +54,12 @@ export function DesignAssetRegistryPage() {
   }, [allRows, keyword]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / size));
   const rows = filtered.slice((page - 1) * size, page * size);
-  const nav: Array<[Kind,string,string]> = [["theme","테마","Themes"],["section","섹션","Sections"],["component","컴포넌트","Components"],["design","디자인","Designs"]];
+  const nav: Array<[Kind,string,string]> = [["theme","테마","Themes"],["css","CSS","CSS"],["section","섹션","Sections"],["component","컴포넌트","Components"],["design","디자인","Designs"]];
   const href = (target: Kind) => buildLocalizedPath(`/admin/system/${target}-management`, `/en/admin/system/${target}-management`);
   return <AdminPageShell breadcrumbs={[{label:en?"Home":"홈",href:buildLocalizedPath("/admin/","/en/admin/")},{label:en?"System":"시스템"},{label:en?meta.en:meta.ko}]} sidebarVariant="system" title={en?meta.en:meta.ko}>
     <AdminWorkspacePageFrame>
       <nav className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3" aria-label={en?"Design asset registry":"디자인 자산 레지스트리"}>{nav.map(([id,ko,labelEn])=><a className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 font-bold ${kind===id?"bg-[#246beb] text-white":"bg-slate-100 text-slate-700"}`} href={href(id)} key={id}><span className="material-symbols-outlined text-lg">{META[id].icon}</span>{en?labelEn:ko}</a>)}</nav>
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{(["themes","sections","components","designs"] as const).map(key=><div className="rounded-xl border border-slate-200 bg-white p-5" key={key}><p className="text-sm font-bold text-slate-500">{key}</p><strong className="mt-2 block text-3xl text-[#052b57]">{Number(payload.counts?.[key] ?? (Array.isArray(payload[key])?payload[key]!.length:0)).toLocaleString()}</strong></div>)}</section>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{(["themes","classSets","sections","components","designs"] as const).map(key=><div className="rounded-xl border border-slate-200 bg-white p-5" key={key}><p className="text-sm font-bold text-slate-500">{key}</p><strong className="mt-2 block text-3xl text-[#052b57]">{Number(payload.counts?.[key] ?? (Array.isArray(payload[key])?payload[key]!.length:0)).toLocaleString()}</strong></div>)}</section>
       {error?<p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-800" role="alert">{en?"Failed to load the DB asset registry: ":"DB 자산 레지스트리를 불러오지 못했습니다: "}{error}</p>:null}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><label className="w-full max-w-xl text-sm font-bold">{en?"Search registered assets":"등록 자산 검색"}<input className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3" value={keyword} onChange={event=>{setKeyword(event.target.value);setPage(1);}} placeholder={en?"ID, name, route, domain...":"ID, 이름, 경로, 도메인..."}/></label><p className="font-bold text-slate-600">{filtered.length.toLocaleString()} {en?"registered":"건 등록"}</p></div>
