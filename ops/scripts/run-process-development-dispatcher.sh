@@ -13,7 +13,7 @@ fi
 pids=()
 for slot in $(seq 1 "$MAX_PARALLEL_WORKERS"); do
   WORKER_SLOT="$slot" LOCK_FILE="/tmp/resonance-process-development-worker-${slot}.lock" \
-    "$WORKER_SCRIPT" &
+    bash "$WORKER_SCRIPT" &
   pids+=("$!")
 done
 

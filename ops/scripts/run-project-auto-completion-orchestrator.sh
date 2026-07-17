@@ -16,7 +16,10 @@ selected="$(psqlq -c "select count(*) from framework_process_delivery_priority_q
 retried="$(psqlq -c "with recovered as (update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_status='FAILED' and attempt_count<max_attempts returning 1) select count(*) from recovered;")"
 executable="$(psqlq -c "select count(*) from framework_development_job where approval_status='APPROVED' and job_status in ('PLANNED','RETRY');")"
 if [[ "$executable" -gt 0 ]]; then
-  ROOT_DIR="$ROOT_DIR" MAX_PARALLEL_WORKERS="$MAX_PARALLEL_WORKERS" bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh"
+  ROOT_DIR="$ROOT_DIR" MAX_PARALLEL_WORKERS="$MAX_PARALLEL_WORKERS" \
+    PGDATABASE="$DB" PGUSER="$DB_USER" PGPASSWORD="${PGPASSWORD:-local-trust}" \
+    POSTGRES_POD="$leader" PGHOST="127.0.0.1" K8S_NAMESPACE="$NAMESPACE" \
+    bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh"
 fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
