@@ -23,9 +23,9 @@ public class DynamicPageRuntimeService {
         List<Map<String, Object>> pages = jdbc.queryForList(
                 "select page_id as \"pageId\",page_name as \"pageName\",page_title as title,page_title_en as \"titleEn\",route_path as \"routePath\",domain_code as \"domainCode\",design_token_version as \"designTokenVersion\",component_schema as \"componentSchema\",version_status as \"versionStatus\" from ui_page_manifest where page_id=? and active_yn='Y' and version_status='PUBLISHED'",
                 pageId);
-        if (pages.isEmpty()) throw new IllegalArgumentException("발행된 동적 화면을 찾을 수 없습니다: " + pageId);
+        if (pages.isEmpty()) throw new IllegalArgumentException("Published dynamic page not found: " + pageId);
         Map<String, Object> out = new LinkedHashMap<>(pages.get(0));
-        out.put("components", jdbc.queryForList("select m.map_id as \"mapId\",m.layout_zone as \"layoutZone\",m.instance_key as \"instanceKey\",m.display_order as \"displayOrder\",c.component_id as \"componentId\",c.component_name as \"componentName\",c.component_type as \"componentType\",c.design_reference as \"designReference\",c.default_props as \"defaultProps\" from ui_page_component_map m join ui_component_registry c on c.component_id=m.component_id and c.active_yn='Y' where m.page_id=? order by m.display_order,m.map_id", pageId));
+        out.put("components", jdbc.queryForList("select m.map_id as \"mapId\",m.layout_zone as \"layoutZone\",m.instance_key as \"instanceKey\",m.display_order as \"displayOrder\",c.component_id as \"componentId\",c.component_name as \"componentName\",c.component_type as \"componentType\",c.design_reference as \"designReference\",case when m.instance_props='{}' then c.default_props else m.instance_props end as \"defaultProps\" from ui_page_component_map m join ui_component_registry c on c.component_id=m.component_id and c.active_yn='Y' where m.page_id=? order by m.display_order,m.map_id", pageId));
         out.put("dataContracts", jdbc.queryForList("select binding_key as \"bindingKey\",source_type as \"sourceType\",endpoint_path as endpoint,static_payload_json as \"staticPayload\",refresh_seconds as \"refreshSeconds\" from framework_page_data_contract where page_id=? and active_yn='Y' order by binding_key", pageId));
         out.put("actions", jdbc.queryForList("select action_code as \"actionCode\",action_type as \"actionType\",target_path as target,http_method as method,confirmation_text as confirmation,required_actor_codes as \"requiredActorCodes\" from framework_page_action_contract where page_id=? and active_yn='Y' order by action_code", pageId));
         out.put("version", jdbc.queryForList("select version_no as \"versionNo\",published_at as \"publishedAt\" from framework_dynamic_page_version where page_id=? and version_status='PUBLISHED' order by version_no desc limit 1", pageId).stream().findFirst().orElse(Map.of("versionNo", 0)));
@@ -34,7 +34,7 @@ public class DynamicPageRuntimeService {
 
     @Transactional
     public Map<String, Object> compile(List<Map<String, Object>> pages, String actor) {
-        if (pages.isEmpty() || pages.size() > MAX_BATCH_SIZE) throw new IllegalArgumentException("한 번에 1~1,000개 화면만 등록할 수 있습니다.");
+        if (pages.isEmpty() || pages.size() > MAX_BATCH_SIZE) throw new IllegalArgumentException("Only 1 to 1,000 pages can be compiled at once.");
         int componentCount = 0, dataContractCount = 0, actionCount = 0;
         for (Map<String, Object> page : pages) {
             String pageId = required(page, "pageId");
@@ -48,15 +48,25 @@ public class DynamicPageRuntimeService {
             jdbc.update("delete from ui_page_component_map where page_id=?", pageId);
             int order = 0;
             for (Map<String, Object> component : components) {
-                String componentId = pageId + "_" + String.format("%03d", ++order);
+                ++order;
                 String type = required(component, "type");
                 String name = String.valueOf(component.getOrDefault("name", type));
-                String props = json(component.getOrDefault("props", Map.of()));
-                jdbc.update("insert into ui_component_registry(component_id,component_name,component_type,owner_domain,props_schema_json,design_reference,active_yn,created_at,updated_at,category,default_props,asset_fingerprint) values(?,?,?,?,?,?,'Y',current_timestamp,current_timestamp,'DYNAMIC',?,md5(?)) on conflict(component_id) do update set component_name=excluded.component_name,component_type=excluded.component_type,design_reference=excluded.design_reference,default_props=excluded.default_props,asset_fingerprint=excluded.asset_fingerprint,active_yn='Y',updated_at=current_timestamp",
-                        componentId, name, type, domain, "{}", String.valueOf(component.getOrDefault("designReference", "KRDS_GOV_DEFAULT")), props, type + "|" + props);
+                @SuppressWarnings("unchecked") Map<String, Object> propValues = component.get("props") instanceof Map<?, ?> value ? (Map<String, Object>) value : Map.of();
+                String props = json(propValues);
+                String propsSchema = json(propertySchema(propValues));
+                String designReference = String.valueOf(component.getOrDefault("designReference", "KRDS_GOV_DEFAULT"));
+                String signature = type + "|" + propsSchema + "|" + designReference;
+                jdbc.queryForObject("select pg_advisory_xact_lock(hashtext(?))", Long.class, signature);
+                List<String> existing = jdbc.queryForList("select component_id from ui_component_registry where active_yn='Y' and component_type=? and props_schema_json::jsonb=cast(? as jsonb) and design_reference=? order by component_id limit 1", String.class, type, propsSchema, designReference);
+                String componentId = existing.isEmpty() ? "CMP_" + stableId("", signature).replace("_", "").substring(0, 24).toUpperCase() : existing.get(0);
+                if (existing.isEmpty()) {
+                    jdbc.update("insert into ui_component_registry(component_id,component_name,component_type,owner_domain,props_schema_json,design_reference,active_yn,created_at,updated_at,category,default_props,asset_fingerprint) values(?,?,?,?,?,?,'Y',current_timestamp,current_timestamp,'COMMON','{}',md5(?))",
+                            componentId, name, type, "COMMON", propsSchema, designReference, signature);
+                }
+                syncCommonProperties(componentId, propValues);
                 String mapId = stableId("DYN", pageId + "|" + order);
-                jdbc.update("insert into ui_page_component_map(map_id,page_id,layout_zone,component_id,instance_key,display_order,conditional_rule_summary,created_at,updated_at) values(?,?,?,?,?,?,?,current_timestamp,current_timestamp)",
-                        mapId, pageId, String.valueOf(component.getOrDefault("zone", "content")), componentId, String.valueOf(component.getOrDefault("instanceKey", "component-" + order)), order * 10, String.valueOf(component.getOrDefault("condition", "always")));
+                jdbc.update("insert into ui_page_component_map(map_id,page_id,layout_zone,component_id,instance_key,display_order,conditional_rule_summary,instance_props,created_at,updated_at) values(?,?,?,?,?,?,?,?,current_timestamp,current_timestamp)",
+                        mapId, pageId, String.valueOf(component.getOrDefault("zone", "content")), componentId, String.valueOf(component.getOrDefault("instanceKey", "component-" + order)), order * 10, String.valueOf(component.getOrDefault("condition", "always")), props);
                 componentCount++;
             }
             jdbc.update("delete from framework_page_data_contract where page_id=?", pageId);
@@ -64,7 +74,7 @@ public class DynamicPageRuntimeService {
             for (Map<String, Object> contract : dataContracts) {
                 String bindingKey = required(contract, "bindingKey");
                 String sourceType = String.valueOf(contract.getOrDefault("sourceType", "STATIC")).toUpperCase();
-                if (!List.of("STATIC", "HTTP_GET").contains(sourceType)) throw new IllegalArgumentException("지원하지 않는 데이터 소스입니다: " + sourceType);
+                if (!List.of("STATIC", "HTTP_GET").contains(sourceType)) throw new IllegalArgumentException("Unsupported data source: " + sourceType);
                 jdbc.update("insert into framework_page_data_contract(contract_id,page_id,binding_key,source_type,endpoint_path,static_payload_json,refresh_seconds,active_yn,updated_at) values(?,?,?,?,?,?,?,'Y',current_timestamp)",
                         stableId("DAT", pageId + "|" + bindingKey), pageId, bindingKey, sourceType, relativePath(contract.get("endpoint")), json(contract.getOrDefault("staticPayload", Map.of())), integer(contract.get("refreshSeconds")));
                 dataContractCount++;
@@ -74,7 +84,7 @@ public class DynamicPageRuntimeService {
             for (Map<String, Object> action : actions) {
                 String actionCode = required(action, "actionCode");
                 String actionType = String.valueOf(action.getOrDefault("actionType", "NAVIGATE")).toUpperCase();
-                if (!List.of("NAVIGATE", "HTTP").contains(actionType)) throw new IllegalArgumentException("지원하지 않는 액션입니다: " + actionType);
+                if (!List.of("NAVIGATE", "HTTP").contains(actionType)) throw new IllegalArgumentException("Unsupported action: " + actionType);
                 jdbc.update("insert into framework_page_action_contract(action_id,page_id,action_code,action_type,target_path,http_method,confirmation_text,required_actor_codes,active_yn,updated_at) values(?,?,?,?,?,?,?,?,'Y',current_timestamp)",
                         stableId("ACT", pageId + "|" + actionCode), pageId, actionCode, actionType, relativePath(action.get("target")), String.valueOf(action.getOrDefault("method", "GET")).toUpperCase(), String.valueOf(action.getOrDefault("confirmation", "")), String.valueOf(action.getOrDefault("requiredActorCodes", "")));
                 actionCount++;
@@ -86,9 +96,34 @@ public class DynamicPageRuntimeService {
     }
 
     private int nextVersion(String pageId) { Integer value = jdbc.queryForObject("select coalesce(max(version_no),0)+1 from framework_dynamic_page_version where page_id=?", Integer.class, pageId); return value == null ? 1 : value; }
-    private String required(Map<String, Object> row, String key) { String value = String.valueOf(row.getOrDefault(key, "")).trim(); if (value.isEmpty() || ("pageId".equals(key) && !value.matches("[A-Za-z0-9_-]+"))) throw new IllegalArgumentException(key + " 값이 올바르지 않습니다."); return value; }
-    private String relativePath(Object value) { String path = value == null ? null : String.valueOf(value).trim(); if (path == null || path.isEmpty()) return null; if (!path.startsWith("/") || path.startsWith("//")) throw new IllegalArgumentException("내부 상대 경로만 사용할 수 있습니다: " + path); return path; }
-    private int integer(Object value) { if (value == null) return 0; try { return Math.max(0, Integer.parseInt(String.valueOf(value))); } catch (Exception e) { throw new IllegalArgumentException("refreshSeconds는 0 이상의 정수여야 합니다."); } }
+    private Map<String, Object> propertySchema(Map<String, Object> values) {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        values.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> properties.put(entry.getKey(), Map.of("type", jsonType(entry.getValue()))));
+        return Map.of("type", "object", "properties", properties, "additionalProperties", false);
+    }
+    private String jsonType(Object value) {
+        if (value instanceof Boolean) return "boolean";
+        if (value instanceof Number) return "number";
+        if (value instanceof List<?>) return "array";
+        if (value instanceof Map<?, ?>) return "object";
+        return value == null ? "null" : "string";
+    }
+    private void syncCommonProperties(String componentId, Map<String, Object> values) {
+        jdbc.update("delete from ui_component_property_map where component_id=?", componentId);
+        int order = 0;
+        for (Map.Entry<String, Object> entry : values.entrySet().stream().sorted(Map.Entry.comparingByKey()).toList()) {
+            String schema = json(Map.of("type", jsonType(entry.getValue())));
+            String fingerprint = jdbc.queryForObject("select md5(lower(?)||'|'||cast(? as jsonb)::text)", String.class, entry.getKey(), schema);
+            String propertyId = "PROP_" + fingerprint.substring(0, 16).toUpperCase();
+            jdbc.update("insert into ui_common_property_registry(property_id,property_name,data_type,schema_json,asset_fingerprint,active_yn) values(?,?,?,cast(? as jsonb),?,'Y') on conflict(asset_fingerprint) do update set active_yn='Y',updated_at=current_timestamp",
+                    propertyId, entry.getKey(), jsonType(entry.getValue()), schema, fingerprint);
+            jdbc.update("insert into ui_component_property_map(component_id,property_id,required_yn,display_order) values(?,?,'N',?) on conflict(component_id,property_id) do update set display_order=excluded.display_order",
+                    componentId, propertyId, ++order);
+        }
+    }
+    private String required(Map<String, Object> row, String key) { String value = String.valueOf(row.getOrDefault(key, "")).trim(); if (value.isEmpty() || ("pageId".equals(key) && !value.matches("[A-Za-z0-9_-]+"))) throw new IllegalArgumentException("Invalid value: " + key); return value; }
+    private String relativePath(Object value) { String path = value == null ? null : String.valueOf(value).trim(); if (path == null || path.isEmpty()) return null; if (!path.startsWith("/") || path.startsWith("//")) throw new IllegalArgumentException("Only relative internal paths are allowed: " + path); return path; }
+    private int integer(Object value) { if (value == null) return 0; try { return Math.max(0, Integer.parseInt(String.valueOf(value))); } catch (Exception e) { throw new IllegalArgumentException("refreshSeconds must be a non-negative integer."); } }
     private String stableId(String prefix, String value) { return prefix + "_" + UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8)).toString().replace("-", ""); }
-    private String json(Object value) { try { return objectMapper.writeValueAsString(value); } catch (Exception e) { throw new IllegalArgumentException("화면 정의를 JSON으로 변환하지 못했습니다.", e); } }
+    private String json(Object value) { try { return objectMapper.writeValueAsString(value); } catch (Exception e) { throw new IllegalArgumentException("Failed to convert page definition to JSON.", e); } }
 }
