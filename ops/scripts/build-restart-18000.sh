@@ -49,9 +49,9 @@ RUNTIME_JAR="$(jbooted project-runtime)"
 JAR_ENTRIES="$(mktemp)"
 EXPECTED_ENTRIES="$(mktemp)"
 trap 'rm -f "$JAR_ENTRIES" "$EXPECTED_ENTRIES"' EXIT
-jar tf "$RUNTIME_JAR" | sort > "$JAR_ENTRIES"
-find "$BACKEND_DIR" -type f -printf 'BOOT-INF/classes/static/react-app/%P\n' | sort > "$EXPECTED_ENTRIES"
-MISSING_ENTRY="$(comm -23 "$EXPECTED_ENTRIES" "$JAR_ENTRIES" | head -1)"
+jar tf "$RUNTIME_JAR" | LC_ALL=C sort -u > "$JAR_ENTRIES"
+find "$BACKEND_DIR" -type f -printf 'BOOT-INF/classes/static/react-app/%P\n' | LC_ALL=C sort -u > "$EXPECTED_ENTRIES"
+MISSING_ENTRY="$(LC_ALL=C comm -23 "$EXPECTED_ENTRIES" "$JAR_ENTRIES" | head -1)"
 if [[ -n "$MISSING_ENTRY" ]]; then
   echo "[build-restart-18000] packaged JAR is missing frontend asset: $MISSING_ENTRY" >&2
   exit 1

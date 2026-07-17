@@ -514,10 +514,10 @@ verify_immutable_frontend_jar() {
   jar_path="$(jbooted project-runtime)"
   jar_entries="$(mktemp)"
   expected_file="$(mktemp)"
-  jar tf "$jar_path" > "$jar_entries"
+  jar tf "$jar_path" | LC_ALL=C sort -u > "$jar_entries"
   find "$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app" -type f \
-    -printf 'BOOT-INF/classes/static/react-app/%P\n' | sort > "$expected_file"
-  if [[ -n "$(comm -23 "$expected_file" <(sort "$jar_entries") | head -1)" ]]; then
+    -printf 'BOOT-INF/classes/static/react-app/%P\n' | LC_ALL=C sort -u > "$expected_file"
+  if [[ -n "$(LC_ALL=C comm -23 "$expected_file" "$jar_entries" | head -1)" ]]; then
     rm -f "$jar_entries" "$expected_file"
     rollback_and_fail "IMMUTABLE_ASSET_JAR_INCOMPLETE" \
       "Built JAR does not contain the complete React asset closure" \
