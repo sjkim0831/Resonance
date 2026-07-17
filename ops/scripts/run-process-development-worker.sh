@@ -129,9 +129,44 @@ When the job type is REFERENCE_ANALYSIS, your first repository mutation must hap
 PROMPT
 
 INITIAL_MESSAGE="Implement the attached approved Resonance development job."
+if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ] || [ "$JOB_TYPE" = "DESIGN" ]; then
+  if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
+    ARTIFACT_PATH="docs/ai/70-reference/${PROCESS_CODE,,}/${STEP_CODE,,}.md"
+    ARTIFACT_KIND="reference and implemented-system analysis"
+  else
+    ARTIFACT_PATH="docs/ai/30-domain/process-design/${PROCESS_CODE,,}/${STEP_CODE,,}.md"
+    ARTIFACT_KIND="executable actor-process design"
+  fi
+  mkdir -p "$WT/$(dirname "$ARTIFACT_PATH")"
+  if [ ! -f "$WT/$ARTIFACT_PATH" ]; then
+    cat >"$WT/$ARTIFACT_PATH" <<EOF
+# ${PROCESS_CODE} / ${STEP_CODE}
+
+## Purpose and completion condition
+
+## Actors, authority, and tenant scope
+
+## Entry conditions and state transitions
+
+## User and administrator screen contract
+
+## Commands, navigation, and responsive states
+
+## API and transaction contract
+
+## Database entities, indexes, and audit evidence
+
+## Happy, exception, authority, isolation, and recovery tests
+
+## Existing implementation evidence and reuse decision
+
+## Frontend, backend, and integration delivery checklist
+EOF
+  fi
+  INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first. Fill this ${ARTIFACT_KIND} from the attached contract and precomputed candidate list. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
+fi
 if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
-  ARTIFACT_PATH="docs/ai/70-reference/${PROCESS_CODE,,}/${STEP_CODE,,}.md"
-  INITIAL_MESSAGE="Immediately create ${ARTIFACT_PATH} with the required section skeleton before any research. Then implement the attached approved Resonance development job and fill the artifact with targeted evidence."
+  INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first and fill the reference analysis from targeted implementation evidence. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
 fi
 if timeout 45m kilo run "$INITIAL_MESSAGE" \
   --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
