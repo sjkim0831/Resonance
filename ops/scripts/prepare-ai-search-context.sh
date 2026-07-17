@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
 REFERENCE_ROOT="${REFERENCE_ROOT:-/opt/reference}"
-INDEX_ROOT="${AI_SEARCH_INDEX_ROOT:-/opt/resonance-ai-search-index}"
+INDEX_ROOT="${AI_SEARCH_INDEX_ROOT:-$ROOT_DIR/var/ai-search-index}"
 PROCESS_CODE="${1:?process code is required}"
 STEP_CODE="${2:?step code is required}"
 JOB_TYPE="${3:?job type is required}"
@@ -20,7 +20,7 @@ if [ -s "$CACHE" ]; then
 fi
 
 INDEX_BUILDER="${AI_PROJECT_INDEX_BUILDER:-$ROOT_DIR/ops/scripts/build-ai-project-index.sh}"
-SNAPSHOT="$(ROOT_DIR="$ROOT_DIR" REFERENCE_ROOT="$REFERENCE_ROOT" AI_SEARCH_INDEX_ROOT="$INDEX_ROOT" "$INDEX_BUILDER")"
+SNAPSHOT="$(ROOT_DIR="$ROOT_DIR" REFERENCE_ROOT="$REFERENCE_ROOT" AI_SEARCH_INDEX_ROOT="$INDEX_ROOT" bash "$INDEX_BUILDER")"
 TERMS="$(printf '%s %s %s' "$PROCESS_CODE" "$STEP_CODE" "$TARGET_PATH" \
   | tr '[:upper:]/_.-' '[:lower:]    ' | tr ' ' '\n' \
   | awk 'length($0)>=4 && $0 !~ /^(projects|project|carbonet|frontend|source|features|feature|modules|module|admin|page|data|input|management|migration)$/' \
