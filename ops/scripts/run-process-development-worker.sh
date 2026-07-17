@@ -193,6 +193,15 @@ EOF
   CHANGED="$(git -C "$WT" status --porcelain)"
 fi
 [ -n "$CHANGED" ] || fail_job "AI completed without a source or metadata change"
+if [ "$JOB_TYPE" = "DESIGN" ]; then
+  DESIGN_WORDS="$(wc -w <"$WT/$ARTIFACT_PATH")"
+  DESIGN_CONTENT_LINES="$(awk 'NF && $0 !~ /^#/ {count++} END {print count+0}' "$WT/$ARTIFACT_PATH")"
+  if [ "$DESIGN_WORDS" -lt 220 ] || [ "$DESIGN_CONTENT_LINES" -lt 18 ] || \
+     ! grep -Eq '/(admin/)?(emission|home/api)|API' "$WT/$ARTIFACT_PATH" || \
+     ! grep -Eq 'HAPPY_PATH|정상.*예외|권한.*격리.*복구' "$WT/$ARTIFACT_PATH"; then
+    fail_job "design artifact is structurally present but professionally incomplete: words=${DESIGN_WORDS}, content-lines=${DESIGN_CONTENT_LINES}"
+  fi
+fi
 FILE_COUNT="$(printf '%s\n' "$CHANGED" | wc -l)"
 [ "$FILE_COUNT" -le "$MAX_FILES" ] || fail_job "changed file limit exceeded: ${FILE_COUNT}/${MAX_FILES}"
 DIFF_LINES="$(git -C "$WT" diff --numstat | awk '{a+=$1+$2} END{print a+0}')"
