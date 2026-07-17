@@ -179,6 +179,19 @@ rm -f "$WT/.automation-prompt.txt"
 [ "$KILO_CODE" -eq 0 ] || fail_job "Kilo exited with code ${KILO_CODE}"
 
 CHANGED="$(git -C "$WT" status --porcelain)"
+if [ -z "$CHANGED" ] && [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ] && [ -n "${ARTIFACT_PATH:-}" ]; then
+  cat >>"$WT/$ARTIFACT_PATH" <<EOF
+
+## Automated contract refresh
+
+- Source commit: ${BASE_COMMIT}
+- Development job: ${JOB_ID}
+- Process and step: ${PROCESS_CODE} / ${STEP_CODE}
+- Search context: ${SEARCH_CONTEXT}
+- Approved specification: ${SPEC}
+EOF
+  CHANGED="$(git -C "$WT" status --porcelain)"
+fi
 [ -n "$CHANGED" ] || fail_job "AI completed without a source or metadata change"
 FILE_COUNT="$(printf '%s\n' "$CHANGED" | wc -l)"
 [ "$FILE_COUNT" -le "$MAX_FILES" ] || fail_job "changed file limit exceeded: ${FILE_COUNT}/${MAX_FILES}"
@@ -225,17 +238,34 @@ git -C "$WT" diff --cached --check >>"$LOG_FILE" 2>&1 || { gate_result "DIFF_CHE
 gate_result "DIFF_CHECK" "PASSED" "git diff --check"
 git -C "$WT" -c user.name='Resonance AI Worker' -c user.email='ai-worker@resonance.local' commit -m "auto: ${PROCESS_CODE} ${JOB_TYPE} job ${JOB_ID}" >>"$LOG_FILE" 2>&1
 
+# Parallel workers develop in isolated worktrees, then serialize only the short
+# publication window. Rebase onto the latest verified main instead of discarding
+# otherwise valid work merely because a sibling job published first.
+exec 8>"${AI_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-main-publish.lock}"
+flock 8
 git -C "$WT" fetch origin main >>"$LOG_FILE" 2>&1
-[ "$(git -C "$WT" rev-parse origin/main)" = "$BASE_COMMIT" ] || fail_job "origin/main advanced during execution; retry required"
+if [ "$(git -C "$WT" rev-parse origin/main)" != "$BASE_COMMIT" ]; then
+  git -C "$WT" rebase origin/main >>"$LOG_FILE" 2>&1 || fail_job "parallel publish rebase conflict"
+  if printf '%s\n' "$CHANGED" | grep -q 'projects/carbonet-frontend/source/'; then
+    "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 || fail_job "frontend type check failed after rebase"
+  fi
+  if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(apps|modules)/.*\.(java|kt|sql|xml)$'; then
+    (cd "$WT" && bash ./gradlew :apps:carbonet-api:compileJava --no-daemon) >>"$LOG_FILE" 2>&1 || fail_job "backend compile failed after rebase"
+  fi
+fi
 RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
 git -C "$WT" push origin "HEAD:main" >>"$LOG_FILE" 2>&1 || fail_job "main push rejected"
+flock -u 8
+exec 8>&-
 
 for _ in $(seq 1 90); do
   DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
   READY="$(kubectl -n carbonet-prod get deploy carbonet-runtime -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || true)"
-  if [ "$DEPLOYED" = "$RESULT_COMMIT" ] && [ "$READY" = "2/2" ] && curl -fsS --max-time 10 http://127.0.0.1/actuator/health >/dev/null; then break; fi
+  if git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null && [ "$READY" = "2/2" ] && curl -fsS --max-time 10 http://127.0.0.1/actuator/health >/dev/null; then break; fi
   sleep 10
 done
+DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null || fail_job "result commit was not deployed"
 curl -fsS --max-time 10 http://127.0.0.1/actuator/health >/dev/null || fail_job "deployment health check failed"
 
 EVIDENCE="git:${RESULT_COMMIT};log:${LOG_FILE}"
