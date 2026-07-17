@@ -14,7 +14,36 @@ run_id="$(cat /proc/sys/kernel/random/uuid)"
 psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
 trap 'psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
 selected="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
-retried="$(psqlq -c "with recovered as (update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_status='FAILED' and attempt_count<max_attempts returning 1) select count(*) from recovered;")"
+retried="$(psqlq -c "
+with candidate as (
+  select j.job_id,
+    (j.attempt_count>=j.max_attempts) as infrastructure_retry
+  from framework_development_job j
+  where j.job_status='FAILED'
+    and (
+      j.attempt_count<j.max_attempts
+      or (
+        j.last_error in ('unexpected worker error at line 111','Kilo exited with code 124','AI completed without a source or metadata change')
+        and not exists (
+          select 1 from framework_development_job_event e
+          where e.job_id=j.job_id and e.event_type='INFRA_RETRY_GRANTED'
+        )
+      )
+    )
+), recovered as (
+  update framework_development_job j
+  set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+      attempt_count=case when c.infrastructure_retry then greatest(0,j.max_attempts-1) else j.attempt_count end,
+      updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id
+  returning j.job_id,c.infrastructure_retry
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,case when infrastructure_retry then 'INFRA_RETRY_GRANTED' else 'RETRY_GRANTED' end,
+         'FAILED','RETRY','project-auto-completion',jsonb_build_object('infrastructureRetry',infrastructure_retry)
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 executable="$(psqlq -c "select count(*) from framework_development_job where approval_status='APPROVED' and job_status in ('PLANNED','RETRY');")"
 if [[ "$executable" -gt 0 && "$MODEL" == kilo/* ]] && ! kilo profile >/dev/null 2>&1; then
   psqlq -c "update framework_project_completion_run set run_status='ATTENTION_REQUIRED',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,blocked_process_count=1,result_json='{\"reason\":\"KILO_GATEWAY_AUTH_REQUIRED\"}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
