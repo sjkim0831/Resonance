@@ -90,9 +90,9 @@ public class E4bGeneratorSelectionService {
 
     private JsonNode callModel(String prompt) {
         try {
-            Map<String, Object> payload = Map.of("model", model, "temperature", 0, "max_tokens", 500,
+            Map<String, Object> payload = Map.of("model", model, "temperature", 0, "max_tokens", 1500,
                 "messages", List.of(
-                    Map.of("role", "system", "content", "You are the E4B deterministic generator selector. Select only supplied IDs and return strict JSON."),
+                    Map.of("role", "system", "content", "You are the E4B deterministic generator selector. Select only supplied IDs. Answer immediately with strict JSON, without analysis."),
                     Map.of("role", "user", "content", prompt)));
             HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl.replaceAll("/$", "") + "/chat/completions"))
                 .timeout(Duration.ofSeconds(90)).header("Content-Type", "application/json")
