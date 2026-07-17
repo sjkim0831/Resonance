@@ -298,6 +298,7 @@ public class ActorProcessGovernanceService {
         boolean locked=isProcessDefinitionLocked(process);
         Map<String,Object>s=jdbc.queryForMap("select * from framework_process_step where process_code=? and step_code=?",process,step);
         String base=process+"_"+step, requirement=String.valueOf(s.get("requirement_text")); int created=0;
+        created+=queueJob(process,step,"DESIGN","액터·프로세스·화면·API·데이터·테스트 설계 정본", "design/"+base.toLowerCase(),requirement,actor);
         if(Boolean.TRUE.equals(s.get("requires_database"))) created+=queueJob(process,step,"DATABASE","DB 스키마·Flyway 마이그레이션", "db/migration/"+base.toLowerCase(),requirement,actor);
         if(Boolean.TRUE.equals(s.get("requires_api"))) { created+=queueJob(process,step,"API","API 계약·컨트롤러",String.valueOf(s.get("api_contract")),requirement,actor); created+=queueJob(process,step,"BACKEND","트랜잭션·권한·감사 서비스", "backend/"+base.toLowerCase(),requirement,actor); }
         if(Boolean.TRUE.equals(s.get("requires_user_page"))) created+=queueJob(process,step,"FRONTEND_USER","사용자 업무 화면",String.valueOf(s.get("user_path")),requirement,actor);
@@ -411,7 +412,7 @@ public class ActorProcessGovernanceService {
         Map<String,Object> preflight=runScreenDevelopmentPreflight(process,step,actor);
         if(!Boolean.TRUE.equals(preflight.get("passed")))throw new IllegalStateException("화면 개발 사전검사를 통과해야 승인할 수 있습니다: "+preflight.get("failureSummary"));
         int count=jdbc.update("update framework_development_job set approval_status='APPROVED',updated_at=current_timestamp where process_code=? and step_code=? and job_status='PLANNED'",process,step);
-        jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
+        if(!isProcessDefinitionLocked(process))jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
         return Map.of("success",true,"approvedJobs",count,"approvedBy",actor);
     }
 
@@ -434,13 +435,13 @@ public class ActorProcessGovernanceService {
             boolean mockupPassed=Boolean.TRUE.equals(readiness.get("selectedMockupPassed"));
             Integer designAssetCount=jdbc.queryForObject("select count(*) from framework_design_preflight where lower(route_path)=lower(?)",Integer.class,ScreenDevelopmentNoteService.cleanRoute(route));
             boolean designChecked=designAssetCount!=null&&designAssetCount>0;
-            Integer professionalScore=jdbc.queryForObject("select coalesce(max(readiness_score),0) from framework_professional_screen_readiness where process_code=? and step_code=? and lower(split_part(route_path,'?',1))=lower(?)",Integer.class,process,step,ScreenDevelopmentNoteService.cleanRoute(route));
+            Integer professionalScore=jdbc.queryForObject("select coalesce(max(design_readiness_score),0) from framework_professional_screen_design_readiness where process_code=? and step_code=? and lower(split_part(route_path,'?',1))=lower(?)",Integer.class,process,step,ScreenDevelopmentNoteService.cleanRoute(route));
             boolean professionalPassed=professionalScore!=null&&professionalScore==100;
             int score=(notePassed?20:0)+(mockupPassed?20:0)+(actorPassed?15:0)+(safetyPassed?15:0)+(professionalPassed?30:0);
             boolean passed=notePassed&&mockupPassed&&actorPassed&&safetyPassed&&professionalPassed;
             List<String> gaps=new java.util.ArrayList<>();
             if(!notePassed)gaps.add("설계·기능·완료 기준");if(!mockupPassed)gaps.add("선택 HTML 시안");if(!actorPassed)gaps.add("액터 계약");if(!safetyPassed)gaps.add("5대 안전 테스트");
-            if(!professionalPassed)gaps.add("전문 화면 완성 계약 100점("+(professionalScore==null?0:professionalScore)+"점)");
+            if(!professionalPassed)gaps.add("전문 화면 설계 계약 100점("+(professionalScore==null?0:professionalScore)+"점)");
             String summary=String.join(", ",gaps);
             String detail="{\"designNote\":"+notePassed+",\"selectedMockup\":"+mockupPassed+",\"actorContract\":"+actorPassed+",\"safetyScenarioTypes\":"+(safetyTypes==null?0:safetyTypes)+",\"professionalContractScore\":"+(professionalScore==null?0:professionalScore)+",\"designAssetChecked\":"+designChecked+"}";
             jdbc.update("insert into framework_screen_development_gate_run(process_code,step_code,route_path,page_id,gate_status,readiness_score,design_note_passed,selected_mockup_passed,actor_contract_passed,safety_tests_passed,design_asset_checked,check_result_json,failure_summary,executed_by) values(?,?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),?)",process,step,ScreenDevelopmentNoteService.cleanRoute(route),"",passed?"PASSED":"FAILED",score,notePassed,mockupPassed,actorPassed,safetyPassed,designChecked,detail,summary,actor);
@@ -516,7 +517,7 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> claimDevelopmentJob(String worker){
-        String order="case job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 else 90 end";
+        String order="case job_type when 'DESIGN' then 10 when 'FRONTEND_USER' then 20 when 'FRONTEND_ADMIN' then 30 when 'DATABASE' then 40 when 'API' then 50 when 'BACKEND' then 60 when 'NOTIFICATION' then 70 when 'TEST' then 80 when 'INTEGRATION' then 90 else 100 end";
         List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_development_job j where approval_status='APPROVED' and (job_status in ('PLANNED','RETRY') or (job_status='RUNNING' and lease_until<current_timestamp)) and not exists(select 1 from framework_development_job p where p.process_code=j.process_code and p.step_code=j.step_code and ("+order.replace("job_type","p.job_type")+")<("+order.replace("job_type","j.job_type")+") and p.job_status<>'VERIFIED') order by process_code,step_code,"+order+",job_id for update skip locked limit 1");
         if(rows.isEmpty())return Map.of("success",true,"available",false);
         Map<String,Object> job=rows.get(0); long id=((Number)job.get("job_id")).longValue(); String from=String.valueOf(job.get("job_status")),token=UUID.randomUUID().toString();
@@ -541,7 +542,7 @@ public class ActorProcessGovernanceService {
         event(id,result,"RUNNING",result,worker,def(b,"resultJson","{}"));
         jdbc.update("update framework_process_artifact set delivery_status=?,evidence_ref=coalesce(nullif(?,''),evidence_ref),updated_at=current_timestamp where process_code=? and step_code=? and contract_ref=?",result,str(b,"evidenceRef"),process,step,"AUTO:"+type);
         Integer pending=jdbc.queryForObject("select count(*) from framework_development_job where process_code=? and step_code=? and job_status<>'VERIFIED'",Integer.class,process,step);
-        jdbc.update("update framework_process_step set automation_status=? where process_code=? and step_code=?",pending!=null&&pending==0?"VERIFIED":("FAILED".equals(result)?"BLOCKED":"GENERATED"),process,step);
+        if(!isProcessDefinitionLocked(process))jdbc.update("update framework_process_step set automation_status=? where process_code=? and step_code=?",pending!=null&&pending==0?"VERIFIED":("FAILED".equals(result)?"BLOCKED":"GENERATED"),process,step);
         return Map.of("success",true,"jobId",id,"status",result,"stepComplete",pending!=null&&pending==0);
     }
 
@@ -591,10 +592,13 @@ public class ActorProcessGovernanceService {
                 Object rawPath=s.get("USER".equals(audience)?"user_path":"admin_path");String route=rawPath==null?"":String.valueOf(rawPath).trim();
                 String screenType=inferScreenType(stepName,route,audience);String pageId=(processCode+"_"+stepCode+"_"+audience).replaceAll("[^A-Za-z0-9_]","_");String code="BP_"+pageId;
                 int caseTypes=jdbc.queryForObject("select count(distinct case_type) from framework_simulation_case where process_code=? and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')",Integer.class,processCode);
-                String validation=route.isBlank()?"화면 경로 누락":caseTypes<5?"필수 5종 테스트 시나리오 누락":"";String status=validation.isBlank()?"VALID":"INVALID";
                 String safeRoute=route.isBlank()?("ADMIN".equals(audience)?"/admin/generated/":"/generated/")+processCode.toLowerCase(Locale.ROOT)+"/"+stepCode.toLowerCase(Locale.ROOT):route;
-                String spec="{\"domain\":\""+jsonEscape(String.valueOf(s.get("domain_code")))+"\",\"actor\":\""+jsonEscape(actorCode)+"\",\"process\":\""+jsonEscape(processCode)+"\",\"step\":\""+jsonEscape(stepCode)+"\",\"screenType\":\""+screenType+"\",\"designSystem\":\"KRDS_GOV\"}";
-                String trace="{\"requiredScenarioTypes\":[\"HAPPY_PATH\",\"AUTHORITY\",\"ISOLATION\",\"EXCEPTION\",\"RECOVERY\"],\"caseTypeCount\":"+caseTypes+"}";
+                List<Map<String,Object>> designRows=jdbc.queryForList("select business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,field_contract,command_contract,state_contract,api_contract,data_contract,evidence_contract,responsive_contract,accessibility_contract,security_contract,design_readiness_score from framework_professional_screen_design_readiness where process_code=? and step_code=? and audience=? and lower(split_part(route_path,'?',1))=lower(?) order by contract_id limit 1",processCode,stepCode,audience,ScreenDevelopmentNoteService.cleanRoute(safeRoute));
+                Map<String,Object> design=designRows.isEmpty()?Map.of():designRows.get(0);
+                int designScore=designRows.isEmpty()?0:((Number)design.get("design_readiness_score")).intValue();
+                String validation=route.isBlank()?"화면 경로 누락":caseTypes<5?"필수 5종 테스트 시나리오 누락":(!designRows.isEmpty()&&designScore<100)?"전문 화면 설계 계약 미완료":"";String status=validation.isBlank()?"VALID":"INVALID";
+                String spec="{\"domain\":\""+jsonEscape(String.valueOf(s.get("domain_code")))+"\",\"actor\":\""+jsonEscape(actorCode)+"\",\"process\":\""+jsonEscape(processCode)+"\",\"step\":\""+jsonEscape(stepCode)+"\",\"screenType\":\""+screenType+"\",\"designSystem\":\"KRDS_GOV\",\"businessPurpose\":\""+jsonEscape(String.valueOf(design.getOrDefault("business_purpose",stepName)))+"\",\"entryCondition\":\""+jsonEscape(String.valueOf(design.getOrDefault("entry_condition","")))+"\",\"exitCondition\":\""+jsonEscape(String.valueOf(design.getOrDefault("exit_condition","")))+"\",\"kpis\":"+String.valueOf(design.getOrDefault("kpi_contract","[]"))+",\"sections\":"+String.valueOf(design.getOrDefault("section_contract","[]"))+",\"fields\":"+String.valueOf(design.getOrDefault("field_contract","[]"))+",\"commands\":"+String.valueOf(design.getOrDefault("command_contract","[]"))+",\"states\":"+String.valueOf(design.getOrDefault("state_contract","[]"))+",\"apiContracts\":"+String.valueOf(design.getOrDefault("api_contract","[]"))+",\"dataContracts\":"+String.valueOf(design.getOrDefault("data_contract","[]"))+",\"responsive\":\""+jsonEscape(String.valueOf(design.getOrDefault("responsive_contract","")))+"\",\"accessibility\":\""+jsonEscape(String.valueOf(design.getOrDefault("accessibility_contract","")))+"\"}";
+                String trace="{\"requiredScenarioTypes\":[\"HAPPY_PATH\",\"AUTHORITY\",\"ISOLATION\",\"EXCEPTION\",\"RECOVERY\"],\"caseTypeCount\":"+caseTypes+",\"designReadinessScore\":"+designScore+",\"evidenceContract\":"+String.valueOf(design.getOrDefault("evidence_contract","[]"))+"}";
                 Long blueprintId=jdbc.queryForObject("insert into framework_screen_blueprint(blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,route_path,screen_type,template_code,specification_json,traceability_json,validation_status,validation_message,created_by) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(audience,route_path) do update set process_code=excluded.process_code,step_code=excluded.step_code,actor_code=excluded.actor_code,page_id=excluded.page_id,page_name=excluded.page_name,screen_type=excluded.screen_type,template_code=excluded.template_code,specification_json=excluded.specification_json,traceability_json=excluded.traceability_json,validation_status=excluded.validation_status,validation_message=excluded.validation_message,updated_at=current_timestamp returning blueprint_id",Long.class,code,processCode,stepCode,actorCode,audience,pageId,stepName+("USER".equals(audience)?"":" 관리"),safeRoute,screenType,"KRDS_"+screenType,spec,trace,status,validation,actor);
                 jdbc.update("insert into framework_screen_generation_batch_item(batch_id,blueprint_id,item_order,item_status,validation_message) values(?,?,?,?,?) on conflict(batch_id,blueprint_id) do nothing",batchId,blueprintId,++order,status,validation);
                 compiled++;if("VALID".equals(status))valid++;else invalid++;
