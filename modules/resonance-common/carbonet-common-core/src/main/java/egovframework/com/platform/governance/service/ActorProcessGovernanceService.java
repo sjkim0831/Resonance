@@ -34,7 +34,9 @@ public class ActorProcessGovernanceService {
         out.put("runs",jdbc.queryForList("select run_id as \"runId\",case_code as \"caseCode\",process_version as \"processVersion\",result,failure_reason as \"failureReason\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_simulation_run order by run_id desc limit 100"));
         out.put("artifacts",jdbc.queryForList("select artifact_id as \"artifactId\",process_code as \"processCode\",step_code as \"stepCode\",artifact_code as \"artifactCode\",artifact_type as \"artifactType\",artifact_name as \"artifactName\",target_path as \"targetPath\",contract_ref as \"contractRef\",required,delivery_status as \"status\",owner_actor_code as \"ownerActorCode\",acceptance_criteria as \"acceptanceCriteria\",evidence_ref as \"evidenceRef\",notes from framework_process_artifact order by process_code,artifact_type,artifact_code"));
         out.put("developmentRules",jdbc.queryForList("select rule_code as \"ruleCode\",rule_group as \"ruleGroup\",rule_name as \"ruleName\",rule_description as \"ruleDescription\",verification_method as \"verificationMethod\",source_ref as \"sourceRef\",mandatory from framework_development_rule where use_at='Y' order by rule_group,rule_code"));
-        out.put("developmentJobs",jdbc.queryForList("select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\",approval_status as \"approvalStatus\",execution_mode as \"executionMode\",job_group_code as \"jobGroupCode\",required,progress_weight as \"progressWeight\",max_attempts as \"maxAttempts\",quality_status as \"qualityStatus\",quality_report as \"qualityReport\",search_context_ref as \"searchContextRef\",worker_id as \"workerId\",lease_until as \"leaseUntil\",attempt_count as \"attemptCount\",evidence_ref as \"evidenceRef\",rollback_ref as \"rollbackRef\",last_error as \"lastError\",created_at as \"createdAt\" from framework_development_job order by process_code,step_code,job_id"));
+        out.put("developmentJobs",jdbc.queryForList("select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\",approval_status as \"approvalStatus\",execution_mode as \"executionMode\",job_group_code as \"jobGroupCode\",work_type_code as \"workTypeCode\",template_task_code as \"templateTaskCode\",required,progress_weight as \"progressWeight\",max_attempts as \"maxAttempts\",quality_status as \"qualityStatus\",quality_report as \"qualityReport\",search_context_ref as \"searchContextRef\",worker_id as \"workerId\",lease_until as \"leaseUntil\",attempt_count as \"attemptCount\",evidence_ref as \"evidenceRef\",rollback_ref as \"rollbackRef\",last_error as \"lastError\",created_at as \"createdAt\" from framework_development_job order by process_code,step_code,job_id"));
+        out.put("developmentWorkTypes",jdbc.queryForList("select work_type_code as \"workTypeCode\",work_type_name as \"workTypeName\",description,execution_order as \"executionOrder\" from framework_development_work_type where active_yn='Y' order by execution_order,work_type_code"));
+        out.put("developmentWorkTemplates",jdbc.queryForList("select work_type_code as \"workTypeCode\",task_code as \"taskCode\",task_name as \"taskName\",job_type as \"jobType\",trigger_scope as \"triggerScope\",task_order as \"taskOrder\",requirement_template as \"requirementTemplate\",required,auto_queue as \"autoQueue\" from framework_development_work_template where active_yn='Y' order by task_order,work_type_code,task_code"));
         out.put("jobDependencies",jdbc.queryForList("select d.job_id as \"jobId\",d.depends_on_job_id as \"dependsOnJobId\",d.dependency_type as \"dependencyType\",j.job_name as \"jobName\",p.job_name as \"dependsOnJobName\",p.job_status as \"dependsOnStatus\" from framework_development_job_dependency d join framework_development_job j on j.job_id=d.job_id join framework_development_job p on p.job_id=d.depends_on_job_id order by d.job_id,d.depends_on_job_id"));
         out.put("qualityGates",jdbc.queryForList("select gate_code as \"gateCode\",gate_name as \"gateName\",gate_group as \"gateScope\",mandatory,verification_command as \"verificationCommand\" from framework_quality_gate where use_at='Y' order by gate_group,gate_code"));
         out.put("qualityGateResults",jdbc.queryForList("select result_id as \"resultId\",job_id as \"jobId\",gate_code as \"gateCode\",result,summary,evidence_ref as \"evidenceRef\",checked_at as \"executedAt\" from framework_development_job_gate_result order by result_id desc limit 300"));
@@ -239,10 +241,30 @@ public class ActorProcessGovernanceService {
         if(Boolean.TRUE.equals(s.get("requires_user_page"))) created+=queueJob(process,step,"FRONTEND_USER","사용자 업무 화면",String.valueOf(s.get("user_path")),requirement,actor);
         if(Boolean.TRUE.equals(s.get("requires_admin_page"))) created+=queueJob(process,step,"FRONTEND_ADMIN","대응 관리자 화면",String.valueOf(s.get("admin_path")),requirement,actor);
         if(Boolean.TRUE.equals(s.get("requires_notification"))) created+=queueJob(process,step,"NOTIFICATION","알림·마감 정책", "notification/"+base.toLowerCase(),requirement,actor);
+        created+=queueEfficiencyJobs(process,step,s,actor);
         created+=queueJob(process,step,"TEST","정상·예외·권한·격리·복구 테스트", "test/"+base.toLowerCase(),requirement,actor);
         created+=queueJob(process,step,"INTEGRATION","메뉴·권한·다국어·배포 통합", "integration/"+base.toLowerCase(),requirement,actor);
         jdbc.update("update framework_process_step set automation_status='PLANNED' where process_code=? and step_code=?",process,step);
         return Map.of("success",true,"generatedJobs",created,"processCode",process,"stepCode",step);
+    }
+
+    private int queueEfficiencyJobs(String process,String step,Map<String,Object>s,String actor){
+        boolean page=Boolean.TRUE.equals(s.get("requires_user_page"))||Boolean.TRUE.equals(s.get("requires_admin_page"));
+        boolean api=Boolean.TRUE.equals(s.get("requires_api"));
+        boolean database=Boolean.TRUE.equals(s.get("requires_database"));
+        List<Map<String,Object>> templates=jdbc.queryForList("select work_type_code,task_code,task_name,job_type,trigger_scope,requirement_template,target_pattern from framework_development_work_template where active_yn='Y' and auto_queue=true order by task_order,work_type_code,task_code");
+        int created=0;
+        for(Map<String,Object>template:templates){
+            String scope=String.valueOf(template.get("trigger_scope"));
+            if(("PAGE".equals(scope)&&!page)||("API".equals(scope)&&!api)||("DATABASE".equals(scope)&&!database))continue;
+            String workType=String.valueOf(template.get("work_type_code"));
+            String taskCode=String.valueOf(template.get("task_code"));
+            String jobType=String.valueOf(template.get("job_type"));
+            String path=String.valueOf(template.get("target_pattern")).replace("{process}",process.toLowerCase()).replace("{step}",step.toLowerCase());
+            created+=queueJob(process,step,jobType,String.valueOf(template.get("task_name")),path,String.valueOf(template.get("requirement_template")),actor);
+            jdbc.update("update framework_development_job set work_type_code=?,template_task_code=?,updated_at=current_timestamp where process_code=? and step_code=? and job_type=? and target_path=?",workType,taskCode,process,step,jobType,path);
+        }
+        return created;
     }
 
     /**
