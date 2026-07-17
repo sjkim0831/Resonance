@@ -74,6 +74,7 @@ const ADMIN_SESSION_STORAGE_KEY = "adminSessionExpireAt";
 const ADMIN_SIMULATOR_EXPANDED_STORAGE_KEY = "adminDevSimulatorExpanded";
 const ADMIN_SIDEBAR_SCROLL_STORAGE_KEY = "adminSidebarScrollTop";
 const ADMIN_SIDEBAR_OPEN_GROUPS_STORAGE_KEY = "adminSidebarOpenGroups";
+const ADMIN_SELECTED_DOMAIN_STORAGE_KEY = "adminSelectedDomain";
 const ADMIN_SESSION_DURATION_MS = 60 * 60 * 1000;
 const ADMIN_SESSION_WARNING_MS = 5 * 60 * 1000;
 const ADMIN_SESSION_DANGER_MS = 60 * 1000;
@@ -362,6 +363,35 @@ function readStoredOpenGroups() {
   }
 }
 
+function readStoredSelectedDomain(menuTree: Record<string, AdminMenuDomain>, currentPath: string) {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  try {
+    const raw = window.sessionStorage.getItem(ADMIN_SELECTED_DOMAIN_STORAGE_KEY);
+    if (!raw) {
+      return "";
+    }
+    const stored = JSON.parse(raw) as { domainKey?: string; path?: string };
+    const domainKey = String(stored.domainKey || "");
+    const storedPath = resolveMenuComparablePath(String(stored.path || ""), false);
+    const comparableCurrentPath = resolveMenuComparablePath(currentPath, false);
+    return domainKey && menuTree[domainKey] && storedPath === comparableCurrentPath ? domainKey : "";
+  } catch {
+    return "";
+  }
+}
+
+function storeSelectedDomain(domainKey: string, currentPath: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.sessionStorage.setItem(ADMIN_SELECTED_DOMAIN_STORAGE_KEY, JSON.stringify({
+    domainKey,
+    path: resolveMenuComparablePath(currentPath, false)
+  }));
+}
+
 function buildMenuIndex(menuTree: Record<string, AdminMenuDomain>): MenuIndex {
   const exactPathMap: Record<string, MenuIndexEntry> = {};
   const basePathMap: Record<string, MenuIndexEntry> = {};
@@ -548,7 +578,9 @@ export function AdminPageShell({
   const activeMenuEntry = useMemo(() => resolveMenuIndexEntry(menuIndex, currentPath), [menuIndex, currentPath]);
   const fallbackActiveDomainKey = useMemo(() => resolveFallbackDomainKey(menuTree, currentPath), [currentPath, menuTree]);
   const activeDomainKey = activeMenuEntry?.domainKey || fallbackActiveDomainKey || Object.keys(menuTree)[0] || "";
-  const [selectedDomainKey, setSelectedDomainKey] = useState(activeDomainKey);
+  const [selectedDomainKey, setSelectedDomainKey] = useState(
+    () => readStoredSelectedDomain(menuTree, currentPath) || activeDomainKey
+  );
   const [menuFilter, setMenuFilter] = useState("");
   const deferredMenuFilter = useDeferredValue(menuFilter);
   const selectedDomain = menuTree[selectedDomainKey] || menuTree[activeDomainKey];
@@ -624,10 +656,11 @@ export function AdminPageShell({
   }, [menuState]);
 
   useEffect(() => {
-    if (activeDomainKey) {
-      setSelectedDomainKey(activeDomainKey);
+    const storedDomainKey = readStoredSelectedDomain(menuTree, currentPath);
+    if (storedDomainKey || activeDomainKey) {
+      setSelectedDomainKey(storedDomainKey || activeDomainKey);
     }
-  }, [activeDomainKey]);
+  }, [activeDomainKey, currentPath, menuTree]);
 
   useEffect(() => {
     if (!selectedDomain) {
@@ -944,6 +977,7 @@ export function AdminPageShell({
                     key={item.label}
                     onClick={(event) => {
                       event.preventDefault();
+                      storeSelectedDomain(item.domain, currentPath);
                       setSelectedDomainKey(item.domain);
                     }}
                     className={`js-gnb-menu inline-flex h-full items-center border-b-[3px] px-5 text-[16px] font-bold transition-colors ${
