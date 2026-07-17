@@ -106,6 +106,15 @@ BASE_COMMIT="$(git -C "$ROOT_DIR" rev-parse origin/main)"
 git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
 git -C "$ROOT_DIR" worktree add -B "$BRANCH" "$WT" "$BASE_COMMIT" >>"$LOG_FILE" 2>&1
 
+# Worktrees intentionally exclude dependency directories. Reuse the verified
+# root installation so TypeScript resolves React and workspace packages without
+# a per-job npm install or false "JSX.IntrinsicElements" failures.
+frontend_root="$ROOT_DIR/projects/carbonet-frontend/source"
+frontend_worktree="$WT/projects/carbonet-frontend/source"
+if [[ -d "$frontend_root/node_modules" && -d "$frontend_worktree" && ! -e "$frontend_worktree/node_modules" ]]; then
+  ln -s "$frontend_root/node_modules" "$frontend_worktree/node_modules"
+fi
+
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
 SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
 SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"
