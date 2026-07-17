@@ -73,7 +73,7 @@ public class EmissionProjectRegistryService {
     }
 
     public Map<String, Object> detail(String id) {
-        List<Map<String, Object>> projects = jdbc.queryForList("SELECT project_id AS \"id\",project_name AS \"name\",site_name AS \"site\",calculation_period AS \"period\",scope_name AS \"scope\",owner_name AS \"owner\",progress_percent AS \"progress\",current_step AS \"step\",due_date AS \"dueDate\",project_status AS \"status\",reporting_year AS \"reportingYear\",period_start AS \"periodStart\",period_end AS \"periodEnd\" FROM emission_project_registry WHERE project_id=?", id);
+        List<Map<String, Object>> projects = jdbc.queryForList("SELECT project_id AS \"id\",project_name AS \"name\",site_name AS \"site\",calculation_period AS \"period\",scope_name AS \"scope\",owner_name AS \"owner\",progress_percent AS \"progress\",current_step AS \"step\",due_date AS \"dueDate\",project_status AS \"status\",reporting_year AS \"reportingYear\",period_start AS \"periodStart\",period_end AS \"periodEnd\",organization_boundary AS \"organizationBoundary\",emission_standard AS \"emissionStandard\",methodology_version AS \"methodologyVersion\",verification_level AS \"verificationLevel\",collection_cycle AS \"collectionCycle\",materiality_threshold AS \"materialityThreshold\",settings_snapshot AS \"settingsSnapshot\" FROM emission_project_registry WHERE project_id=?", id);
         if (projects.isEmpty()) throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
         Map<String, Object> result = new LinkedHashMap<>(projects.get(0));
         result.put("tasks", jdbc.queryForList("SELECT task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\",target_url AS \"targetUrl\",process_code AS \"processCode\",process_step_code AS \"processStepCode\",actor_code AS \"actorCode\",predecessor_codes AS \"predecessorCodes\",completion_rule AS \"completionRule\",blocked_reason AS \"blockedReason\",started_at AS \"startedAt\",completed_at AS \"completedAt\",completed_by AS \"completedBy\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
@@ -551,6 +551,12 @@ public class EmissionProjectRegistryService {
         body.put("name", source.get("name") + " - 복사본"); body.put("site", source.get("site")); body.put("owner", source.get("owner"));
         body.put("reportingYear", source.get("reportingYear")); body.put("periodStart", source.get("periodStart")); body.put("periodEnd", source.get("periodEnd")); body.put("dueDate", source.get("dueDate"));
         body.put("scopes", List.of(String.valueOf(source.get("scope")).split("·")));
+        body.put("organizationBoundary", source.get("organizationBoundary") == null ? "OPERATIONAL_CONTROL" : source.get("organizationBoundary"));
+        body.put("emissionStandard", source.get("emissionStandard") == null ? "ISO_14064_1" : source.get("emissionStandard"));
+        body.put("methodologyVersion", source.get("methodologyVersion") == null ? "2018" : source.get("methodologyVersion"));
+        body.put("verificationLevel", source.get("verificationLevel") == null ? "LIMITED" : source.get("verificationLevel"));
+        body.put("collectionCycle", source.get("collectionCycle") == null ? "MONTHLY" : source.get("collectionCycle"));
+        body.put("materialityThreshold", source.get("materialityThreshold") == null ? 5 : source.get("materialityThreshold"));
         return create(tenantId,body);
     }
 
@@ -563,7 +569,7 @@ public class EmissionProjectRegistryService {
         if (!nameAvailable(tenant,name)) throw new IllegalArgumentException("이미 등록된 프로젝트명입니다.");
         String scope=contract.scopes().stream().sorted().reduce((a,b)->a+"·"+b).orElseThrow();
         String id = "PRJ-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0,6).toUpperCase();
-        jdbc.update("INSERT INTO emission_project_registry(project_id,tenant_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,reporting_year,period_start,period_end) VALUES (?,?,?,?,?,?,?,0,'프로젝트 생성',?,'진행',?,?,?)", id,tenant,name,site,start+" ~ "+end,scope,owner,due,year,start,end);
+        jdbc.update("INSERT INTO emission_project_registry(project_id,tenant_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,reporting_year,period_start,period_end,organization_boundary,emission_standard,methodology_version,verification_level,collection_cycle,materiality_threshold,settings_snapshot) VALUES (?,?,?,?,?,?,?,0,'프로젝트 생성',?,'진행',?,?,?,?,?,?,?,?,?,jsonb_build_object('organizationBoundary',?,'emissionStandard',?,'methodologyVersion',?,'verificationLevel',?,'collectionCycle',?,'materialityThreshold',?,'scopes',?))", id,tenant,name,site,start+" ~ "+end,scope,owner,due,year,start,end,contract.organizationBoundary(),contract.emissionStandard(),contract.methodologyVersion(),contract.verificationLevel(),contract.collectionCycle(),contract.materialityThreshold(),contract.organizationBoundary(),contract.emissionStandard(),contract.methodologyVersion(),contract.verificationLevel(),contract.collectionCycle(),contract.materialityThreshold(),scope);
         jdbc.update("INSERT INTO emission_project_member(project_id,member_name,role_code) VALUES (?,?,'OWNER')", id, owner);
         String[][] tasks = {{"BASIC_INFO","기본정보 확인"},{"ACTIVITY_DATA","활동자료 수집"},{"CALCULATION","배출량 산정"},{"VERIFICATION","데이터 검증"},{"APPROVAL","검토·승인"},{"REPORT","확정·보고"}};
         for (int i=0;i<tasks.length;i++) jdbc.update("INSERT INTO emission_project_task(project_id,task_code,task_name,step_order,task_status,progress_weight,due_date) VALUES (?,?,?,?,?,?,?)",id,tasks[i][0],tasks[i][1],i+1,i==0?"IN_PROGRESS":"WAITING",i==0?10:18,due);
@@ -572,6 +578,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?),(?,'VERIFIER',?),(?,'APPROVER',?) ON CONFLICT DO NOTHING",id,owner,id,dataOwner,id,calculator,id,verifier,id,approver);
         jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES (?,?,?,'COMPANY_MANAGER',?,'ACTIVE'),(?,?,?,'SITE_DATA_OWNER',?,'ACTIVE'),(?,?,?,'CALCULATOR',?,'ACTIVE'),(?,?,?,'VERIFIER',?,'ACTIVE'),(?,?,?,'APPROVER',?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE'",owner,tenant,id,id,dataOwner,tenant,id,id,calculator,tenant,id,id,verifier,tenant,id,id,approver,tenant,id,id);
         jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
+        jdbc.update("INSERT INTO emission_project_activity_request(project_id,tenant_id,site_name,assignee_id,collection_cycle,period_start,period_end,due_date) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(project_id,site_name,assignee_id) DO NOTHING",id,tenant,site,dataOwner,contract.collectionCycle(),start,end,due);
         completeWorkflowTask(id,"BASIC_INFO",owner);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;

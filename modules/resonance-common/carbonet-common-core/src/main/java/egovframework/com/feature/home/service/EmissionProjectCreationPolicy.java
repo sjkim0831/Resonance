@@ -10,6 +10,10 @@ import java.util.Set;
 /** Server-side contract for starting a professional emission workflow. */
 final class EmissionProjectCreationPolicy {
     private static final Set<String> ALLOWED_SCOPES = Set.of("Scope 1", "Scope 2", "Scope 3");
+    private static final Set<String> ALLOWED_BOUNDARIES = Set.of("OPERATIONAL_CONTROL", "FINANCIAL_CONTROL", "EQUITY_SHARE");
+    private static final Set<String> ALLOWED_STANDARDS = Set.of("ISO_14064_1", "GHG_PROTOCOL", "K_ETS");
+    private static final Set<String> ALLOWED_VERIFICATION_LEVELS = Set.of("LIMITED", "REASONABLE");
+    private static final Set<String> ALLOWED_COLLECTION_CYCLES = Set.of("MONTHLY", "QUARTERLY", "ANNUAL");
 
     private EmissionProjectCreationPolicy() {}
 
@@ -25,6 +29,13 @@ final class EmissionProjectCreationPolicy {
         LocalDate periodStart = date(body, "periodStart");
         LocalDate periodEnd = date(body, "periodEnd");
         LocalDate dueDate = date(body, "dueDate");
+        String organizationBoundary = allowed(body, "organizationBoundary", ALLOWED_BOUNDARIES);
+        String emissionStandard = allowed(body, "emissionStandard", ALLOWED_STANDARDS);
+        String methodologyVersion = required(body, "methodologyVersion", 40);
+        String verificationLevel = allowed(body, "verificationLevel", ALLOWED_VERIFICATION_LEVELS);
+        String collectionCycle = allowed(body, "collectionCycle", ALLOWED_COLLECTION_CYCLES);
+        int materialityThreshold = integer(body, "materialityThreshold", 0, 100,
+                "PROJECT_MATERIALITY_THRESHOLD_INVALID");
 
         if (periodEnd.isBefore(periodStart)) throw new IllegalArgumentException("PROJECT_PERIOD_END_BEFORE_START");
         if (periodStart.getYear() != reportingYear || periodEnd.getYear() != reportingYear) {
@@ -47,7 +58,9 @@ final class EmissionProjectCreationPolicy {
         }
         if (scopes.isEmpty()) throw new IllegalArgumentException("PROJECT_SCOPE_REQUIRED");
         return new Contract(name, site, owner, dataOwner, calculator, verifier, approver,
-                reportingYear, periodStart, periodEnd, dueDate, List.copyOf(scopes));
+                reportingYear, periodStart, periodEnd, dueDate, List.copyOf(scopes),
+                organizationBoundary, emissionStandard, methodologyVersion, verificationLevel,
+                collectionCycle, materialityThreshold);
     }
 
     private static String required(Map<String, Object> body, String key, int maxLength) {
@@ -58,13 +71,23 @@ final class EmissionProjectCreationPolicy {
     }
 
     private static int integer(Map<String, Object> body, String key, int minimum, int maximum) {
+        return integer(body, key, minimum, maximum, "PROJECT_REPORTING_YEAR_INVALID");
+    }
+
+    private static int integer(Map<String, Object> body, String key, int minimum, int maximum, String errorCode) {
         try {
             int value = Integer.parseInt(required(body, key, 4));
-            if (value < minimum || value > maximum) throw new IllegalArgumentException("PROJECT_REPORTING_YEAR_INVALID");
+            if (value < minimum || value > maximum) throw new IllegalArgumentException(errorCode);
             return value;
         } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException("PROJECT_REPORTING_YEAR_INVALID");
+            throw new IllegalArgumentException(errorCode);
         }
+    }
+
+    private static String allowed(Map<String, Object> body, String key, Set<String> allowed) {
+        String value = required(body, key, 40);
+        if (!allowed.contains(value)) throw new IllegalArgumentException("PROJECT_" + key.toUpperCase() + "_INVALID");
+        return value;
     }
 
     private static LocalDate date(Map<String, Object> body, String key) {
@@ -81,5 +104,7 @@ final class EmissionProjectCreationPolicy {
 
     record Contract(String name, String site, String owner, String dataOwner, String calculator,
                     String verifier, String approver, int reportingYear, LocalDate periodStart,
-                    LocalDate periodEnd, LocalDate dueDate, List<String> scopes) {}
+                    LocalDate periodEnd, LocalDate dueDate, List<String> scopes,
+                    String organizationBoundary, String emissionStandard, String methodologyVersion,
+                    String verificationLevel, String collectionCycle, int materialityThreshold) {}
 }

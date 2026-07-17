@@ -15,6 +15,7 @@ class EmissionProjectCreationPolicyTest {
         var contract = EmissionProjectCreationPolicy.validate(valid());
         assertEquals(List.of("Scope 1", "Scope 2"), contract.scopes());
         assertEquals(2026, contract.reportingYear());
+        assertEquals("OPERATIONAL_CONTROL", contract.organizationBoundary());
     }
 
     @Test
@@ -45,6 +46,20 @@ class EmissionProjectCreationPolicyTest {
         assertCode("PROJECT_DUE_DATE_BEFORE_PERIOD_END", request);
     }
 
+    @Test
+    void rejectsUnsupportedMethodologyStandard() {
+        var request = valid();
+        request.put("emissionStandard", "UNKNOWN");
+        assertCode("PROJECT_EMISSIONSTANDARD_INVALID", request);
+    }
+
+    @Test
+    void rejectsMaterialityOutsidePercentRange() {
+        var request = valid();
+        request.put("materialityThreshold", "101");
+        assertCode("PROJECT_MATERIALITY_THRESHOLD_INVALID", request);
+    }
+
     private void assertCode(String code, Map<String, Object> request) {
         var exception = assertThrows(IllegalArgumentException.class,
                 () -> EmissionProjectCreationPolicy.validate(request));
@@ -59,6 +74,12 @@ class EmissionProjectCreationPolicyTest {
         request.put("approver", "approver-a"); request.put("reportingYear", "2026");
         request.put("periodStart", "2026-01-01"); request.put("periodEnd", "2026-12-31");
         request.put("dueDate", "2027-01-31"); request.put("scopes", List.of("Scope 1", "Scope 2"));
+        request.put("organizationBoundary", "OPERATIONAL_CONTROL");
+        request.put("emissionStandard", "ISO_14064_1");
+        request.put("methodologyVersion", "2018");
+        request.put("verificationLevel", "LIMITED");
+        request.put("collectionCycle", "MONTHLY");
+        request.put("materialityThreshold", "5");
         return request;
     }
 }
