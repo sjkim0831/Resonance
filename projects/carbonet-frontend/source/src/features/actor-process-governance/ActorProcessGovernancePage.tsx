@@ -3,6 +3,7 @@ import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { DeliveryControlPanel } from "./DeliveryControlPanel";
+import { ProcessDesignMap } from "./ProcessDesignMap";
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; referenceSummary?:Row; summary?: Row };
@@ -78,7 +79,7 @@ export function ActorProcessGovernancePage() {
   const readiness = Number(data.summary?.readinessPercent ?? 0);
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
-  const tabs = [["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
+  const tabs = [["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
@@ -96,6 +97,7 @@ export function ActorProcessGovernancePage() {
       <nav className="flex flex-wrap gap-2">{[["professional", en ? "Professional Readiness" : "전문가 준비도"], ["menu-bindings", en ? "Actor Process Menus" : "액터·프로세스 메뉴"], ["customer-journey", en ? "Customer Journey Gate" : "고객 여정 자동검사"], ["registration-coverage", en ? "Project Registration Requirements" : "프로젝트 등록 요건"], ["screen-contracts", en ? "Screen Completion Contracts" : "화면 완성 계약"], ...tabs].map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
 
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
+      {tab === "process-map" && <ProcessDesignMap actors={data.actors} artifacts={data.artifacts} busy={busy} cases={data.cases} jobs={data.developmentJobs} onDirectDevelop={code=>void post("development/direct",{processCode:code})} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
       {tab === "professional" && <>
         <Form onSubmit={event=>void submit(event,"professional-factory/execute")} cols="lg:grid-cols-3">
           <Field label={en?"Process":"자동 개발 프로세스"}><select className={fieldClass} name="processCode" value={factoryProcess} onChange={event=>{setFactoryProcess(event.target.value);const actor=value(data.steps.find(row=>value(row,"processCode")===event.target.value)||{},"actorCode");if(actor)setFactoryActor(actor)}}>{data.processes.map(row=><option key={value(row,"processCode")} value={value(row,"processCode")}>{value(row,"processName")} ({value(row,"processCode")})</option>)}</select></Field>
