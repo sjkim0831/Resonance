@@ -284,7 +284,9 @@ if printf '%s\n' "$CHANGED" | grep -q 'projects/carbonet-frontend/source/'; then
   "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 || fail_job "frontend type check failed"
 fi
 if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(apps|modules)/.*\.(java|kt|sql|xml)$'; then
-  (cd "$WT" && bash ./gradlew :apps:carbonet-api:compileJava --no-daemon) >>"$LOG_FILE" 2>&1 || fail_job "backend compile failed"
+  printf '%s\n' "$CHANGED" | sed -E 's/^.. //' \
+    | ROOT_DIR="$WT" bash "$WT/ops/scripts/java-fast-compile.sh" --stdin >>"$LOG_FILE" 2>&1 \
+    || fail_job "backend compile failed"
 fi
 while IFS= read -r json; do jq empty "$WT/$json" >>"$LOG_FILE" 2>&1 || fail_job "invalid JSON: $json"; done < <(printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -E '\.json$' || true)
 
@@ -329,7 +331,9 @@ if [ "$(git -C "$WT" rev-parse origin/main)" != "$BASE_COMMIT" ]; then
     "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 || fail_job "frontend type check failed after rebase"
   fi
   if printf '%s\n' "$CHANGED" | grep -Eq '(^| )(apps|modules)/.*\.(java|kt|sql|xml)$'; then
-    (cd "$WT" && bash ./gradlew :apps:carbonet-api:compileJava --no-daemon) >>"$LOG_FILE" 2>&1 || fail_job "backend compile failed after rebase"
+    printf '%s\n' "$CHANGED" | sed -E 's/^.. //' \
+      | ROOT_DIR="$WT" bash "$WT/ops/scripts/java-fast-compile.sh" --stdin >>"$LOG_FILE" 2>&1 \
+      || fail_job "backend compile failed after rebase"
   fi
 fi
 RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
