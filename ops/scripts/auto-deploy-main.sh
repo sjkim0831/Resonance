@@ -180,11 +180,14 @@ roles_backup_file="$BACKUP_DIR/postgres-roles-$timestamp-$current_commit.sql.gz"
 backup_required="$PLAN_DATABASE_REQUIRED"
 [[ "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" == "true" ]] && backup_required=true
 menu_backup_only=false
+governance_backup_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
   if [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(menu|navigation)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     menu_backup_only=true
+  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
+    governance_backup_only=true
   fi
 fi
 if [[ "$backup_required" == "true" ]]; then
@@ -207,6 +210,28 @@ if [[ "$backup_required" == "true" ]]; then
       exit 11
     fi
     echo "[auto-deploy] targeted menu backup verified: $backup_file (${backup_bytes} bytes)"
+  elif [[ "$governance_backup_only" == "true" ]]; then
+    backup_file="$BACKUP_DIR/carbonet-governance-$timestamp-$current_commit.sql.gz"
+    echo "[auto-deploy] governance-only migration detected; creating targeted transactional backup"
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+      kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
+          -t framework_actor_definition -t framework_account_actor_assignment \
+          -t framework_process_definition -t framework_process_step \
+          -t framework_simulation_case -t framework_simulation_run \
+          -t framework_development_job -t framework_process_artifact \
+      | gzip -1 > "$backup_file"; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: targeted governance backup failed" >&2
+      exit 14
+    fi
+    backup_bytes="$(stat -c %s "$backup_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: targeted governance backup is invalid (${backup_bytes} bytes)" >&2
+      exit 11
+    fi
+    echo "[auto-deploy] targeted governance backup verified: $backup_file (${backup_bytes} bytes)"
   else
   echo "[auto-deploy] database migration detected; creating full pre-deploy backup"
   echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"

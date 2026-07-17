@@ -2,9 +2,10 @@ import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
+import { DeliveryControlPanel } from "./DeliveryControlPanel";
 
 type Row = Record<string, unknown>;
-type Payload = { actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; referenceSummary?:Row; summary?: Row };
+type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; actors: Row[]; assignments: Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; referenceSummary?:Row; summary?: Row };
 type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];duplicates:Row[];recentPreflights:Row[]};
 const empty: Payload = { actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], jobDependencies:[], qualityGates:[], qualityGateResults:[], processDevelopmentProgress:[], screenTypes:[], referenceAssets:[], automationMetrics:[], screenDevelopmentGates:[], processExecutions:[], processExecutionEvents:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
@@ -14,7 +15,7 @@ export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
   const [data, setData] = useState<Payload>(empty);
-  const [tab, setTab] = useState("professional");
+  const [tab, setTab] = useState("delivery");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
   const [preflightStep,setPreflightStep]=useState("");
@@ -89,8 +90,10 @@ export function ActorProcessGovernancePage() {
       </section>
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
+      <button onClick={() => setTab("delivery")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "delivery" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Delivery Control" : "개발 실행 큐"}</button>
       <nav className="flex flex-wrap gap-2">{[["professional", en ? "Professional Readiness" : "전문가 준비도"], ["menu-bindings", en ? "Actor Process Menus" : "액터·프로세스 메뉴"], ["customer-journey", en ? "Customer Journey Gate" : "고객 여정 자동검사"], ["registration-coverage", en ? "Project Registration Requirements" : "프로젝트 등록 요건"], ["screen-contracts", en ? "Screen Completion Contracts" : "화면 완성 계약"], ...tabs].map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
 
+      {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
       {tab === "professional" && <>
         <Form onSubmit={event=>void submit(event,"professional-factory/execute")} cols="lg:grid-cols-3">
           <Field label={en?"Process":"자동 개발 프로세스"}><select className={fieldClass} name="processCode" value={factoryProcess} onChange={event=>{setFactoryProcess(event.target.value);const actor=value(data.steps.find(row=>value(row,"processCode")===event.target.value)||{},"actorCode");if(actor)setFactoryActor(actor)}}>{data.processes.map(row=><option key={value(row,"processCode")} value={value(row,"processCode")}>{value(row,"processName")} ({value(row,"processCode")})</option>)}</select></Field>
