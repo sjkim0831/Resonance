@@ -2,8 +2,8 @@
 set -Eeuo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
-WORKTREE_ROOT="${WORKTREE_ROOT:-/opt/resonance-ai-worktrees}"
-LOG_ROOT="${LOG_ROOT:-/opt/resonance-ai-worker-logs}"
+WORKTREE_ROOT="${WORKTREE_ROOT:-$ROOT_DIR/var/ai-worktrees}"
+LOG_ROOT="${LOG_ROOT:-$ROOT_DIR/var/ai-worker-logs}"
 MODEL="${KILO_MODEL:-kilo/~openai/gpt-latest}"
 AGENT="${KILO_AGENT:-codex-m27}"
 MAX_FILES="${MAX_CHANGED_FILES:-20}"
