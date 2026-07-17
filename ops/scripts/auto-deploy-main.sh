@@ -177,36 +177,43 @@ fi
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
 roles_backup_file="$BACKUP_DIR/postgres-roles-$timestamp-$current_commit.sql.gz"
-echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"
-if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
-  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-    pg_dumpall -U "$POSTGRES_USER" --roles-only -h 127.0.0.1 \
-  | gzip -1 > "$roles_backup_file"; then
-  rm -f "$roles_backup_file"
-  echo "[auto-deploy] refusing deployment: PostgreSQL role backup failed" >&2
-  exit 16
-fi
-if [[ "$(stat -c %s "$roles_backup_file")" -lt 100 ]] || ! gzip -t "$roles_backup_file"; then
-  rm -f "$roles_backup_file"
-  echo "[auto-deploy] refusing deployment: PostgreSQL role backup is invalid" >&2
-  exit 17
-fi
-echo "[auto-deploy] backing up database to $backup_file"
-if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
-  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-    pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
-      -h 127.0.0.1 \
-  | gzip -1 > "$backup_file"; then
-  rm -f "$backup_file"
-  echo "[auto-deploy] refusing deployment: database backup failed or exceeded ${BACKUP_TIMEOUT_SECONDS}s" >&2
-  exit 14
-fi
-test -s "$backup_file"
-backup_bytes="$(stat -c %s "$backup_file")"
-if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_file"; then
-  rm -f "$backup_file"
-  echo "[auto-deploy] refusing deployment: database backup is invalid or too small (${backup_bytes} bytes)" >&2
-  exit 11
+backup_required="$PLAN_DATABASE_REQUIRED"
+[[ "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" == "true" ]] && backup_required=true
+if [[ "$backup_required" == "true" ]]; then
+  echo "[auto-deploy] database migration detected; creating full pre-deploy backup"
+  echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"
+  if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      pg_dumpall -U "$POSTGRES_USER" --roles-only -h 127.0.0.1 \
+    | gzip -1 > "$roles_backup_file"; then
+    rm -f "$roles_backup_file"
+    echo "[auto-deploy] refusing deployment: PostgreSQL role backup failed" >&2
+    exit 16
+  fi
+  if [[ "$(stat -c %s "$roles_backup_file")" -lt 100 ]] || ! gzip -t "$roles_backup_file"; then
+    rm -f "$roles_backup_file"
+    echo "[auto-deploy] refusing deployment: PostgreSQL role backup is invalid" >&2
+    exit 17
+  fi
+  echo "[auto-deploy] backing up database to $backup_file"
+  if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
+        -h 127.0.0.1 \
+    | gzip -1 > "$backup_file"; then
+    rm -f "$backup_file"
+    echo "[auto-deploy] refusing deployment: database backup failed or exceeded ${BACKUP_TIMEOUT_SECONDS}s" >&2
+    exit 14
+  fi
+  test -s "$backup_file"
+  backup_bytes="$(stat -c %s "$backup_file")"
+  if [[ "$backup_bytes" -lt "$MIN_BACKUP_BYTES" ]] || ! gzip -t "$backup_file"; then
+    rm -f "$backup_file"
+    echo "[auto-deploy] refusing deployment: database backup is invalid or too small (${backup_bytes} bytes)" >&2
+    exit 11
+  fi
+else
+  echo "[auto-deploy] database backup skipped: no schema migration in selected work"
 fi
 
 # Backend-only and migration-only commits reuse the last verified immutable
