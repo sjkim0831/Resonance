@@ -302,6 +302,7 @@ bash ops/scripts/sync-unified-asset-catalog.sh
 bash ops/scripts/validate-e4b-selectable-assets.sh
 bash ops/scripts/validate-emission-project-workflow.sh
 bash ops/scripts/validate-emission-activity-collection.sh
+bash ops/scripts/validate-design-direct-development.sh
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true
