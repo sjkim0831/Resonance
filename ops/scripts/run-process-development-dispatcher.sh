@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 MAX_PARALLEL_WORKERS="${MAX_PARALLEL_WORKERS:-3}"
-WORKER_SCRIPT="${WORKER_SCRIPT:-/usr/local/sbin/run-process-development-worker}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKER_SCRIPT="${WORKER_SCRIPT:-$SCRIPT_DIR/run-process-development-worker.sh}"
 
 if ! [[ "$MAX_PARALLEL_WORKERS" =~ ^[1-9][0-9]*$ ]] || [ "$MAX_PARALLEL_WORKERS" -gt 8 ]; then
   echo "MAX_PARALLEL_WORKERS must be between 1 and 8" >&2
