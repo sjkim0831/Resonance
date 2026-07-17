@@ -45,7 +45,7 @@ with candidate as (
        and coalesce(running_job.target_path,'')<>'' and running_job.target_path=coalesce(j.target_path,'')
    )
  order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id
- for update skip locked limit 1
+ for update of j skip locked limit 1
 ), claimed as (
  update framework_development_job j set job_status='RUNNING',worker_id='${WORKER_ID}',lease_token='${LEASE_TOKEN}',lease_until=current_timestamp+interval '60 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp
  from candidate c where j.job_id=c.job_id
