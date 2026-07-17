@@ -271,6 +271,7 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
   echo "[auto-deploy] refusing success marker: health check is not UP" >&2
   exit 17
 fi
+bash ops/scripts/validate-admin-menu-coverage.sh
 bash ops/scripts/sync-unified-asset-catalog.sh
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
