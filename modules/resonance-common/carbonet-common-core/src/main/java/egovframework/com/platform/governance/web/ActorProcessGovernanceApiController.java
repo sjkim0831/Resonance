@@ -16,6 +16,9 @@ public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
     @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
     @GetMapping("/design-assets") public Map<String,Object> designAssets(){return service.designAssetInventory();}
+    @GetMapping("/assets/search") public Map<String,Object> searchAssets(@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="") String assetType,@RequestParam(defaultValue="30") int limit){return service.searchAssetCatalog(query,assetType,limit);}
+    @GetMapping("/assets/impact") public ResponseEntity<?> assetImpact(@RequestParam String assetId,@RequestParam(defaultValue="2") int depth){try{return ResponseEntity.ok(service.assetImpact(assetId,depth));}catch(Exception e){return bad(e);}}
+    @PostMapping("/assets/refresh") public ResponseEntity<?> refreshAssets(HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.refreshAssetCatalog(p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/design-assets/preflight") public ResponseEntity<?> designPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.runDesignPreflight(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}}
     @PostMapping("/actors") public ResponseEntity<?> actor(@RequestBody Map<String,Object>b){return run(()->service.createActor(b));}
     @PostMapping("/assignments") public ResponseEntity<?> assignment(@RequestBody Map<String,Object>b){return run(()->service.assignActor(b));}

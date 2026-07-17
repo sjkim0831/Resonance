@@ -37,6 +37,8 @@ public class ActorProcessGovernanceService {
         out.put("developmentJobs",jdbc.queryForList("select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\",approval_status as \"approvalStatus\",execution_mode as \"executionMode\",job_group_code as \"jobGroupCode\",work_type_code as \"workTypeCode\",template_task_code as \"templateTaskCode\",required,progress_weight as \"progressWeight\",max_attempts as \"maxAttempts\",quality_status as \"qualityStatus\",quality_report as \"qualityReport\",search_context_ref as \"searchContextRef\",worker_id as \"workerId\",lease_until as \"leaseUntil\",attempt_count as \"attemptCount\",evidence_ref as \"evidenceRef\",rollback_ref as \"rollbackRef\",last_error as \"lastError\",created_at as \"createdAt\" from framework_development_job order by process_code,step_code,job_id"));
         out.put("developmentWorkTypes",jdbc.queryForList("select work_type_code as \"workTypeCode\",work_type_name as \"workTypeName\",description,execution_order as \"executionOrder\" from framework_development_work_type where active_yn='Y' order by execution_order,work_type_code"));
         out.put("developmentWorkTemplates",jdbc.queryForList("select work_type_code as \"workTypeCode\",task_code as \"taskCode\",task_name as \"taskName\",job_type as \"jobType\",trigger_scope as \"triggerScope\",task_order as \"taskOrder\",requirement_template as \"requirementTemplate\",required,auto_queue as \"autoQueue\" from framework_development_work_template where active_yn='Y' order by task_order,work_type_code,task_code"));
+        out.put("assetCatalogSummary",jdbc.queryForList("select asset_type as \"assetType\",count(*) as count from framework_unified_asset where active_yn='Y' group by asset_type order by asset_type"));
+        out.put("assetCatalogSyncRuns",jdbc.queryForList("select sync_run_id as \"syncRunId\",sync_scope as \"syncScope\",discovered_count as \"discoveredCount\",relation_count as \"relationCount\",changed_count as \"changedCount\",duration_ms as \"durationMs\",result,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_asset_catalog_sync_run order by sync_run_id desc limit 20"));
         out.put("jobDependencies",jdbc.queryForList("select d.job_id as \"jobId\",d.depends_on_job_id as \"dependsOnJobId\",d.dependency_type as \"dependencyType\",j.job_name as \"jobName\",p.job_name as \"dependsOnJobName\",p.job_status as \"dependsOnStatus\" from framework_development_job_dependency d join framework_development_job j on j.job_id=d.job_id join framework_development_job p on p.job_id=d.depends_on_job_id order by d.job_id,d.depends_on_job_id"));
         out.put("qualityGates",jdbc.queryForList("select gate_code as \"gateCode\",gate_name as \"gateName\",gate_group as \"gateScope\",mandatory,verification_command as \"verificationCommand\" from framework_quality_gate where use_at='Y' order by gate_group,gate_code"));
         out.put("qualityGateResults",jdbc.queryForList("select result_id as \"resultId\",job_id as \"jobId\",gate_code as \"gateCode\",result,summary,evidence_ref as \"evidenceRef\",checked_at as \"executedAt\" from framework_development_job_gate_result order by result_id desc limit 300"));
@@ -187,6 +189,34 @@ public class ActorProcessGovernanceService {
         out.put("duplicates",jdbc.queryForList("select asset_fingerprint as fingerprint,count(*) as count,string_agg(component_id,', ' order by component_id) as \"componentIds\" from ui_component_registry where active_yn='Y' and asset_fingerprint is not null group by asset_fingerprint having count(*)>1 order by count(*) desc"));
         out.put("recentPreflights",jdbc.queryForList("select preflight_id as \"preflightId\",page_id as \"pageId\",route_path as \"routePath\",theme_id as \"themeId\",section_id as \"sectionId\",component_id as \"componentId\",decision,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_design_preflight order by preflight_id desc limit 50"));
         return out;
+    }
+
+    public Map<String,Object> searchAssetCatalog(String query,String type,int requestedLimit){
+        String keyword=query==null?"":query.trim();
+        String assetType=type==null?"":type.trim().toUpperCase(Locale.ROOT);
+        int limit=Math.max(1,Math.min(requestedLimit,100));
+        List<Map<String,Object>> rows;
+        if(keyword.isEmpty()){
+            rows=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_code as \"assetCode\",asset_name as \"assetName\",asset_path as \"assetPath\",domain_code as \"domainCode\",description,metadata_json::text as metadata,updated_at as \"updatedAt\" from framework_unified_asset where active_yn='Y' and (?='' or asset_type=?) order by updated_at desc,asset_type,asset_name limit ?",assetType,assetType,limit);
+        }else{
+            rows=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_code as \"assetCode\",asset_name as \"assetName\",asset_path as \"assetPath\",domain_code as \"domainCode\",description,metadata_json::text as metadata,round((ts_rank(search_vector,websearch_to_tsquery('simple',?))+greatest(similarity(asset_name,?),similarity(coalesce(asset_path,''),?)))::numeric,4) as score from framework_unified_asset where active_yn='Y' and (?='' or asset_type=?) and (search_vector @@ websearch_to_tsquery('simple',?) or asset_name % ? or coalesce(asset_path,'') % ?) order by score desc,asset_type,asset_name limit ?",keyword,keyword,keyword,assetType,assetType,keyword,keyword,keyword,limit);
+        }
+        return Map.of("success",true,"query",keyword,"assetType",assetType,"count",rows.size(),"items",rows);
+    }
+
+    public Map<String,Object> assetImpact(String assetId,int requestedDepth){
+        String id=assetId==null?"":assetId.trim();
+        if(id.isEmpty())throw new IllegalArgumentException("assetId is required");
+        int depth=Math.max(1,Math.min(requestedDepth,4));
+        List<Map<String,Object>> roots=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_name as \"assetName\",asset_path as \"assetPath\" from framework_unified_asset where asset_id=? and active_yn='Y'",id);
+        if(roots.isEmpty())throw new IllegalArgumentException("Asset not found: "+id);
+        List<Map<String,Object>> relations=jdbc.queryForList("with recursive impact(asset_id,related_asset_id,relation_type,direction,depth,path) as ((select source_asset_id,target_asset_id,relation_type,'OUT',1,array[source_asset_id::text,target_asset_id::text] from framework_unified_asset_relation where source_asset_id=? and active_yn='Y' union all select target_asset_id,source_asset_id,relation_type,'IN',1,array[target_asset_id::text,source_asset_id::text] from framework_unified_asset_relation where target_asset_id=? and active_yn='Y') union all select i.related_asset_id,case when r.source_asset_id=i.related_asset_id then r.target_asset_id else r.source_asset_id end,r.relation_type,case when r.source_asset_id=i.related_asset_id then 'OUT' else 'IN' end,i.depth+1,i.path||case when r.source_asset_id=i.related_asset_id then r.target_asset_id::text else r.source_asset_id::text end from impact i join framework_unified_asset_relation r on (r.source_asset_id=i.related_asset_id or r.target_asset_id=i.related_asset_id) and r.active_yn='Y' where i.depth<? and not (case when r.source_asset_id=i.related_asset_id then r.target_asset_id else r.source_asset_id end=any(i.path))) select distinct i.asset_id as \"sourceAssetId\",i.related_asset_id as \"targetAssetId\",i.relation_type as \"relationType\",i.direction,i.depth,a.asset_type as \"targetType\",a.asset_name as \"targetName\",a.asset_path as \"targetPath\" from impact i join framework_unified_asset a on a.asset_id=i.related_asset_id order by i.depth,a.asset_type,a.asset_name",id,id,depth);
+        return Map.of("success",true,"root",roots.get(0),"depth",depth,"count",relations.size(),"relations",relations);
+    }
+
+    @Transactional public Map<String,Object> refreshAssetCatalog(String actor){
+        Map<String,Object> result=jdbc.queryForMap("select discovered_count as \"discoveredCount\",relation_count as \"relationCount\",changed_count as \"changedCount\" from framework_refresh_unified_asset_catalog(?)",actor);
+        return Map.of("success",true,"result",result);
     }
 
     @Transactional public Map<String,Object> runDesignPreflight(Map<String,Object>b,String actor){
