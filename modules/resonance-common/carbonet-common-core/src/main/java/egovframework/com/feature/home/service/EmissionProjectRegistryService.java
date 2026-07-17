@@ -456,7 +456,15 @@ public class EmissionProjectRegistryService {
         result.put("metrics",jdbc.queryForMap("SELECT (SELECT count(*) FROM emission_activity_data WHERE project_id=?) AS \"activityCount\",(SELECT count(*) FROM emission_activity_quality_run WHERE project_id=? AND submit_ready=true) AS \"qualityPassCount\",(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state='APPROVED') AS \"approvedSubmissions\",(SELECT coalesce(max(total_emission),0) FROM emission_calculation_run WHERE project_id=?) AS \"totalEmission\",(SELECT count(*) FROM emission_project_report WHERE project_id=? AND tenant_id=? AND report_status='FINALIZED') AS \"finalizedReports\",(SELECT count(*) FROM emission_project_report WHERE project_id=? AND tenant_id=? AND certificate_id IS NOT NULL AND certificate_status='ACTIVE') AS \"activeCertificates\",(SELECT count(*) FROM emission_report_access_ledger WHERE project_id=? AND tenant_id=?) AS \"accessCount\"",projectId,projectId,projectId,tenant,projectId,projectId,tenant,projectId,tenant,projectId,tenant));
         result.put("actors",jdbc.queryForList("SELECT actor_code AS \"actorCode\",user_id AS \"userId\",active_yn AS \"active\" FROM framework_project_actor_assignment WHERE project_id=? ORDER BY actor_code,user_id",projectId));
         result.put("reports",jdbc.queryForList("SELECT report_id AS \"id\",version_no AS version,report_title AS title,report_status AS status,certificate_id AS \"certificateId\",certificate_status AS \"certificateStatus\",issued_at AS \"issuedAt\",download_count AS \"downloadCount\" FROM emission_project_report WHERE project_id=? AND tenant_id=? ORDER BY version_no DESC",projectId,tenant));
-        result.put("checklist",jdbc.queryForList("SELECT task_code AS code,task_name AS name,task_status AS status,completion_rule AS rule,completed_at AS \"completedAt\",completed_by AS \"completedBy\",target_url AS \"targetUrl\" FROM emission_project_task WHERE project_id=? ORDER BY step_order",projectId)); return result;
+        List<Map<String,Object>> checklist=jdbc.queryForList("SELECT task_id AS \"taskId\",task_code AS code,task_name AS name,task_status AS status,completion_rule AS rule,completed_at AS \"completedAt\",completed_by AS \"completedBy\",target_url AS \"targetUrl\",due_date AS \"dueDate\",actor_code AS \"actorCode\" FROM emission_project_task WHERE project_id=? ORDER BY step_order",projectId);
+        result.put("checklist",checklist);
+        long completed=checklist.stream().filter(item->"DONE".equals(String.valueOf(item.get("status")))).count();
+        Map<String,Object> next=checklist.stream().filter(item->List.of("READY","IN_PROGRESS").contains(String.valueOf(item.get("status")))).findFirst().orElse(Map.of());
+        Map<String,Object> health=jdbc.queryForMap("SELECT workflow_health AS \"status\",task_count AS \"taskCount\",actor_assignment_count AS \"actorAssignmentCount\",missing_actor_count AS \"missingActorCount\",missing_route_count AS \"missingRouteCount\",missing_rule_count AS \"missingRuleCount\",missing_predecessor_count AS \"missingPredecessorCount\",deadlines_valid AS \"deadlinesValid\" FROM emission_project_workflow_health WHERE project_id=?",projectId);
+        result.put("workflowHealth",health);result.put("nextTask",next);result.put("completedTaskCount",completed);
+        result.put("completionPercent",checklist.isEmpty()?0:Math.round(completed*100.0/checklist.size()));
+        result.put("complete",!checklist.isEmpty()&&completed==checklist.size()&&"READY".equals(health.get("status")));
+        return result;
     }
 
     public Map<String,Object> verifyReportCertificate(String certificateId) {
@@ -564,12 +572,18 @@ public class EmissionProjectRegistryService {
     public String create(String tenantId,Map<String, Object> body) {
         String tenant=requiredValue(tenantId,"tenantId");
         EmissionProjectCreationPolicy.Contract contract=EmissionProjectCreationPolicy.validate(body);
+        String requestId=requiredValue(String.valueOf(body.getOrDefault("clientRequestId",UUID.randomUUID().toString())),"clientRequestId");
+        if(requestId.length()>100) throw new IllegalArgumentException("PROJECT_CLIENT_REQUEST_ID_TOO_LONG");
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+requestId);
+        List<String> existing=jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE tenant_id=? AND creation_request_id=?",String.class,tenant,requestId);
+        if(!existing.isEmpty()) return existing.get(0);
         String name=contract.name(),site=contract.site(),owner=contract.owner(),dataOwner=contract.dataOwner(),calculator=contract.calculator(),verifier=contract.verifier(),approver=contract.approver();
         LocalDate start=contract.periodStart(),end=contract.periodEnd(),due=contract.dueDate();int year=contract.reportingYear();
         if (!nameAvailable(tenant,name)) throw new IllegalArgumentException("이미 등록된 프로젝트명입니다.");
         String scope=contract.scopes().stream().sorted().reduce((a,b)->a+"·"+b).orElseThrow();
         String id = "PRJ-" + LocalDate.now().getYear() + "-" + UUID.randomUUID().toString().substring(0,6).toUpperCase();
         jdbc.update("INSERT INTO emission_project_registry(project_id,tenant_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,reporting_year,period_start,period_end,organization_boundary,emission_standard,methodology_version,verification_level,collection_cycle,materiality_threshold,settings_snapshot) VALUES (?,?,?,?,?,?,?,0,'프로젝트 생성',?,'진행',?,?,?,?,?,?,?,?,?,jsonb_build_object('organizationBoundary',?,'emissionStandard',?,'methodologyVersion',?,'verificationLevel',?,'collectionCycle',?,'materialityThreshold',?,'scopes',?))", id,tenant,name,site,start+" ~ "+end,scope,owner,due,year,start,end,contract.organizationBoundary(),contract.emissionStandard(),contract.methodologyVersion(),contract.verificationLevel(),contract.collectionCycle(),contract.materialityThreshold(),contract.organizationBoundary(),contract.emissionStandard(),contract.methodologyVersion(),contract.verificationLevel(),contract.collectionCycle(),contract.materialityThreshold(),scope);
+        jdbc.update("UPDATE emission_project_registry SET creation_request_id=?,workflow_initialized_at=current_timestamp WHERE project_id=?",requestId,id);
         jdbc.update("INSERT INTO emission_project_member(project_id,member_name,role_code) VALUES (?,?,'OWNER')", id, owner);
         String[][] tasks = {{"BASIC_INFO","기본정보 확인"},{"ACTIVITY_DATA","활동자료 수집"},{"CALCULATION","배출량 산정"},{"VERIFICATION","데이터 검증"},{"APPROVAL","검토·승인"},{"REPORT","확정·보고"}};
         for (int i=0;i<tasks.length;i++) jdbc.update("INSERT INTO emission_project_task(project_id,task_code,task_name,step_order,task_status,progress_weight,due_date) VALUES (?,?,?,?,?,?,?)",id,tasks[i][0],tasks[i][1],i+1,i==0?"IN_PROGRESS":"WAITING",i==0?10:18,due);
@@ -580,8 +594,16 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
         jdbc.update("INSERT INTO emission_project_activity_request(project_id,tenant_id,site_name,assignee_id,collection_cycle,period_start,period_end,due_date) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(project_id,site_name,assignee_id) DO NOTHING",id,tenant,site,dataOwner,contract.collectionCycle(),start,end,due);
         completeWorkflowTask(id,"BASIC_INFO",owner);
+        jdbc.update("UPDATE emission_project_task task SET due_date=CASE task.step_order WHEN 1 THEN least(?,current_date) WHEN 6 THEN ? ELSE least(?,current_date+greatest(1,ceil((?-current_date)*task.step_order/6.0)::integer)) END,updated_at=current_timestamp WHERE task.project_id=?",due,due,due,due,id);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;
+    }
+
+    public Map<String,Object> creationResult(String projectId,String tenantId) {
+        Map<String,Object> completion=projectCompletion(projectId,tenantId);
+        Map<String,Object> result=new LinkedHashMap<>();result.put("success",true);result.put("id",projectId);
+        result.put("nextTask",completion.get("nextTask"));result.put("workflowHealth",completion.get("workflowHealth"));
+        result.put("completionPercent",completion.get("completionPercent"));return result;
     }
 
     @Transactional

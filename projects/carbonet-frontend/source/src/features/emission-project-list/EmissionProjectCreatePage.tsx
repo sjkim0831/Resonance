@@ -15,7 +15,9 @@ import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 
 type Options = { sites: string[]; owners: string[]; accounts: { id: string; actors: string }[]; currentUser: string };
 const year = new Date().getFullYear();
+const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const EMPTY = {
+  clientRequestId: createRequestId(),
   name: "",
   site: "",
   owner: "",

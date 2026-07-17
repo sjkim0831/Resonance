@@ -136,7 +136,7 @@ public class EmissionProjectRegistryController {
         var context=currentUserContextService.resolve(request);
         if (!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message", "로그인이 필요합니다."));
         if(!context.isWebmaster()&&!context.getUserId().equalsIgnoreCase(String.valueOf(body.getOrDefault("owner","")))) return ResponseEntity.status(403).body(Map.of("message","PROJECT_OWNER_MUST_BE_CURRENT_USER"));
-        try { return ResponseEntity.ok(Map.of("success",true,"id",service.create(tenant(context),body))); }
+        try { String id=service.create(tenant(context),body); return ResponseEntity.ok(service.creationResult(id,tenant(context))); }
         catch (IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }
     }
 
