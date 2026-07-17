@@ -385,6 +385,7 @@ public class ActorProcessGovernanceService {
                 Map<String,Object> preflight=runScreenDevelopmentPreflight(process,step,actor);
                 if(Boolean.TRUE.equals(preflight.get("passed"))){
                     int count=jdbc.update("update framework_development_job set approval_status='APPROVED',updated_at=current_timestamp where process_code=? and step_code=? and job_status='PLANNED'",process,step);
+                    jdbc.update("update framework_development_job set job_status='VERIFIED',quality_status='VERIFIED',evidence_ref='screen-development-gate:'||?,completed_at=coalesce(completed_at,current_timestamp),last_error=null,updated_at=current_timestamp where process_code=? and step_code=? and job_type='DESIGN_PREFLIGHT'",step,process,step);
                     if(!locked)jdbc.update("update framework_process_step set automation_status='APPROVED' where process_code=? and step_code=?",process,step);
                     approved+=count;
                 }else{
