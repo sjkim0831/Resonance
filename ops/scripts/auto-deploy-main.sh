@@ -92,6 +92,10 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
   exit 0
 fi
 
+eval "$(bash ops/scripts/plan-incremental-work.sh "$deployed_commit" "$target_commit" --format env)"
+echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
+echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
+
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [[ "$root_usage" -ge 88 ]]; then
   echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker images before build"
@@ -155,6 +159,21 @@ if [[ -n "$remaining_generated_changes" ]]; then
   exit 13
 fi
 
+# Documentation, design metadata, catalog and automation-only changes do not
+# alter the running application. Fast-forward and refresh the searchable source
+# catalog without an unnecessary DB dump, JVM build, image build or rollout.
+if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
+  git merge --ff-only "$target_commit"
+  while IFS= read -r changed_script; do
+    [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
+  done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
+  bash ops/scripts/sync-unified-asset-catalog.sh
+  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
+  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
+  exit 0
+fi
+
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
 roles_backup_file="$BACKUP_DIR/postgres-roles-$timestamp-$current_commit.sql.gz"
@@ -194,14 +213,7 @@ fi
 # frontend closure. Rebuilding TypeScript for such commits creates avoidable
 # I/O pressure and can starve the running Kubernetes workloads.
 skip_frontend=true
-while IFS= read -r changed_path; do
-  case "$changed_path" in
-    projects/carbonet-frontend/source/*|projects/carbonet-frontend/src/main/resources/static/*|projects/carbonet-assets/*|frontend/*)
-      skip_frontend=false
-      break
-      ;;
-  esac
-done < <(git diff --name-only "$deployed_commit" "$target_commit")
+[[ "$PLAN_FRONTEND_REQUIRED" == "true" ]] && skip_frontend=false
 echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] && echo no || echo yes)"
 
 git merge --ff-only "$target_commit"
