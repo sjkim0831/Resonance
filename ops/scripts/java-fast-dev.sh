@@ -46,7 +46,12 @@ while kill -0 "$boot_pid" 2>/dev/null; do
     -printf '%T@ %s %p\n' 2>/dev/null | sort >"$next_snapshot"
   if cmp -s "$snapshot" "$next_snapshot"; then continue; fi
   changed="$RUN_DIR/changed"
-  comm -3 "$snapshot" "$next_snapshot" | sed -E 's/^\t//' | sed -E 's/^[^ ]+ [^ ]+ //' | sort -u >"$changed"
+  # `comm` requires inputs sorted with exactly the same collation rules and can
+  # terminate the watcher under `set -e` when a locale disagrees. `diff` has no
+  # such precondition; emit both sides so modifications and deletions are seen.
+  diff --old-line-format='%L' --new-line-format='%L' --unchanged-line-format='' \
+    "$snapshot" "$next_snapshot" 2>/dev/null \
+    | sed -E 's/^[^ ]+ [^ ]+ //' | sort -u >"$changed" || true
   mv "$next_snapshot" "$snapshot"
   if [[ -s "$changed" ]]; then
     echo "[java-fast-dev] source change detected"
