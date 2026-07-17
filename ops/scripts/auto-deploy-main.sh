@@ -168,6 +168,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
   bash ops/scripts/sync-unified-asset-catalog.sh
+  bash ops/scripts/validate-e4b-selectable-assets.sh
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
@@ -298,6 +299,7 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
 fi
 bash ops/scripts/validate-admin-menu-coverage.sh
 bash ops/scripts/sync-unified-asset-catalog.sh
+bash ops/scripts/validate-e4b-selectable-assets.sh
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true

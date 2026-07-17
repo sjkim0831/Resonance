@@ -199,9 +199,9 @@ public class ActorProcessGovernanceService {
         int limit=Math.max(1,Math.min(requestedLimit,100));
         List<Map<String,Object>> rows;
         if(keyword.isEmpty()){
-            rows=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_code as \"assetCode\",asset_name as \"assetName\",asset_path as \"assetPath\",domain_code as \"domainCode\",description,metadata_json::text as metadata,updated_at as \"updatedAt\" from framework_unified_asset where active_yn='Y' and (?='' or asset_type=?) order by updated_at desc,asset_type,asset_name limit ?",assetType,assetType,limit);
+            rows=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_code as \"assetCode\",asset_name as \"assetName\",asset_path as \"assetPath\",domain_code as \"domainCode\",description,metadata_json::text as metadata,selection_status as \"selectionStatus\",reference_count as \"referenceCount\",updated_at as \"updatedAt\" from framework_e4b_selectable_asset where (?='' or asset_type=?) order by updated_at desc,asset_type,asset_name limit ?",assetType,assetType,limit);
         }else{
-            rows=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_code as \"assetCode\",asset_name as \"assetName\",asset_path as \"assetPath\",domain_code as \"domainCode\",description,metadata_json::text as metadata,round((ts_rank(search_vector,websearch_to_tsquery('simple',?))+greatest(similarity(asset_name,?),similarity(coalesce(asset_path,''),?)))::numeric,4) as score from framework_unified_asset where active_yn='Y' and (?='' or asset_type=?) and (search_vector @@ websearch_to_tsquery('simple',?) or asset_name % ? or coalesce(asset_path,'') % ?) order by score desc,asset_type,asset_name limit ?",keyword,keyword,keyword,assetType,assetType,keyword,keyword,keyword,limit);
+            rows=jdbc.queryForList("select asset_id as \"assetId\",asset_type as \"assetType\",asset_code as \"assetCode\",asset_name as \"assetName\",asset_path as \"assetPath\",domain_code as \"domainCode\",description,metadata_json::text as metadata,selection_status as \"selectionStatus\",reference_count as \"referenceCount\",round((ts_rank(search_vector,websearch_to_tsquery('simple',?))+greatest(similarity(asset_name,?),similarity(coalesce(asset_path,''),?)))::numeric,4) as score from framework_e4b_selectable_asset where (?='' or asset_type=?) and (search_vector @@ websearch_to_tsquery('simple',?) or asset_name % ? or coalesce(asset_path,'') % ?) order by score desc,asset_type,asset_name limit ?",keyword,keyword,keyword,assetType,assetType,keyword,keyword,keyword,limit);
         }
         return Map.of("success",true,"query",keyword,"assetType",assetType,"count",rows.size(),"items",rows);
     }
@@ -218,7 +218,8 @@ public class ActorProcessGovernanceService {
 
     @Transactional public Map<String,Object> refreshAssetCatalog(String actor){
         Map<String,Object> result=jdbc.queryForMap("select discovered_count as \"discoveredCount\",relation_count as \"relationCount\",changed_count as \"changedCount\" from framework_refresh_unified_asset_catalog(?)",actor);
-        return Map.of("success",true,"result",result);
+        Map<String,Object> canonical=jdbc.queryForMap("select duplicate_groups as \"duplicateGroups\",merged_assets as \"mergedAssets\",selectable_assets as \"selectableAssets\" from framework_canonicalize_unified_assets(?)",actor);
+        return Map.of("success",true,"result",result,"canonicalization",canonical);
     }
 
     @Transactional public Map<String,Object> runDesignPreflight(Map<String,Object>b,String actor){

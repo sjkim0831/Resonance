@@ -53,6 +53,7 @@ ON CONFLICT(source_asset_id,relation_type,target_asset_id) DO UPDATE SET evidenc
 INSERT INTO framework_asset_catalog_sync_run(sync_scope,discovered_count,relation_count,changed_count,duration_ms,result,executed_by)
 SELECT 'GIT_SOURCE',(SELECT count(*) FROM source_asset_stage),(SELECT count(*) FROM framework_unified_asset_relation WHERE active_yn='Y'),
        (SELECT count(*) FROM source_asset_stage s JOIN framework_unified_asset a ON a.asset_path=s.asset_path AND a.content_hash=s.content_hash),0,'COMPLETED','AUTO_DEPLOY';
+SELECT * FROM framework_canonicalize_unified_assets('AUTO_DEPLOY');
 COMMIT;
 SQL
 
