@@ -1,3 +1,5 @@
+DELETE FROM framework_professional_screen_contract WHERE process_code='ACTIVITY_DATA';
+
 WITH contract_map(target_step,source_step,user_route,admin_route) AS (
   VALUES
     ('ACTIVITY_DATA_01_PLAN','EMISSION_PROJECT_SETUP','/emission/project/settings','/admin/emission/project-operations'),
@@ -26,18 +28,7 @@ SELECT 'ACTIVITY_DATA',m.target_step,c.audience,
        'DESIGN_COMPLETE','E4B_CONTRACT_REUSE','HIDDEN',false
 FROM contract_map m
 JOIN framework_professional_screen_contract c
-  ON c.process_code='EMISSION_PROJECT' AND c.step_code=m.source_step
-ON CONFLICT(process_code,step_code,audience) DO UPDATE SET
- route_path=excluded.route_path,screen_name=excluded.screen_name,actor_code=excluded.actor_code,
- business_purpose=excluded.business_purpose,entry_condition=excluded.entry_condition,
- exit_condition=excluded.exit_condition,kpi_contract=excluded.kpi_contract,
- section_contract=excluded.section_contract,field_contract=excluded.field_contract,
- command_contract=excluded.command_contract,state_contract=excluded.state_contract,
- api_contract=excluded.api_contract,data_contract=excluded.data_contract,
- evidence_contract=excluded.evidence_contract,responsive_contract=excluded.responsive_contract,
- accessibility_contract=excluded.accessibility_contract,security_contract=excluded.security_contract,
- audit_evidence_ref=excluded.audit_evidence_ref,contract_status='DESIGN_COMPLETE',
- updated_by='E4B_CONTRACT_REUSE',updated_at=current_timestamp;
+  ON c.process_code='EMISSION_PROJECT' AND c.step_code=m.source_step;
 
 DO $$
 DECLARE validation record;
