@@ -22,6 +22,7 @@ SERVICE="${SERVICE:-carbonet-runtime}"
 PROJECT_ID="${PROJECT_ID:-P003}"
 CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
 IMAGE_NAME="${IMAGE_NAME:-localhost:5000/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-gradle)}"
+RUNTIME_BASE_IMAGE="${RUNTIME_BASE_IMAGE:-localhost:5000/carbonet-runtime-base:java21-chrome-noto-v1}"
 PUSH_IMAGE="${PUSH_IMAGE:-true}"
 SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
 DRY_RUN="${DRY_RUN:-false}"
@@ -532,6 +533,18 @@ build_image() {
 
   local start_time=$(date +%s)
 
+  # Pull the stable Java/Chrome/font layer first. It survives application image
+  # pruning in the local registry and avoids downloading and installing about
+  # 700 MB of packages for every JAR-only release.
+  if ! root_cmd docker image inspect "$RUNTIME_BASE_IMAGE" >/dev/null 2>&1; then
+    log_detail "Restoring reusable runtime base image..."
+    if ! root_cmd docker pull "$RUNTIME_BASE_IMAGE" >/dev/null 2>&1; then
+      log_detail "Building reusable Java/Chrome/Noto base image once..."
+      root_cmd docker build -f "$ROOT_DIR/ops/docker/Dockerfile.runtime-base" -t "$RUNTIME_BASE_IMAGE" "$ROOT_DIR/ops/docker"
+      root_cmd docker push "$RUNTIME_BASE_IMAGE" >/dev/null
+    fi
+  fi
+
   rm -rf "$RELEASE_DIR" && mkdir -p "$RELEASE_DIR/lib" "$RELEASE_DIR/config"
 
   log_detail "Copying JAR to release directory..."
@@ -554,7 +567,7 @@ build_image() {
 
   log_cmd "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR"
 
-  if root_cmd docker build --build-arg PROJECT_ID="$PROJECT_ID" --build-arg BUILDKIT_INLINE_CACHE=1 \
+  if root_cmd docker build --build-arg PROJECT_ID="$PROJECT_ID" --build-arg RUNTIME_BASE_IMAGE="$RUNTIME_BASE_IMAGE" --build-arg BUILDKIT_INLINE_CACHE=1 \
     --cache-from "type=registry,ref=$IMAGE_NAME" --cache-from "type=registry,ref=${IMAGE_NAME%-*}:*" \
     -f "$ROOT_DIR/ops/docker/Dockerfile.runtime" \
     -t "$IMAGE_NAME" "$RELEASE_DIR" > >(tee "$DOCKER_ERROR_LOG") 2>&1; then
