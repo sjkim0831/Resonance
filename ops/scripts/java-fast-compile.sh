@@ -74,9 +74,15 @@ fi
 
 start_ns="$(date +%s%N)"
 echo "[java-fast-compile] tasks=${tasks[*]} workers=$MAX_WORKERS"
-(cd "$ROOT_DIR" && bash ./gradlew \
-  --daemon --parallel --build-cache --configuration-cache \
-  --max-workers="$MAX_WORKERS" --console=plain "${tasks[@]}")
+if [[ "${OS:-}" == "Windows_NT" ]] || grep -q $'\r$' "$ROOT_DIR/gradlew" 2>/dev/null; then
+  (cd "$ROOT_DIR" && cmd.exe /d /c gradlew.bat \
+    --daemon --parallel --build-cache --configuration-cache \
+    --max-workers="$MAX_WORKERS" --console=plain "${tasks[@]}")
+else
+  (cd "$ROOT_DIR" && bash ./gradlew \
+    --daemon --parallel --build-cache --configuration-cache \
+    --max-workers="$MAX_WORKERS" --console=plain "${tasks[@]}")
+fi
 end_ns="$(date +%s%N)"
 elapsed_ms="$(( (end_ns-start_ns)/1000000 ))"
 echo "[java-fast-compile] PASS elapsedMs=$elapsed_ms tasks=${#tasks[@]}"

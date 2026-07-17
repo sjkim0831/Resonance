@@ -54,6 +54,26 @@
   },
   "lanes": [
     {
+      "laneId": "generator-selector",
+      "taskKinds": [
+        "generator-selection",
+        "screen-type-selection",
+        "asset-selection",
+        "test-template-selection",
+        "existing-page-adoption"
+      ],
+      "preferredModel": "gemma4-e4b-gpu-shadow",
+      "preferredBaseUrl": "http://127.0.0.1:24451/v1",
+      "fallbackModels": [],
+      "allowedWork": "E4B selects only registered generator, screen, design asset, component and deterministic test template IDs. It never writes arbitrary source, SQL or deployment commands.",
+      "escalateWhen": [
+        "confidence_below_0.70",
+        "unregistered_generator",
+        "schema_validation_failure",
+        "model_endpoint_unavailable"
+      ]
+    },
+    {
       "laneId": "translation",
       "taskKinds": [
         "translation",

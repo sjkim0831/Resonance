@@ -235,13 +235,18 @@
       "conflictGroup": "translation-24451",
       "lanes": [
         "translation",
-        "design-specialist"
+        "design-specialist",
+        "generator-selector"
       ],
       "taskKinds": [
         "translation",
         "glossary",
         "copy-tone",
-        "label-normalization"
+        "label-normalization",
+        "generator-selection",
+        "screen-type-selection",
+        "asset-selection",
+        "test-template-selection"
       ],
       "notes": "간단한 번역/용어 변환 전용 GPU 모델입니다. 디자인 전용 모델로 승격하지 않고, 복잡한 디자인 판단은 Qwen40이 담당합니다."
     },

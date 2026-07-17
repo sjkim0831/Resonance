@@ -3,6 +3,7 @@ package egovframework.com.platform.aiadmin.web;
 import egovframework.com.platform.aiadmin.service.AiAdminService;
 import egovframework.com.platform.aiadmin.service.HermesService;
 import egovframework.com.platform.aiadmin.service.KrdsCodeGenerationService;
+import egovframework.com.platform.aiadmin.service.E4bGeneratorSelectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -22,6 +23,7 @@ public class AiAdminController {
     private final AiAdminService aiAdminService;
     private final HermesService hermesService;
     private final KrdsCodeGenerationService krdsCodeGenerationService;
+    private final E4bGeneratorSelectionService e4bGeneratorSelectionService;
 
     @GetMapping("/dashboard")
     public String dashboardPage(HttpServletRequest request, Locale locale) { return redirectSpa("ai-dashboard", request, locale); }
@@ -52,6 +54,12 @@ public class AiAdminController {
     public ResponseEntity<Map<String, Object>> generateKrdsCode(HttpServletRequest request, Locale locale, @RequestBody Map<String, String> body) {
         primeCsrfToken(request);
         return ResponseEntity.ok(krdsCodeGenerationService.generate(body.get("prompt"), body.get("target"), isEnglishRequest(request, locale)));
+    }
+    @PostMapping("/e4b/development/select") @ResponseBody
+    public ResponseEntity<Map<String, Object>> selectE4bGenerator(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        primeCsrfToken(request);
+        String actor = request.getUserPrincipal() == null ? "SYSTEM" : request.getUserPrincipal().getName();
+        return ResponseEntity.ok(e4bGeneratorSelectionService.selectAndExecute(body, actor));
     }
     @GetMapping("/agents/page-data") @ResponseBody
     public ResponseEntity<Map<String, Object>> agents(HttpServletRequest request, Locale locale, @RequestParam(required=false) String status) { primeCsrfToken(request); return ResponseEntity.ok(aiAdminService.buildAgentsPage(status, isEnglishRequest(request, locale))); }
