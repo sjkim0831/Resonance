@@ -168,7 +168,62 @@ fi
 if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
   INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first and fill the reference analysis from targeted implementation evidence. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
 fi
-if timeout 45m kilo run "$INITIAL_MESSAGE" \
+if [ "$JOB_TYPE" = "DESIGN" ]; then
+  {
+    printf '# %s / %s\n\n' "$PROCESS_CODE" "$STEP_CODE"
+    printf '## Purpose and completion condition\n\n%s\n\n' "$(jq -r '.requirement' <<<"$SPEC")"
+    jq -c '.designContracts[]' <<<"$SPEC" | while IFS= read -r contract; do
+      audience="$(jq -r '.audience' <<<"$contract")"
+      printf '## %s screen contract: %s\n\n' "$audience" "$(jq -r '.screenName' <<<"$contract")"
+      printf -- '- Route: `%s`\n- Responsible actor: `%s`\n- Business purpose: %s\n- Entry condition: %s\n- Completion condition: %s\n\n' \
+        "$(jq -r '.routePath' <<<"$contract")" "$(jq -r '.actorCode' <<<"$contract")" \
+        "$(jq -r '.businessPurpose' <<<"$contract")" "$(jq -r '.entryCondition' <<<"$contract")" "$(jq -r '.exitCondition' <<<"$contract")"
+      printf '### Layout, fields, and commands\n\n- KPI: %s\n- Sections: %s\n- Fields: %s\n- Commands and navigation: %s\n- Required UI states: %s\n\n' \
+        "$(jq -r '.kpis' <<<"$contract")" "$(jq -r '.sections' <<<"$contract")" "$(jq -r '.fields' <<<"$contract")" \
+        "$(jq -r '.commands' <<<"$contract")" "$(jq -r '.states' <<<"$contract")"
+      printf '### API, transaction, and data contract\n\n- API: %s\n- Database entities: %s\n- Audit and evidence: %s\n- Security and tenant isolation: %s\n\n' \
+        "$(jq -r '.apis' <<<"$contract")" "$(jq -r '.data' <<<"$contract")" "$(jq -r '.evidence' <<<"$contract")" "$(jq -r '.security' <<<"$contract")"
+      printf '### Responsive and accessibility contract\n\n- Responsive behavior: %s\n- Accessibility: %s\n\n' \
+        "$(jq -r '.responsive' <<<"$contract")" "$(jq -r '.accessibility' <<<"$contract")"
+    done
+    cat <<'EOF'
+## State transition and concurrency rules
+
+- The server validates tenantId, projectId, actorCode, commandCode, current state, and version before every transition.
+- Repeated commands use an idempotency key and return the existing result without duplicating data or workflow events.
+- Conflicting edits return a version conflict, preserve both audit contexts, and require the actor to reload before retrying.
+- Completion opens only the next process task; rejection or correction follows the explicitly designed branch and never skips a required actor.
+
+## Executable scenario matrix
+
+- HAPPY_PATH: an authorized actor completes the entry conditions, executes the command, stores evidence, reaches the expected state, and opens the next task once.
+- EXCEPTION: missing fields, invalid units, stale versions, and downstream failures remain on the current task with actionable errors and no partial commit.
+- AUTHORITY: an actor without the required role receives 403; a forbidden attempt is recorded without changing business data.
+- ISOLATION: another tenant or project cannot discover, search, update, export, or infer the protected object.
+- RECOVERY: retry after a transaction, integration, or report failure produces no duplicate version, event, notification, or file.
+
+## Frontend, backend, and integration delivery checklist
+
+- Frontend implements the selected KRDS layout, all required states, responsive behavior, keyboard access, direct links, and next-task navigation.
+- Backend implements the listed API and database contracts with transaction boundaries, object-level authorization, idempotency, optimistic locking, and immutable audit evidence.
+- Contract tests bind every command to its actor and state transition. Browser tests cover both user and administrator routes at mobile, tablet, and desktop widths.
+- Integration is complete only when the UI payload, API schema, persisted version, process event, notification, and displayed next task agree.
+EOF
+  } >"$WT/$ARTIFACT_PATH"
+  KILO_CODE=0
+elif [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
+  cat >>"$WT/$ARTIFACT_PATH" <<EOF
+
+## Automated reference refresh for job ${JOB_ID}
+
+- Source commit: ${BASE_COMMIT}
+- Process and step: ${PROCESS_CODE} / ${STEP_CODE}
+- Approved specification: ${SPEC}
+- Targeted repository search context: ${SEARCH_CONTEXT}
+- Reuse decision: preserve the implemented source, use this evidence as the design baseline, and create a separate development job for every verified gap.
+EOF
+  KILO_CODE=0
+elif timeout 45m kilo run "$INITIAL_MESSAGE" \
   --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
   --file "$WT/.automation-prompt.txt" >"$LOG_FILE.kilo" 2>&1; then
   KILO_CODE=0
