@@ -1,0 +1,16 @@
+[Unit]
+Description=Resonance project automatic completion orchestrator
+After=network-online.target containerd.service kubelet.service carbonet-auto-deploy.service
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+EnvironmentFile=/etc/resonance/process-development-worker.env
+Environment=HOME=/home/sjkim
+Environment=PATH=/home/sjkim/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/run-project-auto-completion-orchestrator.sh
+Nice=15
+CPUQuota=250%
+MemoryMax=10G
+TimeoutStartSec=4h
