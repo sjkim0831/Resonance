@@ -34,7 +34,7 @@ SKIP_BACKEND="${SKIP_BACKEND:-$SKIP_MAVEN}"
 SKIP_IMAGE_BUILD="${SKIP_IMAGE_BUILD:-false}"
 SKIP_OVERLAY_SYNC="${SKIP_OVERLAY_SYNC:-false}"
 IMMUTABLE_FRONTEND_IMAGE="${IMMUTABLE_FRONTEND_IMAGE:-false}"
-INCREMENTAL="${INCREMENTAL:-false}"
+INCREMENTAL="${INCREMENTAL:-true}"
 PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
@@ -478,14 +478,18 @@ build_maven() {
   fi
 
   log_cmd "jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package"
-  cd "$ROOT_DIR" && \
-    MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package \
-    > >(tee "$MAVEN_ERROR_LOG") 2>&1 || {
-    log_error "Backend build failed"
-    rollback_and_fail "BACKEND_BUILD_FAILED" \
-      "Backend build failed" \
-      "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -100"
-  }
+  if ! (cd "$ROOT_DIR" && MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package > >(tee "$MAVEN_ERROR_LOG") 2>&1); then
+    if [[ "$INCREMENTAL" == "true" && "${BUILD_TOOL:-}" == "gradle" ]]; then
+      log_warning "Incremental Gradle build failed; clearing only the application output and retrying once"
+      root_cmd rm -rf "$MAVEN_DIR/build"
+      if ! (cd "$ROOT_DIR" && MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package > >(tee -a "$MAVEN_ERROR_LOG") 2>&1); then
+        rollback_and_fail "BACKEND_BUILD_FAILED" "Incremental and clean fallback builds failed" "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -100"
+      fi
+      log_success "Clean fallback build recovered the incremental build"
+    else
+      rollback_and_fail "BACKEND_BUILD_FAILED" "Backend build failed" "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -100"
+    fi
+  fi
 
   validate_maven
 
