@@ -24,6 +24,7 @@ if (!process.argv.includes("--build")) {
 }
 
 if (process.argv.includes("--build")) {
+  run(npm, ["run", "audit:route-registry"]);
   run(npx, ["tsc", "-b"]);
   run(npx, ["vite", "build"]);
 }
