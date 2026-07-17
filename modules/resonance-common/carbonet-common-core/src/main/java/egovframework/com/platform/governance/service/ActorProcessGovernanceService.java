@@ -237,7 +237,7 @@ public class ActorProcessGovernanceService {
         out.put("designs",jdbc.queryForList("select design_asset_id as \"designAssetId\",page_id as \"pageId\",route_path as \"routePath\",menu_code as \"menuCode\",domain_code as \"domainCode\",layout_version as \"layoutVersion\",design_token_version as \"designTokenVersion\",source_path as \"sourcePath\",asset_fingerprint as \"fingerprint\" from framework_design_asset_registry where active_yn='Y' order by domain_code,route_path"));
         out.put("syncRuns",jdbc.queryForList("select sync_run_id as \"syncRunId\",asset_type as \"assetType\",source_path as \"sourcePath\",discovered_count as \"discoveredCount\",registered_count as \"registeredCount\",duplicate_count as \"duplicateCount\",sync_status as \"syncStatus\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_asset_sync_run order by sync_run_id desc limit 20"));
         out.put("duplicates",jdbc.queryForList("select asset_fingerprint as fingerprint,count(*) as count,string_agg(component_id,', ' order by component_id) as \"componentIds\" from ui_component_registry where active_yn='Y' and asset_fingerprint is not null group by asset_fingerprint having count(*)>1 order by count(*) desc"));
-        out.put("recentPreflights",jdbc.queryForList("select preflight_id as \"preflightId\",page_id as \"pageId\",route_path as \"routePath\",theme_id as \"themeId\",section_id as \"sectionId\",component_id as \"componentId\",decision,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_design_preflight order by preflight_id desc limit 50"));
+        out.put("recentPreflights",jdbc.queryForList("select preflight_id as \"preflightId\",page_id as \"pageId\",route_path as \"routePath\",theme_id as \"themeId\",section_id as \"sectionId\",component_id as \"componentId\",class_set_id as \"classSetId\",reuse_policy as \"reusePolicy\",source_scope as \"sourceScope\",decision,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_design_preflight order by preflight_id desc limit 50"));
         return out;
     }
 
@@ -277,20 +277,49 @@ public class ActorProcessGovernanceService {
         if(themeCount==null||themeCount==0)throw new IllegalArgumentException("활성 테마가 존재하지 않습니다: "+themeId);
         Integer sectionCount=jdbc.queryForObject("select count(*) from ui_section_registry where section_id=? and active_yn='Y'",Integer.class,sectionId);
         if(sectionCount==null||sectionCount==0)throw new IllegalArgumentException("등록된 섹션을 먼저 선택해야 합니다: "+sectionId);
+        String classSetId=def(b,"classSetId",defaultClassSet(componentType));
+        Integer classSetCount=jdbc.queryForObject("select count(*) from comtnthemeclassset where class_set_id=? and theme_id=? and use_at='Y'",Integer.class,classSetId,themeId);
+        if(classSetCount==null||classSetCount==0)throw new IllegalArgumentException("등록된 공통 CSS 클래스 세트를 먼저 선택해야 합니다: "+classSetId);
         String props=def(b,"propsSchema","{}"),designRef=def(b,"designReference",themeId);
         String fingerprint=jdbc.queryForObject("select md5(lower(trim(?))||'|'||lower(trim(?))||'|'||?||'|'||?)",String.class,componentType,componentName,props,designRef);
         jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},fingerprint);
-        List<Map<String,Object>> matches=jdbc.queryForList("select component_id as \"componentId\" from ui_component_registry where active_yn='Y' and asset_fingerprint=? order by component_id limit 1",fingerprint);
+        List<Map<String,Object>> matches=jdbc.queryForList("select component_id as \"componentId\",asset_fingerprint as fingerprint from ui_component_registry where active_yn='Y' and category='COMMON' and (asset_fingerprint=? or (component_type=? and props_schema_json=? and design_reference=?)) order by case when asset_fingerprint=? then 0 else 1 end,component_id limit 1",fingerprint,componentType,props,designRef,fingerprint);
         String componentId,decision;
         if(matches.isEmpty()){
             componentId="CMP_"+fingerprint.substring(0,12).toUpperCase(); decision="CREATED";
-            jdbc.update("insert into ui_component_registry(component_id,component_name,component_type,owner_domain,props_schema_json,design_reference,active_yn,category,default_props,asset_fingerprint,created_at,updated_at) values(?,?,?,?,?,?,'Y',?,?,?,current_timestamp,current_timestamp)",componentId,componentName,componentType,domain,props,designRef,def(b,"category","COMMON"),props,fingerprint);
-        }else{componentId=String.valueOf(matches.get(0).get("componentId"));decision="REUSED";}
+            jdbc.update("insert into ui_component_registry(component_id,component_name,component_type,owner_domain,props_schema_json,design_reference,active_yn,category,default_props,asset_fingerprint,created_at,updated_at) values(?,?,?,?,?,?,'Y','COMMON',?,?,current_timestamp,current_timestamp)",componentId,componentName,componentType,domain,props,designRef,props,fingerprint);
+        }else{componentId=String.valueOf(matches.get(0).get("componentId"));fingerprint=String.valueOf(matches.get(0).get("fingerprint"));decision="REUSED";}
         jdbc.update("insert into ui_page_manifest(page_id,page_name,route_path,domain_code,layout_version,design_token_version,active_yn,created_at,updated_at,page_title,page_url,version_status) values(?,?,?,?,'1.0.0',?,'Y',current_timestamp,current_timestamp,?,?, 'DRAFT') on conflict(page_id) do update set page_name=excluded.page_name,route_path=excluded.route_path,domain_code=excluded.domain_code,design_token_version=excluded.design_token_version,active_yn='Y',updated_at=current_timestamp",pageId,pageName,route,domain,themeId,pageName,route);
         Integer mappingCount=jdbc.queryForObject("select count(*) from ui_page_component_map where page_id=? and component_id=? and layout_zone=?",Integer.class,pageId,componentId,sectionId);
         if(mappingCount==null||mappingCount==0) jdbc.update("insert into ui_page_component_map(map_id,page_id,layout_zone,component_id,instance_key,display_order,conditional_rule_summary,created_at,updated_at) values(?,?,?,?,?,coalesce((select max(display_order)+1 from ui_page_component_map where page_id=?),1),?,current_timestamp,current_timestamp)","MAP_"+pageId.replaceAll("[^A-Za-z0-9]","")+"_"+componentId,pageId,sectionId,componentId,pageId+"_"+componentId,pageId,"design-preflight");
-        jdbc.update("insert into framework_design_preflight(page_id,route_path,theme_id,section_id,component_id,decision,asset_fingerprint,evidence_json,executed_by) values(?,?,?,?,?,?,?,?,?)",pageId,route,themeId,sectionId,componentId,decision,fingerprint,"{\"themeVerified\":true,\"sectionVerified\":true,\"componentMatched\":true}",actor);
-        return Map.of("success",true,"decision",decision,"componentId",componentId,"fingerprint",fingerprint,"pageId",pageId,"sectionId",sectionId,"themeId",themeId);
+        jdbc.update("insert into framework_design_preflight(page_id,route_path,theme_id,section_id,component_id,class_set_id,decision,asset_fingerprint,evidence_json,reuse_policy,source_scope,executed_by) values(?,?,?,?,?,?,?,?,?,'COMMON_ONLY','COMMON',?)",pageId,route,themeId,sectionId,componentId,classSetId,decision,fingerprint,"{\"themeVerified\":true,\"sectionVerified\":true,\"componentMatched\":true,\"classSetVerified\":true,\"commonOnly\":true}",actor);
+        return Map.of("success",true,"decision",decision,"componentId",componentId,"fingerprint",fingerprint,"pageId",pageId,"sectionId",sectionId,"themeId",themeId,"classSetId",classSetId,"reusePolicy","COMMON_ONLY");
+    }
+
+    @Transactional public Map<String,Object> ensureCommonDesignAssets(String process,String step,String actor){
+        List<Map<String,Object>> routes=jdbc.queryForList("select step_code as \"stepCode\",step_name as \"stepName\",unnest(array_remove(array[user_path,admin_path],null)) as route_path from framework_process_step where process_code=? and (?='' or step_code=?)",process,step,step);
+        if(routes.isEmpty())return Map.of("success",true,"checkedRoutes",0,"bindings",List.of());
+        Map<String,Object> common=jdbc.queryForMap("select component_name as \"componentName\",component_type as \"componentType\",props_schema_json as \"propsSchema\",design_reference as \"designReference\" from ui_component_registry where active_yn='Y' and category='COMMON' order by case when component_type in ('SECTION','FORM') then 0 else 1 end,component_id limit 1");
+        List<Map<String,Object>> bindings=new java.util.ArrayList<>();
+        for(Map<String,Object> row:routes){
+            String route=ScreenDevelopmentNoteService.cleanRoute(String.valueOf(row.get("route_path")));
+            if(route.isBlank())continue;
+            String pageId=jdbc.queryForObject("select 'AUTO_'||upper(substr(md5(lower(?)),1,16))",String.class,route);
+            Map<String,Object> request=new LinkedHashMap<>();
+            request.put("pageId",pageId);request.put("pageName",String.valueOf(row.get("stepName")));request.put("routePath",route);
+            request.put("domainCode",process);request.put("themeId","KRDS_GOV_DEFAULT");request.put("sectionId","DETAIL_WORKSPACE");
+            request.put("componentName",common.get("componentName"));request.put("componentType",common.get("componentType"));
+            request.put("propsSchema",common.get("propsSchema"));request.put("designReference",common.get("designReference"));
+            request.put("classSetId",defaultClassSet(String.valueOf(common.get("componentType"))));
+            bindings.add(runDesignPreflight(request,actor));
+        }
+        return Map.of("success",true,"checkedRoutes",bindings.size(),"bindings",bindings);
+    }
+
+    private String defaultClassSet(String componentType){
+        if("BUTTON".equalsIgnoreCase(componentType))return "KRDS_BUTTON_PRIMARY";
+        if("INPUT".equalsIgnoreCase(componentType)||"FORM".equalsIgnoreCase(componentType))return "KRDS_FORM_CONTROL";
+        return "KRDS_CONTENT_CARD";
     }
 
     @Transactional public void createActor(Map<String,Object>b){
@@ -461,15 +490,16 @@ public class ActorProcessGovernanceService {
             Map<String,Object> readiness=screenDevelopmentNoteService.developmentReadiness(route);
             boolean notePassed=Boolean.TRUE.equals(readiness.get("designNotePassed"));
             boolean mockupPassed=Boolean.TRUE.equals(readiness.get("selectedMockupPassed"));
-            Integer designAssetCount=jdbc.queryForObject("select count(*) from framework_design_preflight where lower(route_path)=lower(?)",Integer.class,ScreenDevelopmentNoteService.cleanRoute(route));
+            Integer designAssetCount=jdbc.queryForObject("select count(*) from framework_common_design_asset_coverage where route_path=lower(?) and common_assets_ready",Integer.class,ScreenDevelopmentNoteService.cleanRoute(route));
             boolean designChecked=designAssetCount!=null&&designAssetCount>0;
             Integer professionalScore=jdbc.queryForObject("select coalesce(max(design_readiness_score),0) from framework_professional_screen_design_readiness where process_code=? and step_code=? and lower(split_part(route_path,'?',1))=lower(?)",Integer.class,process,step,ScreenDevelopmentNoteService.cleanRoute(route));
             boolean professionalPassed=professionalScore!=null&&professionalScore==100;
             int score=(notePassed?20:0)+(mockupPassed?20:0)+(actorPassed?15:0)+(safetyPassed?15:0)+(professionalPassed?30:0);
-            boolean passed=notePassed&&mockupPassed&&actorPassed&&safetyPassed&&professionalPassed;
+            boolean passed=notePassed&&mockupPassed&&actorPassed&&safetyPassed&&professionalPassed&&designChecked;
             List<String> gaps=new java.util.ArrayList<>();
             if(!notePassed)gaps.add("설계·기능·완료 기준");if(!mockupPassed)gaps.add("선택 HTML 시안");if(!actorPassed)gaps.add("액터 계약");if(!safetyPassed)gaps.add("5대 안전 테스트");
             if(!professionalPassed)gaps.add("전문 화면 설계 계약 100점("+(professionalScore==null?0:professionalScore)+"점)");
+            if(!designChecked)gaps.add("공통 테마·섹션·컴포넌트·CSS 참조");
             String summary=String.join(", ",gaps);
             String detail="{\"designNote\":"+notePassed+",\"selectedMockup\":"+mockupPassed+",\"actorContract\":"+actorPassed+",\"safetyScenarioTypes\":"+(safetyTypes==null?0:safetyTypes)+",\"professionalContractScore\":"+(professionalScore==null?0:professionalScore)+",\"designAssetChecked\":"+designChecked+"}";
             jdbc.update("insert into framework_screen_development_gate_run(process_code,step_code,route_path,page_id,gate_status,readiness_score,design_note_passed,selected_mockup_passed,actor_contract_passed,safety_tests_passed,design_asset_checked,check_result_json,failure_summary,executed_by) values(?,?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),?)",process,step,ScreenDevelopmentNoteService.cleanRoute(route),"",passed?"PASSED":"FAILED",score,notePassed,mockupPassed,actorPassed,safetyPassed,designChecked,detail,summary,actor);

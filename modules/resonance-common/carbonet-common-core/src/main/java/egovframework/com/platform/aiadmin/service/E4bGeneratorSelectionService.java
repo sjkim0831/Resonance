@@ -53,6 +53,7 @@ public class E4bGeneratorSelectionService {
             process, process, process);
         String prompt = "Select exactly one approved generator for this already-designed Carbonet process. " +
             "Prefer ADOPT_EXISTING_PAGE when a matching implemented route exists. Never write source code or invent IDs. " +
+            "Every page must reuse registered COMMON theme, section, component and CSS class-set assets; page-local design assets are forbidden. " +
             "Return JSON only: {generatorId,screenType,strategy,reason,confidence}.\nPROCESS=" + process +
             "\nSTEPS=" + json(steps) + "\nEXISTING_PAGES=" + json(pages) + "\nALLOWED_GENERATORS=" + json(generators);
         JsonNode selection = callModel(prompt);
@@ -71,6 +72,7 @@ public class E4bGeneratorSelectionService {
 
         String requestId = "E4B-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
         Map<String, Object> execution = Map.of("executed", false);
+        Map<String, Object> commonAssets = governance.ensureCommonDesignAssets(process, step, actor);
         String executionStatus = "PLANNED";
         if (execute) {
             execution = "ADOPT_EXISTING".equals(strategy)
@@ -84,7 +86,7 @@ public class E4bGeneratorSelectionService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true); result.put("requestId", requestId); result.put("model", model);
         result.put("processCode", process); result.put("stepCode", step); result.put("selection", selection);
-        result.put("generator", generator); result.put("execution", execution);
+        result.put("generator", generator); result.put("commonAssets",commonAssets); result.put("execution", execution);
         return result;
     }
 
