@@ -102,6 +102,7 @@ public class EmissionProjectRegistryService {
         result.put("project", detail(projectId));
         result.put("items",jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND (?='' OR a.activity_name ILIKE ? OR a.category ILIKE ?) ORDER BY a.activity_period DESC,a.activity_id DESC",projectId,term,like,like));
         result.put("factors",jdbc.queryForList("SELECT factor_id AS \"id\",factor_name AS \"name\",category,unit,factor_value AS \"value\",source_name AS \"source\" FROM emission_factor_reference ORDER BY category,factor_name"));
+        result.put("collectionHealth",jdbc.queryForMap("SELECT collection_health AS \"status\",activity_count AS \"activityCount\",missing_evidence_count AS \"missingEvidenceCount\",invalid_value_count AS \"invalidValueCount\",submitted_version_count AS \"submittedVersionCount\",unsealed_submission_count AS \"unsealedSubmissionCount\" FROM emission_activity_collection_health WHERE project_id=?",projectId));
         return result;
     }
 
@@ -110,7 +111,7 @@ public class EmissionProjectRegistryService {
         requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"SITE_DATA_OWNER",override);
         String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
         double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
-        String note=String.valueOf(body.getOrDefault("note","")).trim();
+        String note=required(body,"note"); if(note.length()>500) throw new IllegalArgumentException("ACTIVITY_EVIDENCE_TOO_LONG");
         Long id=jdbc.queryForObject("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?) RETURNING activity_id",Long.class,projectId,name,category,period,quantity,unit,note);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'ACTIVITY_ADDED',?||' 활동자료가 등록되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,name,projectId);
         return id==null?0:id;
@@ -144,7 +145,7 @@ public class EmissionProjectRegistryService {
             for(int index=1;index<=sheet.getLastRowNum();index++) { Row row=sheet.getRow(index); if(row==null) continue;
                 String name=formatter.formatCellValue(row.getCell(0)).trim(); if(name.isEmpty()) continue;
                 String category=formatter.formatCellValue(row.getCell(1)).trim(), period=formatter.formatCellValue(row.getCell(2)).trim(), quantityText=formatter.formatCellValue(row.getCell(3)).replace(",","").trim(), unit=formatter.formatCellValue(row.getCell(4)).trim(), note=formatter.formatCellValue(row.getCell(5)).trim();
-                if(category.isEmpty()||period.isEmpty()||quantityText.isEmpty()||unit.isEmpty()) throw new IllegalArgumentException((index+1)+"행의 필수값을 확인해 주세요.");
+                if(category.isEmpty()||period.isEmpty()||quantityText.isEmpty()||unit.isEmpty()||note.isEmpty()) throw new IllegalArgumentException((index+1)+"행의 필수값과 증빙 비고를 확인해 주세요.");
                 double quantity=Double.parseDouble(quantityText);
                 jdbc.update("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?)",projectId,name,category,period,quantity,unit,note); count++;
             }
@@ -288,12 +289,12 @@ public class EmissionProjectRegistryService {
             if(unit.isBlank()||!allowedUnits.contains(unit)) issues.add(issue(id,"INVALID_UNIT","BLOCKING","unit","지원하지 않는 단위입니다: "+(unit.isBlank()?"(없음)":unit),"L, Nm3, kWh, ton, kg, km, m3, GJ, MJ 중 올바른 단위를 선택하세요."));
             if(row.get("factorId")==null) issues.add(issue(id,"UNMAPPED_FACTOR","WARNING","factorId","배출계수가 아직 매핑되지 않았습니다.","제출 후 산정 담당자가 배출계수를 매핑합니다."));
             else if(row.get("factorUnit")!=null&&!unit.equals(text(row.get("factorUnit")))) issues.add(issue(id,"FACTOR_UNIT_MISMATCH","WARNING","factorId","활동자료 단위와 배출계수 단위가 다릅니다.","산정 담당자가 단위를 확인하고 적합한 배출계수를 선택합니다."));
-            if(note.isBlank()) issues.add(issue(id,"MISSING_EVIDENCE","WARNING","note","증빙 또는 산정 근거가 없습니다.","증빙자료 설명이나 원본 문서 식별 정보를 입력하세요."));
+            if(note.isBlank()) issues.add(issue(id,"MISSING_EVIDENCE","BLOCKING","note","증빙 또는 산정 근거가 없습니다.","증빙자료 설명이나 원본 문서 식별 정보를 입력하세요."));
             if(!period.matches("\\d{4}-(0[1-9]|1[0-2])")) issues.add(issue(id,"INVALID_PERIOD","BLOCKING","period","기간 형식이 올바르지 않습니다.","YYYY-MM 형식의 기간을 입력하세요."));
             else if((!start.isBlank()&&period.compareTo(start.substring(0,Math.min(7,start.length())))<0)||(!end.isBlank()&&period.compareTo(end.substring(0,Math.min(7,end.length())))>0)) issues.add(issue(id,"PERIOD_OUT_OF_RANGE","BLOCKING","period","프로젝트 산정기간을 벗어났습니다.","프로젝트 산정기간 안의 월로 정정하세요."));
         }
         List<Map<String,Object>> duplicates=jdbc.queryForList("SELECT min(activity_id) AS id,count(*) AS duplicate_count FROM emission_activity_data WHERE project_id=? GROUP BY lower(trim(activity_name)),category,activity_period,unit HAVING count(*)>1",projectId);
-        for(Map<String,Object> duplicate:duplicates) issues.add(issue(((Number)duplicate.get("id")).longValue(),"POSSIBLE_DUPLICATE","WARNING","name","동일한 명칭·구분·기간·단위의 자료가 "+duplicate.get("duplicate_count")+"건 있습니다.","원본 행을 비교하여 중복이면 삭제하고, 별도 자료라면 구분 근거를 비고에 입력하세요."));
+        for(Map<String,Object> duplicate:duplicates) issues.add(issue(((Number)duplicate.get("id")).longValue(),"POSSIBLE_DUPLICATE","BLOCKING","name","동일한 명칭·구분·기간·단위의 자료가 "+duplicate.get("duplicate_count")+"건 있습니다.","원본 행을 비교하여 중복이면 삭제하고, 별도 자료라면 명칭 또는 구분을 명확히 수정하세요."));
         if(activities.isEmpty()) issues.add(issue(null,"NO_ACTIVITY_DATA","BLOCKING",null,"검사할 활동자료가 없습니다.","활동자료를 직접 입력하거나 엑셀로 업로드하세요."));
         int blocking=(int)issues.stream().filter(i->"BLOCKING".equals(i.severity())).count(),warning=issues.size()-blocking;
         int score=Math.max(0,100-(blocking*15)-(warning*5)); boolean ready=blocking==0&&!activities.isEmpty();
@@ -339,9 +340,10 @@ public class EmissionProjectRegistryService {
             long activityId=Long.parseLong(String.valueOf(item));
             Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE activity_id=? AND project_id=? AND quantity>=0 AND unit<>''",Integer.class,activityId,projectId);
             if(count==null||count==0) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
-            jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_name,uploaded_actor) VALUES (?,?,'ACTIVITY_DATA','등록 활동자료',?) ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,activityId,user);
+            jdbc.update("INSERT INTO emission_activity_submission_item(submission_id,activity_id,activity_name,category,activity_period,quantity,unit,evidence_note,source_hash) SELECT ?,activity_id,activity_name,category,activity_period,quantity,unit,evidence_note,md5(concat_ws('|',activity_name,category,activity_period,quantity,unit,evidence_note)) FROM emission_activity_data WHERE activity_id=? AND project_id=? ON CONFLICT(submission_id,activity_id) DO NOTHING",submissionId,activityId,projectId);
+            jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_name,uploaded_actor) SELECT ?,activity_id,'ACTIVITY_DATA',left(evidence_note,200),? FROM emission_activity_data WHERE activity_id=? AND project_id=? ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,user,activityId,projectId);
         }
-        jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,updated_at=current_timestamp WHERE submission_id=?",user,submissionId);
+        jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,quality_run_id=?,submitted_item_count=(SELECT count(*) FROM emission_activity_submission_item WHERE submission_id=?),snapshot_hash=(SELECT md5(coalesce(string_agg(source_hash,'|' ORDER BY activity_id),'')) FROM emission_activity_submission_item WHERE submission_id=?),updated_at=current_timestamp WHERE submission_id=?",user,quality.get("runId"),submissionId,submissionId,submissionId);
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
         jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
         completeWorkflowTask(projectId,"ACTIVITY_DATA",user);
