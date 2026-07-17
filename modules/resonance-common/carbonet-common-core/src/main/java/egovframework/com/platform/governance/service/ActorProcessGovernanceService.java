@@ -45,6 +45,10 @@ public class ActorProcessGovernanceService {
         out.put("processDevelopmentProgress",jdbc.queryForList("select process_code as \"processCode\",required_jobs as \"requiredJobs\",verified_jobs as \"verifiedJobs\",failed_jobs as \"failedJobs\",parallel_jobs as \"parallelJobs\",completion_percent as \"completionPercent\" from framework_process_development_progress order by process_code"));
         out.put("developmentEvents",jdbc.queryForList("select e.event_id as \"eventId\",e.job_id as \"jobId\",e.event_type as \"eventType\",e.from_status as \"fromStatus\",e.to_status as \"toStatus\",e.worker_id as \"workerId\",e.created_at as \"createdAt\" from framework_development_job_event e order by e.event_id desc limit 200"));
         out.put("screenDevelopmentGates",jdbc.queryForList("select gate_run_id as \"gateRunId\",process_code as \"processCode\",step_code as \"stepCode\",route_path as \"routePath\",page_id as \"pageId\",gate_status as \"gateStatus\",readiness_score as \"readinessScore\",design_note_passed as \"designNotePassed\",selected_mockup_passed as \"selectedMockupPassed\",actor_contract_passed as \"actorContractPassed\",safety_tests_passed as \"safetyTestsPassed\",design_asset_checked as \"designAssetChecked\",failure_summary as \"failureSummary\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_screen_development_gate_run order by gate_run_id desc limit 300"));
+        out.put("commonFeaturePackages",jdbc.queryForList("select feature_code as \"featureCode\",feature_name as \"featureName\",feature_version as \"featureVersion\",feature_category as \"featureCategory\",description,api_contract as \"apiContract\",data_contract as \"dataContract\",ui_contract as \"uiContract\",event_contract as \"eventContract\",permission_contract as \"permissionContract\",test_contract as \"testContract\",install_strategy as \"installStrategy\" from framework_common_feature_package where active_yn='Y' order by feature_category,feature_code"));
+        out.put("screenFeatureBindings",jdbc.queryForList("select process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",feature_code as \"featureCode\",binding_options as \"bindingOptions\",required_yn as \"requiredYn\" from framework_screen_feature_binding order by process_code,step_code,audience,route_path,feature_code"));
+        out.put("featureInstallations",jdbc.queryForList("select project_scope as \"projectScope\",feature_code as \"featureCode\",installed_version as \"installedVersion\",installation_status as \"installationStatus\",configuration,evidence_ref as \"evidenceRef\",installed_by as \"installedBy\",installed_at as \"installedAt\" from framework_feature_installation order by project_scope,feature_code"));
+        out.put("designValidationRuns",jdbc.queryForList("select validation_run_id as \"validationRunId\",process_code as \"processCode\",validation_status as \"validationStatus\",blocker_count as \"blockerCount\",warning_count as \"warningCount\",result_json as \"resultJson\",source_fingerprint as \"sourceFingerprint\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_process_design_validation_run order by validation_run_id desc limit 100"));
         out.put("processExecutions",jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",initiated_by as \"initiatedBy\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution order by started_at desc limit 100"));
         out.put("processExecutionEvents",jdbc.queryForList("select event_id as \"eventId\",execution_id as \"executionId\",step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\",idempotency_key as \"idempotencyKey\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_process_execution_event order by event_id desc limit 300"));
         out.put("screenTypes",jdbc.queryForList("select screen_type as \"screenType\",screen_type_name as \"screenTypeName\",required_sections as \"requiredSections\",default_test_expectations as \"testExpectations\",development_weight as \"developmentWeight\" from framework_screen_type where use_at='Y' order by screen_type"));
@@ -73,6 +77,20 @@ public class ActorProcessGovernanceService {
         out.put("deliverySummary",jdbc.queryForMap("select count(*) as \"totalProcesses\",count(*) filter(where next_action='COMPLETE') as \"completeProcesses\",count(*) filter(where delivery_priority='BLOCKER') as blockers,count(*) filter(where delivery_priority='HIGH') as \"highPriority\",coalesce(round(avg(completion_score),1),0) as \"averageScore\" from framework_process_delivery_priority_queue"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
         return out;
+    }
+
+    @Transactional public Map<String,Object> validateProcessDesign(String process,String actor){
+        Map<String,Object> summary=jdbc.queryForMap("select * from framework_validate_process_design(?,?)",process,actor);
+        Map<String,Object> result=new LinkedHashMap<>(summary);
+        result.put("success",true);
+        result.put("processCode",process);
+        result.put("issues",jdbc.queryForObject("select result_json::text from framework_process_design_validation_run where validation_run_id=?",String.class,summary.get("validation_run_id")));
+        return result;
+    }
+
+    @Transactional public Map<String,Object> installCommonFeature(String featureCode,String projectScope,String actor,Map<String,Object> configuration){
+        Map<String,Object> installed=jdbc.queryForMap("select * from framework_install_common_feature(?,?,?,?::jsonb)",featureCode,projectScope,actor,toJson(configuration));
+        Map<String,Object> result=new LinkedHashMap<>(installed);result.put("success",true);result.put("projectScope",projectScope);return result;
     }
 
     /**
@@ -423,6 +441,11 @@ public class ActorProcessGovernanceService {
 
     @Transactional public Map<String,Object> runScreenDevelopmentPreflight(String process,String step,String actor){
         Integer stepCount=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
+        Map<String,Object> designValidation=jdbc.queryForMap("select * from framework_validate_process_design(?,?)",process,actor);
+        int designBlockers=((Number)designValidation.getOrDefault("blocker_count",0)).intValue();
+        if(designBlockers>0)return Map.of("success",true,"passed",false,"checkedRoutes",0,"passedRoutes",0,
+                "failureSummary","프로세스 설계 정합성 차단 항목 "+designBlockers+"건을 먼저 해결해야 합니다.",
+                "designValidation",designValidation);
         if(stepCount==null||stepCount==0)throw new IllegalArgumentException("프로세스에 해당 절차가 존재하지 않습니다: "+process+" / "+step);
         List<Map<String,Object>> jobs=jdbc.queryForList("select min(j.job_id) as job_id,min(j.job_type) as job_type,min(j.target_path) as target_path from framework_development_job j join framework_process_step s on s.process_code=j.process_code and s.step_code=j.step_code where j.process_code=? and j.step_code=? and j.job_type in ('FRONTEND_USER','FRONTEND_ADMIN') and j.target_path like '/%' and lower(split_part(j.target_path,'?',1)) in (lower(split_part(coalesce(s.user_path,''),'?',1)),lower(split_part(coalesce(s.admin_path,''),'?',1))) group by lower(split_part(j.target_path,'?',1)) order by min(j.job_id)",process,step);
         if(jobs.isEmpty()){
@@ -753,5 +776,6 @@ public class ActorProcessGovernanceService {
     private static boolean bool(Map<String,Object>b,String k){return Boolean.parseBoolean(str(b,k));}
     private static int integer(Map<String,Object>b,String k){try{return Integer.parseInt(req(b,k));}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
     private static int integerOr(Map<String,Object>b,String k,int d){String v=str(b,k);if(v.isEmpty())return d;try{return Integer.parseInt(v);}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
+    private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}
     private static String jsonEscape(String value){return value==null?"":value.replace("\\","\\\\").replace("\"","\\\"").replace("\r","\\r").replace("\n","\\n");}
 }

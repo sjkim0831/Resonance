@@ -15,6 +15,14 @@ type QuestTask = {
   processCode?: string;
   processStepCode?: string;
   completionRule?: string;
+  entryState?: string;
+  workPurpose?: string;
+  requiredInputs?: string;
+  expectedOutput?: string;
+  commandCode?: string;
+  nextTaskName?: string;
+  nextActorCode?: string;
+  nextTaskUrl?: string;
   blockedReason?: string;
   pendingPredecessors?: string;
   actionable?: boolean;
@@ -183,7 +191,9 @@ export function TaskQuestPanel() {
                 <p className="mt-1 text-right text-xs font-bold text-slate-500">{en ? `${completed} of ${total} completed` : `전체 업무 ${total}개 중 ${completed}개 완료`}</p>
                 <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
                   <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Actor" : "담당 액터"}</dt><dd className="font-semibold text-slate-800">{task.actorCode || "-"}</dd></div>
+                  <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd className="line-clamp-2 text-slate-700">{task.workPurpose || task.name}</dd></div>
                   <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd className="line-clamp-2 text-slate-700">{task.completionRule || (en ? "Complete the required action on the task page." : "업무 화면의 필수 처리를 완료하세요.")}</dd></div>
+                  {task.nextTaskName ? <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Next" : "다음 업무"}</dt><dd className="text-slate-700"><b>{task.nextTaskName}</b>{task.nextActorCode ? ` · ${task.nextActorCode}` : ""}</dd></div> : null}
                 </dl>
                 {blocked ? <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900"><span className="material-symbols-outlined mr-1 align-middle text-[18px]">lock_clock</span>{task.pendingPredecessors || task.blockedReason || (en ? "Complete the preceding task first." : "선행 업무를 먼저 완료해야 합니다.")}</p> : null}
                 {message ? <p className="mt-3 text-sm font-bold text-red-700">{message}</p> : null}
