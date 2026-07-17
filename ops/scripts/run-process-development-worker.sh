@@ -29,29 +29,22 @@ LEASE_TOKEN="$(cat /proc/sys/kernel/random/uuid)"
 
 claim_sql=$(cat <<SQL
 with candidate as (
- select job_id from framework_development_job j
+ select j.job_id from framework_development_job j
+ left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y'
  where approval_status='APPROVED'
    and (job_status in ('PLANNED','RETRY') or (job_status='RUNNING' and lease_until<current_timestamp))
    and attempt_count < max_attempts
    and not exists (
      select 1 from framework_development_job_dependency d
      join framework_development_job required_job on required_job.job_id=d.depends_on_job_id
-     where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status<>'VERIFIED'
+     where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status not in ('VERIFIED','COMPLETED')
    )
    and not exists (
      select 1 from framework_development_job running_job
      where running_job.job_status='RUNNING' and running_job.job_id<>j.job_id
        and coalesce(running_job.target_path,'')<>'' and running_job.target_path=coalesce(j.target_path,'')
    )
-   and not exists (
-     select 1 from framework_development_job p
-     where p.process_code=j.process_code and p.step_code=j.step_code
-       and (case p.job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 when 'REFERENCE_ANALYSIS' then 90 else 100 end)
-         < (case j.job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 when 'REFERENCE_ANALYSIS' then 90 else 100 end)
-       and p.job_status<>'VERIFIED' and j.execution_mode<>'PARALLEL'
-   )
- order by process_code,step_code,
-   case job_type when 'DATABASE' then 10 when 'API' then 20 when 'BACKEND' then 30 when 'FRONTEND_USER' then 40 when 'FRONTEND_ADMIN' then 50 when 'NOTIFICATION' then 60 when 'TEST' then 70 when 'INTEGRATION' then 80 when 'REFERENCE_ANALYSIS' then 90 else 100 end,job_id
+ order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id
  for update skip locked limit 1
 ), claimed as (
  update framework_development_job j set job_status='RUNNING',worker_id='${WORKER_ID}',lease_token='${LEASE_TOKEN}',lease_until=current_timestamp+interval '60 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp

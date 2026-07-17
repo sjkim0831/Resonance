@@ -371,6 +371,7 @@ public class ActorProcessGovernanceService {
             String step=String.valueOf(row.get("step_code"));
             generated+=((Number)generateDevelopmentPlan(process,step,actor).get("generatedJobs")).intValue();
         }
+        Map<String,Object> dependencySync=jdbc.queryForMap("select * from framework_sync_development_dependencies(?)",process);
         Map<String,Object> compiled=compileScreenBlueprints(Map.of("processCode",process,"maxScreens",200,"dryRun",false),actor);
         long batchId=((Number)compiled.get("batchId")).longValue();
         int queued=0;
@@ -402,6 +403,7 @@ public class ActorProcessGovernanceService {
         result.put("success",true);result.put("processCode",process);result.put("stepCount",steps.size());
         result.put("scenarioCount",scenarios.length);result.put("generatedJobs",generated);result.put("approvedJobs",approved);
         result.put("definitionLocked",locked);result.put("scenarioSource",locked?"CANONICAL_REUSED":"GENERATED");
+        result.put("dependencySync",dependencySync);
         result.put("totalJobs",totalJobs==null?0:totalJobs);result.put("batchId",batchId);
         result.put("compiledScreens",compiled.get("compiled"));result.put("validScreens",compiled.get("valid"));
         result.put("queuedScreens",queued);result.put("blockedStepCount",blockedSteps.size());result.put("blockedSteps",blockedSteps);
@@ -519,8 +521,7 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> claimDevelopmentJob(String worker){
-        String order="case job_type when 'DESIGN' then 10 when 'FRONTEND_USER' then 20 when 'FRONTEND_ADMIN' then 30 when 'DATABASE' then 40 when 'API' then 50 when 'BACKEND' then 60 when 'NOTIFICATION' then 70 when 'TEST' then 80 when 'INTEGRATION' then 90 else 100 end";
-        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_development_job j where approval_status='APPROVED' and (job_status in ('PLANNED','RETRY') or (job_status='RUNNING' and lease_until<current_timestamp)) and not exists(select 1 from framework_development_job p where p.process_code=j.process_code and p.step_code=j.step_code and ("+order.replace("job_type","p.job_type")+")<("+order.replace("job_type","j.job_type")+") and p.job_status<>'VERIFIED') order by process_code,step_code,"+order+",job_id for update skip locked limit 1");
+        List<Map<String,Object>> rows=jdbc.queryForList("select j.* from framework_development_job j left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y' where j.approval_status='APPROVED' and (j.job_status in ('PLANNED','RETRY') or (j.job_status='RUNNING' and j.lease_until<current_timestamp)) and j.attempt_count<j.max_attempts and not exists(select 1 from framework_development_job_dependency d join framework_development_job required_job on required_job.job_id=d.depends_on_job_id where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status not in ('VERIFIED','COMPLETED')) order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id for update of j skip locked limit 1");
         if(rows.isEmpty())return Map.of("success",true,"available",false);
         Map<String,Object> job=rows.get(0); long id=((Number)job.get("job_id")).longValue(); String from=String.valueOf(job.get("job_status")),token=UUID.randomUUID().toString();
         jdbc.update("update framework_development_job set job_status='RUNNING',worker_id=?,lease_token=?,lease_until=current_timestamp+interval '10 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp where job_id=?",worker,token,id);
