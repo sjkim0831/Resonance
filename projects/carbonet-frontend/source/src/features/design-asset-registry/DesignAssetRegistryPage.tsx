@@ -40,7 +40,7 @@ export function DesignAssetRegistryPage() {
   const [error, setError] = useState("");
   const size = 50;
   useEffect(() => {
-    fetch("/api/platform/governance/design-assets", { credentials: "include" })
+    fetch(buildLocalizedPath("/admin/api/system/actor-process/design-assets", "/en/admin/api/system/actor-process/design-assets"), { credentials: "include" })
       .then(async response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
       .then(value => { setPayload(value); setError(""); })
       .catch(reason => setError(reason instanceof Error ? reason.message : String(reason)));
