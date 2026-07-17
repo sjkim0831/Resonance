@@ -1,3 +1,10 @@
+-- Deliberate versioned maintenance of an implemented source-of-truth contract.
+ALTER TABLE framework_process_definition DISABLE TRIGGER trg_guard_locked_process_definition;
+UPDATE framework_process_definition
+SET definition_locked=false,definition_lock_reason='VERSIONED_MAINTENANCE_V1.1.0'
+WHERE process_code='CERTIFICATE_ISSUANCE';
+ALTER TABLE framework_process_definition ENABLE TRIGGER trg_guard_locked_process_definition;
+
 UPDATE framework_process_step SET
  step_name='보고서 확정·발급 준비', actor_code='COMPANY_MANAGER',
  from_state='APPROVED',command_code='FINALIZE_REPORT',to_state='FINALIZED',
@@ -62,11 +69,3 @@ SET process_version='1.1.0',definition_locked=true,
     definition_lock_reason='IMPLEMENTED_SOURCE_OF_TRUTH_READ_ONLY: certificate workflow connected',
     updated_at=current_timestamp
 WHERE process_code='CERTIFICATE_ISSUANCE';
--- Deliberate versioned maintenance of an implemented source-of-truth contract.
--- The definition guard is disabled only for the unlock statement; step guards
--- remain active and permit changes solely while this process is explicitly unlocked.
-ALTER TABLE framework_process_definition DISABLE TRIGGER trg_guard_locked_process_definition;
-UPDATE framework_process_definition
-SET definition_locked=false,definition_lock_reason='VERSIONED_MAINTENANCE_V1.1.0'
-WHERE process_code='CERTIFICATE_ISSUANCE';
-ALTER TABLE framework_process_definition ENABLE TRIGGER trg_guard_locked_process_definition;
