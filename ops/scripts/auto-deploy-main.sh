@@ -284,6 +284,7 @@ skip_frontend=true
 echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] && echo no || echo yes)"
 
 git merge --ff-only "$target_commit"
+bash ops/scripts/validate-deterministic-development-policy.sh
 
 # Flyway is the only schema migration owner. Liquibase stays disabled to avoid
 # two migration engines changing the same schema during a rollout.

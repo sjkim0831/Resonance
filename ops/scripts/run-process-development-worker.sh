@@ -142,6 +142,8 @@ if [[ -d "$frontend_root/node_modules" && -d "$frontend_worktree" && ! -e "$fron
 fi
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
+SPEC_FILE="$WT/.automation-spec.json"
+printf '%s' "$SPEC" >"$SPEC_FILE"
 SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
 SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"
 psqlq -c "update framework_development_job set search_context_ref='${SEARCH_CONTEXT}',updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null
@@ -245,10 +247,33 @@ EOF
     EXISTING_ADOPTED=1
   fi
 fi
+DETERMINISTIC_HANDLED=0
+DETERMINISTIC_RUNNER="$WT/ops/scripts/run-deterministic-development-job.sh"
+if [ "$EXISTING_ADOPTED" = 1 ]; then
+  gate_result "DETERMINISTIC_FIRST" "PASSED" "an exact existing implementation or registered common asset was adopted"
+elif [ "$JOB_TYPE" = "DESIGN" ]; then
+  gate_result "DETERMINISTIC_FIRST" "PASSED" "DESIGN is owned by the normalized contract renderer in this worker"
+elif DETERMINISTIC_JSON="$(bash "$DETERMINISTIC_RUNNER" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$JOB_TYPE" "$TARGET_PATH" "$SPEC_FILE" "$SEARCH_CONTEXT" 2>>"$LOG_FILE")"; then
+  DETERMINISTIC_HANDLED=1
+  gate_result "DETERMINISTIC_FIRST" "PASSED" "$DETERMINISTIC_JSON"
+  event "DETERMINISTIC_GENERATED" "RUNNING" "RUNNING" "$DETERMINISTIC_JSON"
+else
+  deterministic_code=$?
+  if [ "$deterministic_code" -ne 3 ]; then
+    fail_job "deterministic generator failed with code ${deterministic_code}"
+  fi
+  if [ "$ATTEMPT" -gt 1 ]; then
+    fail_job "deterministic generation unavailable and the single automatic AI escalation was already consumed"
+  fi
+  gate_result "DETERMINISTIC_FIRST" "NOT_HANDLED" "AI escalation is permitted because no deterministic generator owns ${JOB_TYPE}"
+  event "AI_ESCALATED" "RUNNING" "RUNNING" "{\"reason\":\"NO_DETERMINISTIC_GENERATOR\",\"jobType\":\"${JOB_TYPE}\"}"
+fi
 if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
   INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first and fill the reference analysis from targeted implementation evidence. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
 fi
 if [ "$EXISTING_ADOPTED" = 1 ]; then
+  KILO_CODE=0
+elif [ "$DETERMINISTIC_HANDLED" = 1 ]; then
   KILO_CODE=0
 elif [ "$JOB_TYPE" = "DESIGN" ]; then
   {
@@ -328,7 +353,7 @@ Immediate instruction: $INITIAL_MESSAGE"
     KILO_CODE=$?
   fi
 fi
-rm -f "$WT/.automation-prompt.txt"
+rm -f "$WT/.automation-prompt.txt" "$SPEC_FILE"
 if [ "$KILO_CODE" -ne 0 ] && grep -Eq 'HTTP 429|Too Many Requests|status.?=.?429' "$LOG_FILE.hermes" 2>/dev/null; then
   defer_rate_limited_job
 fi

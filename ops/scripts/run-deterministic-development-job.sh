@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+WT="${1:?worktree is required}"
+PROCESS="${2:?process code is required}"
+STEP="${3:?step code is required}"
+JOB_ID="${4:?job id is required}"
+JOB_TYPE="${5:?job type is required}"
+TARGET="${6:-}"
+SPEC_FILE="${7:?specification file is required}"
+SEARCH_CONTEXT="${8:?search context is required}"
+
+POLICY="$WT/ops/runtime-metadata/deterministic-development-policy.json"
+jq -e --arg type "$JOB_TYPE" '.deterministicJobTypes | index($type) != null' "$POLICY" >/dev/null || exit 3
+jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/dev/null
+
+slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
+slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
+case "$JOB_TYPE" in
+  REFERENCE_ANALYSIS)
+    artifact="docs/ai/70-reference/$slug_process/$slug_step.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    requirement="$(jq -r '.requirement' "$SPEC_FILE")"
+    repo_candidates="$(awk '/\[indexed repository candidates/{on=1;next}/\[indexed menu/{on=0}on&&NF{print "- `"$0"`"}' "$SEARCH_CONTEXT" | head -n 40)"
+    route_candidates="$(awk '/\[indexed menu and route candidates/{on=1;next}/\[reference candidates/{on=0}on&&NF{print "- `"$0"`"}' "$SEARCH_CONTEXT" | head -n 30)"
+    reference_candidates="$(awk '/\[reference candidates/{on=1;next}/\[required completeness/{on=0}on&&NF{print "- `"$0"`"}' "$SEARCH_CONTEXT" | head -n 30)"
+    cat >"$WT/$artifact" <<EOF
+# $PROCESS / $STEP
+
+## Approved requirement
+
+$requirement
+
+## Deterministic evidence scope
+
+- Source commit: $(git -C "$WT" rev-parse HEAD)
+- Job: $JOB_ID
+- Target: $TARGET
+- Method: versioned repository, route, and reference indexes; no language-model inference
+
+## Existing implementation candidates
+
+${repo_candidates:-- No indexed implementation candidate. This remains an implementation gap.}
+
+## Menu and route candidates
+
+${route_candidates:-- No indexed route candidate. Route design remains required.}
+
+## Reference candidates
+
+${reference_candidates:-- No indexed reference candidate. The approved requirement is the controlling source.}
+
+## Required delivery contracts
+
+- Actor authority and tenant/project isolation must be enforced by the server.
+- Commands require entry-state validation, idempotency, optimistic locking, audit evidence, and an explicit next state.
+- User and administrator routes require loading, empty, error, forbidden, ready, and mobile states.
+- API, database, notification, and search work remains incomplete until its own executable job passes its gate.
+- HAPPY_PATH, AUTHORITY, ISOLATION, EXCEPTION, and RECOVERY scenarios must all pass.
+
+## Reuse decision
+
+Only exact registered candidates above may be adopted. Missing implementation is retained as a development job and is not represented as complete by this analysis artifact.
+EOF
+    ;;
+  DESIGN_PREFLIGHT)
+    artifact="docs/ai/35-design-preflight/$slug_process/$slug_step-job-$JOB_ID.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    target_status="NOT_APPLICABLE"
+    if [[ "$TARGET" == /* ]]; then
+      route="${TARGET%%\?*}"
+      inventory="$WT/projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts"
+      grep -Fq "\"koPath\": \"$route\"" "$inventory" && target_status="REGISTERED" || target_status="MISSING"
+    elif [[ -n "$TARGET" ]]; then
+      [[ -s "$WT/$TARGET" ]] && target_status="EXISTS" || target_status="MISSING"
+    fi
+    cat >"$WT/$artifact" <<EOF
+# Design preflight: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Target: $TARGET
+- Target status: $target_status
+- Specification JSON: VALID
+- Requirement: $(jq -r '.requirement' "$SPEC_FILE")
+- Design contracts: $(jq -c '.designContracts // []' "$SPEC_FILE")
+
+## Gate decision
+
+This preflight records only deterministic contract and target checks. A missing target is not adopted and must be created by its frontend, backend, or database job. Completion of this artifact does not verify those downstream jobs.
+EOF
+    ;;
+  DEPLOYMENT)
+    artifact="docs/ai/95-delivery/$slug_process/$slug_step-job-$JOB_ID.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Deployment verification request: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Source commit before delivery: $(git -C "$WT" rev-parse HEAD)
+- Requirement: $(jq -r '.requirement' "$SPEC_FILE")
+
+The deterministic worker requests the standard guarded deployment. The parent worker must verify that this commit is contained in the deployed revision, the Kubernetes deployment is fully ready, and `/actuator/health` succeeds before it marks this job verified.
+EOF
+    ;;
+  DESIGN)
+    # DESIGN is generated directly by the parent worker because it owns the
+    # normalized professional screen contracts.
+    exit 3
+    ;;
+esac
+
+jq -cn --arg strategy "DETERMINISTIC_GENERATOR" --arg type "$JOB_TYPE" --arg artifact "$artifact" \
+  '{handled:true,strategy:$strategy,jobType:$type,artifact:$artifact}'

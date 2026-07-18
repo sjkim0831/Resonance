@@ -1,0 +1,24 @@
+{
+  "policyId": "resonance-deterministic-first-development",
+  "version": "1.0.0",
+  "defaultExecutionOrder": [
+    "EXACT_EXISTING_IMPLEMENTATION",
+    "REGISTERED_COMMON_ASSET",
+    "DETERMINISTIC_GENERATOR",
+    "LOCAL_SELECTOR",
+    "AI_ESCALATION"
+  ],
+  "deterministicJobTypes": [
+    "REFERENCE_ANALYSIS",
+    "DESIGN",
+    "DESIGN_PREFLIGHT",
+    "DEPLOYMENT"
+  ],
+  "evidenceRequired": true,
+  "allowUnverifiedCompletion": false,
+  "aiEscalation": {
+    "allowedOnlyWhenDeterministicResultIs": "NOT_HANDLED",
+    "recordReason": true,
+    "maximumAutomaticAttempts": 1
+  }
+}
