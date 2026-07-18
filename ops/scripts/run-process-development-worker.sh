@@ -186,10 +186,21 @@ EOF
   fi
   INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first. Fill this ${ARTIFACT_KIND} from the attached contract and precomputed candidate list. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
 fi
+EXISTING_ADOPTED=0
+if [[ "$JOB_TYPE" == FRONTEND_* ]]; then
+  if ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH" 2>>"$LOG_FILE")"; then
+    "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 \
+      || fail_job "existing frontend adoption type check failed"
+    gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
+    EXISTING_ADOPTED=1
+  fi
+fi
 if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
   INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first and fill the reference analysis from targeted implementation evidence. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
 fi
-if [ "$JOB_TYPE" = "DESIGN" ]; then
+if [ "$EXISTING_ADOPTED" = 1 ]; then
+  KILO_CODE=0
+elif [ "$JOB_TYPE" = "DESIGN" ]; then
   {
     printf '# %s / %s\n\n' "$PROCESS_CODE" "$STEP_CODE"
     printf '## Purpose and completion condition\n\n%s\n\n' "$(jq -r '.requirement' <<<"$SPEC")"
