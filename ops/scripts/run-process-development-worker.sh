@@ -477,8 +477,16 @@ else
   exec 8>"${AI_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-main-publish.lock}"
   flock 8
   git -C "$ROOT_DIR" fetch origin main >>"$LOG_FILE" 2>&1
-  git -C "$ROOT_DIR" diff --quiet || fail_job "root tracked worktree changed before metadata fast-forward"
-  git -C "$ROOT_DIR" merge --ff-only origin/main >>"$LOG_FILE" 2>&1 || fail_job "metadata fast-forward failed"
+  # The deployment service may temporarily update tracked runtime metadata in
+  # the root checkout while a worker publishes from its isolated worktree.
+  # Publication is already complete at this point, so a dirty root checkout is
+  # not a job failure: defer synchronization to the canonical auto-deployer.
+  if git -C "$ROOT_DIR" diff --quiet && git -C "$ROOT_DIR" diff --cached --quiet; then
+    git -C "$ROOT_DIR" merge --ff-only origin/main >>"$LOG_FILE" 2>&1 \
+      || printf 'metadata fast-forward deferred to auto-deploy\n' >>"$LOG_FILE"
+  else
+    printf 'root checkout busy; metadata synchronization deferred to auto-deploy\n' >>"$LOG_FILE"
+  fi
   flock -u 8
   exec 8>&-
 fi
