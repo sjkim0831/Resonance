@@ -4,19 +4,24 @@ from pathlib import Path
 
 root, process, step, job_id, target = sys.argv[1:]
 root = Path(root)
-route = target.split("?", 1)[0]
+route = target.split("?", 1)[0] if target.startswith("/") else ""
+target_source = target.removeprefix("projects/carbonet-frontend/source/src/") if not route else ""
 inventory = root / "projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts"
 manifest = root / "projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts"
 text = inventory.read_text(encoding="utf-8")
 blocks = re.findall(r"\{\s*\"routeId\".*?\n\s*\},", text, re.S)
-match = next((b for b in blocks if f'\"koPath\": \"{route}\"' in b or f'\"enPath\": \"{route}\"' in b), None)
+if route:
+    match = next((b for b in blocks if f'\"koPath\": \"{route}\"' in b or f'\"enPath\": \"{route}\"' in b), None)
+else:
+    match = next((b for b in blocks if f'\"sourcePath\": \"{target_source}\"' in b or f'\"effectiveSourcePath\": \"{target_source}\"' in b), None)
 if not match:
-    raise SystemExit(f"route inventory has no exact route: {route}")
+    raise SystemExit(f"route inventory has no exact route or source: {target}")
 def field(name):
     found = re.search(rf'\"{name}\": \"([^\"]+)\"', match)
     return found.group(1) if found else ""
 source = field("effectiveSourcePath") or field("sourcePath")
 route_id = field("routeId")
+route = route or field("koPath")
 source_file = root / "projects/carbonet-frontend/source/src" / source
 if not source or not source_file.is_file():
     raise SystemExit(f"registered source is missing: {source}")

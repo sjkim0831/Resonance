@@ -132,7 +132,7 @@ git -C "$ROOT_DIR" worktree add -B "$BRANCH" "$WT" "$BASE_COMMIT" >>"$LOG_FILE" 
 frontend_root="$ROOT_DIR/projects/carbonet-frontend/source"
 frontend_worktree="$WT/projects/carbonet-frontend/source"
 if [[ -d "$frontend_root/node_modules" && -d "$frontend_worktree" && ! -e "$frontend_worktree/node_modules" ]]; then
-  ln -s "$frontend_root/node_modules" "$frontend_worktree/node_modules"
+  ln -s "$frontend_root/node_modules" "$frontend_worktree/node_modules" 2>/dev/null || [ -e "$frontend_worktree/node_modules" ]
   exclude_file="$(git -C "$WT" rev-parse --git-path info/exclude)"
   exec 7>"${AI_GIT_EXCLUDE_LOCK_FILE:-/tmp/resonance-ai-git-exclude.lock}"
   flock 7
