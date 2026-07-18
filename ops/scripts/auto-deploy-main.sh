@@ -306,6 +306,8 @@ bash ops/scripts/complete-activity-data-evidence-jobs.sh
 bash ops/scripts/validate-activity-data-runtime.sh
 bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
 bash ops/scripts/validate-emission-calculation-runtime.sh
+bash ops/scripts/complete-report-certification-evidence-jobs.sh
+bash ops/scripts/validate-report-certification-runtime.sh
 bash ops/scripts/validate-design-direct-development.sh
 bash ops/scripts/validate-common-design-assets.sh
 bash ops/scripts/validate-project-auto-completion.sh
