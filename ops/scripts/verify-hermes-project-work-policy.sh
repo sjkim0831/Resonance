@@ -15,6 +15,7 @@ grep -q 'HERMES_PROJECT_WORK_POLICY_INVALID' "$ROOT/ops/scripts/run-project-auto
 grep -q 'HERMES_DISABLE_FALLBACK=1' "$ROOT/ops/scripts/run-hermes-nvidia-task.sh"
 grep -q 'HERMES_DISABLE_FALLBACK' "$ROOT/modules/hermes-core/cli.py"
 grep -q 'RATE_LIMIT_DEFERRED' "$ROOT/ops/scripts/run-process-development-worker.sh"
+grep -q 'ADOPT_EXISTING_SOURCE' "$ROOT/ops/scripts/run-process-development-worker.sh"
 if grep -Eq 'kilo run|KILO_GATEWAY_AUTH_REQUIRED' \
   "$ROOT/ops/scripts/run-process-development-worker.sh" \
   "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"; then

@@ -287,6 +287,14 @@ if [ -z "$CHANGED" ] && [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ] && [ -n "${ARTIFA
 EOF
   CHANGED="$(git -C "$WT" status --porcelain)"
 fi
+if [ -z "$CHANGED" ] && [[ "$JOB_TYPE" == FRONTEND_* ]]; then
+  ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH")" \
+    || fail_job "existing frontend adoption contract failed"
+  "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 \
+    || fail_job "existing frontend adoption type check failed"
+  gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
+  CHANGED="$(git -C "$WT" status --porcelain)"
+fi
 [ -n "$CHANGED" ] || fail_job "AI completed without a source or metadata change"
 if [ "$JOB_TYPE" = "DESIGN" ]; then
   DESIGN_WORDS="$(wc -w <"$WT/$ARTIFACT_PATH")"
@@ -365,6 +373,20 @@ RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
 git -C "$WT" push origin "HEAD:main" >>"$LOG_FILE" 2>&1 || fail_job "main push rejected"
 flock -u 8
 exec 8>&-
+
+METADATA_ONLY=0
+if printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -Ev '^docs/ai/80-adopted-existing/' | grep -q .; then
+  METADATA_ONLY=0
+else
+  METADATA_ONLY=1
+  exec 8>"${AI_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-main-publish.lock}"
+  flock 8
+  git -C "$ROOT_DIR" fetch origin main >>"$LOG_FILE" 2>&1
+  git -C "$ROOT_DIR" diff --quiet || fail_job "root tracked worktree changed before metadata fast-forward"
+  git -C "$ROOT_DIR" merge --ff-only origin/main >>"$LOG_FILE" 2>&1 || fail_job "metadata fast-forward failed"
+  flock -u 8
+  exec 8>&-
+fi
 
 for _ in $(seq 1 90); do
   DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
