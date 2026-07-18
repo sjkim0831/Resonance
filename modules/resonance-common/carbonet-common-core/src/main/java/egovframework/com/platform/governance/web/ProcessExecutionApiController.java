@@ -21,6 +21,11 @@ public class ProcessExecutionApiController {
         try{return ResponseEntity.ok(service.findProcessExecution(tenantId,projectId,processCode));}catch(Exception e){return bad(e);}
     }
 
+    @GetMapping("/screen-contract")
+    public ResponseEntity<?> screenContract(@RequestParam String routePath){
+        try{return ResponseEntity.ok(service.resolveGeneratedScreen(routePath));}catch(Exception e){return bad(e);}
+    }
+
     @PostMapping("/start")
     public ResponseEntity<?> start(@RequestBody Map<String,Object> body,HttpServletRequest request){
         Principal principal=request.getUserPrincipal();

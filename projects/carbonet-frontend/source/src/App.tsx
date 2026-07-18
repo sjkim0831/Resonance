@@ -25,6 +25,7 @@ import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
 import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
+const GeneratedScreenRuntime = lazy(() => import("./features/generated-screen/GeneratedScreenPage").then((module) => ({ default: module.GeneratedScreenPage })));
 
 function buildContextSummary(match: MatchedContext | null, comment: string) {
   const base = [match?.page?.label, match?.surface?.label, match?.event?.label].filter(Boolean).join(" / ");
@@ -180,7 +181,10 @@ export default function App() {
     setContextTargetId,
     setContextToast
   } = useScreenContextMenu(page, routePath);
-  const CurrentPage = getPageComponent(page);
+  const RegisteredPage = getPageComponent(page);
+  const [generatedRuntime,setGeneratedRuntime]=useState(false);
+  useEffect(()=>{let cancelled=false;setGeneratedRuntime(false);fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(Boolean(result?.enabled))}).catch(()=>undefined);return()=>{cancelled=true}},[locale,location.pathname]);
+  const CurrentPage = generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
   const useGlobalUserGnb = shouldUseGlobalUserGnb(location.pathname);
 

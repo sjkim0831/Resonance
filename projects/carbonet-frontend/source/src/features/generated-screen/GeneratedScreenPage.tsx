@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { findGeneratedScreen, type GeneratedScreenDefinition } from "../../generated/screen-generation/generatedScreenCatalog";
 import { isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
@@ -52,7 +52,10 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
 }
 
 export function GeneratedScreenPage() {
-  const screen = findGeneratedScreen(location.pathname), en = isEnglish();
+  const en = isEnglish(), staticScreen = findGeneratedScreen(location.pathname);
+  const [screen,setScreen]=useState<GeneratedScreenDefinition|undefined>(staticScreen),[loading,setLoading]=useState(!staticScreen);
+  useEffect(()=>{let cancelled=false;setLoading(!staticScreen);fetch(`${en?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`,{credentials:"include"}).then(async response=>{const row=await response.json();if(!response.ok||!row.enabled)return;if(cancelled)return;const parse=(value:unknown)=>{if(typeof value!=="string")return (value||{}) as Record<string,unknown>;try{return JSON.parse(value) as Record<string,unknown>}catch{return {}}};setScreen({id:String(row.pageId||row.blueprintCode).toLowerCase(),blueprintCode:String(row.blueprintCode),processCode:String(row.processCode),stepCode:String(row.stepCode),actorCode:String(row.actorCode),audience:String(row.audience)==="ADMIN"?"ADMIN":"USER",pageId:String(row.pageId),pageName:String(row.pageName),routePath:String(row.routePath),screenType:String(row.screenType),templateCode:String(row.templateCode),specification:parse(row.specificationJson),traceability:parse(row.traceabilityJson)});}).finally(()=>{if(!cancelled)setLoading(false)});return()=>{cancelled=true}},[en,staticScreen]);
+  if(loading) return <main className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><p className="gov-text-body font-bold">{en?"Loading the latest design...":"최신 화면 설계를 불러오는 중입니다."}</p></main>;
   if (!screen) return <main className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><h1 className="gov-text-heading-lg font-black">{en ? "Screen contract not found" : "화면 설계 계약을 찾을 수 없습니다."}</h1></main>;
   if (screen.audience === "ADMIN") return <AdminPageShell breadcrumbs={[{label:en ? "System" : "시스템 관리",href:en?"/en/admin":"/admin"},{label:en ? "Generated screen" : "자동 생성 화면"}]} title={screen.pageName}><GeneratedContent screen={screen}/></AdminPageShell>;
   return <GeneratedContent screen={screen}/>;
