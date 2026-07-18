@@ -265,7 +265,9 @@ else
   if [ "$ATTEMPT" -gt 1 ]; then
     fail_job "deterministic generation unavailable and the single automatic AI escalation was already consumed"
   fi
-  gate_result "DETERMINISTIC_FIRST" "NOT_HANDLED" "AI escalation is permitted because no deterministic generator owns ${JOB_TYPE}"
+  # Gate results are constrained to PASSED, FAILED, or SKIPPED. A missing
+  # deterministic owner is an intentional escalation path, not a gate failure.
+  gate_result "DETERMINISTIC_FIRST" "SKIPPED" "AI escalation is permitted because no deterministic generator owns ${JOB_TYPE}"
   event "AI_ESCALATED" "RUNNING" "RUNNING" "{\"reason\":\"NO_DETERMINISTIC_GENERATOR\",\"jobType\":\"${JOB_TYPE}\"}"
 fi
 if [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
