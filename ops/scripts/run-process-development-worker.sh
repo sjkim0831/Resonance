@@ -106,7 +106,7 @@ defer_rate_limited_job() {
 verify_adopted_frontend_tree() {
   local tree cache lock
   tree="$(git -C "$WT" rev-parse HEAD:projects/carbonet-frontend/source)"
-  cache="${FRONTEND_TSC_CACHE_ROOT:-/opt/resonance-data/verification/frontend-tsc}/${tree}.pass"
+  cache="${FRONTEND_TSC_CACHE_ROOT:-$ROOT_DIR/var/verification/frontend-tsc}/${tree}.pass"
   lock="${cache}.lock"
   mkdir -p "$(dirname "$cache")"
   exec 6>"$lock"; flock 6
