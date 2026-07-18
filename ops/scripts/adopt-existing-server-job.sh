@@ -18,7 +18,15 @@ psqlq() {
     psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
 }
 
-JOB_JSON="$(psqlq -c "select row_to_json(j)::text from (select job_id,process_code,step_code,job_type,target_path,specification_json from framework_development_job where job_id=${JOB_ID} and approval_status='APPROVED' and job_status in ('PLANNED','RETRY','FAILED')) j")"
+JOB_JSON="$(psqlq -c "select row_to_json(j)::text from (
+ select d.job_id,d.process_code,d.step_code,d.job_type,d.target_path,d.specification_json,
+        s.user_path,s.admin_path,s.api_contract,s.requirement_text,s.input_contract,
+        s.output_contract,s.command_code,s.from_state,s.to_state
+ from framework_development_job d
+ left join framework_process_step s on s.process_code=d.process_code and s.step_code=d.step_code
+ where d.job_id=${JOB_ID} and d.approval_status='APPROVED'
+   and d.job_status in ('PLANNED','RETRY','FAILED')
+) j")"
 [[ -n "$JOB_JSON" ]] || { echo "eligible approved job not found: $JOB_ID" >&2; exit 2; }
 case "$(jq -r .job_type <<<"$JOB_JSON")" in BACKEND|API|API_QUALITY|DATABASE|DATABASE_QUALITY|TEST|ACTOR_TEST) ;; *) echo "unsupported job type" >&2; exit 2;; esac
 

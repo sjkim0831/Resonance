@@ -97,7 +97,13 @@ def evidence(root: Path, job: dict) -> dict:
     kind = str(job.get("job_type", "")).upper()
     target = str(job.get("target_path", "")).strip()
     spec = specification(job)
-    values = contract_values(job)
+    values = contract_values(job) + [
+        str(job.get(key) or "") for key in (
+            "target_path", "user_path", "admin_path", "api_contract",
+            "requirement_text", "input_contract", "output_contract",
+            "command_code", "from_state", "to_state",
+        )
+    ]
     routes = sorted({route for value in values for route in ROUTE_RE.findall(value)})
     tokens = significant_tokens(values)
     rows = inventory(root)
