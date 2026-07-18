@@ -89,7 +89,7 @@ select count(*) from recovered;")"
 retried="$((retried+legacy_retried+router_retried))"
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
-where j.approval_status='APPROVED' and j.job_status in ('PLANNED','RETRY') and j.attempt_count<j.max_attempts
+where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status='RETRY' and (j.lease_until is null or j.lease_until<current_timestamp))) and j.attempt_count<j.max_attempts
   and not exists (
     select 1 from framework_development_job_dependency d
     join framework_development_job required_job on required_job.job_id=d.depends_on_job_id

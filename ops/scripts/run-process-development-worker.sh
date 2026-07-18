@@ -31,7 +31,7 @@ with candidate as (
  select j.job_id from framework_development_job j
  left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y'
  where approval_status='APPROVED'
-   and (job_status in ('PLANNED','RETRY') or (job_status='RUNNING' and lease_until<current_timestamp))
+   and (job_status='PLANNED' or (job_status='RETRY' and (lease_until is null or lease_until<current_timestamp)) or (job_status='RUNNING' and lease_until<current_timestamp))
    and attempt_count < max_attempts
    and not exists (
      select 1 from framework_development_job_dependency d
@@ -95,6 +95,13 @@ fail_job() {
   event "FAILED" "RUNNING" "FAILED" "{\"log\":\"${LOG_FILE}\"}" || true
   git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
   exit 1
+}
+defer_rate_limited_job() {
+  trap - ERR
+  psqlq -c "update framework_development_job set job_status='RETRY',last_error='NVIDIA rate limited; retry deferred',attempt_count=greatest(0,attempt_count-1),worker_id=null,lease_token=null,lease_until=current_timestamp+interval '15 minutes',updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null || true
+  event "RATE_LIMIT_DEFERRED" "RUNNING" "RETRY" "{\"retryAfterMinutes\":15}" || true
+  git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
+  exit 0
 }
 trap 'fail_job "unexpected worker error at line ${LINENO}"' ERR
 trap 'fail_job "worker interrupted by signal"' INT TERM
@@ -261,6 +268,9 @@ Immediate instruction: $INITIAL_MESSAGE"
   fi
 fi
 rm -f "$WT/.automation-prompt.txt"
+if [ "$KILO_CODE" -ne 0 ] && grep -Eq 'HTTP 429|Too Many Requests|status.?=.?429' "$LOG_FILE.hermes" 2>/dev/null; then
+  defer_rate_limited_job
+fi
 [ "$KILO_CODE" -eq 0 ] || fail_job "Hermes project worker exited with code ${KILO_CODE}"
 
 CHANGED="$(git -C "$WT" status --porcelain)"
