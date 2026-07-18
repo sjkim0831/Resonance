@@ -443,7 +443,7 @@ flock -u 8
 exec 8>&-
 
 METADATA_ONLY=0
-if printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -Ev '^docs/ai/80-adopted-existing/' | grep -q .; then
+if printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -Ev '^docs/ai/(80-adopted-existing|85-adopted-quality)/' | grep -q .; then
   METADATA_ONLY=0
 else
   METADATA_ONLY=1
