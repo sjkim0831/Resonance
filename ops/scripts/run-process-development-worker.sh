@@ -4,8 +4,7 @@ set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
 WORKTREE_ROOT="${WORKTREE_ROOT:-$ROOT_DIR/var/ai-worktrees}"
 LOG_ROOT="${LOG_ROOT:-$ROOT_DIR/var/ai-worker-logs}"
-MODEL="${KILO_MODEL:-kilo/~openai/gpt-latest}"
-AGENT="${KILO_AGENT:-codex-m27}"
+PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
 MAX_FILES="${MAX_CHANGED_FILES:-20}"
 MAX_LINES="${MAX_DIFF_LINES:-3000}"
 LOCK_FILE="${LOCK_FILE:-/tmp/resonance-process-development-worker-${WORKER_SLOT:-0}.lock}"
@@ -24,7 +23,7 @@ psqlq() {
   kubectl -n "$K8S_NAMESPACE" exec "$POSTGRES_POD" -- env PGPASSWORD="$PGPASSWORD" \
     psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
 }
-WORKER_ID="$(hostname)-kilo-$$"
+WORKER_ID="$(hostname)-hermes-$$"
 LEASE_TOKEN="$(cat /proc/sys/kernel/random/uuid)"
 
 claim_sql=$(cat <<SQL
@@ -238,15 +237,31 @@ elif [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
 - Reuse decision: preserve the implemented source, use this evidence as the design baseline, and create a separate development job for every verified gap.
 EOF
   KILO_CODE=0
-elif timeout 45m kilo run "$INITIAL_MESSAGE" \
-  --auto --format json --model "$MODEL" --agent "$AGENT" --dir "$WT" \
-  --file "$WT/.automation-prompt.txt" >"$LOG_FILE.kilo" 2>&1; then
-  KILO_CODE=0
 else
-  KILO_CODE=$?
+  case "$JOB_TYPE" in
+    FRONTEND_*|UI_QUALITY|COMPONENT_COMMON|CLASS_PROPERTY_COMMON) WORK_KIND="frontend" ;;
+    BACKEND|API|API_QUALITY) WORK_KIND="backend-api" ;;
+    DATABASE|DATABASE_QUALITY) WORK_KIND="database-migration" ;;
+    TEST|ACTOR_TEST) WORK_KIND="scenario-test" ;;
+    DEPLOYMENT) WORK_KIND="build-deploy" ;;
+    PERFORMANCE|SEARCH) WORK_KIND="performance" ;;
+    INTEGRATION|NOTIFICATION) WORK_KIND="integration" ;;
+    *) WORK_KIND="actor-process" ;;
+  esac
+  FULL_TASK="$(cat "$WT/.automation-prompt.txt")
+
+Immediate instruction: $INITIAL_MESSAGE"
+  if HERMES_WORKDIR="$WT" HERMES_TASK_TIMEOUT="${HERMES_TASK_TIMEOUT:-2700}" HERMES_MAX_TURNS="${HERMES_MAX_TURNS:-30}" \
+    bash "$PROJECT_WORK_RUNNER" --kind "$WORK_KIND" --mode implement --process "$PROCESS_CODE" \
+      --acceptance "Complete approved job $JOB_ID for step $STEP_CODE and leave a bounded source or metadata change plus tests in the isolated worktree." \
+      -- "$FULL_TASK" >"$LOG_FILE.hermes" 2>&1; then
+    KILO_CODE=0
+  else
+    KILO_CODE=$?
+  fi
 fi
 rm -f "$WT/.automation-prompt.txt"
-[ "$KILO_CODE" -eq 0 ] || fail_job "Kilo exited with code ${KILO_CODE}"
+[ "$KILO_CODE" -eq 0 ] || fail_job "Hermes project worker exited with code ${KILO_CODE}"
 
 CHANGED="$(git -C "$WT" status --porcelain)"
 if [ -z "$CHANGED" ] && [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ] && [ -n "${ARTIFACT_PATH:-}" ]; then

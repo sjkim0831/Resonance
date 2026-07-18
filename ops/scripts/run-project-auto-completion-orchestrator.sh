@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"; DB="${PGDATABASE:-carbonet}"; DB_USER="${PGUSER:-postgres}"; MAX_PARALLEL_WORKERS="${MAX_PARALLEL_WORKERS:-3}"
-MODEL="${KILO_MODEL:-kilo/~openai/gpt-latest}"
+PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
 exec 9>"$LOCK_FILE"; flock -n 9 || exit 0
 leader=""
@@ -45,17 +45,17 @@ with candidate as (
 )
 select count(*) from recovered;")"
 executable="$(psqlq -c "select count(*) from framework_development_job where approval_status='APPROVED' and job_status in ('PLANNED','RETRY');")"
-if [[ "$executable" -gt 0 && "$MODEL" == kilo/* ]] && ! kilo profile >/dev/null 2>&1; then
-  psqlq -c "update framework_project_completion_run set run_status='ATTENTION_REQUIRED',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,blocked_process_count=1,result_json='{\"reason\":\"KILO_GATEWAY_AUTH_REQUIRED\"}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
+if [[ "$executable" -gt 0 ]] && ! bash "$ROOT_DIR/ops/scripts/verify-hermes-project-work-policy.sh" >/dev/null 2>&1; then
+  psqlq -c "update framework_project_completion_run set run_status='ATTENTION_REQUIRED',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,blocked_process_count=1,result_json='{\"reason\":\"HERMES_PROJECT_WORK_POLICY_INVALID\"}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
   trap - ERR
-  echo "[project-auto-completion] ATTENTION_REQUIRED reason=KILO_GATEWAY_AUTH_REQUIRED executable=$executable"
+  echo "[project-auto-completion] ATTENTION_REQUIRED reason=HERMES_PROJECT_WORK_POLICY_INVALID executable=$executable"
   exit 0
 fi
 if [[ "$executable" -gt 0 ]]; then
   ROOT_DIR="$ROOT_DIR" MAX_PARALLEL_WORKERS="$MAX_PARALLEL_WORKERS" \
     PGDATABASE="$DB" PGUSER="$DB_USER" PGPASSWORD="${PGPASSWORD:-local-trust}" \
     POSTGRES_POD="$leader" PGHOST="127.0.0.1" K8S_NAMESPACE="$NAMESPACE" \
-    bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh"
+    PROJECT_WORK_RUNNER="$PROJECT_WORK_RUNNER" bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh"
 fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
