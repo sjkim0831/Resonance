@@ -10,8 +10,7 @@ UPDATE framework_process_step SET api_contract=CASE step_code
   WHEN 'ACTIVITY_DATA_02_WORK' THEN 'GET|POST /home/api/emission-projects/{id}/activities; POST /home/api/emission-projects/{id}/activities/upload; GET|POST /home/api/emission-projects/{id}/submissions; POST /home/api/emission-projects/{id}/submissions/{submissionId}/submit'
   WHEN 'ACTIVITY_DATA_03_VERIFY' THEN 'GET /home/api/emission-projects/{id}/review-workflow; POST /home/api/emission-projects/{id}/submissions/{submissionId}/verification/start; POST /home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision'
   WHEN 'ACTIVITY_DATA_04_APPROVE' THEN 'POST /home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision'
-  ELSE api_contract END,
-  updated_at=current_timestamp
+  ELSE api_contract END
 WHERE process_code='ACTIVITY_DATA';
 
 UPDATE framework_professional_screen_contract contract
