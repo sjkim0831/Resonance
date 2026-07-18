@@ -23,7 +23,7 @@ UPDATE framework_process_step SET
     WHEN 'EMISSION_CALCULATION_03_VERIFY' THEN 'GET|POST /home/api/emission-projects/{id}/quality; GET /home/api/emission-projects/{id}/calculation; GET /home/api/emission-projects/{id}/review-workflow'
     WHEN 'EMISSION_CALCULATION_04_APPROVE' THEN 'POST /home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision; GET /home/api/emission-projects/{id}/calculation' END,
   requires_user_page=true,requires_admin_page=true,requires_api=true,requires_database=true,
-  automation_status='VERIFIED',updated_at=current_timestamp
+  automation_status='VERIFIED'
 WHERE process_code='EMISSION_CALCULATION';
 ALTER TABLE framework_process_step ENABLE TRIGGER trg_guard_locked_process_step;
 
