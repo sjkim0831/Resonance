@@ -1,9 +1,24 @@
--- Strengthen the already executable emission-project design before the
--- remaining DB/API/UI jobs consume it.
-UPDATE framework_process_step s
-SET sla_hours=v.sla_hours,
-    escalation_actor_code=v.escalation_actor_code,
-    segregation_actor_codes=v.segregation_actor_codes
+-- Implemented process steps are immutable. Operational SLA and segregation
+-- policy is versioned separately so design hardening never rewrites the
+-- established process definition.
+CREATE TABLE IF NOT EXISTS framework_process_step_operating_policy (
+ process_code varchar(80) NOT NULL,
+ step_code varchar(100) NOT NULL,
+ policy_version integer NOT NULL DEFAULT 1,
+ sla_hours integer NOT NULL CHECK(sla_hours BETWEEN 1 AND 720),
+ escalation_actor_code varchar(80) NOT NULL REFERENCES framework_actor_definition(actor_code),
+ segregation_actor_codes varchar(1000) NOT NULL,
+ effective_from timestamp NOT NULL DEFAULT current_timestamp,
+ active_yn char(1) NOT NULL DEFAULT 'Y' CHECK(active_yn IN('Y','N')),
+ created_at timestamp NOT NULL DEFAULT current_timestamp,
+ updated_at timestamp NOT NULL DEFAULT current_timestamp,
+ PRIMARY KEY(process_code,step_code,policy_version),
+ FOREIGN KEY(process_code,step_code) REFERENCES framework_process_step(process_code,step_code)
+);
+
+INSERT INTO framework_process_step_operating_policy
+(process_code,step_code,policy_version,sla_hours,escalation_actor_code,segregation_actor_codes)
+SELECT 'EMISSION_PROJECT',v.step_code,1,v.sla_hours,v.escalation_actor_code,v.segregation_actor_codes
 FROM (VALUES
  ('EMISSION_PROJECT_SETUP',24,'PLATFORM_OPERATOR','APPROVER'),
  ('EMISSION_PROJECT_COLLECT',72,'COMPANY_MANAGER','APPROVER'),
@@ -13,7 +28,9 @@ FROM (VALUES
  ('EMISSION_PROJECT_APPROVE',24,'COMPANY_MANAGER','CALCULATOR,VERIFIER'),
  ('EMISSION_PROJECT_REPORT',8,'PLATFORM_OPERATOR','APPROVER')
 ) v(step_code,sla_hours,escalation_actor_code,segregation_actor_codes)
-WHERE s.process_code='EMISSION_PROJECT' AND s.step_code=v.step_code;
+ON CONFLICT(process_code,step_code,policy_version) DO UPDATE SET
+ sla_hours=excluded.sla_hours,escalation_actor_code=excluded.escalation_actor_code,
+ segregation_actor_codes=excluded.segregation_actor_codes,active_yn='Y',updated_at=current_timestamp;
 
 INSERT INTO framework_simulation_case
 (case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json,

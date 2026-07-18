@@ -36,7 +36,7 @@ read -r steps contracts routes ready notes mockups scenarios extended timed sla 
         (select count(distinct case_type) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')),
         (select count(distinct case_type) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('CONCURRENCY','IDEMPOTENCY','DEADLINE','INTEGRATION','FILE_SECURITY','DATA_QUALITY','SEGREGATION','REPORT_INTEGRITY')),
         (select count(*) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('CONCURRENCY','IDEMPOTENCY','DEADLINE','INTEGRATION','FILE_SECURITY','DATA_QUALITY','SEGREGATION','REPORT_INTEGRITY') and automated and expected_duration_minutes between 1 and 30),
-        (select count(*) from framework_process_step where process_code='EMISSION_PROJECT' and sla_hours between 1 and 72 and nullif(escalation_actor_code,'') is not null and nullif(segregation_actor_codes,'') is not null)
+        (select count(*) from framework_process_step_operating_policy where process_code='EMISSION_PROJECT' and policy_version=1 and active_yn='Y' and sla_hours between 1 and 72 and nullif(escalation_actor_code,'') is not null and nullif(segregation_actor_codes,'') is not null)
     "
 )"
 
