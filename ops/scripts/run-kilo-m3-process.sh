@@ -35,8 +35,14 @@ q "select jsonb_pretty(jsonb_build_object(
 ))" > "$out/process-packet.json"
 jq -e '.process.process_code and (.steps|length)>0 and (.scenarios|length)>0' "$out/process-packet.json" >/dev/null
 
-branch="kilo-m3/$request"
-git -C "$ROOT" worktree add -b "$branch" "$worktree" HEAD >/dev/null
+if [[ "$MODE" == plan ]]; then
+  # Planning only needs the compact DB packet. Avoid indexing the full repository.
+  worktree="$out/plan-workspace"
+  mkdir -p "$worktree"
+else
+  branch="kilo-m3/$request"
+  git -C "$ROOT" worktree add -b "$branch" "$worktree" HEAD >/dev/null
+fi
 cp "$out/process-packet.json" "$worktree/.kilo-m3-process-packet.json"
 cp "$ROOT/data/ai-runtime/kilo-m3-process-policy.json" "$worktree/.kilo-m3-policy.json"
 prompt="$(cat "$ROOT/ops/prompts/kilo-m3-process-worker.md")
@@ -53,8 +59,12 @@ Read .kilo-m3-process-packet.json and .kilo-m3-policy.json before acting."
 [[ -s "$worktree/.kilo-m3-result.json" ]] || { echo 'FAIL M3 result contract missing' >&2; exit 1; }
 jq empty "$worktree/.kilo-m3-result.json"
 
-mapfile -t changed < <(git -C "$worktree" status --porcelain | awk '{print $2}' | grep -v '^\.kilo-m3-' || true)
-if [[ "$MODE" == plan && ${#changed[@]} -ne 0 ]]; then echo 'FAIL plan mode modified project files' >&2; exit 1; fi
+if [[ "$MODE" == plan ]]; then
+  mapfile -t changed < <(find "$worktree" -maxdepth 1 -type f ! -name '.kilo-m3-*' -printf '%f\n')
+else
+  mapfile -t changed < <(git -C "$worktree" status --porcelain | awk '{print $2}' | grep -v '^\.kilo-m3-' || true)
+fi
+if [[ "$MODE" == plan && ${#changed[@]} -ne 0 ]]; then echo 'FAIL plan mode wrote an undeclared file' >&2; exit 1; fi
 for file in "${changed[@]}"; do
   jq -e --arg f "$file" 'any(.allowedWriteRoots[] as $root; $f | startswith($root))' "$ROOT/data/ai-runtime/kilo-m3-process-policy.json" >/dev/null || { echo "FAIL out-of-scope change: $file" >&2; exit 1; }
 done
