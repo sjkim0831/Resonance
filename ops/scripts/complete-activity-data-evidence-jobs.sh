@@ -16,7 +16,7 @@ done
 for method in createActivityRequest submitActivities startVerification decideVerification decideApproval; do
   grep -Fq "$method" "$SERVICE" || { echo "[activity-evidence] FAIL missing service implementation: $method" >&2; exit 1; }
 done
-for route in /emission/activity-data /emission/validate /admin/emission/survey-admin-data /admin/emission/validate; do
+for route in /emission/project/detail /emission/activity-data /emission/validate /admin/emission/survey-admin-data /admin/emission/validate; do
   grep -Fq "$route" "$ROUTES" || { echo "[activity-evidence] FAIL missing frontend route: $route" >&2; exit 1; }
 done
 
@@ -65,4 +65,3 @@ from framework_development_job where process_code='ACTIVITY_DATA' and required;
 "
 result="$(kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -AtF'|' -c "$sql")"
 echo "[activity-evidence] PASS completed-required=$result source=verified schema=verified routes=verified common-assets=verified"
-
