@@ -7,6 +7,8 @@ grep -Fq 'ALL_TYPE_GATES_REQUIRED' "$ROOT/ops/scripts/verify-existing-server-job
 grep -Fq "job_status in ('PLANNED','RETRY','FAILED')" "$ROOT/ops/scripts/adopt-existing-server-job.sh"
 grep -Fq 'adopt-existing-server-job.sh" "$adoption_job_id" --apply' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'SERVER_ADOPTION_SCAN_LIMIT' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'COMMON_ASSET_COVERAGE' "$ROOT/ops/scripts/run-process-development-worker.sh"
+grep -Fq 'framework_common_design_asset_coverage' "$ROOT/ops/scripts/run-process-development-worker.sh"
 if grep -Eq 'run-process-development-worker|run-project-auto-completion-orchestrator' "$ROOT/ops/scripts/adopt-existing-server-job.sh"; then
   echo "[server-adoption] FAIL adopter must remain independent" >&2; exit 1
 fi

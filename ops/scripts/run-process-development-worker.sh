@@ -201,11 +201,47 @@ EOF
   INITIAL_MESSAGE="Open ${ARTIFACT_PATH} first. Fill this ${ARTIFACT_KIND} from the attached contract and precomputed candidate list. Do not enumerate unrelated docs or references. Finish this bounded artifact now."
 fi
 EXISTING_ADOPTED=0
+ADOPTION_ARTIFACT="docs/ai/80-adopted-existing/${PROCESS_CODE,,}/job-${JOB_ID}.md"
 if [[ "$JOB_TYPE" == FRONTEND_* ]]; then
   if ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH" 2>>"$LOG_FILE")"; then
     verify_adopted_frontend_tree || fail_job "existing frontend adoption type check failed"
     git -C "$WT" restore --worktree -- '*.tsbuildinfo' 2>/dev/null || true
     gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
+    EXISTING_ADOPTED=1
+  fi
+fi
+if [[ "$JOB_TYPE" =~ ^(COMPONENT_COMMON|CLASS_PROPERTY_COMMON|UI_QUALITY)$ ]]; then
+  QUALITY_COVERAGE="$(psqlq -c "
+    with routes as (
+      select distinct lower(split_part(route,'?',1)) route_path
+      from framework_process_step s
+      cross join lateral unnest(array_remove(array[s.user_path,s.admin_path],null)) route
+      where s.process_code='${PROCESS_CODE}' and s.step_code='${STEP_CODE}'
+    ), coverage as (
+      select r.route_path,bool_or(coalesce(c.common_assets_ready,false)) ready
+      from routes r left join framework_common_design_asset_coverage c using(route_path)
+      group by r.route_path
+    )
+    select count(*)||'|'||count(*) filter(where not ready)||'|'||coalesce(string_agg(route_path,',' order by route_path),'') from coverage;")"
+  IFS='|' read -r QUALITY_ROUTE_COUNT QUALITY_UNCOVERED QUALITY_ROUTES <<<"$QUALITY_COVERAGE"
+  if [[ "$QUALITY_ROUTE_COUNT" -gt 0 && "$QUALITY_UNCOVERED" -eq 0 ]]; then
+    ADOPTION_ARTIFACT="docs/ai/85-adopted-quality/${PROCESS_CODE,,}/job-${JOB_ID}.md"
+    mkdir -p "$WT/$(dirname "$ADOPTION_ARTIFACT")"
+    cat >"$WT/$ADOPTION_ARTIFACT" <<EOF
+# Existing common-design adoption: job ${JOB_ID}
+
+- Process: `${PROCESS_CODE}`
+- Step: `${STEP_CODE}`
+- Quality type: `${JOB_TYPE}`
+- Covered routes: `${QUALITY_ROUTES}`
+- Approved requirement: $(jq -r '.requirement // ""' <<<"$SPEC")
+
+Every user and administrator route bound to this process step is registered in
+`framework_common_design_asset_coverage` with `common_assets_ready=true`.
+The worker reused those shared theme, section, component, class, and responsive
+assets instead of creating a page-specific duplicate.
+EOF
+    gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "{\"strategy\":\"COMMON_ASSET_COVERAGE\",\"routes\":\"${QUALITY_ROUTES}\"}"
     EXISTING_ADOPTED=1
   fi
 fi
@@ -300,7 +336,7 @@ fi
 
 CHANGED="$(git -C "$WT" status --porcelain)"
 if [ -z "$CHANGED" ] && [ "$EXISTING_ADOPTED" = 1 ]; then
-  EVIDENCE="git:${BASE_COMMIT};adoption:docs/ai/80-adopted-existing/${PROCESS_CODE,,}/job-${JOB_ID}.md;log:${LOG_FILE}"
+  EVIDENCE="git:${BASE_COMMIT};adoption:${ADOPTION_ARTIFACT};log:${LOG_FILE}"
   psqlq -c "update framework_development_job set job_status='VERIFIED',result_json=\$json\${\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_EXISTING\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
   event "VERIFIED" "RUNNING" "VERIFIED" "{\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_EXISTING\"}"
   git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
