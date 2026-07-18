@@ -191,6 +191,7 @@ if [[ "$JOB_TYPE" == FRONTEND_* ]]; then
   if ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH" 2>>"$LOG_FILE")"; then
     "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 \
       || fail_job "existing frontend adoption type check failed"
+    git -C "$WT" restore --worktree -- '*.tsbuildinfo' 2>/dev/null || true
     gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
     EXISTING_ADOPTED=1
   fi
