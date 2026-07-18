@@ -121,6 +121,42 @@ public class ActorProcessGovernanceService {
         Map<String,Object> out=new LinkedHashMap<>();out.put("success",true);out.put("processCode",process);out.put("designHash",designHash);out.put("changed",true);out.put("status",status);out.put("bootstrap",result);out.put("nextAction","READY_TO_EXECUTE".equals(status)?"승인 개발 작업을 즉시 실행합니다.":"차단된 화면 설계 게이트를 보완한 뒤 동일 API를 다시 실행합니다.");return out;
     }
 
+    /**
+     * Saves a route design and recompiles every bound process in one
+     * transaction. Renderable blueprint contracts are returned immediately so
+     * metadata-driven pages do not require a frontend rebuild.
+     */
+    @Transactional public Map<String,Object> saveDesignAndGenerate(Map<String,Object> body,String actor){
+        Map<String,Object> note=screenDevelopmentNoteService.save(body,actor);
+        String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
+        List<String> processes=jdbc.queryForList(
+            "select distinct process_code from ("+
+            "select process_code from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=lower(?) "+
+            "union all select process_code from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?)"+
+            ") p where process_code is not null and trim(process_code)<>'' order by process_code",
+            String.class,route,route);
+        List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
+        for(String process:processes){
+            Map<String,Object> validation=validateProcessDesign(process,actor);
+            Object rawBlockers=validation.containsKey("blocker_count")?validation.get("blocker_count"):validation.get("blockerCount");
+            int blockers=rawBlockers instanceof Number?((Number)rawBlockers).intValue():0;
+            if(blockers>0){
+                deliveries.add(Map.of("processCode",process,"status","DESIGN_BLOCKED","blockerCount",blockers));
+                continue;
+            }
+            deliveries.add(executeDesignDirectDevelopment(Map.of("processCode",process,"force",false),actor));
+        }
+        List<Map<String,Object>> outputs=jdbc.queryForList(
+            "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
+            route);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("note",note);result.put("routePath",route);
+        result.put("processCodes",processes);result.put("deliveries",deliveries);result.put("codeOutputs",outputs);
+        result.put("generationStatus",processes.isEmpty()?"PROCESS_BINDING_REQUIRED":deliveries.stream().anyMatch(row->"DESIGN_BLOCKED".equals(row.get("status")))?"DESIGN_BLOCKED":"GENERATED");
+        result.put("buildRequired",false);
+        return result;
+    }
+
     @Transactional public Map<String,Object> saveProfessionalScreenContract(Map<String,Object>b,String actor){
         long id=Long.parseLong(req(b,"contractId"));
         int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",

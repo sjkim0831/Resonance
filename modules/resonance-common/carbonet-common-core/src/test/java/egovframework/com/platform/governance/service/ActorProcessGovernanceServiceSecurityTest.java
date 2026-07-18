@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -52,5 +53,27 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         verify(jdbc, never()).queryForList(argThat(sql -> sql.contains("framework_process_execution_event")
                 && sql.contains("idempotency_key")), any(Object[].class));
+    }
+
+    @Test
+    void designSaveWithoutProcessBindingReturnsAnExplicitGenerationGate() {
+        ScreenDevelopmentNoteService notes = mock(ScreenDevelopmentNoteService.class);
+        ActorProcessGovernanceService isolated = new ActorProcessGovernanceService(
+                jdbc, notes, mock(CodexProvisioningService.class));
+        when(notes.save(any(), anyString())).thenReturn(Map.of("version", 3));
+        when(jdbc.queryForList(argThat(sql -> sql.contains("framework_professional_screen_contract")),
+                org.mockito.ArgumentMatchers.eq(String.class), any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from framework_screen_blueprint where")),
+                any(Object[].class))).thenReturn(List.of());
+
+        Map<String, Object> result = isolated.saveDesignAndGenerate(Map.of(
+                "routePath", "/emission/unbound",
+                "designNote", "layout",
+                "functionNote", "function",
+                "acceptanceNote", "acceptance"), "designer");
+
+        assertEquals("PROCESS_BINDING_REQUIRED", result.get("generationStatus"));
+        assertEquals(false, result.get("buildRequired"));
+        assertEquals(List.of(), result.get("codeOutputs"));
     }
 }

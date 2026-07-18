@@ -31,6 +31,7 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const endpoint="/admin/api/system/screen-development-note";
+  const generateEndpoint="/admin/api/system/actor-process/design/save-and-generate";
 
   useEffect(()=>{
     let cancelled=false;
@@ -51,9 +52,15 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
   async function save(){
     setBusy(true);setMessage("");
     try{
-      const response=await fetch(endpoint,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({...note,pageId,routePath,pageTitle:note.pageTitle||document.title})});
+      const response=await fetch(generateEndpoint,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({...note,pageId,routePath,pageTitle:note.pageTitle||document.title})});
       const body=await readJson(response);if(!response.ok)throw new Error(body.message||"화면 설계를 저장하지 못했습니다.");
-      setNote({...EMPTY,...body});setMessage(`화면 설계 v${body.version}을 개발 기준으로 저장했습니다.`);
+      setNote({...EMPTY,...body.note});
+      const generated=Array.isArray(body.codeOutputs)?body.codeOutputs.length:0;
+      setMessage(body.generationStatus==="GENERATED"
+        ? `화면 설계 v${body.note.version} 저장과 코드 계약 ${generated}건 생성을 완료했습니다.`
+        : body.generationStatus==="PROCESS_BINDING_REQUIRED"
+          ? `화면 설계 v${body.note.version}을 저장했습니다. 프로세스 연결 후 코드가 자동 생성됩니다.`
+          : `화면 설계 v${body.note.version}을 저장했지만 품질 게이트 보완이 필요합니다.`);
     }catch(error){setMessage(error instanceof DesignNoteAuthenticationError?"관리자 로그인 세션이 만료되었습니다. 다시 로그인해 주세요.":error instanceof Error?error.message:String(error));}
     finally{setBusy(false);}
   }
@@ -74,7 +81,7 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
         {note.updatedAt?<p className="mt-3 text-xs text-slate-500">최근 저장: {note.updatedAt} · {note.updatedBy||"-"}</p>:null}
         {message?<p className={`mt-3 rounded-lg p-3 text-sm font-bold ${message.includes("저장했습니다")?"bg-emerald-50 text-emerald-800":"bg-rose-50 text-rose-800"}`} role="status">{message}</p>:null}
       </div>
-      <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4"><p className="text-xs font-bold text-slate-500">저장 내용은 개발 작업 명세에 자동 포함됩니다.</p><button className="min-h-11 shrink-0 rounded-lg bg-[#246beb] px-5 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void save()} type="button">{busy?"저장 중...":"설계 저장"}</button></footer>
+      <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4"><p className="text-xs font-bold text-slate-500">저장 즉시 설계 검증·화면 계약·개발 작업을 갱신합니다.</p><button className="min-h-11 shrink-0 rounded-lg bg-[#246beb] px-5 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void save()} type="button">{busy?"생성 중...":"저장·즉시 생성"}</button></footer>
     </section>}
   </aside>;
 }
