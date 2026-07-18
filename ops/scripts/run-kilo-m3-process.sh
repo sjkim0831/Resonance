@@ -48,7 +48,7 @@ Read .kilo-m3-process-packet.json and .kilo-m3-policy.json before acting."
   cd "$worktree"
   # --auto is safe here because the model is confined to a disposable worktree;
   # promotion, deployment and database mutation remain outside this worker.
-  kilo run --auto --model "$MODEL" -- "$prompt" 2>&1 | tee "$out/kilo.log"
+  kilo run --pure --auto --model "$MODEL" -- "$prompt" 2>&1 | tee "$out/kilo.log"
 )
 [[ -s "$worktree/.kilo-m3-result.json" ]] || { echo 'FAIL M3 result contract missing' >&2; exit 1; }
 jq empty "$worktree/.kilo-m3-result.json"
