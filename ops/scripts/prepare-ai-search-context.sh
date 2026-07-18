@@ -35,7 +35,7 @@ TMP="$CACHE.tmp.$$"
   if [ -n "$TERMS" ]; then
     grep -E -i "$TERMS" "$SNAPSHOT/repository.tsv" \
       | awk -F '\t' -v terms="$TERMS" 'BEGIN{n=split(terms,t,"|")} {s=tolower($0);h=0;for(i=1;i<=n;i++)if(index(s,t[i]))h++;print h "\t" $0}' \
-      | sort -t $'\t' -k1,1nr -k2,2nr | head -n 100 | cut -f2- || true
+      | sort -t $'\t' -k1,1nr -k2,2nr | awk 'NR<=100' | cut -f2- || true
   fi
   if [ -n "$TARGET_PATH" ] && [ -e "$ROOT_DIR/$TARGET_PATH" ]; then
     printf '%s\n' "$TARGET_PATH"
@@ -44,11 +44,11 @@ TMP="$CACHE.tmp.$$"
   if [ -n "$TERMS" ]; then
     grep -E -i "$TERMS" "$SNAPSHOT/routes.txt" \
       | awk -v terms="$TERMS" 'BEGIN{n=split(terms,t,"|")} {s=tolower($0);h=0;for(i=1;i<=n;i++)if(index(s,t[i]))h++;print h "\t" $0}' \
-      | sort -t $'\t' -k1,1nr | head -n 80 | cut -f2- || true
+      | sort -t $'\t' -k1,1nr | awk 'NR<=80' | cut -f2- || true
   fi
   printf '\n[reference candidates]\n'
   if [ -n "$TERMS" ]; then
-    grep -E -i "$TERMS" "$SNAPSHOT/references.txt" | head -n 80 || true
+    grep -E -i "$TERMS" "$SNAPSHOT/references.txt" | awk 'NR<=80' || true
   fi
   printf '\n[required completeness check]\n'
   printf 'Before implementation identify: upstream screen, downstream screen, actor, project/tenant scope, happy path, empty/loading/error states, mobile behavior, backend endpoint, persisted state, and executable test.\n'
