@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "2.0.0",
+  "generator": "carbonet-detailed-screen-design-compiler",
+  "batch": { "batchId": 2, "batchCode": "DETAILED_EXAMPLE", "batchStatus": "COMPILED" },
+  "blueprints": [{
+    "blueprintCode": "BP_DETAILED_USER",
+    "processCode": "EMISSION_PROJECT",
+    "stepCode": "EMISSION_PROJECT_SETUP",
+    "actorCode": "COMPANY_MANAGER",
+    "audience": "USER",
+    "pageId": "DETAILED_USER_PAGE",
+    "pageName": "배출량 프로젝트 등록",
+    "routePath": "/generated/emission-project/create",
+    "screenType": "FORM",
+    "templateCode": "KRDS_TASK_FORM",
+    "specificationJson": {
+      "designSystem": "KRDS_GOV",
+      "businessPurpose": "조직 경계와 산정 책임을 확정한 배출량 프로젝트를 등록한다.",
+      "actorResponsibilities": ["프로젝트 범위 확인", "담당자와 일정 확정"],
+      "entryConditions": ["기업과 사업장이 활성 상태", "프로젝트 생성 권한 보유"],
+      "exitConditions": ["필수값 검증 통과", "프로젝트와 최초 작업 생성"],
+      "states": ["DRAFT", "READY"],
+      "kpis": [{"code":"DUE_DAYS","label":"마감까지 남은 일수"}],
+      "sections": [{"code":"BASIC","label":"기본정보"},{"code":"BOUNDARY","label":"조직·산정 경계"}],
+      "fields": [{"code":"PROJECT_NAME","label":"프로젝트명","required":true},{"code":"BASE_YEAR","label":"기준연도","required":true}],
+      "actions": [{"code":"SAVE_DRAFT","label":"임시저장"},{"code":"CREATE","label":"프로젝트 등록"}],
+      "apiContracts": [{"code":"CREATE_PROJECT","method":"POST","path":"/home/api/emission-projects"}],
+      "dataContracts": [{"code":"EMISSION_PROJECT","entity":"emission_project","tenantScoped":true}],
+      "permissions": [{"code":"PROJECT_CREATE","scope":"TENANT"}],
+      "validations": [{"code":"REQUIRED_FIELDS","type":"REQUIRED"}],
+      "errors": [{"code":"DUPLICATE_PROJECT","recovery":"기존 프로젝트 확인"}],
+      "responsive": {"mobile":"single-column","tablet":"adaptive-grid","desktop":"task-and-context"},
+      "accessibility": {"standard":"WCAG_2_1_AA","keyboard":true,"labels":true,"focusManagement":true},
+      "completionRule": "프로젝트와 최초 담당 작업이 동일 트랜잭션에서 생성된다."
+    },
+    "traceabilityJson": {
+      "requirementIds": ["EMISSION-PROJECT-SETUP-001"],
+      "requiredScenarioTypes": ["HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY"]
+    },
+    "validationStatus": "VALID"
+  }]
+}
