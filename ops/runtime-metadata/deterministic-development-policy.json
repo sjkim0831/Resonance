@@ -13,6 +13,8 @@
     "DESIGN",
     "DESIGN_PREFLIGHT",
     "DEPLOYMENT",
+    "API",
+    "API_QUALITY",
     "DATABASE",
     "DATABASE_QUALITY"
   ],

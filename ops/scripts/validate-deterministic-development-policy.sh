@@ -12,11 +12,12 @@ jq -e '
   .allowUnverifiedCompletion == false and
   .defaultExecutionOrder[0] == "EXACT_EXISTING_IMPLEMENTATION" and
   .defaultExecutionOrder[-1] == "AI_ESCALATION" and
-  (.deterministicJobTypes | sort == ["DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","REFERENCE_ANALYSIS"])
+  (.deterministicJobTypes | sort == ["API","API_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","REFERENCE_ANALYSIS"])
 ' "$POLICY" >/dev/null
 bash -n "$WORKER"
 bash -n "$RUNNER"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-database.sh"
+bash -n "$ROOT/ops/scripts/validate-existing-emission-project-api.sh"
 grep -Fq 'DETERMINISTIC_FIRST' "$WORKER"
 grep -Fq 'AI_ESCALATED' "$WORKER"
 grep -Fq 'single automatic AI escalation was already consumed' "$WORKER"
