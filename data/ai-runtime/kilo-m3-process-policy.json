@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "policyId": "kilo-m3-process-worker",
-  "model": "kilo/minimax/minimax-m3",
+  "model": "nvidia/minimaxai/minimax-m3",
   "defaultMode": "plan",
   "isolation": "git-worktree",
   "requiredContext": [
