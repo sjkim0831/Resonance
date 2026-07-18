@@ -103,6 +103,20 @@ defer_rate_limited_job() {
   git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
   exit 0
 }
+verify_adopted_frontend_tree() {
+  local tree cache lock
+  tree="$(git -C "$WT" rev-parse HEAD:projects/carbonet-frontend/source)"
+  cache="${FRONTEND_TSC_CACHE_ROOT:-/opt/resonance-data/verification/frontend-tsc}/${tree}.pass"
+  lock="${cache}.lock"
+  mkdir -p "$(dirname "$cache")"
+  exec 6>"$lock"; flock 6
+  if [ ! -s "$cache" ]; then
+    "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 \
+      || { flock -u 6; return 1; }
+    printf 'tree=%s verifiedAt=%s\n' "$tree" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$cache"
+  fi
+  flock -u 6; exec 6>&-
+}
 trap 'fail_job "unexpected worker error at line ${LINENO}"' ERR
 trap 'fail_job "worker interrupted by signal"' INT TERM
 
@@ -189,8 +203,7 @@ fi
 EXISTING_ADOPTED=0
 if [[ "$JOB_TYPE" == FRONTEND_* ]]; then
   if ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH" 2>>"$LOG_FILE")"; then
-    "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 \
-      || fail_job "existing frontend adoption type check failed"
+    verify_adopted_frontend_tree || fail_job "existing frontend adoption type check failed"
     git -C "$WT" restore --worktree -- '*.tsbuildinfo' 2>/dev/null || true
     gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
     EXISTING_ADOPTED=1
@@ -302,8 +315,7 @@ fi
 if [ -z "$CHANGED" ] && [[ "$JOB_TYPE" == FRONTEND_* ]]; then
   ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH")" \
     || fail_job "existing frontend adoption contract failed"
-  "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 \
-    || fail_job "existing frontend adoption type check failed"
+  verify_adopted_frontend_tree || fail_job "existing frontend adoption type check failed"
   gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
   CHANGED="$(git -C "$WT" status --porcelain)"
 fi
