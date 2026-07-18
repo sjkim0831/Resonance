@@ -191,6 +191,30 @@ with candidate as (
 )
 select count(*) from recovered;")"
 retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+cache_retried+metadata_retried+symlink_retried+router_retried))"
+
+# Before invoking a model, deterministically adopt server work that is already
+# implemented and covered by tests. The adopter is state-guarded, so a job that
+# another worker claims concurrently is never overwritten.
+server_adopted=0
+if [[ -x "$ROOT_DIR/ops/scripts/adopt-existing-server-job.sh" ]]; then
+  while IFS= read -r adoption_job_id; do
+    [[ -n "$adoption_job_id" ]] || continue
+    if ROOT_DIR="$ROOT_DIR" PGDATABASE="$DB" PGUSER="$DB_USER" PGPASSWORD="${PGPASSWORD:-local-trust}" \
+      POSTGRES_POD="$leader" PGHOST="127.0.0.1" K8S_NAMESPACE="$NAMESPACE" \
+      bash "$ROOT_DIR/ops/scripts/adopt-existing-server-job.sh" "$adoption_job_id" --apply; then
+      server_adopted=$((server_adopted + 1))
+    fi
+  done < <(psqlq -c "
+    select j.job_id
+    from framework_development_job j
+    left join framework_process_delivery_priority_queue q on q.process_code=j.process_code
+    where j.approval_status='APPROVED'
+      and j.job_status in ('PLANNED','RETRY','FAILED')
+      and j.job_type in ('BACKEND','API','API_QUALITY','DATABASE','DATABASE_QUALITY','TEST','ACTOR_TEST')
+    order by case q.delivery_priority when 'BLOCKER' then 4 when 'HIGH' then 3 when 'MEDIUM' then 2 when 'LOW' then 1 else 0 end desc,
+             coalesce(q.development_order,2147483647),j.job_id
+    limit ${SERVER_ADOPTION_SCAN_LIMIT:-3};")
+fi
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
 where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status='RETRY' and (j.lease_until is null or j.lease_until<current_timestamp))) and j.attempt_count<j.max_attempts
@@ -217,4 +241,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried completed=$completed blocked=$blocked remaining=$remaining"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining"
