@@ -33,7 +33,7 @@ q "select jsonb_pretty(jsonb_build_object(
  'screens',(select coalesce(jsonb_agg(jsonb_build_object('stepCode',step_code,'audience',audience,'route',route_path,'name',screen_name,'actor',actor_code,'purpose',business_purpose,'entry',entry_condition,'exit',exit_condition,'api',api_contract,'data',data_contract,'security',security_contract,'status',contract_status) order by step_code,audience),'[]') from framework_professional_screen_contract where process_code='$PROCESS'),
  'jobs',(select coalesce(jsonb_agg(jsonb_build_object('stepCode',step_code,'jobType',job_type,'count',job_count,'completed',completed_count) order by step_code,job_type),'[]') from (select step_code,job_type,count(*) job_count,count(*) filter(where job_status='COMPLETED') completed_count from framework_development_job where process_code='$PROCESS' and approval_status='APPROVED' group by step_code,job_type) j)
 ))" > "$out/process-packet.json"
-jq -e '.process.process_code and (.steps|length)>0 and (.scenarios|length)>0' "$out/process-packet.json" >/dev/null
+jq -e '.process.processCode and (.steps|length)>0 and (.scenarios|length)>0' "$out/process-packet.json" >/dev/null
 
 if [[ "$MODE" == plan ]]; then
   # Planning only needs the compact DB packet. Avoid indexing the full repository.
