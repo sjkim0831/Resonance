@@ -1,0 +1,11 @@
+# Existing frontend adoption: job 42
+
+- Process: `EMISSION_PROJECT`
+- Step: `EMISSION_PROJECT_COLLECT`
+- Route: `projects/carbonet-frontend/source/src/features/emission-data-input/EmissionDataInputMigrationPage.tsx`
+- Route ID: `emission-activity-data`
+- Implemented source: `projects/carbonet-frontend/source/src/features/emission-data-input/EmissionDataInputMigrationPage.tsx`
+- Route inventory: `projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts`
+- Binding registry: `projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts`
+
+The approved job resolved to an existing registered implementation. The worker preserved that implementation, verified the exact route-to-source and page-manifest bindings, and requires the shared TypeScript gate before adoption. This artifact records traceability; it does not replace runtime or actor-process tests.
