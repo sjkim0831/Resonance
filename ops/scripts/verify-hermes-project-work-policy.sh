@@ -12,6 +12,8 @@ jq -e '.promotionGates==["policy","source","test","build","runtime","health"]' "
 jq -e '.exclusiveModels and .selector.model=="gemma4-e4b-gpu-shadow" and .workers.SIMPLE.model=="minimaxai/minimax-m2.7" and .workers.COMPLEX.model=="minimaxai/minimax-m3"' "$R" >/dev/null
 grep -q 'run-hermes-project-work.sh' "$ROOT/ops/scripts/run-process-development-worker.sh"
 grep -q 'HERMES_PROJECT_WORK_POLICY_INVALID' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -q 'HERMES_DISABLE_FALLBACK=1' "$ROOT/ops/scripts/run-hermes-nvidia-task.sh"
+grep -q 'HERMES_DISABLE_FALLBACK' "$ROOT/modules/hermes-core/cli.py"
 if grep -Eq 'kilo run|KILO_GATEWAY_AUTH_REQUIRED' \
   "$ROOT/ops/scripts/run-process-development-worker.sh" \
   "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"; then

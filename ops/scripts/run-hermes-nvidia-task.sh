@@ -29,6 +29,6 @@ provider="$(jq -r --arg route "$selection" '.workers[$route].provider' "$POLICY"
 [[ "$provider" == nvidia ]] || { echo 'FAIL non-NVIDIA generation route blocked' >&2; exit 1; }
 echo "[hermes-router] selector=$selector_model route=$selection worker=$provider/$model" >&2
 started="$(date +%s%N)"
-(cd "$WORKDIR" && timeout --signal=TERM --kill-after=15s "${HERMES_TASK_TIMEOUT:-600}" "$HERMES_BIN" chat -q "$TASK" -m "$model" --provider "$provider" -Q --max-turns "${HERMES_MAX_TURNS:-20}")
+(cd "$WORKDIR" && HERMES_DISABLE_FALLBACK=1 timeout --signal=TERM --kill-after=15s "${HERMES_TASK_TIMEOUT:-600}" "$HERMES_BIN" chat -q "$TASK" -m "$model" --provider "$provider" -Q --max-turns "${HERMES_MAX_TURNS:-20}")
 ended="$(date +%s%N)"
 echo "[hermes-router] completed route=$selection elapsed_ms=$(((ended-started)/1000000))" >&2
