@@ -12,7 +12,9 @@
     "REFERENCE_ANALYSIS",
     "DESIGN",
     "DESIGN_PREFLIGHT",
-    "DEPLOYMENT"
+    "DEPLOYMENT",
+    "DATABASE",
+    "DATABASE_QUALITY"
   ],
   "evidenceRequired": true,
   "allowUnverifiedCompletion": false,
