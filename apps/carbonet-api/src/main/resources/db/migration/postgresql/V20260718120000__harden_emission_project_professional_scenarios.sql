@@ -32,7 +32,28 @@ ON CONFLICT(process_code,step_code,policy_version) DO UPDATE SET
  sla_hours=excluded.sla_hours,escalation_actor_code=excluded.escalation_actor_code,
  segregation_actor_codes=excluded.segregation_actor_codes,active_yn='Y',updated_at=current_timestamp;
 
-INSERT INTO framework_simulation_case
+CREATE TABLE IF NOT EXISTS framework_process_professional_scenario (
+ case_code varchar(120) PRIMARY KEY,
+ process_code varchar(80) NOT NULL REFERENCES framework_process_definition(process_code),
+ case_name varchar(300) NOT NULL,
+ case_type varchar(40) NOT NULL,
+ preconditions text NOT NULL,
+ steps_json text NOT NULL CHECK(steps_json::jsonb IS NOT NULL),
+ assertions_json text NOT NULL CHECK(assertions_json::jsonb IS NOT NULL),
+ case_status varchar(20) NOT NULL DEFAULT 'READY',
+ severity varchar(20) NOT NULL,
+ required_evidence text NOT NULL,
+ automated boolean NOT NULL DEFAULT true,
+ expected_duration_minutes integer NOT NULL CHECK(expected_duration_minutes BETWEEN 1 AND 120),
+ design_version integer NOT NULL DEFAULT 1,
+ created_at timestamp NOT NULL DEFAULT current_timestamp,
+ updated_at timestamp NOT NULL DEFAULT current_timestamp
+);
+
+CREATE INDEX IF NOT EXISTS ix_professional_scenario_process_type
+ ON framework_process_professional_scenario(process_code,case_type,case_status);
+
+INSERT INTO framework_process_professional_scenario
 (case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json,
  case_status,severity,required_evidence,automated,expected_duration_minutes)
 VALUES
