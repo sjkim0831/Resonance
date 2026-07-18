@@ -14,6 +14,27 @@ run_id="$(cat /proc/sys/kernel/random/uuid)"
 psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
 trap 'psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
 selected="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
+legacy_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id from framework_development_job j
+  where j.job_status='FAILED'
+    and j.last_error like 'Kilo exited with code %'
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='HERMES_ENGINE_MIGRATION_RETRY'
+    )
+), recovered as (
+  update framework_development_job j
+  set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+      attempt_count=greatest(0,j.max_attempts-1),updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'HERMES_ENGINE_MIGRATION_RETRY','FAILED','RETRY','project-auto-completion',
+         jsonb_build_object('reason','legacy Kilo timeout released after Hermes engine migration')
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 retried="$(psqlq -c "
 with candidate as (
   select j.job_id,
@@ -44,7 +65,16 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
-executable="$(psqlq -c "select count(*) from framework_development_job where approval_status='APPROVED' and job_status in ('PLANNED','RETRY');")"
+retried="$((retried+legacy_retried))"
+executable="$(psqlq -c "
+select count(*) from framework_development_job j
+where j.approval_status='APPROVED' and j.job_status in ('PLANNED','RETRY') and j.attempt_count<j.max_attempts
+  and not exists (
+    select 1 from framework_development_job_dependency d
+    join framework_development_job required_job on required_job.job_id=d.depends_on_job_id
+    where d.job_id=j.job_id and d.dependency_type='REQUIRED'
+      and required_job.job_status not in ('VERIFIED','COMPLETED')
+  );")"
 if [[ "$executable" -gt 0 ]] && ! bash "$ROOT_DIR/ops/scripts/verify-hermes-project-work-policy.sh" >/dev/null 2>&1; then
   psqlq -c "update framework_project_completion_run set run_status='ATTENTION_REQUIRED',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,blocked_process_count=1,result_json='{\"reason\":\"HERMES_PROJECT_WORK_POLICY_INVALID\"}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
   trap - ERR
