@@ -23,7 +23,7 @@ psqlq() {
     psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
 }
 
-read -r steps contracts routes ready notes mockups scenarios <<<"$(
+read -r steps contracts routes ready notes mockups scenarios extended timed sla <<<"$(
   kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- \
     psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -AtF' ' -qc "
       select
@@ -33,12 +33,15 @@ read -r steps contracts routes ready notes mockups scenarios <<<"$(
         (select count(*) from framework_professional_screen_design_readiness where process_code='EMISSION_PROJECT' and design_readiness_score=100),
         (select count(*) from framework_screen_development_note where route_key in (select lower(split_part(route_path,'?',1)) from framework_professional_screen_design_readiness where process_code='EMISSION_PROJECT') and development_status in ('READY','IN_DEVELOPMENT','VERIFIED')),
         (select count(*) from framework_screen_html_mockup where selected=true and route_key in (select lower(split_part(route_path,'?',1)) from framework_professional_screen_design_readiness where process_code='EMISSION_PROJECT')),
-        (select count(distinct case_type) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))
+        (select count(distinct case_type) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')),
+        (select count(distinct case_type) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('CONCURRENCY','IDEMPOTENCY','DEADLINE','INTEGRATION','FILE_SECURITY','DATA_QUALITY','SEGREGATION','REPORT_INTEGRITY')),
+        (select count(*) from framework_simulation_case where process_code='EMISSION_PROJECT' and case_type in ('CONCURRENCY','IDEMPOTENCY','DEADLINE','INTEGRATION','FILE_SECURITY','DATA_QUALITY','SEGREGATION','REPORT_INTEGRITY') and automated and expected_duration_minutes between 1 and 30),
+        (select count(*) from framework_process_step where process_code='EMISSION_PROJECT' and sla_hours between 1 and 72 and nullif(escalation_actor_code,'') is not null and nullif(segregation_actor_codes,'') is not null)
     "
 )"
 
-if [[ "$steps" != 7 || "$contracts" != 14 || "$routes" -lt 11 || "$ready" != "$contracts" || "$notes" -lt "$routes" || "$mockups" -lt "$routes" || "$scenarios" != 5 ]]; then
-  echo "[emission-design] FAIL steps=$steps contracts=$contracts routes=$routes ready=$ready notes=$notes mockups=$mockups scenarios=$scenarios" >&2
+if [[ "$steps" != 7 || "$contracts" != 14 || "$routes" -lt 11 || "$ready" != "$contracts" || "$notes" -lt "$routes" || "$mockups" -lt "$routes" || "$scenarios" != 5 || "$extended" != 8 || "$timed" != 8 || "$sla" != 7 ]]; then
+  echo "[emission-design] FAIL steps=$steps contracts=$contracts routes=$routes ready=$ready notes=$notes mockups=$mockups scenarios=$scenarios extended=$extended timed=$timed sla=$sla" >&2
   exit 1
 fi
 
@@ -76,4 +79,4 @@ if ! diff -u "$tmp_dir/source-endpoints" "$tmp_dir/registry-endpoints"; then
   exit 1
 fi
 
-echo "[emission-design] PASS steps=$steps contracts=$contracts routes=$routes design-ready=$ready scenarios=$scenarios executable-contract=$gate_status endpoints=$(wc -l <"$tmp_dir/source-endpoints")"
+echo "[emission-design] PASS steps=$steps contracts=$contracts routes=$routes design-ready=$ready core-scenarios=$scenarios professional-scenarios=$extended timed=$timed sla=$sla executable-contract=$gate_status endpoints=$(wc -l <"$tmp_dir/source-endpoints")"
