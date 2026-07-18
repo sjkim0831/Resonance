@@ -3,8 +3,7 @@
 UPDATE framework_process_step s
 SET sla_hours=v.sla_hours,
     escalation_actor_code=v.escalation_actor_code,
-    segregation_actor_codes=v.segregation_actor_codes,
-    updated_at=current_timestamp
+    segregation_actor_codes=v.segregation_actor_codes
 FROM (VALUES
  ('EMISSION_PROJECT_SETUP',24,'PLATFORM_OPERATOR','APPROVER'),
  ('EMISSION_PROJECT_COLLECT',72,'COMPANY_MANAGER','APPROVER'),
@@ -65,4 +64,3 @@ ON CONFLICT(case_code) DO UPDATE SET
  steps_json=excluded.steps_json,assertions_json=excluded.assertions_json,case_status='READY',
  severity=excluded.severity,required_evidence=excluded.required_evidence,automated=true,
  expected_duration_minutes=excluded.expected_duration_minutes,updated_at=current_timestamp;
-
