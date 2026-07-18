@@ -12,14 +12,14 @@ WORKDIR="${HERMES_WORKDIR:-$ROOT}"
 [[ -x "$HERMES_BIN" ]] || { echo "FAIL Hermes unavailable: $HERMES_BIN" >&2; exit 1; }
 [[ -d "$WORKDIR" ]] || { echo "FAIL Hermes work directory unavailable: $WORKDIR" >&2; exit 1; }
 
-selector_task="${TASK:0:2000}"
+selector_task="${TASK:0:500}"
 selector_prompt="Classify only. Output exactly SIMPLE or COMPLEX. SIMPLE means one-file boilerplate, a tiny code function, a small test, or short explanation. COMPLEX means multi-file work, architecture, workflow, database, security, deployment, debugging, or uncertainty. Task summary: $selector_task"
 selector_model="$(jq -r '.selector.model' "$POLICY")"
 payload="$(jq -n --arg model "$selector_model" --arg prompt "$selector_prompt" '{model:$model,temperature:0,max_tokens:512,messages:[{role:"user",content:$prompt}]}')"
 selection=""
 for selector_attempt in 1 2 3; do
   selection_raw="$(curl -fsS --retry 1 --retry-all-errors --max-time 45 "$SELECTOR_URL/chat/completions" -H 'Content-Type: application/json' -H "Authorization: Bearer $SELECTOR_API_KEY" -d "$payload" || true)"
-  selection="$(jq -r '.choices[0].message.content // ""' <<<"${selection_raw:-{}}" 2>/dev/null | tr '[:lower:]' '[:upper:]' | grep -Eo 'SIMPLE|COMPLEX' | head -1 || true)"
+  selection="$(jq -r '[.choices[0].message.content, .choices[0].message.reasoning_content] | map(select(type=="string")) | join(" ")' <<<"${selection_raw:-{}}" 2>/dev/null | tr '[:lower:]' '[:upper:]' | grep -Eo 'SIMPLE|COMPLEX' | tail -1 || true)"
   [[ "$selection" == SIMPLE || "$selection" == COMPLEX ]] && break
   echo "[hermes-router] selector attempt=$selector_attempt returned no allowed route" >&2
 done
