@@ -299,6 +299,14 @@ fi
 [ "$KILO_CODE" -eq 0 ] || fail_job "Hermes project worker exited with code ${KILO_CODE}"
 
 CHANGED="$(git -C "$WT" status --porcelain)"
+if [ -z "$CHANGED" ] && [ "$EXISTING_ADOPTED" = 1 ]; then
+  EVIDENCE="git:${BASE_COMMIT};adoption:docs/ai/80-adopted-existing/${PROCESS_CODE,,}/job-${JOB_ID}.md;log:${LOG_FILE}"
+  psqlq -c "update framework_development_job set job_status='VERIFIED',result_json=\$json\${\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_EXISTING\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
+  event "VERIFIED" "RUNNING" "VERIFIED" "{\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_EXISTING\"}"
+  git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
+  printf 'VERIFIED existing job=%s commit=%s\n' "$JOB_ID" "$BASE_COMMIT"
+  exit 0
+fi
 if [ -z "$CHANGED" ] && [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ] && [ -n "${ARTIFACT_PATH:-}" ]; then
   cat >>"$WT/$ARTIFACT_PATH" <<EOF
 
