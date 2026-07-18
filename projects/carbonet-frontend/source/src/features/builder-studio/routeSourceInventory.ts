@@ -13,6 +13,18 @@ export type RouteSourceInventoryRow = {
 
 export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   {
+    "routeId": "emission-project-operations-admin",
+    "label": "배출량 프로젝트 운영",
+    "group": "admin",
+    "koPath": "/admin/emission/project-operations",
+    "enPath": "/en/admin/emission/project-operations",
+    "exportName": "AdminEmissionProjectOperationsPage",
+    "sourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
+    "effectiveExportName": "AdminEmissionProjectOperationsPage",
+    "effectiveSourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "access-history",
     "label": "접속 로그",
     "group": "admin",
