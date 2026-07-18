@@ -230,14 +230,14 @@ if [[ "$JOB_TYPE" =~ ^(COMPONENT_COMMON|CLASS_PROPERTY_COMMON|UI_QUALITY)$ ]]; t
     cat >"$WT/$ADOPTION_ARTIFACT" <<EOF
 # Existing common-design adoption: job ${JOB_ID}
 
-- Process: `${PROCESS_CODE}`
-- Step: `${STEP_CODE}`
-- Quality type: `${JOB_TYPE}`
-- Covered routes: `${QUALITY_ROUTES}`
+- Process: ${PROCESS_CODE}
+- Step: ${STEP_CODE}
+- Quality type: ${JOB_TYPE}
+- Covered routes: ${QUALITY_ROUTES}
 - Approved requirement: $(jq -r '.requirement // ""' <<<"$SPEC")
 
 Every user and administrator route bound to this process step is registered in
-`framework_common_design_asset_coverage` with `common_assets_ready=true`.
+framework_common_design_asset_coverage with common_assets_ready=true.
 The worker reused those shared theme, section, component, class, and responsive
 assets instead of creating a page-specific duplicate.
 EOF
