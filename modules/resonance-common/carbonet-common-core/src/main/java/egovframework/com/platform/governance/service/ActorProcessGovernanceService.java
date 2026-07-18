@@ -137,14 +137,7 @@ public class ActorProcessGovernanceService {
             String.class,route,route);
         List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
         for(String process:processes){
-            Map<String,Object> validation=validateProcessDesign(process,actor);
-            Object rawBlockers=validation.containsKey("blocker_count")?validation.get("blocker_count"):validation.get("blockerCount");
-            int blockers=rawBlockers instanceof Number?((Number)rawBlockers).intValue():0;
-            if(blockers>0){
-                deliveries.add(Map.of("processCode",process,"status","DESIGN_BLOCKED","blockerCount",blockers));
-                continue;
-            }
-            deliveries.add(executeDesignDirectDevelopment(Map.of("processCode",process,"force",false),actor));
+            deliveries.add(autoImplementCompletedDesign(process,actor));
         }
         List<Map<String,Object>> outputs=jdbc.queryForList(
             "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
@@ -152,7 +145,7 @@ public class ActorProcessGovernanceService {
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("note",note);result.put("routePath",route);
         result.put("processCodes",processes);result.put("deliveries",deliveries);result.put("codeOutputs",outputs);
-        result.put("generationStatus",processes.isEmpty()?"PROCESS_BINDING_REQUIRED":deliveries.stream().anyMatch(row->"DESIGN_BLOCKED".equals(row.get("status")))?"DESIGN_BLOCKED":"GENERATED");
+        result.put("generationStatus",processes.isEmpty()?"PROCESS_BINDING_REQUIRED":deliveries.stream().anyMatch(row->"DESIGN_INCOMPLETE".equals(row.get("status")))?"DESIGN_INCOMPLETE":"GENERATED");
         result.put("buildRequired",false);
         return result;
     }
@@ -164,7 +157,9 @@ public class ActorProcessGovernanceService {
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
         Map<String,Object> readiness=jdbc.queryForMap("select contract_id as \"contractId\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness where contract_id=?",id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
-        return Map.of("success",true,"contract",readiness);
+        String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
+        Map<String,Object> automation=autoImplementCompletedDesign(process,actor);
+        return Map.of("success",true,"contract",readiness,"autoImplementation",automation);
     }
 
     @Transactional public Map<String,Object> executeProfessionalFactory(Map<String,Object>b,String user) throws Exception {
@@ -783,10 +778,38 @@ public class ActorProcessGovernanceService {
     }
     @Transactional public void recordRun(Map<String,Object>b,String actor){
         String caseCode=req(b,"caseCode"),result=req(b,"result");
-        String version=jdbc.queryForObject("select p.process_version from framework_process_definition p join framework_simulation_case c on c.process_code=p.process_code where c.case_code=?",String.class,caseCode);
+        Map<String,Object> processRow=jdbc.queryForMap("select p.process_code,p.process_version from framework_process_definition p join framework_simulation_case c on c.process_code=p.process_code where c.case_code=?",caseCode);
+        String process=String.valueOf(processRow.get("process_code")),version=String.valueOf(processRow.get("process_version"));
         jdbc.update("insert into framework_simulation_run(case_code,process_version,result,failure_reason,evidence_json,executed_by) values(?,?,?,?,?,?)",caseCode,version,result,str(b,"failureReason"),def(b,"evidenceJson","{}"),actor);
         jdbc.update("update framework_simulation_case set case_status=?,updated_at=current_timestamp where case_code=?","PASSED".equals(result)?"APPROVED":"REVIEW_REQUIRED",caseCode);
-        if("PASSED".equals(result)) jdbc.update("update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp where p.process_code=(select process_code from framework_simulation_case where case_code=?) and exists(select 1 from framework_process_step s where s.process_code=p.process_code) and not exists(select 1 from framework_simulation_case c where c.process_code=p.process_code and c.case_status<>'APPROVED') and not exists(select 1 from framework_process_artifact a where a.process_code=p.process_code and a.required and a.delivery_status<>'VERIFIED')",caseCode);
+        if("PASSED".equals(result)) autoImplementCompletedDesign(process,actor);
+    }
+
+    /**
+     * Queues implementation only after the complete actor/process design has
+     * passed structural validation and every mandatory safety scenario has
+     * been approved. Repeated calls reuse the design fingerprint and therefore
+     * never duplicate implementation jobs.
+     */
+    private Map<String,Object> autoImplementCompletedDesign(String process,String actor){
+        if(process==null||process.isBlank())return Map.of("status","PROCESS_BINDING_REQUIRED");
+        Map<String,Object> design=jdbc.queryForMap("select count(*) as step_count,"+
+            "count(*) filter(where trim(coalesce(step_code,''))='' or trim(coalesce(step_name,''))='' or trim(coalesce(actor_code,''))='' or trim(coalesce(from_state,''))='' or trim(coalesce(command_code,''))='' or trim(coalesce(to_state,''))='' or trim(coalesce(completion_rule,''))='' or trim(coalesce(requirement_text,''))='') as incomplete_step_count,"+
+            "count(*) filter(where requires_user_page and (trim(coalesce(user_path,''))='' or not exists(select 1 from framework_professional_screen_contract c where c.process_code=framework_process_step.process_code and c.step_code=framework_process_step.step_code and c.audience='USER' and lower(split_part(c.route_path,'?',1))=lower(split_part(framework_process_step.user_path,'?',1))))) as missing_user_contract_count,"+
+            "count(*) filter(where requires_admin_page and (trim(coalesce(admin_path,''))='' or not exists(select 1 from framework_professional_screen_contract c where c.process_code=framework_process_step.process_code and c.step_code=framework_process_step.step_code and c.audience='ADMIN' and lower(split_part(c.route_path,'?',1))=lower(split_part(framework_process_step.admin_path,'?',1))))) as missing_admin_contract_count "+
+            "from framework_process_step where process_code=?",process);
+        int stepCount=((Number)design.get("step_count")).intValue();
+        int incompleteSteps=((Number)design.get("incomplete_step_count")).intValue();
+        int missingUserContracts=((Number)design.get("missing_user_contract_count")).intValue();
+        int missingAdminContracts=((Number)design.get("missing_admin_contract_count")).intValue();
+        Integer pendingCases=jdbc.queryForObject("select count(*) from framework_simulation_case where process_code=? and case_status<>'APPROVED'",Integer.class,process);
+        Integer safetyTypes=jdbc.queryForObject("select count(distinct case_type) from framework_simulation_case where process_code=? and case_status='APPROVED' and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')",Integer.class,process);
+        if(stepCount==0||incompleteSteps>0||missingUserContracts>0||missingAdminContracts>0||(pendingCases!=null&&pendingCases>0)||safetyTypes==null||safetyTypes<5){
+            Map<String,Object> result=new LinkedHashMap<>();result.put("status","DESIGN_INCOMPLETE");result.put("processCode",process);result.put("stepCount",stepCount);result.put("incompleteStepCount",incompleteSteps);result.put("missingUserContractCount",missingUserContracts);result.put("missingAdminContractCount",missingAdminContracts);result.put("pendingCaseCount",pendingCases==null?0:pendingCases);result.put("approvedSafetyTypes",safetyTypes==null?0:safetyTypes);return result;
+        }
+        jdbc.update("update framework_process_definition set automation_mode='AUTOMATIC',process_status=case when process_status='DEVELOPMENT_READY' then process_status else 'IN_DEVELOPMENT' end,updated_at=current_timestamp where process_code=?",process);
+        Map<String,Object> delivery=executeDesignDirectDevelopment(Map.of("processCode",process,"force",false),actor);
+        Map<String,Object> result=new LinkedHashMap<>();result.put("status","IMPLEMENTATION_QUEUED");result.put("processCode",process);result.put("delivery",delivery);return result;
     }
 
     /** Idempotent starter pack: safe to run repeatedly and never removes operator data. */
