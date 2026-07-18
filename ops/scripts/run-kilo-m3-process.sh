@@ -5,15 +5,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PROCESS="${1:-}"
 MODE="${2:-plan}"
 APPROVAL="${3:-}"
-MODEL="${KILO_M3_MODEL:-nvidia/minimaxai/minimax-m3}"
+MODEL="${KILO_M3_MODEL:-openai-compatible/minimax-m3}"
+KILO_BIN="${KILO_BIN:-$HOME/.local/bin/kilo}"
+[[ -x "$KILO_BIN" ]] || KILO_BIN="$(command -v kilo)"
 NS="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 OUT_ROOT="${KILO_M3_OUT_ROOT:-$ROOT/var/ai-runtime/kilo-m3}"
 [[ "$PROCESS" =~ ^[A-Z][A-Z0-9_]{2,79}$ ]] || { echo 'usage: run-kilo-m3-process.sh PROCESS_CODE [plan|implement] [--approve]' >&2; exit 2; }
 [[ "$MODE" == plan || "$MODE" == implement ]] || exit 2
 [[ "$MODE" != implement || "$APPROVAL" == --approve ]] || { echo 'FAIL implementation requires --approve' >&2; exit 1; }
-command -v kilo >/dev/null; command -v jq >/dev/null; command -v kubectl >/dev/null
+[[ -x "$KILO_BIN" ]] || { echo 'FAIL Kilo CLI unavailable' >&2; exit 1; }; command -v jq >/dev/null; command -v kubectl >/dev/null
 bash "$ROOT/ops/scripts/verify-kilo-m3-policy.sh"
-kilo models | grep -Fx "$MODEL" >/dev/null || { echo "FAIL model unavailable: $MODEL" >&2; exit 1; }
+"$KILO_BIN" models | grep -Fx "$MODEL" >/dev/null || { echo "FAIL model unavailable: $MODEL" >&2; exit 1; }
+timeout 40 "$KILO_BIN" roll-call "$MODEL" | grep -q 'YES' || { echo "FAIL M3 provider preflight failed: $MODEL" >&2; exit 1; }
 
 leader=""
 while read -r pod; do
@@ -54,7 +57,9 @@ Read .kilo-m3-process-packet.json and .kilo-m3-policy.json before acting."
   cd "$worktree"
   # --auto is safe here because the model is confined to a disposable worktree;
   # promotion, deployment and database mutation remain outside this worker.
-  kilo run --pure --auto --model "$MODEL" -- "$prompt" 2>&1 | tee "$out/kilo.log"
+  KILO_DISABLE_CODEBASE_INDEXING=1 KILO_DISABLE_DEFAULT_PLUGINS=1 \
+    timeout --signal=TERM --kill-after=10s "${KILO_M3_RUN_TIMEOUT:-180}" \
+    "$KILO_BIN" run --pure --auto --agent codex-m3 --model "$MODEL" -- "$prompt" 2>&1 | tee "$out/kilo.log"
 )
 [[ -s "$worktree/.kilo-m3-result.json" ]] || { echo 'FAIL M3 result contract missing' >&2; exit 1; }
 jq empty "$worktree/.kilo-m3-result.json"
