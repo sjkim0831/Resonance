@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "policyId": "hermes-project-work",
+  "routerPolicy": "data/ai-runtime/hermes-nvidia-two-tier-policy.json",
+  "allowedModes": ["design", "implement", "verify", "diagnose", "document"],
+  "taskKinds": [
+    "discovery", "requirements", "actor-process", "scenario-test", "ux-ui",
+    "frontend", "backend-api", "database-migration", "integration",
+    "data-import-mapping", "report-pdf-ocr-certificate", "security-authority-tenant",
+    "performance", "debug-recovery", "build-deploy", "documentation", "audit-release"
+  ],
+  "requiredContext": ["taskId", "taskKind", "mode", "processCode", "objective", "acceptanceCriteria"],
+  "promotionGates": ["policy", "source", "test", "build", "runtime", "health"],
+  "mutationPolicy": {
+    "design": "READ_ONLY",
+    "diagnose": "READ_ONLY",
+    "document": "WORKSPACE_ONLY",
+    "implement": "WORKSPACE_ONLY",
+    "verify": "READ_ONLY"
+  },
+  "directProductionMutationByModel": false,
+  "auditLog": "var/ai-runtime/hermes-project-work/events.jsonl",
+  "fallback": "FAIL_CLOSED"
+}

@@ -1,262 +1,30 @@
 {
-  "version": "2026-05-20-qwen40-speed",
+  "version": "2026-07-18-hermes-nvidia-two-tier",
   "projectId": "carbonet",
-  "downloadPolicy": {
-    "runtimeRequestsMayDownloadModels": false,
-    "instruction": "Hermes request execution must use fixed registered local endpoints. SuperGemma 26B is retired; do not download or select it during normal work."
-  },
-  "developmentQualityPolicy": {
-    "sourceOfTruth": [
-      "system_page_development_quality_score",
-      "system_development_rag_chunk",
-      "system_design_pattern_registry",
-      "system_theme_token_registry",
-      "hermes_work_kind_model_route",
-      "/opt/Resonance/var/ai-agent-teams/ai-agent-teams.json"
-    ],
-    "instruction": "Every development request must select an agent team, retrieve DB-backed patterns/RAG, choose a model lane, design the layout and data contract first, then implement and verify with scripts."
-  },
-  "modelLadders": {
-    "qwen25Instruct": {
-      "role": "Stable default for general conversation, coding assistance, and agent task planning",
-      "sizes": [
-        "0.5B",
-        "1.5B",
-        "3B",
-        "7B",
-        "14B"
-      ]
-    },
-    "qwen25Coder": {
-      "role": "Stable default for code-specialized implementation and review drafts",
-      "sizes": [
-        "1.5B",
-        "7B",
-        "14B"
-      ]
-    },
-    "qwen35Candidate": {
-      "role": "Newer general/agent candidate; do not replace stable Qwen2.5 coder lanes without local benchmarks",
-      "policy": "Use only after exact model identity, quantization, serving support, and Carbonet task benchmarks are confirmed."
-    },
-    "designSpecialist": {
-      "role": "KRDS, Carbonet admin design, layout, copy, theme token, and visual consistency support",
-      "policy": "No dedicated design model is active. Use DB-backed design/theme/RAG first; Gemma4 GPU only for translation/copy, Qwen40 for complex design judgment, Codex/scripts for implementation."
-    },
-    "qwenMath": {
-      "role": "Math reasoning, formula checks, unit calculations, and numeric validation",
-      "preferredSeries": "Qwen Math / Qwen2.5 Math Instruct GGUF"
-    },
-    "qwen3": {
-      "role": "Deprecated for Carbonet local lanes",
-      "policy": "Do not select Qwen3 small models; remove qwen3-shadow artifacts from vLLM hosts."
-    }
+  "exclusiveModels": true,
+  "selector": {
+    "model": "gemma4-e4b-gpu-shadow",
+    "baseUrl": "http://127.0.0.1:24451/v1",
+    "role": "classification and registered asset selection only",
+    "generationAllowed": false
   },
   "lanes": [
     {
-      "laneId": "generator-selector",
-      "taskKinds": [
-        "generator-selection",
-        "screen-type-selection",
-        "asset-selection",
-        "test-template-selection",
-        "existing-page-adoption"
-      ],
-      "preferredModel": "gemma4-e4b-gpu-shadow",
-      "preferredBaseUrl": "http://127.0.0.1:24451/v1",
-      "fallbackModels": [],
-      "allowedWork": "E4B selects only registered generator, screen, design asset, component and deterministic test template IDs. It never writes arbitrary source, SQL or deployment commands.",
-      "escalateWhen": [
-        "confidence_below_0.70",
-        "unregistered_generator",
-        "schema_validation_failure",
-        "model_endpoint_unavailable"
-      ]
+      "laneId": "simple",
+      "taskKinds": ["one-file-code", "boilerplate", "small-test", "short-documentation"],
+      "provider": "nvidia",
+      "preferredModel": "minimaxai/minimax-m2.7",
+      "fallbackModels": []
     },
     {
-      "laneId": "translation",
-      "taskKinds": [
-        "translation",
-        "glossary",
-        "korean-product-name",
-        "i18n"
-      ],
-      "preferredModel": "gemma4-e4b-gpu-shadow",
-      "preferredBaseUrl": "http://127.0.0.1:24451/v1",
-      "fallbackModels": [
-        "qwen3.6-40b-deck-opus-q4"
-      ],
-      "allowedWork": "GPU Gemma4 E4B handles only Korean/English translation, glossary normalization, product-name mapping, and short UI copy.",
-      "escalateWhen": [
-        "missing_hangul",
-        "domain_glossary_conflict",
-        "json_parse_failure",
-        "model_endpoint_unavailable"
-      ]
-    },
-    {
-      "laneId": "dev-classify",
-      "taskKinds": [
-        "development-classification",
-        "log-summary",
-        "candidate-file-selection"
-      ],
-      "preferredModel": "qwen2.5-coder-7b-instruct-shadow",
-      "preferredBaseUrl": "http://127.0.0.1:24751/v1",
-      "fallbackModels": [
-        "qwen3.6-40b-deck-opus-q4"
-      ],
-      "allowedWork": "CPU 7B helper classifies normal Carbonet requests, summarizes logs, proposes candidate files, chooses compact context packs, and flags judge escalation.",
-      "escalateWhen": [
-        "security_or_permission",
-        "db_migration",
-        "shared_api_dto_mapper_contract",
-        "architecture_decision",
-        "confidence_below_0.75"
-      ]
-    },
-    {
-      "laneId": "fast-draft",
-      "taskKinds": [
-        "small-development-draft",
-        "one-file-explanation",
-        "known-script-order"
-      ],
-      "preferredModel": "qwen2.5-coder-7b-instruct-shadow",
-      "preferredBaseUrl": "http://127.0.0.1:24751/v1",
-      "fallbackModels": [
-        "qwen3.6-40b-deck-opus-q4"
-      ],
-      "allowedWork": "CPU 7B helper produces bounded small drafts and Hermes watchdog feedback. Qwen40 remains the main implementation judge; Codex applies and verifies.",
-      "escalateWhen": [
-        "multiple_file_families",
-        "shared_contract_change",
-        "security_or_permission",
-        "db_migration",
-        "verification_failure",
-        "confidence_below_0.75"
-      ]
-    },
-    {
-      "laneId": "mid-draft",
-      "taskKinds": [
-        "repetitive-admin-page",
-        "service-pattern-draft",
-        "pattern-based-code-draft"
-      ],
-      "preferredModel": "qwen2.5-coder-7b-instruct-shadow",
-      "preferredBaseUrl": "http://127.0.0.1:24751/v1",
-      "fallbackModels": [
-        "qwen3.6-40b-deck-opus-q4"
-      ],
-      "allowedWork": "Mid-draft is mapped to CPU 7B by default. Qwen14 is disabled unless manually benchmarked; escalate complex work to Qwen40.",
-      "escalateWhen": [
-        "security",
-        "db_migration",
-        "mapper_or_dto_contract",
-        "runtime_proof_required"
-      ]
-    },
-    {
-      "laneId": "design-specialist",
-      "taskKinds": [
-        "krds-design",
-        "layout-plan",
-        "theme-token-review",
-        "visual-consistency",
-        "copy-tone",
-        "screen-serviceability-review"
-      ],
-      "preferredModel": "qwen3.6-40b-deck-opus-q4",
-      "preferredBaseUrl": "http://127.0.0.1:24036/v1",
-      "fallbackModels": [
-        "gemma4-e4b-gpu-shadow"
-      ],
-      "allowedWork": "Complex design/layout/KRDS judgment uses Qwen40. Gemma4 GPU may support short copy/translation only.",
-      "escalateWhen": [
-        "business_logic_unclear",
-        "authority_scope_missing",
-        "api_or_db_contract_needed",
-        "visual_change_conflicts_with_registered_theme"
-      ]
-    },
-    {
-      "laneId": "math",
-      "taskKinds": [
-        "math",
-        "formula-check",
-        "unit-conversion",
-        "numeric-validation",
-        "calculation-review"
-      ],
-      "preferredModel": "qwen-math:7b",
-      "preferredBaseUrl": "http://127.0.0.1:24117/v1",
-      "fallbackModels": [
-        "qwen-math:1.5b",
-        "qwen3.5-9b-q4_k_m"
-      ],
-      "allowedWork": "Math reasoning, formula and unit checks, numeric validation, and calculation review before deterministic verification.",
-      "escalateWhen": [
-        "requires_source_write",
-        "requires_audit_evidence",
-        "calculation_affects_emission_result"
-      ]
-    },
-    {
-      "laneId": "agent-candidate",
-      "taskKinds": [
-        "agent-benchmark",
-        "general-reasoning-candidate",
-        "long-context-candidate",
-        "qwen35-evaluation"
-      ],
-      "preferredModel": "qwen3.5-9b-q4_k_m",
-      "preferredBaseUrl": "http://127.0.0.1:24119/v1",
-      "fallbackModels": [
-        "qwen2.5-coder-7b-instruct-shadow",
-        "qwen3.6-40b-deck-opus-q4"
-      ],
-      "allowedWork": "Candidate lane for Qwen3.5 9B general reasoning, agent planning, and local benchmark comparison before promotion.",
-      "escalateWhen": [
-        "source_write_needed",
-        "benchmark_fails",
-        "serving_unstable",
-        "thinking_output_not_disabled"
-      ]
-    },
-    {
-      "laneId": "judge",
-      "taskKinds": [
-        "architecture",
-        "risk-review",
-        "failure-interpretation",
-        "final-correction"
-      ],
-      "preferredModel": "qwen3.6-40b-deck-opus-q4",
-      "preferredBaseUrl": "http://127.0.0.1:24036/v1",
-      "fallbackModels": [
-        "codex"
-      ],
-      "allowedWork": "Architecture judgment, risky implementation review, failure interpretation, and final correction.",
-      "escalateWhen": []
-    },
-    {
-      "laneId": "verify",
-      "taskKinds": [
-        "build",
-        "test",
-        "route-probe",
-        "db-proof",
-        "runtime-proof"
-      ],
-      "preferredModel": "codex-scripts",
-      "preferredBaseUrl": "",
-      "fallbackModels": [],
-      "allowedWork": "Deterministic command execution, build/test/runtime evidence, and route probes.",
-      "escalateWhen": [
-        "verification_fails",
-        "evidence_conflicts_with_plan"
-      ]
+      "laneId": "complex",
+      "taskKinds": ["architecture", "multi-file-implementation", "workflow", "database", "security", "deployment", "debugging", "review"],
+      "provider": "nvidia",
+      "preferredModel": "minimaxai/minimax-m3",
+      "fallbackModels": []
     }
-  ]
+  ],
+  "fallback": "FAIL_CLOSED",
+  "disabledModels": ["qwen3.6-40b-deck-opus-q4", "qwen3.6-40b-hermes-framework-qlora", "all-unlisted-models"],
+  "instruction": "All project work enters through ops/scripts/run-hermes-project-work.sh. E4B selects only; M2.7 handles simple work and M3 handles complex work. Deterministic scripts own verification and promotion."
 }
