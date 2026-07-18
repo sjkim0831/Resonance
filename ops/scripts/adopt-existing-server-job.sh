@@ -45,7 +45,7 @@ begin
   result_json=jsonb_build_object('strategy','ADOPT_EXISTING_SERVER_IMPLEMENTATION','evidence','${OUT}'),evidence_ref='${EVIDENCE}',
   last_error=null,completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp
   where job_id=${JOB_ID} and approval_status='APPROVED' and job_status in ('PLANNED','RETRY','FAILED') returning job_id into adopted_id;
- if adopted_id is null then raise exception 'job %% changed state before adoption',${JOB_ID}; end if;
+ if adopted_id is null then raise exception 'job % changed state before adoption',${JOB_ID}; end if;
  update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp
   where process_code='${PROCESS}' and step_code='${STEP}' and contract_ref='AUTO:${TYPE}';
  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
