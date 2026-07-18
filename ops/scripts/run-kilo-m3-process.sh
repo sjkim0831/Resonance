@@ -27,11 +27,11 @@ q(){ kubectl -n "$NS" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres
 request="$(date +%Y%m%d%H%M%S)-$(tr '[:upper:]_' '[:lower:]-' <<<"$PROCESS")"
 out="$OUT_ROOT/$request"; worktree="$out/worktree"; mkdir -p "$out"
 q "select jsonb_pretty(jsonb_build_object(
- 'process',(select to_jsonb(d) from framework_process_definition d where process_code='$PROCESS'),
- 'steps',(select coalesce(jsonb_agg(to_jsonb(s) order by step_order),'[]') from framework_process_step s where process_code='$PROCESS'),
- 'scenarios',(select coalesce(jsonb_agg(to_jsonb(c) order by case_code),'[]') from framework_simulation_case c where process_code='$PROCESS'),
- 'screens',(select coalesce(jsonb_agg(to_jsonb(c) order by step_code,audience),'[]') from framework_professional_screen_contract c where process_code='$PROCESS'),
- 'jobs',(select coalesce(jsonb_agg(to_jsonb(j) order by step_code,job_type),'[]') from framework_development_job j where process_code='$PROCESS' and approval_status='APPROVED')
+ 'process',(select jsonb_build_object('processCode',process_code,'name',process_name,'version',process_version,'goal',goal,'startCondition',start_condition,'completionCondition',completion_condition,'status',process_status) from framework_process_definition where process_code='$PROCESS'),
+ 'steps',(select coalesce(jsonb_agg(jsonb_build_object('order',step_order,'stepCode',step_code,'name',step_name,'actor',actor_code,'fromState',from_state,'command',command_code,'toState',to_state,'completionRule',completion_rule,'userPath',user_path,'adminPath',admin_path,'apiContract',api_contract,'inputContract',input_contract,'outputContract',output_contract) order by step_order),'[]') from framework_process_step where process_code='$PROCESS'),
+ 'scenarios',(select coalesce(jsonb_agg(jsonb_build_object('caseCode',case_code,'name',case_name,'type',case_type,'preconditions',preconditions,'steps',steps_json,'assertions',assertions_json,'status',case_status) order by case_code),'[]') from framework_simulation_case where process_code='$PROCESS'),
+ 'screens',(select coalesce(jsonb_agg(jsonb_build_object('stepCode',step_code,'audience',audience,'route',route_path,'name',screen_name,'actor',actor_code,'purpose',business_purpose,'entry',entry_condition,'exit',exit_condition,'api',api_contract,'data',data_contract,'security',security_contract,'status',contract_status) order by step_code,audience),'[]') from framework_professional_screen_contract where process_code='$PROCESS'),
+ 'jobs',(select coalesce(jsonb_agg(jsonb_build_object('stepCode',step_code,'jobType',job_type,'count',job_count,'completed',completed_count) order by step_code,job_type),'[]') from (select step_code,job_type,count(*) job_count,count(*) filter(where job_status='COMPLETED') completed_count from framework_development_job where process_code='$PROCESS' and approval_status='APPROVED' group by step_code,job_type) j)
 ))" > "$out/process-packet.json"
 jq -e '.process.process_code and (.steps|length)>0 and (.scenarios|length)>0' "$out/process-packet.json" >/dev/null
 
