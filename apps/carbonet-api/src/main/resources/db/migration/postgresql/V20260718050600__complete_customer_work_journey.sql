@@ -40,7 +40,24 @@ WITH map(step_code,source_process,source_step,user_route,admin_route) AS(VALUES
 ('CUSTOMER_WORK_REPORT','REPORT_CERTIFICATION','REPORT_CERTIFICATION_02_WORK','/emission/report_submit','/admin/emission/report-certificates'),
 ('CUSTOMER_WORK_PUBLIC_VERIFY','REPORT_CERTIFICATION','REPORT_CERTIFICATION_03_VERIFY','/home/certificate-verify','/admin/emission/survey-report-verify'))
 INSERT INTO framework_professional_screen_contract(process_code,step_code,audience,route_path,screen_name,actor_code,business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,field_contract,command_contract,state_contract,api_contract,data_contract,evidence_contract,responsive_contract,accessibility_contract,security_contract,api_verified,database_verified,authority_verified,responsive_verified,accessibility_verified,exception_states_verified,audit_evidence_ref,contract_status,updated_by,menu_visibility,menu_verified)
-SELECT 'CUSTOMER_WORK_COORDINATION',m.step_code,c.audience,CASE c.audience WHEN 'ADMIN' THEN m.admin_route ELSE m.user_route END,s.step_name,s.actor_code,c.business_purpose,c.entry_condition,c.exit_condition,c.kpi_contract,c.section_contract,c.field_contract,c.command_contract,c.state_contract,c.api_contract,c.data_contract,'end-to-end project/task/actor/state/data lineage plus source-process evidence',c.responsive_contract,c.accessibility_contract,c.security_contract,true,true,true,true,true,true,'implemented:customer-journey+'||m.source_process||'/'||m.source_step,'VERIFIED','FLYWAY','HIDDEN',true
+SELECT 'CUSTOMER_WORK_COORDINATION',m.step_code,c.audience,CASE c.audience WHEN 'ADMIN' THEN m.admin_route ELSE m.user_route END,s.step_name,s.actor_code,c.business_purpose,c.entry_condition,c.exit_condition,c.kpi_contract,c.section_contract,c.field_contract,c.command_contract,c.state_contract,
+CASE m.step_code
+ WHEN 'CUSTOMER_WORK_DISCOVER' THEN '["GET /home/api/emission-tasks","GET /home/api/emission-projects/{id}/completion"]'
+ WHEN 'CUSTOMER_WORK_PRIORITIZE' THEN '["GET /home/api/emission-projects/{id}/activities","POST /home/api/emission-projects/{id}/activities","GET /home/api/emission-projects/{id}/submissions","POST /home/api/emission-projects/{id}/submissions"]'
+ WHEN 'CUSTOMER_WORK_OPEN' THEN '["GET /home/api/emission-projects/{id}/calculation","POST /home/api/emission-projects/{id}/calculation"]'
+ WHEN 'CUSTOMER_WORK_CONTINUE' THEN '["GET /home/api/emission-projects/{id}/quality","GET /home/api/emission-projects/{id}/review-workflow","POST /home/api/emission-projects/{id}/submissions/{submissionId}/verification/start","POST /home/api/emission-projects/{id}/submissions/{submissionId}/verification/decision"]'
+ WHEN 'CUSTOMER_WORK_APPROVE' THEN '["GET /home/api/emission-projects/{id}/review-workflow","POST /home/api/emission-projects/{id}/submissions/{submissionId}/approval/decision"]'
+ WHEN 'CUSTOMER_WORK_REPORT' THEN '["GET /home/api/emission-projects/{id}/reports","POST /home/api/emission-projects/{id}/reports"]'
+ ELSE '["GET /api/public/report-certificates/{certificateId}","POST /api/home/certificate-verify/verify","POST /api/home/certificate-verify/verify-ocr"]' END,
+CASE m.step_code
+ WHEN 'CUSTOMER_WORK_DISCOVER' THEN '["emission_project_registry","emission_project_task"]'
+ WHEN 'CUSTOMER_WORK_PRIORITIZE' THEN '["emission_activity_data","emission_activity_submission"]'
+ WHEN 'CUSTOMER_WORK_OPEN' THEN '["emission_activity_data","emission_project_registry"]'
+ WHEN 'CUSTOMER_WORK_CONTINUE' THEN '["emission_activity_quality_run","emission_submission_review"]'
+ WHEN 'CUSTOMER_WORK_APPROVE' THEN '["emission_submission_review","emission_project_history"]'
+ WHEN 'CUSTOMER_WORK_REPORT' THEN '["emission_project_report","emission_project_registry"]'
+ ELSE '["emission_project_report","emission_project_history"]' END,
+'end-to-end project/task/actor/state/data lineage plus source-process evidence',c.responsive_contract,c.accessibility_contract,c.security_contract,true,true,true,true,true,true,'implemented:customer-journey+'||m.source_process||'/'||m.source_step,'VERIFIED','FLYWAY','HIDDEN',true
 FROM map m JOIN framework_process_step s ON s.process_code='CUSTOMER_WORK_COORDINATION' AND s.step_code=m.step_code JOIN framework_professional_screen_contract c ON c.process_code=m.source_process AND c.step_code=m.source_step;
 
 INSERT INTO framework_development_job(process_code,step_code,job_type,job_name,target_path,specification_json,job_status,approval_status,created_by)
