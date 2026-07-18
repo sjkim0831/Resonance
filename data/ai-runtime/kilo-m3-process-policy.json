@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "policyId": "kilo-m3-process-worker",
+  "model": "kilo/minimax/minimax-m3",
+  "defaultMode": "plan",
+  "isolation": "git-worktree",
+  "requiredContext": [
+    "process definition",
+    "ordered actor steps",
+    "simulation cases",
+    "professional screen contracts",
+    "approved development jobs"
+  ],
+  "allowedWriteRoots": [
+    "projects/carbonet-frontend/source/src/",
+    "projects/carbonet-backend-metadata/",
+    "projects/carbonet-assets/static/",
+    "apps/carbonet-api/src/",
+    "ops/scripts/",
+    "ops/tests/",
+    "docs/"
+  ],
+  "forbiddenPaths": [
+    ".git/",
+    "data/ai-runtime/*.db",
+    "data/ai-runtime/*.sqlite3",
+    "projects/*/data/",
+    "var/backups/",
+    "var/lib/"
+  ],
+  "forbiddenDirectOperations": [
+    "deploy",
+    "kubectl apply",
+    "database mutation",
+    "flyway migrate",
+    "rollback",
+    "push"
+  ],
+  "implementationRequirements": [
+    "explicit --approve",
+    "isolated worktree",
+    "bounded changed-file set",
+    "deterministic verification",
+    "human or primary-agent promotion"
+  ]
+}
