@@ -113,14 +113,14 @@ with candidate as (
   select j.job_id from framework_development_job j
   where j.job_status='FAILED' and j.job_type in ('FRONTEND_USER','FRONTEND_ADMIN')
     and j.last_error='root tracked worktree changed before metadata fast-forward'
-    and not exists (select 1 from framework_development_job_event e where e.job_id=j.job_id and e.event_type='EXISTING_EVIDENCE_CLOSEOUT_RETRY')
+    and not exists (select 1 from framework_development_job_event e where e.job_id=j.job_id and e.event_type='ADOPTION_CLOSEOUT_RETRY')
 ), recovered as (
   update framework_development_job j set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
       attempt_count=greatest(0,j.max_attempts-1),updated_at=current_timestamp
   from candidate c where j.job_id=c.job_id returning j.job_id
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'EXISTING_EVIDENCE_CLOSEOUT_RETRY','FAILED','RETRY','project-auto-completion',
+  select job_id,'ADOPTION_CLOSEOUT_RETRY','FAILED','RETRY','project-auto-completion',
          jsonb_build_object('reason','adoption evidence already exists on main; close without a duplicate commit') from recovered returning 1
 )
 select count(*) from recovered;")"
