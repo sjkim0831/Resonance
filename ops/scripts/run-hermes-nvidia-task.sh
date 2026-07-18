@@ -12,7 +12,8 @@ WORKDIR="${HERMES_WORKDIR:-$ROOT}"
 [[ -x "$HERMES_BIN" ]] || { echo "FAIL Hermes unavailable: $HERMES_BIN" >&2; exit 1; }
 [[ -d "$WORKDIR" ]] || { echo "FAIL Hermes work directory unavailable: $WORKDIR" >&2; exit 1; }
 
-selector_prompt="Classify only. Output exactly SIMPLE or COMPLEX. SIMPLE means one-file boilerplate, a tiny code function, a small test, or short explanation. COMPLEX means multi-file work, architecture, workflow, database, security, deployment, debugging, or uncertainty. Task: $TASK"
+selector_task="${TASK:0:2000}"
+selector_prompt="Classify only. Output exactly SIMPLE or COMPLEX. SIMPLE means one-file boilerplate, a tiny code function, a small test, or short explanation. COMPLEX means multi-file work, architecture, workflow, database, security, deployment, debugging, or uncertainty. Task summary: $selector_task"
 selector_model="$(jq -r '.selector.model' "$POLICY")"
 payload="$(jq -n --arg model "$selector_model" --arg prompt "$selector_prompt" '{model:$model,temperature:0,max_tokens:512,messages:[{role:"user",content:$prompt}]}')"
 selection=""

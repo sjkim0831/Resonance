@@ -35,6 +35,27 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
+router_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id from framework_development_job j
+  where j.job_status='FAILED'
+    and j.last_error='Hermes project worker exited with code 1'
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='HERMES_ROUTER_FIX_RETRY'
+    )
+), recovered as (
+  update framework_development_job j
+  set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+      attempt_count=greatest(0,j.max_attempts-1),updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'HERMES_ROUTER_FIX_RETRY','FAILED','RETRY','project-auto-completion',
+         jsonb_build_object('reason','E4B selector input bounded after HTTP 400')
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 retried="$(psqlq -c "
 with candidate as (
   select j.job_id,
@@ -65,7 +86,7 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
-retried="$((retried+legacy_retried))"
+retried="$((retried+legacy_retried+router_retried))"
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
 where j.approval_status='APPROVED' and j.job_status in ('PLANNED','RETRY') and j.attempt_count<j.max_attempts
