@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Agent policy is deterministic and must pass before any model-generated change can deploy.
 bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/ops/scripts/verify-kilo-m3-policy.sh"
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/ops/scripts/verify-hermes-nvidia-two-tier.sh"
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
