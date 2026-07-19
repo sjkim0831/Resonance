@@ -65,6 +65,7 @@ done
 
 page_paths=(
   "/emission/project/detail?projectId=$project_id"
+  "/emission/data-request?projectId=$project_id"
   "/emission/activity-data?projectId=$project_id"
   "/emission/validate?projectId=$project_id"
   "/admin/emission/project-operations"
@@ -92,6 +93,8 @@ db_gate="$(psqlq "select
   and (select count(*) from framework_professional_screen_readiness where process_code='ACTIVITY_DATA' and readiness_score=100)=8
   and (select count(distinct case_type) from framework_simulation_case where process_code='ACTIVITY_DATA')>=5
   and (select count(*) from framework_simulation_case c where process_code='ACTIVITY_DATA' and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))=(select count(*) from framework_simulation_case where process_code='ACTIVITY_DATA')
+  and exists(select 1 from information_schema.columns where table_name='emission_activity_request' and column_name='accepted_at')
+  and exists(select 1 from information_schema.tables where table_name='emission_activity_request_event')
   and exists(select 1 from framework_project_actor_assignment where project_id='$project_id' group by project_id having count(distinct actor_code)>=5)")"
 [[ "$db_gate" == "t" ]] || { echo "[activity-runtime] FAIL DB/actor/scenario gate" >&2; exit 1; }
 

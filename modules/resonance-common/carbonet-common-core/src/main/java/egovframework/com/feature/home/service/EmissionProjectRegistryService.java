@@ -412,9 +412,18 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,quality_run_id=?,submitted_item_count=(SELECT count(*) FROM emission_activity_submission_item WHERE submission_id=?),snapshot_hash=(SELECT md5(coalesce(string_agg(source_hash,'|' ORDER BY activity_id),'')) FROM emission_activity_submission_item WHERE submission_id=?),updated_at=current_timestamp WHERE submission_id=?",user,quality.get("runId"),submissionId,submissionId,submissionId);
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
         jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
-        completeWorkflowTask(projectId,"ACTIVITY_DATA",user);
-        jdbc.update("UPDATE emission_activity_request SET request_status='SUBMITTED',updated_at=current_timestamp WHERE project_id=? AND tenant_id=? AND lower(assignee_id)=lower(?) AND request_status IN ('REQUESTED','IN_PROGRESS')",projectId,tenant,user);
-        return Map.of("id",submissionId,"state","SUBMITTED","duplicate",false);
+        Object requestedId=body.get("requestId");
+        List<Map<String,Object>> requests=requestedId==null
+            ? jdbc.queryForList("SELECT request_id AS id,request_status AS status FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND lower(assignee_id)=lower(?) AND request_status IN ('REQUESTED','IN_PROGRESS','CORRECTION_REQUIRED') ORDER BY created_at DESC",projectId,tenant,user)
+            : jdbc.queryForList("SELECT request_id AS id,request_status AS status FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? AND lower(assignee_id)=lower(?) AND request_status IN ('REQUESTED','IN_PROGRESS','CORRECTION_REQUIRED')",Long.parseLong(String.valueOf(requestedId)),projectId,tenant,user);
+        for(Map<String,Object> request:requests) {
+            long requestId=((Number)request.get("id")).longValue(); String previous=text(request.get("status"));
+            jdbc.update("UPDATE emission_activity_request SET request_status='SUBMITTED',last_submission_id=?,submitted_by=?,submitted_at=current_timestamp,updated_at=current_timestamp WHERE request_id=?",submissionId,user,requestId);
+            jdbc.update("INSERT INTO emission_activity_request_event(request_id,event_code,previous_status,new_status,actor_id,event_note,submission_id) VALUES (?,'SUBMITTED',?,'SUBMITTED',?,'활동자료 품질검사 통과 및 제출',?)",requestId,previous,user,submissionId);
+        }
+        jdbc.update("UPDATE emission_project_task SET task_status='IN_PROGRESS',started_at=coalesce(started_at,current_timestamp),updated_at=current_timestamp WHERE project_id=? AND task_code='ACTIVITY_DATA' AND task_status<>'DONE'",projectId);
+        jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,t.project_id,t.task_id,'DATA_SUBMITTED',r.requester_id,'COMPANY_MANAGER','활동자료가 제출되었습니다',r.request_title||' 요청의 제출 자료를 검토하고 접수 또는 보완 요청을 결정해 주세요.','/emission/data-request?projectId='||r.project_id FROM emission_activity_request r JOIN emission_project_registry p ON p.project_id=r.project_id JOIN emission_project_task t ON t.project_id=r.project_id AND t.task_code='ACTIVITY_DATA' WHERE r.project_id=? AND r.tenant_id=? AND r.last_submission_id=?",projectId,tenant,submissionId);
+        return Map.of("id",submissionId,"state","SUBMITTED","duplicate",false,"requestCount",requests.size(),"nextAction","MANAGER_ACCEPTANCE");
     }
 
     public Map<String,Object> activityRequests(String projectId,String tenantId,String actor,boolean override) {
@@ -422,8 +431,10 @@ public class EmissionProjectRegistryService {
         assertTenantAccess(projectId,tenant);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("project",detail(projectId));
-        result.put("items",jdbc.queryForList("SELECT request_id AS \"id\",request_title AS \"title\",request_detail AS \"detail\",requested_items AS \"requestedItems\",requester_id AS \"requester\",assignee_id AS \"assignee\",due_date AS \"dueDate\",request_status AS \"status\",created_at AS \"createdAt\" FROM emission_activity_request WHERE tenant_id=? AND project_id=? AND (? OR lower(requester_id)=lower(?) OR lower(assignee_id)=lower(?)) ORDER BY created_at DESC",tenant,projectId,override,user,user));
+        result.put("items",jdbc.queryForList("SELECT request_id AS \"id\",request_title AS \"title\",request_detail AS \"detail\",requested_items AS \"requestedItems\",requester_id AS \"requester\",assignee_id AS \"assignee\",due_date AS \"dueDate\",request_status AS \"status\",last_submission_id AS \"submissionId\",submitted_by AS \"submittedBy\",submitted_at AS \"submittedAt\",correction_reason AS \"correctionReason\",correction_due_date AS \"correctionDueDate\",correction_count AS \"correctionCount\",accepted_by AS \"acceptedBy\",accepted_at AS \"acceptedAt\",created_at AS \"createdAt\" FROM emission_activity_request WHERE tenant_id=? AND project_id=? AND (? OR lower(requester_id)=lower(?) OR lower(assignee_id)=lower(?)) ORDER BY created_at DESC",tenant,projectId,override,user,user));
         result.put("dataOwners",jdbc.queryForList("SELECT user_id AS \"id\" FROM framework_project_actor_assignment WHERE project_id=? AND actor_code='SITE_DATA_OWNER' AND active_yn='Y' ORDER BY user_id",projectId));
+        result.put("actorRoles",jdbc.queryForList("SELECT actor_code FROM framework_project_actor_assignment WHERE project_id=? AND lower(user_id)=lower(?) AND active_yn='Y' ORDER BY actor_code",projectId,user).stream().map(row->text(row.get("actor_code"))).toList());
+        result.put("events",jdbc.queryForList("SELECT e.event_id AS \"id\",e.request_id AS \"requestId\",e.event_code AS code,e.previous_status AS \"previousStatus\",e.new_status AS \"newStatus\",e.actor_id AS actor,e.event_note AS note,e.submission_id AS \"submissionId\",e.created_at AS \"createdAt\" FROM emission_activity_request_event e JOIN emission_activity_request r ON r.request_id=e.request_id WHERE r.tenant_id=? AND r.project_id=? AND (? OR lower(r.requester_id)=lower(?) OR lower(r.assignee_id)=lower(?)) ORDER BY e.created_at DESC,e.event_id DESC",tenant,projectId,override,user,user));
         return result;
     }
 
@@ -438,6 +449,8 @@ public class EmissionProjectRegistryService {
         Long id=jdbc.queryForObject("INSERT INTO emission_activity_request(tenant_id,project_id,request_title,request_detail,requested_items,requester_id,assignee_id,due_date) VALUES (?,?,?,?,?,?,?,?) RETURNING request_id",Long.class,tenant,projectId,title,requestDetail,items,user,assignee,due);
         jdbc.update("UPDATE emission_project_task SET assignee_id=?,due_date=?,task_status='READY',updated_at=current_timestamp WHERE project_id=? AND task_code='ACTIVITY_DATA' AND task_status<>'DONE'",assignee,due,projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'DATA_REQUESTED',?,?)",projectId,title,user);
+        jdbc.update("INSERT INTO emission_activity_request_event(request_id,event_code,new_status,actor_id,event_note) VALUES (?,'REQUESTED','REQUESTED',?,?)",id,user,requestDetail);
+        jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,t.project_id,t.task_id,'DATA_REQUEST',?,'SITE_DATA_OWNER','활동자료 제출 요청이 도착했습니다',?||' (마감: '||?||')','/emission/data-request?projectId='||p.project_id FROM emission_project_registry p JOIN emission_project_task t ON t.project_id=p.project_id AND t.task_code='ACTIVITY_DATA' WHERE p.project_id=?",assignee,title,due,projectId);
         return Map.of("id",id==null?0:id,"status","REQUESTED");
     }
 
@@ -445,10 +458,39 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> startActivityRequest(String projectId,long requestId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
-        int changed=jdbc.update("UPDATE emission_activity_request SET request_status='IN_PROGRESS',updated_at=current_timestamp WHERE request_id=? AND project_id=? AND tenant_id=? AND (? OR lower(assignee_id)=lower(?)) AND request_status='REQUESTED'",requestId,projectId,tenant,override,user);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT request_status AS status FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? AND (? OR lower(assignee_id)=lower(?)) AND request_status IN ('REQUESTED','CORRECTION_REQUIRED') FOR UPDATE",requestId,projectId,tenant,override,user);
+        if(rows.isEmpty()) throw new IllegalStateException("ACTIVITY_REQUEST_NOT_STARTABLE");
+        String previous=text(rows.get(0).get("status"));
+        int changed=jdbc.update("UPDATE emission_activity_request SET request_status='IN_PROGRESS',updated_at=current_timestamp WHERE request_id=?",requestId);
         if(changed==0) throw new IllegalStateException("ACTIVITY_REQUEST_NOT_STARTABLE");
         jdbc.update("UPDATE emission_project_task SET task_status='IN_PROGRESS',started_at=coalesce(started_at,current_timestamp),updated_at=current_timestamp WHERE project_id=? AND task_code='ACTIVITY_DATA'",projectId);
+        jdbc.update("INSERT INTO emission_activity_request_event(request_id,event_code,previous_status,new_status,actor_id,event_note) VALUES (?,'STARTED',?,'IN_PROGRESS',?,'활동자료 수집 업무 시작')",requestId,previous,user);
         return Map.of("id",requestId,"status","IN_PROGRESS");
+    }
+
+    @Transactional
+    public Map<String,Object> decideActivityRequest(String projectId,long requestId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase();
+        requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT request_status AS status,request_title AS title,assignee_id AS assignee,last_submission_id AS submission FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? FOR UPDATE",requestId,projectId,tenant);
+        if(rows.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUEST_NOT_FOUND");
+        Map<String,Object> row=rows.get(0); if(!"SUBMITTED".equals(text(row.get("status")))) throw new IllegalStateException("ACTIVITY_REQUEST_DECISION_REQUIRES_SUBMITTED");
+        if("REQUEST_CORRECTION".equals(decision)) {
+            String reason=required(body,"reason"); LocalDate due=LocalDate.parse(required(body,"dueDate"));
+            if(due.isBefore(LocalDate.now())) throw new IllegalArgumentException("CORRECTION_DUE_DATE_PASSED");
+            jdbc.update("UPDATE emission_activity_request SET request_status='CORRECTION_REQUIRED',correction_reason=?,correction_due_date=?,correction_count=correction_count+1,updated_at=current_timestamp WHERE request_id=?",reason,due,requestId);
+            jdbc.update("UPDATE emission_project_task SET task_status='IN_PROGRESS',assignee_id=?,due_date=?,updated_at=current_timestamp WHERE project_id=? AND task_code='ACTIVITY_DATA'",row.get("assignee"),due,projectId);
+            jdbc.update("INSERT INTO emission_activity_request_event(request_id,event_code,previous_status,new_status,actor_id,event_note,submission_id) VALUES (?,'CORRECTION_REQUESTED','SUBMITTED','CORRECTION_REQUIRED',?,?,?)",requestId,user,reason,row.get("submission"));
+            jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,t.project_id,t.task_id,'DATA_CORRECTION',?,'SITE_DATA_OWNER','활동자료 보완이 요청되었습니다',?,'/emission/data-request?projectId='||p.project_id FROM emission_project_registry p JOIN emission_project_task t ON t.project_id=p.project_id AND t.task_code='ACTIVITY_DATA' WHERE p.project_id=?",row.get("assignee"),reason,projectId);
+            return Map.of("id",requestId,"status","CORRECTION_REQUIRED","calculationOpened",false);
+        }
+        if(!"ACCEPT".equals(decision)) throw new IllegalArgumentException("ACTIVITY_REQUEST_DECISION_INVALID");
+        jdbc.update("UPDATE emission_activity_request SET request_status='ACCEPTED',accepted_by=?,accepted_at=current_timestamp,correction_reason=null,correction_due_date=null,updated_at=current_timestamp WHERE request_id=?",user,requestId);
+        jdbc.update("INSERT INTO emission_activity_request_event(request_id,event_code,previous_status,new_status,actor_id,event_note,submission_id) VALUES (?,'ACCEPTED','SUBMITTED','ACCEPTED',?,'관리자 활동자료 접수 완료',?)",requestId,user,row.get("submission"));
+        Integer remaining=jdbc.queryForObject("SELECT count(*) FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND request_status IN ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')",Integer.class,projectId,tenant);
+        boolean opened=remaining!=null&&remaining==0;
+        if(opened) completeWorkflowTask(projectId,"ACTIVITY_DATA",user);
+        return Map.of("id",requestId,"status","ACCEPTED","calculationOpened",opened,"remainingRequests",remaining==null?0:remaining);
     }
 
     public Map<String,Object> reviewWorkflow(String projectId,String tenantId) {
