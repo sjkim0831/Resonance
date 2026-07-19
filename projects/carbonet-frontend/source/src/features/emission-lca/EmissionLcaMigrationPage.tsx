@@ -40,6 +40,9 @@ type SiteHubCard = {
   primaryIcon: string;
   secondaryLabel: string;
 };
+type LcaWorkflowItem = { code: string; label: string; url: string };
+type LcaWorkflowSection = { code: string; label: string; items: LcaWorkflowItem[] };
+type LcaWorkflowDomain = { code: string; sections: LcaWorkflowSection[] };
 type LocalizedLcaContent = {
   skipLink: string;
   govAlt: string;
@@ -245,6 +248,21 @@ export function EmissionLcaMigrationPage() {
 
   const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
   const homeMenu = payload.homeMenu || [];
+  const activeMenuCode = new URLSearchParams(window.location.search).get("menu") || "H1030101";
+  const lcaMenu = (homeMenu as unknown as LcaWorkflowDomain[]).find((menu) => menu.code === "H103");
+  const lcaSections: LcaWorkflowSection[] = lcaMenu?.sections || [];
+  const activeSection = lcaSections.find((section) => section.items.some((item) => item.code === activeMenuCode)) || lcaSections[0];
+  const activeItem = activeSection?.items.find((item) => item.code === activeMenuCode) || activeSection?.items[0];
+  const orderedLcaItems = lcaSections.flatMap((section) => section.items);
+  const activeItemIndex = Math.max(0, orderedLcaItems.findIndex((item) => item.code === activeItem?.code));
+  const nextItem = orderedLcaItems[activeItemIndex + 1];
+  const workspaceCopy = activeSection?.code === "H10302"
+    ? { objective: en ? "Build a complete, traceable life-cycle inventory." : "추적 가능한 전과정 인벤토리를 완성합니다.", input: en ? "Activity data, units, evidence and LCI mappings" : "활동자료·단위·증빙·LCI 매핑", output: en ? "Quality-checked normalized inventory" : "품질검사를 통과한 정규화 인벤토리", action: "/emission/activity-data" }
+    : activeSection?.code === "H10303"
+      ? { objective: en ? "Calculate impacts and explain material/process contribution." : "환경영향을 산정하고 물질·공정별 기여도를 설명합니다.", input: en ? "Approved inventory, factors and allocation rules" : "승인 인벤토리·배출계수·할당 규칙", output: en ? "Reproducible LCIA and sensitivity evidence" : "재현 가능한 LCIA·민감도 근거", action: "/emission/simulate" }
+      : activeSection?.code === "H10304"
+        ? { objective: en ? "Review, approve and publish defensible LCA results." : "검토 가능한 LCA 결과를 승인하고 보고합니다.", input: en ? "Calculation snapshot, limitations and review evidence" : "산정 스냅샷·한계·검토 증빙", output: en ? "Approved report and product carbon footprint" : "승인 보고서·제품 탄소발자국", action: "/emission/report-write" }
+        : { objective: en ? "Define a governed LCA project before data collection." : "자료 수집 전에 통제 가능한 LCA 프로젝트를 정의합니다.", input: en ? "Product, process, functional unit and system boundary" : "제품·공정·기능단위·시스템 경계", output: en ? "Approved project scope and responsibility" : "승인된 프로젝트 범위·책임", action: "/emission/project_list" };
 
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-lca", { language: en ? "en" : "ko", queueCount: content.queueAlerts.length, complianceRowCount: content.complianceRows.length, siteCardCount: content.siteCards.length });
@@ -305,6 +323,28 @@ export function EmissionLcaMigrationPage() {
           <HeaderMobileMenu content={sharedContent} en={en} homeMenu={homeMenu} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
         </div>
         <main id="main-content">
+          <section className="border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50" data-help-id="product-lca-workspace">
+            <div className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--kr-gov-blue)]">{activeSection?.label || (en ? "LCA project" : "LCA 프로젝트")} · {activeItemIndex + 1}/{orderedLcaItems.length || 22}</p>
+                  <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">{activeItem?.label || (en ? "LCA overview" : "LCA 현황")}</h2>
+                  <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-slate-600">{workspaceCopy.objective}</p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <a className="gov-btn inline-flex min-h-11 items-center gap-2 border border-blue-200 bg-white px-4 py-2 text-sm text-[var(--kr-gov-blue)]" href={buildLocalizedPath(workspaceCopy.action, `/en${workspaceCopy.action}`)}><span className="material-symbols-outlined text-[18px]">play_arrow</span>{en ? "Open work screen" : "업무 화면 열기"}</a>
+                  {nextItem ? <a className="gov-btn inline-flex min-h-11 items-center gap-2 bg-[var(--kr-gov-blue)] px-4 py-2 text-sm text-white" href={nextItem.url}><span>{en ? "Next task" : "다음 업무"}</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></a> : null}
+                </div>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <article className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-black text-slate-500">{en ? "Required inputs" : "필수 입력"}</p><p className="mt-1 text-sm font-bold text-slate-800">{workspaceCopy.input}</p></article>
+                <article className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-black text-slate-500">{en ? "Completion evidence" : "완료 산출물"}</p><p className="mt-1 text-sm font-bold text-slate-800">{workspaceCopy.output}</p></article>
+              </div>
+              <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label={en ? "Product LCA workflow" : "제품 LCA 업무 순서"}>
+                {orderedLcaItems.map((item, index) => <a key={item.code} className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${item.code === activeItem?.code ? "border-[var(--kr-gov-blue)] bg-[var(--kr-gov-blue)] text-white" : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"}`} href={item.url} aria-current={item.code === activeItem?.code ? "step" : undefined}><span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-[10px]">{index + 1}</span>{item.label}</a>)}
+              </nav>
+            </div>
+          </section>
           <section className="bg-slate-800 border-b border-slate-700 py-6" data-help-id="emission-lca-queue">
             <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
               <div className="flex flex-col lg:flex-row gap-6 items-center">
