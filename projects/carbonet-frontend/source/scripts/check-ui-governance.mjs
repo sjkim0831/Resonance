@@ -3,20 +3,33 @@ import path from "node:path";
 
 const frontendRoot = process.cwd();
 const srcRoot = path.join(frontendRoot, "src");
-const repoRoot = path.resolve(frontendRoot, "..");
+const repoRoot = path.resolve(frontendRoot, "..", "..", "..");
 
 const manifestPath = path.join(srcRoot, "platform", "screen-registry", "pageManifests.ts");
 const helpContentPath = path.join(srcRoot, "platform", "screen-registry", "helpContent.ts");
-const helpJsonPath = path.join(repoRoot, "src", "main", "resources", "help", "page-help.json");
+const helpJsonPath = path.join(
+  repoRoot,
+  "modules",
+  "resonance-common",
+  "platform-help-content",
+  "src",
+  "main",
+  "resources",
+  "help",
+  "page-help.json"
+);
 const screenCommandPath = path.join(
   repoRoot,
+  "modules",
+  "resonance-common",
+  "carbonet-common-core",
   "src",
   "main",
   "java",
   "egovframework",
   "com",
-  "feature",
-  "admin",
+  "platform",
+  "codex",
   "service",
   "impl",
   "ScreenCommandCenterServiceImpl.java"

@@ -104,7 +104,7 @@ test("system and content menu management use separate pages", async ({ page }) =
 
   await expect(page.getByRole("heading", { name: "메뉴 관리" })).toBeVisible();
   await expect(page.locator("body")).toContainText("시스템");
-  await expect(page.locator("body")).toContainText("빠른 페이지 등록");
+  await expect(page.locator("body")).toContainText("새 메뉴 등록");
   await expect(page.locator("#menuUrl")).toHaveValue("");
 
   await page.evaluate(() => {
@@ -112,7 +112,7 @@ test("system and content menu management use separate pages", async ({ page }) =
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
 
-  await expect(page.getByRole("heading", { name: "콘텐츠 메뉴 관리" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FAQ 메뉴 관리" })).toBeVisible();
   await expect(page.locator("body")).toContainText("A004");
-  await expect(page.locator("#contentMenuUrl")).toHaveValue("");
+  await expect(page.locator("#faqMenuUrl")).toHaveValue("");
 });
