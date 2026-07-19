@@ -342,6 +342,7 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
   exit 17
 fi
 bash ops/scripts/validate-admin-menu-coverage.sh
+bash ops/scripts/validate-home-menu-coverage.sh
 bash ops/scripts/sync-unified-asset-catalog.sh
 bash ops/scripts/validate-e4b-selectable-assets.sh
 bash ops/scripts/validate-emission-project-workflow.sh
