@@ -366,6 +366,8 @@ public class ActorProcessGovernanceService {
             Integer projectCount=jdbc.queryForObject("select count(*) from emission_project_registry where project_id=? and tenant_id=?",Integer.class,projectId,tenantId);
             if(projectCount==null||projectCount==0)throw new IllegalArgumentException("PROJECT_TENANT_SCOPE_NOT_FOUND");
             jdbc.update("insert into framework_project_actor_assignment(project_id,actor_code,user_id,active_yn) values(?,?,?,'Y') on conflict(project_id,actor_code,user_id) do update set active_yn='Y',assigned_at=current_timestamp",projectId,actorCode,accountId);
+            jdbc.update("update emission_project_task set assignee_id=?,updated_at=current_timestamp where project_id=? and actor_code=?",accountId,projectId,actorCode);
+            jdbc.update("insert into emission_project_history(project_id,event_type,event_description,actor_name) values (?,'ACTOR_ASSIGNED',?||' 역할의 주 담당자가 '||?||'(으)로 배정되었습니다.',?)",projectId,actorCode,accountId,accountId);
         }
     }
     @Transactional public void createProcess(Map<String,Object>b){
