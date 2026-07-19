@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 
 type Row = Record<string, unknown>;
-type EntityType = "gate" | "actor" | "process" | "step" | "case" | "job";
+type EntityType = "gate" | "action" | "actor" | "process" | "step" | "case" | "job";
 type Selection = { type: EntityType; row: Row };
 type Props = {
   actors: Row[];
@@ -19,6 +19,7 @@ type Props = {
   backendReadiness: Row[];
   journeyGaps: Row[];
   completionRuns: Row[];
+  deliveryQueue: Row[];
   busy: boolean;
   onPost: (path: string, body: Record<string, unknown>) => Promise<void>;
 };
@@ -65,6 +66,15 @@ export function CustomerWorkDevelopmentDashboard(props: Props) {
     ];
     return gates;
   }, [passedCases, props.actorReadiness, props.artifacts, props.assignments.length, props.backendReadiness, props.cases, props.completionRuns, props.jobs, props.journeyGaps, props.processes, props.runs, props.screenContracts, props.steps]);
+  const priorityActions = useMemo(() => props.deliveryQueue.filter(row => value(row, "nextAction") !== "COMPLETE").map(row => {
+    const code = value(row, "processCode"), next = value(row, "nextAction");
+    const missingTests = Math.max(0, Number(row.testCount ?? 0) - Number(row.passedTests ?? 0));
+    const missingTasks = Math.max(0, Number(row.requiredTasks ?? 0) - Number(row.completedTasks ?? 0));
+    const missingScreens = Math.max(0, Number(row.screenContracts ?? 0) - Number(row.readyScreens ?? 0));
+    const qualityPending = props.jobs.filter(job => value(job, "processCode") === code && ["VERIFIED", "COMPLETED"].includes(value(job, "jobStatus")) && !["PASSED", "VERIFIED"].includes(value(job, "qualityStatus"))).length;
+    const rank = ({ EMISSION_PROJECT: 0, COMPANY_ONBOARDING: 1, LCA_EXECUTION: 2, REDUCTION_EXECUTION: 3, CERTIFICATE_ISSUANCE: 4 } as Record<string, number>)[code] ?? 20 + Number(row.developmentOrder ?? 99);
+    return { actionCode: `NEXT_${code}`, processCode: code, actionName: nextActionName(next), processName: value(row, "processName"), priority: rank < 2 ? "P0" : rank < 5 ? "P1" : "P2", rank, completionScore: row.completionScore, reason: `테스트 ${missingTests}건 · 태스크 ${missingTasks}건 · 화면 ${missingScreens}건 · 품질 증적 ${qualityPending}건 미완료`, changeTarget: actionTarget(next), executionPlan: actionExecution(next), speedStrategy: actionSpeed(next), expectedResult: `${value(row, "processName")} 완료율 상승 및 ${nextActionName(next)} 병목 제거`, status: value(row, "priority") };
+  }).sort((a, b) => Number(a.rank) - Number(b.rank)), [props.deliveryQueue, props.jobs]);
   const select = (type: EntityType, row: Row) => setSelection({ type, row });
   useEffect(() => {
     if (selection) return;
@@ -73,10 +83,10 @@ export function CustomerWorkDevelopmentDashboard(props: Props) {
     const separator = focus.indexOf(":");
     const type = focus.slice(0, separator) as EntityType;
     const id = focus.slice(separator + 1).replace(/^#/, "");
-    const sources: Record<EntityType, Row[]> = { gate: completionGates, actor: props.actors, process: props.processes, step: props.steps, case: props.cases, job: props.jobs };
-    const row = sources[type]?.find(item => type === "gate" ? value(item, "gateCode") === id : type === "actor" ? value(item, "actorCode") === id : type === "process" ? value(item, "processCode") === id : type === "step" ? `${value(item, "processCode")}/${value(item, "stepCode")}` === id : type === "case" ? value(item, "caseCode") === id : value(item, "jobId") === id);
+    const sources: Record<EntityType, Row[]> = { gate: completionGates, action: priorityActions, actor: props.actors, process: props.processes, step: props.steps, case: props.cases, job: props.jobs };
+    const row = sources[type]?.find(item => type === "gate" ? value(item, "gateCode") === id : type === "action" ? value(item, "actionCode") === id : type === "actor" ? value(item, "actorCode") === id : type === "process" ? value(item, "processCode") === id : type === "step" ? `${value(item, "processCode")}/${value(item, "stepCode")}` === id : type === "case" ? value(item, "caseCode") === id : value(item, "jobId") === id);
     if (row) setSelection({ type, row });
-  }, [completionGates, props.actors, props.cases, props.jobs, props.processes, props.steps, selection]);
+  }, [completionGates, priorityActions, props.actors, props.cases, props.jobs, props.processes, props.steps, selection]);
 
   return <div className="space-y-5">
     <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
@@ -100,6 +110,20 @@ export function CustomerWorkDevelopmentDashboard(props: Props) {
     <section className="rounded-2xl border bg-white p-4">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-blue-700">PROJECT COMPLETION GATES</p><h3 className="mt-1 text-lg font-black text-[#052b57]">프로젝트 완료 판정</h3></div><strong className="text-lg text-[#052b57]">{completionGates.filter(row => value(row, "status") === "PASSED").length}/{completionGates.length} 통과</strong></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{completionGates.map(row => <button key={value(row, "gateCode")} type="button" onClick={() => select("gate", row)} className={`rounded-xl border p-3 text-left hover:border-blue-400 ${selection?.type === "gate" && value(selection.row, "gateCode") === value(row, "gateCode") ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "bg-white"}`}><span className="block font-bold text-slate-900">{value(row, "gateName")}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{value(row, "summary")}</span><span className={`mt-2 inline-block rounded-full px-2 py-1 text-xs font-bold ${statusClass(value(row, "status"))}`}>{value(row, "status")}</span></button>)}</div>
+    </section>
+
+    <section className="overflow-hidden rounded-2xl border bg-white">
+      <header className="border-b bg-slate-50 p-4"><p className="text-sm font-bold text-blue-700">FASTEST COMPLETION PRIORITY</p><h3 className="mt-1 text-lg font-black text-[#052b57]">가장 빠른 프로젝트 완료 순서</h3><p className="mt-1 text-sm leading-6 text-slate-600">고객 핵심 업무, 선행 프로세스, 현재 병목과 재사용 가능한 구현을 함께 계산한 순서입니다. 항목을 클릭하면 수정 대상과 가장 빠른 실행 방법이 표시됩니다.</p></header>
+      <div className="overflow-x-auto"><table className="w-full min-w-[1100px] text-left text-sm"><thead><tr className="border-b">{["순위","프로세스","완성도","현재 병목","수정 대상","속도 개선 방식"].map(head => <th key={head} className="px-4 py-3 font-bold text-slate-600">{head}</th>)}</tr></thead><tbody>{priorityActions.map((row, index) => <tr key={value(row, "actionCode")} className="border-b last:border-0"><td className="px-4 py-3"><button type="button" onClick={() => select("action", row)} className="rounded-lg bg-[#052b57] px-3 py-2 font-bold text-white">{index + 1} · {value(row, "priority")}</button></td><td className="px-4 py-3"><button type="button" onClick={() => select("action", row)} className="text-left font-bold text-blue-700 hover:underline">{value(row, "processName")}</button><div className="text-xs text-slate-500">{value(row, "processCode")}</div></td><td className="px-4 py-3 font-bold">{value(row, "completionScore")}%</td><td className="max-w-[300px] px-4 py-3 leading-6">{value(row, "reason")}</td><td className="max-w-[260px] px-4 py-3 leading-6">{value(row, "changeTarget")}</td><td className="max-w-[320px] px-4 py-3 leading-6">{value(row, "speedStrategy")}</td></tr>)}</tbody></table></div>
+    </section>
+
+    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {[
+        ["품질 증적 자동 전파", props.jobs.filter(row => ["VERIFIED", "COMPLETED"].includes(value(row, "jobStatus")) && !["PASSED", "VERIFIED"].includes(value(row, "qualityStatus"))).length, "완료 코드는 다시 만들지 않고 기존 테스트 결과를 상위 프로세스에 연결"],
+        ["병렬 실행 가능 태스크", props.jobs.filter(row => value(row, "executionMode") === "PARALLEL" && ["PLANNED", "RETRY"].includes(value(row, "jobStatus"))).length, "의존성이 충족된 작업을 여러 실행기가 동시에 처리"],
+        ["고객 여정 차단", props.journeyGaps.filter(row => value(row, "severity") === "BLOCKER").length, "죽은 링크와 다음 업무 연결을 코드 개발보다 먼저 복구"],
+        ["미검증 전문 화면", props.screenContracts.filter(row => Number(row.readinessScore ?? 0) < 100).length, "공통 테마·섹션·컴포넌트를 조립하고 변경분만 빌드"]
+      ].map(([title, count, description]) => <button key={String(title)} type="button" onClick={() => { const row = priorityActions[0]; if (row) select("action", { ...row, actionCode: `SPEED_${String(title)}`, actionName: String(title), reason: String(description), changeTarget: String(title), speedStrategy: String(description) }); }} className="rounded-2xl border bg-white p-4 text-left hover:border-blue-400 hover:bg-blue-50"><span className="text-sm font-bold text-slate-500">{String(title)}</span><strong className="mt-1 block text-2xl font-black text-[#052b57]">{String(count)}</strong><span className="mt-2 block text-xs leading-5 text-slate-600">{String(description)}</span></button>)}
     </section>
 
     <section className="grid gap-3 rounded-2xl border bg-white p-4 lg:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_auto]">
@@ -141,6 +165,7 @@ function Detail({ selection, props, busy, copyMessage, onCopyMessage, onPost }: 
   const stepCode = value(row, "stepCode");
   const jobId = value(row, "jobId");
   const fields: [string, string][] = selection.type === "gate" ? [["완료 게이트", value(row, "gateCode")], ["판정", value(row, "status")], ["현재 현황", value(row, "summary")], ["완료 기준", value(row, "completionCriteria")], ["다음 작업", value(row, "nextAction")]]
+    : selection.type === "action" ? [["우선순위", value(row, "priority")], ["프로세스", value(row, "processCode")], ["현재 완성도", `${value(row, "completionScore")}%`], ["병목 원인", value(row, "reason")], ["수정 대상", value(row, "changeTarget")], ["실행 절차", value(row, "executionPlan")], ["속도 개선", value(row, "speedStrategy")], ["완료 후 결과", value(row, "expectedResult")]]
     : selection.type === "actor" ? [["액터 코드", value(row, "actorCode")], ["유형", value(row, "actorType")], ["책임", value(row, "responsibility")], ["책무", value(row, "accountability")], ["역량", value(row, "competency")], ["겸직 금지", value(row, "conflictActorCodes")]]
     : selection.type === "process" ? [["프로세스 코드", processCode], ["목표", value(row, "goal")], ["시작 조건", value(row, "startCondition")], ["완료 조건", value(row, "completionCondition")], ["선행 프로세스", value(row, "prerequisiteCodes") || "없음"], ["자동화", value(row, "automationMode")]]
     : selection.type === "step" ? [["프로세스", processCode], ["단계 코드", stepCode], ["담당 액터", value(row, "actorCode")], ["상태 전이", `${value(row, "fromState")} → ${value(row, "toState")}`], ["완료 조건", value(row, "completionRule")], ["입력 계약", value(row, "inputContract")], ["출력 계약", value(row, "outputContract")], ["API", value(row, "apiContract")]]
@@ -150,7 +175,7 @@ function Detail({ selection, props, busy, copyMessage, onCopyMessage, onPost }: 
   const routes = [value(row, "userPath"), value(row, "adminPath"), value(row, "targetPath")].filter(path => path.startsWith("/"));
   const identity = entityIdentity(selection);
   const focusUrl = `${location.origin}/admin/system/actor-process?process=${encodeURIComponent(processCode)}&focus=${encodeURIComponent(`${selection.type}:${identity}`)}`;
-  const reference = `[개발현황판 ${selection.type.toUpperCase()}:${identity}] 프로세스=${processCode || "-"} 단계=${stepCode || "-"} 항목=${value(row, "gateName") || value(row, "actorName") || value(row, "processName") || value(row, "stepName") || value(row, "caseName") || value(row, "jobName")} 상태=${value(row, "jobStatus") || value(row, "status") || value(row, "automationStatus") || "-"} 링크=${focusUrl}`;
+  const reference = `[개발현황판 ${selection.type.toUpperCase()}:${identity}] 프로세스=${processCode || "-"} 단계=${stepCode || "-"} 항목=${value(row, "gateName") || value(row, "actionName") || value(row, "actorName") || value(row, "processName") || value(row, "stepName") || value(row, "caseName") || value(row, "jobName")} 상태=${value(row, "jobStatus") || value(row, "status") || value(row, "automationStatus") || "-"} 링크=${focusUrl}`;
   const copy = async (text: string, message: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -173,11 +198,35 @@ function Detail({ selection, props, busy, copyMessage, onCopyMessage, onPost }: 
 function entityIdentity(selection: Selection) {
   const row = selection.row;
   if (selection.type === "gate") return value(row, "gateCode");
+  if (selection.type === "action") return value(row, "actionCode");
   if (selection.type === "actor") return value(row, "actorCode");
   if (selection.type === "process") return value(row, "processCode");
   if (selection.type === "step") return `${value(row, "processCode")}/${value(row, "stepCode")}`;
   if (selection.type === "case") return value(row, "caseCode");
   return `#${value(row, "jobId")}`;
+}
+
+function nextActionName(action: string) {
+  return ({ DEFINE_STEPS: "업무 단계 설계", BIND_ACTORS: "액터·권한 연결", DESIGN_TESTS: "5종 테스트 설계", RUN_TESTS: "미통과 테스트 실행", GENERATE_TASKS: "개발 태스크 생성", RECOVER_BLOCKED_TASKS: "차단 태스크 복구", EXECUTE_TASKS: "개발 태스크 실행", DEFINE_ARTIFACTS: "산출물 계약 설계", VERIFY_ARTIFACTS: "산출물·증적 검증", DEFINE_SCREENS: "전문 화면 계약 설계", COMPLETE_SCREENS: "화면 구현·E2E 검증" } as Record<string, string>)[action] || action;
+}
+function actionTarget(action: string) {
+  if (action === "RUN_TESTS") return "미통과 시나리오와 품질 PENDING 태스크";
+  if (action === "GENERATE_TASKS") return "설계는 있으나 개발 태스크가 없는 프로세스";
+  if (action === "DEFINE_SCREENS" || action === "COMPLETE_SCREENS") return "사용자·관리자 화면 계약과 연결 라우트";
+  if (action === "BIND_ACTORS") return "계정·권한·프로젝트 데이터 범위";
+  return "현황판에 표시된 미완료 필수 계약";
+}
+function actionExecution(action: string) {
+  if (action === "RUN_TESTS") return "기존 구현 확인 → 실제 계정·API·DB·브라우저 테스트 → 증적 저장 → 품질 상태 갱신";
+  if (action === "GENERATE_TASKS") return "프로세스 계약 검사 → DB·API·프론트·테스트 태스크 자동 생성 → 의존성 순서 배치";
+  if (action === "DEFINE_SCREENS" || action === "COMPLETE_SCREENS") return "기존 화면·공통 자산 조사 → 계약 보완 → 변경 화면만 구현 → 모바일·E2E 검사";
+  return "설계 정본 보완 → 선택 태스크 개발 요청 → 품질 게이트 통과 → 자동 배포";
+}
+function actionSpeed(action: string) {
+  if (action === "RUN_TESTS") return "코드 재생성·전체 빌드 없이 테스트와 증적 전파만 수행";
+  if (action === "GENERATE_TASKS") return "제너레이터로 일괄 생성하고 의존성이 없는 태스크는 병렬 처리";
+  if (action === "DEFINE_SCREENS" || action === "COMPLETE_SCREENS") return "등록된 KRDS 테마·섹션·컴포넌트를 재사용하고 변경분만 빌드";
+  return "인덱스 검색, 공통 자산 재사용, 증분 컴파일, 자동 검증을 우선 적용";
 }
 
 function gate(code: string, name: string, passed: boolean, summary: string, nextAction: string): Row {
