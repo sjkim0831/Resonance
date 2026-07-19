@@ -555,11 +555,11 @@ export async function fetchEmissionSiteManagementPage() {
 }
 
 export async function fetchEmissionSiteRegistry(params?: { keyword?: string; status?: string }) {
-  return fetchJson<EmissionSiteRegistryPayload>(`/api/admin/emission/sites${buildEmissionQuery(params)}`);
+  return fetchJson<EmissionSiteRegistryPayload>(`${buildAdminApiPath("/api/admin/emission/sites")}${buildEmissionQuery(params)}`);
 }
 
 export async function saveEmissionSiteRegistry(payload: Partial<EmissionSiteRegistryRow>) {
-  return postJson<{ success: boolean; id: number; created: boolean }>("/api/admin/emission/sites", payload, {
+  return postJson<{ success: boolean; id: number; created: boolean }>(buildAdminApiPath("/api/admin/emission/sites"), payload, {
     headers: await buildResilientCsrfHeaders({ "Content-Type": "application/json", Accept: "application/json", "X-Requested-With": "XMLHttpRequest" })
   });
 }

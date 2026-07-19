@@ -11,7 +11,11 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping({"/api/admin/emission/sites", "/en/api/admin/emission/sites"})
+@RequestMapping({
+    "/api/admin/emission/sites",
+    "/admin/api/admin/emission/sites",
+    "/en/admin/api/admin/emission/sites"
+})
 public class AdminEmissionSiteRegistryController {
     private final EmissionSiteRegistryService service;
     private final CurrentUserContextService currentUserContextService;
