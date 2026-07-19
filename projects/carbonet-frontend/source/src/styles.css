@@ -48,7 +48,17 @@
   --krds-layout-gap: var(--krds-space-4);
   --krds-content-max: 90rem;
   --krds-grid-min: min(100%, 18rem);
+  /* `vh` follows the collapsing mobile browser chrome on some engines. Keep
+   * full-screen shells tied to the stable small viewport instead so reaching
+   * the document end cannot resize the page and push the scroll position. */
+  --krds-stable-viewport-block: 100vh;
   background: #f2f2f2;
+}
+
+@supports (height: 100svh) {
+  :root {
+    --krds-stable-viewport-block: 100svh;
+  }
 }
 
 * {
@@ -102,6 +112,32 @@ html,
 body,
 #root {
   min-height: 100%;
+}
+
+/* Tailwind's screen utilities are intentionally normalized at framework
+ * level. This covers generated and hand-written pages without requiring each
+ * of the hundreds of routes to solve mobile viewport chrome independently. */
+.min-h-screen {
+  min-height: var(--krds-stable-viewport-block);
+}
+
+.h-screen {
+  height: var(--krds-stable-viewport-block);
+}
+
+.max-h-screen {
+  max-height: var(--krds-stable-viewport-block);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    min-height: var(--krds-stable-viewport-block);
+  }
 }
 
 body {
@@ -304,7 +340,7 @@ body {
   position: relative;
   isolation: isolate;
   width: min(720px, 100%);
-  max-height: min(720px, calc(100vh - 48px));
+  max-height: min(720px, calc(var(--krds-stable-viewport-block) - 48px));
   overflow: auto;
   border-radius: 20px;
   background: #fff;
@@ -1795,7 +1831,7 @@ dd {
 }
 
 .gov-page {
-  min-height: 100vh;
+  min-height: var(--krds-stable-viewport-block);
   color: #1a1a1a;
   background: #f2f2f2;
   font-family: "Noto Sans KR", "Public Sans", sans-serif;
@@ -2583,7 +2619,7 @@ dd {
 .gov-admin-shell {
   display: grid;
   grid-template-columns: 280px 1fr;
-  min-height: 100vh;
+  min-height: var(--krds-stable-viewport-block);
 }
 
 .admin-brand-symbol {
