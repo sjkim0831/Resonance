@@ -237,6 +237,36 @@ if [[ -x "$ROOT_DIR/ops/scripts/adopt-existing-server-job.sh" ]]; then
              coalesce(q.development_order,2147483647),j.job_id
     limit ${SERVER_ADOPTION_SCAN_LIMIT:-3};")
 fi
+exhausted_planned_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id
+  from framework_development_job j
+  where j.approval_status='APPROVED'
+    and j.job_status='PLANNED'
+    and j.attempt_count>=j.max_attempts
+    and coalesce(j.last_error,'')=''
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='EXHAUSTED_PLANNED_RETRY'
+    )
+    and not exists (
+      select 1 from framework_development_job_dependency d
+      join framework_development_job required_job on required_job.job_id=d.depends_on_job_id
+      where d.job_id=j.job_id and d.dependency_type='REQUIRED'
+        and required_job.job_status not in ('VERIFIED','COMPLETED')
+    )
+), recovered as (
+  update framework_development_job j
+  set attempt_count=greatest(0,j.max_attempts-1),worker_id=null,lease_token=null,
+      lease_until=null,updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'EXHAUSTED_PLANNED_RETRY','PLANNED','PLANNED','project-auto-completion',
+         jsonb_build_object('reason','planned job exhausted attempts without an error or execution result')
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
 where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status='RETRY' and (j.lease_until is null or j.lease_until<current_timestamp))) and j.attempt_count<j.max_attempts
@@ -263,4 +293,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining"
