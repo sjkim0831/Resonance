@@ -129,7 +129,10 @@ body,
   max-height: var(--krds-stable-viewport-block);
 }
 
-@media (hover: none) and (pointer: coarse) {
+/* Width is the primary contract: tablets, browser device emulation and phones
+ * with a paired mouse must receive the same edge stability as touch-only
+ * devices. Pointer capability alone misses those valid mobile layouts. */
+@media (max-width: 64rem) {
   html,
   body {
     overscroll-behavior-y: none;
