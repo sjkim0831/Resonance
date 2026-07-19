@@ -17,6 +17,38 @@ jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/de
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
 case "$JOB_TYPE" in
+  SEARCH)
+    validator="$WT/ops/scripts/validate-existing-emission-project-search.sh"
+    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Verified integrated search adoption: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Source commit: $(git -C "$WT" rev-parse HEAD)
+- Requirement: $(jq -r '.requirement' "$SPEC_FILE")
+- Validation result: $adoption_json
+
+The deterministic validator requires the DB-backed menu, work, and post scopes, list/detail navigation, the exact process route in the generated route index, and a healthy live search page.
+EOF
+    ;;
+  PERFORMANCE)
+    validator="$WT/ops/scripts/validate-existing-emission-project-performance.sh"
+    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Verified runtime performance adoption: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Source commit: $(git -C "$WT" rev-parse HEAD)
+- Requirement: $(jq -r '.requirement' "$SPEC_FILE")
+- Validation result: $adoption_json
+
+The deterministic validator requires incremental-build controls, a recent successful deployment, the step-specific end-to-end runtime gate, two ready replicas, and measured integrated-search p95 latency.
+EOF
+    ;;
   NOTIFICATION)
     validator="$WT/ops/scripts/validate-existing-emission-project-notification.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?

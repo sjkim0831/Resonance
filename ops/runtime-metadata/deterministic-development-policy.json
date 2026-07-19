@@ -19,7 +19,9 @@
     "BACKEND_QUALITY",
     "NOTIFICATION",
     "DATABASE",
-    "DATABASE_QUALITY"
+    "DATABASE_QUALITY",
+    "SEARCH",
+    "PERFORMANCE"
   ],
   "evidenceRequired": true,
   "allowUnverifiedCompletion": false,
