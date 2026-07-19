@@ -19,7 +19,8 @@ const stages=[
 
 export function EmissionProjectDetailPage(){
   const en=isEnglish(),content=LOCALIZED_CONTENT[en?"en":"ko"],home=useAsyncValue(()=>fetchHomePayload(),[en]);
-  const id=new URLSearchParams(location.search).get("id")||"";
+  const searchParams=new URLSearchParams(location.search);
+  const id=searchParams.get("projectId")||searchParams.get("id")||"";
   const [data,setData]=useState<Detail|null>(null),[error,setError]=useState(""),[working,setWorking]=useState(false);
   const api=buildLocalizedPath(`/home/api/emission-projects/${encodeURIComponent(id)}`,`/en/home/api/emission-projects/${encodeURIComponent(id)}`);
   useEffect(()=>{if(!id){setError(en?"Select a project first.":"프로젝트를 먼저 선택해 주세요.");return;}fetch(api,{credentials:"include"}).then(async response=>{if(!response.ok)throw new Error(en?"Project not found.":"프로젝트를 찾을 수 없습니다.");return response.json();}).then(setData).catch(reason=>setError(String(reason.message||reason)));},[api,en,id]);

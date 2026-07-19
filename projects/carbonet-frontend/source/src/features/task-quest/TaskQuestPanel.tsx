@@ -52,8 +52,11 @@ function taskWeight(task: QuestTask) {
 
 function taskHref(task: QuestTask, en: boolean) {
   const base = task.targetUrl || "/emission/my-tasks";
-  const glue = base.includes("?") ? "&" : "?";
-  const target = `${base}${glue}projectId=${encodeURIComponent(task.projectId)}`;
+  const url = new URL(base, window.location.origin);
+  if (!url.searchParams.has("projectId") && !url.searchParams.has("id")) {
+    url.searchParams.set("projectId", task.projectId);
+  }
+  const target = `${url.pathname}${url.search}${url.hash}`;
   return en ? `/en${target}` : target;
 }
 
@@ -68,7 +71,7 @@ export function TaskQuestPanel() {
   const en = isEnglish();
   const api = buildLocalizedPath("/home/api/emission-tasks", "/en/home/api/emission-tasks");
   const [data, setData] = useState<QuestResponse | null>(null);
-  const [open, setOpen] = useState(() => localStorage.getItem("task-quest-open") !== "0");
+  const [open, setOpen] = useState(() => localStorage.getItem("task-quest-open") === "1");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
@@ -107,14 +110,19 @@ export function TaskQuestPanel() {
     };
   }, [flowOpen]);
 
+  const contextProjectId = new URLSearchParams(location.search).get("projectId")
+    || new URLSearchParams(location.search).get("id")
+    || "";
+
   const task = useMemo(() => {
-    return [...(data?.items || [])]
-      .filter((item) => item.status !== "DONE")
+    const pending = [...(data?.items || [])].filter((item) => item.status !== "DONE");
+    const contextual = contextProjectId ? pending.filter((item) => item.projectId === contextProjectId) : [];
+    return [...(contextual.length ? contextual : pending)]
       .sort((a, b) => {
         const aw = taskWeight(a), bw = taskWeight(b);
         return aw[0] - bw[0] || aw[1] - bw[1];
       })[0];
-  }, [data]);
+  }, [contextProjectId, data]);
 
   const processGroups = useMemo(() => {
     const groups = new Map<string, QuestTask[]>();
