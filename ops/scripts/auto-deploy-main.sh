@@ -187,6 +187,7 @@ backup_required="$PLAN_DATABASE_REQUIRED"
 [[ "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" == "true" ]] && backup_required=true
 menu_backup_only=false
 governance_backup_only=false
+activity_backup_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
@@ -194,6 +195,8 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     menu_backup_only=true
   elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification|assignment|assignee|emission_site|onboarding)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     governance_backup_only=true
+  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(activity|submission|quality|evidence|collection|acceptance)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
+    activity_backup_only=true
   fi
 fi
 if [[ "$backup_required" == "true" ]]; then
@@ -202,6 +205,7 @@ if [[ "$backup_required" == "true" ]]; then
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
           -h 127.0.0.1 -t comtnmenuinfo -t comtccmmndetailcode \
       | gzip -1 > "$backup_file"; then
@@ -221,6 +225,7 @@ if [[ "$backup_required" == "true" ]]; then
     echo "[auto-deploy] governance-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
           -t framework_actor_definition -t framework_account_actor_assignment \
           -t framework_process_definition -t framework_process_step \
@@ -243,11 +248,36 @@ if [[ "$backup_required" == "true" ]]; then
       exit 11
     fi
     echo "[auto-deploy] targeted governance backup verified: $backup_file (${backup_bytes} bytes)"
+  elif [[ "$activity_backup_only" == "true" ]]; then
+    backup_file="$BACKUP_DIR/carbonet-activity-$timestamp-$current_commit.sql.gz"
+    echo "[auto-deploy] activity-workflow migration detected; creating targeted transactional backup"
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+      kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
+          -t emission_activity_request -t emission_activity_request_event \
+          -t emission_activity_data -t emission_activity_quality_run -t emission_activity_quality_issue \
+          -t emission_activity_submission -t emission_activity_submission_item \
+          -t emission_activity_submission_evidence -t emission_activity_submission_event \
+          -t emission_project_task -t emission_project_history -t emission_workflow_notification \
+      | gzip -1 > "$backup_file"; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: targeted activity-workflow backup failed" >&2
+      exit 14
+    fi
+    backup_bytes="$(stat -c %s "$backup_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: targeted activity-workflow backup is invalid (${backup_bytes} bytes)" >&2
+      exit 11
+    fi
+    echo "[auto-deploy] targeted activity-workflow backup verified: $backup_file (${backup_bytes} bytes)"
   else
   echo "[auto-deploy] database migration detected; creating full pre-deploy backup"
   echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"
   if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
       pg_dumpall -U "$POSTGRES_USER" --roles-only -h 127.0.0.1 \
     | gzip -1 > "$roles_backup_file"; then
     rm -f "$roles_backup_file"
@@ -262,6 +292,7 @@ if [[ "$backup_required" == "true" ]]; then
   echo "[auto-deploy] backing up database to $backup_file"
   if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
       pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
         -h 127.0.0.1 \
     | gzip -1 > "$backup_file"; then
