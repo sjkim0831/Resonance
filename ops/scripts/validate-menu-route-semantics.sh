@@ -37,6 +37,11 @@ select
   echo "critical calculation/simulation route semantics are incorrect: $critical" >&2; exit 1;
 }
 
+stale_artifacts="$(psqlq -c "select count(*) from framework_process_artifact where process_code='EMISSION_PROJECT' and step_code='EMISSION_PROJECT_CALCULATE' and target_path like '/emission/simulate%';")"
+[[ "$stale_artifacts" == "0" ]] || {
+  echo "generated calculation artifacts still point to reduction simulation: $stale_artifacts" >&2; exit 1;
+}
+
 route_file="$ROOT_DIR/projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts"
 grep -Fq 'koPath: "/emission/calculation"' "$route_file"
 grep -Fq 'id: "emission-calculation", exportName: "EmissionProjectResultPage"' "$route_file"
