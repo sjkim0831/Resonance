@@ -36,7 +36,7 @@ const EMISSION_HOME_MENU_KO: HomeMenuRecord = {
     {
       label: "산정·보고",
       items: [
-        { label: "배출량 산정", url: "/emission/simulate" },
+        { label: "배출량 산정", url: "/emission/calculation" },
         { label: "산정 결과 조회", url: "/emission/result" },
         { label: "배출량 보고서 작성", url: "/emission/report_submit" }
       ]
@@ -76,7 +76,7 @@ const EMISSION_HOME_MENU_EN: HomeMenuRecord = {
     {
       label: "Calculation & Report",
       items: [
-        { label: "Emission Calculation", url: "/en/emission/simulate" },
+        { label: "Emission Calculation", url: "/en/emission/calculation" },
         { label: "Calculation Results", url: "/en/emission/result" },
         { label: "Emission Report", url: "/en/emission/report_submit" }
       ]

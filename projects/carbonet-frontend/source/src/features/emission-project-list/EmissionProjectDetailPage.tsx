@@ -10,7 +10,7 @@ type Detail={id:string;name:string;site:string;period:string;scope:string;owner:
 const stages=[
   {code:"SETUP",ko:"기본정보 확정",en:"Project Setup",actor:"기업 책임자",path:"/emission/project/create",rule:"조직·사업장·기간·Scope·담당자·마감 확정"},
   {code:"COLLECT",ko:"활동자료·증빙",en:"Data & Evidence",actor:"자료 담당자",path:"/emission/data_input",rule:"필수값·단위·증빙 누락 0건"},
-  {code:"CALCULATE",ko:"매핑·산정",en:"Map & Calculate",actor:"산정 담당자",path:"/emission/simulate",rule:"계수·환산·계산근거 연결 완료"},
+  {code:"CALCULATE",ko:"매핑·산정",en:"Map & Calculate",actor:"산정 담당자",path:"/emission/calculation",rule:"계수·환산·계산근거 연결 완료"},
   {code:"VALIDATE",ko:"검증",en:"Validation",actor:"검증 담당자",path:"/emission/validate",rule:"검증 오류 0건 또는 보완 요청"},
   {code:"CORRECT",ko:"보완·재산정",en:"Correction",actor:"자료·산정 담당자",path:"/emission/data_input?mode=correction",rule:"보완 사유·변경 이력·재산정 기록"},
   {code:"APPROVE",ko:"검토·승인",en:"Approval",actor:"승인권자",path:"/emission/validate?tab=approval",rule:"승인 의견과 결과 버전 확정"},

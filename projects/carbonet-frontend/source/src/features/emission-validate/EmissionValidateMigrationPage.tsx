@@ -112,7 +112,7 @@ function getDefaultActionLinks(en: boolean) {
     {
       icon: "tune",
       label: en ? "Back to Simulation" : "시뮬레이션으로 이동",
-      url: buildLocalizedPath("/emission/simulate", "/en/emission/simulate")
+      url: buildLocalizedPath("/emission/calculation", "/en/emission/calculation")
     }
   ];
 }

@@ -168,7 +168,7 @@ export function EmissionDashboardPage() {
     {
       title: "Calculation Simulation",
       subtitle: "Apply factors and GWP, then check variance before reporting.",
-      href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"),
+      href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation"),
       icon: "calculate",
       metric: "88%",
       metricLabel: "calculation ready",
@@ -289,7 +289,7 @@ export function EmissionDashboardPage() {
     {
       title: "배출량 산정",
       subtitle: "배출계수와 GWP를 적용하고 보고 전 편차를 확인합니다.",
-      href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"),
+      href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation"),
       icon: "calculate",
       metric: "88%",
       metricLabel: "산정 준비",

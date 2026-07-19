@@ -141,7 +141,7 @@ function getSiteActionHref(label: string) {
     return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
   }
   if (label.includes("산정") || label.includes("Logic") || label.includes("Calculation")) {
-    return buildLocalizedPath("/emission/simulate", "/en/emission/simulate");
+    return buildLocalizedPath("/emission/calculation", "/en/emission/calculation");
   }
   if (label.includes("보완") || label.includes("Document") || label.includes("Upload")) {
     return buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit");
@@ -432,12 +432,12 @@ export function EmissionProjectListMigrationPage() {
   const workflowSteps = useMemo<WorkflowStep[]>(() => en ? [
     { title: "Site Registry", description: "Register emission sites, process tags, owners, and expected source categories.", status: "Governed", statusClass: "bg-blue-100 text-blue-700", progress: "100%", icon: "inventory_2", href: adminSiteManagementHref },
     { title: "Activity Data Input", description: "Collect fuel, electricity, process, transport, and evidence data by period.", status: "5 pending", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
-    { title: "Simulation & Calculation", description: "Run factor mapping, GWP conversion, site aggregation, and variance checks.", status: "Ready", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate") },
+    { title: "Simulation & Calculation", description: "Run factor mapping, GWP conversion, site aggregation, and variance checks.", status: "Ready", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation") },
     { title: "Report & Verification", description: "Create report packages, submit to verification queue, and track audit evidence.", status: "7 in queue", statusClass: "bg-indigo-100 text-indigo-700", progress: "64%", icon: "verified", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
   ] : [
     { title: "배출지 원장", description: "배출지, 공정 태그, 담당자, 예상 배출원 분류를 등록합니다.", status: "관리 중", statusClass: "bg-blue-100 text-blue-700", progress: "100%", icon: "inventory_2", href: adminSiteManagementHref },
     { title: "활동자료 입력", description: "기간별 연료, 전력, 공정, 운송, 증빙 데이터를 수집합니다.", status: "5건 대기", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
-    { title: "시뮬레이션·산정", description: "배출계수 매핑, GWP 변환, 배출지 집계, 편차 검사를 수행합니다.", status: "실행 가능", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate") },
+    { title: "시뮬레이션·산정", description: "배출계수 매핑, GWP 변환, 배출지 집계, 편차 검사를 수행합니다.", status: "실행 가능", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation") },
     { title: "보고서·검증", description: "보고서 패키지를 만들고 검증 큐에 제출한 뒤 감사 증적을 추적합니다.", status: "7건 진행", statusClass: "bg-indigo-100 text-indigo-700", progress: "64%", icon: "verified", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
   ], [adminSiteManagementHref, en]);
 
@@ -475,7 +475,7 @@ export function EmissionProjectListMigrationPage() {
       icon: "rule_settings",
       accentClass: "border-emerald-200 bg-emerald-50/60 text-emerald-700",
       items: [
-        { label: "Simulation", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), note: "Run factor mapping and variance checks before reporting.", status: "Ready", action: "Run simulation" },
+        { label: "Calculation", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation"), note: "Run factor mapping and variance checks before reporting.", status: "Ready", action: "Run calculation" },
         { label: "Result List", href: buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list"), note: "Compare calculated results by site and period.", status: "Admin", action: "Review results" },
         { label: "Verification", href: buildLocalizedPath("/emission/validate", "/en/emission/validate"), note: "7 items are waiting for verifier review.", status: "In queue", action: "Open queue" }
       ]
@@ -522,7 +522,7 @@ export function EmissionProjectListMigrationPage() {
       icon: "rule_settings",
       accentClass: "border-emerald-200 bg-emerald-50/60 text-emerald-700",
       items: [
-        { label: "시뮬레이션", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), note: "배출계수 매핑과 편차 검사를 보고서 작성 전에 실행합니다.", status: "실행 가능", action: "산정 실행" },
+        { label: "배출량 산정", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation"), note: "배출계수 매핑과 편차 검사를 보고서 작성 전에 실행합니다.", status: "실행 가능", action: "산정 실행" },
         { label: "산정 결과 목록", href: buildLocalizedPath("/admin/emission/result_list", "/en/admin/emission/result_list"), note: "배출지·기간별 산정 결과를 비교하고 상세로 이동합니다.", status: "관리자", action: "결과 검토" },
         { label: "산정 검증", href: buildLocalizedPath("/emission/validate", "/en/emission/validate"), note: "검증자 검토를 기다리는 항목이 7건 있습니다.", status: "검증 대기", action: "검증 열기" }
       ]
@@ -554,12 +554,12 @@ export function EmissionProjectListMigrationPage() {
   ], [adminSiteManagementHref, en]);
 
   const nextHomePageProposals = useMemo<NextHomePageProposal[]>(() => en ? [
-    { order: "01", title: "Run Calculation", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), reason: "5 sites can move to calculation after evidence is completed.", mergeHint: "Recommended before report creation", metric: "88% ready", action: "Open simulation" },
+    { order: "01", title: "Run Calculation", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation"), reason: "5 sites can move to calculation after evidence is completed.", mergeHint: "Recommended before report creation", metric: "88% ready", action: "Open calculation" },
     { order: "02", title: "Inspect LCA Impact", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), reason: "Use calculated data to identify high-impact products and processes.", mergeHint: "Useful for product-level decisions", metric: "12 products", action: "Open LCA" },
     { order: "03", title: "Plan Reductions", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), reason: "Convert variance and LCA findings into reduction scenarios.", mergeHint: "Cost and effect review", metric: "3 options", action: "Plan" },
     { order: "04", title: "Share Monitoring", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), reason: "After approval, share KPIs, alerts, and monthly trends.", mergeHint: "Executive view", metric: "21 sites", action: "Monitor" }
   ] : [
-    { order: "01", title: "산정 실행", href: buildLocalizedPath("/emission/simulate", "/en/emission/simulate"), reason: "증빙 보완이 끝난 5개 배출지를 바로 산정 단계로 넘길 수 있습니다.", mergeHint: "보고서 작성 전 권장", metric: "88% 준비", action: "시뮬레이션" },
+    { order: "01", title: "산정 실행", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation"), reason: "증빙 보완이 끝난 5개 배출지를 바로 산정 단계로 넘길 수 있습니다.", mergeHint: "보고서 작성 전 권장", metric: "88% 준비", action: "배출량 산정" },
     { order: "02", title: "LCA 영향 확인", href: buildLocalizedPath("/emission/lca", "/en/emission/lca"), reason: "산정 결과로 영향이 큰 제품과 공정을 먼저 확인합니다.", mergeHint: "제품 단위 의사결정", metric: "12개 제품", action: "LCA 보기" },
     { order: "03", title: "감축 계획 수립", href: buildLocalizedPath("/emission/reduction", "/en/emission/reduction"), reason: "편차와 LCA 결과를 감축 시나리오로 전환합니다.", mergeHint: "비용·효과 검토", metric: "3개 옵션", action: "계획하기" },
     { order: "04", title: "모니터링 공유", href: buildLocalizedPath("/monitoring/dashboard", "/en/monitoring/dashboard"), reason: "승인 이후 KPI, 경보, 월별 추이를 공유합니다.", mergeHint: "경영진 화면", metric: "21개 배출지", action: "모니터링" }
