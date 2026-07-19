@@ -16,6 +16,11 @@ case "$STEP" in
     readers=(detail calculationResult)
     tests=(verify-emission-tenant-isolation.sql)
     ;;
+  EMISSION_PROJECT_VALIDATE)
+    events=(VERIFICATION_STARTED VERIFIED CORRECTION_REQUESTED)
+    readers=(submissions reviewWorkflow)
+    tests=(verify-emission-activity-quality.sql verify-emission-review-workflow.sql)
+    ;;
   EMISSION_PROJECT_CORRECT)
     events=(CORRECTION_REQUESTED)
     readers=(detail reviewWorkflow)
