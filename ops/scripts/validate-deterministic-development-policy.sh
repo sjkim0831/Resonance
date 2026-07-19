@@ -12,7 +12,7 @@ jq -e '
   .allowUnverifiedCompletion == false and
   .defaultExecutionOrder[0] == "EXACT_EXISTING_IMPLEMENTATION" and
   .defaultExecutionOrder[-1] == "AI_ESCALATION" and
-  (.deterministicJobTypes | sort == ["API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH"])
+  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
 ' "$POLICY" >/dev/null
 bash -n "$WORKER"
 bash -n "$RUNNER"
@@ -21,6 +21,7 @@ bash -n "$ROOT/ops/scripts/validate-existing-emission-project-api.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-notification.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-search.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-performance.sh"
+bash -n "$ROOT/ops/scripts/validate-existing-emission-project-journey.sh"
 grep -Fq 'DETERMINISTIC_FIRST' "$WORKER"
 grep -Fq 'AI_ESCALATED' "$WORKER"
 grep -Fq 'single automatic AI escalation was already consumed' "$WORKER"

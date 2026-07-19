@@ -145,7 +145,11 @@ SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
 SPEC_FILE="$WT/.automation-spec.json"
 printf '%s' "$SPEC" >"$SPEC_FILE"
 SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
-SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"
+if ! SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"; then
+  SEARCH_CONTEXT="$WT/.automation-search-context-fallback.txt"
+  printf 'process=%s\nstep=%s\ntype=%s\ntarget=%s\n\nSearch index preparation failed. Use the approved specification and exact target only; do not broaden scope.\n' \
+    "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH" >"$SEARCH_CONTEXT"
+fi
 psqlq -c "update framework_development_job set search_context_ref='${SEARCH_CONTEXT}',updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null
 cat >"$WT/.automation-prompt.txt" <<PROMPT
 You are implementing one approved Resonance development job.

@@ -21,7 +21,10 @@
     "DATABASE",
     "DATABASE_QUALITY",
     "SEARCH",
-    "PERFORMANCE"
+    "PERFORMANCE",
+    "TEST",
+    "ACTOR_TEST",
+    "INTEGRATION"
   ],
   "evidenceRequired": true,
   "allowUnverifiedCompletion": false,

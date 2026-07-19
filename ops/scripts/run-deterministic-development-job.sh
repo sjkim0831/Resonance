@@ -17,6 +17,23 @@ jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/de
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
 case "$JOB_TYPE" in
+  TEST|ACTOR_TEST|INTEGRATION)
+    validator="$WT/ops/scripts/validate-existing-emission-project-journey.sh"
+    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Verified actor journey adoption: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Job type: $JOB_TYPE
+- Source commit: $(git -C "$WT" rev-parse HEAD)
+- Requirement: $(jq -r '.requirement' "$SPEC_FILE")
+- Validation result: $adoption_json
+
+The deterministic validator requires executable SQL scenarios, authenticated and protected APIs, actor and tenant isolation, linked user/admin pages, state transitions, runtime p95 evidence, and two ready replicas.
+EOF
+    ;;
   SEARCH)
     validator="$WT/ops/scripts/validate-existing-emission-project-search.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
