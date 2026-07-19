@@ -145,6 +145,18 @@ export type EmissionSiteManagementPagePayload = {
   referenceRows?: Array<Record<string, string>>;
 };
 
+export type EmissionSiteRegistryRow = {
+  id: number; code: string; name: string; countryCode: string; postalCode?: string;
+  address: string; detailAddress?: string; boundaryMethod: string; dataOwner?: string;
+  status: "DRAFT" | "ACTIVE" | "INACTIVE"; effectiveFrom: string; effectiveUntil?: string;
+  sourceType?: string; version?: number; updatedBy?: string; updatedAt?: string;
+};
+
+export type EmissionSiteRegistryPayload = {
+  items: EmissionSiteRegistryRow[];
+  summary: Array<{ status: string; count: number }>;
+};
+
 export type EmissionValidatePagePayload = Record<string, unknown> & {
   isEn?: boolean;
   menuCode?: string;

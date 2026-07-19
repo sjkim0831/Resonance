@@ -192,7 +192,7 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
   if [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(menu|navigation)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     menu_backup_only=true
-  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification|assignment|assignee)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
+  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification|assignment|assignee|emission_site|onboarding)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     governance_backup_only=true
   fi
 fi
@@ -229,6 +229,8 @@ if [[ "$backup_required" == "true" ]]; then
           -t framework_project_actor_assignment \
           -t emission_project_registry -t emission_project_task \
           -t emission_project_history -t emission_workflow_notification \
+          -t ui_component_registry -t ui_section_registry \
+          -t framework_design_asset_registry \
       | gzip -1 > "$backup_file"; then
       rm -f "$backup_file"
       echo "[auto-deploy] refusing deployment: targeted governance backup failed" >&2

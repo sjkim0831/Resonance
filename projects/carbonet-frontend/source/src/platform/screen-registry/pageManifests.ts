@@ -2098,6 +2098,7 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     designTokenVersion: "krds-current",
     components: [
       { componentId: "EmissionSiteSummary", instanceKey: "emission-site-summary", layoutZone: "actions", propsSummary: ["summaryCards", "menuCode"] },
+      { componentId: "EmissionSiteRegistry", instanceKey: "emission-site-registry", layoutZone: "content", propsSummary: ["siteRows", "tenantId", "boundaryMethod", "siteStatus"] },
       { componentId: "EmissionSiteQuickLinks", instanceKey: "emission-site-quick-links", layoutZone: "content", propsSummary: ["quickLinks", "menuCode"] },
       { componentId: "EmissionSiteOperations", instanceKey: "emission-site-operation-cards", layoutZone: "content", propsSummary: ["operationCards", "statusLabel"] },
       { componentId: "EmissionSiteFeatureCatalog", instanceKey: "emission-site-feature-catalog", layoutZone: "content", propsSummary: ["featureRows", "featureCode", "manageUrl"] }

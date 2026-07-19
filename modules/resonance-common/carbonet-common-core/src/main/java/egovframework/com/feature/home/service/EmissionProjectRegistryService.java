@@ -65,10 +65,32 @@ public class EmissionProjectRegistryService {
         String tenant=requiredValue(tenantId,"tenantId");
         String term = keyword == null ? "" : keyword.trim(), like = "%" + term + "%";
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("sites", jdbc.queryForList("SELECT DISTINCT site_name FROM emission_project_registry WHERE tenant_id=? AND (?='' OR site_name ILIKE ?) ORDER BY site_name LIMIT 20", String.class,tenant,term,like));
+        result.put("sites", jdbc.queryForList("SELECT site_name FROM emission_site_registry WHERE tenant_id=? AND site_status='ACTIVE' AND (effective_until IS NULL OR effective_until>=current_date) AND (?='' OR site_name ILIKE ?) ORDER BY site_name LIMIT 50", String.class,tenant,term,like));
         result.put("owners", jdbc.queryForList("SELECT DISTINCT owner_name FROM emission_project_registry WHERE tenant_id=? AND (?='' OR owner_name ILIKE ?) ORDER BY owner_name LIMIT 20", String.class,tenant,term,like));
-        result.put("accounts", jdbc.queryForList("SELECT account_id AS \"id\",string_agg(DISTINCT actor_code,', ' ORDER BY actor_code) AS \"actors\" FROM framework_account_actor_assignment WHERE tenant_id IN (?, 'DEFAULT') AND assignment_status='ACTIVE' AND (?='' OR account_id ILIKE ?) GROUP BY account_id ORDER BY account_id LIMIT 100",tenant,term,like));
+        result.put("accounts", jdbc.queryForList("SELECT account_id AS \"id\",string_agg(DISTINCT actor_code,', ' ORDER BY actor_code) AS \"actors\" FROM framework_account_actor_assignment WHERE tenant_id=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND (?='' OR account_id ILIKE ?) GROUP BY account_id ORDER BY account_id LIMIT 100",tenant,term,like));
+        result.put("readiness", onboardingReadiness(tenant));
         result.put("currentUser",requiredValue(actor,"actor"));
+        return result;
+    }
+
+    public Map<String,Object> onboardingReadiness(String tenantId) {
+        String tenant=requiredValue(tenantId,"tenantId");
+        boolean sandbox="DEFAULT".equals(tenant);
+        Integer companyCount=sandbox?1:jdbc.queryForObject("SELECT count(*) FROM comtninsttinfo WHERE trim(instt_id)=? AND upper(trim(instt_sttus)) IN ('P','A','APPROVED','ACTIVE','Y')",Integer.class,tenant);
+        Integer siteCount=jdbc.queryForObject("SELECT count(*) FROM emission_site_registry WHERE tenant_id=? AND site_status='ACTIVE' AND (effective_until IS NULL OR effective_until>=current_date)",Integer.class,tenant);
+        List<String> requiredActors=List.of("COMPANY_MANAGER","SITE_DATA_OWNER","CALCULATOR","VERIFIER","APPROVER");
+        List<Map<String,Object>> actorRows=jdbc.queryForList("SELECT actor_code AS actor,count(DISTINCT account_id) AS count FROM framework_account_actor_assignment WHERE tenant_id=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND actor_code IN ('COMPANY_MANAGER','SITE_DATA_OWNER','CALCULATOR','VERIFIER','APPROVER') GROUP BY actor_code",tenant);
+        Map<String,Integer> coverage=new LinkedHashMap<>();
+        for(String code:requiredActors)coverage.put(code,0);
+        for(Map<String,Object> row:actorRows)coverage.put(String.valueOf(row.get("actor")),((Number)row.get("count")).intValue());
+        List<String> missing=new ArrayList<>();
+        if(companyCount==null||companyCount==0)missing.add("COMPANY_NOT_APPROVED");
+        if(siteCount==null||siteCount==0)missing.add("ACTIVE_SITE_REQUIRED");
+        for(String code:requiredActors)if(coverage.getOrDefault(code,0)==0)missing.add("REQUIRED_ACTOR_MISSING:"+code);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("ready",missing.isEmpty());result.put("sandbox",sandbox);result.put("companyApproved",companyCount!=null&&companyCount>0);
+        result.put("activeSiteCount",siteCount==null?0:siteCount);result.put("actorCoverage",coverage);result.put("missing",missing);
+        result.put("siteManagementUrl","/admin/emission/site-management");result.put("actorManagementUrl","/admin/system/actor-process");
         return result;
     }
 
@@ -593,10 +615,18 @@ public class EmissionProjectRegistryService {
 
     @Transactional
     public String copy(String sourceId,String tenantId,String actor,boolean override) {
-        requireProjectActor(sourceId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
+        String tenant=requiredValue(tenantId,"tenantId");
+        requireProjectActor(sourceId,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
         Map<String, Object> source = detail(sourceId);
+        Map<String,String> actors=new LinkedHashMap<>();
+        jdbc.queryForList("SELECT actor_code,user_id FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y'",sourceId)
+            .forEach(row->actors.put(String.valueOf(row.get("actor_code")),String.valueOf(row.get("user_id"))));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", source.get("name") + " - 복사본"); body.put("site", source.get("site")); body.put("owner", source.get("owner"));
+        body.put("dataOwner",requiredValue(actors.get("SITE_DATA_OWNER"),"dataOwner"));
+        body.put("calculator",requiredValue(actors.get("CALCULATOR"),"calculator"));
+        body.put("verifier",requiredValue(actors.get("VERIFIER"),"verifier"));
+        body.put("approver",requiredValue(actors.get("APPROVER"),"approver"));
         body.put("reportingYear", source.get("reportingYear")); body.put("periodStart", source.get("periodStart")); body.put("periodEnd", source.get("periodEnd")); body.put("dueDate", source.get("dueDate"));
         body.put("scopes", List.of(String.valueOf(source.get("scope")).split("·")));
         body.put("organizationBoundary", source.get("organizationBoundary") == null ? "OPERATIONAL_CONTROL" : source.get("organizationBoundary"));
@@ -605,19 +635,27 @@ public class EmissionProjectRegistryService {
         body.put("verificationLevel", source.get("verificationLevel") == null ? "LIMITED" : source.get("verificationLevel"));
         body.put("collectionCycle", source.get("collectionCycle") == null ? "MONTHLY" : source.get("collectionCycle"));
         body.put("materialityThreshold", source.get("materialityThreshold") == null ? 5 : source.get("materialityThreshold"));
-        return create(tenantId,body);
+        return create(tenant,body);
     }
 
     @Transactional
     public String create(String tenantId,Map<String, Object> body) {
         String tenant=requiredValue(tenantId,"tenantId");
         EmissionProjectCreationPolicy.Contract contract=EmissionProjectCreationPolicy.validate(body);
+        Map<String,Object> readiness=onboardingReadiness(tenant);
+        if(!Boolean.TRUE.equals(readiness.get("ready"))) throw new IllegalArgumentException("PROJECT_ONBOARDING_INCOMPLETE:"+readiness.get("missing"));
         String requestId=requiredValue(String.valueOf(body.getOrDefault("clientRequestId",UUID.randomUUID().toString())),"clientRequestId");
         if(requestId.length()>100) throw new IllegalArgumentException("PROJECT_CLIENT_REQUEST_ID_TOO_LONG");
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+requestId);
         List<String> existing=jdbc.queryForList("SELECT project_id FROM emission_project_registry WHERE tenant_id=? AND creation_request_id=?",String.class,tenant,requestId);
         if(!existing.isEmpty()) return existing.get(0);
         String name=contract.name(),site=contract.site(),owner=contract.owner(),dataOwner=contract.dataOwner(),calculator=contract.calculator(),verifier=contract.verifier(),approver=contract.approver();
+        assertActiveSite(tenant,site);
+        assertActorEligible(tenant,owner,"COMPANY_MANAGER");
+        assertActorEligible(tenant,dataOwner,"SITE_DATA_OWNER");
+        assertActorEligible(tenant,calculator,"CALCULATOR");
+        assertActorEligible(tenant,verifier,"VERIFIER");
+        assertActorEligible(tenant,approver,"APPROVER");
         LocalDate start=contract.periodStart(),end=contract.periodEnd(),due=contract.dueDate();int year=contract.reportingYear();
         if (!nameAvailable(tenant,name)) throw new IllegalArgumentException("이미 등록된 프로젝트명입니다.");
         String scope=contract.scopes().stream().sorted().reduce((a,b)->a+"·"+b).orElseThrow();
@@ -659,5 +697,7 @@ public class EmissionProjectRegistryService {
         return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant);
     }
     private String required(Map<String,Object> body,String key) { String value=String.valueOf(body.getOrDefault(key,"")).trim(); if(value.isEmpty()) throw new IllegalArgumentException(key+" is required"); return value; }
+    private void assertActiveSite(String tenant,String site) { Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_site_registry WHERE tenant_id=? AND lower(trim(site_name))=lower(trim(?)) AND site_status='ACTIVE' AND (effective_until IS NULL OR effective_until>=current_date)",Integer.class,tenant,site);if(count==null||count==0)throw new IllegalArgumentException("PROJECT_SITE_NOT_REGISTERED"); }
+    private void assertActorEligible(String tenant,String account,String actorCode) { Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment WHERE tenant_id=? AND lower(account_id)=lower(?) AND actor_code=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date)",Integer.class,tenant,account,actorCode);if(count==null||count==0)throw new IllegalArgumentException("PROJECT_ACTOR_NOT_ELIGIBLE:"+actorCode+":"+account); }
     private String requiredValue(String value,String key) { String normalized=value==null?"":value.trim(); if(normalized.isEmpty()) throw new IllegalArgumentException(key+" is required"); return normalized; }
 }

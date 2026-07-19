@@ -13,7 +13,9 @@ import {
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 
-type Options = { sites: string[]; owners: string[]; accounts: { id: string; actors: string }[]; currentUser: string };
+type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
+type Options = { sites: string[]; owners: string[]; accounts: { id: string; actors: string }[]; currentUser: string; readiness: Readiness };
+const EMPTY_READINESS:Readiness={ready:false,companyApproved:false,activeSiteCount:0,actorCoverage:{},missing:[],siteManagementUrl:"/admin/emission/site-management",actorManagementUrl:"/admin/system/actor-process"};
 const year = new Date().getFullYear();
 const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const EMPTY = {
@@ -43,7 +45,7 @@ export function EmissionProjectCreatePage() {
     content = LOCALIZED_CONTENT[en ? "en" : "ko"],
     homeState = useAsyncValue(() => fetchHomePayload(), [en]);
   const [form, setForm] = useState(EMPTY),
-    [options, setOptions] = useState<Options>({ sites: [], owners: [], accounts: [], currentUser: "" }),
+    [options, setOptions] = useState<Options>({ sites: [], owners: [], accounts: [], currentUser: "", readiness: EMPTY_READINESS }),
     [saving, setSaving] = useState(false),
     [message, setMessage] = useState(""),
     [optionsLoading, setOptionsLoading] = useState(true),
@@ -66,14 +68,15 @@ export function EmissionProjectCreatePage() {
           owners:Array.isArray(value.owners)?value.owners:[],
           accounts:Array.isArray(value.accounts)?value.accounts:[],
           currentUser:typeof value.currentUser==="string"?value.currentUser:"",
+          readiness:value.readiness&&typeof value.readiness==="object"?{...EMPTY_READINESS,...value.readiness}:EMPTY_READINESS,
         };
         setOptions(normalized);
         setForm(current=>({...current,owner:current.owner||normalized.currentUser}));
         setOptionsError("");
       })
       .catch(() => {
-        setOptions({ sites: [], owners: [], accounts: [], currentUser: "" });
-        setOptionsError(en ? "Reference data could not be loaded. You can still enter values directly." : "기준정보를 불러오지 못했습니다. 필요한 값은 직접 입력할 수 있습니다.");
+        setOptions({ sites: [], owners: [], accounts: [], currentUser: "", readiness: EMPTY_READINESS });
+        setOptionsError(en ? "Project readiness could not be verified. Creation is blocked for safety." : "프로젝트 착수 준비 상태를 확인하지 못했습니다. 안전을 위해 생성을 차단합니다.");
       })
       .finally(()=>setOptionsLoading(false));
   }, []);
@@ -98,6 +101,8 @@ export function EmissionProjectCreatePage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setMessage("");
+    if (!options.readiness.ready)
+      return setMessage(en ? "Complete company, site, and actor onboarding before creating a project." : "기업 승인, 사업장 등록, 필수 액터 배정을 완료한 후 프로젝트를 생성해 주세요.");
     if (nameState === "duplicate")
       return setMessage(
         en
@@ -205,6 +210,11 @@ export function EmissionProjectCreatePage() {
           </p>
           {optionsLoading&&<p className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900" role="status">{en?"Loading project reference data...":"프로젝트 기준정보를 불러오는 중입니다."}</p>}
           {optionsError&&<p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900" role="alert">{optionsError}</p>}
+          {!optionsLoading&&!optionsError?<section className={`mt-5 rounded-xl border p-5 ${options.readiness.ready?"border-emerald-200 bg-emerald-50":"border-amber-300 bg-amber-50"}`} aria-label={en?"Project readiness":"프로젝트 착수 준비 진단"}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-sm font-black text-[#052b57]">{en?"Project readiness":"프로젝트 착수 준비 진단"}</p><p className="mt-1 text-sm text-slate-700">{options.readiness.ready?(en?"Company, site, and required actor checks passed.":"기업·사업장·필수 액터 검사를 모두 통과했습니다."):(en?"Resolve the blocking items before starting a governed project.":"아래 차단 항목을 해결해야 감사 가능한 프로젝트를 시작할 수 있습니다.")}</p></div><span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${options.readiness.ready?"bg-emerald-700 text-white":"bg-amber-700 text-white"}`}>{options.readiness.ready?(en?"READY":"착수 가능"):(en?"ACTION REQUIRED":"조치 필요")}</span></div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div></div>
+            {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {item}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
+          </section>:null}
           <form className="mt-7 space-y-5" data-testid="emission-project-create-form" onSubmit={submit} noValidate>
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-black text-[#052b57]">
@@ -244,18 +254,17 @@ export function EmissionProjectCreatePage() {
                 <label className="text-sm font-bold">
                   {en ? "Site" : "사업장"}
                   <span className="ml-1 text-red-600">*</span>
-                  <input
+                  <select
                     className={input}
                     required
-                    list="project-sites"
                     value={form.site}
                     onChange={(e) => setForm({ ...form, site: e.target.value })}
-                  />
-                  <datalist id="project-sites">
+                  >
+                    <option value="">{en ? "Select a registered site" : "등록 사업장 선택"}</option>
                     {options.sites.map((v) => (
                       <option key={v} value={v} />
                     ))}
-                  </datalist>
+                  </select>
                 </label>
                 <label className="text-sm font-bold">
                   {en ? "Reporting year" : "보고연도"}
@@ -405,7 +414,7 @@ export function EmissionProjectCreatePage() {
               </a>
               <button
                 className="min-h-12 rounded-lg bg-[#246beb] px-7 font-black text-white disabled:opacity-50"
-                disabled={saving}
+                disabled={saving||optionsLoading||!options.readiness.ready}
                 type="submit"
               >
                 {saving
