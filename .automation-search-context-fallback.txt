@@ -1,0 +1,6 @@
+process=EMISSION_PROJECT
+step=EMISSION_PROJECT_APPROVE
+type=TEST
+target=test/emission_project_emission_project_approve
+
+Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
