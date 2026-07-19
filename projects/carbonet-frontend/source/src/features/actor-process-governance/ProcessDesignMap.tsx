@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Row = Record<string, unknown>;
 type Props = {
@@ -14,66 +14,113 @@ type Props = {
   busy: boolean;
 };
 
-const text=(row:Row,key:string)=>String(row[key]??"");
-const yes=(value:unknown)=>value===true||value==="true"||value==="Y";
-const requiredJobTypes=(step:Row)=>[
-  yes(step.requiresDatabase)&&"DATABASE",yes(step.requiresApi)&&"API",yes(step.requiresApi)&&"BACKEND",
-  yes(step.requiresUserPage)&&"FRONTEND_USER",yes(step.requiresAdminPage)&&"FRONTEND_ADMIN","TEST","INTEGRATION",
-].filter(Boolean) as string[];
+const text = (row: Row, key: string) => String(row[key] ?? "");
+const normalizedStatus = (row: Row) => text(row, "jobStatus") || text(row, "status");
+const finished = (status: string) => ["VERIFIED", "COMPLETED"].includes(status);
 
-function screenType(step:Row){
-  const value=`${text(step,"stepCode")} ${text(step,"stepName")} ${text(step,"requirementText")}`.toUpperCase();
-  if(/UPLOAD|업로드|수집/.test(value))return "업로드·오류 보정";
-  if(/MAP|매핑/.test(value))return "데이터 매핑";
-  if(/APPROV|승인|검토/.test(value))return "상세·검토·승인";
-  if(/REPORT|보고서|인증서/.test(value))return "보고서·발행";
-  if(/CALCUL|산정/.test(value))return "산정 작업공간";
-  if(/DASH|현황|모니터/.test(value))return "대시보드";
-  return yes(step.requiresUserPage)||yes(step.requiresAdminPage)?"업무 등록·상세":"자동 처리";
+function routeLink(path: string, label: string) {
+  if (!path) return null;
+  return <a className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm font-bold text-[#164f86] hover:bg-blue-50" href={path}>
+    <span className="material-symbols-outlined text-lg">open_in_new</span>{label}
+  </a>;
 }
 
-export function ProcessDesignMap(props:Props){
-  const active=props.processCode||text(props.processes[0]||{},"processCode");
-  const process=props.processes.find(row=>text(row,"processCode")===active)||{};
-  const steps=useMemo(()=>props.steps.filter(row=>text(row,"processCode")===active).sort((a,b)=>Number(a.stepOrder)-Number(b.stepOrder)),[active,props.steps]);
-  const [selected,setSelected]=useState("");
-  const selectedStep=steps.find(row=>text(row,"stepCode")===(selected||text(steps[0]||{},"stepCode")))||{};
-  const actor=props.actors.find(row=>text(row,"actorCode")===text(selectedStep,"actorCode"))||{};
-  const processCases=props.cases.filter(row=>text(row,"processCode")===active);
-  const safetyTypes=new Set(processCases.map(row=>text(row,"caseType")));
-  const stepRows=steps.map(step=>{
-    const code=text(step,"stepCode"), jobs=props.jobs.filter(row=>text(row,"processCode")===active&&text(row,"stepCode")===code);
-    const required=requiredJobTypes(step), present=new Set(jobs.map(row=>text(row,"jobType")));
-    const missing=required.filter(type=>!present.has(type));
-    const contractMissing=[!text(step,"actorCode")&&"액터",!text(step,"fromState")&&"시작 상태",!text(step,"toState")&&"완료 상태",!text(step,"completionRule")&&"완료 조건",!text(step,"requirementText")&&"상세 설계"].filter(Boolean) as string[];
-    const ready=missing.length===0&&contractMissing.length===0&&safetyTypes.size>=5;
-    return {step,jobs,missing,contractMissing,ready};
+export function ProcessDesignMap(props: Props) {
+  const active = props.processCode || text(props.processes[0] || {}, "processCode");
+  const process = props.processes.find((row) => text(row, "processCode") === active) || {};
+  const steps = useMemo(() => props.steps
+    .filter((row) => text(row, "processCode") === active)
+    .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)), [active, props.steps]);
+  const [selected, setSelected] = useState("");
+  useEffect(() => setSelected(text(steps[0] || {}, "stepCode")), [active]);
+
+  const selectedStep = steps.find((row) => text(row, "stepCode") === selected) || steps[0] || {};
+  const selectedCode = text(selectedStep, "stepCode");
+  const actor = props.actors.find((row) => text(row, "actorCode") === text(selectedStep, "actorCode")) || {};
+  const processCases = props.cases.filter((row) => text(row, "processCode") === active);
+  const processJobs = props.jobs.filter((row) => text(row, "processCode") === active);
+  const processVerified = processJobs.filter((row) => finished(normalizedStatus(row))).length;
+  const processProgress = processJobs.length ? Math.round(processVerified * 100 / processJobs.length) : 0;
+
+  const rows = steps.map((step) => {
+    const code = text(step, "stepCode");
+    const jobs = processJobs.filter((row) => text(row, "stepCode") === code);
+    const verified = jobs.filter((row) => finished(normalizedStatus(row))).length;
+    const running = jobs.filter((row) => normalizedStatus(row) === "RUNNING").length;
+    const failed = jobs.filter((row) => ["FAILED", "RETRY"].includes(normalizedStatus(row))).length;
+    const progress = jobs.length ? Math.round(verified * 100 / jobs.length) : 0;
+    return { step, jobs, verified, running, failed, progress };
   });
-  const complete=stepRows.filter(row=>row.ready).length;
-  const readiness=steps.length?Math.round(complete*100/steps.length):0;
-  const selectedStatus=stepRows.find(row=>text(row.step,"stepCode")===text(selectedStep,"stepCode"));
-  const routes=[text(selectedStep,"userPath"),text(selectedStep,"adminPath")].filter(Boolean);
-  const selectedArtifacts=props.artifacts.filter(row=>text(row,"processCode")===active&&text(row,"stepCode")===text(selectedStep,"stepCode"));
+
+  const selectedRow = rows.find((row) => text(row.step, "stepCode") === selectedCode);
+  const selectedArtifacts = props.artifacts.filter((row) => text(row, "processCode") === active && (!text(row, "stepCode") || text(row, "stepCode") === selectedCode));
+  const userPath = text(selectedStep, "userPath");
+  const adminPath = text(selectedStep, "adminPath");
+
   return <div className="space-y-5">
     <section className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-white p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div><p className="text-xs font-black tracking-wider text-blue-700">CANONICAL PROCESS DESIGN</p><h2 className="mt-1 text-2xl font-black text-[#052b57]">액터·프로세스·Task·화면·개발·테스트 전체 설계도</h2><p className="mt-2 text-sm text-slate-600">공통 계약을 기준으로 누락을 먼저 차단한 뒤 변경된 설계만 개발 큐로 보냅니다.</p></div>
-        <div className="flex flex-col gap-2 sm:flex-row"><select className="h-11 min-w-72 rounded-lg border bg-white px-3 font-bold" value={active} onChange={event=>props.onProcessChange(event.target.value)}>{props.processes.map(row=><option key={text(row,"processCode")} value={text(row,"processCode")}>{text(row,"processName")} ({text(row,"processCode")})</option>)}</select><button className="h-11 rounded-lg bg-[#0f7b49] px-5 font-black text-white disabled:opacity-40" disabled={props.busy||readiness<100} onClick={()=>props.onDirectDevelop(active)}>설계부터 개발 큐까지 즉시 반영</button></div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-wider text-blue-700">PROJECT DELIVERY MAP</p>
+          <h2 className="mt-1 text-2xl font-black text-[#052b57]">프로세스·화면·개발 진척도 지도</h2>
+          <p className="mt-2 text-sm text-slate-600">각 단계를 선택하면 담당 액터, 완료 조건, 사용자·관리자 화면, API와 개발 작업 상태를 함께 확인할 수 있습니다.</p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <select aria-label="프로세스 선택" className="h-11 min-w-72 rounded-lg border bg-white px-3 font-bold" value={active} onChange={(event) => props.onProcessChange(event.target.value)}>
+            {props.processes.map((row) => <option key={text(row, "processCode")} value={text(row, "processCode")}>{text(row, "processName")} ({text(row, "processCode")})</option>)}
+          </select>
+          <button className="h-11 rounded-lg bg-[#0f7b49] px-5 font-black text-white disabled:opacity-40" disabled={props.busy || processProgress < 100} onClick={() => props.onDirectDevelop(active)} type="button">검증된 설계 반영</button>
+        </div>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["설계 완성도",`${readiness}%`],["프로세스 단계",steps.length],["안전 테스트 유형",`${safetyTypes.size}/5`],["개발 가능 단계",`${complete}/${steps.length}`]].map(([label,value])=><div className="rounded-xl border bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value}</strong></div>)}</div>
-      {readiness<100&&<p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">누락이 있는 단계는 자동 개발이 차단됩니다. 빨간 단계를 선택해 상세 누락 항목을 보완하십시오.</p>}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[["전체 진척도", `${processProgress}%`], ["프로세스 단계", steps.length], ["개발 작업", `${processVerified}/${processJobs.length}`], ["테스트 시나리오", processCases.length]].map(([label, value]) => <div className="rounded-xl border bg-white p-4" key={String(label)}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value}</strong></div>)}
+      </div>
+      <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200" aria-label={`전체 진척도 ${processProgress}%`}><div className="h-full bg-[#246beb]" style={{ width: `${processProgress}%` }} /></div>
     </section>
 
     <section className="rounded-2xl border bg-white p-4 lg:p-6">
-      <div className="mb-4"><h3 className="font-black text-[#052b57]">{text(process,"processName")}</h3><p className="text-sm text-slate-600">{text(process,"goal")}</p></div>
-      <div className="flex flex-col gap-3 overflow-x-auto pb-2 md:flex-row md:items-stretch">
-        {stepRows.map((row,index)=>{const step=row.step,code=text(step,"stepCode"),isSelected=code===text(selectedStep,"stepCode");return <div className="contents" key={code}><button className={`min-w-64 rounded-xl border-2 p-4 text-left transition ${isSelected?"border-[#246beb] bg-blue-50":row.ready?"border-emerald-200 bg-emerald-50":"border-red-200 bg-red-50"}`} onClick={()=>setSelected(code)}><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-600">{index+1}</span><span className={`text-xs font-black ${row.ready?"text-emerald-700":"text-red-700"}`}>{row.ready?"READY":"DESIGN GAP"}</span></div><strong className="mt-3 block text-base text-[#052b57]">{text(step,"stepName")}</strong><p className="mt-1 text-xs font-bold text-blue-700">{text(step,"actorCode")||"액터 미지정"}</p><p className="mt-3 text-xs text-slate-600">{text(step,"fromState")} → {text(step,"toState")}</p><div className="mt-3 flex flex-wrap gap-1">{[screenType(step),`${row.jobs.length} tasks`].map(tag=><span className="rounded bg-white px-2 py-1 text-[11px] font-bold" key={tag}>{tag}</span>)}</div></button>{index<stepRows.length-1&&<div className="flex items-center justify-center text-xl font-black text-slate-300 md:px-1">→</div>}</div>})}
+      <div className="mb-5"><h3 className="text-lg font-black text-[#052b57]">{text(process, "processName")}</h3><p className="mt-1 text-sm text-slate-600">{text(process, "goal")}</p></div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {rows.map((row, index) => {
+          const code = text(row.step, "stepCode");
+          const isSelected = code === selectedCode;
+          const state = row.failed ? "확인 필요" : row.running ? "진행 중" : row.progress === 100 ? "완료" : "예정";
+          return <button aria-pressed={isSelected} className={`min-h-44 rounded-xl border-2 p-4 text-left ${isSelected ? "border-[#246beb] bg-blue-50" : "border-slate-200 bg-white hover:border-blue-300"}`} key={code} onClick={() => setSelected(code)} type="button">
+            <div className="flex items-center justify-between gap-2"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black">{index + 1}</span><span className="text-xs font-black text-slate-600">{state}</span></div>
+            <strong className="mt-3 block text-base text-[#052b57]">{text(row.step, "stepName")}</strong>
+            <p className="mt-1 text-xs font-bold text-blue-700">{text(row.step, "actorCode") || "액터 미지정"}</p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-[#246beb]" style={{ width: `${row.progress}%` }} /></div>
+            <p className="mt-2 text-xs text-slate-600">{row.verified}/{row.jobs.length} 완료 · 실행 {row.running} · 오류 {row.failed}</p>
+          </button>;
+        })}
       </div>
     </section>
 
-    <section className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
-      <article className="rounded-2xl border bg-white p-5"><p className="text-xs font-black text-blue-700">SELECTED STEP</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{text(selectedStep,"stepName")||"단계를 선택하십시오"}</h3><div className="mt-5 grid gap-3 sm:grid-cols-2">{[["수행 액터",`${text(actor,"actorName")||"미지정"} (${text(selectedStep,"actorCode")||"-"})`],["화면 유형",screenType(selectedStep)],["명령",text(selectedStep,"commandCode")||"미지정"],["완료 조건",text(selectedStep,"completionRule")||"미지정"],["사용 화면",routes.join(" · ")||"화면 없음"],["API",text(selectedStep,"apiContract")||"API 없음"]].map(([label,value])=><div className="rounded-lg bg-slate-50 p-3" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><p className="mt-1 break-words text-sm font-bold text-slate-800">{value}</p></div>)}</div><h4 className="mt-5 font-black text-[#052b57]">상세 요구사항</h4><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{text(selectedStep,"requirementText")||"상세 요구사항이 없습니다."}</p></article>
-      <article className="rounded-2xl border bg-white p-5"><h3 className="font-black text-[#052b57]">개발·검증 계약</h3><div className="mt-4 space-y-3">{[["DB·API·백엔드·화면·테스트",selectedStatus?.missing.length?`누락: ${selectedStatus.missing.join(", ")}`:"작업 계약 연결"],["설계 필수 항목",selectedStatus?.contractMissing.length?`누락: ${selectedStatus.contractMissing.join(", ")}`:"필수 계약 완성"],["정상·예외·권한·격리·복구",safetyTypes.size>=5?"5종 테스트 연결":`테스트 유형 ${5-safetyTypes.size}개 부족`],["산출물",`${selectedArtifacts.length}개 · 검증 ${selectedArtifacts.filter(row=>text(row,"status")==="VERIFIED").length}개`]].map(([label,value])=><div className={`rounded-lg border p-3 ${String(value).includes("누락")||String(value).includes("부족")?"border-red-200 bg-red-50":"border-emerald-200 bg-emerald-50"}`} key={label}><span className="text-xs font-black text-slate-500">{label}</span><p className="mt-1 text-sm font-bold text-slate-800">{value}</p></div>)}</div></article>
+    <section className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+      <article className="rounded-2xl border bg-white p-5">
+        <p className="text-xs font-black text-blue-700">SELECTED STEP</p>
+        <h3 className="mt-1 text-xl font-black text-[#052b57]">{text(selectedStep, "stepName") || "단계를 선택하세요"}</h3>
+        <div className="mt-4 flex flex-wrap gap-2">{routeLink(userPath, "사용자 화면")}{routeLink(adminPath, "관리자 화면")}</div>
+        {!userPath && !adminPath && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">연결된 화면이 없습니다. 자동 처리 단계인지 화면 설계 누락인지 확인해야 합니다.</p>}
+        <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+          {[["담당 액터", `${text(actor, "actorName") || text(selectedStep, "actorCode") || "미지정"}`], ["상태 전이", `${text(selectedStep, "fromState") || "-"} → ${text(selectedStep, "toState") || "-"}`], ["실행 명령", text(selectedStep, "commandCode") || "미지정"], ["API 계약", text(selectedStep, "apiContract") || "없음"]].map(([label, value]) => <div className="rounded-lg bg-slate-50 p-3" key={label}><dt className="text-xs font-bold text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm font-bold text-slate-800">{value}</dd></div>)}
+        </dl>
+        <h4 className="mt-5 font-black text-[#052b57]">완료 조건</h4><p className="mt-2 text-sm leading-6 text-slate-700">{text(selectedStep, "completionRule") || "완료 조건이 등록되지 않았습니다."}</p>
+        <h4 className="mt-5 font-black text-[#052b57]">상세 설계</h4><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{text(selectedStep, "requirementText") || "상세 설계가 등록되지 않았습니다."}</p>
+      </article>
+
+      <article className="rounded-2xl border bg-white p-5">
+        <h3 className="font-black text-[#052b57]">개발 작업과 산출물</h3>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          {[["완료", selectedRow?.verified || 0], ["진행", selectedRow?.running || 0], ["오류", selectedRow?.failed || 0]].map(([label, value]) => <div className="rounded-lg bg-slate-50 p-3" key={label}><strong className="block text-xl text-[#052b57]">{value}</strong><span className="text-xs text-slate-500">{label}</span></div>)}
+        </div>
+        <div className="mt-5 max-h-72 space-y-2 overflow-y-auto">
+          {(selectedRow?.jobs || []).map((job) => <div className="flex items-center justify-between gap-3 rounded-lg border p-3" key={text(job, "jobId")}><div className="min-w-0"><strong className="block truncate text-sm">{text(job, "jobType")}</strong><span className="text-xs text-slate-500">{text(job, "targetPath")}</span></div><span className="shrink-0 text-xs font-black text-slate-600">{normalizedStatus(job)}</span></div>)}
+          {!selectedRow?.jobs.length && <p className="rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">등록된 개발 작업이 없습니다.</p>}
+        </div>
+        <h4 className="mt-5 font-black text-[#052b57]">연결 산출물 {selectedArtifacts.length}건</h4>
+        <div className="mt-2 space-y-2">{selectedArtifacts.slice(0, 8).map((item) => <div className="rounded-lg bg-slate-50 p-3" key={`${text(item, "artifactCode")}-${text(item, "artifactName")}`}><strong className="text-sm">{text(item, "artifactName") || text(item, "artifactCode")}</strong><p className="mt-1 text-xs text-slate-500">{text(item, "deliveryStatus") || text(item, "status")}</p></div>)}</div>
+      </article>
     </section>
   </div>;
 }
