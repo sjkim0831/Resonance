@@ -140,19 +140,25 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional
-    public int mapFactor(String projectId,long activityId,String factorId,String tenantId,String actor,boolean override) {
-        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"CALCULATOR",override);
-        requireSubmittedActivityData(projectId);
+    public int mapFactor(String projectId,long activityId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),factorId=required(body,"factorId"),reason=text(body.get("reason"));
+        requireProjectActor(projectId,tenant,user,"CALCULATOR",override); requireAcceptedActivityData(projectId);
+        Integer eligible=jdbc.queryForObject("SELECT count(*) FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' AND i.activity_id=?",Integer.class,projectId,tenant,activityId);
+        if(eligible==null||eligible==0) throw new IllegalStateException("FACTOR_MAPPING_REQUIRES_ACCEPTED_ACTIVITY");
+        List<Map<String,Object>> factors=jdbc.queryForList("SELECT unit FROM emission_factor_reference WHERE factor_id=?",factorId); if(factors.isEmpty())throw new IllegalArgumentException("FACTOR_NOT_FOUND");
+        Boolean unitMatch=jdbc.queryForObject("SELECT unit=? FROM emission_activity_data WHERE project_id=? AND activity_id=?",Boolean.class,text(factors.get(0).get("unit")),projectId,activityId);
+        jdbc.update("UPDATE emission_factor_mapping_decision SET active_yn='N' WHERE project_id=? AND activity_id=? AND active_yn='Y'",projectId,activityId);
         int changed=jdbc.update("UPDATE emission_activity_data SET factor_id=?,mapping_status='MAPPED',updated_at=current_timestamp WHERE project_id=? AND activity_id=?",factorId,projectId,activityId);
         if(changed==0) throw new IllegalArgumentException("활동자료를 찾을 수 없습니다.");
+        jdbc.update("INSERT INTO emission_factor_mapping_decision(tenant_id,project_id,activity_id,factor_id,mapping_method,confidence_score,unit_match,decision_reason,decided_by) VALUES (?,?,?,?,'MANUAL',1,?,?,?)",tenant,projectId,activityId,factorId,Boolean.TRUE.equals(unitMatch),reason.isBlank()?"산정 담당자 직접 선택":reason,user);
         return changed;
     }
 
     @Transactional
     public int autoMap(String projectId,String tenantId,String actor,boolean override) {
-        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"CALCULATOR",override);
-        requireSubmittedActivityData(projectId);
-        int changed=jdbc.update("UPDATE emission_activity_data a SET factor_id=(SELECT r.factor_id FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category ORDER BY CASE WHEN r.unit=a.unit THEN 0 ELSE 1 END,r.factor_id LIMIT 1),mapping_status='MAPPED',updated_at=current_timestamp WHERE a.project_id=? AND a.factor_id IS NULL AND EXISTS (SELECT 1 FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category)",projectId);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"CALCULATOR",override); requireAcceptedActivityData(projectId);
+        int changed=jdbc.update("UPDATE emission_activity_data a SET factor_id=(SELECT r.factor_id FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category ORDER BY CASE WHEN r.unit=a.unit THEN 0 ELSE 1 END,CASE WHEN lower(r.factor_name)=lower(a.activity_name) THEN 0 ELSE 1 END,r.factor_id LIMIT 1),mapping_status='MAPPED',updated_at=current_timestamp WHERE a.project_id=? AND a.factor_id IS NULL AND EXISTS (SELECT 1 FROM emission_activity_request q JOIN emission_activity_submission_item i ON i.submission_id=q.last_submission_id WHERE q.project_id=a.project_id AND q.tenant_id=? AND q.request_status='ACCEPTED' AND i.activity_id=a.activity_id) AND EXISTS (SELECT 1 FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category)",projectId,tenant);
+        jdbc.update("INSERT INTO emission_factor_mapping_decision(tenant_id,project_id,activity_id,factor_id,mapping_method,confidence_score,unit_match,decision_reason,decided_by) SELECT ?,a.project_id,a.activity_id,a.factor_id,'AUTO',CASE WHEN lower(f.factor_name)=lower(a.activity_name) AND f.unit=a.unit THEN 1 WHEN f.unit=a.unit THEN .85 ELSE .55 END,f.unit=a.unit,'명칭·구분·단위 결정 규칙 자동 추천',? FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id JOIN emission_activity_request q ON q.project_id=a.project_id AND q.tenant_id=? AND q.request_status='ACCEPTED' JOIN emission_activity_submission_item i ON i.submission_id=q.last_submission_id AND i.activity_id=a.activity_id WHERE a.project_id=? AND NOT EXISTS (SELECT 1 FROM emission_factor_mapping_decision d WHERE d.project_id=a.project_id AND d.activity_id=a.activity_id AND d.active_yn='Y') ON CONFLICT DO NOTHING",tenant,user,tenant,projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'FACTOR_MAPPING',?||'건의 배출계수가 자동 매핑되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(changed),projectId);
         return changed;
     }
@@ -176,16 +182,20 @@ public class EmissionProjectRegistryService {
         return count;
     }
 
-    public Map<String,Object> calculationResult(String projectId,String tenantId) {
-        assertTenantAccess(projectId,requiredValue(tenantId,"tenantId"));
+    public Map<String,Object> calculationResult(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
-        List<Map<String,Object>> runs=jdbc.queryForList("SELECT calculation_id AS \"id\",version_no AS \"version\",calculation_status AS \"status\",total_emission AS \"totalEmission\",calculated_at AS \"calculatedAt\" FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC",projectId);
+        List<Map<String,Object>> runs=jdbc.queryForList("SELECT calculation_id AS \"id\",version_no AS \"version\",calculation_status AS \"status\",total_emission AS \"totalEmission\",result_unit AS \"resultUnit\",accepted_submission_ids AS \"submissionIds\",input_snapshot_hash AS \"snapshotHash\",methodology_code AS methodology,calculated_by AS \"calculatedBy\",calculated_at AS \"calculatedAt\" FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC",projectId);
         result.put("runs",runs);
-        if(!runs.isEmpty()) { long id=((Number)runs.get(0).get("id")).longValue(); result.put("items",jdbc.queryForList("SELECT a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",i.quantity,a.unit,f.factor_name AS \"factorName\",i.factor_value AS \"factorValue\",i.emission_value AS \"emissionValue\" FROM emission_calculation_item i JOIN emission_activity_data a ON a.activity_id=i.activity_id JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE i.calculation_id=? ORDER BY i.emission_value DESC",id)); }
+        if(!runs.isEmpty()) { long id=((Number)runs.get(0).get("id")).longValue(); result.put("items",jdbc.queryForList("SELECT activity_name AS name,category,activity_period AS period,quantity,activity_unit AS unit,factor_id AS \"factorId\",factor_name AS \"factorName\",factor_unit AS \"factorUnit\",factor_source AS \"factorSource\",factor_value AS \"factorValue\",emission_value AS \"emissionValue\",formula_text AS formula FROM emission_calculation_item WHERE calculation_id=? ORDER BY emission_value DESC",id)); }
         else result.put("items",List.of());
-        Integer unmapped=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL",Integer.class,projectId);
-        Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=?",Integer.class,projectId);
-        result.put("activityCount",total==null?0:total); result.put("unmappedCount",unmapped==null?0:unmapped);
+        String accepted="WITH accepted AS (SELECT DISTINCT ON (i.activity_id) i.activity_id,i.activity_name,i.category,i.activity_period,i.quantity,i.unit,i.evidence_note,r.last_submission_id FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' ORDER BY i.activity_id,r.accepted_at DESC) ";
+        List<Map<String,Object>> source=jdbc.queryForList(accepted+"SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.last_submission_id AS \"submissionId\",d.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",f.unit AS \"factorUnit\",f.source_name AS \"factorSource\",d.mapping_method AS \"mappingMethod\",d.confidence_score AS confidence,d.unit_match AS \"unitMatch\",d.decision_reason AS \"decisionReason\",d.decided_by AS \"decidedBy\",d.decided_at AS \"decidedAt\" FROM accepted a LEFT JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' LEFT JOIN emission_factor_reference f ON f.factor_id=d.factor_id ORDER BY a.activity_period,a.activity_id",projectId,tenant,projectId);
+        result.put("sourceItems",source); result.put("activityCount",source.size()); result.put("unmappedCount",source.stream().filter(row->row.get("factorId")==null).count());
+        result.put("incompatibleUnitCount",source.stream().filter(row->row.get("factorId")!=null&&!Boolean.TRUE.equals(row.get("unitMatch"))).count());
+        result.put("acceptedSubmissionCount",jdbc.queryForObject("SELECT count(DISTINCT last_submission_id) FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND request_status='ACCEPTED'",Integer.class,projectId,tenant));
+        result.put("factors",jdbc.queryForList("SELECT factor_id AS id,factor_name AS name,category,unit,factor_value AS value,source_name AS source FROM emission_factor_reference ORDER BY category,factor_name"));
+        result.put("actorRoles",override?List.of("CALCULATOR"):jdbc.queryForList("SELECT actor_code FROM framework_project_actor_assignment WHERE project_id=? AND lower(user_id)=lower(?) AND active_yn='Y' ORDER BY actor_code",projectId,requiredValue(actor,"actor")).stream().map(row->text(row.get("actor_code"))).toList());
         return result;
     }
 
@@ -193,15 +203,22 @@ public class EmissionProjectRegistryService {
     public long calculate(String projectId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireProjectActor(projectId,tenant,user,"CALCULATOR",override);
-        requireSubmittedActivityData(projectId);
-        Integer total=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=?",Integer.class,projectId);
-        Integer unmapped=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL",Integer.class,projectId);
+        requireAcceptedActivityData(projectId);
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+projectId+":CALCULATION");
+        String accepted="WITH accepted AS (SELECT DISTINCT ON (i.activity_id) i.activity_id,i.activity_name,i.category,i.activity_period,i.quantity,i.unit,r.last_submission_id FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' ORDER BY i.activity_id,r.accepted_at DESC) ";
+        Integer total=jdbc.queryForObject(accepted+"SELECT count(*) FROM accepted",Integer.class,projectId,tenant);
+        Integer unmapped=jdbc.queryForObject(accepted+"SELECT count(*) FROM accepted a LEFT JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' WHERE d.factor_id IS NULL",Integer.class,projectId,tenant,projectId);
+        Integer incompatible=jdbc.queryForObject(accepted+"SELECT count(*) FROM accepted a JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' WHERE d.unit_match=false",Integer.class,projectId,tenant,projectId);
         if(total==null||total==0) throw new IllegalArgumentException("산정할 활동자료가 없습니다.");
         if(unmapped!=null&&unmapped>0) throw new IllegalArgumentException("미매핑 활동자료 "+unmapped+"건을 먼저 처리해 주세요.");
+        if(incompatible!=null&&incompatible>0) throw new IllegalStateException("UNIT_CONVERSION_REQUIRED:"+incompatible);
         Integer version=jdbc.queryForObject("SELECT coalesce(max(version_no),0)+1 FROM emission_calculation_run WHERE project_id=?",Integer.class,projectId);
-        Double sum=jdbc.queryForObject("SELECT coalesce(sum(a.quantity*f.factor_value),0) FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=?",Double.class,projectId);
-        Long id=jdbc.queryForObject("INSERT INTO emission_calculation_run(project_id,version_no,total_emission) VALUES (?,?,?) RETURNING calculation_id",Long.class,projectId,version,sum);
-        jdbc.update("INSERT INTO emission_calculation_item(calculation_id,activity_id,quantity,factor_value,emission_value) SELECT ?,a.activity_id,a.quantity,f.factor_value,a.quantity*f.factor_value FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=?",id,projectId);
+        Double sum=jdbc.queryForObject(accepted+"SELECT coalesce(sum(a.quantity*f.factor_value),0) FROM accepted a JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' JOIN emission_factor_reference f ON f.factor_id=d.factor_id",Double.class,projectId,tenant,projectId);
+        String submissionIds=jdbc.queryForObject("SELECT string_agg(DISTINCT last_submission_id::text,',' ORDER BY last_submission_id::text) FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND request_status='ACCEPTED'",String.class,projectId,tenant);
+        String canonical=jdbc.queryForObject(accepted+"SELECT string_agg(concat_ws('|',a.last_submission_id,a.activity_id,a.activity_name,a.category,a.activity_period,a.quantity,a.unit,d.factor_id,f.factor_value,a.quantity*f.factor_value),'~' ORDER BY a.activity_id) FROM accepted a JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' JOIN emission_factor_reference f ON f.factor_id=d.factor_id",String.class,projectId,tenant,projectId);
+        String hash; try{hash=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(text(canonical).getBytes(java.nio.charset.StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException("CALCULATION_SNAPSHOT_HASH_FAILED",e);}
+        Long id=jdbc.queryForObject("INSERT INTO emission_calculation_run(project_id,version_no,total_emission,tenant_id,accepted_submission_ids,input_snapshot_hash,calculated_by) VALUES (?,?,?,?,?,?,?) RETURNING calculation_id",Long.class,projectId,version,sum,tenant,submissionIds,hash,user);
+        jdbc.update(accepted+"INSERT INTO emission_calculation_item(calculation_id,activity_id,quantity,factor_value,emission_value,activity_name,category,activity_period,activity_unit,factor_id,factor_name,factor_unit,factor_source,formula_text) SELECT ?,a.activity_id,a.quantity,f.factor_value,a.quantity*f.factor_value,a.activity_name,a.category,a.activity_period,a.unit,f.factor_id,f.factor_name,f.unit,f.source_name,a.quantity||' '||a.unit||' × '||f.factor_value||' ('||f.source_name||')' FROM accepted a JOIN emission_factor_mapping_decision d ON d.project_id=? AND d.activity_id=a.activity_id AND d.active_yn='Y' JOIN emission_factor_reference f ON f.factor_id=d.factor_id",projectId,tenant,id,projectId);
         jdbc.update("UPDATE emission_project_registry SET progress_percent=50,current_step='배출량 산정',project_status='진행',updated_at=current_timestamp WHERE project_id=?",projectId);
         completeWorkflowTask(projectId,"CALCULATION",user);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'CALCULATED','산정 버전 '||?||'이 생성되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(version),projectId);
@@ -211,6 +228,11 @@ public class EmissionProjectRegistryService {
     private void requireSubmittedActivityData(String projectId) {
         Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND submission_state IN ('SUBMITTED','IN_VERIFICATION','VERIFIED','APPROVED')",Integer.class,projectId);
         if(count==null||count==0) throw new IllegalStateException("CALCULATION_REQUIRES_SUBMITTED_ACTIVITY_DATA");
+    }
+
+    private void requireAcceptedActivityData(String projectId) {
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_request WHERE project_id=? AND request_status='ACCEPTED' AND last_submission_id IS NOT NULL",Integer.class,projectId);
+        if(count==null||count==0) throw new IllegalStateException("CALCULATION_REQUIRES_ACCEPTED_ACTIVITY_DATA");
     }
 
     public Map<String,Object> myTasks(String tenantId,String actorId,boolean showAll,String status,String period) {
