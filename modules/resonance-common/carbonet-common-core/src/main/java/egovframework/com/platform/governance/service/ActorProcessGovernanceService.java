@@ -651,6 +651,21 @@ public class ActorProcessGovernanceService {
         jdbc.update("update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",jobId);event(jobId,"RETRY_REQUESTED",from,"RETRY",actor,"{}");return Map.of("success",true,"jobId",jobId);
     }
 
+    @Transactional public Map<String,Object> requestDevelopmentJob(long jobId,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList("select job_id,process_code,step_code,job_status,approval_status from framework_development_job where job_id=? for update",jobId);
+        if(rows.isEmpty())throw new IllegalArgumentException("개발 작업이 존재하지 않습니다.");
+        Map<String,Object> job=rows.get(0);
+        String from=String.valueOf(job.get("job_status"));
+        if("RUNNING".equals(from))throw new IllegalStateException("이미 실행 중인 개발 작업입니다.");
+        if("VERIFIED".equals(from)||"COMPLETED".equals(from)){
+            return Map.of("success",true,"jobId",jobId,"status",from,"changed",false,"message","이미 검증 완료된 작업입니다.");
+        }
+        String next="FAILED".equals(from)||"BLOCKED".equals(from)?"RETRY":"PLANNED";
+        jdbc.update("update framework_development_job set approval_status='APPROVED',job_status=?,worker_id=null,lease_token=null,lease_until=null,last_error=null,updated_at=current_timestamp where job_id=?",next,jobId);
+        event(jobId,"DEVELOPMENT_REQUESTED",from,next,actor,"{\"source\":\"ACTOR_PROCESS_DASHBOARD\"}");
+        return Map.of("success",true,"jobId",jobId,"processCode",String.valueOf(job.get("process_code")),"stepCode",String.valueOf(job.get("step_code")),"status",next,"changed",true);
+    }
+
     @Transactional public Map<String,Object> scanReferences(String root,String actor){
         Path base=Path.of(root).normalize();if(!Files.isDirectory(base))throw new IllegalArgumentException("레퍼런스 경로를 읽을 수 없습니다: "+root);
         ensureReferenceProcesses();int files=0,expectations=0,cases=0,jobs=0;

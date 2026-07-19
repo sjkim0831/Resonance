@@ -76,4 +76,29 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals(false, result.get("buildRequired"));
         assertEquals(List.of(), result.get("codeOutputs"));
     }
+
+    @Test
+    void dashboardDevelopmentRequestApprovesOnlyTheSelectedJob() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from framework_development_job where job_id=? for update")), any(Object[].class)))
+                .thenReturn(List.of(Map.of("job_id", 41L, "process_code", "EMISSION_PROJECT", "step_code", "COLLECT", "job_status", "FAILED", "approval_status", "PENDING")));
+        when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
+
+        Map<String, Object> result = service.requestDevelopmentJob(41L, "webmaster");
+
+        assertEquals("RETRY", result.get("status"));
+        assertEquals(true, result.get("changed"));
+        verify(jdbc).update(argThat(sql -> sql.contains("approval_status='APPROVED'") && sql.contains("where job_id=?")), any(Object[].class));
+        verify(jdbc).update(argThat(sql -> sql.contains("framework_development_job_event")), any(Object[].class));
+    }
+
+    @Test
+    void dashboardDevelopmentRequestDoesNotReopenVerifiedWork() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from framework_development_job where job_id=? for update")), any(Object[].class)))
+                .thenReturn(List.of(Map.of("job_id", 42L, "process_code", "EMISSION_PROJECT", "step_code", "REPORT", "job_status", "VERIFIED", "approval_status", "APPROVED")));
+
+        Map<String, Object> result = service.requestDevelopmentJob(42L, "webmaster");
+
+        assertEquals(false, result.get("changed"));
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
 }

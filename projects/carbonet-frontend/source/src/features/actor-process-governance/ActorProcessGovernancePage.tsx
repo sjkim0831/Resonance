@@ -4,6 +4,7 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { DeliveryControlPanel } from "./DeliveryControlPanel";
 import { ProcessDesignMap } from "./ProcessDesignMap";
+import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; referenceSummary?:Row; summary?: Row };
@@ -16,7 +17,7 @@ export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
   const [data, setData] = useState<Payload>(empty);
-  const [tab, setTab] = useState("delivery");
+  const [tab, setTab] = useState("work-dashboard");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
   const [preflightStep,setPreflightStep]=useState("");
@@ -93,9 +94,11 @@ export function ActorProcessGovernancePage() {
       </section>
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
+      <button onClick={() => setTab("work-dashboard")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "work-dashboard" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Customer Work Board" : "고객 업무 개발 현황판"}</button>
       <button onClick={() => setTab("delivery")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "delivery" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Delivery Control" : "개발 실행 큐"}</button>
       <nav className="flex flex-wrap gap-2">{[["professional", en ? "Professional Readiness" : "전문가 준비도"], ["common-features", en ? "Reusable Capabilities" : "공통 특수기능"], ["menu-bindings", en ? "Actor Process Menus" : "액터·프로세스 메뉴"], ["customer-journey", en ? "Customer Journey Gate" : "고객 여정 자동검사"], ["registration-coverage", en ? "Project Registration Requirements" : "프로젝트 등록 요건"], ["screen-contracts", en ? "Screen Completion Contracts" : "화면 완성 계약"], ...tabs].map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
 
+      {tab === "work-dashboard" && <CustomerWorkDevelopmentDashboard actors={data.actors} busy={busy} cases={data.cases} dependencies={data.jobDependencies} jobs={data.developmentJobs} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
       {tab === "process-map" && <ProcessDesignMap actors={data.actors} artifacts={data.artifacts} busy={busy} cases={data.cases} jobs={data.developmentJobs} onDirectDevelop={code=>void post("development/direct",{processCode:code})} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
       {tab === "professional" && <>
