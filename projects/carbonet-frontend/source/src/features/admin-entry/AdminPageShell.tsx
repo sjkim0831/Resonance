@@ -951,19 +951,20 @@ export function AdminPageShell({
         <div className="mx-auto max-w-full px-6">
           <div className="flex h-20 items-center justify-between">
             <a
-              className="flex items-center gap-2"
+              className="admin-brand-link flex items-center gap-2.5"
               href={buildLocalizedPath("/admin/", "/en/admin/")}
               onClick={(e) => {
                 e.preventDefault();
                 navigate(buildLocalizedPath("/admin/", "/en/admin/"));
               }}
             >
-              <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]">eco</span>
-              <div className="flex flex-col">
-                <h1 className="text-xl font-bold tracking-tight text-[var(--kr-gov-text-primary)]">
-                  {en ? "CCUS Integrated Management System" : "CCUS 통합관리 시스템"}
-                </h1>
-                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--kr-gov-blue)]">Admin Dashboard</p>
+              <span aria-hidden="true" className="admin-brand-symbol">
+                <img alt="" className="admin-brand-symbol-default" src="/assets/react/img/brand/ccus-symbol-concept-02.png" />
+                <img alt="" className="admin-brand-symbol-hover" src="/assets/react/img/brand/ccus-symbol-concept-04.png" />
+              </span>
+              <div className="admin-brand-copy flex min-w-0 flex-col">
+                <h1 className="admin-brand-title font-black tracking-[-.03em] text-[#082b61]">CCUS</h1>
+                <p className="admin-brand-subtitle mt-1 whitespace-nowrap font-extrabold tracking-[-.025em] text-[#246beb]">{en ? "Carbon Neutrality Platform" : "탄소중립 플랫폼"}</p>
               </div>
             </a>
 

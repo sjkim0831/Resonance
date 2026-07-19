@@ -2586,6 +2586,55 @@ dd {
   min-height: 100vh;
 }
 
+.admin-brand-symbol {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+}
+
+.admin-brand-symbol img {
+  position: absolute;
+  inset: 0;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.admin-brand-symbol-hover {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+.admin-brand-link:hover .admin-brand-symbol-default,
+.admin-brand-link:focus-visible .admin-brand-symbol-default {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+.admin-brand-link:hover .admin-brand-symbol-hover,
+.admin-brand-link:focus-visible .admin-brand-symbol-hover {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.admin-brand-title {
+  margin: 0;
+  font-size: clamp(1.625rem, 1.4rem + 0.5vw, 1.875rem);
+  line-height: 1;
+}
+
+.admin-brand-subtitle {
+  margin-bottom: 0;
+  font-size: clamp(0.875rem, 0.82rem + 0.15vw, 0.9375rem);
+  line-height: 1.15;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-brand-symbol img { transition: none; }
+}
+
 .gov-admin-sidebar {
   background: #fff;
   border-right: 1px solid #d9d9d9;
