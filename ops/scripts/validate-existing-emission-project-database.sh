@@ -12,6 +12,10 @@ case "$STEP" in
     relations=(emission_project_registry emission_project_member emission_project_task emission_project_history)
     evidence=(V20260713130000__create_emission_project_registry.sql V20260713134000__expand_emission_project_creation.sql V20260717197000__harden_emission_project_creation_workflow.sql)
     ;;
+  EMISSION_PROJECT_COLLECT)
+    relations=(emission_activity_request emission_activity_data emission_activity_submission emission_activity_submission_item emission_activity_submission_evidence)
+    evidence=(V20260713136000__create_emission_activity_workflow.sql V20260714010000__create_emission_activity_submission.sql V20260714174000__implement_actor_driven_activity_request.sql V20260717197100__seal_activity_data_submission_evidence.sql)
+    ;;
   EMISSION_PROJECT_CALCULATE)
     relations=(emission_factor_reference emission_activity_data emission_calculation_run emission_calculation_item)
     evidence=(V20260713136000__create_emission_activity_workflow.sql V20260713137000__create_emission_calculation_workflow.sql)
