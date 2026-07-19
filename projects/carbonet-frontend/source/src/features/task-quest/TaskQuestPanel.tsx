@@ -4,6 +4,8 @@ import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
 type QuestTask = {
   id: number;
+  taskCode?: string;
+  stepOrder?: number;
   projectId: string;
   projectName: string;
   name: string;
@@ -26,10 +28,13 @@ type QuestTask = {
   blockedReason?: string;
   pendingPredecessors?: string;
   actionable?: boolean;
+  completionSatisfied?: boolean;
+  completionEvidence?: string;
 };
 
 type QuestResponse = {
   items?: QuestTask[];
+  workflows?: QuestTask[];
   summary?: { total?: number; completed?: number; overdue?: number };
 };
 
@@ -124,16 +129,22 @@ export function TaskQuestPanel() {
       })[0];
   }, [contextProjectId, data]);
 
+  const workflowItems = useMemo(() => {
+    const source = data?.workflows || data?.items || [];
+    const scoped = contextProjectId ? source.filter((item) => item.projectId === contextProjectId) : source;
+    return [...scoped].sort((a, b) => a.projectId.localeCompare(b.projectId) || Number(a.stepOrder || 0) - Number(b.stepOrder || 0));
+  }, [contextProjectId, data]);
+
   const processGroups = useMemo(() => {
     const groups = new Map<string, QuestTask[]>();
-    (data?.items || []).forEach((item) => {
-      const key = `${item.projectId}::${item.processCode || "PROCESS"}`;
+    workflowItems.forEach((item) => {
+      const key = item.projectId;
       const items = groups.get(key) || [];
       items.push(item);
       groups.set(key, items);
     });
     return Array.from(groups.entries());
-  }, [data]);
+  }, [workflowItems]);
 
   if (!loading && !data) return null;
 
@@ -167,6 +178,9 @@ export function TaskQuestPanel() {
   const total = Number(data?.summary?.total || 0);
   const completed = Number(data?.summary?.completed || 0);
   const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+  const workflowTotal = workflowItems.length;
+  const workflowCompleted = workflowItems.filter((item) => item.status === "DONE").length;
+  const workflowProgress = workflowTotal > 0 ? Math.min(100, Math.round((workflowCompleted / workflowTotal) * 100)) : 0;
 
   return <>
     <aside className="fixed right-3 top-[6.75rem] z-[950] w-[calc(100vw-1.5rem)] max-w-[23rem] sm:right-5 lg:right-8" data-task-quest-panel="">
@@ -234,10 +248,10 @@ export function TaskQuestPanel() {
           <div className="overflow-y-auto bg-slate-50 px-5 py-5 sm:px-7 sm:py-6">
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                [en ? "Total" : "전체", total, "assignment"],
-                [en ? "Complete" : "완료", completed, "task_alt"],
-                [en ? "Remaining" : "남은 업무", Math.max(0, total - completed), "pending_actions"],
-                [en ? "Progress" : "진행률", `${progress}%`, "monitoring"]
+                [en ? "Total" : "전체", workflowTotal, "assignment"],
+                [en ? "Complete" : "완료", workflowCompleted, "task_alt"],
+                [en ? "Remaining" : "남은 업무", Math.max(0, workflowTotal - workflowCompleted), "pending_actions"],
+                [en ? "Progress" : "진행률", `${workflowProgress}%`, "monitoring"]
               ].map(([label, value, icon]) => <div className="rounded-xl border border-slate-200 bg-white p-3" key={String(label)}><span className="material-symbols-outlined text-[20px] text-[#246beb]">{icon}</span><p className="mt-1 text-xs font-bold text-slate-500">{label}</p><strong className="text-lg text-[#052b57]">{value}</strong></div>)}
             </div>
             {processGroups.length ? <div className="space-y-5">
@@ -245,7 +259,7 @@ export function TaskQuestPanel() {
                 const first = items[0];
                 return <article className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5" key={key}>
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <div><h3 className="font-black text-[#052b57]">{first.projectName || first.projectId}</h3><p className="text-xs font-semibold text-slate-500">{first.processCode || (en ? "Assigned process" : "배정 프로세스")} · {first.actorCode || (en ? "Assigned actor" : "담당 액터")}</p></div>
+                    <div><h3 className="font-black text-[#052b57]">{first.projectName || first.projectId}</h3><p className="text-xs font-semibold text-slate-500">{en ? `${items.length}-step integrated workflow` : `${items.length}단계 통합 업무`} · {en ? `${new Set(items.map((item) => item.actorCode).filter(Boolean)).size} participating roles` : `참여 액터 ${new Set(items.map((item) => item.actorCode).filter(Boolean)).size}종`}</p></div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{items.filter((item) => item.status === "DONE").length}/{items.length} {en ? "complete" : "완료"}</span>
                   </div>
                   <div className="overflow-x-auto pb-2">

@@ -38,6 +38,20 @@ for account in "${accounts[@]}"; do
   code="$(curl -sS -b "$cookie" -o "$body" -w '%{http_code}' "$BASE/home/api/emission-tasks")"
   [[ "$code" == 200 ]] || { echo "[actor-account-journey] FAIL task queue account=$account status=$code" >&2; exit 1; }
   grep -Eq '^\s*[\{\[]' "$body" || { echo "[actor-account-journey] FAIL invalid task payload account=$account" >&2; exit 1; }
+  ACCOUNT="$account" PROJECT="$PROJECT" BODY="$body" python3 - <<'PY'
+import json,os,sys
+payload=json.load(open(os.environ["BODY"],encoding="utf-8"))
+flow=[row for row in payload.get("workflows",[]) if row.get("projectId")==os.environ["PROJECT"]]
+if len(flow)!=7 or [int(row.get("stepOrder",0)) for row in flow]!=list(range(1,8)):
+    sys.exit(f"full workflow invalid account={os.environ['ACCOUNT']} steps={len(flow)}")
+if any(not row.get("targetUrl") for row in flow):
+    sys.exit(f"workflow target missing account={os.environ['ACCOUNT']}")
+if any(flow[index].get("nextTaskName")!=flow[index+1].get("name") for index in range(6)):
+    sys.exit(f"workflow next-task mismatch account={os.environ['ACCOUNT']}")
+regulatory=next((row for row in flow if row.get("taskCode")=="REGULATORY_SUBMISSION"),None)
+if not regulatory or regulatory.get("completionSatisfied") is not True:
+    sys.exit(f"regulatory completion evidence missing account={os.environ['ACCOUNT']}")
+PY
 done
 
 submission_id="$(q "select regulatory_submission_id from emission_regulatory_submission where project_id='$PROJECT' and status='ACCEPTED' order by regulatory_submission_id desc limit 1")"
@@ -50,5 +64,5 @@ wrong_actor_code="$(curl -sS -b "$tmp/qacalc26.cookie" -o "$tmp/deny.json" -w '%
 anonymous_code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/home/api/emission-projects/$PROJECT/regulatory-submissions")"
 [[ "$anonymous_code" == 401 || "$anonymous_code" == 403 ]] || { echo "[actor-account-journey] FAIL anonymous protection status=$anonymous_code" >&2; exit 1; }
 
-q "update framework_customer_journey_validation_run set evidence_json=(coalesce(nullif(evidence_json,''),'{}')::jsonb || jsonb_build_object('actorAccounts',5,'actorRoles',5,'segregation','VERIFIED','unauthorizedStatus',403,'anonymousStatus',$anonymous_code))::text where validation_id=(select max(validation_id) from framework_customer_journey_validation_run where project_id='$PROJECT')" >/dev/null
-echo "[actor-account-journey] PASS project=$PROJECT accounts=5 roles=5 tasks=7 segregation=verified unauthorized=403 anonymous=$anonymous_code"
+q "update framework_customer_journey_validation_run set evidence_json=(coalesce(nullif(evidence_json,''),'{}')::jsonb || jsonb_build_object('actorAccounts',5,'actorRoles',5,'segregation','VERIFIED','fullWorkflow','7/7','workflowOrder','VERIFIED','nextTaskLinks','VERIFIED','unauthorizedStatus',403,'anonymousStatus',$anonymous_code))::text where validation_id=(select max(validation_id) from framework_customer_journey_validation_run where project_id='$PROJECT')" >/dev/null
+echo "[actor-account-journey] PASS project=$PROJECT accounts=5 roles=5 tasks=7 workflow=7/7 order=verified links=verified segregation=verified unauthorized=403 anonymous=$anonymous_code"
