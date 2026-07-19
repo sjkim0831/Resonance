@@ -44,4 +44,23 @@ BEGIN
   ) THEN RAISE EXCEPTION 'PROJECT_ACTOR_ASSIGNMENT_MISSING'; END IF;
 END $$;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM framework_account_actor_assignment account_assignment
+      JOIN emission_project_registry project
+        ON project.project_id=account_assignment.project_id
+       AND project.tenant_id=account_assignment.tenant_id
+      LEFT JOIN framework_project_actor_assignment project_assignment
+        ON project_assignment.project_id=account_assignment.project_id
+       AND project_assignment.actor_code=account_assignment.actor_code
+       AND lower(project_assignment.user_id)=lower(account_assignment.account_id)
+       AND project_assignment.active_yn='Y'
+     WHERE account_assignment.assignment_status='ACTIVE'
+       AND account_assignment.project_id<>'*'
+       AND project_assignment.assignment_id IS NULL
+  ) THEN RAISE EXCEPTION 'ACCOUNT_PROJECT_ACTOR_ASSIGNMENT_DRIFT'; END IF;
+END $$;
+
 ROLLBACK;

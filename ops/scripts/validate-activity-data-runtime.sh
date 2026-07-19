@@ -29,11 +29,16 @@ project_id="$(psqlq "select project.project_id from emission_project_registry pr
 
 login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
   --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
-if grep -q 'loginFailure' <<<"$login_body"; then
+if ! jq -e '.status == "loginSuccess" and (.userId | length > 0)' >/dev/null <<<"$login_body"; then
   login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
     --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"ENT\"}")"
 fi
-grep -q 'loginFailure' <<<"$login_body" && { echo "[activity-runtime] FAIL login rejected" >&2; exit 1; }
+jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' >/dev/null <<<"$login_body" \
+  || { echo "[activity-runtime] FAIL login rejected or malformed response" >&2; exit 1; }
+
+session_body="$(curl -fsS -b "$COOKIE_JAR" "$BASE_URL/api/frontend/session")"
+jq -e --arg user "$LOGIN_USER" '.authenticated == true and (.userId | ascii_downcase) == ($user | ascii_downcase)' >/dev/null <<<"$session_body" \
+  || { echo "[activity-runtime] FAIL authenticated session identity mismatch" >&2; exit 1; }
 
 api_paths=(
   "/home/api/emission-projects/$project_id"
