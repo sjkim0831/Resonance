@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 
 type Row = Record<string, unknown>;
 type EntityType = "actor" | "process" | "step" | "case" | "job";
@@ -24,9 +24,10 @@ const statusClass = (status: string) => status === "VERIFIED" || status === "COM
     : status === "RUNNING" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800";
 
 export function CustomerWorkDevelopmentDashboard(props: Props) {
-  const [processCode, setProcessCode] = useState("");
+  const [processCode, setProcessCode] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [copyMessage, setCopyMessage] = useState("");
   const normalized = query.trim().toLowerCase();
   const visibleSteps = useMemo(() => props.steps.filter(row => !processCode || value(row, "processCode") === processCode), [props.steps, processCode]);
   const visibleCases = useMemo(() => props.cases.filter(row => (!processCode || value(row, "processCode") === processCode) && (!normalized || Object.values(row).join(" ").toLowerCase().includes(normalized))), [props.cases, processCode, normalized]);
@@ -34,6 +35,17 @@ export function CustomerWorkDevelopmentDashboard(props: Props) {
   const completedJobs = props.jobs.filter(row => ["VERIFIED", "COMPLETED"].includes(value(row, "jobStatus"))).length;
   const passedCases = props.cases.filter(row => value(row, "status") === "APPROVED" || props.runs.some(run => value(run, "caseCode") === value(row, "caseCode") && value(run, "result") === "PASSED")).length;
   const select = (type: EntityType, row: Row) => setSelection({ type, row });
+  useEffect(() => {
+    if (selection) return;
+    const focus = new URLSearchParams(location.search).get("focus");
+    if (!focus) return;
+    const separator = focus.indexOf(":");
+    const type = focus.slice(0, separator) as EntityType;
+    const id = focus.slice(separator + 1).replace(/^#/, "");
+    const sources: Record<EntityType, Row[]> = { actor: props.actors, process: props.processes, step: props.steps, case: props.cases, job: props.jobs };
+    const row = sources[type]?.find(item => type === "actor" ? value(item, "actorCode") === id : type === "process" ? value(item, "processCode") === id : type === "step" ? `${value(item, "processCode")}/${value(item, "stepCode")}` === id : type === "case" ? value(item, "caseCode") === id : value(item, "jobId") === id);
+    if (row) setSelection({ type, row });
+  }, [props.actors, props.cases, props.jobs, props.processes, props.steps, selection]);
 
   return <div className="space-y-5">
     <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
@@ -74,7 +86,7 @@ export function CustomerWorkDevelopmentDashboard(props: Props) {
       <Lane title="개발 태스크" count={visibleJobs.length}>{visibleJobs.map(row => <Item key={value(row, "jobId")} selected={selection?.type === "job" && value(selection.row, "jobId") === value(row, "jobId")} title={`#${value(row, "jobId")} ${value(row, "jobName")}`} subtitle={`${value(row, "jobType")} · ${value(row, "targetPath") || "공통 작업"}`} status={value(row, "jobStatus")} onClick={() => select("job", row)} />)}</Lane>
     </section>
 
-    <Detail selection={selection} props={props} busy={props.busy} onPost={props.onPost} />
+    <Detail selection={selection} props={props} busy={props.busy} copyMessage={copyMessage} onCopyMessage={setCopyMessage} onPost={props.onPost} />
   </div>;
 }
 
@@ -86,7 +98,7 @@ function Item({ title, subtitle, status, selected, onClick }: { title: string; s
   return <button type="button" onClick={onClick} className={`w-full rounded-xl border p-3 text-left ${selected ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"}`}><span className="block font-bold text-slate-900">{title}</span><span className="mt-1 block break-all text-xs leading-5 text-slate-500">{subtitle}</span>{status && <span className={`mt-2 inline-block rounded-full px-2 py-1 text-xs font-bold ${statusClass(status)}`}>{status}</span>}</button>;
 }
 
-function Detail({ selection, props, busy, onPost }: { selection: Selection | null; props: Props; busy: boolean; onPost: Props["onPost"] }) {
+function Detail({ selection, props, busy, copyMessage, onCopyMessage, onPost }: { selection: Selection | null; props: Props; busy: boolean; copyMessage: string; onCopyMessage: (message: string) => void; onPost: Props["onPost"] }) {
   if (!selection) return <section className="rounded-2xl border border-dashed bg-slate-50 p-8 text-center text-slate-600">액터, 프로세스, 단계, 테스트 또는 태스크를 선택하면 세부 내용이 표시됩니다.</section>;
   const row = selection.row;
   const processCode = value(row, "processCode");
@@ -99,9 +111,33 @@ function Detail({ selection, props, busy, onPost }: { selection: Selection | nul
     : [["프로세스", processCode], ["단계", stepCode], ["작업 유형", value(row, "jobType")], ["대상", value(row, "targetPath") || "공통"], ["승인", value(row, "approvalStatus")], ["품질", value(row, "qualityStatus")], ["시도", `${value(row, "attemptCount")}/${value(row, "maxAttempts")}`], ["증적", value(row, "evidenceRef") || "미등록"], ["복구 기준", value(row, "rollbackRef") || "미등록"], ["최근 오류", value(row, "lastError") || "없음"]];
   const deps = selection.type === "job" ? props.dependencies.filter(dep => value(dep, "jobId") === jobId) : [];
   const routes = [value(row, "userPath"), value(row, "adminPath"), value(row, "targetPath")].filter(path => path.startsWith("/"));
+  const identity = entityIdentity(selection);
+  const focusUrl = `${location.origin}/admin/system/actor-process?process=${encodeURIComponent(processCode)}&focus=${encodeURIComponent(`${selection.type}:${identity}`)}`;
+  const reference = `[개발현황판 ${selection.type.toUpperCase()}:${identity}] 프로세스=${processCode || "-"} 단계=${stepCode || "-"} 항목=${value(row, "actorName") || value(row, "processName") || value(row, "stepName") || value(row, "caseName") || value(row, "jobName")} 상태=${value(row, "jobStatus") || value(row, "status") || value(row, "automationStatus") || "-"} 링크=${focusUrl}`;
+  const copy = async (text: string, message: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.appendChild(area); area.select(); document.execCommand("copy"); area.remove();
+    }
+    onCopyMessage(message);
+  };
   return <section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-sm font-bold text-blue-700">{selection.type.toUpperCase()} DETAIL</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{value(row, "actorName") || value(row, "processName") || value(row, "stepName") || value(row, "caseName") || value(row, "jobName")}</h3></div><div className="flex flex-wrap gap-2">{routes.map(route => <a key={route} href={route} className="rounded-lg border border-blue-300 px-3 py-2 text-sm font-bold text-blue-700">화면 열기</a>)}{processCode && <button type="button" disabled={busy} onClick={() => void onPost("development/direct", { processCode })} className="rounded-lg bg-[#052b57] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">프로세스 개발</button>}{selection.type === "job" && <button type="button" disabled={busy || ["RUNNING", "VERIFIED", "COMPLETED"].includes(value(row, "jobStatus"))} onClick={() => void onPost("development/request", { jobId })} className="rounded-lg bg-[#246beb] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">이 태스크 개발 요청</button>}</div></div>
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-sm font-bold text-blue-700">{selection.type.toUpperCase()} DETAIL · {identity}</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{value(row, "actorName") || value(row, "processName") || value(row, "stepName") || value(row, "caseName") || value(row, "jobName")}</h3></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void copy(reference, "세션 지칭자를 복사했습니다.")} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700">세션 지칭 복사</button><button type="button" onClick={() => void copy(`${reference}\n이 항목의 설계·프론트·백엔드·DB·테스트를 확인하고 미완료 내용을 개발한 뒤 검증 결과를 알려줘.`, "개발 요청문을 복사했습니다.")} className="rounded-lg border border-blue-300 px-3 py-2 text-sm font-bold text-blue-700">개발 요청문 복사</button>{routes.map(route => <a key={route} href={route} className="rounded-lg border border-blue-300 px-3 py-2 text-sm font-bold text-blue-700">화면 열기</a>)}{processCode && <button type="button" disabled={busy} onClick={() => void onPost("development/direct", { processCode })} className="rounded-lg bg-[#052b57] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">프로세스 개발</button>}{selection.type === "job" && <button type="button" disabled={busy || ["RUNNING", "VERIFIED", "COMPLETED"].includes(value(row, "jobStatus"))} onClick={() => void onPost("development/request", { jobId })} className="rounded-lg bg-[#246beb] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">이 태스크 개발 요청</button>}</div></div>
+    {copyMessage && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800" role="status">{copyMessage}</p>}
+    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3"><p className="text-xs font-bold text-slate-500">이 세션에 공유할 지칭</p><code className="mt-1 block break-all text-sm text-slate-800">{reference}</code></div>
     <dl className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{fields.map(([label, content]) => <div key={label} className="rounded-xl bg-slate-50 p-3"><dt className="text-xs font-bold text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm leading-6 text-slate-800">{content || "-"}</dd></div>)}</dl>
     {deps.length > 0 && <div className="mt-4"><h4 className="font-black text-[#052b57]">선행 태스크</h4><ul className="mt-2 space-y-2">{deps.map(dep => <li key={value(dep, "dependsOnJobId")} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">#{value(dep, "dependsOnJobId")} {value(dep, "dependsOnJobName")} · {value(dep, "dependsOnStatus")}</li>)}</ul></div>}
   </section>;
+}
+
+function entityIdentity(selection: Selection) {
+  const row = selection.row;
+  if (selection.type === "actor") return value(row, "actorCode");
+  if (selection.type === "process") return value(row, "processCode");
+  if (selection.type === "step") return `${value(row, "processCode")}/${value(row, "stepCode")}`;
+  if (selection.type === "case") return value(row, "caseCode");
+  return `#${value(row, "jobId")}`;
 }
