@@ -30,8 +30,10 @@ critical="$(psqlq -F '|' -c "
 select
  (select user_path from framework_process_step where process_code='EMISSION_PROJECT' and step_code='EMISSION_PROJECT_CALCULATE'),
  (select user_path from framework_process_step where process_code='REDUCTION_EXECUTION' and step_code='REDUCTION_EXECUTION_02_WORK'),
- (select menu_url from comtnmenuinfo where menu_code='H1020301');")"
-[[ "$critical" == "/emission/calculation|/emission/simulate|/emission/calculation" ]] || {
+ (select menu_url from comtnmenuinfo where menu_code='H1020301'),
+ (select menu_url from comtnmenuinfo where menu_code='H1020408'),
+ (select menu_url from comtnmenuinfo where menu_code='H1020106');")"
+[[ "$critical" == "/emission/calculation|/emission/simulate|/emission/calculation|/emission/activity-data?tab=mapping|/emission/calculation" ]] || {
   echo "critical calculation/simulation route semantics are incorrect: $critical" >&2; exit 1;
 }
 

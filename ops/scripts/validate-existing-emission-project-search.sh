@@ -30,8 +30,8 @@ grep -Fq '"koPath": "/home/search"' "$INVENTORY"
 
 case "$STEP" in
   EMISSION_PROJECT_SETUP) route='/emission/project/create' ;;
-  EMISSION_PROJECT_COLLECT|EMISSION_PROJECT_CORRECT) route='/emission/data_input' ;;
-  EMISSION_PROJECT_CALCULATE) route='/emission/simulate' ;;
+  EMISSION_PROJECT_COLLECT|EMISSION_PROJECT_CORRECT) route='/emission/activity-data' ;;
+  EMISSION_PROJECT_CALCULATE) route='/emission/calculation' ;;
   EMISSION_PROJECT_VALIDATE|EMISSION_PROJECT_APPROVE) route='/emission/validate' ;;
   EMISSION_PROJECT_REPORT) route='/emission/report_submit' ;;
   *) exit 3 ;;
