@@ -42,6 +42,9 @@ public class AdminEmissionSiteRegistryController {
     }
 
     private String tenant(CurrentUserContextService.CurrentUserContext context) {
+        // Actor simulation may carry an institution id. It must not silently
+        // redirect the platform webmaster to an empty tenant registry.
+        if (context.isWebmaster()) return "DEFAULT";
         return context.getInsttId().isBlank() ? "DEFAULT" : context.getInsttId();
     }
 

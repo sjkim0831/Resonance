@@ -156,7 +156,12 @@ public class EmissionProjectRegistryController {
         for (var cookie : request.getCookies()) if ("accessToken".equals(cookie.getName()) && !cookie.getValue().isBlank()) return true;
         return false;
     }
-    private String tenant(CurrentUserContextService.CurrentUserContext context) { return context.getInsttId().isBlank()?"DEFAULT":context.getInsttId(); }
+    private String tenant(CurrentUserContextService.CurrentUserContext context) {
+        // Keep project creation and the admin site registry on one source of
+        // truth even while a development actor simulation is active.
+        if (context.isWebmaster()) return "DEFAULT";
+        return context.getInsttId().isBlank()?"DEFAULT":context.getInsttId();
+    }
 
     @ModelAttribute
     public void enforceAuthenticatedTenant(HttpServletRequest request) {
