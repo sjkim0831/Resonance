@@ -17,6 +17,7 @@
     "API_QUALITY",
     "BACKEND",
     "BACKEND_QUALITY",
+    "NOTIFICATION",
     "DATABASE",
     "DATABASE_QUALITY"
   ],

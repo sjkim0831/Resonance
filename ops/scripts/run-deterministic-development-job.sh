@@ -17,6 +17,22 @@ jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/de
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
 case "$JOB_TYPE" in
+  NOTIFICATION)
+    validator="$WT/ops/scripts/validate-existing-emission-project-notification.sh"
+    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Verified existing in-app notification adoption: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Source commit: $(git -C "$WT" rev-parse HEAD)
+- Requirement: $(jq -r '.requirement' "$SPEC_FILE")
+- Validation result: $adoption_json
+
+The deterministic validator requires persisted step-specific workflow events, authenticated user-facing readers, executable workflow tests, and a healthy live project workflow. Missing event or reader contracts leave this job incomplete.
+EOF
+    ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     validator="$WT/ops/scripts/validate-existing-emission-project-api.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
