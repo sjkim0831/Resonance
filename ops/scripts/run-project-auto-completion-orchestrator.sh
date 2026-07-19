@@ -192,7 +192,7 @@ with candidate as (
     and j.last_error='deterministic generator failed with code 1'
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='COLLECT_DATABASE_VALIDATOR_RETRY'
+      where e.job_id=j.job_id and e.event_type='COLLECT_DB_VALIDATOR_RETRY'
     )
 ), recovered as (
   update framework_development_job j
@@ -201,7 +201,7 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'COLLECT_DATABASE_VALIDATOR_RETRY','FAILED','RETRY','project-auto-completion',
+  select job_id,'COLLECT_DB_VALIDATOR_RETRY','FAILED','RETRY','project-auto-completion',
          jsonb_build_object('reason','activity collection database contract added to exact validator')
   from recovered returning 1
 )
