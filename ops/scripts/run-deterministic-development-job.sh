@@ -17,13 +17,13 @@ jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/de
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
 case "$JOB_TYPE" in
-  API|API_QUALITY)
+  API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     validator="$WT/ops/scripts/validate-existing-emission-project-api.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
-# Verified existing API adoption: $PROCESS / $STEP
+# Verified existing server adoption: $PROCESS / $STEP
 
 - Job: $JOB_ID
 - Job type: $JOB_TYPE
@@ -31,7 +31,7 @@ case "$JOB_TYPE" in
 - Requirement: $(jq -r '.requirement' "$SPEC_FILE")
 - Validation result: $adoption_json
 
-The deterministic validator requires the step-specific controller routes, service methods, executable SQL tests, tenant boundary evidence, and a healthy live emission workflow. A missing contract leaves the job incomplete.
+The deterministic validator requires the step-specific controller routes, service methods, executable SQL tests, tenant boundary evidence, and a healthy live emission workflow. A missing server contract leaves the job incomplete.
 EOF
     ;;
   DATABASE|DATABASE_QUALITY)

@@ -12,7 +12,7 @@ jq -e '
   .allowUnverifiedCompletion == false and
   .defaultExecutionOrder[0] == "EXACT_EXISTING_IMPLEMENTATION" and
   .defaultExecutionOrder[-1] == "AI_ESCALATION" and
-  (.deterministicJobTypes | sort == ["API","API_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","REFERENCE_ANALYSIS"])
+  (.deterministicJobTypes | sort == ["API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","REFERENCE_ANALYSIS"])
 ' "$POLICY" >/dev/null
 bash -n "$WORKER"
 bash -n "$RUNNER"
