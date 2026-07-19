@@ -192,7 +192,7 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
   if [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(menu|navigation)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     menu_backup_only=true
-  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
+  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification|assignment|assignee)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     governance_backup_only=true
   fi
 fi
