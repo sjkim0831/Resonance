@@ -149,7 +149,7 @@ export function CertificateReportListMigrationPage() {
             </button>
             <nav className="flex flex-wrap gap-2 text-sm font-bold text-[var(--kr-gov-text-secondary)]">
               <a className="rounded-full border border-slate-200 px-4 py-2 hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/monitoring/track", "/en/monitoring/track")}>{en ? "Monitoring" : "배출지 모니터링"}</a>
-              <a className="rounded-full border border-slate-200 px-4 py-2 hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/emission/data_input", "/en/emission/data_input")}>{en ? "Data Input" : "데이터 산정"}</a>
+              <a className="rounded-full border border-slate-200 px-4 py-2 hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data")}>{en ? "Data Input" : "데이터 산정"}</a>
               <a className="rounded-full border border-[var(--kr-gov-blue)] bg-[var(--kr-gov-blue)] px-4 py-2 text-white" href={buildLocalizedPath("/certificate/report_list", "/en/certificate/report_list")}>{en ? "Reports & Certificates" : "보고서 & 인증서 목록"}</a>
               <a className="rounded-full border border-slate-200 px-4 py-2 hover:border-[var(--kr-gov-blue)] hover:text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/co2/analysis", "/en/co2/analysis")}>{en ? "Analytics" : "성과 분석"}</a>
             </nav>

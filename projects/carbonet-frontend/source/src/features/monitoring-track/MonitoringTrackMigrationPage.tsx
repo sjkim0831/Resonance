@@ -114,7 +114,7 @@ const CONTENT: Record<"ko" | "en", MonitoringTrackContent> = {
     navItems: [
       { label: "배출지 모니터링", href: buildLocalizedPath("/co2/production_list", "/en/co2/production_list") },
       { label: "연계 추적 리포트", active: true },
-      { label: "데이터 산정", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+      { label: "데이터 산정", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data") },
       { label: "성과 분석", href: buildLocalizedPath("/emission/lca", "/en/emission/lca") }
     ],
     roleLabel: "총괄 책임자",
@@ -207,7 +207,7 @@ const CONTENT: Record<"ko" | "en", MonitoringTrackContent> = {
     navItems: [
       { label: "Emission Monitoring", href: buildLocalizedPath("/co2/production_list", "/en/co2/production_list") },
       { label: "Linkage Trace Report", active: true },
-      { label: "Data Calculation", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+      { label: "Data Calculation", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data") },
       { label: "Performance Analysis", href: buildLocalizedPath("/emission/lca", "/en/emission/lca") }
     ],
     roleLabel: "General Manager",

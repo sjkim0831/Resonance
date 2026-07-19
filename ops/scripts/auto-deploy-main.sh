@@ -309,6 +309,7 @@ bash ops/scripts/validate-e4b-selectable-assets.sh
 bash ops/scripts/validate-emission-project-workflow.sh
 bash ops/scripts/validate-emission-activity-collection.sh
 bash ops/scripts/complete-activity-data-evidence-jobs.sh
+bash ops/scripts/validate-activity-workflow-links.sh
 bash ops/scripts/validate-activity-data-runtime.sh
 bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
 bash ops/scripts/validate-emission-calculation-runtime.sh

@@ -215,12 +215,12 @@ const CONTENT: Record<"ko" | "en", LocalizedContent> = {
     ],
     queueItems: [
       { key: "ulsan-docs", tone: "critical", badge: "Critical", due: "D-2", title: "울산 제3: 서류 보완", body: "배출계수 재산정 증빙 누락", actionLabel: "업데이트 하기", href: "/emission/validate" },
-      { key: "pohang-energy", tone: "required", badge: "Required", due: "D-5", title: "포항 제1: 에너지 입력", body: "8월분 전력 사용량 확정", actionLabel: "입력기 열기", href: "/emission/data_input" },
+      { key: "pohang-energy", tone: "required", badge: "Required", due: "D-5", title: "포항 제1: 에너지 입력", body: "8월분 전력 사용량 확정", actionLabel: "입력기 열기", href: "/emission/activity-data" },
       { key: "gwangyang-verify", tone: "verify", badge: "Verify", due: "D-12", title: "광양 제2: 검증 준비", body: "품질 보증 체크리스트 85%", actionLabel: "체크리스트", href: "/emission/validate" },
       { key: "trend-insight", tone: "insight", badge: "Insight", due: "Today", title: "배출 목표 트렌드", body: "현재 배출량이 목표 범위를 이탈", actionLabel: "분석 보고서", href: "/monitoring/reduction_trend" }
     ],
     siteCards: [
-      { key: "pohang", tone: "stable", idLabel: "ID: PH-001", title: "포항 제1 열연공장", value: "2,341", unit: "tCO2", trend: "▲ 2.4% Trend", primaryAction: "데이터 입력", primaryHref: "/emission/data_input", secondaryAction: "산정 로직 확인", secondaryHref: "/emission/validate" },
+      { key: "pohang", tone: "stable", idLabel: "ID: PH-001", title: "포항 제1 열연공장", value: "2,341", unit: "tCO2", trend: "▲ 2.4% Trend", primaryAction: "데이터 입력", primaryHref: "/emission/activity-data", secondaryAction: "산정 로직 확인", secondaryHref: "/emission/validate" },
       { key: "ulsan", tone: "warning", idLabel: "ID: US-042", title: "울산 제3 화학기지", value: "4,812", unit: "tCO2", trend: "▼ 1.1% Trend", alert: "증빙 서류 2건 누락", primaryAction: "누락 서류 업로드", primaryHref: "/emission/validate" }
     ]
   },
@@ -295,12 +295,12 @@ const CONTENT: Record<"ko" | "en", LocalizedContent> = {
     ],
     queueItems: [
       { key: "ulsan-docs", tone: "critical", badge: "Critical", due: "D-2", title: "Ulsan Base 3: document update", body: "Missing evidence for emission-factor recalculation", actionLabel: "Update now", href: "/emission/validate" },
-      { key: "pohang-energy", tone: "required", badge: "Required", due: "D-5", title: "Pohang Mill 1: energy input", body: "Finalize August power usage", actionLabel: "Open input form", href: "/emission/data_input" },
+      { key: "pohang-energy", tone: "required", badge: "Required", due: "D-5", title: "Pohang Mill 1: energy input", body: "Finalize August power usage", actionLabel: "Open input form", href: "/emission/activity-data" },
       { key: "gwangyang-verify", tone: "verify", badge: "Verify", due: "D-12", title: "Gwangyang Center 2: verification prep", body: "Quality assurance checklist at 85%", actionLabel: "Checklist", href: "/emission/validate" },
       { key: "trend-insight", tone: "insight", badge: "Insight", due: "Today", title: "Target trend drift", body: "Current emissions moved outside the target band", actionLabel: "Analysis report", href: "/monitoring/reduction_trend" }
     ],
     siteCards: [
-      { key: "pohang", tone: "stable", idLabel: "ID: PH-001", title: "Pohang Mill 1", value: "2,341", unit: "tCO2", trend: "▲ 2.4% Trend", primaryAction: "Enter data", primaryHref: "/emission/data_input", secondaryAction: "Check calculation logic", secondaryHref: "/emission/validate" },
+      { key: "pohang", tone: "stable", idLabel: "ID: PH-001", title: "Pohang Mill 1", value: "2,341", unit: "tCO2", trend: "▲ 2.4% Trend", primaryAction: "Enter data", primaryHref: "/emission/activity-data", secondaryAction: "Check calculation logic", secondaryHref: "/emission/validate" },
       { key: "ulsan", tone: "warning", idLabel: "ID: US-042", title: "Ulsan Chemical Base 3", value: "4,812", unit: "tCO2", trend: "▼ 1.1% Trend", alert: "Two evidence files missing", primaryAction: "Upload missing files", primaryHref: "/emission/validate" }
     ]
   }
@@ -603,7 +603,7 @@ export function MonitoringShareMigrationPage() {
                 <MemberButton className="!border !border-slate-200 !bg-white !px-4 !py-2.5 !text-xs !font-bold !text-slate-700 hover:!bg-slate-50" onClick={() => goToLocalized("/emission/project_list")}>
                   {content.siteListLabel}
                 </MemberButton>
-                <MemberButton className="!bg-slate-900 !px-4 !py-2.5 !text-xs !font-bold !text-white hover:!bg-black" onClick={() => goToLocalized("/emission/data_input")}>
+                <MemberButton className="!bg-slate-900 !px-4 !py-2.5 !text-xs !font-bold !text-white hover:!bg-black" onClick={() => goToLocalized("/emission/activity-data")}>
                   + {content.siteRegisterLabel}
                 </MemberButton>
               </div>
@@ -674,7 +674,7 @@ export function MonitoringShareMigrationPage() {
 
               <article
                 className="flex min-h-[280px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/30"
-                onClick={() => goToLocalized("/emission/data_input")}
+                onClick={() => goToLocalized("/emission/activity-data")}
               >
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-50">
                   <span className="material-symbols-outlined text-[32px] text-slate-300">add_task</span>

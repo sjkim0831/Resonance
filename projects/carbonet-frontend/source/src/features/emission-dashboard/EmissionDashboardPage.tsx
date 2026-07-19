@@ -153,7 +153,7 @@ export function EmissionDashboardPage() {
     {
       title: "Activity Data Input",
       subtitle: "Fuel, electricity, steam, process, transport, and evidence input.",
-      href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"),
+      href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data"),
       icon: "edit_square",
       metric: "5",
       metricLabel: "sites need input",
@@ -274,7 +274,7 @@ export function EmissionDashboardPage() {
     {
       title: "활동자료 입력",
       subtitle: "연료, 전력, 스팀, 공정, 운송, 증빙 자료를 입력합니다.",
-      href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"),
+      href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data"),
       icon: "edit_square",
       metric: "5",
       metricLabel: "입력 필요",
@@ -495,7 +495,7 @@ export function EmissionDashboardPage() {
                   <span className="material-symbols-outlined text-[18px]">play_arrow</span>
                   {en ? "Continue next task" : "다음 작업 계속하기"}
                 </a>
-                <a className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-700 hover:bg-gray-50" href={buildLocalizedPath("/emission/data_input", "/en/emission/data_input")}>
+                <a className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-3 text-sm font-black text-gray-700 hover:bg-gray-50" href={buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data")}>
                   <span className="material-symbols-outlined text-[18px]">edit_square</span>
                   {en ? "Enter activity data" : "활동자료 입력"}
                 </a>

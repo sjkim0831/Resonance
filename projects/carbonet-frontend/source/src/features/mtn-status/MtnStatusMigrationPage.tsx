@@ -196,7 +196,7 @@ const FEATURED_SITES: Record<"ko" | "en", FeaturedSite[]> = {
       metricUnit: "tCO2",
       chart: "M0 25 L10 20 L20 22 L30 15 L40 18 L50 10 L60 12 L70 5 L80 8 L90 2 L100 4",
       actions: [
-        { label: "데이터 입력", icon: "edit_square", href: "/emission/data_input" },
+        { label: "데이터 입력", icon: "edit_square", href: "/emission/activity-data" },
         { label: "산정 로직", icon: "calculate", href: "/emission/validate" }
       ],
       activities: [
@@ -258,7 +258,7 @@ const FEATURED_SITES: Record<"ko" | "en", FeaturedSite[]> = {
       metricUnit: "tCO2",
       chart: "M0 25 L10 20 L20 22 L30 15 L40 18 L50 10 L60 12 L70 5 L80 8 L90 2 L100 4",
       actions: [
-        { label: "Data Entry", icon: "edit_square", href: "/en/emission/data_input" },
+        { label: "Data Entry", icon: "edit_square", href: "/en/emission/activity-data" },
         { label: "Logic Review", icon: "calculate", href: "/en/emission/validate" }
       ],
       activities: [

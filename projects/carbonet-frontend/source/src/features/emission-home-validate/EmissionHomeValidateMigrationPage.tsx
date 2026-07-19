@@ -192,7 +192,7 @@ export function EmissionHomeValidateMigrationPage() {
       label: "Emission Calculation",
       href: "/en/emission/project_list",
       sections: [
-        { label: "Calculation", items: [{ label: "Project List", href: "/en/emission/project_list" }, { label: "Data Input", href: "/en/emission/data_input" }] },
+        { label: "Calculation", items: [{ label: "Project List", href: "/en/emission/project_list" }, { label: "Data Input", href: "/en/emission/activity-data" }] },
         { label: "Verification", items: [{ label: "Validation", href: "/en/emission/validate" }] }
       ]
     },
@@ -211,7 +211,7 @@ export function EmissionHomeValidateMigrationPage() {
       label: "배출량 산정",
       href: "/emission/project_list",
       sections: [
-        { label: "산정 관리", items: [{ label: "배출량 관리", href: "/emission/project_list" }, { label: "데이터 입력", href: "/emission/data_input" }] },
+        { label: "산정 관리", items: [{ label: "배출량 관리", href: "/emission/project_list" }, { label: "데이터 입력", href: "/emission/activity-data" }] },
         { label: "검증", items: [{ label: "산정검증", href: "/emission/validate" }] }
       ]
     },

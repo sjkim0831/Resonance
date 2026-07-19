@@ -28,7 +28,7 @@ const EMISSION_HOME_MENU_KO: HomeMenuRecord = {
     {
       label: "입력·검증",
       items: [
-        { label: "활동자료 입력", url: "/emission/data_input" },
+        { label: "활동자료 입력", url: "/emission/activity-data" },
         { label: "증빙 자료함", url: "/emission/evidence" },
         { label: "검증·보정", url: "/emission/validate" }
       ]
@@ -68,7 +68,7 @@ const EMISSION_HOME_MENU_EN: HomeMenuRecord = {
     {
       label: "Input & Validation",
       items: [
-        { label: "Activity Data Input", url: "/en/emission/data_input" },
+        { label: "Activity Data Input", url: "/en/emission/activity-data" },
         { label: "Evidence Library", url: "/en/emission/evidence" },
         { label: "Validation & Correction", url: "/en/emission/validate" }
       ]

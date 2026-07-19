@@ -125,7 +125,7 @@ function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
 
 function getQueueHref(item: QueueItem) {
   if (item.icon === "open_in_new" || item.title.includes("Energy") || item.title.includes("에너지")) {
-    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+    return buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data");
   }
   if (item.icon === "fact_check" || item.title.includes("Verification") || item.title.includes("검증")) {
     return buildLocalizedPath("/emission/validate", "/en/emission/validate");
@@ -138,7 +138,7 @@ function getQueueHref(item: QueueItem) {
 
 function getSiteActionHref(label: string) {
   if (label.includes("입력") || label.includes("Input")) {
-    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+    return buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data");
   }
   if (label.includes("산정") || label.includes("Logic") || label.includes("Calculation")) {
     return buildLocalizedPath("/emission/calculation", "/en/emission/calculation");
@@ -160,7 +160,7 @@ function getSiteActionHref(label: string) {
 
 function getGeneralSiteHref(site: GeneralSite) {
   if (site.status.includes("대기") || site.status.includes("Pending")) {
-    return buildLocalizedPath("/emission/data_input", "/en/emission/data_input");
+    return buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data");
   }
   return buildLocalizedPath("/admin/emission/result_detail", "/en/admin/emission/result_detail");
 }
@@ -419,41 +419,41 @@ export function EmissionProjectListMigrationPage() {
 
   const operationalMetrics = useMemo<OperationalMetric[]>(() => en ? [
     { title: "Managed Emission Sites", value: "21", delta: "+3 this month", toneClass: "text-[var(--kr-gov-blue)] bg-blue-50", icon: "domain", href: adminSiteManagementHref },
-    { title: "Data Completeness", value: "91.4%", delta: "5 sites need attention", toneClass: "text-emerald-700 bg-emerald-50", icon: "task_alt", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "Data Completeness", value: "91.4%", delta: "5 sites need attention", toneClass: "text-emerald-700 bg-emerald-50", icon: "task_alt", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data") },
     { title: "Verification Queue", value: "7", delta: "2 high priority", toneClass: "text-orange-700 bg-orange-50", icon: "rule", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") },
     { title: "Report Packages", value: "14", delta: "4 ready to submit", toneClass: "text-indigo-700 bg-indigo-50", icon: "description", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit") }
   ] : [
     { title: "관리 배출지", value: "21", delta: "이번 달 +3개", toneClass: "text-[var(--kr-gov-blue)] bg-blue-50", icon: "domain", href: adminSiteManagementHref },
-    { title: "데이터 완전성", value: "91.4%", delta: "5개소 점검 필요", toneClass: "text-emerald-700 bg-emerald-50", icon: "task_alt", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "데이터 완전성", value: "91.4%", delta: "5개소 점검 필요", toneClass: "text-emerald-700 bg-emerald-50", icon: "task_alt", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data") },
     { title: "검증 대기열", value: "7", delta: "고우선 2건", toneClass: "text-orange-700 bg-orange-50", icon: "rule", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") },
     { title: "보고서 패키지", value: "14", delta: "제출 가능 4건", toneClass: "text-indigo-700 bg-indigo-50", icon: "description", href: buildLocalizedPath("/emission/report_submit", "/en/emission/report_submit") }
   ], [adminSiteManagementHref, en]);
 
   const workflowSteps = useMemo<WorkflowStep[]>(() => en ? [
     { title: "Site Registry", description: "Register emission sites, process tags, owners, and expected source categories.", status: "Governed", statusClass: "bg-blue-100 text-blue-700", progress: "100%", icon: "inventory_2", href: adminSiteManagementHref },
-    { title: "Activity Data Input", description: "Collect fuel, electricity, process, transport, and evidence data by period.", status: "5 pending", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "Activity Data Input", description: "Collect fuel, electricity, process, transport, and evidence data by period.", status: "5 pending", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data") },
     { title: "Simulation & Calculation", description: "Run factor mapping, GWP conversion, site aggregation, and variance checks.", status: "Ready", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation") },
     { title: "Report & Verification", description: "Create report packages, submit to verification queue, and track audit evidence.", status: "7 in queue", statusClass: "bg-indigo-100 text-indigo-700", progress: "64%", icon: "verified", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
   ] : [
     { title: "배출지 원장", description: "배출지, 공정 태그, 담당자, 예상 배출원 분류를 등록합니다.", status: "관리 중", statusClass: "bg-blue-100 text-blue-700", progress: "100%", icon: "inventory_2", href: adminSiteManagementHref },
-    { title: "활동자료 입력", description: "기간별 연료, 전력, 공정, 운송, 증빙 데이터를 수집합니다.", status: "5건 대기", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input") },
+    { title: "활동자료 입력", description: "기간별 연료, 전력, 공정, 운송, 증빙 데이터를 수집합니다.", status: "5건 대기", statusClass: "bg-orange-100 text-orange-700", progress: "76%", icon: "edit_square", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data") },
     { title: "시뮬레이션·산정", description: "배출계수 매핑, GWP 변환, 배출지 집계, 편차 검사를 수행합니다.", status: "실행 가능", statusClass: "bg-emerald-100 text-emerald-700", progress: "88%", icon: "calculate", href: buildLocalizedPath("/emission/calculation", "/en/emission/calculation") },
     { title: "보고서·검증", description: "보고서 패키지를 만들고 검증 큐에 제출한 뒤 감사 증적을 추적합니다.", status: "7건 진행", statusClass: "bg-indigo-100 text-indigo-700", progress: "64%", icon: "verified", href: buildLocalizedPath("/emission/validate", "/en/emission/validate") }
   ], [adminSiteManagementHref, en]);
 
   const registryRows = useMemo<RegistryRow[]>(() => en ? [
-    { id: "PH-001", site: "Pohang Hot Rolling Mill 1", scope: "Scope 1", process: "Stationary combustion", emission: "2,341 tCO2", completeness: "100%", status: "Normal", owner: "Site Admin", due: "2025.08.20", href: siteQueryHref("/emission/data_input", "/en/emission/data_input", "PH-001") },
+    { id: "PH-001", site: "Pohang Hot Rolling Mill 1", scope: "Scope 1", process: "Stationary combustion", emission: "2,341 tCO2", completeness: "100%", status: "Normal", owner: "Site Admin", due: "2025.08.20", href: siteQueryHref("/emission/activity-data", "/en/emission/activity-data", "PH-001") },
     { id: "US-042", site: "Ulsan Chemical Base 3", scope: "Scope 1", process: "Industrial process", emission: "4,812 tCO2", completeness: "65%", status: "Evidence missing", owner: "Verifier", due: "2025.08.16", href: siteQueryHref("/emission/report_submit", "/en/emission/report_submit", "US-042") },
     { id: "GN-112", site: "Gwangyang Energy Center 2", scope: "Scope 2", process: "Power and steam", emission: "12,890 tCO2", completeness: "100%", status: "Verifying", owner: "External reviewer", due: "2025.08.28", href: siteQueryHref("/emission/validate", "/en/emission/validate", "GN-112") },
     { id: "IC-005", site: "Incheon Logistics Center", scope: "Scope 2", process: "Utility power", emission: "452 tCO2", completeness: "100%", status: "Normal", owner: "Logistics manager", due: "2025.08.25", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "IC-005") },
-    { id: "DJ-021", site: "Daejeon R&D Campus", scope: "Scope 3", process: "Business travel", emission: "210 tCO2", completeness: "40%", status: "Input pending", owner: "R&D admin", due: "2025.08.18", href: siteQueryHref("/emission/data_input", "/en/emission/data_input", "DJ-021") },
+    { id: "DJ-021", site: "Daejeon R&D Campus", scope: "Scope 3", process: "Business travel", emission: "210 tCO2", completeness: "40%", status: "Input pending", owner: "R&D admin", due: "2025.08.18", href: siteQueryHref("/emission/activity-data", "/en/emission/activity-data", "DJ-021") },
     { id: "PJ-088", site: "Paju Data Center", scope: "Scope 2", process: "Data center power", emission: "890 tCO2", completeness: "100%", status: "Normal", owner: "IT facility", due: "2025.08.23", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "PJ-088") }
   ] : [
-    { id: "PH-001", site: "포항 제1 열연공장", scope: "Scope 1", process: "고정 연소", emission: "2,341 tCO2", completeness: "100%", status: "정상", owner: "현장 관리자", due: "2025.08.20", href: siteQueryHref("/emission/data_input", "/en/emission/data_input", "PH-001") },
+    { id: "PH-001", site: "포항 제1 열연공장", scope: "Scope 1", process: "고정 연소", emission: "2,341 tCO2", completeness: "100%", status: "정상", owner: "현장 관리자", due: "2025.08.20", href: siteQueryHref("/emission/activity-data", "/en/emission/activity-data", "PH-001") },
     { id: "US-042", site: "울산 제3 화학기지", scope: "Scope 1", process: "공정 배출", emission: "4,812 tCO2", completeness: "65%", status: "증빙 누락", owner: "검증 담당", due: "2025.08.16", href: siteQueryHref("/emission/report_submit", "/en/emission/report_submit", "US-042") },
     { id: "GN-112", site: "광양 제2 에너지센터", scope: "Scope 2", process: "전력·스팀", emission: "12,890 tCO2", completeness: "100%", status: "검증중", owner: "외부 검토자", due: "2025.08.28", href: siteQueryHref("/emission/validate", "/en/emission/validate", "GN-112") },
     { id: "IC-005", site: "인천 물류센터", scope: "Scope 2", process: "전력 사용", emission: "452 tCO2", completeness: "100%", status: "정상", owner: "물류 담당", due: "2025.08.25", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "IC-005") },
-    { id: "DJ-021", site: "대전 R&D 캠퍼스", scope: "Scope 3", process: "출장·이동", emission: "210 tCO2", completeness: "40%", status: "입력 대기", owner: "연구소 관리자", due: "2025.08.18", href: siteQueryHref("/emission/data_input", "/en/emission/data_input", "DJ-021") },
+    { id: "DJ-021", site: "대전 R&D 캠퍼스", scope: "Scope 3", process: "출장·이동", emission: "210 tCO2", completeness: "40%", status: "입력 대기", owner: "연구소 관리자", due: "2025.08.18", href: siteQueryHref("/emission/activity-data", "/en/emission/activity-data", "DJ-021") },
     { id: "PJ-088", site: "파주 전산센터", scope: "Scope 2", process: "데이터센터 전력", emission: "890 tCO2", completeness: "100%", status: "정상", owner: "IT 설비", due: "2025.08.23", href: siteQueryHref("/admin/emission/result_detail", "/en/admin/emission/result_detail", "PJ-088") }
   ], [en]);
 
@@ -464,7 +464,7 @@ export function EmissionProjectListMigrationPage() {
       icon: "hub",
       accentClass: "border-blue-200 bg-blue-50/60 text-blue-700",
       items: [
-        { label: "Data Input", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), note: "5 sites still need monthly activity data or evidence.", status: "Action needed", action: "Enter data" },
+        { label: "Data Input", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data"), note: "5 sites still need monthly activity data or evidence.", status: "Action needed", action: "Enter data" },
         { label: "Site Management", href: adminSiteManagementHref, note: "Add, close, or change the owner of emission sites.", status: "Admin", action: "Manage sites" },
         { label: "Data History", href: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history"), note: "Review who changed key values before submission.", status: "Audit", action: "View history" }
       ]
@@ -511,7 +511,7 @@ export function EmissionProjectListMigrationPage() {
       icon: "hub",
       accentClass: "border-blue-200 bg-blue-50/60 text-blue-700",
       items: [
-        { label: "데이터 입력", href: buildLocalizedPath("/emission/data_input", "/en/emission/data_input"), note: "5개 배출지의 월별 활동자료 또는 증빙 보완이 필요합니다.", status: "처리 필요", action: "입력하기" },
+        { label: "데이터 입력", href: buildLocalizedPath("/emission/activity-data", "/en/emission/activity-data"), note: "5개 배출지의 월별 활동자료 또는 증빙 보완이 필요합니다.", status: "처리 필요", action: "입력하기" },
         { label: "배출지 관리", href: adminSiteManagementHref, note: "배출지 추가, 폐쇄, 담당자 변경은 관리자 화면에서 처리합니다.", status: "관리자", action: "배출지 관리" },
         { label: "데이터 변경 이력", href: buildLocalizedPath("/admin/emission/data_history", "/en/admin/emission/data_history"), note: "제출 전 주요 값의 변경자와 변경 사유를 확인합니다.", status: "감사", action: "이력 확인" }
       ]
