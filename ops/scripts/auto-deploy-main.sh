@@ -195,7 +195,7 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     menu_backup_only=true
   elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification|assignment|assignee|emission_site|onboarding)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     governance_backup_only=true
-  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(activity|submission|quality|evidence|collection|acceptance)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
+  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(activity|submission|quality|evidence|collection|acceptance|accepted|calculation|factor|mapping)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
     activity_backup_only=true
   fi
 fi
@@ -259,6 +259,8 @@ if [[ "$backup_required" == "true" ]]; then
           -t emission_activity_data -t emission_activity_quality_run -t emission_activity_quality_issue \
           -t emission_activity_submission -t emission_activity_submission_item \
           -t emission_activity_submission_evidence -t emission_activity_submission_event \
+          -t emission_factor_reference -t emission_factor_mapping_decision \
+          -t emission_calculation_run -t emission_calculation_item \
           -t emission_project_task -t emission_project_history -t emission_workflow_notification \
       | gzip -1 > "$backup_file"; then
       rm -f "$backup_file"
