@@ -4,7 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"; DATABASE="${POSTGRES_DB:-carbonet}"
 USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"; CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"; SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
-COOKIE_JAR="$(mktemp)"; TIMINGS="$(mktemp)"; trap 'rm -f "$COOKIE_JAR" "$TIMINGS"' EXIT
+COOKIE_JAR="$(mktemp)"; TIMINGS="$(mktemp)"; API_BODY="$(mktemp)"; PAGE_BODY="$(mktemp)"; trap 'rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY"' EXIT
 leader=""
 while IFS= read -r pod; do
   recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
@@ -16,10 +16,10 @@ project_id="$(psqlq "select project_id from emission_calculation_run group by pr
 [[ -n "$project_id" ]] || { echo '[calculation-runtime] FAIL no calculated project' >&2; exit 1; }
 curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" --data '{"userId":"webmaster","userPw":"rhdxhd12","userSe":"USR"}' >/dev/null
 api_paths=("/home/api/emission-projects/$project_id" "/home/api/emission-projects/$project_id/activities" "/home/api/emission-projects/$project_id/calculation" "/home/api/emission-projects/$project_id/quality" "/home/api/emission-projects/$project_id/review-workflow")
-for path in "${api_paths[@]}"; do code="$(curl -sS -b "$COOKIE_JAR" -o /tmp/calculation-runtime.json -w '%{http_code}' "$BASE_URL$path")"; [[ "$code" == 200 ]] || { echo "[calculation-runtime] FAIL api=$path status=$code" >&2; exit 1; }; grep -Eq '^\s*[\{\[]' /tmp/calculation-runtime.json || exit 1; done
+for path in "${api_paths[@]}"; do code="$(curl -sS -b "$COOKIE_JAR" -o "$API_BODY" -w '%{http_code}' "$BASE_URL$path")"; [[ "$code" == 200 ]] || { echo "[calculation-runtime] FAIL api=$path status=$code" >&2; exit 1; }; grep -Eq '^\s*[\{\[]' "$API_BODY" || exit 1; done
 for path in "/home/api/emission-projects/$project_id/calculation" "/home/api/emission-projects/$project_id/review-workflow"; do code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL$path")"; [[ "$code" == 401 || "$code" == 403 ]] || { echo "[calculation-runtime] FAIL protection=$path status=$code" >&2; exit 1; }; done
 pages=("/emission/project/detail?projectId=$project_id" "/emission/calculation?projectId=$project_id" "/emission/validate?projectId=$project_id" "/emission/calculation-results?projectId=$project_id" "/admin/emission/project-operations" "/admin/emission/calculation-rule" "/admin/emission/validate" "/admin/emission/result_list")
-for path in "${pages[@]}"; do code="$(curl -sS -L -b "$COOKIE_JAR" -o /tmp/calculation-runtime.html -w '%{http_code}' "$BASE_URL$path")"; [[ "$code" == 200 ]] || { echo "[calculation-runtime] FAIL page=$path status=$code" >&2; exit 1; }; grep -qi '<!doctype html' /tmp/calculation-runtime.html || exit 1; done
+for path in "${pages[@]}"; do code="$(curl -sS -L -b "$COOKIE_JAR" -o "$PAGE_BODY" -w '%{http_code}' "$BASE_URL$path")"; [[ "$code" == 200 ]] || { echo "[calculation-runtime] FAIL page=$path status=$code" >&2; exit 1; }; grep -qi '<!doctype html' "$PAGE_BODY" || exit 1; done
 for _ in $(seq 1 20); do curl -sS -b "$COOKIE_JAR" -o /dev/null -w '%{time_total}\n' "$BASE_URL/home/api/emission-projects/$project_id/calculation" >>"$TIMINGS"; done
 p95_ms="$(sort -n "$TIMINGS" | awk 'NR==19 {printf "%d",$1*1000}')"; [[ "$p95_ms" -le 2500 ]] || exit 1
 read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')"; [[ "$desired" == 2 && "$ready" == 2 && "$available" == 2 ]] || exit 1

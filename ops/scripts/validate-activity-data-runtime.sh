@@ -12,7 +12,9 @@ LOGIN_PASSWORD="${CARBONET_RUNTIME_TEST_PASSWORD:-rhdxhd12}"
 SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 COOKIE_JAR="$(mktemp)"
 TIMINGS="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR" "$TIMINGS"' EXIT
+API_BODY="$(mktemp)"
+PAGE_BODY="$(mktemp)"
+trap 'rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY"' EXIT
 
 leader=""
 while IFS= read -r pod; do
@@ -42,9 +44,9 @@ api_paths=(
   "/home/api/emission-projects/$project_id/quality"
 )
 for path in "${api_paths[@]}"; do
-  code="$(curl -sS -b "$COOKIE_JAR" -o /tmp/activity-runtime-response.json -w '%{http_code}' "$BASE_URL$path")"
+  code="$(curl -sS -b "$COOKIE_JAR" -o "$API_BODY" -w '%{http_code}' "$BASE_URL$path")"
   [[ "$code" == "200" ]] || { echo "[activity-runtime] FAIL authenticated API $path status=$code" >&2; exit 1; }
-  grep -Eq '^\s*[\{\[]' /tmp/activity-runtime-response.json || { echo "[activity-runtime] FAIL non-JSON API $path" >&2; exit 1; }
+  grep -Eq '^\s*[\{\[]' "$API_BODY" || { echo "[activity-runtime] FAIL non-JSON API $path" >&2; exit 1; }
 done
 
 protected_paths=(
@@ -66,9 +68,9 @@ page_paths=(
   "/admin/emission/approval-workflow"
 )
 for path in "${page_paths[@]}"; do
-  code="$(curl -sS -L -b "$COOKIE_JAR" -o /tmp/activity-runtime-page.html -w '%{http_code}' "$BASE_URL$path")"
+  code="$(curl -sS -L -b "$COOKIE_JAR" -o "$PAGE_BODY" -w '%{http_code}' "$BASE_URL$path")"
   [[ "$code" == "200" ]] || { echo "[activity-runtime] FAIL page $path status=$code" >&2; exit 1; }
-  grep -qi '<!doctype html' /tmp/activity-runtime-page.html || { echo "[activity-runtime] FAIL non-HTML page $path" >&2; exit 1; }
+  grep -qi '<!doctype html' "$PAGE_BODY" || { echo "[activity-runtime] FAIL non-HTML page $path" >&2; exit 1; }
 done
 
 for i in $(seq 1 20); do
