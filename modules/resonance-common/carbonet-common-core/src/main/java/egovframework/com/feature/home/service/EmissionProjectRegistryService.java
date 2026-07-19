@@ -284,9 +284,9 @@ public class EmissionProjectRegistryService {
 
     private void synchronizeProcessExecution(String projectId,String taskCode,String user,String requestedToState){
         String tenant=jdbc.queryForObject("select tenant_id from emission_project_registry where project_id=?",String.class,projectId);
-        Map<String,String> stepMap=Map.of("BASIC_INFO","EMISSION_PROJECT_SETUP","ACTIVITY_DATA","EMISSION_PROJECT_COLLECT","CALCULATION","EMISSION_PROJECT_CALCULATE","VERIFICATION","EMISSION_PROJECT_VALIDATE","APPROVAL","EMISSION_PROJECT_APPROVE","REPORT","EMISSION_PROJECT_REPORT");
-        Map<String,String> actorMap=Map.of("BASIC_INFO","COMPANY_MANAGER","ACTIVITY_DATA","SITE_DATA_OWNER","CALCULATION","CALCULATOR","VERIFICATION","VERIFIER","APPROVAL","APPROVER","REPORT","COMPANY_MANAGER");
-        Map<String,String> commandMap=Map.of("BASIC_INFO","CONFIRM_SCOPE","ACTIVITY_DATA","SUBMIT_ACTIVITY_DATA","CALCULATION","CALCULATE","VERIFICATION","VALIDATE","APPROVAL","APPROVE","REPORT","PUBLISH_REPORT");
+        Map<String,String> stepMap=Map.ofEntries(Map.entry("BASIC_INFO","EMISSION_PROJECT_SETUP"),Map.entry("ACTIVITY_DATA","EMISSION_PROJECT_COLLECT"),Map.entry("CALCULATION","EMISSION_PROJECT_CALCULATE"),Map.entry("VERIFICATION","EMISSION_PROJECT_VALIDATE"),Map.entry("APPROVAL","EMISSION_PROJECT_APPROVE"),Map.entry("REPORT","EMISSION_PROJECT_REPORT"),Map.entry("REGULATORY_SUBMISSION","EMISSION_PROJECT_REGULATORY_SUBMISSION"));
+        Map<String,String> actorMap=Map.ofEntries(Map.entry("BASIC_INFO","COMPANY_MANAGER"),Map.entry("ACTIVITY_DATA","SITE_DATA_OWNER"),Map.entry("CALCULATION","CALCULATOR"),Map.entry("VERIFICATION","VERIFIER"),Map.entry("APPROVAL","APPROVER"),Map.entry("REPORT","COMPANY_MANAGER"),Map.entry("REGULATORY_SUBMISSION","COMPANY_MANAGER"));
+        Map<String,String> commandMap=Map.ofEntries(Map.entry("BASIC_INFO","CONFIRM_SCOPE"),Map.entry("ACTIVITY_DATA","SUBMIT_ACTIVITY_DATA"),Map.entry("CALCULATION","CALCULATE"),Map.entry("VERIFICATION","VALIDATE"),Map.entry("APPROVAL","APPROVE"),Map.entry("REPORT","PUBLISH_REPORT"),Map.entry("REGULATORY_SUBMISSION","ACCEPT_SUBMISSION"));
         String step=stepMap.get(taskCode);if(step==null)return;
         Map<String,Object> found=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
         if(!Boolean.TRUE.equals(found.get("found"))){
@@ -508,8 +508,15 @@ public class EmissionProjectRegistryService {
             case "CANCEL" -> {if(!"PACKAGED".equals(previous))throw new IllegalStateException("CANCEL_REQUIRES_PACKAGED");if(note.isBlank())throw new IllegalArgumentException("CANCEL_REASON_REQUIRED");next="CANCELLED";}
             default -> throw new IllegalArgumentException("REGULATORY_ACTION_INVALID");
         }
-        String receipt="RECORD_RECEIPT".equals(action)?required(body,"receiptNo"):null,correctionDue="REQUEST_CORRECTION".equals(action)?required(body,"correctionDueDate"):null;
-        jdbc.update("UPDATE emission_regulatory_submission SET status=?,external_receipt_no=coalesce(?,external_receipt_no),correction_reason=CASE WHEN ?='CORRECTION_REQUIRED' THEN ? ELSE correction_reason END,correction_due_date=CASE WHEN ?='CORRECTION_REQUIRED' THEN ?::date WHEN ?='RESUBMITTED' THEN null ELSE correction_due_date END,submitted_by=CASE WHEN ? IN ('SUBMITTED','RESUBMITTED') THEN ? ELSE submitted_by END,submitted_at=CASE WHEN ? IN ('SUBMITTED','RESUBMITTED') THEN current_timestamp ELSE submitted_at END,received_at=CASE WHEN ?='RECEIVED' THEN current_timestamp ELSE received_at END,accepted_at=CASE WHEN ?='ACCEPTED' THEN current_timestamp ELSE accepted_at END,note_text=CASE WHEN ?<>'' THEN ? ELSE note_text END,updated_at=current_timestamp WHERE regulatory_submission_id=?",next,receipt,next,note,next,correctionDue,next,next,user,next,next,next,note,note,submissionId);
+        String receipt="RECORD_RECEIPT".equals(action)?required(body,"receiptNo"):"",correctionDue="REQUEST_CORRECTION".equals(action)?required(body,"correctionDueDate"):"";
+        jdbc.update("UPDATE emission_regulatory_submission SET status=?,note_text=CASE WHEN length(?)>0 THEN ? ELSE note_text END,updated_at=current_timestamp WHERE regulatory_submission_id=?",next,note,note,submissionId);
+        switch(action){
+            case "SUBMIT","RESUBMIT" -> jdbc.update("UPDATE emission_regulatory_submission SET submitted_by=?,submitted_at=current_timestamp,correction_due_date=CASE WHEN ?='RESUBMIT' THEN null ELSE correction_due_date END WHERE regulatory_submission_id=?",user,action,submissionId);
+            case "RECORD_RECEIPT" -> jdbc.update("UPDATE emission_regulatory_submission SET external_receipt_no=?,received_at=current_timestamp WHERE regulatory_submission_id=?",receipt,submissionId);
+            case "REQUEST_CORRECTION" -> jdbc.update("UPDATE emission_regulatory_submission SET correction_reason=?,correction_due_date=cast(? as date) WHERE regulatory_submission_id=?",note,correctionDue,submissionId);
+            case "ACCEPT" -> jdbc.update("UPDATE emission_regulatory_submission SET accepted_at=current_timestamp WHERE regulatory_submission_id=?",submissionId);
+            default -> { }
+        }
         jdbc.update("INSERT INTO emission_regulatory_submission_event(regulatory_submission_id,event_code,previous_status,new_status,actor_id,event_note,evidence_json) VALUES (?,?,?,?,?,?,jsonb_build_object('receiptNo',?,'correctionDueDate',?)::text)",submissionId,action,previous,next,user,note,receipt,correctionDue);
         if("ACCEPTED".equals(next)){completeWorkflowTask(projectId,"REGULATORY_SUBMISSION",user);jdbc.update("UPDATE emission_project_registry SET progress_percent=100,current_step='규제기관 제출 수리',project_status='완료',updated_at=current_timestamp WHERE project_id=?",projectId);}
         return Map.of("id",submissionId,"previousStatus",previous,"status",next);
