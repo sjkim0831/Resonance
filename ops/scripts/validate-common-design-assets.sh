@@ -31,3 +31,22 @@ if [[ "$uncovered" != 0 || "$local_components" != 0 ]]; then
   exit 1
 fi
 echo "[common-design-assets] PASS pages=$pages uncovered=0 page-local-components=0"
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+LCA_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/emission-lca/EmissionLcaMigrationPage.tsx"
+WORKFLOW_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/workflow/CommonWorkflowWorkspace.tsx"
+MANIFEST_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts"
+
+[[ -f "$WORKFLOW_SOURCE" ]] && grep -q 'data-common-component="COMMON_STEP_FLOW"' "$WORKFLOW_SOURCE" || {
+  echo "[common-design-assets] FAIL COMMON_STEP_FLOW source implementation missing" >&2; exit 1;
+}
+! grep -q 'data-help-id="product-lca-workspace"' "$LCA_SOURCE" || {
+  echo "[common-design-assets] FAIL Product LCA page-local workflow duplicate remains" >&2; exit 1;
+}
+grep -q 'CommonWorkflowWorkspace' "$LCA_SOURCE" || {
+  echo "[common-design-assets] FAIL Product LCA common workflow reference missing" >&2; exit 1;
+}
+grep -q 'instanceKey: "emission-lca-workflow"' "$MANIFEST_SOURCE" || {
+  echo "[common-design-assets] FAIL Product LCA manifest mapping missing" >&2; exit 1;
+}
+echo "[common-design-assets] PASS source reuse contract"

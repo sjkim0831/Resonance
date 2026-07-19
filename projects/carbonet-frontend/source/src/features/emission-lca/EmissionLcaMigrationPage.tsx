@@ -8,6 +8,7 @@ import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from 
 import { HeaderMobileMenu } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
+import { CommonWorkflowWorkspace } from "../../components/workflow/CommonWorkflowWorkspace";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
@@ -323,28 +324,7 @@ export function EmissionLcaMigrationPage() {
           <HeaderMobileMenu content={sharedContent} en={en} homeMenu={homeMenu} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
         </div>
         <main id="main-content">
-          <section className="border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-cyan-50" data-help-id="product-lca-workspace">
-            <div className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">
-              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--kr-gov-blue)]">{activeSection?.label || (en ? "LCA project" : "LCA 프로젝트")} · {activeItemIndex + 1}/{orderedLcaItems.length || 22}</p>
-                  <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">{activeItem?.label || (en ? "LCA overview" : "LCA 현황")}</h2>
-                  <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-slate-600">{workspaceCopy.objective}</p>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  <a className="gov-btn inline-flex min-h-11 items-center gap-2 border border-blue-200 bg-white px-4 py-2 text-sm text-[var(--kr-gov-blue)]" href={buildLocalizedPath(workspaceCopy.action, `/en${workspaceCopy.action}`)}><span className="material-symbols-outlined text-[18px]">play_arrow</span>{en ? "Open work screen" : "업무 화면 열기"}</a>
-                  {nextItem ? <a className="gov-btn inline-flex min-h-11 items-center gap-2 bg-[var(--kr-gov-blue)] px-4 py-2 text-sm text-white" href={nextItem.url}><span>{en ? "Next task" : "다음 업무"}</span><span className="material-symbols-outlined text-[18px]">arrow_forward</span></a> : null}
-                </div>
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <article className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-black text-slate-500">{en ? "Required inputs" : "필수 입력"}</p><p className="mt-1 text-sm font-bold text-slate-800">{workspaceCopy.input}</p></article>
-                <article className="rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-black text-slate-500">{en ? "Completion evidence" : "완료 산출물"}</p><p className="mt-1 text-sm font-bold text-slate-800">{workspaceCopy.output}</p></article>
-              </div>
-              <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label={en ? "Product LCA workflow" : "제품 LCA 업무 순서"}>
-                {orderedLcaItems.map((item, index) => <a key={item.code} className={`flex min-h-10 shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${item.code === activeItem?.code ? "border-[var(--kr-gov-blue)] bg-[var(--kr-gov-blue)] text-white" : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"}`} href={item.url} aria-current={item.code === activeItem?.code ? "step" : undefined}><span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-[10px]">{index + 1}</span>{item.label}</a>)}
-              </nav>
-            </div>
-          </section>
+          <CommonWorkflowWorkspace eyebrow={activeSection?.label || (en ? "LCA project" : "LCA 프로젝트")} positionLabel={`${activeItemIndex + 1}/${orderedLcaItems.length || 22}`} title={activeItem?.label || (en ? "LCA overview" : "LCA 현황")} objective={workspaceCopy.objective} requiredInputLabel={en ? "Required inputs" : "필수 입력"} requiredInput={workspaceCopy.input} completionEvidenceLabel={en ? "Completion evidence" : "완료 산출물"} completionEvidence={workspaceCopy.output} actionHref={buildLocalizedPath(workspaceCopy.action, `/en${workspaceCopy.action}`)} actionLabel={en ? "Open work screen" : "업무 화면 열기"} nextHref={nextItem?.url} nextLabel={en ? "Next task" : "다음 업무"} workflowLabel={en ? "Product LCA workflow" : "제품 LCA 업무 순서"} steps={orderedLcaItems.map((item) => ({ id: item.code, label: item.label, href: item.url }))} activeStepId={activeItem?.code} />
           <section className="bg-slate-800 border-b border-slate-700 py-6" data-help-id="emission-lca-queue">
             <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
               <div className="flex flex-col lg:flex-row gap-6 items-center">

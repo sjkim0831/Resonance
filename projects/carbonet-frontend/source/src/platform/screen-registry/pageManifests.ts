@@ -1074,6 +1074,9 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
+      { componentId: "COMMON_STEP_FLOW", instanceKey: "emission-lca-workflow", layoutZone: "header", propsSummary: ["steps", "activeStepId", "requiredInput", "completionEvidence"] },
+      { componentId: "COMMON_ACTION_BAR", instanceKey: "emission-lca-workflow-actions", layoutZone: "actions", propsSummary: ["actionHref", "nextHref"] },
+      { componentId: "COMMON_CONTENT_CARD", instanceKey: "emission-lca-workflow-evidence", layoutZone: "content", propsSummary: ["requiredInput", "completionEvidence"] },
       { componentId: "EmissionLcaQueue", instanceKey: "emission-lca-queue", layoutZone: "header", propsSummary: ["queueAlerts", "regulatoryNotice"] },
       { componentId: "EmissionLcaComplianceStatus", instanceKey: "emission-lca-status", layoutZone: "content", propsSummary: ["complianceRows", "appliedStandards", "emissionIntensity"] },
       { componentId: "EmissionLcaMilestones", instanceKey: "emission-lca-milestones", layoutZone: "actions", propsSummary: ["milestones", "progress"] },
