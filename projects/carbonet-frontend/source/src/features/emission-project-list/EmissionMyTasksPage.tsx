@@ -10,10 +10,13 @@ type Task = {
   type: string; status: string; priority: string; assignee: string; dueDate: string;
   targetUrl: string; processCode?: string; processStepCode?: string; actorCode?: string;
   completionRule?: string; blockedReason?: string; pendingPredecessors?: string; actionable?: boolean;
+  completionSatisfied?: boolean; completionEvidence?: string; nextTaskName?: string; nextActorCode?: string;
 };
+type WorkflowNotification = { id: number; projectId: string; taskId: number; eventType: string; title: string; message: string; targetUrl?: string; readAt?: string; createdAt: string };
 type Data = {
   items: Task[]; actorId: string; allVisible: boolean;
   summary: { total: number; completed: number; today: number; overdue: number; approval: number };
+  notifications: WorkflowNotification[]; unreadNotificationCount: number;
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -71,6 +74,13 @@ export function EmissionMyTasksPage() {
     } finally { setBusyTask(null); }
   }
 
+  async function readNotification(notification: WorkflowNotification) {
+    const response = await fetch(buildLocalizedPath(`/home/api/emission-task-notifications/${notification.id}/read`, `/en/home/api/emission-task-notifications/${notification.id}/read`), { method: "POST", credentials: "include" });
+    const body = await responseJson(response);
+    if (!response.ok) throw new Error(body.message || (en ? "Could not mark the notification as read." : "알림을 읽음 처리하지 못했습니다."));
+    await load();
+  }
+
   function isSafeTaskTarget(task: Task) {
     return Boolean(task.targetUrl && task.targetUrl.startsWith("/") && task.targetUrl !== "#" && !task.targetUrl.startsWith("/admin/"));
   }
@@ -114,6 +124,16 @@ export function EmissionMyTasksPage() {
         </div>
 
         {message && <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 font-bold text-rose-800" role="alert">{message}</div>}
+
+        {!!data?.notifications?.length && <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-label={en ? "Workflow notifications" : "업무 인계 알림"}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="text-sm font-black text-amber-800">{en ? "WORKFLOW HANDOFF" : "업무 인계 알림"}</p><h2 className="mt-1 text-xl font-black text-[#052b57]">{en ? `${data.unreadNotificationCount || 0} unread notifications` : `읽지 않은 알림 ${data.unreadNotificationCount || 0}건`}</h2></div>
+            <span className="material-symbols-outlined text-3xl text-amber-700">notifications_active</span>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">{data.notifications.slice(0, 4).map((notification) => <article className={`rounded-xl border p-4 ${notification.readAt ? "border-slate-200 bg-white/70" : "border-amber-300 bg-white"}`} key={notification.id}>
+            <div className="flex items-start justify-between gap-3"><div><h3 className="font-black text-[#052b57]">{notification.title}</h3><p className="mt-1 text-sm leading-6 text-slate-600">{notification.message}</p></div>{!notification.readAt && <button className="shrink-0 rounded-lg border border-amber-400 px-3 py-2 text-xs font-black text-amber-900" type="button" onClick={() => void readNotification(notification).catch((error) => setMessage(error.message))}>{en ? "Mark read" : "읽음"}</button>}</div>
+          </article>)}</div>
+        </section>}
 
         <section className="mt-7 overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -163,7 +183,7 @@ export function EmissionMyTasksPage() {
             const overdue = new Date(task.dueDate) < new Date() && task.status !== "DONE";
             return <article className={`rounded-xl border bg-white p-5 ${task.actionable ? "border-blue-300 shadow-sm" : "border-slate-200"}`} key={task.id}>
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px_180px] lg:items-center">
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${STATUS_STYLE[task.status] || STATUS_STYLE.WAITING}`}>{statusLabel(task.status)}</span><span className="text-xs font-black text-slate-500">{en ? task.priority : PRIORITY_KO[task.priority] || task.priority}</span><span className="text-xs font-bold text-slate-400">{task.processStepCode || task.type}</span></div><h3 className="mt-3 text-lg font-black text-[#052b57]">{task.name}</h3><p className="mt-1 text-sm font-bold text-[#246beb]">{task.projectName} · {task.site || "-"}</p><p className="mt-3 text-sm leading-6 text-slate-600"><strong>{en ? "Completion rule" : "완료 조건"}: </strong>{task.completionRule || "-"}</p>{(task.pendingPredecessors || task.blockedReason) && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{task.pendingPredecessors ? `${en ? "Prerequisites" : "선행 업무"}: ${task.pendingPredecessors}` : task.blockedReason}</p>}</div>
+                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${STATUS_STYLE[task.status] || STATUS_STYLE.WAITING}`}>{statusLabel(task.status)}</span><span className="text-xs font-black text-slate-500">{en ? task.priority : PRIORITY_KO[task.priority] || task.priority}</span><span className="text-xs font-bold text-slate-400">{task.processStepCode || task.type}</span></div><h3 className="mt-3 text-lg font-black text-[#052b57]">{task.name}</h3><p className="mt-1 text-sm font-bold text-[#246beb]">{task.projectName} · {task.site || "-"}</p><p className="mt-3 text-sm leading-6 text-slate-600"><strong>{en ? "Completion rule" : "완료 조건"}: </strong>{task.completionRule || "-"}</p><p className={`mt-2 rounded-lg px-3 py-2 text-sm font-bold ${task.completionSatisfied ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}><span className="material-symbols-outlined mr-1 align-middle text-base">{task.completionSatisfied ? "verified" : "rule"}</span>{task.completionEvidence || "-"}</p>{task.nextTaskName && <p className="mt-2 text-sm text-slate-600"><strong>{en ? "Next handoff" : "다음 인계"}: </strong>{task.nextTaskName}{task.nextActorCode ? ` · ${task.nextActorCode}` : ""}</p>}{(task.pendingPredecessors || task.blockedReason) && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">{task.pendingPredecessors ? `${en ? "Prerequisites" : "선행 업무"}: ${task.pendingPredecessors}` : task.blockedReason}</p>}</div>
                 <dl className="grid grid-cols-2 gap-3 text-sm lg:grid-cols-1"><div><dt className="text-slate-500">{en ? "Assignee / Actor" : "담당자 / 액터"}</dt><dd className="mt-1 font-black">{task.assignee || "-"} <span className="font-medium text-slate-500">{task.actorCode ? `· ${task.actorCode}` : ""}</span></dd></div><div><dt className="text-slate-500">{en ? "Due date" : "마감일"}</dt><dd className={`mt-1 font-black ${overdue ? "text-rose-700" : ""}`}>{task.dueDate || "-"}{overdue ? (en ? " · overdue" : " · 지연") : ""}</dd></div></dl>
                 <div className="flex flex-col gap-2">{task.actionable ? <>{task.status === "READY" && <button className="min-h-11 rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-60" disabled={busyTask === task.id} onClick={() => void startTask(task).catch((error) => setMessage(error.message))} type="button">{en ? "Start" : "업무 시작"}</button>}{isSafeTaskTarget(task) ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-4 font-black text-white" href={taskHref(task)}>{en ? "Open task" : "업무 화면 열기"}</a> : <span className="rounded-lg bg-amber-100 px-3 py-3 text-center text-xs font-black text-amber-900">{en ? "Workspace connection required" : "업무 화면 연결 필요"}</span>}</> : <span className="rounded-lg bg-slate-100 px-3 py-3 text-center text-xs font-bold text-slate-600">{task.status === "DONE" ? (en ? "Completed by business action" : "실제 업무 처리로 완료됨") : (en ? "Complete prerequisites first" : "선행 업무 완료 필요")}</span>}<a className="text-center text-sm font-bold text-slate-600 underline" href={buildLocalizedPath(`/emission/project/detail?id=${task.projectId}`, `/en/emission/project/detail?id=${task.projectId}`)}>{en ? "Project details" : "프로젝트 상세"}</a></div>
               </div>

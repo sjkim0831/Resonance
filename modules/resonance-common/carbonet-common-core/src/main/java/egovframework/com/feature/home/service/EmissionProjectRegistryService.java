@@ -198,9 +198,45 @@ public class EmissionProjectRegistryService {
         String where=" WHERE p.tenant_id=? AND (? OR lower(coalesce(t.assignee_id,''))=lower(?)) AND (?='' OR t.task_status=?) AND (?='' OR (?='TODAY' AND t.due_date=current_date) OR (?='WEEK' AND t.due_date BETWEEN current_date AND current_date+7) OR (?='OVERDUE' AND t.due_date<current_date AND t.task_status<>'DONE'))";
         Object[] args={tenant,showAll,actor,state,state,range,range,range,range};
         List<Map<String,Object>> items=jdbc.queryForList("SELECT t.task_id AS \"id\",t.project_id AS \"projectId\",p.project_name AS \"projectName\",p.site_name AS \"site\",t.task_name AS \"name\",t.task_type AS \"type\",t.task_status AS \"status\",t.priority,t.assignee_id AS \"assignee\",t.due_date AS \"dueDate\",t.target_url AS \"targetUrl\",t.process_code AS \"processCode\",t.process_step_code AS \"processStepCode\",t.actor_code AS \"actorCode\",t.completion_rule AS \"completionRule\",t.blocked_reason AS \"blockedReason\",s.from_state AS \"entryState\",s.requirement_text AS \"workPurpose\",s.input_contract AS \"requiredInputs\",s.output_contract AS \"expectedOutput\",s.command_code AS \"commandCode\",n.step_name AS \"nextTaskName\",n.actor_code AS \"nextActorCode\",n.user_path AS \"nextTaskUrl\",(t.task_status IN ('READY','IN_PROGRESS')) AS \"actionable\",coalesce((SELECT string_agg(p2.task_name,', ' ORDER BY p2.step_order) FROM emission_project_task p2 WHERE p2.project_id=t.project_id AND p2.task_code=ANY(string_to_array(nullif(t.predecessor_codes,''),',')) AND p2.task_status<>'DONE'),'') AS \"pendingPredecessors\" FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id LEFT JOIN framework_process_step s ON s.process_code=t.process_code AND s.step_code=t.process_step_code LEFT JOIN LATERAL (SELECT ns.step_name,ns.actor_code,ns.user_path FROM framework_process_step ns WHERE ns.process_code=s.process_code AND ns.from_state=s.to_state ORDER BY CASE WHEN ns.step_order>s.step_order THEN 0 ELSE 1 END,ns.step_order LIMIT 1) n ON true"+where+" ORDER BY CASE t.task_status WHEN 'READY' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'BLOCKED' THEN 2 WHEN 'WAITING' THEN 3 ELSE 4 END,CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,t.due_date,t.step_order",args);
+        items.forEach(this::enrichCompletionReadiness);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("actorId",actor);result.put("allVisible",showAll);
         result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE p.tenant_id=?"+(showAll?"":" AND lower(coalesce(t.assignee_id,''))=lower(?)"),showAll?new Object[]{tenant}:new Object[]{tenant,actor}));
+        result.put("notifications",jdbc.queryForList("SELECT notification_id AS \"id\",project_id AS \"projectId\",task_id AS \"taskId\",event_type AS \"eventType\",title,message_text AS \"message\",target_url AS \"targetUrl\",read_at AS \"readAt\",created_at AS \"createdAt\" FROM emission_workflow_notification WHERE tenant_id=? AND (? OR lower(recipient_id)=lower(?)) ORDER BY (read_at IS NULL) DESC,created_at DESC LIMIT 20",tenant,showAll,actor));
+        result.put("unreadNotificationCount",jdbc.queryForObject("SELECT count(*) FROM emission_workflow_notification WHERE tenant_id=? AND read_at IS NULL AND (? OR lower(recipient_id)=lower(?))",Integer.class,tenant,showAll,actor));
         return result;
+    }
+
+    private void enrichCompletionReadiness(Map<String,Object> task) {
+        String projectId=text(task.get("projectId"));
+        String code=jdbc.queryForObject("SELECT task_code FROM emission_project_task WHERE task_id=?",String.class,task.get("id"));
+        boolean satisfied=switch(code) {
+            case "BASIC_INFO" -> Boolean.TRUE.equals(jdbc.queryForObject("SELECT project_name<>'' AND site_name<>'' AND period_start IS NOT NULL AND period_end IS NOT NULL FROM emission_project_registry WHERE project_id=?",Boolean.class,projectId));
+            case "ACTIVITY_DATA" -> count("SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND submission_state IN ('SUBMITTED','IN_VERIFICATION','VERIFIED','APPROVED')",projectId)>0;
+            case "CALCULATION" -> count("SELECT count(*) FROM emission_calculation_run WHERE project_id=?",projectId)>0;
+            case "VERIFICATION" -> count("SELECT count(*) FROM emission_submission_review WHERE project_id=? AND review_stage='VERIFICATION' AND decision='PASSED'",projectId)>0;
+            case "APPROVAL" -> count("SELECT count(*) FROM emission_submission_review WHERE project_id=? AND review_stage='APPROVAL' AND decision='APPROVED'",projectId)>0;
+            case "REPORT" -> count("SELECT count(*) FROM emission_project_report WHERE project_id=?",projectId)>0;
+            default -> false;
+        };
+        task.put("completionSatisfied",satisfied);
+        task.put("completionEvidence",completionEvidence(code,satisfied));
+    }
+
+    private int count(String sql,String projectId) { Integer value=jdbc.queryForObject(sql,Integer.class,projectId);return value==null?0:value; }
+    private String completionEvidence(String code,boolean satisfied) {
+        if(satisfied) return "완료 조건을 충족한 업무 증적이 저장되어 있습니다.";
+        return switch(code) {
+            case "ACTIVITY_DATA" -> "제출 상태의 활동자료가 필요합니다.";
+            case "CALCULATION" -> "배출량 산정 버전 생성이 필요합니다.";
+            case "VERIFICATION" -> "검증 통과 이력이 필요합니다.";
+            case "APPROVAL" -> "승인 완료 이력이 필요합니다.";
+            case "REPORT" -> "확정 보고서 발행이 필요합니다.";
+            default -> "업무 화면에서 완료 조건과 증적을 확정해야 합니다.";
+        };
+    }
+
+    @Transactional public int readWorkflowNotification(long notificationId,String tenantId,String actor,boolean override) {
+        return jdbc.update("UPDATE emission_workflow_notification SET read_at=coalesce(read_at,current_timestamp) WHERE notification_id=? AND tenant_id=? AND (? OR lower(recipient_id)=lower(?))",notificationId,requiredValue(tenantId,"tenantId"),override,requiredValue(actor,"actor"));
     }
 
     @Transactional public int updateTask(long taskId,String tenantId,String status,String actor,boolean override) {
@@ -220,6 +256,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task n SET task_status='BLOCKED',blocked_reason='선행 업무가 완료되지 않았습니다.',updated_at=current_timestamp WHERE n.project_id=? AND n.task_status='WAITING' AND EXISTS (SELECT 1 FROM emission_project_task p WHERE p.project_id=n.project_id AND p.task_code=ANY(string_to_array(nullif(n.predecessor_codes,''),',')) AND p.task_status<>'DONE')",projectId);
         jdbc.update("UPDATE emission_project_registry p SET progress_percent=coalesce((SELECT sum(progress_weight) FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_status='DONE'),0),current_step=coalesce((SELECT task_name FROM emission_project_task t WHERE t.project_id=p.project_id AND t.task_status IN ('READY','IN_PROGRESS') ORDER BY step_order LIMIT 1),'완료'),updated_at=current_timestamp WHERE p.project_id=?",projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'WORKFLOW_TRANSITION',?||' 업무 완료로 다음 단계가 개방되었습니다.',?)",projectId,taskCode,actor);
+        jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,n.project_id,n.task_id,'HANDOFF',n.assignee_id,n.actor_code,'다음 업무가 배정되었습니다',p.project_name||' 프로젝트의 '||n.task_name||' 업무를 진행해 주세요.',n.target_url FROM emission_project_task done JOIN emission_project_task n ON n.project_id=done.project_id AND n.step_order>done.step_order JOIN emission_project_registry p ON p.project_id=n.project_id WHERE done.project_id=? AND done.task_code=? AND n.task_status='READY' AND coalesce(n.assignee_id,'')<>'' ORDER BY n.step_order LIMIT 1 ON CONFLICT DO NOTHING",projectId,taskCode);
         synchronizeProcessExecution(projectId,taskCode,actor,"");
     }
 
@@ -546,6 +583,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("UPDATE emission_project_task SET task_status=CASE WHEN task_code='ACTIVITY_DATA' THEN 'READY' ELSE 'BLOCKED' END,blocked_reason=CASE WHEN task_code='ACTIVITY_DATA' THEN null ELSE '보완 자료 재제출이 필요합니다.' END,completed_at=null,completed_by=null,updated_at=current_timestamp WHERE project_id=? AND task_code IN ('ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT')",projectId);
         jdbc.update("UPDATE emission_project_registry SET current_step='보완·재제출',project_status='보완 필요',updated_at=current_timestamp WHERE project_id=?",projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CORRECTION_REQUESTED',?,?)",projectId,reason,actor);
+        jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,t.project_id,t.task_id,'CORRECTION',t.assignee_id,t.actor_code,'활동자료 보완이 요청되었습니다',?,t.target_url FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE t.project_id=? AND t.task_code='ACTIVITY_DATA' AND coalesce(t.assignee_id,'')<>'' ON CONFLICT DO NOTHING",reason,projectId);
         String tenant=jdbc.queryForObject("select tenant_id from emission_project_registry where project_id=?",String.class,projectId);
         Map<String,Object> execution=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
         String current=String.valueOf(execution.get("currentStepCode"));
