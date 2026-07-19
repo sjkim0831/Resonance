@@ -11,6 +11,21 @@ controller="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/eg
 [[ -s "$service" && -s "$controller" ]] || exit 1
 
 case "$STEP" in
+  EMISSION_PROJECT_SETUP)
+    events=(CREATED)
+    readers=(listForActor detail)
+    tests=(verify-emission-tenant-isolation.sql verify-emission-actor-process-task-orchestration.sql)
+    ;;
+  EMISSION_PROJECT_COLLECT)
+    events=(ACTIVITY_ADDED EXCEL_UPLOADED SUBMITTED)
+    readers=(activities submissions)
+    tests=(verify-emission-activity-submission.sql verify-emission-tenant-isolation.sql)
+    ;;
+  EMISSION_PROJECT_VALIDATE)
+    events=(VERIFIED CORRECTION_REQUESTED)
+    readers=(latestQuality submissions)
+    tests=(verify-emission-activity-quality.sql verify-emission-review-workflow.sql)
+    ;;
   EMISSION_PROJECT_CALCULATE)
     events=(CALCULATED)
     readers=(detail calculationResult)
@@ -29,6 +44,11 @@ case "$STEP" in
   EMISSION_PROJECT_APPROVE)
     events=(VERIFIED APPROVED REJECTED)
     readers=(submissions reviewWorkflow)
+    tests=(verify-emission-review-workflow.sql verify-emission-tenant-isolation.sql)
+    ;;
+  EMISSION_PROJECT_REPORT)
+    events=(REPORT_DRAFT_CREATED REPORT_FINALIZED REPORT_CERTIFICATE_ISSUED)
+    readers=(reportWorkflow reportAccessHistory)
     tests=(verify-emission-review-workflow.sql verify-emission-tenant-isolation.sql)
     ;;
   *) exit 3 ;;
