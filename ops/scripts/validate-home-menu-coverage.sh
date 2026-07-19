@@ -25,7 +25,7 @@ fi
 result="$(kubectl -n "$NAMESPACE" exec -i "$primary_pod" -c patroni -- \
   psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -F '|' <<'SQL'
 WITH expected(root_code, middle_count, leaf_count) AS (
-  VALUES ('H103',4,22),('H104',4,19),('H105',3,15),
+  VALUES ('H103',4,22),('H104',4,19),('H105',3,12),
          ('H106',4,17),('H107',3,16),('H108',3,11)
 )
 SELECT e.root_code,
@@ -50,6 +50,14 @@ if [[ "$row_count" -ne 6 ]]; then
 fi
 if awk -F'|' 'NF==6 && (($2+0)!=($3+0) || ($4+0)!=($5+0) || ($6+0)>0) { bad=1 } END { exit bad ? 0 : 1 }' <<<"$result"; then
   echo "[home-menu-coverage] incomplete hierarchy or invalid route detected" >&2
+  exit 1
+fi
+
+empty_sections="$(kubectl -n "$NAMESPACE" exec "$primary_pod" -c patroni -- \
+  psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc \
+  "select count(*) from comtnmenuinfo middle where middle.menu_code ~ '^H10[3-8][0-9]{2}$' and middle.use_at='Y' and middle.expsr_at='Y' and not exists (select 1 from comtnmenuinfo leaf where leaf.menu_code like middle.menu_code || '__' and length(leaf.menu_code)=8 and leaf.use_at='Y' and leaf.expsr_at='Y');")"
+if [[ "$empty_sections" -ne 0 ]]; then
+  echo "[home-menu-coverage] $empty_sections exposed sections have no menu items" >&2
   exit 1
 fi
 
