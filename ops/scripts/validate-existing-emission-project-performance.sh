@@ -38,7 +38,8 @@ read -r desired ready available <<<"$(kubectl -n "${CARBONET_K8S_NAMESPACE:-carb
 
 # The deployment pipeline must have completed successfully recently. This is
 # evidence that the incremental build path still produces a deployable image.
-journalctl -u carbonet-auto-deploy.service --since '24 hours ago' --no-pager 2>/dev/null | grep -Eq '\[auto-deploy\] deployed [0-9a-f]{40}|BUILD-DEPLOY (SUCCESS|COMPLETED SUCCESSFULLY)'
+deploy_log="$(journalctl -u carbonet-auto-deploy.service --since '24 hours ago' --no-pager 2>/dev/null)"
+grep -Eq '\[auto-deploy\] deployed [0-9a-f]{40}|BUILD-DEPLOY (SUCCESS|COMPLETED SUCCESSFULLY)' <<<"$deploy_log"
 
 jq -cn --arg process "$PROCESS" --arg step "$STEP" --arg runtime "$runtime_result" --argjson p95 "$search_p95_ms" \
   '{handled:true,strategy:"EXACT_RUNTIME_PERFORMANCE_ADOPTION",process:$process,step:$step,incrementalBuild:true,searchP95Millis:$p95,readyReplicas:2,runtime:$runtime}'
