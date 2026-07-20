@@ -18,7 +18,7 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
   exit 1
 }
 
-IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count classification_mismatch_count strategic_work_type_count navigation_process_count navigation_bound_count navigation_missing_count <<<"$(
+IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count missing_required_page_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count classification_mismatch_count strategic_work_type_count navigation_process_count navigation_bound_count navigation_missing_count orchestration_process_count orchestration_professional_count orchestration_insufficient_count <<<"$(
   kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -At -F '|' -c "
       select
@@ -39,6 +39,9 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
             and t.task_code like 'AUTO\\_%' escape '\\'),
         (select coalesce(sum((requires_user_page::integer)+(requires_admin_page::integer)),0) from framework_process_step),
         (select count(*) from framework_page_design),
+        (select count(*) from framework_process_step s
+          where (s.requires_user_page and not exists(select 1 from framework_page_design d where d.process_code=s.process_code and d.step_code=s.step_code and d.audience='USER'))
+             or (s.requires_admin_page and not exists(select 1 from framework_page_design d where d.process_code=s.process_code and d.step_code=s.step_code and d.audience='ADMIN'))),
         (select incomplete_page_count from framework_page_design_summary),
         (select field_count from framework_page_design_summary),
         (select required_field_count from framework_page_design_summary),
@@ -57,7 +60,10 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
         (select strategic_work_type_count from framework_work_type_classification_audit),
         (select process_count from framework_process_navigation_summary),
         (select navigation_bound_count from framework_process_navigation_summary),
-        (select navigation_missing_count from framework_process_navigation_summary);
+        (select navigation_missing_count from framework_process_navigation_summary),
+        (select process_count from framework_orchestration_design_audit),
+        (select professional_page_count from framework_orchestration_design_audit),
+        (select insufficient_page_count from framework_orchestration_design_audit);
     "
 )"
 
@@ -77,8 +83,8 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
   echo "[unified-work-design] design-blocked processes have generated runtime tasks: $invalid_generated_count" >&2
   exit 5
 }
-[[ "$required_page_count" == "$page_design_count" ]] || {
-  echo "[unified-work-design] required page design mismatch: required=$required_page_count designed=$page_design_count" >&2
+[[ "$page_design_count" -ge "$required_page_count" && "$missing_required_page_count" == "0" ]] || {
+  echo "[unified-work-design] required page design mismatch: required=$required_page_count designed=$page_design_count missing=$missing_required_page_count" >&2
   exit 6
 }
 [[ "$incomplete_page_count" == "0" ]] || {
@@ -125,5 +131,9 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
   echo "[unified-work-design] reverse process navigation coverage mismatch: process=$process_count catalog=$navigation_process_count bound=$navigation_bound_count missing=$navigation_missing_count" >&2
   exit 17
 }
+[[ "$orchestration_process_count" == "10" && "$orchestration_professional_count" == "10" && "$orchestration_insufficient_count" == "0" ]] || {
+  echo "[unified-work-design] orchestration contracts incomplete: process=$orchestration_process_count professional=$orchestration_professional_count insufficient=$orchestration_insufficient_count" >&2
+  exit 18
+}
 
-echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count strategic-work-types=$strategic_work_type_count topology=$topology_count navigation=$navigation_bound_count/$navigation_process_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"
+echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count strategic-work-types=$strategic_work_type_count topology=$topology_count navigation=$navigation_bound_count/$navigation_process_count orchestration=$orchestration_professional_count/$orchestration_process_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"
