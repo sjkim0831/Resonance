@@ -35,6 +35,7 @@ echo "[common-design-assets] PASS pages=$pages uncovered=0 page-local-components
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LCA_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/emission-lca/EmissionLcaMigrationPage.tsx"
 WORKFLOW_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/workflow/CommonWorkflowWorkspace.tsx"
+PRIMITIVE_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/common-design/CommonDesignPrimitives.tsx"
 MANIFEST_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts"
 
 [[ -f "$WORKFLOW_SOURCE" ]] && grep -q 'data-common-component="COMMON_STEP_FLOW"' "$WORKFLOW_SOURCE" || {
@@ -54,11 +55,16 @@ if grep -Eq 'InlineStyles|<header|<footer|gov-btn|status-pill|audit-table-row|ti
   exit 1
 fi
 for component_id in COMMON_DATA_TABLE COMMON_STATUS_BADGE COMMON_CONTENT_CARD COMMON_ACTION_BAR; do
-  grep -q "$component_id" "$LCA_SOURCE" || {
-    echo "[common-design-assets] FAIL Product LCA source missing $component_id" >&2; exit 1;
+  grep -q "$component_id" "$PRIMITIVE_SOURCE" || {
+    echo "[common-design-assets] FAIL common primitive implementation missing $component_id" >&2; exit 1;
   }
   grep -q "componentId: \"$component_id\"" "$MANIFEST_SOURCE" || {
     echo "[common-design-assets] FAIL Product LCA manifest missing $component_id" >&2; exit 1;
+  }
+done
+for component_name in CommonDataTable CommonStatusBadge CommonContentCard CommonActionBar CommonTimeline; do
+  grep -q "$component_name" "$LCA_SOURCE" || {
+    echo "[common-design-assets] FAIL Product LCA source missing $component_name" >&2; exit 1;
   }
 done
 echo "[common-design-assets] PASS source reuse contract"
