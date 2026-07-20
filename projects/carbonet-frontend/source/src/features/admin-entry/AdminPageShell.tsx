@@ -1163,8 +1163,20 @@ export function AdminPageShell({
         )
       ) : null}
 
-      <div className="js-admin-layout-shell flex min-h-0 flex-1">
-        <aside aria-label={en ? "Admin Side Menu" : "관리자 사이드 메뉴"} className="js-admin-lnb flex w-72 flex-col bg-white p-5">
+      <div className="js-admin-layout-shell flex min-h-0 flex-1 flex-col lg:flex-row">
+        <details className="border-b border-[var(--kr-gov-border-light)] bg-white p-3 lg:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg bg-slate-50 px-4 font-bold text-[var(--kr-gov-text-primary)]">
+            <span className="flex items-center gap-2"><span className="material-symbols-outlined text-[20px]">menu</span>{en ? "Current domain menu" : "현재 업무 메뉴"}</span>
+            <span className="material-symbols-outlined text-[20px]">expand_more</span>
+          </summary>
+          <nav aria-label={en ? "Mobile admin menu" : "모바일 관리자 메뉴"} className="mt-3 grid max-h-[55vh] gap-2 overflow-y-auto sm:grid-cols-2">
+            {filteredSelectedDomain.groups.flatMap((group: AdminMenuGroup) => visibleLinks(group.links)).map((link, index) => {
+              const runtimeUrl = resolveMenuLinkRuntimeUrl(link);
+              return <a className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-bold text-slate-700" href={runtimeUrl || "#"} key={`mobile-${link.code || runtimeUrl}-${index}`}><span className="material-symbols-outlined text-[18px]">{link.icon || "chevron_right"}</span>{resolveSidebarLinkLabel(link, en)}</a>;
+            })}
+          </nav>
+        </details>
+        <aside aria-label={en ? "Admin Side Menu" : "관리자 사이드 메뉴"} className="js-admin-lnb hidden w-72 flex-col bg-white p-5 lg:flex">
           <div className="mb-6">
             <div className="relative">
               <input
@@ -1284,7 +1296,7 @@ export function AdminPageShell({
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 overflow-y-auto p-8" id="main-content">
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" id="main-content">
           {breadcrumbs && breadcrumbs.length > 0 ? (
             <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-[var(--kr-gov-text-secondary)]">
               <span className="material-symbols-outlined text-[18px]">home</span>
