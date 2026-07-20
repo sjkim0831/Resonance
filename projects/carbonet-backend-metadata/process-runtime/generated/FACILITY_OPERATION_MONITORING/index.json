@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "FACILITY_OPERATION_MONITORING",
+      "stepCode": "FOM_HANDOVER",
+      "package": "FACILITY_OPERATION_MONITORING__FOM_HANDOVER.json",
+      "packageHash": "37353640f72c2e495ca4c9856582585e71ed07aa4bfafbcaa4da6a353ff24498",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_OPERATION_MONITORING",
+      "stepCode": "FOM_OPERATE",
+      "package": "FACILITY_OPERATION_MONITORING__FOM_OPERATE.json",
+      "packageHash": "359fbae47b49c5a39ba22c8445076eff3502b4edbb67ab0827aa0df76a67511c",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_OPERATION_MONITORING",
+      "stepCode": "FOM_PLAN",
+      "package": "FACILITY_OPERATION_MONITORING__FOM_PLAN.json",
+      "packageHash": "8e3835a9584e38ce8d193be7a96c923a7678dd43921a7ab37ad0eb62fd2486e9",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "9d9c592495cf7652f2aa0306b9409bceffe57102624df9a4c9449278f2c13c98"
+}

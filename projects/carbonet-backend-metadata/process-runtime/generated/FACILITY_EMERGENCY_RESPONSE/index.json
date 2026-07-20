@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "FACILITY_EMERGENCY_RESPONSE",
+      "stepCode": "FER_CONTROL",
+      "package": "FACILITY_EMERGENCY_RESPONSE__FER_CONTROL.json",
+      "packageHash": "5b8167c5ed2e185293a8ea5d74adc273d5aed158d07158df31929443ab65a968",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_EMERGENCY_RESPONSE",
+      "stepCode": "FER_DECLARE",
+      "package": "FACILITY_EMERGENCY_RESPONSE__FER_DECLARE.json",
+      "packageHash": "6c5f99cdde397cfbdf45b23ea990a8b63c6cb58bd9a0aa57690d2e16570d0459",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_EMERGENCY_RESPONSE",
+      "stepCode": "FER_RECOVER",
+      "package": "FACILITY_EMERGENCY_RESPONSE__FER_RECOVER.json",
+      "packageHash": "f1adc396e823361e5d79324f1517e8b9c01112f75477d932e628bb76cd8e83e0",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "c32b9bccb5cd879cf77bd6479a51befe957996fcb4d53c7ee8f5ad7342b1ebc1"
+}
