@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "stepCode": "CMD_APPROVE",
+      "package": "COMPANY_MANAGER_DELEGATION__CMD_APPROVE.json",
+      "packageHash": "38cae39c57262589a4ae19e7dff7e13ed0c9107436aba971389ebbfa19ac3191",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "stepCode": "CMD_HANDOVER",
+      "package": "COMPANY_MANAGER_DELEGATION__CMD_HANDOVER.json",
+      "packageHash": "5ce4b3b7a00b4d8df24b54f93400ec90500510e413d75946bb2387020cd89615",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "stepCode": "CMD_REQUEST",
+      "package": "COMPANY_MANAGER_DELEGATION__CMD_REQUEST.json",
+      "packageHash": "20a5085dd3b31229415e07404493380c2638c6a1c7254292dc181edb92a28a3a",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "1c4669d1d61e2b6480fdcc8db8c2ce258f54bec418358e6c3ab4fc121716bc66"
+}
