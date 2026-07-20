@@ -1,6 +1,6 @@
-process=EMISSION_PROJECT
-step=EMISSION_PROJECT_APPROVE
-type=TEST
-target=test/emission_project_emission_project_approve
+process=CERTIFICATION_ELIGIBILITY_CHECK
+step=CEC_VALIDATE_COMPANY
+type=FULL_STACK
+target=/work/certification-eligibility-check?step=cec_validate_company
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
