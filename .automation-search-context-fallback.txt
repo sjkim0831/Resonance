@@ -1,6 +1,6 @@
-process=FACILITY_OPERATION_MONITORING
-step=FOM_PLAN
+process=CO2_INJECTION_STORAGE_OPERATION
+step=CISO_PLAN
 type=FULL_STACK
-target=/ccus/facility/facility-operation-monitoring?step=fom_plan
+target=/ccus/facility/co2-injection-storage-operation?step=ciso_plan
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
