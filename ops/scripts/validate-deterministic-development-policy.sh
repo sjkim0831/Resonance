@@ -12,10 +12,13 @@ jq -e '
   .allowUnverifiedCompletion == false and
   .defaultExecutionOrder[0] == "EXACT_EXISTING_IMPLEMENTATION" and
   .defaultExecutionOrder[-1] == "AI_ESCALATION" and
-  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
+  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","FULL_STACK_GENERATION","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
 ' "$POLICY" >/dev/null
 bash -n "$WORKER"
 bash -n "$RUNNER"
+bash -n "$ROOT/ops/scripts/generate-full-stack-design-packages.sh"
+bash -n "$ROOT/ops/scripts/validate-full-stack-design-generation.sh"
+python3 -m py_compile "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-database.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-api.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-notification.sh"
