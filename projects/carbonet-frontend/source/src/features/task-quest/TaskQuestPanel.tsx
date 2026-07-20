@@ -38,6 +38,7 @@ type QuestTask = {
 type QuestResponse = {
   items?: QuestTask[];
   workflows?: QuestTask[];
+  workTypes?: Array<{ workTypeCode: string; workTypeName: string; workTypeNameEn?: string; description?: string; sortOrder?: number }>;
   summary?: { total?: number; completed?: number; overdue?: number };
 };
 
@@ -179,11 +180,17 @@ export function TaskQuestPanel() {
       const code = String(item.domainCode || "EMISSION").toUpperCase();
       counts.set(code, (counts.get(code) || 0) + 1);
     });
-    return [...counts.entries()].sort((a, b) => workTypeLabel(a[0], en).localeCompare(workTypeLabel(b[0], en)));
-  }, [en, workflowItems]);
+    const definitions = new Map((data?.workTypes || []).map((item) => [String(item.workTypeCode).toUpperCase(), item]));
+    counts.forEach((_count, code) => {
+      if (!definitions.has(code)) definitions.set(code, { workTypeCode: code, workTypeName: workTypeLabel(code, false), workTypeNameEn: workTypeLabel(code, true), description: "" });
+    });
+    return [...definitions.values()]
+      .sort((a, b) => Number(a.sortOrder ?? 999) - Number(b.sortOrder ?? 999) || a.workTypeCode.localeCompare(b.workTypeCode))
+      .map((item) => ({ code: String(item.workTypeCode).toUpperCase(), count: counts.get(String(item.workTypeCode).toUpperCase()) || 0, label: (en ? item.workTypeNameEn : item.workTypeName) || workTypeLabel(item.workTypeCode, en), description: item.description || "" }));
+  }, [data?.workTypes, en, workflowItems]);
 
   useEffect(() => {
-    if (selectedWorkType !== "ALL" && !availableWorkTypes.some(([code]) => code === selectedWorkType)) {
+    if (selectedWorkType !== "ALL" && !availableWorkTypes.some((item) => item.code === selectedWorkType)) {
       setSelectedWorkType("ALL");
       localStorage.setItem("task-quest-work-type", "ALL");
     }
@@ -352,8 +359,8 @@ export function TaskQuestPanel() {
           </header>
           <div className="overflow-y-auto bg-slate-50 px-5 py-5 sm:px-7 sm:py-6">
             <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 1 · Select work type" : "1단계 · 업무 종류 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Available work types" : "현재 선택 가능한 업무 종류"}</h3><p className="mt-1 text-sm text-slate-600">{en ? "The popup lists every instantiated process in the selected category." : "선택한 종류에 실제 생성된 업무 프로세스를 빠짐없이 나열합니다."}</p></div><label className="text-sm font-bold text-slate-700">{en ? "Work type" : "업무 종류"}<select className="ml-2 min-h-10 rounded-lg border border-slate-300 bg-white px-3" onChange={(event) => selectWorkType(event.target.value)} value={selectedWorkType}><option value="ALL">{en ? "All work" : "전체 업무"} ({workflowItems.length})</option>{availableWorkTypes.map(([code, count]) => <option key={code} value={code}>{workTypeLabel(code, en)} ({count})</option>)}</select></label></div>
-              <div className="mt-4 flex gap-2 overflow-x-auto pb-1"><button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === "ALL" ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} onClick={() => selectWorkType("ALL")} type="button"><strong className="block text-sm">{en ? "All work" : "전체 업무"}</strong><span className="text-xs">{workflowItems.length} {en ? "steps" : "단계"}</span></button>{availableWorkTypes.map(([code, count]) => <button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === code ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} key={code} onClick={() => selectWorkType(code)} type="button"><strong className="block text-sm">{workTypeLabel(code, en)}</strong><span className="text-xs">{count} {en ? "steps" : "단계"} · {new Set(workflowItems.filter((item) => String(item.domainCode || "EMISSION").toUpperCase() === code).map((item) => `${item.projectId}|${item.processCode}`)).size} {en ? "processes" : "프로세스"}</span></button>)}</div>
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 1 · Select work type" : "1단계 · 업무 종류 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Available work types" : "현재 선택 가능한 업무 종류"}</h3><p className="mt-1 text-sm text-slate-600">{en ? "Work types are managed in the actor and process administration screen." : "업무 종류는 액터·프로세스 관리 화면에서 등록·정렬·활성화합니다."}</p></div><label className="text-sm font-bold text-slate-700">{en ? "Work type" : "업무 종류"}<select className="ml-2 min-h-10 rounded-lg border border-slate-300 bg-white px-3" onChange={(event) => selectWorkType(event.target.value)} value={selectedWorkType}><option value="ALL">{en ? "All work" : "전체 업무"} ({workflowItems.length})</option>{availableWorkTypes.map((item) => <option key={item.code} value={item.code}>{item.label} ({item.count})</option>)}</select></label></div>
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1"><button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === "ALL" ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} onClick={() => selectWorkType("ALL")} type="button"><strong className="block text-sm">{en ? "All work" : "전체 업무"}</strong><span className="text-xs">{workflowItems.length} {en ? "steps" : "단계"}</span></button>{availableWorkTypes.map((item) => <button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === item.code ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} key={item.code} onClick={() => selectWorkType(item.code)} title={item.description} type="button"><strong className="block text-sm">{item.label}</strong><span className="text-xs">{item.count} {en ? "steps" : "단계"} · {new Set(workflowItems.filter((workflow) => String(workflow.domainCode || "EMISSION").toUpperCase() === item.code).map((workflow) => `${workflow.projectId}|${workflow.processCode}`)).size} {en ? "processes" : "프로세스"}</span></button>)}</div>
             </section>
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
@@ -363,7 +370,7 @@ export function TaskQuestPanel() {
                 [en ? "Progress" : "진행률", `${workflowProgress}%`, "monitoring"]
               ].map(([label, value, icon]) => <div className="rounded-xl border border-slate-200 bg-white p-3" key={String(label)}><span className="material-symbols-outlined text-[20px] text-[#246beb]">{icon}</span><p className="mt-1 text-xs font-bold text-slate-500">{label}</p><strong className="text-lg text-[#052b57]">{value}</strong></div>)}
             </div>
-            <div className="mb-3"><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 2 · Select a process" : "2단계 · 업무 프로세스 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{selectedWorkType === "ALL" ? (en ? "All available processes" : "전체 업무 프로세스") : workTypeLabel(selectedWorkType, en)}</h3><p className="text-sm text-slate-600">{processGroups.length} {en ? "project-process workflows are available. Select Use in task guide to proceed in order." : "개의 프로젝트·프로세스 흐름이 있습니다. ‘업무 길잡이로 진행’을 선택하면 순서대로 진행합니다."}</p></div>
+            <div className="mb-3"><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 2 · Select a process" : "2단계 · 업무 프로세스 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{selectedWorkType === "ALL" ? (en ? "All available processes" : "전체 업무 프로세스") : availableWorkTypes.find((item) => item.code === selectedWorkType)?.label || workTypeLabel(selectedWorkType, en)}</h3><p className="text-sm text-slate-600">{processGroups.length} {en ? "project-process workflows are available. Select Use in task guide to proceed in order." : "개의 프로젝트·프로세스 흐름이 있습니다. ‘업무 길잡이로 진행’을 선택하면 순서대로 진행합니다."}</p></div>
             {processGroups.length ? <div className="space-y-5">
               {processGroups.map(([key, items]) => {
                 const first = items[0];

@@ -246,6 +246,7 @@ public class EmissionProjectRegistryService {
         List<Map<String,Object>> items=jdbc.queryForList(taskProjection+where+" ORDER BY CASE t.task_status WHEN 'READY' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'BLOCKED' THEN 2 WHEN 'WAITING' THEN 3 ELSE 4 END,CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,t.due_date,t.step_order",args);
         items.forEach(this::enrichCompletionReadiness);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("actorId",actor);result.put("allVisible",showAll);
+        result.put("workTypes",jdbc.queryForList("select work_type_code as \"workTypeCode\",work_type_name as \"workTypeName\",work_type_name_en as \"workTypeNameEn\",description,sort_order as \"sortOrder\" from framework_business_work_type where use_at='Y' order by sort_order,work_type_code"));
         String workflowScope=showAll?" WHERE p.tenant_id=?":" WHERE p.tenant_id=? AND EXISTS (SELECT 1 FROM framework_project_actor_assignment a WHERE a.project_id=t.project_id AND a.active_yn='Y' AND lower(a.user_id)=lower(?))";
         List<Map<String,Object>> workflows=jdbc.queryForList(taskProjection+workflowScope+" ORDER BY p.due_date NULLS LAST,p.project_id,t.step_order",showAll?new Object[]{tenant}:new Object[]{tenant,actor});
         workflows.forEach(this::enrichCompletionReadiness);
