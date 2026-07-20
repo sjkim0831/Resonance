@@ -85,7 +85,8 @@ def test_package(path: Path) -> dict[str, Any]:
         require(page.get("theme") == "COMMON_KRDS_GOV", "common theme", failures)
         require(len(page.get("fields", [])) >= 10, "professional field contract", failures)
         field_codes = {field.get("code") for field in page.get("fields", [])}
-        for field in ("projectId", "businessId", "rowVersion", "nextTaskId"):
+        client_input_fields = set(step.get("input", {})) - {"tenantId"}
+        for field in client_input_fields:
             require(field in field_codes, f"required field {field}", failures)
         accessibility = page.get("accessibility", {})
         require(accessibility.get("keyboard") is True, "keyboard accessibility", failures)

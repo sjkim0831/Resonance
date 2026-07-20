@@ -30,7 +30,7 @@ case "$JOB_TYPE" in
     ' "$WT/$artifact" >/dev/null
     python3 "$WT/ops/scripts/fast-process-package-test.py" "$WT/$artifact" \
       --cache-dir "$WT/var/verification/process-package-tests" \
-      --evidence "$WT/var/test-evidence/process-package-tests/$PROCESS.json" >/dev/null
+      --evidence "$WT/var/test-evidence/process-package-tests/$PROCESS.json" 1>&2
     ;;
   TEST|ACTOR_TEST|INTEGRATION)
     validator="$WT/ops/scripts/validate-existing-emission-project-journey.sh"

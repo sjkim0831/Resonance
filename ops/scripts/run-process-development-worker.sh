@@ -141,7 +141,11 @@ trap 'fail_job "unexpected worker error at line ${LINENO}"' ERR
 trap 'fail_job "worker interrupted by signal"' INT TERM
 
 event "CLAIMED" "PLANNED" "RUNNING" "{\"attempt\":${ATTEMPT}}"
+exec 5>"${AI_GIT_FETCH_LOCK_FILE:-/tmp/resonance-ai-git-fetch.lock}"
+flock 5
 git -C "$ROOT_DIR" fetch origin main >>"$LOG_FILE" 2>&1
+flock -u 5
+exec 5>&-
 BASE_COMMIT="$(git -C "$ROOT_DIR" rev-parse origin/main)"
 git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
 git -C "$ROOT_DIR" worktree add -B "$BRANCH" "$WT" "$BASE_COMMIT" >>"$LOG_FILE" 2>&1
