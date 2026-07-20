@@ -1,6 +1,6 @@
-process=CO2_QUALITY_ANALYSIS
-step=CQA_PLAN
+process=FACILITY_EMERGENCY_RESPONSE
+step=FER_RECOVER
 type=FULL_STACK
-target=/work/co2-quality-analysis?step=cqa_plan
+target=/ccus/facility/facility-emergency-response?step=fer_recover
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
