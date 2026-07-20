@@ -3974,41 +3974,48 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                             {en ? "Show detailed comparison" : "상세 일치·불일치 내역"}
                           </summary>
                           <div className="border-t border-slate-200 p-3">
-                            <div className="grid grid-cols-2 gap-2">
-                              {[
-                                [en ? "Product" : "제품명", item.productMatched],
-                                [en ? "Title" : "제목", item.titleMatched],
-                                [en ? "Total emission" : "총 배출량", item.totalEmissionMatched],
-                                [en ? "Certificate ID" : "인증서 ID", item.certificateIdMatch],
-                                [en ? "Report hash" : "리포트 해시", item.payloadHashMatch],
-                                [en ? "Integrity code" : "무결성 코드", item.integrityCodeMatch],
-                                [en ? "Dataset hash" : "데이터셋 해시", item.datasetHashMatch]
-                              ].map(([label, matched]) => (
-                                <span className={`px-2 py-1 font-bold ${matched ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`} key={String(label)}>
-                                  {String(label)}: {matched ? "MATCH" : "MISMATCH"}
-                                </span>
-                              ))}
+                            <div className="overflow-auto border border-slate-200">
+                              <table className="w-full min-w-[720px] border-collapse text-left text-[11px]">
+                                <thead className="bg-slate-100 text-slate-700"><tr>
+                                  <th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th>
+                                  <th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th>
+                                </tr></thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {([
+                                    [en ? "Product" : "제품명", item.productName || "-", item.productMatched],
+                                    [en ? "Title" : "제목", item.reportTitle || "-", item.titleMatched],
+                                    [en ? "Total emission" : "총 배출량", String(item.totalEmission ?? "-"), item.totalEmissionMatched],
+                                    [en ? "Certificate ID" : "인증서 ID", item.certificateId || "-", item.certificateIdMatch],
+                                    [en ? "Report hash" : "리포트 해시", item.payloadHash || "-", item.payloadHashMatch],
+                                    [en ? "Integrity code" : "무결성 코드", item.integrityCode || "-", item.integrityCodeMatch],
+                                    [en ? "Dataset hash" : "데이터셋 해시", item.datasetHash || "-", item.datasetHashMatch]
+                                  ] as Array<[string, string, boolean]>).map(([label, storedValue, matched]) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={label}>
+                                    <td className="px-3 py-2 font-bold">{label}</td><td className="max-w-64 break-all px-3 py-2 font-semibold">{storedValue}</td>
+                                    <td className="max-w-64 break-all px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td>
+                                    <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
+                                  </tr>)}
+                                </tbody>
+                              </table>
                             </div>
                             {selectedReportType !== "LCA_SUMMARY" && item.reportSummaryComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
                               <p className="font-black text-slate-900">{en ? "Report totals and GWP" : "레포트 총계·GWP 대조"}</p>
-                              <div className="mt-2 grid grid-cols-2 gap-2">
-                                {item.reportSummaryComparisons.map((field) => <span className={`px-2 py-2 font-bold ${field.matched ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`} key={`${item.certificateId}-summary-${field.field}`}>{field.label}: {field.expected || "-"} · {field.matched ? "MATCH" : "MISMATCH"}</span>)}
-                              </div>
+                              <div className="mt-2 overflow-auto border border-slate-200"><table className="w-full min-w-[640px] border-collapse text-left text-[11px]">
+                                <thead className="bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
+                                <tbody className="divide-y divide-slate-100">{item.reportSummaryComparisons.map((field) => <tr className={field.matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-summary-${field.field}`}><td className="px-3 py-2 font-bold">{field.label}</td><td className="px-3 py-2 font-semibold">{field.expected || "-"}</td><td className="px-3 py-2 font-semibold">{field.matched ? (field.expected || "-") : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td></tr>)}</tbody>
+                              </table></div>
                             </div> : null}
                             {selectedReportType !== "LCA_SUMMARY" && item.outputFieldComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
                               <p className="font-black text-slate-900">{en ? "Product and byproduct allocation" : "제품·부산물 질량 및 배출량 대조"}</p>
-                              <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
-                                {item.outputFieldComparisons.map((field) => <div className={`border-l-4 p-3 ${field.rowMatched ? "border-emerald-500 bg-emerald-50 text-emerald-900" : "border-rose-500 bg-rose-50 text-rose-900"}`} key={`${item.certificateId}-output-${field.rowIndex}-${field.materialName}`}>
-                                  <p className="font-black">{field.outputType === "BYPRODUCT" ? (en ? "Byproduct" : "부산물") : (en ? "Product" : "제품")} · {field.materialName || "-"}</p>
-                                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-                                    <span>{en ? "Name" : "물질명"}: {field.materialMatched ? "MATCH" : "MISMATCH"}</span>
-                                    <span>{en ? "Process standard mass" : "공정 기준 질량"}: {field.processReferenceMassDisplay || "-"} · {field.processReferenceMassMatched ? "MATCH" : "MISMATCH"}</span>
-                                    <span>{en ? "Mass share" : "질량 비율"}: {field.massSharePercentDisplay || "-"}% · {field.massSharePercentMatched ? "MATCH" : "MISMATCH"}</span>
-                                    <span>{en ? "Allocated emission" : "질량 비율 배출량"}: {field.allocatedEmissionDisplay || "-"} · {field.allocatedEmissionMatched ? "MATCH" : "MISMATCH"}</span>
-                                    <span>{en ? "Emission per ton" : "배출량(1톤 기준)"}: {field.emissionPerTonDisplay || "-"} · {field.emissionPerTonMatched ? "MATCH" : "MISMATCH"}</span>
-                                  </div>
-                                </div>)}
-                              </div>
+                              <div className="mt-2 max-h-96 overflow-auto border border-slate-200"><table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
+                                <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr><th className="px-3 py-2">{en ? "Output" : "산출물"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th><th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded PDF value" : "업로드 PDF값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th></tr></thead>
+                                <tbody className="divide-y divide-slate-100">{item.outputFieldComparisons.flatMap((field) => ([
+                                  [en ? "Name" : "물질명", field.materialName || "-", field.materialMatched],
+                                  [en ? "Process standard mass" : "공정 기준 질량", field.processReferenceMassDisplay || "-", field.processReferenceMassMatched],
+                                  [en ? "Mass share" : "질량 비율", `${field.massSharePercentDisplay || "-"}%`, field.massSharePercentMatched],
+                                  [en ? "Allocated emission" : "질량 비율 배출량", field.allocatedEmissionDisplay || "-", field.allocatedEmissionMatched],
+                                  [en ? "Emission per ton" : "배출량(1톤 기준)", field.emissionPerTonDisplay || "-", field.emissionPerTonMatched]
+                                ] as Array<[string, string, boolean]>).map(([label, storedValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-output-${field.rowIndex}-${valueIndex}`}><td className="px-3 py-2 font-black">{field.outputType === "BYPRODUCT" ? (en ? "Byproduct" : "부산물") : (en ? "Product" : "제품")}<span className="block font-semibold text-slate-500">{field.materialName || "-"}</span></td><td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td><td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed in uploaded PDF" : "업로드 PDF에서 확인되지 않음")}</td><td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td></tr>))}</tbody>
+                              </table></div>
                             </div> : null}
                             {selectedReportType === "LCA_SUMMARY" && item.lcaFieldComparisons?.length ? (
                               <div className="mt-3 space-y-4">
