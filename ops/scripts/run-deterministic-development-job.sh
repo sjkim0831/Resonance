@@ -12,7 +12,11 @@ SEARCH_CONTEXT="${8:?search context is required}"
 
 POLICY="$WT/ops/runtime-metadata/deterministic-development-policy.json"
 jq -e --arg type "$JOB_TYPE" '.deterministicJobTypes | index($type) != null' "$POLICY" >/dev/null || exit 3
-jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/dev/null
+if [[ "$JOB_TYPE" == "FULL_STACK" || "$JOB_TYPE" == "FULL_STACK_GENERATION" ]]; then
+  jq -e 'type == "object" and .generatorRequired == true and .reuseCommonAssets == true' "$SPEC_FILE" >/dev/null
+else
+  jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/dev/null
+fi
 
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
