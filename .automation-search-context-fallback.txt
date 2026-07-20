@@ -1,6 +1,6 @@
-process=CERTIFICATION_ELIGIBILITY_CHECK
-step=CEC_VALIDATE_COMPANY
+process=FACILITY_OPERATION_MONITORING
+step=FOM_PLAN
 type=FULL_STACK
-target=/work/certification-eligibility-check?step=cec_validate_company
+target=/ccus/facility/facility-operation-monitoring?step=fom_plan
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
