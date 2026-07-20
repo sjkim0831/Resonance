@@ -49,4 +49,16 @@ grep -q 'CommonWorkflowWorkspace' "$LCA_SOURCE" || {
 grep -q 'instanceKey: "emission-lca-workflow"' "$MANIFEST_SOURCE" || {
   echo "[common-design-assets] FAIL Product LCA manifest mapping missing" >&2; exit 1;
 }
+if grep -Eq 'InlineStyles|<header|<footer|gov-btn|status-pill|audit-table-row|timeline-dot' "$LCA_SOURCE"; then
+  echo "[common-design-assets] FAIL Product LCA contains local shell or local design primitives" >&2
+  exit 1
+fi
+for component_id in COMMON_DATA_TABLE COMMON_STATUS_BADGE COMMON_CONTENT_CARD COMMON_ACTION_BAR; do
+  grep -q "$component_id" "$LCA_SOURCE" || {
+    echo "[common-design-assets] FAIL Product LCA source missing $component_id" >&2; exit 1;
+  }
+  grep -q "componentId: \"$component_id\"" "$MANIFEST_SOURCE" || {
+    echo "[common-design-assets] FAIL Product LCA manifest missing $component_id" >&2; exit 1;
+  }
+done
 echo "[common-design-assets] PASS source reuse contract"

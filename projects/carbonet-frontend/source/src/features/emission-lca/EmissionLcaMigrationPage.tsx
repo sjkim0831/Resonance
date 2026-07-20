@@ -1,17 +1,13 @@
-import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+import { useEffect, useMemo } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HeaderMobileMenu } from "../home-entry/HomeEntrySections";
-import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
 import { CommonWorkflowWorkspace } from "../../components/workflow/CommonWorkflowWorkspace";
+import { CommonActionBar, CommonContentCard, CommonDataTable, CommonStatusBadge, CommonTimeline } from "../../components/common-design/CommonDesignPrimitives";
 
-const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
-const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
 
 type QueueAlert = { label: string; labelClass: string; title: string; due: string };
 type ComplianceRow = {
@@ -194,58 +190,14 @@ const CONTENT: Record<"ko" | "en", LocalizedLcaContent> = {
   }
 };
 
-function handleGovSymbolError(event: SyntheticEvent<HTMLImageElement>) {
-  const image = event.currentTarget;
-  if (image.dataset.fallbackApplied === "1") {
-    image.style.display = "none";
-    return;
-  }
-  image.dataset.fallbackApplied = "1";
-  image.src = GOV_SYMBOL_FALLBACK;
-}
-
-function InlineStyles({ en }: { en: boolean }) {
-  return <style>{`
-    :root { --kr-gov-blue:#00378b; --kr-gov-blue-hover:#002d72; --kr-gov-text-primary:#1a1a1a; --kr-gov-text-secondary:#4d4d4d; --kr-gov-border-light:#d9d9d9; --kr-gov-focus:#005fde; --kr-gov-bg-gray:#f2f2f2; --kr-gov-radius:5px; }
-    body { font-family:${en ? "'Public Sans', 'Noto Sans KR', sans-serif" : "'Noto Sans KR', 'Public Sans', sans-serif"}; -webkit-font-smoothing:antialiased; background:#f4f7fa; }
-    .skip-link { position:absolute; top:-100px; left:0; background:var(--kr-gov-blue); color:white; padding:12px; z-index:100; transition:top .2s ease; }
-    .skip-link:focus { top:0; }
-    .focus-visible:focus-visible { outline:3px solid var(--kr-gov-focus); outline-offset:2px; }
-    .material-symbols-outlined { font-variation-settings:'wght' 400, 'opsz' 24; font-size:24px; }
-    .gov-btn { border-radius:var(--kr-gov-radius); font-weight:700; transition:background-color .2s ease, color .2s ease, border-color .2s ease; }
-    .audit-table-row { border-bottom:1px solid #f1f5f9; transition:background-color .2s ease; }
-    .audit-table-row:hover { background:#f8fafc; }
-    .timeline-dot { width:10px; height:10px; border-radius:9999px; border:2px solid white; position:absolute; left:-5px; top:4px; }
-    .status-pill { padding:2px 8px; border-radius:6px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:-0.01em; }
-    body.mobile-menu-open { overflow:hidden; }
-  `}</style>;
-}
-
 export function EmissionLcaMigrationPage() {
   const en = isEnglish();
   const content = CONTENT[en ? "en" : "ko"];
-  const sharedContent = LOCALIZED_CONTENT[en ? "en" : "ko"];
-  const session = useFrontendSession();
   const initialPayload = useMemo(() => readBootstrappedHomePayload() as HomePayload | null, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const payloadState = useAsyncValue<HomePayload>(() => fetchHomePayload(), [en], {
     initialValue: initialPayload || { isLoggedIn: false, isEn: en, homeMenu: [] },
     onError: () => undefined
   });
-
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    function handleNavigationSync() {
-      void payloadState.reload();
-      void session.reload();
-    }
-    window.addEventListener(getNavigationEventName(), handleNavigationSync);
-    return () => window.removeEventListener(getNavigationEventName(), handleNavigationSync);
-  }, [payloadState, session]);
 
   const payload = payloadState.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
   const homeMenu = payload.homeMenu || [];
@@ -271,59 +223,7 @@ export function EmissionLcaMigrationPage() {
   }, [content.complianceRows.length, content.milestones.length, content.queueAlerts.length, content.siteCards.length, en, homeMenu.length, payload.isLoggedIn]);
 
   return (
-    <>
-      <InlineStyles en={en} />
-      <div className="bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
-        <a className="skip-link" href="#main-content">{content.skipLink}</a>
-        <div className="bg-[var(--kr-gov-bg-gray)] border-b border-[var(--kr-gov-border-light)]">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img alt={content.govAlt} className="h-4" src={GOV_SYMBOL} onError={handleGovSymbolError} />
-              <span className="text-[12px] font-medium text-[var(--kr-gov-text-secondary)]">{content.govText}</span>
-            </div>
-            <div className="hidden md:flex items-center gap-4 text-xs font-medium text-[var(--kr-gov-text-secondary)]"><p>{content.govNotice}</p></div>
-          </div>
-        </div>
-        <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50 shadow-sm">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
-            <div className="relative flex justify-between items-center h-20">
-              <div className="xl:hidden w-11 h-11 shrink-0" aria-hidden="true" />
-              <a className="flex items-center gap-2 shrink-0" href={buildLocalizedPath("/emission/lca", "/en/emission/lca")}>
-                <span className="material-symbols-outlined text-[36px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 700" }}>analytics</span>
-                <div className="flex flex-col">
-                  <h1 className="text-xl font-black tracking-tight text-[var(--kr-gov-text-primary)] leading-tight">{content.title}</h1>
-                  <p className="text-[10px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider">{content.subtitle}</p>
-                </div>
-              </a>
-              <nav className="hidden xl:flex items-center space-x-1 h-full ml-12 flex-1">
-                {content.navItems.map((item, index) => <a key={item} className={`h-full flex items-center px-4 text-[16px] font-bold border-b-4 transition-all ${index === 1 ? "text-[var(--kr-gov-blue)] border-[var(--kr-gov-blue)]" : "text-gray-500 hover:text-[var(--kr-gov-blue)] border-transparent"}`} href={index === 1 ? buildLocalizedPath("/emission/lca", "/en/emission/lca") : "#"}>{item}</a>)}
-              </nav>
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="hidden md:flex flex-col items-end mr-2">
-                  <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{content.roleLabel}</span>
-                  <span className="text-sm font-black text-[var(--kr-gov-text-primary)]">{content.userName}</span>
-                </div>
-                <div className="hidden md:flex relative w-10 h-10 rounded-full bg-slate-100 items-center justify-center border border-slate-200">
-                  <span className="material-symbols-outlined text-slate-600">notifications</span>
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full text-[8px] text-white flex items-center justify-center font-bold">3</span>
-                </div>
-                <div className="hidden xl:flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible ${en ? "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "bg-[var(--kr-gov-blue)] text-white"}`} onClick={() => navigate("/emission/lca")}>KO</button>
-                  <button type="button" className={`px-2 py-1 text-xs font-bold focus-visible border-l border-[var(--kr-gov-border-light)] ${en ? "bg-[var(--kr-gov-blue)] text-white" : "bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100"}`} onClick={() => navigate("/en/emission/lca")}>EN</button>
-                </div>
-                <button type="button" className="hidden xl:inline-flex gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] px-4 py-2 text-sm" onClick={() => void session.logout()}>{content.logout}</button>
-                <button id="mobile-menu-toggle" className="xl:hidden w-11 h-11 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] text-[var(--kr-gov-blue)] flex items-center justify-center hover:bg-[var(--kr-gov-bg-gray)] focus-visible" type="button" aria-controls="mobile-menu" aria-expanded={mobileMenuOpen} aria-label={sharedContent.openAllMenu} onClick={() => setMobileMenuOpen((current) => !current)}>
-                  <span className="material-symbols-outlined">menu</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-        <div id="mobile-menu" className={`${mobileMenuOpen ? "" : "hidden"} xl:hidden fixed inset-0 z-[70]`} aria-hidden={!mobileMenuOpen}>
-          <button type="button" id="mobile-menu-backdrop" className="absolute inset-0 bg-black/50" aria-label={sharedContent.closeAllMenu} onClick={() => setMobileMenuOpen(false)} />
-          <HeaderMobileMenu content={sharedContent} en={en} homeMenu={homeMenu} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
-        </div>
-        <main id="main-content">
+    <main id="main-content" className="min-h-screen bg-[#f4f7fa] text-[var(--kr-gov-text-primary)]">
           <CommonWorkflowWorkspace eyebrow={activeSection?.label || (en ? "LCA project" : "LCA 프로젝트")} positionLabel={`${activeItemIndex + 1}/${orderedLcaItems.length || 22}`} title={activeItem?.label || (en ? "LCA overview" : "LCA 현황")} objective={workspaceCopy.objective} requiredInputLabel={en ? "Required inputs" : "필수 입력"} requiredInput={workspaceCopy.input} completionEvidenceLabel={en ? "Completion evidence" : "완료 산출물"} completionEvidence={workspaceCopy.output} actionHref={buildLocalizedPath(workspaceCopy.action, `/en${workspaceCopy.action}`)} actionLabel={en ? "Open work screen" : "업무 화면 열기"} nextHref={nextItem?.url} nextLabel={en ? "Next task" : "다음 업무"} workflowLabel={en ? "Product LCA workflow" : "제품 LCA 업무 순서"} steps={orderedLcaItems.map((item) => ({ id: item.code, label: item.label, href: item.url }))} activeStepId={activeItem?.code} />
           <section className="bg-slate-800 border-b border-slate-700 py-6" data-help-id="emission-lca-queue">
             <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
@@ -333,7 +233,7 @@ export function EmissionLcaMigrationPage() {
                   <div><h2 className="text-white font-black text-lg">{content.queueTitle}</h2><p className="text-indigo-300 text-xs font-bold uppercase tracking-widest">{content.queueSubtitle}</p></div>
                 </div>
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                  {content.queueAlerts.map((alert) => <div className="bg-white/5 border border-white/10 p-3 rounded-lg flex items-center justify-between group hover:bg-white/10 cursor-pointer transition-all" key={alert.title}><div className="flex items-center gap-3"><span className={`status-pill ${alert.labelClass}`}>{alert.label}</span><div className="text-xs"><p className="text-white font-bold">{alert.title}</p><p className="text-slate-400">{alert.due}</p></div></div><span className="material-symbols-outlined text-indigo-400 group-hover:translate-x-1 transition-transform">arrow_forward</span></div>)}
+                  {content.queueAlerts.map((alert) => <CommonContentCard className="group flex cursor-pointer items-center justify-between border-white/10 bg-white/5 p-3 shadow-none transition-colors hover:bg-white/10" key={alert.title}><div className="flex items-center gap-3"><CommonStatusBadge className={alert.labelClass}>{alert.label}</CommonStatusBadge><div className="text-xs"><p className="font-bold text-white">{alert.title}</p><p className="text-slate-400">{alert.due}</p></div></div><span className="material-symbols-outlined text-indigo-400 transition-transform group-hover:translate-x-1">arrow_forward</span></CommonContentCard>)}
                 </div>
               </div>
             </div>
@@ -344,36 +244,28 @@ export function EmissionLcaMigrationPage() {
                 <div className="bg-white border border-[var(--kr-gov-border-light)] rounded-xl shadow-sm overflow-hidden">
                   <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white">
                     <div><h2 className="text-xl font-black text-slate-800">{content.statusTitle}</h2><p className="text-sm text-slate-500 font-medium">{content.statusSubtitle}</p></div>
-                    <div className="flex gap-2">
-                      <button className="gov-btn bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 flex items-center gap-2 px-4 py-2 text-sm" type="button"><span className="material-symbols-outlined text-[18px]">filter_list</span>{content.filterLabel}</button>
-                      <button className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] flex items-center gap-2 px-4 py-2 text-sm" type="button"><span className="material-symbols-outlined text-[18px]">download</span>{content.reportLabel}</button>
-                    </div>
+                    <CommonActionBar><button className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100" type="button"><span className="material-symbols-outlined text-[18px]">filter_list</span>{content.filterLabel}</button><button className="flex items-center gap-2 rounded-md bg-[var(--kr-gov-blue)] px-4 py-2 text-sm font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button"><span className="material-symbols-outlined text-[18px]">download</span>{content.reportLabel}</button></CommonActionBar>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                  <CommonDataTable label={content.statusTitle}>
                       <thead><tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-widest border-b border-gray-200">{content.tableHeaders.map((header) => <th className="px-6 py-4" key={header}>{header}</th>)}</tr></thead>
                       <tbody className="text-sm">
-                        {content.complianceRows.map((row) => <tr className="audit-table-row" key={row.siteId}><td className="px-6 py-5"><div className="flex flex-col"><span className="font-bold text-slate-800">{row.site}</span><span className="text-[10px] text-slate-400">{row.siteId}</span></div></td><td className="px-6 py-5"><div className="flex flex-wrap gap-1">{row.standards.map((standard) => <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${standard.className}`} key={standard.label}>{standard.label}</span>)}</div></td><td className="px-6 py-5"><div className="flex items-center gap-2"><span className={`w-2 h-2 rounded-full ${row.dotClass}`} /><span className={`font-bold ${row.statusClass}`}>{row.status}</span></div></td><td className="px-6 py-5"><div className="flex items-baseline gap-1"><span className="font-black text-slate-800">{row.intensity}</span><span className="text-[10px] font-bold text-slate-400">{row.unit}</span></div></td><td className="px-6 py-5"><button className={`${row.actionClass} font-bold flex items-center gap-1 hover:underline`} type="button"><span className="material-symbols-outlined text-[16px]">{row.actionIcon}</span>{row.action}</button></td></tr>)}
+                        {content.complianceRows.map((row) => <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50" key={row.siteId}><td className="px-6 py-5"><div className="flex flex-col"><span className="font-bold text-slate-800">{row.site}</span><span className="text-[10px] text-slate-400">{row.siteId}</span></div></td><td className="px-6 py-5"><div className="flex flex-wrap gap-1">{row.standards.map((standard) => <CommonStatusBadge className={standard.className} key={standard.label}>{standard.label}</CommonStatusBadge>)}</div></td><td className="px-6 py-5"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${row.dotClass}`} /><span className={`font-bold ${row.statusClass}`}>{row.status}</span></div></td><td className="px-6 py-5"><div className="flex items-baseline gap-1"><span className="font-black text-slate-800">{row.intensity}</span><span className="text-[10px] font-bold text-slate-400">{row.unit}</span></div></td><td className="px-6 py-5"><button className={`${row.actionClass} flex items-center gap-1 font-bold hover:underline`} type="button"><span className="material-symbols-outlined text-[16px]">{row.actionIcon}</span>{row.action}</button></td></tr>)}
                       </tbody>
-                    </table>
-                  </div>
+                  </CommonDataTable>
                 </div>
               </div>
               <div className="lg:w-1/3 space-y-6">
-                <div className="bg-white border border-[var(--kr-gov-border-light)] rounded-xl p-6 shadow-sm" data-help-id="emission-lca-milestones">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2"><span className="material-symbols-outlined text-[20px] text-[var(--kr-gov-blue)]">event_repeat</span>{content.milestonesTitle}</h3>
-                  <div className="space-y-6 ml-1 border-l border-gray-100 relative">
-                    {content.milestones.map((milestone) => <div className="relative pl-6" key={milestone.title}><span className={`timeline-dot ${milestone.dotClass}`} /><p className={`text-[10px] font-bold uppercase ${milestone.statusClass}`}>{milestone.date}</p><h4 className="text-xs font-bold text-slate-800">{milestone.title}</h4><p className="text-[11px] text-slate-500">{milestone.body}</p>{milestone.progress ? <div className="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{ width: milestone.progress }} /></div> : null}</div>)}
-                  </div>
-                </div>
-                <div className="bg-indigo-900 rounded-xl p-6 text-white shadow-lg shadow-indigo-900/20 relative overflow-hidden" data-help-id="emission-lca-watch">
+                <div data-help-id="emission-lca-milestones"><CommonTimeline title={<><span className="material-symbols-outlined text-[20px] text-[var(--kr-gov-blue)]">event_repeat</span>{content.milestonesTitle}</>}>
+                  {content.milestones.map((milestone) => <div className="relative pl-6" key={milestone.title}><span className={`absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white ${milestone.dotClass}`} /><p className={`text-[10px] font-bold uppercase ${milestone.statusClass}`}>{milestone.date}</p><h4 className="text-xs font-bold text-slate-800">{milestone.title}</h4><p className="text-[11px] text-slate-500">{milestone.body}</p>{milestone.progress ? <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-500" style={{ width: milestone.progress }} /></div> : null}</div>)}
+                </CommonTimeline></div>
+                <CommonContentCard className="relative overflow-hidden border-indigo-900 bg-indigo-900 p-6 text-white shadow-lg shadow-indigo-900/20" data-help-id="emission-lca-watch">
                   <div className="absolute top-0 right-0 p-4 opacity-10"><span className="material-symbols-outlined text-[80px]">gavel</span></div>
                   <h3 className="text-xs font-black text-indigo-300 uppercase tracking-widest mb-4">{content.watchTitle}</h3>
                   <div className="space-y-4">
                     <div className="p-3 bg-white/10 rounded-lg border border-white/10"><p className="text-[11px] font-bold text-indigo-200">{content.watchLabel}</p><h4 className="text-sm font-bold">{content.watchHeadline}</h4><p className="text-[11px] text-indigo-100/70 mt-1">{content.watchBody}</p><a className="inline-flex items-center gap-1 text-[10px] font-black text-white mt-3 underline" href="#">{content.watchLink}</a></div>
                     <button className="w-full py-2.5 bg-indigo-500 hover:bg-indigo-400 rounded-lg text-xs font-black transition-colors" type="button">{content.watchButton}</button>
                   </div>
-                </div>
+                </CommonContentCard>
               </div>
             </div>
           </section>
@@ -381,21 +273,10 @@ export function EmissionLcaMigrationPage() {
             <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
               <div className="mb-8"><h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><span className="material-symbols-outlined text-[var(--kr-gov-blue)]">description</span>{content.siteHubTitle}</h2><p className="text-slate-500 text-sm">{content.siteHubSubtitle}</p></div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {content.siteCards.map((card) => <div className="border border-gray-200 rounded-xl p-6 transition-all hover:border-[var(--kr-gov-blue)]" key={card.title}><div className="flex justify-between items-start mb-6"><div className={`w-12 h-12 rounded-lg flex items-center justify-center ${card.iconWrapClass}`}><span className="material-symbols-outlined">{card.icon}</span></div><span className={`status-pill ${card.badgeClass}`}>{card.badge}</span></div><h3 className="text-lg font-black text-slate-800 mb-1">{card.title}</h3><p className="text-xs text-slate-400 mb-6 font-medium tracking-tight">{card.subtitle}</p><div className="grid grid-cols-2 gap-3 mb-6">{card.metrics.map((metric) => <div className="bg-slate-50 p-3 rounded-lg border border-slate-100" key={metric.label}><p className="text-[10px] text-slate-400 font-bold uppercase">{metric.label}</p><p className={`text-lg font-black tracking-tighter ${metric.tone}`}>{metric.value}</p></div>)}</div><div className="space-y-2"><button className={`w-full py-2.5 text-[12px] font-black rounded-lg flex items-center justify-center gap-2 ${card.primaryClass}`} type="button"><span className="material-symbols-outlined text-[18px]">{card.primaryIcon}</span>{card.primaryLabel}</button><button className="w-full py-2.5 bg-white border border-gray-200 text-slate-600 text-[12px] font-bold rounded-lg hover:bg-slate-50 transition-colors" type="button">{card.secondaryLabel}</button></div></div>)}
+                {content.siteCards.map((card) => <CommonContentCard className="p-6 transition-colors hover:border-[var(--kr-gov-blue)]" key={card.title}><div className="mb-6 flex items-start justify-between"><div className={`flex h-12 w-12 items-center justify-center rounded-lg ${card.iconWrapClass}`}><span className="material-symbols-outlined">{card.icon}</span></div><CommonStatusBadge className={card.badgeClass}>{card.badge}</CommonStatusBadge></div><h3 className="mb-1 text-lg font-black text-slate-800">{card.title}</h3><p className="mb-6 text-xs font-medium tracking-tight text-slate-400">{card.subtitle}</p><div className="mb-6 grid grid-cols-2 gap-3">{card.metrics.map((metric) => <CommonContentCard className="rounded-lg border-slate-100 bg-slate-50 p-3 shadow-none" key={metric.label}><p className="text-[10px] font-bold uppercase text-slate-400">{metric.label}</p><p className={`text-lg font-black tracking-tighter ${metric.tone}`}>{metric.value}</p></CommonContentCard>)}</div><CommonActionBar className="grid grid-cols-1"><button className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[12px] font-black ${card.primaryClass}`} type="button"><span className="material-symbols-outlined text-[18px]">{card.primaryIcon}</span>{card.primaryLabel}</button><button className="w-full rounded-lg border border-gray-200 bg-white py-2.5 text-[12px] font-bold text-slate-600 transition-colors hover:bg-slate-50" type="button">{card.secondaryLabel}</button></CommonActionBar></CommonContentCard>)}
               </div>
             </div>
           </section>
-        </main>
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-12 pb-8">
-            <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-gray-100">
-              <div className="space-y-4"><div className="flex items-center gap-3"><img alt={content.govAlt} className="h-8 grayscale" src={GOV_SYMBOL} onError={handleGovSymbolError} /><span className="text-xl font-black text-slate-800">{content.footerTitle}</span></div><address className="not-italic text-sm text-slate-500 leading-relaxed whitespace-pre-line">{content.footerAddress}</address></div>
-              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold text-slate-600"><a className="text-[var(--kr-gov-blue)] hover:underline" href="#">{content.footerPolicy}</a><a className="hover:underline" href="#">{content.footerTerms}</a><a className="hover:underline" href="#">{content.footerManual}</a></div>
-            </div>
-            <div className="mt-8 text-xs font-medium text-slate-400"><p>{content.footerCopy}</p></div>
-          </div>
-        </footer>
-      </div>
-    </>
+    </main>
   );
 }
