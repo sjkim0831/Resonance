@@ -114,7 +114,7 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
   echo "[unified-work-design] work type/process/sequence/topology mismatch: $classification_mismatch_count" >&2
   exit 15
 }
-[[ "$active_work_type_count" == "13" && "$strategic_work_type_count" == "3" ]] || {
+[[ "$active_work_type_count" == "15" && "$strategic_work_type_count" == "5" ]] || {
   echo "[unified-work-design] professional work type catalog mismatch: active=$active_work_type_count strategic=$strategic_work_type_count" >&2
   exit 16
 }
