@@ -9,6 +9,7 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
+      { componentId: "COMMON_USER_GNB", instanceKey: "global-user-gnb", layoutZone: "header", propsSummary: ["homeMenu", "isLoggedIn", "language"] },
       { componentId: "HomeHeroSection", instanceKey: "home-hero", layoutZone: "header" },
       { componentId: "HomeSearchSection", instanceKey: "home-search", layoutZone: "actions", propsSummary: ["searchKeyword"] },
       { componentId: "HomeServiceGrid", instanceKey: "home-services", layoutZone: "content", propsSummary: ["serviceCount"] },

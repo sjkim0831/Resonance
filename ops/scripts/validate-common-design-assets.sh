@@ -39,8 +39,10 @@ PRIMITIVE_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/com
 MANIFEST_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts"
 COMMON_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/CommonUserFooter.tsx"
 HOME_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/home-entry/HomeEntrySections.tsx"
+HOME_PAGE_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/home-entry/HomeEntryPages.tsx"
 PORTAL_CHROME_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/UserPortalChrome.tsx"
 STANDARD_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/StandardUserFooter.tsx"
+GLOBAL_USER_GNB_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/home-entry/GlobalUserGnbShell.tsx"
 
 [[ -f "$WORKFLOW_SOURCE" ]] && grep -q 'data-common-component="COMMON_STEP_FLOW"' "$WORKFLOW_SOURCE" || {
   echo "[common-design-assets] FAIL COMMON_STEP_FLOW source implementation missing" >&2; exit 1;
@@ -86,6 +88,15 @@ fi
 grep -q 'CommonUserFooter' "$STANDARD_FOOTER_SOURCE" || {
   echo "[common-design-assets] FAIL standard user footer is not connected to COMMON_PAGE_FOOTER" >&2; exit 1;
 }
+grep -q 'data-common-component="COMMON_USER_GNB"' "$GLOBAL_USER_GNB_SOURCE" || {
+  echo "[common-design-assets] FAIL global user GNB common component marker missing" >&2; exit 1;
+}
+grep -q 'componentId: "COMMON_USER_GNB"' "$MANIFEST_SOURCE" || {
+  echo "[common-design-assets] FAIL home manifest common GNB mapping missing" >&2; exit 1;
+}
+if grep -q '<header' "$HOME_PAGE_SOURCE"; then
+  echo "[common-design-assets] FAIL duplicate home page header markup remains" >&2; exit 1;
+fi
 for source in \
   co2-analysis/Co2AnalysisMigrationPage.tsx \
   co2-credit/Co2CreditMigrationPage.tsx \
