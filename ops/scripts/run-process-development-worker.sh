@@ -23,6 +23,26 @@ psqlq() {
   kubectl -n "$K8S_NAMESPACE" exec "$POSTGRES_POD" -- env PGPASSWORD="$PGPASSWORD" \
     psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
 }
+runtime_health_url() {
+  if [[ -n "${CARBONET_HEALTH_CHECK_URL:-}" ]]; then
+    printf '%s\n' "$CARBONET_HEALTH_CHECK_URL"
+    return 0
+  fi
+  local node_port
+  node_port="$(kubectl -n "$K8S_NAMESPACE" get svc carbonet-runtime \
+    -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}' 2>/dev/null || true)"
+  if [[ -z "$node_port" ]]; then
+    node_port="$(kubectl -n "$K8S_NAMESPACE" get svc carbonet-runtime \
+      -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || true)"
+  fi
+  [[ "$node_port" =~ ^[0-9]+$ ]] || return 1
+  printf 'http://127.0.0.1:%s/actuator/health\n' "$node_port"
+}
+runtime_is_healthy() {
+  local health_url
+  health_url="$(runtime_health_url)" || return 1
+  curl -fsS --max-time 10 "$health_url" | jq -e '.status == "UP"' >/dev/null
+}
 WORKER_ID="$(hostname)-hermes-$$"
 LEASE_TOKEN="$(cat /proc/sys/kernel/random/uuid)"
 
@@ -502,12 +522,12 @@ fi
 for _ in $(seq 1 90); do
   DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
   READY="$(kubectl -n carbonet-prod get deploy carbonet-runtime -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || true)"
-  if git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null && [ "$READY" = "2/2" ] && curl -fsS --max-time 10 http://127.0.0.1/actuator/health >/dev/null; then break; fi
+  if git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null && [ "$READY" = "2/2" ] && runtime_is_healthy; then break; fi
   sleep 10
 done
 DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
 git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null || fail_job "result commit was not deployed"
-curl -fsS --max-time 10 http://127.0.0.1/actuator/health >/dev/null || fail_job "deployment health check failed"
+runtime_is_healthy || fail_job "deployment health check failed"
 
 EVIDENCE="git:${RESULT_COMMIT};log:${LOG_FILE}"
 psqlq -c "update framework_development_job set job_status='VERIFIED',result_json=\$json\${\"commit\":\"${RESULT_COMMIT}\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
