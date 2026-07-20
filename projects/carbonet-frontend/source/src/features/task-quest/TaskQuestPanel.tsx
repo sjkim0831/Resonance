@@ -1665,6 +1665,10 @@ export function TaskQuestPanel() {
                               route && runtimeStep && runtimeStep.actionable !== false &&
                                 runtimeStep.actorActionable !== false && !blockedByPredecessor,
                             );
+                            const canReview = Boolean(
+                              route && runtimeStep?.status === "DONE" &&
+                                runtimeStep.actorActionable !== false,
+                            );
                             const active = index === selectedCatalogStep;
                             return (
                               <li
@@ -1710,18 +1714,22 @@ export function TaskQuestPanel() {
                                   >
                                     {en ? "Select step" : "단계 선택"}
                                   </button>
-                                  {canStart ? (
+                                  {canStart || canReview ? (
                                     <a
                                       className="rounded-lg bg-[#246beb] px-3 py-2 text-xs font-black text-white"
                                       href={en ? `/en${route}` : route}
                                     >
-                                      {en ? "Start task" : "업무 진행"}
+                                      {canReview
+                                        ? en ? "View result" : "결과 보기"
+                                        : en ? "Start task" : "업무 진행"}
                                     </a>
                                   ) : route && runtimeStep ? (
                                     <span className="text-xs font-bold text-slate-500">
                                       {blockedByPredecessor
                                         ? en ? "Predecessor pending" : "선행 업무 대기"
-                                        : en ? "Assigned actor only" : "담당 액터만 진행 가능"}
+                                        : runtimeStep.actorActionable === false
+                                          ? en ? "Assigned actor only" : "담당 액터만 진행 가능"
+                                          : en ? "Not ready" : "업무 시작 대기"}
                                     </span>
                                   ) : (
                                     <span className="text-xs font-bold text-amber-700">
