@@ -22,6 +22,9 @@ while IFS=$'\t' read -r file expected; do
     (.step.actor.actorCode|length>0) and
     (.step.business.completionRule|length>0) and
     (.tests|length>=5) and
+    .testExecution.runner=="FAST_PROCESS_CONTRACT_RUNNER" and
+    .testExecution.parallelSafe==true and
+    .testExecution.liveSmokeRequiredForVerified==true and
     ([.frontend.pages[].fields|length] | all(.>=10))
   ' "$path" >/dev/null || { echo "[full-stack-generation] incomplete $file" >&2; exit 1; }
 done < <(jq -r '.packages[]|[.package,.packageHash]|@tsv' "$INDEX")
