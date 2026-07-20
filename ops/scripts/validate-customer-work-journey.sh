@@ -16,6 +16,25 @@ if [[ "$regulatory_id" == 0 ]]; then
   curl -fsS -b "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE/home/api/emission-projects/$project/regulatory-submissions/$regulatory_id/transition" --data '{"action":"ACCEPT"}' >/dev/null
 fi
 apis=(/home/api/emission-tasks "/home/api/emission-projects/$project/completion" "/home/api/emission-projects/$project/activities" "/home/api/emission-projects/$project/calculation" "/home/api/emission-projects/$project/review-workflow" "/home/api/emission-projects/$project/reports" "/home/api/emission-projects/$project/regulatory-submissions" /home/api/report-access-history);for p in "${apis[@]}";do code="$(curl -sS -b "$COOKIE" -o "$API_BODY" -w '%{http_code}' "$BASE$p")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL api=$p status=$code" >&2;exit 1;};grep -Eq '^\s*[\{\[]' "$API_BODY"||exit 1;done
+curl -fsS -b "$COOKIE" "$BASE/home/api/emission-tasks" >"$API_BODY"
+python3 - "$API_BODY" <<'PY'
+import json,sys
+payload=json.load(open(sys.argv[1],encoding="utf-8"))
+if payload.get("allVisible") is not True or payload.get("accountActors") != ["*"]:
+    raise SystemExit("administrator process visibility contract failed")
+member_codes={row.get("processCode") for row in payload.get("processCatalog",[]) if str(row.get("domainCode","")).upper()=="MEMBER"}
+member_steps=[row for row in payload.get("processCatalogSteps",[]) if row.get("processCode") in member_codes]
+if len(member_codes)!=17 or len(member_steps)!=68:
+    raise SystemExit(f"member guide catalog mismatch processes={len(member_codes)} steps={len(member_steps)}")
+if any(not row.get("userPath") or not row.get("adminPath") for row in member_steps):
+    raise SystemExit("member guide route gap")
+PY
+while IFS= read -r target;do [[ -n "$target" ]]||continue;code="$(curl -sS -L -b "$COOKIE" -o /dev/null -w '%{http_code}' "$BASE$target")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL member-guide-page=$target status=$code" >&2;exit 1;};done < <(python3 - "$API_BODY" <<'PY'
+import json,sys
+p=json.load(open(sys.argv[1],encoding="utf-8"));codes={r.get("processCode") for r in p.get("processCatalog",[]) if str(r.get("domainCode","")).upper()=="MEMBER"}
+print("\n".join(sorted({path for r in p.get("processCatalogSteps",[]) if r.get("processCode") in codes for path in (r.get("userPath"),r.get("adminPath")) if path})))
+PY
+)
 for p in "/home/api/emission-projects/$project/activities" "/home/api/emission-projects/$project/calculation" "/home/api/emission-projects/$project/reports" "/home/api/emission-projects/$project/regulatory-submissions" /home/api/report-access-history;do code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE$p")";[[ "$code" == 401||"$code" == 403 ]]||{ echo "[customer-journey] FAIL protection=$p status=$code" >&2;exit 1;};done
 valid="$(curl -fsS "$BASE/api/public/report-certificates/$cert")";grep -q '"valid":true'<<<"$valid"||exit 1
 pages=(/emission/my-tasks /emission/deadline-status "/emission/project/detail?projectId=$project" "/emission/activity-data?projectId=$project" "/emission/calculation?projectId=$project" "/emission/validate?projectId=$project" "/emission/report_submit?projectId=$project" "/emission/report-submission?projectId=$project" "/emission/report-download?projectId=$project" /home/certificate-verify /admin/emission/project-operations "/admin/emission/regulatory-submissions?projectId=$project" /admin/system/actor-process);for p in "${pages[@]}";do code="$(curl -sS -L -b "$COOKIE" -o "$PAGE_BODY" -w '%{http_code}' "$BASE$p")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL page=$p status=$code" >&2;exit 1;};grep -qi '<!doctype html' "$PAGE_BODY"||exit 1;done

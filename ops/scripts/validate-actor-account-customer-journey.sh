@@ -50,6 +50,27 @@ expected={
     "qaverify26":{"VERIFICATION"},
     "qaapprove26":{"APPROVAL"},
 }[os.environ["ACCOUNT"]]
+actors=set(payload.get("accountActors",[]))
+expected_actor={
+    "qaowner26":"COMPANY_MANAGER","qadata26":"SITE_DATA_OWNER","qacalc26":"CALCULATOR",
+    "qaverify26":"VERIFIER","qaapprove26":"APPROVER",
+}[os.environ["ACCOUNT"]]
+if "MEMBER_USER" not in actors or expected_actor not in actors:
+    sys.exit(f"effective actor mismatch account={os.environ['ACCOUNT']} actors={sorted(actors)}")
+steps=payload.get("processCatalogSteps",[])
+step_actors={}
+for step in steps:
+    step_actors.setdefault(step.get("processCode"),set()).add(step.get("actorCode"))
+if any(not (step_actors.get(process.get("processCode"),set()) & actors) for process in payload.get("processCatalog",[])):
+    sys.exit(f"unauthorized process exposed account={os.environ['ACCOUNT']}")
+domain_counts={}
+for process in payload.get("processCatalog",[]):
+    code=str(process.get("domainCode","")).upper()
+    domain_counts[code]=domain_counts.get(code,0)+1
+for work_type in payload.get("workTypes",[]):
+    code=str(work_type.get("workTypeCode","")).upper()
+    if int(work_type.get("definedProcessCount",0))!=domain_counts.get(code,0):
+        sys.exit(f"work type count mismatch account={os.environ['ACCOUNT']} type={code}")
 if len(flow)!=7 or [int(row.get("stepOrder",0)) for row in flow]!=list(range(1,8)):
     sys.exit(f"full workflow invalid account={os.environ['ACCOUNT']} steps={len(flow)}")
 if {row.get("taskCode") for row in assigned} != expected:

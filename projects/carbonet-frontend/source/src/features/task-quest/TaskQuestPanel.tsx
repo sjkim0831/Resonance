@@ -202,6 +202,7 @@ type QuestResponse = {
     pageDesignMissingCount?: number;
   };
   allVisible?: boolean;
+  accountActors?: string[];
   summary?: { total?: number; completed?: number; overdue?: number };
 };
 
@@ -349,7 +350,9 @@ export function TaskQuestPanel() {
   const [selectedCatalogProcessCode, setSelectedCatalogProcessCode] = useState(
     () => localStorage.getItem("task-quest-catalog-process") || "",
   );
-  const [selectedCatalogStep, setSelectedCatalogStep] = useState(0);
+  const [selectedCatalogStep, setSelectedCatalogStep] = useState(
+    () => Number(localStorage.getItem("task-quest-catalog-step") || 0),
+  );
   const [selectedOverviewProjectId, setSelectedOverviewProjectId] = useState(
     () => localStorage.getItem("task-quest-overview-project") || "",
   );
@@ -802,6 +805,7 @@ export function TaskQuestPanel() {
   function selectCatalogProcess(code: string) {
     setSelectedCatalogProcessCode(code);
     setSelectedCatalogStep(0);
+    localStorage.setItem("task-quest-catalog-step", "0");
     localStorage.setItem("task-quest-catalog-process", code);
     const runtime = workflowItems.find((item) => item.processCode === code);
     if (runtime) {
@@ -814,6 +818,60 @@ export function TaskQuestPanel() {
     } else {
       clearWorkflowFocus();
     }
+  }
+
+  function guideRuntimeStep(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
+    return workflowItems.find(
+      (item) =>
+        item.processCode === step.processCode &&
+        (item.processStepCode === step.stepCode || Number(item.stepOrder) === Number(step.stepOrder)),
+    );
+  }
+
+  function guideRoute(step: NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?: QuestTask) {
+    if(runtime?.targetUrl) return runtime.targetUrl;
+    if(data?.allVisible) return step.adminPath || step.userPath || "";
+    return step.userPath || "";
+  }
+
+  function guideActorAllowed(step: NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?: QuestTask) {
+    if(data?.allVisible) return true;
+    if(runtime) return runtime.actorActionable !== false;
+    return (data?.accountActors || []).includes(String(step.actorCode || ""));
+  }
+
+  function guideTarget(route:string,step:NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?:QuestTask) {
+    const localized=en&&!route.startsWith("/en/")&&!route.startsWith("/join/")?`/en${route}`:route;
+    const target=new URL(localized,window.location.origin);
+    if(effectiveProjectId&&!target.searchParams.has("projectId")) target.searchParams.set("projectId",effectiveProjectId);
+    target.searchParams.set("processCode",step.processCode);
+    target.searchParams.set("stepCode",step.stepCode);
+    if(step.actorCode) target.searchParams.set("actorCode",step.actorCode);
+    if(runtime?.id) target.searchParams.set("taskId",String(runtime.id));
+    target.searchParams.set("guide","1");
+    return `${target.pathname}${target.search}${target.hash}`;
+  }
+
+  function startSelectedProcessGuide() {
+    const available=(step:NonNullable<QuestResponse["processCatalogSteps"]>[number]) => {
+      const runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
+      if(!route||!guideActorAllowed(step,runtime)||runtime?.pendingPredecessors) return false;
+      return !runtime||runtime.actionable!==false;
+    };
+    let index=selectedCatalogSteps.findIndex((step) => {
+      const runtime=guideRuntimeStep(step);
+      return Boolean(runtime&&runtime.status!=="DONE"&&available(step));
+    });
+    if(index<0) index=selectedCatalogSteps.findIndex((step) => !guideRuntimeStep(step)&&available(step));
+    if(index<0) index=selectedCatalogSteps.findIndex((step) => {
+      const runtime=guideRuntimeStep(step);
+      return Boolean(runtime?.status==="DONE"&&guideRoute(step,runtime)&&guideActorAllowed(step,runtime));
+    });
+    if(index<0) return;
+    const step=selectedCatalogSteps[index],runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
+    setSelectedCatalogStep(index);
+    localStorage.setItem("task-quest-catalog-step",String(index));
+    window.location.href=guideTarget(route,step,runtime);
   }
 
   function clearWorkflowFocus() {
@@ -1632,6 +1690,15 @@ export function TaskQuestPanel() {
                             {selectedCatalogProcess.goal}
                           </p>
                         </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            className="rounded-lg bg-[#246beb] px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                            disabled={!selectedCatalogSteps.some((step) => Boolean(guideRoute(step,guideRuntimeStep(step))) && guideActorAllowed(step,guideRuntimeStep(step)))}
+                            onClick={startSelectedProcessGuide}
+                            type="button"
+                          >
+                            {en ? "Start work guide" : "업무 길잡이 시작"}
+                          </button>
                         {data.allVisible ? (
                           <a
                             className="rounded-lg bg-[#052b57] px-4 py-2.5 text-xs font-black text-white"
@@ -1643,27 +1710,20 @@ export function TaskQuestPanel() {
                             {en ? "Open development board" : "개발 현황 열기"}
                           </a>
                         ) : null}
+                        </div>
                       </div>
                       <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${String(selectedUnifiedProcess?.runtimeState)==="DESIGN_BLOCKED"?"border-red-200 bg-red-50 text-red-800":"border-blue-200 bg-blue-50 text-blue-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{runtimeStateLabel(String(selectedUnifiedProcess?.runtimeState||"PROJECT_NOT_SELECTED"),en)}</strong><span className="text-xs font-black">{en?"Design accuracy":"설계 정확도"} {Number(selectedUnifiedProcess?.designAccuracyScore||0)}%</span></div>{selectedUnifiedProcess?.stateReason?<p className="mt-1 text-xs leading-5">{selectedUnifiedProcess.stateReason}</p>:null}</div>
                       <div className="mt-4 overflow-x-auto pb-2">
                         <ol className="flex min-w-max items-stretch gap-2">
                           {selectedCatalogSteps.map((step, index) => {
-                            const runtimeStep = workflowItems.find(
-                              (item) =>
-                                item.processCode === selectedCatalogProcess.processCode &&
-                                (item.processStepCode === step.stepCode ||
-                                  Number(item.stepOrder) === Number(step.stepOrder)),
-                            );
-                            const route = runtimeStep?.targetUrl ||
-                              (selectedCatalogProcess.businessScreenImplemented
-                                ? step.userPath || (data.allVisible ? step.adminPath : "")
-                                : data.allVisible
-                                  ? selectedCatalogProcess.targetUrl || ""
-                                  : "");
+                            const runtimeStep = guideRuntimeStep(step);
+                            const route = guideRoute(step,runtimeStep) ||
+                              (data.allVisible ? selectedCatalogProcess.targetUrl || "" : "");
                             const blockedByPredecessor = Boolean(runtimeStep?.pendingPredecessors);
+                            const actorAllowed = guideActorAllowed(step,runtimeStep);
                             const canStart = Boolean(
-                              route && runtimeStep && runtimeStep.actionable !== false &&
-                                runtimeStep.actorActionable !== false && !blockedByPredecessor,
+                              route && actorAllowed && !blockedByPredecessor &&
+                                (!runtimeStep || runtimeStep.actionable !== false),
                             );
                             const canReview = Boolean(
                               route && runtimeStep?.status === "DONE" &&
@@ -1707,9 +1767,10 @@ export function TaskQuestPanel() {
                                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                                   <button
                                     className="text-xs font-black text-blue-700"
-                                    onClick={() =>
-                                      setSelectedCatalogStep(index)
-                                    }
+                                    onClick={() => {
+                                      setSelectedCatalogStep(index);
+                                      localStorage.setItem("task-quest-catalog-step",String(index));
+                                    }}
                                     type="button"
                                   >
                                     {en ? "Select step" : "단계 선택"}
@@ -1717,7 +1778,7 @@ export function TaskQuestPanel() {
                                   {canStart || canReview ? (
                                     <a
                                       className="rounded-lg bg-[#246beb] px-3 py-2 text-xs font-black text-white"
-                                      href={en ? `/en${route}` : route}
+                                      href={guideTarget(route,step,runtimeStep)}
                                     >
                                       {canReview
                                         ? en ? "View result" : "결과 보기"
@@ -1727,7 +1788,7 @@ export function TaskQuestPanel() {
                                     <span className="text-xs font-bold text-slate-500">
                                       {blockedByPredecessor
                                         ? en ? "Predecessor pending" : "선행 업무 대기"
-                                        : runtimeStep.actorActionable === false
+                                        : !actorAllowed
                                           ? en ? "Assigned actor only" : "담당 액터만 진행 가능"
                                           : en ? "Not ready" : "업무 시작 대기"}
                                     </span>
@@ -1750,12 +1811,14 @@ export function TaskQuestPanel() {
                             selectedCatalogSteps.length - 1
                           }
                           onClick={() =>
-                            setSelectedCatalogStep((value) =>
-                              Math.min(
+                            setSelectedCatalogStep((value) => {
+                              const next=Math.min(
                                 selectedCatalogSteps.length - 1,
                                 value + 1,
-                              ),
-                            )
+                              );
+                              localStorage.setItem("task-quest-catalog-step",String(next));
+                              return next;
+                            })
                           }
                           type="button"
                         >

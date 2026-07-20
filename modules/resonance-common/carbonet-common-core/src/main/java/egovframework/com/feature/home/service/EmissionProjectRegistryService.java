@@ -249,7 +249,7 @@ public class EmissionProjectRegistryService {
         result.put("workTypes",jdbc.queryForList("select w.work_type_code as \"workTypeCode\",w.work_type_name as \"workTypeName\",w.work_type_name_en as \"workTypeNameEn\",w.description,w.sort_order as \"sortOrder\",count(distinct p.process_code) as \"definedProcessCount\",count(distinct t.process_code) as \"activeProcessCount\",count(t.task_id) as \"taskCount\" from framework_business_work_type w left join framework_process_definition p on upper(p.domain_code)=w.work_type_code left join emission_project_task t on t.process_code=p.process_code where w.use_at='Y' group by w.work_type_code,w.work_type_name,w.work_type_name_en,w.description,w.sort_order order by w.sort_order,w.work_type_code"));
         result.put("workTypeAssurance",jdbc.queryForList("select work_type_code as \"workTypeCode\",process_count as \"processCount\",verified_process_count as \"verifiedProcessCount\",blocked_process_count as \"blockedProcessCount\",pending_process_count as \"pendingProcessCount\",average_accuracy_score as \"averageAccuracyScore\" from framework_work_type_design_assurance order by sort_order,work_type_code"));
         result.put("processCatalog",jdbc.queryForList("select p.process_code as \"processCode\",p.process_name as \"processName\",p.domain_code as \"domainCode\",p.goal,p.process_status as \"status\",p.owner_actor_code as \"ownerActorCode\",p.development_order as \"developmentOrder\",coalesce(seq.workflow_order,p.development_order) as \"workflowOrder\",coalesce(seq.workflow_phase,'미분류') as \"workflowPhase\",coalesce(seq.process_role,'CORE') as \"processRole\",coalesce(seq.prerequisite_process_codes,p.prerequisite_codes,'') as \"prerequisiteCodes\",coalesce(seq.next_process_code,'') as \"nextProcessCode\",coalesce(topo.execution_wave,seq.workflow_order,p.development_order) as \"executionWave\",coalesce(topo.lane_code,'PRIMARY') as \"laneCode\",coalesce(topo.lane_order,1) as \"laneOrder\",coalesce(topo.execution_mode,'SEQUENTIAL') as \"executionMode\",coalesce(topo.join_strategy,'ALL') as \"joinStrategy\",coalesce(topo.predecessor_process_codes,'[]'::jsonb) as \"predecessorProcessCodes\",coalesce(topo.shared_milestone_code,'') as \"sharedMilestoneCode\",coalesce(topo.required_for_join,true) as \"requiredForJoin\",coalesce(topo.applicability_rule,'ALWAYS') as \"applicabilityRule\",(select count(*) from framework_process_step s where s.process_code=p.process_code) as \"stepCount\",coalesce(q.completion_score,0) as \"completionScore\",coalesce(q.required_tasks,0) as \"requiredTasks\",coalesce(q.completed_tasks,0) as \"completedTasks\",coalesce(q.blocked_tasks,0) as \"blockedTasks\",coalesce(q.next_action,'') as \"nextAction\",coalesce((select s.user_path from framework_process_step s where s.process_code=p.process_code and nullif(s.user_path,'') is not null order by s.step_order limit 1),(select b.menu_url from framework_process_menu_binding b where b.process_code=p.process_code and b.audience='USER' and b.binding_status='ACTIVE' order by b.menu_code limit 1),'') as \"targetUrl\" from framework_process_definition p join framework_business_work_type w on w.work_type_code=upper(p.domain_code) and w.use_at='Y' left join framework_business_process_sequence seq on seq.process_code=p.process_code left join framework_process_execution_topology topo on topo.process_code=p.process_code left join framework_process_delivery_priority_queue q on q.process_code=p.process_code order by w.sort_order,coalesce(topo.execution_wave,seq.workflow_order,p.development_order),coalesce(topo.lane_order,1),p.process_code"));
-        result.put("processCatalogSteps",jdbc.queryForList("select s.process_code as \"processCode\",s.step_order as \"stepOrder\",s.step_code as \"stepCode\",s.step_name as \"stepName\",s.actor_code as \"actorCode\",s.from_state as \"fromState\",s.command_code as \"commandCode\",s.to_state as \"toState\",s.requirement_text as \"workPurpose\",s.completion_rule as \"completionRule\",s.input_contract as \"inputContract\",s.output_contract as \"outputContract\",coalesce(s.user_path,'') as \"userPath\",coalesce(s.admin_path,'') as \"adminPath\",s.automation_status as \"automationStatus\" from framework_process_step s join framework_process_definition p on p.process_code=s.process_code join framework_business_work_type w on w.work_type_code=upper(p.domain_code) and w.use_at='Y' order by p.development_order,s.process_code,s.step_order"));
+        result.put("processCatalogSteps",jdbc.queryForList("select s.process_code as \"processCode\",s.step_order as \"stepOrder\",s.step_code as \"stepCode\",s.step_name as \"stepName\",s.actor_code as \"actorCode\",s.from_state as \"fromState\",s.command_code as \"commandCode\",s.to_state as \"toState\",s.requirement_text as \"workPurpose\",s.completion_rule as \"completionRule\",s.input_contract as \"inputContract\",s.output_contract as \"outputContract\",coalesce(nullif(s.user_path,''),(select b.menu_url from framework_process_menu_binding b where b.process_code=s.process_code and b.audience='USER' and b.binding_status='ACTIVE' order by (b.step_code=s.step_code) desc,b.menu_code limit 1),'') as \"userPath\",coalesce(nullif(s.admin_path,''),(select b.menu_url from framework_process_menu_binding b where b.process_code=s.process_code and b.audience='ADMIN' and b.binding_status='ACTIVE' order by (b.step_code=s.step_code) desc,b.menu_code limit 1),'') as \"adminPath\",s.automation_status as \"automationStatus\" from framework_process_step s join framework_process_definition p on p.process_code=s.process_code join framework_business_work_type w on w.work_type_code=upper(p.domain_code) and w.use_at='Y' order by p.development_order,s.process_code,s.step_order"));
         result.put("designAssurance",jdbc.queryForList("select process_code as \"processCode\",assurance_status as \"assuranceStatus\",design_accuracy_score as \"designAccuracyScore\",design_blocker_count as \"designBlockerCount\",missing_actor_binding_count+unknown_actor_count as \"actorContractGaps\",incomplete_transition_count+unreachable_next_state_count as \"stateFlowGaps\",incomplete_business_rule_count as \"businessRuleGaps\",incomplete_data_contract_count as \"dataContractGaps\",missing_user_route_count+missing_admin_route_count as \"routeGaps\",missing_user_screen_contract_count+missing_admin_screen_contract_count as \"screenContractGaps\",missing_api_contract_count as \"apiContractGaps\",approved_safety_test_type_count as \"approvedSafetyTestTypeCount\",required_job_count as \"requiredJobCount\",verified_job_count as \"verifiedJobCount\",next_action as \"nextAction\" from framework_process_design_assurance_matrix order by process_code"));
         result.put("designAssuranceSummary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where assurance_status='IMPLEMENTATION_VERIFIED') as \"verifiedCount\",count(*) filter(where assurance_status='DESIGN_BLOCKED') as \"blockedCount\",count(*) filter(where assurance_status in ('IMPLEMENTATION_PENDING','REVIEW_REQUIRED')) as \"pendingCount\",coalesce(round(avg(design_accuracy_score),1),0) as \"averageAccuracyScore\" from framework_process_design_assurance_matrix"));
         result.put("pageDesignCoverage",jdbc.queryForList("select process_code as \"processCode\",page_design_count as \"pageDesignCount\",user_page_count as \"userPageCount\",admin_page_count as \"adminPageCount\",field_count as \"fieldCount\",required_field_count as \"requiredFieldCount\",db_resolved_field_count as \"dbResolvedFieldCount\",implementation_field_count as \"implementationFieldCount\",field_contract_gap_count as \"fieldContractGapCount\",implementation_pending_page_count as \"implementationPendingPageCount\",handoff_count as \"handoffCount\",page_design_status as \"pageDesignStatus\" from framework_process_page_design_assurance order by process_code"));
@@ -266,6 +266,7 @@ public class EmissionProjectRegistryService {
         result.put("notifications",jdbc.queryForList("SELECT notification_id AS \"id\",project_id AS \"projectId\",task_id AS \"taskId\",event_type AS \"eventType\",title,message_text AS \"message\",target_url AS \"targetUrl\",read_at AS \"readAt\",created_at AS \"createdAt\" FROM emission_workflow_notification WHERE tenant_id=? AND (? OR lower(recipient_id)=lower(?)) ORDER BY (read_at IS NULL) DESC,created_at DESC LIMIT 20",tenant,showAll,actor));
         result.put("unreadNotificationCount",jdbc.queryForObject("SELECT count(*) FROM emission_workflow_notification WHERE tenant_id=? AND read_at IS NULL AND (? OR lower(recipient_id)=lower(?))",Integer.class,tenant,showAll,actor));
         applyProcessNavigation(result);
+        applyProcessActorVisibility(result,tenant,actor,showAll);
         return result;
     }
 
@@ -298,6 +299,44 @@ public class EmissionProjectRegistryService {
                 "navigation_missing_count AS \"navigationMissingCount\",business_screen_ready_count AS \"businessScreenReadyCount\","+
                 "design_workspace_only_count AS \"designWorkspaceOnlyCount\",page_design_missing_count AS \"pageDesignMissingCount\" "+
                 "FROM framework_process_navigation_summary"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyProcessActorVisibility(Map<String,Object> result,String tenant,String account,boolean showAll) {
+        Set<String> effectiveActors=new HashSet<>();
+        if(showAll) {
+            effectiveActors.add("*");
+        } else {
+            effectiveActors.add("MEMBER_USER");
+            jdbc.queryForList("SELECT DISTINCT actor_code FROM framework_account_actor_assignment WHERE tenant_id=? AND lower(account_id)=lower(?) AND assignment_status='ACTIVE' AND (valid_from IS NULL OR valid_from<=current_date) AND (valid_until IS NULL OR valid_until>=current_date)",tenant,account)
+                    .forEach(row -> effectiveActors.add(text(row.get("actor_code"))));
+            jdbc.queryForList("SELECT DISTINCT a.actor_code FROM framework_project_actor_assignment a JOIN emission_project_registry p ON p.project_id=a.project_id WHERE p.tenant_id=? AND lower(a.user_id)=lower(?) AND a.active_yn='Y'",tenant,account)
+                    .forEach(row -> effectiveActors.add(text(row.get("actor_code"))));
+        }
+        result.put("accountActors",effectiveActors.stream().sorted().toList());
+        if(showAll) return;
+
+        Object stepsValue=result.get("processCatalogSteps");
+        if(!(stepsValue instanceof List<?> rawSteps)) return;
+        List<Map<String,Object>> steps=(List<Map<String,Object>>)rawSteps;
+        Set<String> allowedProcesses=new HashSet<>();
+        for(Map<String,Object> step:steps) {
+            if(effectiveActors.contains(text(step.get("actorCode")))) allowedProcesses.add(text(step.get("processCode")));
+        }
+        Object catalogValue=result.get("processCatalog");
+        if(catalogValue instanceof List<?> rawCatalog) {
+            List<Map<String,Object>> catalog=(List<Map<String,Object>>)rawCatalog;
+            catalog.removeIf(process -> !allowedProcesses.contains(text(process.get("processCode"))));
+            Map<String,Integer> domainCounts=new LinkedHashMap<>();
+            catalog.forEach(process -> domainCounts.merge(text(process.get("domainCode")).toUpperCase(),1,Integer::sum));
+            Object workTypesValue=result.get("workTypes");
+            if(workTypesValue instanceof List<?> rawWorkTypes) {
+                List<Map<String,Object>> workTypes=(List<Map<String,Object>>)rawWorkTypes;
+                workTypes.removeIf(workType -> !domainCounts.containsKey(text(workType.get("workTypeCode")).toUpperCase()));
+                workTypes.forEach(workType -> workType.put("definedProcessCount",domainCounts.getOrDefault(text(workType.get("workTypeCode")).toUpperCase(),0)));
+            }
+        }
+        steps.removeIf(step -> !allowedProcesses.contains(text(step.get("processCode"))));
     }
 
     private void applyWorkflowActorAccess(List<Map<String,Object>> workflows,String tenant,String account,boolean showAll) {
