@@ -1712,6 +1712,28 @@
       "preconditions": "동시 수정·중복 요청 또는 외부 연계 실패"
     }
   ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
   "nonfunctional": {
     "recovery": {
       "retry": "idempotent-only",
@@ -1744,5 +1766,5 @@
   "sourceHash": "514a7d3641d9703e169c758aa416606f",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "5e1fc72bf750135eef5a56dd2482b4dc993472defcc17117c8b8c0f7ab719543"
+  "packageHash": "ac4832ee3d98a6744c7d5e079a4a07730101bea7f1034b2bf0588ab008e6f265"
 }
