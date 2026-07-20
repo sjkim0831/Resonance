@@ -75,6 +75,12 @@ while IFS= read -r path; do
       add_test "automation:shell-syntax"
       add_reason "automation-only"
       ;;
+    ops/runtime-metadata/*|projects/carbonet-backend-metadata/*)
+      # These declarative packages are consumed from the mounted project path.
+      # Contract validation/reload is sufficient; no Java or Vite build.
+      add_test "catalog:sync"
+      add_reason "runtime-metadata"
+      ;;
     docs/*|plans/*|catalog/*|templates/*|skills/*|ai-builder/*|*.md|*.txt)
       add_test "catalog:sync"
       add_reason "catalog-only"

@@ -84,6 +84,18 @@ if [[ -z "$POSTGRES_POD" ]]; then
   exit 12
 fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
+backup_application_name="carbonet-auto-deploy-$$"
+cleanup_remote_backup() {
+  # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
+  # only sessions owned by this deploy invocation, preventing duplicate dumps
+  # after a stop or retry without touching other backup jobs.
+  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
+    -v app_name="$backup_application_name" \
+    -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name=:'app_name' and pid<>pg_backend_pid()" \
+    >/dev/null 2>&1 || true
+}
+trap cleanup_remote_backup EXIT INT TERM
 git fetch --prune "$REMOTE" "$BRANCH"
 target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
@@ -203,7 +215,7 @@ if [[ "$backup_required" == "true" ]]; then
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-        env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
           -h 127.0.0.1 -t comtnmenuinfo -t comtccmmndetailcode \
       | gzip -1 > "$backup_file"; then
@@ -223,7 +235,7 @@ if [[ "$backup_required" == "true" ]]; then
     echo "[auto-deploy] governance-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-        env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
           -t framework_actor_definition -t framework_account_actor_assignment \
           -t framework_process_definition -t framework_process_step \
@@ -253,7 +265,7 @@ if [[ "$backup_required" == "true" ]]; then
     echo "[auto-deploy] activity-workflow migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
       kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-        env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
           -t emission_activity_request -t emission_activity_request_event \
           -t emission_activity_data -t emission_activity_quality_run -t emission_activity_quality_issue \
@@ -279,7 +291,7 @@ if [[ "$backup_required" == "true" ]]; then
   echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"
   if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-      env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+      env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
       pg_dumpall -U "$POSTGRES_USER" --roles-only -h 127.0.0.1 \
     | gzip -1 > "$roles_backup_file"; then
     rm -f "$roles_backup_file"
@@ -294,7 +306,7 @@ if [[ "$backup_required" == "true" ]]; then
   echo "[auto-deploy] backing up database to $backup_file"
   if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-      env "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+      env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
       pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges \
         -h 127.0.0.1 \
     | gzip -1 > "$backup_file"; then
