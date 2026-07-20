@@ -39,7 +39,7 @@ type QuestResponse = {
   items?: QuestTask[];
   workflows?: QuestTask[];
   workTypes?: Array<{ workTypeCode: string; workTypeName: string; workTypeNameEn?: string; description?: string; sortOrder?: number; definedProcessCount?: number; activeProcessCount?: number; taskCount?: number }>;
-  processCatalog?: Array<{ processCode: string; processName: string; domainCode: string; goal?: string; status?: string; ownerActorCode?: string; developmentOrder?: number; workflowOrder?: number; workflowPhase?: string; processRole?: string; prerequisiteCodes?: string; nextProcessCode?: string; stepCount?: number; completionScore?: number; requiredTasks?: number; completedTasks?: number; blockedTasks?: number; nextAction?: string; targetUrl?: string }>;
+  processCatalog?: Array<{ processCode: string; processName: string; domainCode: string; goal?: string; status?: string; ownerActorCode?: string; developmentOrder?: number; workflowOrder?: number; workflowPhase?: string; processRole?: string; prerequisiteCodes?: string; nextProcessCode?: string; stepCount?: number; completionScore?: number; requiredTasks?: number; completedTasks?: number; blockedTasks?: number; nextAction?: string; targetUrl?: string; runtimeTaskCount?: number; runtimeCompletedCount?: number; runtimeState?: string }>;
   processCatalogSteps?: Array<{ processCode: string; stepOrder: number; stepCode: string; stepName: string; actorCode?: string; fromState?: string; commandCode?: string; toState?: string; workPurpose?: string; completionRule?: string; inputContract?: string; outputContract?: string; userPath?: string; adminPath?: string; automationStatus?: string }>;
   workCatalogAudit?: { workTypeCount?: number; processCount?: number; processesWithoutSequence?: number; processesWithoutSteps?: number; processesWithoutSafetyTests?: number; processesWithoutDevelopmentJobs?: number; menusWithoutProcessBinding?: number; processesWithoutScreenRoute?: number };
   allVisible?: boolean;
@@ -110,6 +110,17 @@ function workflowPhaseLabel(code: string | undefined, en: boolean) {
   };
   const label = labels[String(code || "NEW_WORK")];
   return label ? label[en ? 1 : 0] : String(code || "-");
+}
+
+function runtimeStateLabel(state: string, en: boolean) {
+  const labels: Record<string, [string, string]> = {
+    PAGE_NOT_IMPLEMENTED: ["화면 개발 대기", "Page pending"],
+    TASK_NOT_CREATED: ["실행 업무 미생성", "Task not created"],
+    READY: ["시작 전", "Ready"],
+    IN_PROGRESS: ["진행 중", "In progress"],
+    COMPLETED: ["완료", "Complete"]
+  };
+  return (labels[state] || [state,state])[en ? 1 : 0];
 }
 
 export function TaskQuestPanel() {
@@ -219,8 +230,15 @@ export function TaskQuestPanel() {
   const selectedWorkflowItems = useMemo(() => selectedWorkType === "ALL"
     ? workflowItems
     : workflowItems.filter((item) => String(item.domainCode || "EMISSION").toUpperCase() === selectedWorkType), [selectedWorkType, workflowItems]);
-  const selectedDefinedProcesses = useMemo(() => (data?.processCatalog || []).filter((item) => selectedWorkType === "ALL" || String(item.domainCode).toUpperCase() === selectedWorkType).map((item) => ({...item, workflowPhase: workflowPhaseLabel(item.workflowPhase, en)})), [data?.processCatalog, selectedWorkType, en]);
+  const selectedDefinedProcesses = useMemo(() => (data?.processCatalog || []).filter((item) => selectedWorkType === "ALL" || String(item.domainCode).toUpperCase() === selectedWorkType).map((item) => {
+    const runtimeTasks = workflowItems.filter((task) => task.processCode === item.processCode);
+    const runtimeCompleted = runtimeTasks.filter((task) => task.status === "DONE").length;
+    const runtimeProgress = runtimeTasks.length ? Math.round(runtimeCompleted * 100 / runtimeTasks.length) : Number(item.completionScore || 0);
+    const runtimeState = runtimeTasks.length === 0 ? (item.targetUrl ? "TASK_NOT_CREATED" : "PAGE_NOT_IMPLEMENTED") : runtimeCompleted === runtimeTasks.length ? "COMPLETED" : runtimeTasks.some((task) => task.status === "IN_PROGRESS") ? "IN_PROGRESS" : "READY";
+    return {...item, workflowPhase: `${workflowPhaseLabel(item.workflowPhase, en)} · ${runtimeStateLabel(runtimeState,en)}`, completionScore: runtimeProgress, completedTasks: runtimeTasks.length ? runtimeCompleted : item.completedTasks, requiredTasks: runtimeTasks.length ? runtimeTasks.length : item.requiredTasks, runtimeTaskCount: runtimeTasks.length, runtimeCompletedCount: runtimeCompleted, runtimeState};
+  }), [data?.processCatalog, selectedWorkType, en, workflowItems]);
   const selectedCatalogProcess = useMemo(() => (data?.processCatalog || []).find((item) => item.processCode === selectedCatalogProcessCode), [data?.processCatalog, selectedCatalogProcessCode]);
+  const selectedUnifiedProcess = useMemo(() => selectedDefinedProcesses.find((item) => item.processCode === selectedCatalogProcessCode), [selectedDefinedProcesses, selectedCatalogProcessCode]);
   const selectedCatalogSteps = useMemo(() => (data?.processCatalogSteps || []).filter((item) => item.processCode === selectedCatalogProcessCode).sort((a,b)=>Number(a.stepOrder)-Number(b.stepOrder)), [data?.processCatalogSteps, selectedCatalogProcessCode]);
 
   useEffect(() => {
@@ -246,14 +264,14 @@ export function TaskQuestPanel() {
 
   const processGroups = useMemo(() => {
     const groups = new Map<string, QuestTask[]>();
-    selectedWorkflowItems.forEach((item) => {
+    selectedWorkflowItems.filter((item) => item.processCode === selectedCatalogProcessCode).forEach((item) => {
       const key = `${item.projectId}|${item.processCode || "PROJECT_WORKFLOW"}`;
       const items = groups.get(key) || [];
       items.push(item);
       groups.set(key, items);
     });
     return Array.from(groups.entries());
-  }, [selectedWorkflowItems]);
+  }, [selectedCatalogProcessCode, selectedWorkflowItems]);
 
   if (!data) return null;
 
@@ -284,6 +302,14 @@ export function TaskQuestPanel() {
     setSelectedCatalogProcessCode(code);
     setSelectedCatalogStep(0);
     localStorage.setItem("task-quest-catalog-process", code);
+    const runtime = workflowItems.find((item) => item.processCode === code);
+    if (runtime) {
+      const focus = { projectId: runtime.projectId, processCode: code };
+      setFocusedWorkflow(focus);
+      localStorage.setItem("task-quest-focused-workflow", JSON.stringify(focus));
+    } else {
+      clearWorkflowFocus();
+    }
   }
 
   function clearWorkflowFocus() {
@@ -426,6 +452,7 @@ export function TaskQuestPanel() {
             <div className="mb-3"><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 2 · Select a process" : "2단계 · 업무 프로세스 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{selectedWorkType === "ALL" ? (en ? "All available processes" : "전체 업무 프로세스") : availableWorkTypes.find((item) => item.code === selectedWorkType)?.label || workTypeLabel(selectedWorkType, en)}</h3><p className="text-sm text-slate-600">{selectedDefinedProcesses.length} {en ? "processes are registered" : "개 프로세스 등록"} · {processGroups.length} {en ? "active project workflows" : "개 프로젝트에서 진행 중"}</p></div>
             {selectedDefinedProcesses.length ? <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{selectedDefinedProcesses.map((process) => { const active=workflowItems.find((item)=>item.processCode===process.processCode); const ready=process.status==="DEVELOPMENT_READY"; const selected=selectedCatalogProcessCode===process.processCode; return <article className={`flex min-h-44 flex-col rounded-2xl border bg-white p-4 ${selected?"border-[#246beb] ring-2 ring-blue-100":"border-slate-200"}`} key={process.processCode}><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black text-[#246beb]">{process.processCode}</p><h4 className="mt-1 font-black text-[#052b57]">{process.processName}</h4></div><span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-black ${active?"bg-emerald-100 text-emerald-800":ready?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}`}>{active?(en?"Active":"진행 중"):ready?(en?"Ready":"구현 완료"):(en?"Planned":"개발 예정")}</span></div><p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{process.goal}</p><div className="mt-auto flex flex-wrap items-end justify-between gap-2 pt-3"><span className="text-xs font-bold text-slate-500">{process.stepCount || 0} {en?"steps":"단계"} · {process.ownerActorCode || "-"}</span><div className="flex gap-2"><button className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-black text-blue-700" onClick={()=>selectCatalogProcess(process.processCode)} type="button">{selected?(en?"Guide selected":"길잡이 선택됨"):(en?"View process":"프로세스 보기")}</button>{active?<button className="rounded-lg bg-[#052b57] px-3 py-2 text-xs font-black text-white" onClick={()=>focusWorkflow(active)} type="button">{en?"Active work":"진행 업무"}</button>:null}</div></div></article>})}</div>:null}
             {selectedCatalogProcess ? <section className="mb-5 rounded-2xl border-2 border-[#246beb] bg-white p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black text-[#246beb]">{en?"Selected process guide":"선택한 프로세스 업무 길잡이"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{selectedCatalogProcess.processName}</h3><p className="mt-1 max-w-3xl text-sm text-slate-600">{selectedCatalogProcess.goal}</p></div>{data.allVisible?<a className="rounded-lg bg-[#052b57] px-4 py-2.5 text-xs font-black text-white" href={buildLocalizedPath(`/admin/system/actor-process?process=${encodeURIComponent(selectedCatalogProcess.processCode)}`,`/en/admin/system/actor-process?process=${encodeURIComponent(selectedCatalogProcess.processCode)}`)}>{en?"Open development board":"개발 현황 열기"}</a>:null}</div><div className="mt-4 overflow-x-auto pb-2"><ol className="flex min-w-max items-stretch gap-2">{selectedCatalogSteps.map((step,index)=>{const route=step.userPath||(data.allVisible?step.adminPath:"");const active=index===selectedCatalogStep;return <li className={`flex w-64 flex-col rounded-xl border-2 p-3 ${active?"border-[#246beb] bg-blue-50":"border-slate-200 bg-white"}`} key={step.stepCode}><div className="flex items-center justify-between gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black shadow">{index+1}</span><span className="text-[11px] font-black text-slate-500">{step.actorCode}</span></div><strong className="mt-3 text-sm text-[#052b57]">{step.stepName}</strong><p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{step.completionRule}</p><div className="mt-auto flex items-center justify-between gap-2 pt-3"><button className="text-xs font-black text-blue-700" onClick={()=>setSelectedCatalogStep(index)} type="button">{en?"Select step":"단계 선택"}</button>{route?<a className="rounded-lg bg-[#246beb] px-3 py-2 text-xs font-black text-white" href={en?`/en${route}`:route}>{en?"Open":"화면 이동"}</a>:<span className="text-xs font-bold text-amber-700">{en?"Page pending":"페이지 개발 대기"}</span>}</div></li>})}</ol></div><div className="mt-3 flex justify-end"><button className="rounded-lg border border-blue-300 px-4 py-2 text-xs font-black text-blue-700 disabled:opacity-40" disabled={selectedCatalogStep>=selectedCatalogSteps.length-1} onClick={()=>setSelectedCatalogStep((value)=>Math.min(selectedCatalogSteps.length-1,value+1))} type="button">{en?"Next step":"다음 단계"}</button></div></section>:null}
+            {selectedUnifiedProcess ? <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en?"Project execution":"실제 프로젝트 실행 업무"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{selectedUnifiedProcess.processName}</h3></div><span className={`rounded-full px-3 py-1 text-xs font-black ${selectedUnifiedProcess.runtimeState==="COMPLETED"?"bg-emerald-100 text-emerald-800":selectedUnifiedProcess.runtimeState==="IN_PROGRESS"?"bg-blue-100 text-blue-800":"bg-amber-100 text-amber-800"}`}>{runtimeStateLabel(String(selectedUnifiedProcess.runtimeState||"TASK_NOT_CREATED"),en)}</span></div>:null}
             {processGroups.length ? <div className="space-y-5">
               {processGroups.map(([key, items]) => {
                 const first = items[0];
