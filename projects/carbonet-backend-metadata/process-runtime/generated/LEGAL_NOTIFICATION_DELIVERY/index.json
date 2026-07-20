@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+      "stepCode": "LND_COMPOSE",
+      "package": "LEGAL_NOTIFICATION_DELIVERY__LND_COMPOSE.json",
+      "packageHash": "9d5d0841eb62ba5b3c150ea373b038420a4d2deb05c55dc0685a84d37fc7d555",
+      "pages": 2
+    },
+    {
+      "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+      "stepCode": "LND_DELIVER",
+      "package": "LEGAL_NOTIFICATION_DELIVERY__LND_DELIVER.json",
+      "packageHash": "99cd7ce73839d3e64802f82c84240b85e5c22ac408c2544698d0900a40d27897",
+      "pages": 2
+    },
+    {
+      "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+      "stepCode": "LND_RECEIPT",
+      "package": "LEGAL_NOTIFICATION_DELIVERY__LND_RECEIPT.json",
+      "packageHash": "f8cb9a74a8f3b36d48133672831727e5fce54c7301df9735b02e13539133ea9c",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "75605b023c1ad7638d64b6736ef2e0f283030c31163adf456fc1bf1f8522ca09"
+}
