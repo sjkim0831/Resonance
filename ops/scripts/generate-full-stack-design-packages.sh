@@ -11,10 +11,21 @@ PREVIEW_OUT="${FULL_STACK_PREVIEW_OUT:-$ROOT/projects/carbonet-backend-metadata/
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-leader="${POSTGRES_POD:-}"
-if [[ -z "$leader" ]]; then
-  leader="$(kubectl -n "$NAMESPACE" get pods -o name | sed -n 's#pod/\(postgres-patroni-[0-9]*\)#\1#p' | head -n 1)"
-fi
+leader=""
+# Patroni can promote any ordinal. A configured POSTGRES_POD is only a hint;
+# never write generation state until pg_is_in_recovery() proves it is leader.
+declare -a candidates=()
+[[ -n "${POSTGRES_POD:-}" ]] && candidates+=("$POSTGRES_POD")
+while IFS= read -r candidate; do
+  [[ -n "$candidate" ]] && candidates+=("$candidate")
+done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+for candidate in "${candidates[@]}"; do
+  if [[ "$(kubectl -n "$NAMESPACE" exec "$candidate" -c patroni -- \
+    psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+    leader="$candidate"
+    break
+  fi
+done
 [[ -n "$leader" ]] || { echo '[full-stack-generator] PostgreSQL pod not found' >&2; exit 1; }
 [[ -z "$PROCESS_CODE" || "$PROCESS_CODE" =~ ^[A-Z0-9_]+$ ]] || {
   echo '[full-stack-generator] invalid process code' >&2; exit 1;
