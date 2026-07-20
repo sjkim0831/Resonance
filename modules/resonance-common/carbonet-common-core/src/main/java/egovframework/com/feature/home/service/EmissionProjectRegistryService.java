@@ -255,6 +255,8 @@ public class EmissionProjectRegistryService {
         workflows.forEach(this::enrichCompletionReadiness);
         applyWorkflowActorAccess(workflows,tenant,actor,showAll);
         result.put("workflows",workflows);
+        String readinessScope=showAll?" WHERE r.tenant_id=?":" WHERE r.tenant_id=? AND EXISTS (SELECT 1 FROM framework_project_actor_assignment a WHERE a.project_id=r.project_id AND a.active_yn='Y' AND lower(a.user_id)=lower(?))";
+        result.put("projectProcesses",jdbc.queryForList("SELECT r.project_id AS \"projectId\",r.project_name AS \"projectName\",r.process_code AS \"processCode\",r.process_name AS \"processName\",r.workflow_order AS \"workflowOrder\",r.workflow_phase AS \"workflowPhase\",r.process_role AS \"processRole\",r.applicability_status AS \"applicabilityStatus\",r.implementation_status AS \"implementationStatus\",r.task_generation_status AS \"taskGenerationStatus\",r.execution_status AS \"executionStatus\",r.reason_code AS \"reasonCode\",r.reason_text AS \"reasonText\",r.task_count AS \"taskCount\",r.completed_task_count AS \"completedTaskCount\" FROM framework_project_process_readiness r"+readinessScope+" ORDER BY r.project_id,r.workflow_order,r.process_code",showAll?new Object[]{tenant}:new Object[]{tenant,actor}));
         result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE p.tenant_id=?"+(showAll?"":" AND lower(coalesce(t.assignee_id,''))=lower(?)"),showAll?new Object[]{tenant}:new Object[]{tenant,actor}));
         result.put("notifications",jdbc.queryForList("SELECT notification_id AS \"id\",project_id AS \"projectId\",task_id AS \"taskId\",event_type AS \"eventType\",title,message_text AS \"message\",target_url AS \"targetUrl\",read_at AS \"readAt\",created_at AS \"createdAt\" FROM emission_workflow_notification WHERE tenant_id=? AND (? OR lower(recipient_id)=lower(?)) ORDER BY (read_at IS NULL) DESC,created_at DESC LIMIT 20",tenant,showAll,actor));
         result.put("unreadNotificationCount",jdbc.queryForObject("SELECT count(*) FROM emission_workflow_notification WHERE tenant_id=? AND read_at IS NULL AND (? OR lower(recipient_id)=lower(?))",Integer.class,tenant,showAll,actor));
@@ -821,11 +823,23 @@ public class EmissionProjectRegistryService {
         jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id) VALUES (?,'COMPANY_MANAGER',?),(?,'SITE_DATA_OWNER',?),(?,'CALCULATOR',?),(?,'VERIFIER',?),(?,'APPROVER',?) ON CONFLICT DO NOTHING",id,owner,id,dataOwner,id,calculator,id,verifier,id,approver);
         jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES (?,?,?,'COMPANY_MANAGER',?,'ACTIVE'),(?,?,?,'SITE_DATA_OWNER',?,'ACTIVE'),(?,?,?,'CALCULATOR',?,'ACTIVE'),(?,?,?,'VERIFIER',?,'ACTIVE'),(?,?,?,'APPROVER',?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE'",owner,tenant,id,id,dataOwner,tenant,id,id,calculator,tenant,id,id,verifier,tenant,id,id,approver,tenant,id,id);
         jdbc.update("UPDATE emission_project_task SET assignee_id=CASE actor_code WHEN 'COMPANY_MANAGER' THEN ? WHEN 'SITE_DATA_OWNER' THEN ? WHEN 'CALCULATOR' THEN ? WHEN 'VERIFIER' THEN ? WHEN 'APPROVER' THEN ? END WHERE project_id=?",owner,dataOwner,calculator,verifier,approver,id);
+        jdbc.queryForMap("SELECT * FROM framework_sync_project_processes(?,?)",id,owner);
         jdbc.update("INSERT INTO emission_project_activity_request(project_id,tenant_id,site_name,assignee_id,collection_cycle,period_start,period_end,due_date) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(project_id,site_name,assignee_id) DO NOTHING",id,tenant,site,dataOwner,contract.collectionCycle(),start,end,due);
         completeWorkflowTask(id,"BASIC_INFO",owner);
         jdbc.update("UPDATE emission_project_task task SET due_date=CASE task.step_order WHEN 1 THEN least(?,current_date) WHEN 6 THEN ? ELSE least(?,current_date+greatest(1,ceil((?-current_date)*task.step_order/6.0)::integer)) END,updated_at=current_timestamp WHERE task.project_id=?",due,due,due,due,id);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CREATED','배출량 프로젝트가 생성되었습니다.',?)", id, owner);
         return id;
+    }
+
+    @Transactional
+    public Map<String,Object> synchronizeProjectProcesses(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId");
+        String user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        Map<String,Object> summary=new LinkedHashMap<>(jdbc.queryForMap("SELECT * FROM framework_sync_project_processes(?,?)",projectId,user));
+        summary.put("projectId",projectId);
+        summary.put("items",jdbc.queryForList("SELECT process_code AS \"processCode\",process_name AS \"processName\",workflow_order AS \"workflowOrder\",workflow_phase AS \"workflowPhase\",process_role AS \"processRole\",applicability_status AS \"applicabilityStatus\",implementation_status AS \"implementationStatus\",task_generation_status AS \"taskGenerationStatus\",execution_status AS \"executionStatus\",reason_code AS \"reasonCode\",reason_text AS \"reasonText\",task_count AS \"taskCount\",completed_task_count AS \"completedTaskCount\" FROM framework_project_process_readiness WHERE project_id=? ORDER BY workflow_order,process_code",projectId));
+        return summary;
     }
 
     public Map<String,Object> creationResult(String projectId,String tenantId) {

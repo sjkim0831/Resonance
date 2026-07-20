@@ -131,6 +131,15 @@ public class EmissionProjectRegistryController {
     @GetMapping({"/home/api/emission-projects/{id}/completion","/en/home/api/emission-projects/{id}/completion"})
     public ResponseEntity<?> completion(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.projectCompletion(id,tenant(c)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
+    @PostMapping({"/home/api/emission-projects/{id}/processes/sync","/en/home/api/emission-projects/{id}/processes/sync"})
+    public ResponseEntity<?> synchronizeProcesses(@PathVariable String id,HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","LOGIN_REQUIRED"));
+        try { return ResponseEntity.ok(service.synchronizeProjectProcesses(id,tenant(context),context.getUserId(),context.isWebmaster())); }
+        catch(SecurityException e) { return ResponseEntity.status(403).body(Map.of("message",e.getMessage())); }
+        catch(Exception e) { return ResponseEntity.badRequest().body(Map.of("message",e.getMessage())); }
+    }
+
     @GetMapping({"/home/api/emission-projects/{id}/calculation","/en/home/api/emission-projects/{id}/calculation"})
     public ResponseEntity<?> calculation(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.calculationResult(id,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
