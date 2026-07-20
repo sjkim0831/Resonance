@@ -11,7 +11,7 @@ git init -q
 git config user.name planner-test
 git config user.email planner-test@example.invalid
 mkdir -p docs projects/carbonet-frontend/source/src apps/carbonet-api/src/main/java/example \
-  apps/carbonet-api/src/main/resources/db/migration
+  apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated
 printf 'base\n' > README.md
 git add . && git commit -qm base
 base="$(git rev-parse HEAD)"
@@ -49,4 +49,18 @@ eval "$(bash "$PLANNER" "$backend" "$database" --format env)"
 [[ "$PLAN_BACKEND_REQUIRED" == true ]]
 [[ "$PLAN_DATABASE_REQUIRED" == true ]]
 
-echo "[incremental-plan] PASS frontend-only avoids backend/image rollout"
+printf '*.sh text eol=lf\n' > .gitattributes
+git add . && git commit -qm repository-policy
+policy="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$database" "$policy" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_CATALOG_ONLY" == true ]]
+
+printf '{}\n' > projects/carbonet-backend-metadata/process-runtime/generated/index.json
+git add . && git commit -qm runtime-metadata
+metadata="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$policy" "$metadata" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_CATALOG_ONLY" == true ]]
+
+echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build"

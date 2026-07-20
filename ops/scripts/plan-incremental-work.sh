@@ -70,7 +70,7 @@ while IFS= read -r path; do
       add_test "frontend:asset-closure"
       add_reason "frontend-artifact"
       ;;
-    ops/scripts/*|ops/systemd/*)
+    ops/scripts/*|ops/systemd/*|.githooks/*|.gitattributes)
       infrastructure_required=true
       add_test "automation:shell-syntax"
       add_reason "automation-only"
