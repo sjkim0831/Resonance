@@ -77,6 +77,20 @@ type WorkTypeAssurance = {
   pendingProcessCount?: number;
   averageAccuracyScore?: number;
 };
+type PageDesignCoverage = {
+  processCode: string;
+  pageDesignCount?: number;
+  userPageCount?: number;
+  adminPageCount?: number;
+  fieldCount?: number;
+  requiredFieldCount?: number;
+  dbResolvedFieldCount?: number;
+  implementationFieldCount?: number;
+  fieldContractGapCount?: number;
+  implementationPendingPageCount?: number;
+  handoffCount?: number;
+  pageDesignStatus?: string;
+};
 
 type QuestResponse = {
   items?: QuestTask[];
@@ -142,6 +156,18 @@ type QuestResponse = {
   };
   projectProcesses?: ProjectProcess[];
   workTypeAssurance?: WorkTypeAssurance[];
+  pageDesignCoverage?: PageDesignCoverage[];
+  pageDesignSummary?: {
+    pageCount?: number;
+    implementedPageCount?: number;
+    designOnlyPageCount?: number;
+    fieldCount?: number;
+    requiredFieldCount?: number;
+    dbResolvedFieldCount?: number;
+    implementationFieldCount?: number;
+    incompletePageCount?: number;
+    handoffCount?: number;
+  };
   workCatalogAudit?: {
     workTypeCount?: number;
     processCount?: number;
@@ -535,6 +561,9 @@ export function TaskQuestPanel() {
               entry.processCode === item.processCode &&
               (!selectedProjectId || entry.projectId === selectedProjectId),
           );
+          const pageDesign = (data?.pageDesignCoverage || []).find(
+            (entry) => entry.processCode === item.processCode,
+          );
           const runtimeState = runtimeTasks.length
             ? runtimeCompleted === runtimeTasks.length
               ? "COMPLETED"
@@ -581,12 +610,25 @@ export function TaskQuestPanel() {
               applicability?.implementationStatus || "UNASSESSED",
             executionStatus: applicability?.executionStatus || "NOT_STARTED",
             stateReason: reason,
+            pageDesignCount: Number(pageDesign?.pageDesignCount || 0),
+            userPageCount: Number(pageDesign?.userPageCount || 0),
+            adminPageCount: Number(pageDesign?.adminPageCount || 0),
+            fieldCount: Number(pageDesign?.fieldCount || 0),
+            requiredFieldCount: Number(pageDesign?.requiredFieldCount || 0),
+            dbResolvedFieldCount: Number(pageDesign?.dbResolvedFieldCount || 0),
+            implementationFieldCount: Number(
+              pageDesign?.implementationFieldCount || 0,
+            ),
+            handoffCount: Number(pageDesign?.handoffCount || 0),
+            pageDesignStatus:
+              pageDesign?.pageDesignStatus || "PAGE_DESIGN_NOT_AUDITED",
           };
         }),
     [
       data?.designAssurance,
       data?.processCatalog,
       data?.projectProcesses,
+      data?.pageDesignCoverage,
       selectedProjectId,
       selectedWorkType,
       en,
@@ -1187,6 +1229,14 @@ export function TaskQuestPanel() {
                         </span>
                       </div>
                       <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${String(selectedUnifiedProcess?.runtimeState)==="DESIGN_BLOCKED"?"border-red-200 bg-red-50 text-red-800":"border-blue-200 bg-blue-50 text-blue-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{runtimeStateLabel(String(selectedUnifiedProcess?.runtimeState||"PROJECT_NOT_SELECTED"),en)}</strong><span className="text-xs font-black">{en?"Design accuracy":"설계 정확도"} {Number(selectedUnifiedProcess?.designAccuracyScore||0)}%</span></div>{selectedUnifiedProcess?.stateReason?<p className="mt-1 text-xs leading-5">{selectedUnifiedProcess.stateReason}</p>:null}</div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                          [en ? "Page designs" : "화면 설계", selectedUnifiedProcess?.pageDesignCount || 0],
+                          [en ? "Field contracts" : "컬럼 계약", selectedUnifiedProcess?.fieldCount || 0],
+                          [en ? "DB resolved" : "DB 연결", selectedUnifiedProcess?.dbResolvedFieldCount || 0],
+                          [en ? "Data handoffs" : "데이터 인계", selectedUnifiedProcess?.handoffCount || 0],
+                        ].map(([label, metric]) => <div className="rounded-lg bg-slate-50 px-3 py-2" key={String(label)}><span className="block text-[11px] font-bold text-slate-500">{label}</span><strong className="text-base text-[#052b57]">{metric}</strong></div>)}
+                      </div>
                       <div className="mt-4 overflow-x-auto pb-2">
                         <ol className="flex min-w-max items-stretch gap-0">
                           {selectedDefinedProcesses.map((process, index) => (
