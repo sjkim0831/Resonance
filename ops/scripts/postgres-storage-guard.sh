@@ -13,6 +13,20 @@ fail() {
   exit 1
 }
 
+latest_valid_backup() {
+  local pattern="$1" min_size="$2" candidate
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    if gzip -t "$candidate" 2>/dev/null; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    echo "[postgres-storage-guard] WARN: skipping incomplete backup: $candidate" >&2
+  done < <(find "$BACKUP_ROOT" -maxdepth 1 -type f -name "$pattern" -mmin -1440 -size "$min_size" \
+    -printf '%T@ %p\n' 2>/dev/null | sort -nr | cut -d' ' -f2-)
+  return 1
+}
+
 [[ "$STORAGE_ROOT" == /opt/resonance-data/postgresql ]] || fail "unexpected storage root: $STORAGE_ROOT"
 [[ -d "$DATA_ROOT" ]] || fail "Patroni data root is missing"
 
@@ -47,12 +61,10 @@ while IFS= read -r pod; do
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
 [[ "$ready_members" -ge 2 ]] || fail "Patroni quorum is not ready ($ready_members/3)"
 
-latest_data_backup="$(find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'carbonet-*.sql.gz' -mmin -1440 -size +1M -print -quit 2>/dev/null || true)"
-latest_role_backup="$(find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'postgres-roles-*.sql.gz' -mmin -1440 -size +100c -print -quit 2>/dev/null || true)"
+latest_data_backup="$(latest_valid_backup 'carbonet-*.sql.gz' '+1M' || true)"
+latest_role_backup="$(latest_valid_backup 'postgres-roles-*.sql.gz' '+100c' || true)"
 [[ -n "$latest_data_backup" ]] || fail "no valid data backup from the last 24 hours"
 [[ -n "$latest_role_backup" ]] || fail "no valid role backup from the last 24 hours"
-gzip -t "$latest_data_backup" || fail "latest data backup is corrupt"
-gzip -t "$latest_role_backup" || fail "latest role backup is corrupt"
 
 # A failed guard deliberately pauses deployments. Once every storage boundary,
 # quorum marker, and backup check is healthy again, recover the timer as well.
