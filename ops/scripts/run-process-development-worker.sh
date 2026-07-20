@@ -394,6 +394,19 @@ fi
 [ "$KILO_CODE" -eq 0 ] || fail_job "Hermes project worker exited with code ${KILO_CODE}"
 
 CHANGED="$(git -C "$WT" status --porcelain)"
+if [ -z "$CHANGED" ] && [ "$DETERMINISTIC_HANDLED" = 1 ] && [[ "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]]; then
+  # A sibling step can publish the same process package first because one
+  # deterministic process render contains every approved step. The current
+  # runner has already re-rendered, hash-checked, and contract-tested that
+  # package. Reuse the identical main artifact instead of creating a duplicate
+  # commit or reporting a false failure.
+  EVIDENCE="git:${BASE_COMMIT};generated-package:${PROCESS_CODE};log:${LOG_FILE}"
+  psqlq -c "update framework_development_job set job_status='VERIFIED',result_json=\$json\${\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_GENERATED_PROCESS_PACKAGE\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
+  event "VERIFIED" "RUNNING" "VERIFIED" "{\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_GENERATED_PROCESS_PACKAGE\"}"
+  git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
+  printf 'VERIFIED generated package job=%s commit=%s\n' "$JOB_ID" "$BASE_COMMIT"
+  exit 0
+fi
 if [ -z "$CHANGED" ] && [ "$EXISTING_ADOPTED" = 1 ]; then
   EVIDENCE="git:${BASE_COMMIT};adoption:${ADOPTION_ARTIFACT};log:${LOG_FILE}"
   psqlq -c "update framework_development_job set job_status='VERIFIED',result_json=\$json\${\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_EXISTING\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
