@@ -18,7 +18,7 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
   exit 1
 }
 
-IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count <<<"$(
+IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count <<<"$(
   kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -At -F '|' -c "
       select
@@ -48,7 +48,11 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
               where h.process_code=s.process_code and h.from_step_code=s.step_code and h.handoff_type='STEP')),
         (select count(*) from framework_process_definition p
           where nullif(btrim(p.owner_actor_code),'') is null
-             or not exists(select 1 from framework_actor_definition a where a.actor_code=p.owner_actor_code and a.use_at='Y'));
+             or not exists(select 1 from framework_actor_definition a where a.actor_code=p.owner_actor_code and a.use_at='Y')),
+        (select designed_count from framework_process_execution_topology_audit),
+        (select invalid_predecessor_count from framework_process_execution_topology_audit),
+        (select runtime_missing_predecessor_count from framework_process_execution_topology_audit),
+        (select invalid_completed_task_count from framework_process_execution_topology_audit);
     "
 )"
 
@@ -88,5 +92,21 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
   echo "[unified-work-design] process owner gaps: $owner_gap_count" >&2
   exit 10
 }
+[[ "$process_count" == "$topology_count" ]] || {
+  echo "[unified-work-design] process topology coverage mismatch: process=$process_count topology=$topology_count" >&2
+  exit 11
+}
+[[ "$invalid_topology_count" == "0" ]] || {
+  echo "[unified-work-design] invalid or cyclic process topology edges: $invalid_topology_count" >&2
+  exit 12
+}
+[[ "$runtime_predecessor_gap_count" == "0" ]] || {
+  echo "[unified-work-design] runtime task predecessor gaps: $runtime_predecessor_gap_count" >&2
+  exit 13
+}
+[[ "$invalid_completed_task_count" == "0" ]] || {
+  echo "[unified-work-design] completed tasks have incomplete predecessors: $invalid_completed_task_count" >&2
+  exit 14
+}
 
-echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0"
+echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count topology=$topology_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"

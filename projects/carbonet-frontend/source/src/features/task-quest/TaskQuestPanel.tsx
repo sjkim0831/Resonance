@@ -6,6 +6,8 @@ type QuestTask = {
   id: number;
   taskCode?: string;
   stepOrder?: number;
+  executionWave?: number;
+  predecessorCodes?: string;
   projectId: string;
   projectName: string;
   name: string;
@@ -116,6 +118,15 @@ type QuestResponse = {
     workflowOrder?: number;
     workflowPhase?: string;
     processRole?: string;
+    executionWave?: number;
+    laneCode?: string;
+    laneOrder?: number;
+    executionMode?: string;
+    joinStrategy?: string;
+    predecessorProcessCodes?: string[];
+    sharedMilestoneCode?: string;
+    requiredForJoin?: boolean;
+    applicabilityRule?: string;
     prerequisiteCodes?: string;
     nextProcessCode?: string;
     stepCount?: number;
@@ -327,6 +338,9 @@ export function TaskQuestPanel() {
     () => localStorage.getItem("task-quest-catalog-process") || "",
   );
   const [selectedCatalogStep, setSelectedCatalogStep] = useState(0);
+  const [selectedOverviewProjectId, setSelectedOverviewProjectId] = useState(
+    () => localStorage.getItem("task-quest-overview-project") || "",
+  );
   const [focusedWorkflow, setFocusedWorkflow] = useState<{
     projectId: string;
     processCode: string;
@@ -384,6 +398,42 @@ export function TaskQuestPanel() {
     new URLSearchParams(location.search).get("id") ||
     "";
 
+  const rawWorkflowItems = useMemo(() => {
+    const source = data?.workflows || data?.items || [];
+    const unique = new Map<string, QuestTask>();
+    source.forEach((item) => {
+      const businessKey =
+        item.processStepCode ||
+        item.taskCode ||
+        `${item.commandCode || "TASK"}:${item.targetUrl || ""}`;
+      const key = `${item.projectId}|${item.processCode || "PROJECT"}|${businessKey}`;
+      if (!unique.has(key)) unique.set(key, item);
+    });
+    return [...unique.values()];
+  }, [data]);
+
+  const overviewProjects = useMemo(() => {
+    const projects = new Map<string, string>();
+    rawWorkflowItems.forEach((item) =>
+      projects.set(item.projectId, item.projectName || item.projectId),
+    );
+    return [...projects.entries()].map(([id, name]) => ({ id, name }));
+  }, [rawWorkflowItems]);
+
+  const effectiveProjectId =
+    contextProjectId || selectedOverviewProjectId || focusedWorkflow?.projectId || "";
+
+  useEffect(() => {
+    if (contextProjectId || selectedOverviewProjectId || !overviewProjects.length)
+      return;
+    const pendingProject = rawWorkflowItems.find(
+      (item) => item.status !== "DONE",
+    )?.projectId;
+    const next = pendingProject || overviewProjects[0].id;
+    setSelectedOverviewProjectId(next);
+    localStorage.setItem("task-quest-overview-project", next);
+  }, [contextProjectId, overviewProjects, rawWorkflowItems, selectedOverviewProjectId]);
+
   const task = useMemo(() => {
     const pending = [...(data?.items || [])].filter(
       (item) => item.status !== "DONE",
@@ -395,8 +445,8 @@ export function TaskQuestPanel() {
             item.processCode === focusedWorkflow.processCode,
         )
       : [];
-    const contextual = contextProjectId
-      ? pending.filter((item) => item.projectId === contextProjectId)
+    const contextual = effectiveProjectId
+      ? pending.filter((item) => item.projectId === effectiveProjectId)
       : [];
     return [
       ...(focused.length ? focused : contextual.length ? contextual : pending),
@@ -405,23 +455,13 @@ export function TaskQuestPanel() {
         bw = taskWeight(b);
       return aw[0] - bw[0] || aw[1] - bw[1];
     })[0];
-  }, [contextProjectId, data, focusedWorkflow]);
+  }, [data, effectiveProjectId, focusedWorkflow]);
 
   const workflowItems = useMemo(() => {
-    const source = data?.workflows || data?.items || [];
-    const scoped = contextProjectId
-      ? source.filter((item) => item.projectId === contextProjectId)
-      : source;
-    const unique = new Map<string, QuestTask>();
-    scoped.forEach((item) => {
-      const businessKey =
-        item.processStepCode ||
-        item.taskCode ||
-        `${item.commandCode || "TASK"}:${item.targetUrl || ""}`;
-      const key = `${item.projectId}|${item.processCode || "PROJECT"}|${businessKey}`;
-      if (!unique.has(key)) unique.set(key, item);
-    });
-    return [...unique.values()].sort(
+    const scoped = effectiveProjectId
+      ? rawWorkflowItems.filter((item) => item.projectId === effectiveProjectId)
+      : rawWorkflowItems;
+    return [...scoped].sort(
       (a, b) =>
         a.projectId.localeCompare(b.projectId) ||
         String(a.processCode || "").localeCompare(
@@ -429,7 +469,7 @@ export function TaskQuestPanel() {
         ) ||
         Number(a.stepOrder || 0) - Number(b.stepOrder || 0),
     );
-  }, [contextProjectId, data]);
+  }, [effectiveProjectId, rawWorkflowItems]);
 
   const availableWorkTypes = useMemo(() => {
     const counts = new Map<string, number>();
@@ -533,8 +573,7 @@ export function TaskQuestPanel() {
           ),
     [selectedWorkType, workflowItems],
   );
-  const selectedProjectId =
-    contextProjectId || focusedWorkflow?.projectId || "";
+  const selectedProjectId = effectiveProjectId;
   const selectedDefinedProcesses = useMemo(
     () =>
       (data?.processCatalog || [])
@@ -649,6 +688,23 @@ export function TaskQuestPanel() {
       selectedCatalogProcessCode,
     ],
   );
+  const selectedProcessWaves = useMemo(() => {
+    const waves = new Map<number, typeof selectedDefinedProcesses>();
+    selectedDefinedProcesses.forEach((process) => {
+      const wave = Number(process.executionWave || process.workflowOrder || 1);
+      const lane = waves.get(wave) || [];
+      lane.push(process);
+      waves.set(wave, lane);
+    });
+    return [...waves.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([wave, processes]) => ({
+        wave,
+        processes: processes.sort(
+          (left, right) => Number(left.laneOrder || 1) - Number(right.laneOrder || 1),
+        ),
+      }));
+  }, [selectedDefinedProcesses]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1238,22 +1294,29 @@ export function TaskQuestPanel() {
                         ].map(([label, metric]) => <div className="rounded-lg bg-slate-50 px-3 py-2" key={String(label)}><span className="block text-[11px] font-bold text-slate-500">{label}</span><strong className="text-base text-[#052b57]">{metric}</strong></div>)}
                       </div>
                       <div className="mt-4 overflow-x-auto pb-2">
-                        <ol className="flex min-w-max items-stretch gap-0">
-                          {selectedDefinedProcesses.map((process, index) => (
-                            <li
-                              className="flex items-center"
-                              key={`sequence-${process.processCode}`}
-                            >
+                        <ol className="flex min-w-max items-center gap-0">
+                          {selectedProcessWaves.map((wave, waveIndex) => (
+                            <li className="flex items-center" key={`wave-${wave.wave}`}>
+                              <section className="w-64 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <strong className="text-xs text-[#052b57]">{en ? `Wave ${wave.wave}` : `${wave.wave}차 실행`}</strong>
+                                  <span className={`rounded-full px-2 py-1 text-[11px] font-black ${wave.processes.length > 1 ? "bg-violet-100 text-violet-800" : "bg-slate-200 text-slate-700"}`}>
+                                    {wave.processes.length > 1 ? (en ? `${wave.processes.length} parallel lanes` : `${wave.processes.length}개 병렬 레인`) : (en ? "Sequential" : "순차")}
+                                  </span>
+                                </div>
+                                <div className="space-y-2">
+                                {wave.processes.map((process) => (
                               <button
-                                className={`flex min-h-32 w-56 flex-col rounded-xl border-2 p-3 text-left ${selectedCatalogProcessCode === process.processCode ? "border-[#246beb] bg-blue-50" : "border-slate-200 bg-white"}`}
+                                className={`flex min-h-32 w-full flex-col rounded-xl border-2 p-3 text-left ${selectedCatalogProcessCode === process.processCode ? "border-[#246beb] bg-blue-50" : "border-slate-200 bg-white"}`}
+                                key={`sequence-${process.processCode}`}
                                 onClick={() =>
                                   selectCatalogProcess(process.processCode)
                                 }
                                 type="button"
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#052b57] text-xs font-black text-white">
-                                    {index + 1}
+                                  <span className="text-[11px] font-black text-[#246beb]">
+                                    {process.laneCode || "PRIMARY"} · {process.executionMode || "SEQUENTIAL"}
                                   </span>
                                   <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">
                                     {process.workflowPhase}
@@ -1278,7 +1341,13 @@ export function TaskQuestPanel() {
                                   </span>
                                 </div>
                               </button>
-                              {index < selectedDefinedProcesses.length - 1 ? (
+                                ))}
+                                </div>
+                                <p className="mt-2 text-[11px] font-bold text-slate-500">
+                                  {wave.wave === 1 ? (en ? "Entry wave" : "시작 파동") : `${wave.processes[0]?.joinStrategy || "ALL"} ${en ? "join" : "합류"}`}
+                                </p>
+                              </section>
+                              {waveIndex < selectedProcessWaves.length - 1 ? (
                                 <span
                                   aria-hidden="true"
                                   className="material-symbols-outlined mx-2 text-2xl text-slate-300"
@@ -1619,6 +1688,25 @@ export function TaskQuestPanel() {
                           {selectedUnifiedProcess.processName}
                         </h3>
                       </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!contextProjectId && overviewProjects.length ? (
+                          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">
+                            {en ? "Project" : "실행 프로젝트"}
+                            <select
+                              className="max-w-56 bg-transparent font-black text-[#052b57] outline-none"
+                              onChange={(event) => {
+                                setSelectedOverviewProjectId(event.target.value);
+                                localStorage.setItem("task-quest-overview-project", event.target.value);
+                                clearWorkflowFocus();
+                              }}
+                              value={effectiveProjectId}
+                            >
+                              {overviewProjects.map((project) => (
+                                <option key={project.id} value={project.id}>{project.name}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-black ${selectedUnifiedProcess.runtimeState === "COMPLETED" ? "bg-emerald-100 text-emerald-800" : selectedUnifiedProcess.runtimeState === "IN_PROGRESS" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}
                       >
@@ -1630,6 +1718,7 @@ export function TaskQuestPanel() {
                           en,
                         )}
                       </span>
+                      </div>
                     </div>
                   ) : null}
                   {processGroups.length ? (
@@ -1690,13 +1779,18 @@ export function TaskQuestPanel() {
                               </span>
                             </div>
                             <div className="overflow-x-auto pb-2">
-                              <ol className="flex min-w-max items-stretch gap-0">
+                              <ol className="grid min-w-max auto-cols-[15rem] grid-flow-col items-stretch gap-3">
                                 {items.map((item, index) => {
                                   const state = statusPresentation(item, en);
+                                  const executionWave = Number(item.executionWave || item.stepOrder || index + 1);
+                                  const parallelLane = items
+                                    .slice(0, index)
+                                    .filter((candidate) => Number(candidate.executionWave || candidate.stepOrder || 0) === executionWave).length + 1;
                                   return (
                                     <li
-                                      className="flex items-center"
+                                      className="flex items-stretch"
                                       key={item.id}
+                                      style={{ gridColumnStart: executionWave, gridRowStart: parallelLane }}
                                     >
                                       <button
                                         className={`group flex min-h-[15rem] w-[15rem] flex-col rounded-xl border-2 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${state.style}`}
@@ -1709,7 +1803,7 @@ export function TaskQuestPanel() {
                                       >
                                         <div className="flex items-center justify-between gap-2">
                                           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black shadow-sm">
-                                            {index + 1}
+                                            {executionWave}
                                           </span>
                                           <span className="flex items-center gap-1 text-xs font-black">
                                             <span className="material-symbols-outlined text-[16px]">
@@ -1773,14 +1867,6 @@ export function TaskQuestPanel() {
                                           </span>
                                         </span>
                                       </button>
-                                      {index < items.length - 1 ? (
-                                        <span
-                                          aria-hidden="true"
-                                          className="material-symbols-outlined mx-2 text-3xl text-slate-300"
-                                        >
-                                          arrow_forward
-                                        </span>
-                                      ) : null}
                                     </li>
                                   );
                                 })}
