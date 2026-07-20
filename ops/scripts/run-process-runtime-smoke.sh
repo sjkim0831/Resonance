@@ -32,17 +32,38 @@ for key in ('processCode','stepCode','actorCode','stateTransition'):
     if not p.get(key): raise SystemExit(f'missing evidence field: {key}')
 PY
 
+execution_id="$(RUNTIME="$runtime" python3 - <<'PY'
+import json,os
+print(json.load(open(os.environ['RUNTIME'],encoding='utf-8'))['executionId'])
+PY
+)"
+rollback="$tmp/rollback.json"
+code="$(curl -sS -b "$cookie" -o "$rollback" -w '%{http_code}' "$BASE/admin/api/system/actor-process/backend/runtime-smoke/$execution_id/rollback-check")"
+[[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL rollback check status=$code" >&2; exit 1; }
+ROLLBACK="$rollback" python3 - <<'PY'
+import json,os
+p=json.load(open(os.environ['ROLLBACK'],encoding='utf-8'))
+if p.get('success') is not True or p.get('executionRows') != 0 or p.get('eventRows') != 0:
+    raise SystemExit(f'rollback persistence check failed: {p}')
+PY
+
 for route in /home /admin /emission/project_list /admin/system/actor-process; do
   page_code="$(curl -sS -b "$cookie" -o /dev/null -w '%{http_code}' "$BASE$route")"
   [[ "$page_code" == 200 ]] || { echo "[process-runtime-smoke] FAIL route=$route status=$page_code" >&2; exit 1; }
 done
 
-python3 - "$runtime" "$EVIDENCE_DIR/$stamp.json" <<'PY'
+python3 - "$runtime" "$rollback" "$EVIDENCE_DIR/$stamp.json" <<'PY'
 import json,sys,datetime
 p=json.load(open(sys.argv[1],encoding='utf-8'))
+p['rollbackPersistenceCheck']=json.load(open(sys.argv[2],encoding='utf-8'))
 p['verifiedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()
 p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-process']
-json.dump(p,open(sys.argv[2],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
+json.dump(p,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
 PY
 ln -sfn "$stamp.json" "$EVIDENCE_DIR/latest.json"
-echo "[process-runtime-smoke] PASS process=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"processCode\"])' "$runtime") evidence=$EVIDENCE_DIR/$stamp.json"
+process_name="$(RUNTIME="$runtime" python3 - <<'PY'
+import json,os
+print(json.load(open(os.environ['RUNTIME'],encoding='utf-8'))['processCode'])
+PY
+)"
+echo "[process-runtime-smoke] PASS process=$process_name evidence=$EVIDENCE_DIR/$stamp.json"

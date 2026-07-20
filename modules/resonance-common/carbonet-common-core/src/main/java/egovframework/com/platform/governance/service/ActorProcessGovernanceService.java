@@ -649,12 +649,19 @@ public class ActorProcessGovernanceService {
         TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",passed);result.put("rolledBack",true);result.put("executedBy",executedBy);
-        result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
+        result.put("executionId",executionId);result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
         result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
         result.put("idempotencyVerified",Boolean.TRUE.equals(duplicate.get("idempotent"))&&eventCount!=null&&eventCount==1);
         result.put("tenantIsolationVerified",isolationRejected);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
         if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
         return result;
+    }
+
+    public Map<String,Object> verifyProcessRuntimeSmokeRollback(UUID executionId){
+        Integer executions=jdbc.queryForObject("select count(*) from framework_process_execution where execution_id=?",Integer.class,executionId);
+        Integer events=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
+        boolean clean=executions!=null&&executions==0&&events!=null&&events==0;
+        return Map.of("success",clean,"rolledBack",clean,"executionId",executionId,"executionRows",executions==null?-1:executions,"eventRows",events==null?-1:events);
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
