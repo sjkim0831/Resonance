@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "METER_CALIBRATION_MANAGEMENT",
+      "stepCode": "MCM_APPROVE",
+      "package": "METER_CALIBRATION_MANAGEMENT__MCM_APPROVE.json",
+      "packageHash": "c600f80b5a31993a3e5099583e4e528497fb334f562b18433fa1bc935b6b1076",
+      "pages": 2
+    },
+    {
+      "processCode": "METER_CALIBRATION_MANAGEMENT",
+      "stepCode": "MCM_CALIBRATE",
+      "package": "METER_CALIBRATION_MANAGEMENT__MCM_CALIBRATE.json",
+      "packageHash": "a828d8d3558e15b964c438fb5dca1bf4f987c6deaed41b227dc5e34ae718f08b",
+      "pages": 2
+    },
+    {
+      "processCode": "METER_CALIBRATION_MANAGEMENT",
+      "stepCode": "MCM_REGISTER",
+      "package": "METER_CALIBRATION_MANAGEMENT__MCM_REGISTER.json",
+      "packageHash": "43b067eec88fb880a2a5f743833f6eb14094954d0a914343089724b92cb19cd9",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "04e9ee58c04306d7e787e24e396baec2c7442ebcabf05553c4ab3c19e08747af"
+}
