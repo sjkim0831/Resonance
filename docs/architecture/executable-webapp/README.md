@@ -65,6 +65,12 @@ the normalized process transaction runtime. A generated package is metadata,
 not completion evidence. Real routes, APIs, relations and scenario runs must
 still pass their implementation gates before a step becomes verified.
 
+All structurally complete contracts, including those awaiting domain approval,
+are rendered separately under `process-runtime/design-preview/`. They are
+review artifacts and are never loaded by the production runtime. Approval
+promotes the identical source contract into `generated/`; generation then
+records `generation_status=GENERATED` without changing implementation status.
+
 ## Reference ingestion contract
 
 Every source document must later be catalogued with its absolute source path,

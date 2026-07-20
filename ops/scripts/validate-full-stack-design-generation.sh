@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 OUT="${FULL_STACK_PACKAGE_OUT:-$ROOT/projects/carbonet-backend-metadata/process-runtime/generated}"
+PREVIEW_OUT="${FULL_STACK_PREVIEW_OUT:-$ROOT/projects/carbonet-backend-metadata/process-runtime/design-preview}"
 INDEX="$OUT/index.json"
 
 [[ -s "$INDEX" ]] || { echo '[full-stack-generation] index missing' >&2; exit 1; }
@@ -25,4 +26,11 @@ while IFS=$'\t' read -r file expected; do
   ' "$path" >/dev/null || { echo "[full-stack-generation] incomplete $file" >&2; exit 1; }
 done < <(jq -r '.packages[]|[.package,.packageHash]|@tsv' "$INDEX")
 
-echo "[full-stack-generation] PASS packages=$(jq -r '.packageCount' "$INDEX")"
+[[ -s "$PREVIEW_OUT/index.json" ]] || { echo '[full-stack-generation] preview index missing' >&2; exit 1; }
+jq -e --slurpfile runtime "$INDEX" '
+  .schemaVersion=="2.0.0" and .packageCount==(.packages|length) and
+  .packageCount>=($runtime[0].packageCount) and
+  ([.packages[]|(.processCode+"/"+.stepCode)] | length == (unique|length))
+' "$PREVIEW_OUT/index.json" >/dev/null
+
+echo "[full-stack-generation] PASS runtime=$(jq -r '.packageCount' "$INDEX") preview=$(jq -r '.packageCount' "$PREVIEW_OUT/index.json")"

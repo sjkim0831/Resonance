@@ -7,6 +7,7 @@ NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 DATABASE="${PGDATABASE:-carbonet}"
 DB_USER="${PGUSER:-postgres}"
 OUT="${FULL_STACK_PACKAGE_OUT:-$ROOT/projects/carbonet-backend-metadata/process-runtime/generated}"
+PREVIEW_OUT="${FULL_STACK_PREVIEW_OUT:-$ROOT/projects/carbonet-backend-metadata/process-runtime/design-preview}"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
@@ -22,6 +23,7 @@ fi
 if [[ -n "$PROCESS_CODE" ]]; then
   selector="'$PROCESS_CODE'"
   OUT="$OUT/$PROCESS_CODE"
+  PREVIEW_OUT="$PREVIEW_OUT/$PROCESS_CODE"
 else
   selector="null"
 fi
@@ -36,3 +38,18 @@ jq -e '.packageCount>0' "$OUT/index.json" >/dev/null || {
   echo "[full-stack-generator] no approved generation-ready package for ${PROCESS_CODE:-all processes}" >&2
   exit 1
 }
+
+# Every structurally complete design is rendered to an isolated preview so a
+# domain owner can review all fields and flows. Only APPROVED contracts above
+# are written to the runtime-consumable generated directory.
+python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$TMP" \
+  --out "$PREVIEW_OUT" --allow-review-required
+
+if [[ -n "$PROCESS_CODE" ]]; then
+  generation_filter="and process_code='$PROCESS_CODE'"
+else
+  generation_filter=""
+fi
+kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
+  psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 \
+  -c "update framework_step_execution_spec set generation_status='GENERATED',updated_at=current_timestamp where design_status='DESIGN_COMPLETE' and approval_status='APPROVED' $generation_filter;" >/dev/null
