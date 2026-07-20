@@ -71,6 +71,16 @@ public class ReactAppPageController {
         return renderAdminShell(route, model, true);
     }
 
+    @GetMapping({"/work/company-manager-delegation", "/en/work/company-manager-delegation"})
+    public Object companyManagerDelegation(Model model, HttpServletRequest request) {
+        return renderHomeShell("mypage-staff", model, isEnglishRequest(request));
+    }
+
+    @GetMapping({"/admin/work/company-manager-delegation", "/en/admin/work/company-manager-delegation"})
+    public String companyManagerDelegationAdmin(Model model, HttpServletRequest request) {
+        return renderAdminShell("actor-process-governance", model, isEnglishRequest(request));
+    }
+
     @GetMapping({
             "/api/app/bootstrap",
             "/en/api/app/bootstrap",
