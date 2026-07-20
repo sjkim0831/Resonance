@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
-import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
@@ -642,7 +641,6 @@ export function MonitoringTrackMigrationPage() {
   );
   const [selectedNodeId, setSelectedNodeId] = useState(nodes[1]?.id || nodes[0]?.id || "");
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || nodes[0];
-  const session = useFrontendSession();
 
   useEffect(() => {
     document.documentElement.lang = content.htmlLang;
@@ -676,65 +674,7 @@ export function MonitoringTrackMigrationPage() {
         </div>
       </div>
 
-      <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50 shadow-sm">
-        <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
-          <div className="flex justify-between items-center h-20 gap-4">
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                className="flex items-center gap-2 bg-transparent border-0 p-0 text-left focus-visible"
-                onClick={() => navigate(buildLocalizedPath("/home", "/en/home"))}
-                type="button"
-              >
-                <span className="material-symbols-outlined text-[36px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: '"wght" 700' }}>hub</span>
-                <div className="flex flex-col">
-                  <h1 className="text-xl font-black tracking-tight text-[var(--kr-gov-text-primary)] leading-tight">{content.brandTitle}</h1>
-                  <p className="text-[10px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider">{content.brandSubtitle}</p>
-                </div>
-              </button>
-            </div>
-
-            <nav className="hidden xl:flex items-center space-x-1 h-full ml-12 flex-1">
-              {content.navItems.map((item) => (
-                item.href ? (
-                  <button
-                    className={`h-full flex items-center px-4 text-[15px] font-bold border-b-4 bg-transparent ${item.active ? "text-[var(--kr-gov-blue)] border-[var(--kr-gov-blue)]" : "text-gray-500 hover:text-[var(--kr-gov-blue)] border-transparent"}`}
-                    key={item.label}
-                    onClick={() => navigate(item.href!)}
-                    type="button"
-                  >
-                    {item.label}
-                  </button>
-                ) : (
-                  <span
-                    className={`h-full flex items-center px-4 text-[15px] font-bold border-b-4 ${item.active ? "text-[var(--kr-gov-blue)] border-[var(--kr-gov-blue)]" : "text-gray-500 border-transparent"}`}
-                    key={item.label}
-                  >
-                    {item.label}
-                  </span>
-                )
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="hidden md:flex flex-col items-end mr-2">
-                <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{content.roleLabel}</span>
-                <span className="text-sm font-black text-[var(--kr-gov-text-primary)]">{content.roleName}</span>
-              </div>
-              <button className="relative w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors border border-blue-100 focus-visible" type="button">
-                <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">smart_toy</span>
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full text-[8px] text-white flex items-center justify-center font-bold">4</span>
-              </button>
-              <button
-                className="px-5 py-2.5 font-bold rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] text-sm focus-visible"
-                onClick={() => { void session.logout(); }}
-                type="button"
-              >
-                {content.logoutLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Global user GNB is provided by App. */}
 
       <main id="main-content">
         <section className="bg-[var(--tracer-bg)] py-12 relative min-h-[850px] overflow-hidden" data-help-id="monitoring-track-hero">

@@ -5,7 +5,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 const GOV_SYMBOL = "https://lh3.googleusercontent.com/aida-public/AB6AXuD8BPzqtzSLVGSrjt4mzhhVBy9SocCRDssk1F3XRVu7Xq9jHh7qzzt48wFi8qduCiJmB0LRQczPB7waPe3h0gkjn3jOEDxt6UJSJjdXNf8P-4WlM2BEZrfg2SL91uSiZrFcCk9KYrsdg-biTS9dtJ_OIghDBEVoAzMc33XcCYR_UP0QQdoYzBe840YrtH40xGyB9MSr0QH4D0foqlvOhG0jX8CDayXNlDsSKlfClVd3K2aodlwg4xSxgXHB3vnnnA0L2yNBNihQQg0";
@@ -369,56 +369,7 @@ export function Co2AnalysisMigrationPage() {
         </div>
 
         {/* Sticky Header */}
-        <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50 shadow-sm">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
-            <div className="flex justify-between items-center h-20">
-              <div className="flex items-center gap-3 shrink-0">
-                <a className="flex items-center gap-2 focus-visible" href={buildLocalizedPath("/home", "/en/home")}>
-                  <span className="material-symbols-outlined text-[36px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 700" }}>hub</span>
-                  <div className="flex flex-col">
-                    <h1 className="text-xl font-black tracking-tight text-[var(--kr-gov-text-primary)] leading-tight">{content.logoTitle}</h1>
-                    <p className="text-[10px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider">{content.logoSubtitle}</p>
-                  </div>
-                </a>
-              </div>
-              <nav className="analysis-header-nav hidden xl:flex items-center space-x-1 h-full ml-12 flex-1">
-                {content.navItems.map((item, index) => (
-                  <a
-                    className={`h-full flex items-center px-4 text-[16px] font-bold border-b-4 transition-all ${index === 1 ? "text-[var(--kr-gov-blue)] border-[var(--kr-gov-blue)]" : "text-gray-500 hover:text-[var(--kr-gov-blue)] border-transparent"}`}
-                    href="#"
-                    key={item}
-                    onClick={(event) => event.preventDefault()}
-                  >
-                    {item}
-                  </a>
-                ))}
-              </nav>
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="hidden md:flex flex-col items-end mr-2">
-                  <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{content.auditorRole}</span>
-                  <span className="text-sm font-black text-[var(--kr-gov-text-primary)]">{content.auditorName}</span>
-                </div>
-                <button className="relative w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center hover:bg-blue-100 transition-colors border border-blue-100" type="button">
-                  <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">notifications</span>
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full text-[8px] text-white flex items-center justify-center font-bold">2</span>
-                </button>
-                <button
-                  className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] text-sm focus-visible"
-                  onClick={() => {
-                    if (payload.isLoggedIn) {
-                      void session.logout();
-                      return;
-                    }
-                    navigate(buildLocalizedPath("/signin/loginView", "/en/signin/loginView"));
-                  }}
-                  type="button"
-                >
-                  {content.logoutText}
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* Global user GNB is provided by App. */}
 
         <main id="main-content">
           <section className="bg-slate-900 pt-10 pb-6 relative overflow-hidden" data-help-id="co2-analysis-hero">

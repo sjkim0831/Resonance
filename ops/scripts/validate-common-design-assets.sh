@@ -124,4 +124,18 @@ for source in \
     echo "[common-design-assets] FAIL duplicate page footer markup remains: $source" >&2; exit 1;
   fi
 done
+for source in \
+  co2-analysis/Co2AnalysisMigrationPage.tsx \
+  co2-credit/Co2CreditMigrationPage.tsx \
+  co2-demand-list/Co2DemandListMigrationPage.tsx \
+  co2-integrity/Co2IntegrityMigrationPage.tsx \
+  co2-production-list/Co2ProductionListMigrationPage.tsx \
+  co2-search/Co2SearchMigrationPage.tsx \
+  edu-course-detail/EduCourseDetailMigrationPage.tsx \
+  monitoring-track/MonitoringTrackMigrationPage.tsx; do
+  page="$ROOT_DIR/projects/carbonet-frontend/source/src/features/$source"
+  if grep -q '<header' "$page"; then
+    echo "[common-design-assets] FAIL duplicate legacy user GNB remains: $source" >&2; exit 1;
+  fi
+done
 echo "[common-design-assets] PASS source reuse contract"

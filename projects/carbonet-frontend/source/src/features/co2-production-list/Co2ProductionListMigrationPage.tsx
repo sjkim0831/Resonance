@@ -5,7 +5,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
-import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
@@ -533,56 +533,7 @@ export function Co2ProductionListMigrationPage() {
             </div>
           </div>
         </div>
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8">
-            <div className="flex justify-between items-center h-20">
-              <div className="flex items-center gap-3 shrink-0">
-                <a className="flex items-center gap-2 focus-visible" href={buildLocalizedPath("/home", "/en/home")}>
-                  <span className="material-symbols-outlined text-[36px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 700" }}>analytics</span>
-                  <div className="flex flex-col">
-                    <h1 className="text-xl font-black tracking-tight text-[var(--kr-gov-text-primary)] leading-tight">{content.logoTitle}</h1>
-                    <p className="text-[10px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider">{content.logoSubtitle}</p>
-                  </div>
-                </a>
-              </div>
-              <nav className="production-header-nav hidden xl:flex items-center space-x-1 h-full ml-12 flex-1">
-                {content.navItems.map((item, index) => (
-                  <a
-                    className={`h-full flex items-center px-4 text-[16px] font-bold border-b-4 transition-all ${index === 1 ? "nav-active" : "text-gray-500 hover:text-[var(--kr-gov-blue)] border-transparent"}`}
-                    href="#"
-                    key={item}
-                    onClick={(event) => event.preventDefault()}
-                  >
-                    {item}
-                  </a>
-                ))}
-              </nav>
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="hidden md:flex flex-col items-end mr-2">
-                  <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{content.managerRole}</span>
-                  <span className="text-sm font-black text-[var(--kr-gov-text-primary)]">{content.managerName}</span>
-                </div>
-                <button className="relative w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 transition-colors" type="button">
-                  <span className="material-symbols-outlined text-indigo-600">psychology</span>
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 border-2 border-white rounded-full text-[8px] text-white flex items-center justify-center font-bold">3</span>
-                </button>
-                <button
-                  className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] text-sm focus-visible"
-                  onClick={() => {
-                    if (payload.isLoggedIn) {
-                      void session.logout();
-                      return;
-                    }
-                    navigate(buildLocalizedPath("/signin/loginView", "/en/signin/loginView"));
-                  }}
-                  type="button"
-                >
-                  {content.systemExit}
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* Global user GNB is provided by App. */}
         <main id="main-content">
           <section className="bg-[#0f172a] py-8 relative overflow-hidden border-b border-slate-800" data-help-id="co2-production-hero">
             <div className="max-w-[1440px] mx-auto px-4 lg:px-8 relative z-10">

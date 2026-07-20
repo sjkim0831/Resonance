@@ -281,35 +281,7 @@ export function EduCourseDetailMigrationPage() {
         ["--kr-gov-radius" as string]: "8px"
       }}
     >
-      <header className="sticky top-0 z-50 border-b border-[var(--kr-gov-border-light)] bg-white shadow-sm">
-        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            <div className="flex shrink-0 items-center gap-3">
-              <a className="flex items-center gap-2" href={buildLocalizedPath("/edu/course_list", "/en/edu/course_list")}>
-                <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 700" }}>school</span>
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-black leading-tight tracking-tight text-[var(--kr-gov-text-primary)]">{copy.brandTitle}</h1>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)]">{copy.brandSubtitle}</p>
-                </div>
-              </a>
-            </div>
-            <nav className="ml-12 hidden h-full flex-1 items-center space-x-1 xl:flex" data-help-id="edu-course-detail-primary-nav">
-              <a className="flex h-full items-center border-b-4 border-transparent px-4 text-[15px] font-bold text-gray-500 transition-all hover:text-[var(--kr-gov-blue)]" href={courseListHref()}>{copy.navList}</a>
-              <a className="flex h-full items-center border-b-4 border-[var(--kr-gov-blue)] px-4 text-[15px] font-bold text-[var(--kr-gov-blue)]" href={buildLocalizedPath("/edu/course_detail", "/en/edu/course_detail")}>{copy.navDetail}</a>
-              <a className="flex h-full items-center border-b-4 border-transparent px-4 text-[15px] font-bold text-gray-500 transition-all hover:text-[var(--kr-gov-blue)]" href={myCourseHref()}>{copy.navClassroom}</a>
-            </nav>
-            <div className="flex items-center gap-4">
-              <div className="mr-2 hidden text-right md:flex md:flex-col md:items-end">
-                <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{copy.managerName}</span>
-                <span className="text-[10px] font-bold text-indigo-600">{copy.managerStatus}</span>
-              </div>
-              <button className="rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200" onClick={() => navigate(progressHref())} type="button">
-                <span className="material-symbols-outlined text-gray-600">notifications</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Global user GNB is provided by App. */}
 
       <div className="sticky top-20 z-40 border-b border-gray-200 bg-white shadow-sm" data-help-id="edu-course-detail-summary-bar">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 lg:px-8">

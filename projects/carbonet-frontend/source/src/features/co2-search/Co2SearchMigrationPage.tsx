@@ -505,45 +505,7 @@ export function Co2SearchMigrationPage() {
         </div>
       </div>
 
-      <header className="sticky top-0 z-50 border-b border-[var(--kr-gov-border-light)] bg-white shadow-sm">
-        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
-          <div className="flex h-20 items-center justify-between gap-6">
-            <a className="flex shrink-0 items-center gap-2" href={en ? "/en/trade/matching" : "/trade/matching"}>
-              <MaterialIcon className="text-[36px] font-bold text-[var(--kr-gov-blue)]" name="hub" />
-              <div className="flex flex-col">
-                <h1 className="text-xl font-black leading-tight tracking-tight">{content.logoTitle}</h1>
-                <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-[var(--kr-gov-text-secondary)]">{content.logoSubtitle}</p>
-              </div>
-            </a>
-
-            <nav className="hidden h-full flex-1 items-center space-x-1 xl:flex">
-              {content.navItems.map((item, index) => (
-                <a
-                  key={item}
-                  className={`flex h-full items-center border-b-4 px-4 text-[16px] font-bold transition-all ${index === 0 ? "border-[var(--kr-gov-blue)] text-[var(--kr-gov-blue)]" : "border-transparent text-gray-500 hover:text-[var(--kr-gov-blue)]"}`}
-                  href="#"
-                >
-                  {item}
-                </a>
-              ))}
-            </nav>
-
-            <div className="flex shrink-0 items-center gap-4">
-              <div className="hidden items-end md:flex md:flex-col">
-                <span className="text-xs font-bold text-[var(--kr-gov-text-secondary)]">{content.userCompany}</span>
-                <span className="text-sm font-black">{content.userName}</span>
-              </div>
-              <button className="relative flex h-10 w-10 items-center justify-center rounded-full border border-blue-100 bg-blue-50 transition hover:bg-blue-100" type="button">
-                <MaterialIcon className="text-[var(--kr-gov-blue)]" name="notifications" />
-                <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[8px] font-bold text-white">{content.notificationCount}</span>
-              </button>
-              <button className="rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-blue)] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[var(--kr-gov-blue-hover)]" type="button">
-                {content.ctaLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Global user GNB is provided by App. */}
 
       <main id="main-content">
         <section className="relative overflow-hidden bg-slate-900 py-12">

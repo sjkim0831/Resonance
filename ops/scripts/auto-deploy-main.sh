@@ -191,13 +191,11 @@ activity_backup_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
-  if [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(menu|navigation)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
-    menu_backup_only=true
-  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|handoff|notification|assignment|assignee|emission_site|onboarding)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
-    governance_backup_only=true
-  elif [[ -n "$database_change_files" ]] && ! grep -Evi '/[^/]*(activity|submission|quality|evidence|collection|acceptance|accepted|calculation|factor|mapping)[^/]*\.sql$' <<<"$database_change_files" | grep -q .; then
-    activity_backup_only=true
-  fi
+  backup_scope="$(printf '%s\n' "$database_change_files" | bash ops/scripts/classify-db-backup-scope.sh)"
+  [[ "$backup_scope" == "menu" ]] && menu_backup_only=true
+  [[ "$backup_scope" == "governance" ]] && governance_backup_only=true
+  [[ "$backup_scope" == "activity" ]] && activity_backup_only=true
+  echo "[auto-deploy] database backup scope: $backup_scope"
 fi
 if [[ "$backup_required" == "true" ]]; then
   if [[ "$menu_backup_only" == "true" ]]; then
@@ -236,6 +234,8 @@ if [[ "$backup_required" == "true" ]]; then
           -t emission_project_history -t emission_workflow_notification \
           -t ui_component_registry -t ui_section_registry \
           -t framework_design_asset_registry \
+          -t ui_page_manifest -t ui_page_component_map \
+          -t comtncomponentinfo \
       | gzip -1 > "$backup_file"; then
       rm -f "$backup_file"
       echo "[auto-deploy] refusing deployment: targeted governance backup failed" >&2
