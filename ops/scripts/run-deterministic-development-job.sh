@@ -35,6 +35,10 @@ case "$JOB_TYPE" in
   TEST|ACTOR_TEST|INTEGRATION)
     validator="$WT/ops/scripts/validate-existing-emission-project-journey.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    runtime_evidence_root="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$WT/var/test-evidence/process-runtime-smoke}"
+    CARBONET_RUNTIME_SMOKE_PROCESS="$PROCESS" CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR="$runtime_evidence_root" \
+      bash "$WT/ops/scripts/run-process-runtime-smoke.sh" 1>&2
+    runtime_evidence="$runtime_evidence_root/latest.json"
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
@@ -45,8 +49,9 @@ case "$JOB_TYPE" in
 - Source commit: $(git -C "$WT" rev-parse HEAD)
 - Requirement: $(jq -r '.requirement' "$SPEC_FILE")
 - Validation result: $adoption_json
+- Live runtime evidence: $runtime_evidence
 
-The deterministic validator requires executable SQL scenarios, authenticated and protected APIs, actor and tenant isolation, linked user/admin pages, state transitions, runtime p95 evidence, and two ready replicas.
+The deterministic validator requires executable SQL scenarios, authenticated and protected APIs, actor and tenant isolation, linked user/admin pages, a real rolled-back state transition, idempotency, runtime p95 evidence, and two ready replicas.
 EOF
     ;;
   SEARCH)

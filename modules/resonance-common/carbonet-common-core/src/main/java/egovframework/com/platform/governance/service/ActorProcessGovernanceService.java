@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -614,6 +615,46 @@ public class ActorProcessGovernanceService {
         if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,executionId);
         else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,executionId);
         return Map.of("success",true,"idempotent",false,"eventId",eventId,"fromState",from,"toState",to,"executionStatus",next.isEmpty()?"COMPLETED":"RUNNING","nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")),"nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
+    }
+
+    /**
+     * Executes the real process runtime against an isolated transaction and always rolls it back.
+     * This is intentionally database-driven: the fixture is selected from active actor assignments
+     * and current process contracts, so new generated processes are covered without Java changes.
+     */
+    @Transactional public Map<String,Object> runProcessRuntimeSmoke(String requestedProcess,String executedBy){
+        String processFilter=requestedProcess==null?"":requestedProcess.trim();
+        List<Map<String,Object>> fixtures=jdbc.queryForList("select a.tenant_id as \"tenantId\",a.project_id as \"projectId\",a.account_id as \"accountId\",s.process_code as \"processCode\",s.step_code as \"stepCode\",s.actor_code as \"actorCode\",s.command_code as \"commandCode\",s.from_state as \"fromState\",s.to_state as \"toState\" from framework_account_actor_assignment a join framework_process_step s on s.actor_code=a.actor_code and s.step_order=(select min(first_step.step_order) from framework_process_step first_step where first_step.process_code=s.process_code) where a.assignment_status='ACTIVE' and a.project_id<>'*' and (?='' or s.process_code=?) and not exists(select 1 from framework_process_execution e where e.tenant_id=a.tenant_id and e.project_id=a.project_id and e.process_code=s.process_code and e.execution_status='RUNNING') order by a.project_id,s.process_code limit 1",processFilter,processFilter);
+        if(fixtures.isEmpty())throw new IllegalStateException("No isolated actor/process fixture is available for runtime smoke testing.");
+        Map<String,Object> fixture=fixtures.get(0);
+        String tenant=String.valueOf(fixture.get("tenantId")),project=String.valueOf(fixture.get("projectId"));
+        String account=String.valueOf(fixture.get("accountId")),process=String.valueOf(fixture.get("processCode"));
+        String step=String.valueOf(fixture.get("stepCode")),actor=String.valueOf(fixture.get("actorCode"));
+        String command=String.valueOf(fixture.get("commandCode")),key="runtime-smoke-"+UUID.randomUUID();
+        Map<String,Object> context=Map.of("tenantId",tenant,"projectId",project,"processCode",process,"actorCode",actor);
+        Map<String,Object> started=startProcessExecution(context,account);
+        UUID executionId=UUID.fromString(String.valueOf(started.get("executionId")));
+        Map<String,Object> request=new LinkedHashMap<>(context);
+        request.put("stepCode",step);request.put("commandCode",command);request.put("idempotencyKey",key);
+        request.put("requestJson","{\"smoke\":true}");request.put("resultJson","{\"rolledBack\":true}");
+        Map<String,Object> first=executeProcessCommand(executionId,request,account);
+        Map<String,Object> duplicate=executeProcessCommand(executionId,request,account);
+        boolean isolationRejected=false;
+        try{
+            Map<String,Object> crossTenant=new LinkedHashMap<>(request);crossTenant.put("tenantId",tenant+"-CROSS-TENANT");crossTenant.put("idempotencyKey",key+"-isolation");
+            executeProcessCommand(executionId,crossTenant,account);
+        }catch(IllegalArgumentException expected){isolationRejected=true;}
+        Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=? and idempotency_key=?",Integer.class,executionId,key);
+        boolean passed=Boolean.TRUE.equals(first.get("success"))&&Boolean.TRUE.equals(duplicate.get("idempotent"))&&isolationRejected&&eventCount!=null&&eventCount==1;
+        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",passed);result.put("rolledBack",true);result.put("executedBy",executedBy);
+        result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
+        result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
+        result.put("idempotencyVerified",Boolean.TRUE.equals(duplicate.get("idempotent"))&&eventCount!=null&&eventCount==1);
+        result.put("tenantIsolationVerified",isolationRejected);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
+        if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
+        return result;
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
