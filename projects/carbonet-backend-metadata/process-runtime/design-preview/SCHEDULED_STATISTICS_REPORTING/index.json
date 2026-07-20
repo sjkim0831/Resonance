@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "SCHEDULED_STATISTICS_REPORTING",
+      "stepCode": "SSR_DEFINE",
+      "package": "SCHEDULED_STATISTICS_REPORTING__SSR_DEFINE.json",
+      "packageHash": "fd3f5e2cfac982433aaa3ff8e7822a2d801921f13813abe26652dd0691102cd2",
+      "pages": 2
+    },
+    {
+      "processCode": "SCHEDULED_STATISTICS_REPORTING",
+      "stepCode": "SSR_GENERATE",
+      "package": "SCHEDULED_STATISTICS_REPORTING__SSR_GENERATE.json",
+      "packageHash": "05d6775f0d30e75b0ae538ccdf5a8b590eb6ed8016a4926aab9658551a720841",
+      "pages": 2
+    },
+    {
+      "processCode": "SCHEDULED_STATISTICS_REPORTING",
+      "stepCode": "SSR_PUBLISH",
+      "package": "SCHEDULED_STATISTICS_REPORTING__SSR_PUBLISH.json",
+      "packageHash": "c7661895cfafee81b1d595f58d173c71317ac408b7e0a61ed02ac3b7aadc5bdb",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "18d63632654fd661f1f211bd50e231adf8ab554d954cafc5bb5fb5381e6fb6fb"
+}
