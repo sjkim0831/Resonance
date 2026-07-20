@@ -230,6 +230,20 @@ export function TaskQuestPanel() {
     }
   }, [data?.processCatalog, selectedCatalogProcessCode]);
 
+  useEffect(() => {
+    if (!flowOpen || !selectedCatalogProcessCode) return;
+    const frame = window.requestAnimationFrame(() => {
+      const guideLabel = en ? "Selected process guide" : "선택한 프로세스 업무 길잡이";
+      const guide = Array.from(document.querySelectorAll<HTMLElement>("section")).find((element) => element.textContent?.includes(guideLabel));
+      if (guide) {
+        guide.tabIndex = -1;
+        guide.scrollIntoView({ behavior: "smooth", block: "start" });
+        guide.focus({ preventScroll: true });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [en, flowOpen, selectedCatalogProcessCode]);
+
   const processGroups = useMemo(() => {
     const groups = new Map<string, QuestTask[]>();
     selectedWorkflowItems.forEach((item) => {
