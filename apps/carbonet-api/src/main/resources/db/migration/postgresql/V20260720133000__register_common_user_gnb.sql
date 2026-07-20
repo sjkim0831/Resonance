@@ -11,7 +11,7 @@ ON CONFLICT(component_id) DO UPDATE SET component_name=excluded.component_name,c
 
 INSERT INTO ui_page_component_map
   (map_id,page_id,layout_zone,component_id,instance_key,display_order,conditional_rule_summary,created_at,updated_at)
-SELECT 'COMMON_USER_GNB_' || md5(page.page_id),page.page_id,'header','COMMON_USER_GNB','global-user-gnb',1,
+SELECT md5('COMMON_USER_GNB|' || page.page_id),page.page_id,'header','COMMON_USER_GNB','global-user-gnb',1,
        'active non-admin route',current_timestamp,current_timestamp
 FROM ui_page_manifest page
 WHERE page.active_yn='Y'
