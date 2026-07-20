@@ -16,6 +16,7 @@ type QuestTask = {
   actorCode?: string;
   processCode?: string;
   processName?: string;
+  domainCode?: string;
   processStepCode?: string;
   completionRule?: string;
   entryState?: string;
@@ -74,6 +75,25 @@ function statusPresentation(task: QuestTask, en: boolean) {
   return { label: en ? "Ready" : "시작 가능", icon: "flag", style: "border-amber-400 bg-amber-50 text-amber-950" };
 }
 
+function workTypeLabel(code: string, en: boolean) {
+  const normalized = String(code || "COMMON").toUpperCase();
+  const labels: Record<string, [string, string]> = {
+    EMISSION: ["탄소배출 관리", "Carbon Emissions"],
+    CARBON_EMISSION: ["탄소배출 관리", "Carbon Emissions"],
+    LCA: ["제품 LCA", "Product LCA"],
+    REDUCTION: ["감축 관리", "Reduction Management"],
+    MONITORING: ["모니터링·분석", "Monitoring & Analytics"],
+    TRADE: ["탄소·자원 거래", "Carbon & Resource Trading"],
+    CERTIFICATE: ["보고서·인증", "Reports & Certificates"],
+    EDUCATION: ["교육·지원", "Education & Support"],
+    MEMBER: ["회원·기업·권한", "Members & Organizations"],
+    SYSTEM: ["시스템 운영", "System Operations"],
+    COMMON: ["공통 업무", "Common Tasks"]
+  };
+  const matched = Object.entries(labels).find(([key]) => normalized === key || normalized.includes(key));
+  return matched ? matched[1][en ? 1 : 0] : code || labels.COMMON[en ? 1 : 0];
+}
+
 export function TaskQuestPanel() {
   const en = isEnglish();
   const api = buildLocalizedPath("/home/api/emission-tasks", "/en/home/api/emission-tasks");
@@ -82,6 +102,7 @@ export function TaskQuestPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
+  const [selectedWorkType, setSelectedWorkType] = useState(() => localStorage.getItem("task-quest-work-type") || "ALL");
   const [focusedWorkflow, setFocusedWorkflow] = useState<{ projectId: string; processCode: string } | null>(() => {
     try {
       const value = JSON.parse(localStorage.getItem("task-quest-focused-workflow") || "null");
@@ -152,16 +173,36 @@ export function TaskQuestPanel() {
     return [...unique.values()].sort((a, b) => a.projectId.localeCompare(b.projectId) || String(a.processCode || "").localeCompare(String(b.processCode || "")) || Number(a.stepOrder || 0) - Number(b.stepOrder || 0));
   }, [contextProjectId, data]);
 
+  const availableWorkTypes = useMemo(() => {
+    const counts = new Map<string, number>();
+    workflowItems.forEach((item) => {
+      const code = String(item.domainCode || "EMISSION").toUpperCase();
+      counts.set(code, (counts.get(code) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => workTypeLabel(a[0], en).localeCompare(workTypeLabel(b[0], en)));
+  }, [en, workflowItems]);
+
+  useEffect(() => {
+    if (selectedWorkType !== "ALL" && !availableWorkTypes.some(([code]) => code === selectedWorkType)) {
+      setSelectedWorkType("ALL");
+      localStorage.setItem("task-quest-work-type", "ALL");
+    }
+  }, [availableWorkTypes, selectedWorkType]);
+
+  const selectedWorkflowItems = useMemo(() => selectedWorkType === "ALL"
+    ? workflowItems
+    : workflowItems.filter((item) => String(item.domainCode || "EMISSION").toUpperCase() === selectedWorkType), [selectedWorkType, workflowItems]);
+
   const processGroups = useMemo(() => {
     const groups = new Map<string, QuestTask[]>();
-    workflowItems.forEach((item) => {
+    selectedWorkflowItems.forEach((item) => {
       const key = `${item.projectId}|${item.processCode || "PROJECT_WORKFLOW"}`;
       const items = groups.get(key) || [];
       items.push(item);
       groups.set(key, items);
     });
     return Array.from(groups.entries());
-  }, [workflowItems]);
+  }, [selectedWorkflowItems]);
 
   if (!loading && !data) return null;
 
@@ -173,11 +214,19 @@ export function TaskQuestPanel() {
 
   function focusWorkflow(item: QuestTask) {
     if (!item.projectId || !item.processCode) return;
+    const domainCode = String(item.domainCode || "EMISSION").toUpperCase();
     const next = { projectId: item.projectId, processCode: item.processCode };
     setFocusedWorkflow(next);
+    setSelectedWorkType(domainCode);
     localStorage.setItem("task-quest-focused-workflow", JSON.stringify(next));
+    localStorage.setItem("task-quest-work-type", domainCode);
     setOpen(true);
     setFlowOpen(false);
+  }
+
+  function selectWorkType(code: string) {
+    setSelectedWorkType(code);
+    localStorage.setItem("task-quest-work-type", code);
   }
 
   function clearWorkflowFocus() {
@@ -232,8 +281,8 @@ export function TaskQuestPanel() {
   const total = focusedTasks.length || Number(data?.summary?.total || 0);
   const completed = focusedTasks.length ? focusedTasks.filter((item) => item.status === "DONE").length : Number(data?.summary?.completed || 0);
   const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-  const workflowTotal = workflowItems.length;
-  const workflowCompleted = workflowItems.filter((item) => item.status === "DONE").length;
+  const workflowTotal = selectedWorkflowItems.length;
+  const workflowCompleted = selectedWorkflowItems.filter((item) => item.status === "DONE").length;
   const workflowProgress = workflowTotal > 0 ? Math.min(100, Math.round((workflowCompleted / workflowTotal) * 100)) : 0;
 
   return <>
@@ -302,6 +351,10 @@ export function TaskQuestPanel() {
             <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100" onClick={() => setFlowOpen(false)} type="button"><span className="material-symbols-outlined">close</span></button>
           </header>
           <div className="overflow-y-auto bg-slate-50 px-5 py-5 sm:px-7 sm:py-6">
+            <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 1 · Select work type" : "1단계 · 업무 종류 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Available work types" : "현재 선택 가능한 업무 종류"}</h3><p className="mt-1 text-sm text-slate-600">{en ? "The popup lists every instantiated process in the selected category." : "선택한 종류에 실제 생성된 업무 프로세스를 빠짐없이 나열합니다."}</p></div><label className="text-sm font-bold text-slate-700">{en ? "Work type" : "업무 종류"}<select className="ml-2 min-h-10 rounded-lg border border-slate-300 bg-white px-3" onChange={(event) => selectWorkType(event.target.value)} value={selectedWorkType}><option value="ALL">{en ? "All work" : "전체 업무"} ({workflowItems.length})</option>{availableWorkTypes.map(([code, count]) => <option key={code} value={code}>{workTypeLabel(code, en)} ({count})</option>)}</select></label></div>
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1"><button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === "ALL" ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} onClick={() => selectWorkType("ALL")} type="button"><strong className="block text-sm">{en ? "All work" : "전체 업무"}</strong><span className="text-xs">{workflowItems.length} {en ? "steps" : "단계"}</span></button>{availableWorkTypes.map(([code, count]) => <button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === code ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} key={code} onClick={() => selectWorkType(code)} type="button"><strong className="block text-sm">{workTypeLabel(code, en)}</strong><span className="text-xs">{count} {en ? "steps" : "단계"} · {new Set(workflowItems.filter((item) => String(item.domainCode || "EMISSION").toUpperCase() === code).map((item) => `${item.projectId}|${item.processCode}`)).size} {en ? "processes" : "프로세스"}</span></button>)}</div>
+            </section>
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 [en ? "Total" : "전체", workflowTotal, "assignment"],
@@ -310,6 +363,7 @@ export function TaskQuestPanel() {
                 [en ? "Progress" : "진행률", `${workflowProgress}%`, "monitoring"]
               ].map(([label, value, icon]) => <div className="rounded-xl border border-slate-200 bg-white p-3" key={String(label)}><span className="material-symbols-outlined text-[20px] text-[#246beb]">{icon}</span><p className="mt-1 text-xs font-bold text-slate-500">{label}</p><strong className="text-lg text-[#052b57]">{value}</strong></div>)}
             </div>
+            <div className="mb-3"><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 2 · Select a process" : "2단계 · 업무 프로세스 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{selectedWorkType === "ALL" ? (en ? "All available processes" : "전체 업무 프로세스") : workTypeLabel(selectedWorkType, en)}</h3><p className="text-sm text-slate-600">{processGroups.length} {en ? "project-process workflows are available. Select Use in task guide to proceed in order." : "개의 프로젝트·프로세스 흐름이 있습니다. ‘업무 길잡이로 진행’을 선택하면 순서대로 진행합니다."}</p></div>
             {processGroups.length ? <div className="space-y-5">
               {processGroups.map(([key, items]) => {
                 const first = items[0];
