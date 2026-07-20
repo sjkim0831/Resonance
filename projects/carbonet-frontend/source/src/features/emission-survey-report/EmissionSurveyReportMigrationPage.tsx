@@ -3958,7 +3958,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                       <td className="px-4 py-3 align-top leading-5 text-slate-700" colSpan={6}>
                         <p className={`mb-2 font-black ${item.datasetExactMatch ? "text-emerald-700" : "text-rose-700"}`}>{en ? "Dataset" : "데이터셋"}: {item.datasetExactMatch ? "EXACT" : "MISMATCH"}</p>
                         <p>{en ? "Product" : "제품"}: {item.productMatched ? "OK" : "-"}</p>
-                        <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p>
+                        {selectedReportType === "LCA_SUMMARY" ? <p>{en ? "Title" : "제목"}: {item.titleMatched ? "OK" : "-"}</p> : null}
                         {selectedReportType === "LCA_SUMMARY" ? <>
                           <p>{en ? "LCA fields" : "LCA 고유 항목"}: {item.matchedLcaFieldCount || 0}/{item.lcaFieldCount || 0}</p>
                           <p>{en ? "Mass / emission values" : "질량·배출 수치"}: {item.matchedNumberCount}/{item.numberCount}</p>
@@ -3985,7 +3985,7 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 <tbody className="divide-y divide-slate-100">
                                   {([
                                     [en ? "Product" : "제품명", item.productName || "-", item.productMatched],
-                                    [en ? "Title" : "제목", item.reportTitle || "-", item.titleMatched],
+                                    ...(selectedReportType === "LCA_SUMMARY" ? [[en ? "Title" : "제목", item.reportTitle || "-", item.titleMatched] as [string, string, boolean]] : []),
                                     [en ? "Total emission" : "총 배출량", String(item.totalEmission ?? "-"), item.totalEmissionMatched],
                                     [en ? "Certificate ID" : "인증서 ID", item.certificateId || "-", item.certificateIdMatch],
                                     [en ? "Report hash" : "리포트 해시", item.payloadHash || "-", item.payloadHashMatch],

@@ -223,7 +223,6 @@ public class ReportVerificationRegistryService {
                     ? Boolean.TRUE.equals(score.get("titleMatched"))
                     && ((Number) score.get("matchedLcaFieldCount")).intValue() == ((Number) score.get("lcaFieldCount")).intValue()
                     : Boolean.TRUE.equals(score.get("productMatched"))
-                    && Boolean.TRUE.equals(score.get("titleMatched"))
                     && Boolean.TRUE.equals(score.get("totalEmissionMatched"))
                     && ((Number) score.get("matchedMaterialCount")).intValue() == ((Number) score.get("materialCount")).intValue()
                     && ((Number) score.get("matchedNumberCount")).intValue() == ((Number) score.get("numberCount")).intValue();
@@ -554,9 +553,8 @@ public class ReportVerificationRegistryService {
         double lcaFieldRatio = lcaFieldCount == 0 ? 0 : (double) matchedLcaFieldCount / lcaFieldCount;
         double score = lcaReport
                 ? (titleMatched ? 20 : 0) + (productMatched ? 10 : 0) + Math.min(50, lcaFieldRatio * 50) + Math.min(20, numberRatio * 20)
-                : (productMatched ? 15 : 0)
-                + (titleMatched ? 10 : 0)
-                + (totalMatched ? 20 : 0)
+                : (productMatched ? 20 : 0)
+                + (totalMatched ? 25 : 0)
                 + Math.min(25, materialRatio * 25)
                 + Math.min(30, numberRatio * 30);
         Map<String, Object> result = new LinkedHashMap<>();
