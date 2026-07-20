@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "FACILITY_ASSET_REGISTRY",
+      "stepCode": "FAR_APPROVE",
+      "package": "FACILITY_ASSET_REGISTRY__FAR_APPROVE.json",
+      "packageHash": "3c60a94c3bbd3b1ba263a92c380ba54170e5295c0b35015ddb589d895b7bdd46",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_ASSET_REGISTRY",
+      "stepCode": "FAR_ASSIGN",
+      "package": "FACILITY_ASSET_REGISTRY__FAR_ASSIGN.json",
+      "packageHash": "102bc94cea7066d97e9954f9f79357fba7c706c018f806fa473ab6a60fc29c10",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_ASSET_REGISTRY",
+      "stepCode": "FAR_REGISTER",
+      "package": "FACILITY_ASSET_REGISTRY__FAR_REGISTER.json",
+      "packageHash": "5ebf7e481530c2188ee7f70e8429906d42f482817353918cf715da1729e8bf78",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "7a5479e07d5b9ce2a2f244f605e413d247d0f0e7661e0e0dbf99e2a9da58761d"
+}
