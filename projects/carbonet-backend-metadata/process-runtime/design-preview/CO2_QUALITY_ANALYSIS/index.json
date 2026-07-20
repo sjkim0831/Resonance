@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "CO2_QUALITY_ANALYSIS",
+      "stepCode": "CQA_DECIDE",
+      "package": "CO2_QUALITY_ANALYSIS__CQA_DECIDE.json",
+      "packageHash": "7e81db45743efd98221688d8617012f7cecdab74f56474187392453ab9b9e243",
+      "pages": 2
+    },
+    {
+      "processCode": "CO2_QUALITY_ANALYSIS",
+      "stepCode": "CQA_PLAN",
+      "package": "CO2_QUALITY_ANALYSIS__CQA_PLAN.json",
+      "packageHash": "21939f44907f569d8af5e20b2b2b35ad56876d16d0a4c18431a53d11e5dfdc5c",
+      "pages": 2
+    },
+    {
+      "processCode": "CO2_QUALITY_ANALYSIS",
+      "stepCode": "CQA_TEST",
+      "package": "CO2_QUALITY_ANALYSIS__CQA_TEST.json",
+      "packageHash": "e3c0a6b7e627fbb957040cf1b18b11103177e25b84c825b1ca50b7a3119fc1a5",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "e46b49f83700d6e0cecb228b0058a3bd345d85b3fbe9bf356be4393ff54b554b"
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "CO2_LOT_TAG_MANAGEMENT",
+      "stepCode": "CLT_APPROVE",
+      "package": "CO2_LOT_TAG_MANAGEMENT__CLT_APPROVE.json",
+      "packageHash": "6b5d5367d0e6b3970940b7aa6349bdb0067750c811b4e32769dc8ab9176e38cc",
+      "pages": 2
+    },
+    {
+      "processCode": "CO2_LOT_TAG_MANAGEMENT",
+      "stepCode": "CLT_CREATE",
+      "package": "CO2_LOT_TAG_MANAGEMENT__CLT_CREATE.json",
+      "packageHash": "54af100d020607098f1aa3fc00aef0acaf57561187b84ae8fb81aeb8a5d580d1",
+      "pages": 2
+    },
+    {
+      "processCode": "CO2_LOT_TAG_MANAGEMENT",
+      "stepCode": "CLT_RECONCILE",
+      "package": "CO2_LOT_TAG_MANAGEMENT__CLT_RECONCILE.json",
+      "packageHash": "547f3f4532f7ad1958f705717e3134c2b80d445a68bfed2ccf9c2179ddc69a11",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "a3c7b9cacda76f70c2c9e23181c39674985ad0547f44869c340feb0d379afa64"
+}
