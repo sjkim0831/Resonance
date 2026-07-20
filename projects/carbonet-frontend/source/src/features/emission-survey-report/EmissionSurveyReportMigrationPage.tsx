@@ -114,6 +114,22 @@ function reportComparisonLabel(index: number) {
   return label;
 }
 
+function verificationFieldLabel(path: string, en: boolean) {
+  const field = path.replace(/^\$\.?/, "").split(".").pop()?.replace(/\[\d+\]/g, "") || path;
+  const labels: Record<string, [string, string]> = {
+    productName: ["제품명", "Product"], materialName: ["물질명", "Material"], sectionLabel: ["섹션", "Section"],
+    amount: ["사용량", "Amount"], amountDisplay: ["사용량 표시값", "Displayed amount"], annualUnit: ["단위", "Unit"],
+    emissionFactor: ["배출계수", "Emission factor"], emissionFactorDisplay: ["배출계수 표시값", "Displayed factor"],
+    totalEmission: ["배출량", "Emission"], totalEmissionDisplay: ["배출량 표시값", "Displayed emission"],
+    totalCarbonEmission: ["총 탄소배출량", "Total carbon emission"], totalOutputMass: ["총 산출물 질량", "Total output mass"],
+    productGwp: ["제품 GWP", "Product GWP"], processGwp: ["공정 GWP", "Process GWP"],
+    processReferenceMass: ["공정 기준 질량", "Process reference mass"], massSharePercent: ["질량 비율", "Mass share"],
+    allocatedEmission: ["질량 비율 배출량", "Allocated emission"], emissionPerTon: ["1톤 기준 배출량", "Emission per ton"]
+  };
+  const label = labels[field];
+  return label ? label[en ? 1 : 0] : field || path;
+}
+
 const REPORT_VERIFICATION_STORAGE_KEY = "carbonet:emission-survey-report-verification:v1";
 const REPORT_VERIFY_BEGIN = "CARBONET_REPORT_VERIFY_BEGIN";
 const REPORT_VERIFY_END = "CARBONET_REPORT_VERIFY_END";
@@ -3846,6 +3862,31 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                   ? (en ? "The embedded report dataset matches the issued registry. Visible report fields are listed in the detailed OCR comparison." : "PDF 내장 데이터셋이 발급 원장과 일치합니다. 눈에 보이는 레포트 항목은 OCR 상세 대조에서 확인할 수 있습니다.")
                   : (en ? "Upload a newly issued report to compare its embedded dataset." : "내장 데이터셋 대조를 위해 새로 발급한 리포트를 업로드하세요.")}
               </p>
+              {datasetVerification?.fieldComparisons?.length ? (
+                <details className="mt-4 overflow-hidden border border-slate-200 bg-white" open={!datasetVerification.datasetMatch}>
+                  <summary className="cursor-pointer bg-slate-50 px-4 py-3 text-sm font-black text-slate-900">
+                    {en ? "Stored dataset vs uploaded dataset" : "DB 저장값 ↔ 업로드값 상세 비교"} ({datasetVerification.matchedFieldCount || 0}/{datasetVerification.fieldCount || 0})
+                  </summary>
+                  <div className="max-h-[32rem] overflow-auto border-t border-slate-200">
+                    <table className="w-full min-w-[720px] border-collapse text-left text-xs">
+                      <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
+                        <th className="px-3 py-3">{en ? "Field" : "항목"}</th>
+                        <th className="px-3 py-3">{en ? "Stored value" : "DB 저장값"}</th>
+                        <th className="px-3 py-3">{en ? "Uploaded value" : "업로드값"}</th>
+                        <th className="px-3 py-3">{en ? "Result" : "판정"}</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {datasetVerification.fieldComparisons.map((field) => <tr className={field.matched ? "bg-white" : "bg-rose-50"} key={field.path}>
+                          <td className="px-3 py-2"><strong>{verificationFieldLabel(field.path, en)}</strong><code className="mt-1 block break-all text-[10px] text-slate-400">{field.path}</code></td>
+                          <td className="max-w-72 break-all px-3 py-2 font-semibold text-slate-800">{field.expected || "-"}</td>
+                          <td className="max-w-72 break-all px-3 py-2 font-semibold text-slate-800">{field.actual || "-"}</td>
+                          <td className={`px-3 py-2 font-black ${field.matched ? "text-emerald-700" : "text-rose-700"}`}>{field.matched ? "MATCH" : "MISMATCH"}</td>
+                        </tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              ) : null}
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -3997,41 +4038,30 @@ export function EmissionSurveyReportVerifyPage({ embedded = false }: { embedded?
                                 {en ? "This issued PDF does not contain the LCA-specific dataset. Download it again from the LCA report page." : "이 발급 PDF에는 LCA 전용 데이터셋이 없습니다. LCA 보고서 화면에서 새로 다운로드하세요."}
                               </p>
                             ) : null}
-                            {selectedReportType !== "LCA_SUMMARY" ? <div className="mt-3">
-                              <p className="font-black text-emerald-800">{en ? "Matched fields" : "일치 내역"} ({item.fieldComparisons?.filter((field) => field.rowMatched).length || 0})</p>
-                              <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
-                                {(item.fieldComparisons || []).filter((field) => field.rowMatched).map((field) => (
-                                  <div className="border-l-4 border-emerald-500 bg-emerald-50 p-2 text-emerald-900" key={`${item.certificateId}-matched-${field.rowIndex}-${field.materialName}`}>
-                                    <p className="font-black">#{field.rowIndex} {field.sectionLabel || "-"} / {field.materialName || "-"}</p>
-                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-                                      <span>{en ? "Material" : "물질명"}: MATCH</span>
-                                      <span>{en ? "Amount" : "사용량"}: {field.amountDisplay || "-"}</span>
-                                      <span>{en ? "Factor" : "배출계수"}: {field.emissionFactorDisplay || "-"}</span>
-                                      <span>{en ? "Emission" : "배출량"}: {field.totalEmissionDisplay || "-"}</span>
-                                    </div>
-                                  </div>
-                                ))}
+                            {selectedReportType !== "LCA_SUMMARY" && item.fieldComparisons?.length ? <div className="mt-4 border-t border-slate-200 pt-3">
+                              <p className="font-black text-slate-900">{en ? "Stored values vs uploaded OCR values" : "DB 저장값 ↔ 업로드 OCR값"} ({item.fieldComparisons.filter((field) => field.rowMatched).length}/{item.fieldComparisons.length} {en ? "rows matched" : "행 일치"})</p>
+                              <div className="mt-2 max-h-96 overflow-auto border border-slate-200">
+                                <table className="w-full min-w-[760px] border-collapse text-left text-[11px]">
+                                  <thead className="sticky top-0 bg-slate-100 text-slate-700"><tr>
+                                    <th className="px-3 py-2">{en ? "Row / material" : "행·물질"}</th><th className="px-3 py-2">{en ? "Field" : "항목"}</th>
+                                    <th className="px-3 py-2">{en ? "Stored value" : "DB 저장값"}</th><th className="px-3 py-2">{en ? "Uploaded OCR value" : "업로드 OCR값"}</th><th className="px-3 py-2">{en ? "Result" : "판정"}</th>
+                                  </tr></thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {item.fieldComparisons.flatMap((field) => ([
+                                      [en ? "Material" : "물질명", field.materialName || "-", field.materialMatched],
+                                      [en ? "Amount" : "사용량", field.amountDisplay || "-", field.amountMatched],
+                                      [en ? "Factor" : "배출계수", field.emissionFactorDisplay || "-", field.emissionFactorMatched],
+                                      [en ? "Emission" : "배출량", field.totalEmissionDisplay || "-", field.totalEmissionMatched]
+                                    ] as Array<[string, string, boolean]>).map(([label, storedValue, matched], valueIndex) => <tr className={matched ? "bg-white" : "bg-rose-50"} key={`${item.certificateId}-${field.rowIndex}-${valueIndex}`}>
+                                      <td className="px-3 py-2"><strong>#{field.rowIndex} {field.materialName || "-"}</strong><span className="block text-slate-400">{field.sectionLabel || "-"}</span></td>
+                                      <td className="px-3 py-2 font-bold">{label}</td><td className="px-3 py-2 font-semibold">{storedValue}</td>
+                                      <td className="px-3 py-2 font-semibold">{matched ? storedValue : (en ? "Not confirmed by OCR" : "OCR에서 확인되지 않음")}</td>
+                                      <td className={`px-3 py-2 font-black ${matched ? "text-emerald-700" : "text-rose-700"}`}>{matched ? "MATCH" : "MISMATCH"}</td>
+                                    </tr>))}
+                                  </tbody>
+                                </table>
                               </div>
-                            </div> : null}
-                            {selectedReportType !== "LCA_SUMMARY" ? <div className="mt-4 border-t border-slate-200 pt-3">
-                              <p className="font-black text-rose-800">{en ? "Mismatched fields" : "불일치 내역"} ({item.fieldMismatches?.length || 0})</p>
-                            {item.fieldMismatches?.length ? (
-                              <div className="mt-3 max-h-56 space-y-2 overflow-y-auto">
-                                {item.fieldMismatches.map((field) => (
-                                  <div className="border-l-4 border-rose-500 bg-rose-50 p-2 text-rose-900" key={`${item.certificateId}-${field.rowIndex}-${field.materialName}`}>
-                                    <p className="font-black">#{field.rowIndex} {field.sectionLabel || "-"} / {field.materialName || "-"}</p>
-                                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-                                      {!field.materialMatched ? <span>{en ? "Material mismatch" : "물질명 불일치"}</span> : null}
-                                      {!field.amountMatched ? <span>{en ? "Amount" : "사용량"}: {field.amountDisplay || "-"}</span> : null}
-                                      {!field.emissionFactorMatched ? <span>{en ? "Factor" : "배출계수"}: {field.emissionFactorDisplay || "-"}</span> : null}
-                                      {!field.totalEmissionMatched ? <span>{en ? "Emission" : "배출량"}: {field.totalEmissionDisplay || "-"}</span> : null}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="mt-3 bg-emerald-50 p-2 font-bold text-emerald-800">{en ? "No field-level mismatches were found." : "필드 단위 불일치가 없습니다."}</p>
-                            )}
+                              <p className="mt-2 text-[11px] font-semibold text-slate-500">{en ? "For OCR mismatches, the uploaded column says not confirmed instead of inventing a value that the document reader could not reliably extract." : "OCR 불일치는 판독하지 못한 값을 임의로 만들지 않고 ‘OCR에서 확인되지 않음’으로 표시합니다."}</p>
                             </div> : null}
                           </div>
                         </details>

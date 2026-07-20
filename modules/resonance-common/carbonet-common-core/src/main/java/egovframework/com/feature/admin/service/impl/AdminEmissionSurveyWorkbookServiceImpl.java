@@ -494,6 +494,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     public synchronized Map<String, Object> replaceSharedDatasetWorkbook(MultipartFile uploadFile, boolean isEn) {
         Objects.requireNonNull(uploadFile, "uploadFile");
         validateUploadFile(uploadFile, isEn);
+        requireSharedDatasetDatabase();
         try (InputStream inputStream = new ByteArrayInputStream(uploadFile.getBytes());
              Workbook workbook = new XSSFWorkbook(inputStream)) {
             Map<String, List<CellRangeAddress>> mergedRegionsMap = new LinkedHashMap<>();
@@ -546,6 +547,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
                     ? "At least one section is required to replace the shared dataset."
                     : "공통 데이터셋 교체를 위해 최소 1개 이상의 섹션이 필요합니다.");
         }
+        requireSharedDatasetDatabase();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sections", request.getSections());
         payload.put("sourcePath", safe(request.getSourcePath()));
@@ -2451,6 +2453,12 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
             return adminEmissionSurveyDraftMapper != null && adminEmissionSurveyDraftMapper.countCaseTable() >= 0;
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private void requireSharedDatasetDatabase() {
+        if (!isDraftTableReady() || !isUploadLogTableReady()) {
+            throw new IllegalStateException("Patroni shared-dataset tables are unavailable. No file or database data was changed.");
         }
     }
 

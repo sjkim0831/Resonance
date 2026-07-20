@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 public class ReportVerificationRegistryService {
 
     private static final int MAX_DIFFERENCES = 50;
+    private static final int MAX_FIELD_COMPARISONS = 2_000;
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -109,8 +110,10 @@ public class ReportVerificationRegistryService {
         JsonNode storedDataset = readJson(stored.get("dataset_json"));
         boolean datasetPresent = uploadedDataset != null && !uploadedDataset.isNull() && uploadedDataset.isObject();
         List<Map<String, Object>> differences = new ArrayList<>();
+        List<Map<String, Object>> fieldComparisons = new ArrayList<>();
         if (datasetPresent) {
             compare("$", storedDataset, uploadedDataset, differences);
+            compareFields("$", storedDataset, uploadedDataset, fieldComparisons);
         }
         boolean datasetMatch = datasetPresent && differences.isEmpty();
         boolean valid = fingerprintMatch && integrityMatch && datasetMatch;
@@ -123,6 +126,9 @@ public class ReportVerificationRegistryService {
         response.put("datasetMatch", datasetMatch);
         response.put("differenceCount", differences.size());
         response.put("differences", differences);
+        response.put("fieldCount", fieldComparisons.size());
+        response.put("matchedFieldCount", fieldComparisons.stream().filter(row -> Boolean.TRUE.equals(row.get("matched"))).count());
+        response.put("fieldComparisons", fieldComparisons);
         response.put("storedDatasetHash", stored.get("dataset_hash"));
         response.put("issuedAt", stored.get("issued_at"));
         response.put("reportTitle", stored.get("report_title"));
@@ -783,6 +789,56 @@ public class ReportVerificationRegistryService {
         if (!expected.equals(actual)) {
             addDifference(path, expected, actual, differences);
         }
+    }
+
+    private void compareFields(String path, JsonNode expected, JsonNode actual,
+                               List<Map<String, Object>> comparisons) {
+        if (comparisons.size() >= MAX_FIELD_COMPARISONS) {
+            return;
+        }
+        if (expected == null || actual == null || expected.getNodeType() != actual.getNodeType()) {
+            addFieldComparison(path, expected, actual, false, comparisons);
+            return;
+        }
+        if (expected.isObject()) {
+            expected.fieldNames().forEachRemaining(name -> {
+                if (comparisons.size() < MAX_FIELD_COMPARISONS) {
+                    compareFields(path + "." + name, expected.get(name), actual.get(name), comparisons);
+                }
+            });
+            actual.fieldNames().forEachRemaining(name -> {
+                if (!expected.has(name) && comparisons.size() < MAX_FIELD_COMPARISONS) {
+                    addFieldComparison(path + "." + name, null, actual.get(name), false, comparisons);
+                }
+            });
+            return;
+        }
+        if (expected.isArray()) {
+            int size = Math.max(expected.size(), actual.size());
+            for (int index = 0; index < size && comparisons.size() < MAX_FIELD_COMPARISONS; index++) {
+                compareFields(path + "[" + index + "]", expected.get(index), actual.get(index), comparisons);
+            }
+            return;
+        }
+        addFieldComparison(path, expected, actual, expected.equals(actual), comparisons);
+    }
+
+    private void addFieldComparison(String path, JsonNode expected, JsonNode actual, boolean matched,
+                                    List<Map<String, Object>> comparisons) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("path", path);
+        row.put("valueType", expected != null ? expected.getNodeType().name() : actual != null ? actual.getNodeType().name() : "MISSING");
+        row.put("expected", displayNode(expected));
+        row.put("actual", displayNode(actual));
+        row.put("matched", matched);
+        comparisons.add(row);
+    }
+
+    private String displayNode(JsonNode value) {
+        if (value == null || value.isMissingNode()) {
+            return "<missing>";
+        }
+        return value.isValueNode() ? value.asText() : value.toString();
     }
 
     private void addDifference(String path, Object expected, Object actual, List<Map<String, Object>> differences) {
