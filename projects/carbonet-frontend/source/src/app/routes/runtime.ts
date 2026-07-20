@@ -75,6 +75,10 @@ const APP_SPECIAL_CASE_PAGES = [
   ["/co2/credit", "co2-credit"]
 ] as const satisfies ReadonlyArray<readonly [string, MigrationPageId]>;
 const APP_ROUTE_ALIASES = [
+  ["/work/company-manager-delegation", "mypage-staff"],
+  ["/en/work/company-manager-delegation", "mypage-staff"],
+  ["/admin/work/company-manager-delegation", "actor-process-governance"],
+  ["/en/admin/work/company-manager-delegation", "actor-process-governance"],
   ["/admin/trade/list", "trade-list"],
   ["/en/admin/trade/list", "trade-list"],
   ["/trade/matching", "co2-search"],
