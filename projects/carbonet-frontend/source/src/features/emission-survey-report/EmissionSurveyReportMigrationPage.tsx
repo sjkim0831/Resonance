@@ -298,8 +298,10 @@ function canonicalReportForVerification(report: EmissionSurveyReportPayload, byp
       sectionLabel: row.sectionLabel,
       group: row.group,
       materialName: row.materialName,
-      amount: row.amount,
-      amountDisplay: formatNumber(row.amount, 2),
+      // The printable detail table shows the process/original quantity. Keep the
+      // verification value identical to what the uploaded PDF actually contains.
+      amount: row.originalAmount,
+      amountDisplay: formatNumber(row.originalAmount, 2),
       originalAmount: row.originalAmount,
       originalAmountDisplay: formatNumber(row.originalAmount, 2),
       unit: row.unit,

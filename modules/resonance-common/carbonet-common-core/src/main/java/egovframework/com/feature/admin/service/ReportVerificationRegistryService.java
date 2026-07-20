@@ -370,7 +370,8 @@ public class ReportVerificationRegistryService {
                 }
                 Map<String, Object> fieldMatches = new LinkedHashMap<>();
                 for (String field : List.of("amount", "emissionFactor", "totalEmission")) {
-                    JsonNode value = row.path(field);
+                    JsonNode value = "amount".equals(field) && row.path("originalAmount").isNumber()
+                            ? row.path("originalAmount") : row.path(field);
                     if (value.isNumber() && Math.abs(value.asDouble()) > 0.0000001) {
                         numberCount++;
                         boolean matched = containsDisplayedNumber(normalizedText, row, field, value);
@@ -396,8 +397,9 @@ public class ReportVerificationRegistryService {
                 comparison.put("materialName", materialName);
                 comparison.put("rowMatched", rowMatched);
                 comparison.put("materialMatched", materialMatched);
-                comparison.put("amount", row.path("amount").isNumber() ? row.path("amount").numberValue() : null);
-                comparison.put("amountDisplay", displayValue(row, "amount", row.path("amount")));
+                JsonNode visibleAmount = row.path("originalAmount").isNumber() ? row.path("originalAmount") : row.path("amount");
+                comparison.put("amount", visibleAmount.isNumber() ? visibleAmount.numberValue() : null);
+                comparison.put("amountDisplay", displayValue(row, "originalAmount", visibleAmount));
                 comparison.put("amountMatched", fieldMatches.getOrDefault("amount", true));
                 comparison.put("emissionFactor", row.path("emissionFactor").isNumber() ? row.path("emissionFactor").numberValue() : null);
                 comparison.put("emissionFactorDisplay", displayValue(row, "emissionFactor", row.path("emissionFactor")));
@@ -586,6 +588,15 @@ public class ReportVerificationRegistryService {
     }
 
     private boolean containsText(String normalizedText, String expected) {
+        if (expected != null && expected.contains("/")) {
+            String[] segments = expected.split("/");
+            if (segments.length > 1 && java.util.Arrays.stream(segments)
+                    .map(String::trim)
+                    .filter(segment -> segment.length() >= 2)
+                    .allMatch(segment -> containsText(normalizedText, segment))) {
+                return true;
+            }
+        }
         String normalizedExpected = normalizeText(expected);
         if (normalizedExpected.length() < 2) {
             return false;

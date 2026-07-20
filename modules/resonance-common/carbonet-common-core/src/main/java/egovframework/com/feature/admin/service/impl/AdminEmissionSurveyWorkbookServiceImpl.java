@@ -849,7 +849,6 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         row.put("savedAt", LocalDateTime.now().format(TIMESTAMP_FORMATTER));
         row.put("rows", normalizedRows);
         registry.put(buildRegistryKey(request), row);
-        writeDraftRegistry(registry);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("saved", true);
@@ -859,9 +858,11 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         response.put("message", isEn ? "Survey case draft saved." : "설문 케이스 초안을 저장했습니다.");
         if (isDraftTableReady()) {
             saveCaseDraftToDatabase(request, actorId);
+            tryWriteRegistryMirror(DRAFT_REGISTRY_PATH, registry);
             response.put("databaseVerified", true);
             response.put("savedCaseMap", readDraftRegistry(storageActorId()));
         } else {
+            writeDraftRegistry(registry);
             response.put("databaseVerified", false);
             response.put("savedCaseMap", registry);
         }
@@ -2350,6 +2351,15 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         }
     }
 
+    private void tryWriteRegistryMirror(Path path, Map<String, Map<String, Object>> registry) {
+        try {
+            writeRegistry(path, registry);
+        } catch (IllegalStateException ignored) {
+            // Patroni is the source of truth. A read-only runtime filesystem must
+            // never turn a verified database transaction into a false failure.
+        }
+    }
+
     private Map<String, Map<String, Object>> filterDraftRegistryByActor(Map<String, Map<String, Object>> registry, String actorId) {
         String resolvedActorId = safe(actorId);
         if (resolvedActorId.isEmpty()) {
@@ -2718,7 +2728,7 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
         }
         Map<String, Map<String, Object>> registry = readUploadLogRegistry();
         registry.put(safeObject(logRow.get("logId")), new LinkedHashMap<>(logRow));
-        writeRegistry(UPLOAD_LOG_REGISTRY_PATH, registry);
+        tryWriteRegistryMirror(UPLOAD_LOG_REGISTRY_PATH, registry);
     }
 
     private List<Map<String, Object>> readUploadLogs(String actorId,
@@ -3193,38 +3203,23 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
     }
 
     private void clearSharedDataset() {
+        List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
+        for (Map<String, Object> header : headers) {
+            if (!matchesOwner(header, storageActorId())) {
+                continue;
+            }
+            String caseId = safeObject(header.get("caseId"));
+            adminEmissionSurveyDraftMapper.deleteCaseRows(caseId);
+            adminEmissionSurveyDraftMapper.deleteCaseHeader(caseId);
+        }
+        adminEmissionSurveyDraftMapper.deleteUploadLogsByOwnerActorId(storageActorId());
+
         Map<String, Map<String, Object>> draftRegistry = readDraftRegistryFromFile();
         draftRegistry.entrySet().removeIf(entry -> matchesOwner(entry.getValue(), storageActorId()));
-        writeDraftRegistry(draftRegistry);
-
+        tryWriteRegistryMirror(DRAFT_REGISTRY_PATH, draftRegistry);
         Map<String, Map<String, Object>> uploadLogRegistry = readUploadLogRegistry();
         uploadLogRegistry.entrySet().removeIf(entry -> matchesOwner(entry.getValue(), storageActorId()));
-        writeRegistry(UPLOAD_LOG_REGISTRY_PATH, uploadLogRegistry);
-
-        if (!isDraftTableReady()) {
-            return;
-        }
-        try {
-            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
-            for (Map<String, Object> header : headers) {
-                if (!matchesOwner(header, storageActorId())) {
-                    continue;
-                }
-                String caseId = safeObject(header.get("caseId"));
-                adminEmissionSurveyDraftMapper.deleteCaseRows(caseId);
-                adminEmissionSurveyDraftMapper.deleteCaseHeader(caseId);
-            }
-        } catch (Exception ignored) {
-            // Keep file-backed cleanup even when DB cleanup is unavailable.
-        }
-        if (!isUploadLogTableReady()) {
-            return;
-        }
-        try {
-            adminEmissionSurveyDraftMapper.deleteUploadLogsByOwnerActorId(storageActorId());
-        } catch (Exception ignored) {
-            // Keep file-backed cleanup even when DB cleanup is unavailable.
-        }
+        tryWriteRegistryMirror(UPLOAD_LOG_REGISTRY_PATH, uploadLogRegistry);
     }
 
     private void clearSharedDatasetProducts(List<String> productNames) {
@@ -3237,31 +3232,23 @@ public class AdminEmissionSurveyWorkbookServiceImpl extends EgovAbstractServiceI
             }
         }
 
+        List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
+        for (Map<String, Object> header : headers) {
+            if (!matchesOwner(header, storageActorId())) {
+                continue;
+            }
+            boolean matched = targets.stream().anyMatch(productName -> matchesProduct(header, productName));
+            if (!matched) {
+                continue;
+            }
+            String caseId = safeObject(header.get("caseId"));
+            adminEmissionSurveyDraftMapper.deleteCaseRows(caseId);
+            adminEmissionSurveyDraftMapper.deleteCaseHeader(caseId);
+        }
         Map<String, Map<String, Object>> draftRegistry = readDraftRegistryFromFile();
         draftRegistry.entrySet().removeIf(entry -> matchesOwner(entry.getValue(), storageActorId())
                 && targets.stream().anyMatch(productName -> matchesProduct(entry.getValue(), productName)));
-        writeDraftRegistry(draftRegistry);
-
-        if (!isDraftTableReady()) {
-            return;
-        }
-        try {
-            List<Map<String, Object>> headers = adminEmissionSurveyDraftMapper.selectCaseHeaders(java.util.Map.of("ownerActorId", storageActorId()));
-            for (Map<String, Object> header : headers) {
-                if (!matchesOwner(header, storageActorId())) {
-                    continue;
-                }
-                boolean matched = targets.stream().anyMatch(productName -> matchesProduct(header, productName));
-                if (!matched) {
-                    continue;
-                }
-                String caseId = safeObject(header.get("caseId"));
-                adminEmissionSurveyDraftMapper.deleteCaseRows(caseId);
-                adminEmissionSurveyDraftMapper.deleteCaseHeader(caseId);
-            }
-        } catch (Exception ignored) {
-            // Keep file-backed cleanup even when DB cleanup is unavailable.
-        }
+        tryWriteRegistryMirror(DRAFT_REGISTRY_PATH, draftRegistry);
     }
 
     private Map<String, Map<String, Object>> readDraftRegistryByClassification(String actorId,
