@@ -1,6 +1,6 @@
-process=FACILITY_EMERGENCY_RESPONSE
-step=FER_RECOVER
+process=FACILITY_OPERATION_MONITORING
+step=FOM_PLAN
 type=FULL_STACK
-target=/ccus/facility/facility-emergency-response?step=fer_recover
+target=/ccus/facility/facility-operation-monitoring?step=fom_plan
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
