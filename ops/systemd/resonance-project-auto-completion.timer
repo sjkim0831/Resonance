@@ -3,7 +3,7 @@ Description=Continue Resonance project completion automatically
 
 [Timer]
 OnBootSec=7min
-OnUnitActiveSec=10min
+OnUnitActiveSec=2min
 RandomizedDelaySec=45s
 Persistent=true
 Unit=resonance-project-auto-completion.service
