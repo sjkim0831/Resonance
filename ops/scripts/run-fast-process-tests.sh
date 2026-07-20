@@ -23,7 +23,8 @@ for target in "${targets[@]}"; do
   python3 "$RUNNER" "$target" --cache-dir "$CACHE" --evidence "$EVIDENCE/$process_code.json" >/dev/null || result=1
 done
 duration_ms="$((($(date +%s%N)-start_ns)/1000000))"
-passed="$(grep -l '"status": "PASSED"' "$EVIDENCE"/*.json 2>/dev/null | wc -l)"
-printf '{"status":"%s","processCount":%s,"durationMs":%s,"evidence":"%s"}\n' \
-  "$([[ "$result" -eq 0 ]] && echo PASSED || echo FAILED)" "${#targets[@]}" "$duration_ms" "$EVIDENCE"
+package_count="$(jq -s '[.[].packageCount] | add // 0' "$EVIDENCE"/*.json)"
+cached_count="$(jq -s '[.[].cachedCount] | add // 0' "$EVIDENCE"/*.json)"
+printf '{"status":"%s","processCount":%s,"packageCount":%s,"cachedCount":%s,"durationMs":%s,"evidence":"%s"}\n' \
+  "$([[ "$result" -eq 0 ]] && echo PASSED || echo FAILED)" "${#targets[@]}" "$package_count" "$cached_count" "$duration_ms" "$EVIDENCE"
 exit "$result"
