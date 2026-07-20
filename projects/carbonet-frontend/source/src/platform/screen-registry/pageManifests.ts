@@ -12,7 +12,8 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
       { componentId: "HomeHeroSection", instanceKey: "home-hero", layoutZone: "header" },
       { componentId: "HomeSearchSection", instanceKey: "home-search", layoutZone: "actions", propsSummary: ["searchKeyword"] },
       { componentId: "HomeServiceGrid", instanceKey: "home-services", layoutZone: "content", propsSummary: ["serviceCount"] },
-      { componentId: "HomeSummarySection", instanceKey: "home-summary", layoutZone: "content", propsSummary: ["summaryCards"] }
+      { componentId: "HomeSummarySection", instanceKey: "home-summary", layoutZone: "content", propsSummary: ["summaryCards"] },
+      { componentId: "COMMON_PAGE_FOOTER", instanceKey: "home-footer", layoutZone: "footer", propsSummary: ["orgName", "addressLine", "footerLinks", "lastModifiedLabel"] }
     ]
   },
   "admin-home": {

@@ -37,6 +37,9 @@ LCA_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/emission-lc
 WORKFLOW_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/workflow/CommonWorkflowWorkspace.tsx"
 PRIMITIVE_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/common-design/CommonDesignPrimitives.tsx"
 MANIFEST_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts"
+COMMON_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/CommonUserFooter.tsx"
+HOME_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/home-entry/HomeEntrySections.tsx"
+PORTAL_CHROME_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/UserPortalChrome.tsx"
 
 [[ -f "$WORKFLOW_SOURCE" ]] && grep -q 'data-common-component="COMMON_STEP_FLOW"' "$WORKFLOW_SOURCE" || {
   echo "[common-design-assets] FAIL COMMON_STEP_FLOW source implementation missing" >&2; exit 1;
@@ -67,4 +70,16 @@ for component_name in CommonDataTable CommonStatusBadge CommonContentCard Common
     echo "[common-design-assets] FAIL Product LCA source missing $component_name" >&2; exit 1;
   }
 done
+grep -q 'data-common-component="COMMON_PAGE_FOOTER"' "$COMMON_FOOTER_SOURCE" || {
+  echo "[common-design-assets] FAIL common user footer implementation missing" >&2; exit 1;
+}
+grep -q 'componentId: "COMMON_PAGE_FOOTER"' "$MANIFEST_SOURCE" || {
+  echo "[common-design-assets] FAIL home manifest common footer mapping missing" >&2; exit 1;
+}
+grep -q 'CommonUserFooter' "$HOME_FOOTER_SOURCE" && grep -q 'CommonUserFooter' "$PORTAL_CHROME_SOURCE" || {
+  echo "[common-design-assets] FAIL home footer wrappers are not unified" >&2; exit 1;
+}
+if grep -q '<footer' "$HOME_FOOTER_SOURCE" || grep -q '<footer' "$PORTAL_CHROME_SOURCE"; then
+  echo "[common-design-assets] FAIL duplicate footer markup remains in home wrappers" >&2; exit 1;
+fi
 echo "[common-design-assets] PASS source reuse contract"

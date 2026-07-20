@@ -1,4 +1,5 @@
 import { ReactNode, SyntheticEvent } from "react";
+import { CommonUserFooter } from "./CommonUserFooter";
 
 export const USER_GOV_MARK = "/img/egovframework/kr_gov_symbol.png";
 export const USER_GOV_FOOTER_MARK = "/img/egovframework/kr_gov_symbol.png";
@@ -13,16 +14,6 @@ function handleGovMarkError(event: SyntheticEvent<HTMLImageElement>) {
   }
   image.dataset.fallbackApplied = "1";
   image.src = USER_GOV_MARK_FALLBACK;
-}
-
-function resolveFooterHref(label: string) {
-  if (label === "사이트맵") {
-    return "/sitemap";
-  }
-  if (label === "Sitemap") {
-    return "/en/sitemap";
-  }
-  return "#";
 }
 
 export function UserGovernmentBar(props: {
@@ -107,52 +98,5 @@ export function UserPortalFooter(props: {
   lastModifiedLabel: string;
   waAlt: string;
 }) {
-  return (
-    <footer className="bg-white border-t border-[var(--kr-gov-border-light)] mt-20">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-12 pb-8">
-        <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-[var(--kr-gov-border-light)]">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <img alt={props.orgName} className="h-8 grayscale" data-fallback-applied="0" onError={handleGovMarkError} src={USER_GOV_FOOTER_MARK} />
-              <span className="text-xl font-black text-[var(--kr-gov-text-primary)]">{props.orgName}</span>
-            </div>
-            <address className="not-italic text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed">
-              {props.addressLine}
-              {props.serviceLine ? <><br />{props.serviceLine}</> : null}
-            </address>
-          </div>
-          {props.footerLinks?.length ? (
-            <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-              {props.footerLinks.map((item, index) => (
-                <a
-                  className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-[var(--kr-gov-text-primary)] hover:underline"}
-                  href={resolveFooterHref(item)}
-                  key={item}
-                  onClick={(event) => {
-                    if (resolveFooterHref(item) === "#") {
-                      event.preventDefault();
-                    }
-                  }}
-                >
-                  {item}
-                </a>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-xs font-medium text-[var(--kr-gov-text-secondary)]">
-            <p>{props.copyright}</p>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 px-3 py-1 bg-[var(--kr-gov-bg-gray)] rounded-[var(--kr-gov-radius)] text-xs font-bold text-[var(--kr-gov-text-secondary)]">
-              <span>{props.lastModifiedLabel}</span>
-              <time dateTime="2025-08-14">2025.08.14</time>
-            </div>
-            <img alt={props.waAlt} className="h-10" src={USER_WA_MARK} />
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
+  return <CommonUserFooter {...props} className="mt-20" governmentMarkFallbackSrc={USER_GOV_MARK_FALLBACK} governmentMarkSrc={USER_GOV_FOOTER_MARK} waMarkSrc={USER_WA_MARK} />;
 }

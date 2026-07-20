@@ -6,6 +6,7 @@ import { HomeMenuItem, HomeQuickLink } from "./homeEntryTypes";
 import { noticeItems } from "../notice-list/NoticeListMigrationPage";
 import { supportEntries } from "../qna-list/QnaListMigrationPage";
 import { RESOURCE_ITEMS } from "../download-list/DownloadListMigrationPage";
+import { CommonUserFooter } from "../../components/user-shell/CommonUserFooter";
 
 function getDesktopNavClass(en: boolean) {
   return en
@@ -17,16 +18,6 @@ function getDesktopNavLinkClass(en: boolean) {
   return en
     ? "gov-text-label h-full flex items-center justify-center px-1.5 2xl:px-2 font-bold whitespace-normal text-center break-words max-w-[96px] 2xl:max-w-[108px] tracking-[-0.01em] text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible"
     : "gov-text-label h-full flex items-center px-2.5 2xl:px-3 font-bold whitespace-nowrap text-[var(--kr-gov-text-primary)] border-b-4 border-transparent hover:text-[var(--kr-gov-blue)] hover:border-[var(--kr-gov-blue)] transition-all focus-visible";
-}
-
-function resolveFooterHref(label: string) {
-  if (label === "사이트맵") {
-    return "/sitemap";
-  }
-  if (label === "Sitemap") {
-    return "/en/sitemap";
-  }
-  return "#";
 }
 
 export function HomeInlineStyles({ en }: { en: boolean }) {
@@ -839,50 +830,5 @@ export function NewsletterSection({ en }: { en: boolean }) {
 
 export function HomeFooter({ content }: { content: LocalizedHomeContent }) {
   const english = content.skipLink === LOCALIZED_CONTENT.en.skipLink;
-  return (
-    <footer className="bg-white border-t border-[var(--kr-gov-border-light)]">
-      <div className="gov-home-footer max-w-7xl mx-auto px-4 lg:px-8">
-        <div className="flex flex-col justify-between gap-7 border-b border-[var(--kr-gov-border-light)] pb-7 md:flex-row md:gap-10 md:pb-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <img alt={content.govAlt} className="h-8 grayscale" src={HOME_ENTRY_ASSETS.FOOTER_SYMBOL} />
-              <span className="gov-text-heading-sm font-black text-[var(--kr-gov-text-primary)]">{content.footerOrg}</span>
-            </div>
-            <address className="gov-text-body-sm not-italic text-[var(--kr-gov-text-secondary)]">
-              {content.footerAddress}<br />
-              {content.footerDesc}
-            </address>
-          </div>
-          <div className="gov-text-body-sm flex flex-wrap gap-x-6 gap-y-3 font-bold md:gap-x-8 md:gap-y-4">
-            {content.footerLinks.map((link, index) => (
-              <a
-                className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-[var(--kr-gov-text-primary)] hover:underline"}
-                href={resolveFooterHref(link)}
-                key={link}
-                onClick={(event) => {
-                  if (resolveFooterHref(link) === "#") {
-                    event.preventDefault();
-                  }
-                }}
-              >
-                {link}
-              </a>
-            ))}
-          </div>
-        </div>
-        <div className="mt-6 flex flex-col items-start justify-between gap-4 md:mt-8 md:flex-row md:items-center md:gap-6">
-          <div className="gov-text-caption font-medium text-[var(--kr-gov-text-secondary)]">
-            <p>© 2025 CCUS Carbon Footprint Platform. All rights reserved.</p>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="gov-text-caption flex items-center gap-2 rounded-[var(--kr-gov-radius)] bg-[var(--kr-gov-bg-gray)] px-3 py-1 font-bold text-[var(--kr-gov-text-secondary)]">
-              <span>{content.lastModified}</span>
-              <time dateTime="2025-08-14">{english ? "Aug 14, 2025" : "2025.08.14"}</time>
-            </div>
-            <img alt={content.waAlt} className="h-10" src={HOME_ENTRY_ASSETS.WA_MARK} />
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
+  return <CommonUserFooter orgName={content.footerOrg} addressLine={content.footerAddress} serviceLine={content.footerDesc} footerLinks={[...content.footerLinks]} copyright="© 2025 CCUS Carbon Footprint Platform. All rights reserved." lastModifiedLabel={content.lastModified} lastModifiedText={english ? "Aug 14, 2025" : "2025.08.14"} waAlt={content.waAlt} governmentMarkSrc={HOME_ENTRY_ASSETS.FOOTER_SYMBOL} waMarkSrc={HOME_ENTRY_ASSETS.WA_MARK} />;
 }
