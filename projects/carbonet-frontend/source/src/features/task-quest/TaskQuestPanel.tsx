@@ -39,9 +39,9 @@ type QuestResponse = {
   items?: QuestTask[];
   workflows?: QuestTask[];
   workTypes?: Array<{ workTypeCode: string; workTypeName: string; workTypeNameEn?: string; description?: string; sortOrder?: number; definedProcessCount?: number; activeProcessCount?: number; taskCount?: number }>;
-  processCatalog?: Array<{ processCode: string; processName: string; domainCode: string; goal?: string; status?: string; ownerActorCode?: string; developmentOrder?: number; stepCount?: number; targetUrl?: string }>;
+  processCatalog?: Array<{ processCode: string; processName: string; domainCode: string; goal?: string; status?: string; ownerActorCode?: string; developmentOrder?: number; workflowOrder?: number; workflowPhase?: string; processRole?: string; prerequisiteCodes?: string; nextProcessCode?: string; stepCount?: number; completionScore?: number; requiredTasks?: number; completedTasks?: number; blockedTasks?: number; nextAction?: string; targetUrl?: string }>;
   processCatalogSteps?: Array<{ processCode: string; stepOrder: number; stepCode: string; stepName: string; actorCode?: string; fromState?: string; commandCode?: string; toState?: string; workPurpose?: string; completionRule?: string; inputContract?: string; outputContract?: string; userPath?: string; adminPath?: string; automationStatus?: string }>;
-  workCatalogAudit?: { workTypeCount?: number; processCount?: number; processesWithoutSteps?: number; processesWithoutSafetyTests?: number; processesWithoutDevelopmentJobs?: number; menusWithoutProcessBinding?: number; processesWithoutScreenRoute?: number };
+  workCatalogAudit?: { workTypeCount?: number; processCount?: number; processesWithoutSequence?: number; processesWithoutSteps?: number; processesWithoutSafetyTests?: number; processesWithoutDevelopmentJobs?: number; menusWithoutProcessBinding?: number; processesWithoutScreenRoute?: number };
   allVisible?: boolean;
   summary?: { total?: number; completed?: number; overdue?: number };
 };
@@ -97,6 +97,19 @@ function workTypeLabel(code: string, en: boolean) {
   };
   const matched = Object.entries(labels).find(([key]) => normalized === key || normalized.includes(key));
   return matched ? matched[1][en ? 1 : 0] : code || labels.COMMON[en ? 1 : 0];
+}
+
+function workflowPhaseLabel(code: string | undefined, en: boolean) {
+  const labels: Record<string, [string, string]> = {
+    REGISTRATION_AUTH: ["가입·인증", "Registration & auth"], COMPANY_ONBOARDING: ["기업·조직 온보딩", "Company onboarding"], ACCOUNT_OPERATION: ["계정 운영", "Account operation"],
+    PROJECT_DATA_CALCULATION: ["프로젝트·자료·산정", "Project, data & calculation"], VERIFICATION_SUBMISSION: ["검증·제출", "Verification & submission"], MRV_TRACE_CLOSE: ["MRV·추적·종료", "MRV, trace & close"],
+    LCA_CALCULATION_REVIEW: ["LCA 산정·검토", "LCA calculation & review"], TARGET_PROJECT: ["목표·과제", "Targets & projects"], ANALYSIS_PERFORMANCE: ["분석·성과", "Analysis & performance"],
+    MONITORING_ANALYSIS: ["관제·분석", "Monitoring & analysis"], SUPPLY_DEMAND_TRADE: ["공급·수요·거래", "Supply, demand & trade"], PAYMENT_SETTLEMENT: ["결제·정산", "Payment & settlement"],
+    REPORT: ["보고서", "Report"], CERTIFICATE_VERIFICATION: ["인증·진위", "Certificate & verification"], CONTENT_SUPPORT: ["콘텐츠·지원", "Content & support"], EDUCATION_OPERATION: ["교육 운영", "Education operation"],
+    AUTH_WORKFLOW: ["권한·워크플로", "Authority & workflow"], EXTERNAL_INTEGRATION: ["외부 연계", "External integration"], PLATFORM_OPERATION: ["플랫폼 운영", "Platform operation"], COMMON_WORK: ["공통 업무", "Common work"], NEW_WORK: ["신규 업무", "New work"]
+  };
+  const label = labels[String(code || "NEW_WORK")];
+  return label ? label[en ? 1 : 0] : String(code || "-");
 }
 
 export function TaskQuestPanel() {
@@ -206,7 +219,7 @@ export function TaskQuestPanel() {
   const selectedWorkflowItems = useMemo(() => selectedWorkType === "ALL"
     ? workflowItems
     : workflowItems.filter((item) => String(item.domainCode || "EMISSION").toUpperCase() === selectedWorkType), [selectedWorkType, workflowItems]);
-  const selectedDefinedProcesses = useMemo(() => (data?.processCatalog || []).filter((item) => selectedWorkType === "ALL" || String(item.domainCode).toUpperCase() === selectedWorkType), [data?.processCatalog, selectedWorkType]);
+  const selectedDefinedProcesses = useMemo(() => (data?.processCatalog || []).filter((item) => selectedWorkType === "ALL" || String(item.domainCode).toUpperCase() === selectedWorkType).map((item) => ({...item, workflowPhase: workflowPhaseLabel(item.workflowPhase, en)})), [data?.processCatalog, selectedWorkType, en]);
   const selectedCatalogProcess = useMemo(() => (data?.processCatalog || []).find((item) => item.processCode === selectedCatalogProcessCode), [data?.processCatalog, selectedCatalogProcessCode]);
   const selectedCatalogSteps = useMemo(() => (data?.processCatalogSteps || []).filter((item) => item.processCode === selectedCatalogProcessCode).sort((a,b)=>Number(a.stepOrder)-Number(b.stepOrder)), [data?.processCatalogSteps, selectedCatalogProcessCode]);
 
@@ -381,10 +394,12 @@ export function TaskQuestPanel() {
             <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100" onClick={() => setFlowOpen(false)} type="button"><span className="material-symbols-outlined">close</span></button>
           </header>
           <div className="overflow-y-auto bg-slate-50 px-5 py-5 sm:px-7 sm:py-6">
+            {data?.workCatalogAudit ? <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${Number(data.workCatalogAudit.processesWithoutSequence||0)===0?"border-emerald-200 bg-emerald-50 text-emerald-900":"border-red-200 bg-red-50 text-red-900"}`}><div><strong className="block text-sm">{en?"Business sequence audit":"업무 순서 등록 점검"}</strong><span className="text-xs">{en?"Every process must have an executable order.":"모든 프로세스가 실행 순서 원장에 등록되어야 합니다."}</span></div><span className="rounded-full bg-white px-3 py-1 text-sm font-black">{data.workCatalogAudit.processesWithoutSequence||0} {en?"missing":"개 누락"}</span></div>:null}
             <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "Step 1 · Select work type" : "1단계 · 업무 종류 선택"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Available work types" : "현재 선택 가능한 업무 종류"}</h3><p className="mt-1 text-sm text-slate-600">{en ? "Counts show registered processes, not project task steps." : "괄호 안 개수는 프로젝트 단계가 아닌 등록된 업무 프로세스 수입니다."}</p></div><label className="text-sm font-bold text-slate-700">{en ? "Work type" : "업무 종류"}<select className="ml-2 min-h-10 rounded-lg border border-slate-300 bg-white px-3" onChange={(event) => selectWorkType(event.target.value)} value={selectedWorkType}><option value="ALL">{en ? "All work" : "전체 업무"} ({definedProcessTotal})</option>{availableWorkTypes.map((item) => <option key={item.code} value={item.code}>{item.label} ({item.definedCount})</option>)}</select></label></div>
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1"><button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === "ALL" ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} onClick={() => selectWorkType("ALL")} type="button"><strong className="block text-sm">{en ? "All work" : "전체 업무"}</strong><span className="text-xs">{definedProcessTotal} {en ? "registered processes" : "등록 프로세스"} · {workflowItems.length} {en ? "active steps" : "진행 단계"}</span></button>{availableWorkTypes.map((item) => <button className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === item.code ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`} key={item.code} onClick={() => selectWorkType(item.code)} title={item.description} type="button"><strong className="block text-sm">{item.label}</strong><span className="text-xs">{item.definedCount} {en ? "registered processes" : "등록 프로세스"} · {item.count} {en ? "active steps" : "진행 단계"}</span></button>)}</div>
             </section>
+            {selectedDefinedProcesses.length ? <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en?"Execution order":"업무 실행 순서"}</p><h3 className="mt-1 text-lg font-black text-[#052b57]">{en?"Select one process and proceed step by step":"프로세스를 선택해 하나씩 구현·검증"}</h3></div><span className="text-xs font-bold text-slate-500">{selectedDefinedProcesses.length} {en?"processes":"개 프로세스"}</span></div><div className="mt-4 overflow-x-auto pb-2"><ol className="flex min-w-max items-stretch gap-0">{selectedDefinedProcesses.map((process,index)=><li className="flex items-center" key={`sequence-${process.processCode}`}><button className={`flex min-h-32 w-56 flex-col rounded-xl border-2 p-3 text-left ${selectedCatalogProcessCode===process.processCode?"border-[#246beb] bg-blue-50":"border-slate-200 bg-white"}`} onClick={()=>selectCatalogProcess(process.processCode)} type="button"><div className="flex items-center justify-between gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#052b57] text-xs font-black text-white">{index+1}</span><span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">{process.workflowPhase}</span></div><strong className="mt-3 text-sm text-[#052b57]">{process.processName}</strong><div className="mt-auto pt-3"><div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#246beb]" style={{width:`${Math.max(0,Math.min(100,Number(process.completionScore||0)))}%`}} /></div><span className="mt-1 block text-[11px] font-bold text-slate-500">{process.completedTasks||0}/{process.requiredTasks||0} Task · {Number(process.completionScore||0)}%</span></div></button>{index<selectedDefinedProcesses.length-1?<span aria-hidden="true" className="material-symbols-outlined mx-2 text-2xl text-slate-300">arrow_forward</span>:null}</li>)}</ol></div></section>:null}
             <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 [en ? "Total" : "전체", workflowTotal, "assignment"],
