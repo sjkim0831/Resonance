@@ -7,7 +7,7 @@ INDEX="$OUT/index.json"
 
 [[ -s "$INDEX" ]] || { echo '[full-stack-generation] index missing' >&2; exit 1; }
 jq -e '.schemaVersion=="2.0.0" and .packageCount==(.packages|length)' "$INDEX" >/dev/null
-duplicates="$(jq '[.packages[]|(.processCode+"/"+.stepCode)]|length-unique|length' "$INDEX")"
+duplicates="$(jq '[.packages[]|(.processCode+"/"+.stepCode)] | length - (unique | length)' "$INDEX")"
 [[ "$duplicates" = 0 ]] || { echo "[full-stack-generation] duplicate packages=$duplicates" >&2; exit 1; }
 
 while IFS=$'\t' read -r file expected; do
