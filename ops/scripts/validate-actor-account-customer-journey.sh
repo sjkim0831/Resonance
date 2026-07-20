@@ -42,16 +42,43 @@ for account in "${accounts[@]}"; do
 import json,os,sys
 payload=json.load(open(os.environ["BODY"],encoding="utf-8"))
 flow=[row for row in payload.get("workflows",[]) if row.get("projectId")==os.environ["PROJECT"]]
+assigned=[row for row in payload.get("items",[]) if row.get("projectId")==os.environ["PROJECT"]]
+expected={
+    "qaowner26":{"BASIC_INFO","REPORT","REGULATORY_SUBMISSION"},
+    "qadata26":{"ACTIVITY_DATA"},
+    "qacalc26":{"CALCULATION"},
+    "qaverify26":{"VERIFICATION"},
+    "qaapprove26":{"APPROVAL"},
+}[os.environ["ACCOUNT"]]
 if len(flow)!=7 or [int(row.get("stepOrder",0)) for row in flow]!=list(range(1,8)):
     sys.exit(f"full workflow invalid account={os.environ['ACCOUNT']} steps={len(flow)}")
+if {row.get("taskCode") for row in assigned} != expected:
+    sys.exit(f"actual task assignment mismatch account={os.environ['ACCOUNT']}")
+if any(str(row.get("assignee","")).lower()!=os.environ["ACCOUNT"].lower() for row in assigned):
+    sys.exit(f"actual task assignee mismatch account={os.environ['ACCOUNT']}")
 if any(not row.get("targetUrl") for row in flow):
     sys.exit(f"workflow target missing account={os.environ['ACCOUNT']}")
+if any(row.get("actionable") is True and row.get("actorActionable") is not True for row in flow):
+    sys.exit(f"actor access mismatch account={os.environ['ACCOUNT']}")
+if any(row.get("actionable") is True and row.get("pendingPredecessors") for row in flow):
+    sys.exit(f"predecessor bypass account={os.environ['ACCOUNT']}")
 if any(flow[index].get("nextTaskName")!=flow[index+1].get("name") for index in range(6)):
     sys.exit(f"workflow next-task mismatch account={os.environ['ACCOUNT']}")
 regulatory=next((row for row in flow if row.get("taskCode")=="REGULATORY_SUBMISSION"),None)
 if not regulatory or regulatory.get("completionSatisfied") is not True:
     sys.exit(f"regulatory completion evidence missing account={os.environ['ACCOUNT']}")
 PY
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    page_code="$(curl -sS -b "$cookie" -o /dev/null -w '%{http_code}' "$BASE$target")"
+    [[ "$page_code" == 200 ]] || { echo "[actor-account-journey] FAIL task page account=$account target=$target status=$page_code" >&2; exit 1; }
+  done < <(PROJECT="$PROJECT" BODY="$body" python3 - <<'PY'
+import json,os
+payload=json.load(open(os.environ["BODY"],encoding="utf-8"))
+targets={row.get("targetUrl","") for row in payload.get("workflows",[]) if row.get("projectId")==os.environ["PROJECT"]}
+print("\n".join(sorted(target for target in targets if target)))
+PY
+  )
 done
 
 submission_id="$(q "select regulatory_submission_id from emission_regulatory_submission where project_id='$PROJECT' and status='ACCEPTED' order by regulatory_submission_id desc limit 1")"

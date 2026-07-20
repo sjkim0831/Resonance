@@ -436,7 +436,11 @@ export function TaskQuestPanel() {
     contextProjectId || selectedOverviewProjectId || focusedWorkflow?.projectId || "";
 
   useEffect(() => {
-    if (contextProjectId || selectedOverviewProjectId || !overviewProjects.length)
+    if (contextProjectId || !overviewProjects.length) return;
+    if (
+      selectedOverviewProjectId &&
+      overviewProjects.some((project) => project.id === selectedOverviewProjectId)
+    )
       return;
     const pendingProject = rawWorkflowItems.find(
       (item) => item.status !== "DONE",
@@ -692,15 +696,8 @@ export function TaskQuestPanel() {
     () =>
       selectedDefinedProcesses.find(
         (item) => item.processCode === selectedCatalogProcessCode,
-      ) ||
-      (data?.processCatalog || []).find(
-        (item) => item.processCode === selectedCatalogProcessCode,
       ),
-    [
-      data?.processCatalog,
-      selectedDefinedProcesses,
-      selectedCatalogProcessCode,
-    ],
+    [selectedDefinedProcesses, selectedCatalogProcessCode],
   );
   const selectedProcessWaves = useMemo(() => {
     const waves = new Map<number, typeof selectedDefinedProcesses>();
@@ -737,14 +734,14 @@ export function TaskQuestPanel() {
   useEffect(() => {
     if (
       selectedCatalogProcessCode &&
-      !(data?.processCatalog || []).some(
+      !selectedDefinedProcesses.some(
         (item) => item.processCode === selectedCatalogProcessCode,
       )
     ) {
       setSelectedCatalogProcessCode("");
       localStorage.removeItem("task-quest-catalog-process");
     }
-  }, [data?.processCatalog, selectedCatalogProcessCode]);
+  }, [selectedCatalogProcessCode, selectedDefinedProcesses]);
 
   useEffect(() => {
     if (!flowOpen || !selectedCatalogProcessCode) return;
@@ -1651,11 +1648,23 @@ export function TaskQuestPanel() {
                       <div className="mt-4 overflow-x-auto pb-2">
                         <ol className="flex min-w-max items-stretch gap-2">
                           {selectedCatalogSteps.map((step, index) => {
-                            const route = selectedCatalogProcess.businessScreenImplemented
-                              ? step.userPath || (data.allVisible ? step.adminPath : "")
-                              : data.allVisible
-                                ? selectedCatalogProcess.targetUrl || ""
-                                : "";
+                            const runtimeStep = workflowItems.find(
+                              (item) =>
+                                item.processCode === selectedCatalogProcess.processCode &&
+                                (item.processStepCode === step.stepCode ||
+                                  Number(item.stepOrder) === Number(step.stepOrder)),
+                            );
+                            const route = runtimeStep?.targetUrl ||
+                              (selectedCatalogProcess.businessScreenImplemented
+                                ? step.userPath || (data.allVisible ? step.adminPath : "")
+                                : data.allVisible
+                                  ? selectedCatalogProcess.targetUrl || ""
+                                  : "");
+                            const blockedByPredecessor = Boolean(runtimeStep?.pendingPredecessors);
+                            const canStart = Boolean(
+                              route && runtimeStep && runtimeStep.actionable !== false &&
+                                runtimeStep.actorActionable !== false && !blockedByPredecessor,
+                            );
                             const active = index === selectedCatalogStep;
                             return (
                               <li
@@ -1676,6 +1685,21 @@ export function TaskQuestPanel() {
                                 <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">
                                   {step.completionRule}
                                 </p>
+                                {runtimeStep ? (
+                                  <div className="mt-2 space-y-1 text-[11px] font-bold text-slate-600">
+                                    <p>{en ? "Actual task" : "실제 업무"}: {runtimeStep.name}</p>
+                                    <p>{en ? "Status" : "상태"}: {runtimeStep.status}</p>
+                                    {blockedByPredecessor ? (
+                                      <p className="text-amber-700">
+                                        {en ? "Waiting for" : "선행 업무 대기"}: {runtimeStep.pendingPredecessors}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-[11px] font-bold text-amber-700">
+                                    {en ? "The actual project task has not been created." : "실제 프로젝트 업무가 아직 생성되지 않았습니다."}
+                                  </p>
+                                )}
                                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                                   <button
                                     className="text-xs font-black text-blue-700"
@@ -1686,13 +1710,19 @@ export function TaskQuestPanel() {
                                   >
                                     {en ? "Select step" : "단계 선택"}
                                   </button>
-                                  {route ? (
+                                  {canStart ? (
                                     <a
                                       className="rounded-lg bg-[#246beb] px-3 py-2 text-xs font-black text-white"
                                       href={en ? `/en${route}` : route}
                                     >
-                                      {en ? "Open" : "화면 이동"}
+                                      {en ? "Start task" : "업무 진행"}
                                     </a>
+                                  ) : route && runtimeStep ? (
+                                    <span className="text-xs font-bold text-slate-500">
+                                      {blockedByPredecessor
+                                        ? en ? "Predecessor pending" : "선행 업무 대기"
+                                        : en ? "Assigned actor only" : "담당 액터만 진행 가능"}
+                                    </span>
                                   ) : (
                                     <span className="text-xs font-bold text-amber-700">
                                       {en ? "Page pending" : "페이지 개발 대기"}

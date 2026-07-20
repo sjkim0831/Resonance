@@ -329,6 +329,7 @@ public class EmissionProjectRegistryService {
             case "REGULATORY_SUBMISSION" -> count("SELECT count(*) FROM emission_regulatory_submission WHERE project_id=? AND status='ACCEPTED' AND external_receipt_no IS NOT NULL",projectId)>0;
             default -> false;
         };
+        if(!text(task.get("pendingPredecessors")).isBlank()) task.put("actionable",false);
         task.put("completionSatisfied",satisfied);
         task.put("completionEvidence",completionEvidence(code,satisfied));
     }
