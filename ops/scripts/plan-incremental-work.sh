@@ -34,7 +34,9 @@ while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
     projects/carbonet-frontend/source/*|frontend/*)
-      runtime_required=true; frontend_required=true; backend_required=true; catalog_only=false
+      # React source is served from the verified hostPath overlay. It requires
+      # a Vite build, but not a Java/image build or Kubernetes rollout.
+      runtime_required=true; frontend_required=true; catalog_only=false
       add_test "frontend:build"
       add_reason "frontend-source"
       ;;

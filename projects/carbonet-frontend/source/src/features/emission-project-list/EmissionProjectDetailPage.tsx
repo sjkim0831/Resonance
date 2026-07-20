@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HeaderBrand, HeaderDesktopNav, HomeInlineStyles } from "../home-entry/HomeEntrySections";
-import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 
 type Task={code:string;name:string;order:number;status:string;weight:number;dueDate:string};
 type Detail={id:string;name:string;site:string;period:string;scope:string;owner:string;progress:number;step:string;dueDate:string;status:string;tasks:Task[];members:{name:string;role:string}[];history:{type:string;description:string;actor:string;createdAt:string}[]};
@@ -18,7 +14,7 @@ const stages=[
 ];
 
 export function EmissionProjectDetailPage(){
-  const en=isEnglish(),content=LOCALIZED_CONTENT[en?"en":"ko"],home=useAsyncValue(()=>fetchHomePayload(),[en]);
+  const en=isEnglish();
   const searchParams=new URLSearchParams(location.search);
   const id=searchParams.get("projectId")||searchParams.get("id")||"";
   const [data,setData]=useState<Detail|null>(null),[error,setError]=useState(""),[working,setWorking]=useState(false);
@@ -28,7 +24,7 @@ export function EmissionProjectDetailPage(){
   const pathFor=(path:string)=>{const localized=buildLocalizedPath(path,path.startsWith("/en")?path:`/en${path}`);return `${localized}${path.includes("?")?"&":"?"}projectId=${encodeURIComponent(id)}`;};
   async function copy(){setWorking(true);try{const response=await fetch(`${api}/copy`,{method:"POST",credentials:"include"}),body=await response.json();if(!response.ok)throw new Error(body.message);navigate(buildLocalizedPath(`/emission/project/detail?id=${body.id}`,`/en/emission/project/detail?id=${body.id}`));}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}finally{setWorking(false);}}
   async function remove(){if(!confirm(en?"Delete this project?":"이 프로젝트를 삭제하시겠습니까?"))return;setWorking(true);try{const response=await fetch(api,{method:"DELETE",credentials:"include"});if(!response.ok)throw new Error(en?"Could not delete the project.":"프로젝트를 삭제하지 못했습니다.");navigate(buildLocalizedPath("/emission/project_list","/en/emission/project_list"));}catch(reason){setError(reason instanceof Error?reason.message:String(reason));}finally{setWorking(false);}}
-  return <><HomeInlineStyles en={en}/><div className="min-h-screen bg-[#f5f7fa]"><header className="border-b-2 border-[#001e40] bg-white"><div className="mx-auto flex h-16 max-w-7xl items-center px-4 lg:px-8"><HeaderBrand content={content} en={en}/><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu||[]}/></div></header><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
+  return <div className="min-h-screen bg-[#f5f7fa]"><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
     <nav className="text-sm text-slate-500"><a href={buildLocalizedPath("/emission/project_list","/en/emission/project_list")}>{en?"Emission Projects":"배출량 프로젝트"}</a><span className="mx-2">/</span>{en?"Process Workspace":"프로세스 작업공간"}</nav>
     {error&&<div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</div>}{!data&&!error&&<p className="mt-8">{en?"Loading...":"불러오는 중..."}</p>}
     {data&&<><section className="mt-5 rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white"><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><div className="text-sm font-bold text-blue-200">{data.id} · {data.status}</div><h1 className="mt-2 text-3xl font-black">{data.name}</h1><p className="mt-2 text-blue-100">{data.site} · {data.period} · {data.scope}</p></div><div className="flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-3 font-bold text-blue-800" href={buildLocalizedPath("/admin/system/actor-process?process=EMISSION_PROJECT","/en/admin/system/actor-process?process=EMISSION_PROJECT")}>{en?"Simulation Contract":"시뮬레이션 계약"}</a><button className="rounded-lg border border-white/50 px-4 py-3 font-bold" disabled={working} onClick={copy}>{en?"Copy":"복사"}</button><button className="rounded-lg border border-red-300 px-4 py-3 font-bold text-red-100" disabled={working} onClick={remove}>{en?"Delete":"삭제"}</button></div></div></section>
@@ -36,5 +32,5 @@ export function EmissionProjectDetailPage(){
       <section className="mt-5 rounded-2xl border bg-white p-6"><div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-black text-[#052b57]">{en?"Verified work process":"검증 기준 업무 프로세스"}</h2><p className="mt-1 text-sm text-slate-500">{en?"Each stage has an actor, completion rule and connected page.":"각 단계에는 수행 액터, 완료 조건, 연결 화면이 지정됩니다."}</p></div><span className="text-sm font-bold text-blue-700">{completed}/{data.tasks?.length||0} {en?"project tasks complete":"프로젝트 Task 완료"}</span></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{stages.map((stage,index)=><a className="group rounded-xl border border-slate-200 p-5 transition hover:-translate-y-0.5 hover:border-blue-500 hover:bg-blue-50" href={pathFor(stage.path)} key={stage.code}><div className="flex items-center justify-between"><span className="text-xs font-black text-blue-700">STEP {index+1} · {stage.code}</span><span className="text-xs text-slate-400">{stage.actor}</span></div><strong className="mt-2 block text-lg text-[#052b57]">{en?stage.en:stage.ko}</strong><p className="mt-3 text-sm leading-6 text-slate-600">{stage.rule}</p><span className="mt-4 block text-sm font-bold text-blue-700 group-hover:underline">{en?"Open workspace →":"업무 화면 열기 →"}</span></a>)}</div></section>
       <div className="mt-5 grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border bg-white p-6"><h2 className="text-xl font-black text-[#052b57]">{en?"Assigned actors":"참여 액터"}</h2><div className="mt-4 divide-y">{data.members?.length?data.members.map((member,index)=><div className="flex justify-between py-3" key={`${member.name}-${index}`}><strong>{member.name}</strong><span className="text-sm text-slate-500">{member.role}</span></div>):<p className="py-5 text-sm text-amber-700">{en?"Assign project actors before data collection.":"자료수집 전에 프로젝트 액터를 배정해야 합니다."}</p>}</div></section><section className="rounded-2xl border bg-white p-6"><h2 className="text-xl font-black text-[#052b57]">{en?"Audit history":"감사·변경 이력"}</h2><div className="mt-4 divide-y">{data.history?.map((item,index)=><div className="flex flex-col justify-between gap-1 py-3 sm:flex-row" key={`${item.createdAt}-${index}`}><div><strong>{item.description}</strong><p className="text-sm text-slate-500">{item.actor||"-"}</p></div><time className="text-sm text-slate-500">{String(item.createdAt).replace("T"," ")}</time></div>)}</div></section></div>
     </>}
-  </main></div></>;
+  </main></div>;
 }

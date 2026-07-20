@@ -1,10 +1,6 @@
 import {useCallback,useEffect,useMemo,useState,type ReactNode} from "react";
-import {useAsyncValue} from "../../app/hooks/useAsyncValue";
-import {fetchHomePayload} from "../../lib/api/appBootstrap";
 import {buildLocalizedPath,isEnglish,navigate} from "../../lib/navigation/runtime";
 import {AdminPageShell} from "../admin-entry/AdminPageShell";
-import {HeaderBrand,HeaderDesktopNav,HomeInlineStyles} from "../home-entry/HomeEntrySections";
-import {LOCALIZED_CONTENT} from "../home-entry/homeEntryContent";
 
 type Project={id:string;name:string;site:string;period:string;status:string};
 type Report={id:number;version:number;title:string;status:string;certificateId?:string;finalizedAt?:string};
@@ -50,5 +46,5 @@ function RegulatorySubmissionWorkspace({admin=false}:{admin?:boolean}){
 
 function Field({label,wide=false,children}:{label:string;wide?:boolean;children:ReactNode}){return <label className={`text-sm font-bold text-slate-700 ${wide?"md:col-span-2":""}`}>{label}<div className="mt-2 [&_input]:h-12 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:px-3 [&_select]:h-12 [&_select]:w-full [&_select]:rounded-lg [&_select]:border [&_select]:px-3">{children}</div></label>}
 
-export function EmissionRegulatorySubmissionPage(){const en=isEnglish(),content=LOCALIZED_CONTENT[en?"en":"ko"],home=useAsyncValue(()=>fetchHomePayload(),[en]);return <><HomeInlineStyles en={en}/><div className="min-h-screen bg-[#f5f7fa]"><header className="border-b-2 border-[#001e40] bg-white"><div className="mx-auto flex h-16 max-w-7xl items-center px-4 lg:px-8"><HeaderBrand content={content} en={en}/><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu||[]}/></div></header><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8"><RegulatorySubmissionWorkspace/></main></div></>}
+export function EmissionRegulatorySubmissionPage(){return <div className="min-h-screen bg-[#f5f7fa]"><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8"><RegulatorySubmissionWorkspace/></main></div>}
 export function AdminRegulatorySubmissionPage(){return <AdminPageShell breadcrumbs={[{label:"관리자 홈",href:"/admin"},{label:"탄소배출 운영"},{label:"결과·보고"},{label:"규제 제출 현황"}]} title="규제 제출 현황"><RegulatorySubmissionWorkspace admin/></AdminPageShell>}

@@ -324,6 +324,31 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 git merge --ff-only "$target_commit"
 bash ops/scripts/validate-deterministic-development-policy.sh
 
+# A frontend-only commit is compiled directly into the already mounted,
+# guarded React overlay. The overlay script verifies the complete hashed asset
+# closure and the HTTP response before the deployment marker advances. This
+# avoids Java compilation, image creation and a rolling restart while keeping
+# rollback material and stale-chunk protection.
+if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
+   && "$PLAN_BACKEND_REQUIRED" != "true" \
+   && "$PLAN_DATABASE_REQUIRED" != "true" \
+   && "$PLAN_INFRASTRUCTURE_REQUIRED" != "true" ]]; then
+  BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}" \
+    bash ops/scripts/resonance-screen-overlay-apply.sh
+  health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
+  if [[ "$health_status" != *'"status":"UP"'* ]]; then
+    echo "[auto-deploy] refusing frontend success marker: health check is not UP" >&2
+    exit 17
+  fi
+  bash ops/scripts/validate-common-design-assets.sh
+  bash ops/scripts/sync-unified-asset-catalog.sh
+  bash ops/scripts/validate-e4b-selectable-assets.sh
+  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
+  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  echo "[auto-deploy] frontend overlay deployed without Java/image build or rollout: $target_commit"
+  exit 0
+fi
+
 # Flyway is the only schema migration owner. Liquibase stays disabled to avoid
 # two migration engines changing the same schema during a rollout.
 kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \

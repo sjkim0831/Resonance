@@ -132,6 +132,13 @@ for source in \
   co2-production-list/Co2ProductionListMigrationPage.tsx \
   co2-search/Co2SearchMigrationPage.tsx \
   edu-course-detail/EduCourseDetailMigrationPage.tsx \
+  emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx \
+  emission-data-input/EmissionDataInputMigrationPage.tsx \
+  emission-project-list/EmissionProjectDetailPage.tsx \
+  emission-project-list/EmissionProjectReportPage.tsx \
+  emission-project-list/EmissionProjectResultPage.tsx \
+  emission-project-list/EmissionProjectReviewPage.tsx \
+  emission-regulatory-submission/RegulatorySubmissionPage.tsx \
   monitoring-track/MonitoringTrackMigrationPage.tsx; do
   page="$ROOT_DIR/projects/carbonet-frontend/source/src/features/$source"
   if grep -q '<header' "$page"; then
