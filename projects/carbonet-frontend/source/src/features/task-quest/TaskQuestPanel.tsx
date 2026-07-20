@@ -15,6 +15,7 @@ type QuestTask = {
   targetUrl: string;
   actorCode?: string;
   processCode?: string;
+  processName?: string;
   processStepCode?: string;
   completionRule?: string;
   entryState?: string;
@@ -28,6 +29,7 @@ type QuestTask = {
   blockedReason?: string;
   pendingPredecessors?: string;
   actionable?: boolean;
+  actorActionable?: boolean;
   completionSatisfied?: boolean;
   completionEvidence?: string;
 };
@@ -80,6 +82,14 @@ export function TaskQuestPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
+  const [focusedWorkflow, setFocusedWorkflow] = useState<{ projectId: string; processCode: string } | null>(() => {
+    try {
+      const value = JSON.parse(localStorage.getItem("task-quest-focused-workflow") || "null");
+      return value?.projectId && value?.processCode ? value : null;
+    } catch {
+      return null;
+    }
+  });
 
   async function load() {
     try {
@@ -121,24 +131,31 @@ export function TaskQuestPanel() {
 
   const task = useMemo(() => {
     const pending = [...(data?.items || [])].filter((item) => item.status !== "DONE");
+    const focused = focusedWorkflow ? pending.filter((item) => item.projectId === focusedWorkflow.projectId && item.processCode === focusedWorkflow.processCode) : [];
     const contextual = contextProjectId ? pending.filter((item) => item.projectId === contextProjectId) : [];
-    return [...(contextual.length ? contextual : pending)]
+    return [...(focused.length ? focused : contextual.length ? contextual : pending)]
       .sort((a, b) => {
         const aw = taskWeight(a), bw = taskWeight(b);
         return aw[0] - bw[0] || aw[1] - bw[1];
       })[0];
-  }, [contextProjectId, data]);
+  }, [contextProjectId, data, focusedWorkflow]);
 
   const workflowItems = useMemo(() => {
     const source = data?.workflows || data?.items || [];
     const scoped = contextProjectId ? source.filter((item) => item.projectId === contextProjectId) : source;
-    return [...scoped].sort((a, b) => a.projectId.localeCompare(b.projectId) || Number(a.stepOrder || 0) - Number(b.stepOrder || 0));
+    const unique = new Map<string, QuestTask>();
+    scoped.forEach((item) => {
+      const businessKey = item.processStepCode || item.taskCode || `${item.commandCode || "TASK"}:${item.targetUrl || ""}`;
+      const key = `${item.projectId}|${item.processCode || "PROJECT"}|${businessKey}`;
+      if (!unique.has(key)) unique.set(key, item);
+    });
+    return [...unique.values()].sort((a, b) => a.projectId.localeCompare(b.projectId) || String(a.processCode || "").localeCompare(String(b.processCode || "")) || Number(a.stepOrder || 0) - Number(b.stepOrder || 0));
   }, [contextProjectId, data]);
 
   const processGroups = useMemo(() => {
     const groups = new Map<string, QuestTask[]>();
     workflowItems.forEach((item) => {
-      const key = item.projectId;
+      const key = `${item.projectId}|${item.processCode || "PROJECT_WORKFLOW"}`;
       const items = groups.get(key) || [];
       items.push(item);
       groups.set(key, items);
@@ -154,9 +171,45 @@ export function TaskQuestPanel() {
     localStorage.setItem("task-quest-open", next ? "1" : "0");
   }
 
+  function focusWorkflow(item: QuestTask) {
+    if (!item.projectId || !item.processCode) return;
+    const next = { projectId: item.projectId, processCode: item.processCode };
+    setFocusedWorkflow(next);
+    localStorage.setItem("task-quest-focused-workflow", JSON.stringify(next));
+    setOpen(true);
+    setFlowOpen(false);
+  }
+
+  function clearWorkflowFocus() {
+    setFocusedWorkflow(null);
+    localStorage.removeItem("task-quest-focused-workflow");
+  }
+
+  async function activateTask(selected: QuestTask) {
+    if (selected.actionable === false) return;
+    setMessage("");
+    focusWorkflow(selected);
+    try {
+      if (selected.status === "READY") {
+        const response = await fetch(`${api}/${selected.id}/status`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "IN_PROGRESS" })
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.message || (en ? "Unable to start the task." : "업무를 시작하지 못했습니다."));
+      }
+      window.location.href = taskHref(selected, en);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function startTask() {
     if (!task || task.actionable === false) return;
     setMessage("");
+    focusWorkflow(task);
     try {
       if (task.status === "READY") {
         const response = await fetch(`${api}/${task.id}/status`, {
@@ -175,8 +228,9 @@ export function TaskQuestPanel() {
   }
 
   const blocked = Boolean(task && task.actionable === false);
-  const total = Number(data?.summary?.total || 0);
-  const completed = Number(data?.summary?.completed || 0);
+  const focusedTasks = focusedWorkflow ? (data?.items || []).filter((item) => item.projectId === focusedWorkflow.projectId && item.processCode === focusedWorkflow.processCode) : [];
+  const total = focusedTasks.length || Number(data?.summary?.total || 0);
+  const completed = focusedTasks.length ? focusedTasks.filter((item) => item.status === "DONE").length : Number(data?.summary?.completed || 0);
   const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
   const workflowTotal = workflowItems.length;
   const workflowCompleted = workflowItems.filter((item) => item.status === "DONE").length;
@@ -206,6 +260,7 @@ export function TaskQuestPanel() {
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-[#246beb]">{task.projectName || task.projectId}</p>
                     <h2 className="mt-1 text-lg font-black leading-6 text-slate-900">{task.name}</h2>
+                    {focusedWorkflow ? <p className="mt-1 text-xs font-semibold text-slate-500">{task.processName || task.processCode} · {en ? "Focused workflow" : "선택 프로세스 진행 중"}</p> : null}
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${dueLabel(task.dueDate, en).includes(en ? "overdue" : "지연") ? "bg-red-100 text-red-700" : "bg-blue-50 text-blue-800"}`}>{dueLabel(task.dueDate, en)}</span>
                 </div>
@@ -223,6 +278,7 @@ export function TaskQuestPanel() {
                   {task.status === "IN_PROGRESS" ? (en ? "Continue task" : "업무 계속하기") : (en ? "Start task" : "업무 시작하기")}
                   <span className="material-symbols-outlined text-[19px]">arrow_forward</span>
                 </button>
+                {focusedWorkflow ? <button className="mt-2 w-full text-xs font-bold text-slate-500 hover:text-[#246beb]" onClick={clearWorkflowFocus} type="button">{en ? "Return to automatic recommendations" : "자동 업무 추천으로 돌아가기"}</button> : null}
               </>
             ) : <div className="py-4 text-center"><span className="material-symbols-outlined text-4xl text-emerald-600">task_alt</span><p className="mt-2 font-black text-slate-900">{en ? "All assigned tasks are complete." : "배정된 업무를 모두 완료했습니다."}</p></div>}
             <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-bold">
@@ -257,8 +313,11 @@ export function TaskQuestPanel() {
             {processGroups.length ? <div className="space-y-5">
               {processGroups.map(([key, items]) => {
                 const first = items[0];
+                const isFocused = focusedWorkflow?.projectId === first.projectId && focusedWorkflow?.processCode === first.processCode;
                 return <article className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5" key={key}>
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div className="w-full text-sm font-black text-[#246beb]">{first.processName || first.processCode || (en ? "Project workflow" : "프로젝트 업무")} · {items.length} {en ? "deduplicated steps" : "중복 제외 단계"}</div>
+                    <button className={`rounded-lg border px-3 py-2 text-xs font-black ${isFocused ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-blue-300 text-blue-700"}`} onClick={() => focusWorkflow(first)} type="button">{isFocused ? (en ? "Guide selected" : "길잡이 선택됨") : (en ? "Use in task guide" : "업무 길잡이로 진행")}</button>
                     <div><h3 className="font-black text-[#052b57]">{first.projectName || first.projectId}</h3><p className="text-xs font-semibold text-slate-500">{en ? `${items.length}-step integrated workflow` : `${items.length}단계 통합 업무`} · {en ? `${new Set(items.map((item) => item.actorCode).filter(Boolean)).size} participating roles` : `참여 액터 ${new Set(items.map((item) => item.actorCode).filter(Boolean)).size}종`}</p></div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{items.filter((item) => item.status === "DONE").length}/{items.length} {en ? "complete" : "완료"}</span>
                   </div>
@@ -267,12 +326,13 @@ export function TaskQuestPanel() {
                       {items.map((item, index) => {
                         const state = statusPresentation(item, en);
                         return <li className="flex items-center" key={item.id}>
-                          <a className={`group flex min-h-[9.5rem] w-[12.5rem] flex-col rounded-xl border-2 p-3 transition hover:-translate-y-0.5 hover:shadow-lg ${state.style}`} href={taskHref(item, en)}>
+                          <button className={`group flex min-h-[15rem] w-[15rem] flex-col rounded-xl border-2 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${state.style}`} onClick={() => item.actionable === false ? focusWorkflow(item) : void activateTask(item)} type="button">
                             <div className="flex items-center justify-between gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black shadow-sm">{index + 1}</span><span className="flex items-center gap-1 text-xs font-black"><span className="material-symbols-outlined text-[16px]">{state.icon}</span>{state.label}</span></div>
                             <strong className="mt-3 line-clamp-2 text-sm leading-5">{item.name}</strong>
+                            <dl className="mt-2 space-y-1 text-[11px] leading-4 opacity-85"><div><dt className="inline font-black">{en ? "Actor" : "액터"}: </dt><dd className="inline">{item.actorCode || "-"}</dd></div><div><dt className="inline font-black">{en ? "Purpose" : "목적"}: </dt><dd className="inline line-clamp-2">{item.workPurpose || item.name}</dd></div><div><dt className="inline font-black">{en ? "Done" : "완료"}: </dt><dd className="inline line-clamp-2">{item.completionRule || "-"}</dd></div><div><dt className="inline font-black">{en ? "Input" : "입력"}: </dt><dd className="inline line-clamp-1">{item.requiredInputs || "-"}</dd></div><div><dt className="inline font-black">{en ? "Output" : "산출물"}: </dt><dd className="inline line-clamp-1">{item.expectedOutput || "-"}</dd></div></dl>
                             <span className="mt-auto pt-2 text-xs font-bold opacity-75">{dueLabel(item.dueDate, en)}</span>
                             <span className="mt-1 flex items-center gap-1 text-xs font-black text-[#246beb] opacity-0 transition group-hover:opacity-100">{en ? "Open screen" : "화면 바로가기"}<span className="material-symbols-outlined text-[15px]">open_in_new</span></span>
-                          </a>
+                          </button>
                           {index < items.length - 1 ? <span aria-hidden="true" className="material-symbols-outlined mx-2 text-3xl text-slate-300">arrow_forward</span> : null}
                         </li>;
                       })}

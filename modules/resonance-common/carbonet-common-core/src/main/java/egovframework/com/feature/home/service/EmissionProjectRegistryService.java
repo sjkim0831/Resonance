@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.HashSet;
 import java.io.InputStream;
 
 @Service
@@ -241,18 +242,35 @@ public class EmissionProjectRegistryService {
         String actor=actorId==null?"":actorId.trim();
         String where=" WHERE p.tenant_id=? AND (? OR lower(coalesce(t.assignee_id,''))=lower(?)) AND (?='' OR t.task_status=?) AND (?='' OR (?='TODAY' AND t.due_date=current_date) OR (?='WEEK' AND t.due_date BETWEEN current_date AND current_date+7) OR (?='OVERDUE' AND t.due_date<current_date AND t.task_status<>'DONE'))";
         Object[] args={tenant,showAll,actor,state,state,range,range,range,range};
-        String taskProjection="SELECT t.task_id AS \"id\",t.task_code AS \"taskCode\",t.step_order AS \"stepOrder\",t.project_id AS \"projectId\",p.project_name AS \"projectName\",p.site_name AS \"site\",t.task_name AS \"name\",t.task_type AS \"type\",t.task_status AS \"status\",t.priority,t.assignee_id AS \"assignee\",t.due_date AS \"dueDate\",t.target_url AS \"targetUrl\",t.process_code AS \"processCode\",t.process_step_code AS \"processStepCode\",t.actor_code AS \"actorCode\",t.completion_rule AS \"completionRule\",t.blocked_reason AS \"blockedReason\",s.from_state AS \"entryState\",s.requirement_text AS \"workPurpose\",s.input_contract AS \"requiredInputs\",s.output_contract AS \"expectedOutput\",s.command_code AS \"commandCode\",n.task_name AS \"nextTaskName\",n.actor_code AS \"nextActorCode\",n.target_url AS \"nextTaskUrl\",(t.task_status IN ('READY','IN_PROGRESS')) AS \"actionable\",coalesce((SELECT string_agg(p2.task_name,', ' ORDER BY p2.step_order) FROM emission_project_task p2 WHERE p2.project_id=t.project_id AND p2.task_code=ANY(string_to_array(nullif(t.predecessor_codes,''),',')) AND p2.task_status<>'DONE'),'') AS \"pendingPredecessors\" FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id LEFT JOIN framework_process_step s ON s.process_code=t.process_code AND s.step_code=t.process_step_code LEFT JOIN LATERAL (SELECT nt.task_name,nt.actor_code,nt.target_url FROM emission_project_task nt WHERE nt.project_id=t.project_id AND nt.step_order>t.step_order ORDER BY nt.step_order LIMIT 1) n ON true";
+        String taskProjection="SELECT t.task_id AS \"id\",t.task_code AS \"taskCode\",t.step_order AS \"stepOrder\",t.project_id AS \"projectId\",p.project_name AS \"projectName\",p.site_name AS \"site\",t.task_name AS \"name\",t.task_type AS \"type\",t.task_status AS \"status\",t.priority,t.assignee_id AS \"assignee\",t.due_date AS \"dueDate\",t.target_url AS \"targetUrl\",t.process_code AS \"processCode\",coalesce(pd.process_name,t.process_code) AS \"processName\",t.process_step_code AS \"processStepCode\",t.actor_code AS \"actorCode\",t.completion_rule AS \"completionRule\",t.blocked_reason AS \"blockedReason\",s.from_state AS \"entryState\",s.requirement_text AS \"workPurpose\",s.input_contract AS \"requiredInputs\",s.output_contract AS \"expectedOutput\",s.command_code AS \"commandCode\",n.task_name AS \"nextTaskName\",n.actor_code AS \"nextActorCode\",n.target_url AS \"nextTaskUrl\",(t.task_status IN ('READY','IN_PROGRESS')) AS \"actionable\",coalesce((SELECT string_agg(p2.task_name,', ' ORDER BY p2.step_order) FROM emission_project_task p2 WHERE p2.project_id=t.project_id AND p2.task_code=ANY(string_to_array(nullif(t.predecessor_codes,''),',')) AND p2.task_status<>'DONE'),'') AS \"pendingPredecessors\" FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id LEFT JOIN framework_process_step s ON s.process_code=t.process_code AND s.step_code=t.process_step_code LEFT JOIN framework_process_definition pd ON pd.process_code=t.process_code LEFT JOIN LATERAL (SELECT nt.task_name,nt.actor_code,nt.target_url FROM emission_project_task nt WHERE nt.project_id=t.project_id AND nt.step_order>t.step_order ORDER BY nt.step_order LIMIT 1) n ON true";
         List<Map<String,Object>> items=jdbc.queryForList(taskProjection+where+" ORDER BY CASE t.task_status WHEN 'READY' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'BLOCKED' THEN 2 WHEN 'WAITING' THEN 3 ELSE 4 END,CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,t.due_date,t.step_order",args);
         items.forEach(this::enrichCompletionReadiness);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("items",items);result.put("actorId",actor);result.put("allVisible",showAll);
         String workflowScope=showAll?" WHERE p.tenant_id=?":" WHERE p.tenant_id=? AND EXISTS (SELECT 1 FROM framework_project_actor_assignment a WHERE a.project_id=t.project_id AND a.active_yn='Y' AND lower(a.user_id)=lower(?))";
         List<Map<String,Object>> workflows=jdbc.queryForList(taskProjection+workflowScope+" ORDER BY p.due_date NULLS LAST,p.project_id,t.step_order",showAll?new Object[]{tenant}:new Object[]{tenant,actor});
         workflows.forEach(this::enrichCompletionReadiness);
+        applyWorkflowActorAccess(workflows,tenant,actor,showAll);
         result.put("workflows",workflows);
         result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE p.tenant_id=?"+(showAll?"":" AND lower(coalesce(t.assignee_id,''))=lower(?)"),showAll?new Object[]{tenant}:new Object[]{tenant,actor}));
         result.put("notifications",jdbc.queryForList("SELECT notification_id AS \"id\",project_id AS \"projectId\",task_id AS \"taskId\",event_type AS \"eventType\",title,message_text AS \"message\",target_url AS \"targetUrl\",read_at AS \"readAt\",created_at AS \"createdAt\" FROM emission_workflow_notification WHERE tenant_id=? AND (? OR lower(recipient_id)=lower(?)) ORDER BY (read_at IS NULL) DESC,created_at DESC LIMIT 20",tenant,showAll,actor));
         result.put("unreadNotificationCount",jdbc.queryForObject("SELECT count(*) FROM emission_workflow_notification WHERE tenant_id=? AND read_at IS NULL AND (? OR lower(recipient_id)=lower(?))",Integer.class,tenant,showAll,actor));
         return result;
+    }
+
+    private void applyWorkflowActorAccess(List<Map<String,Object>> workflows,String tenant,String account,boolean showAll) {
+        if(showAll) {
+            workflows.forEach(task -> task.put("actorActionable",true));
+            return;
+        }
+        Set<String> allowed=new HashSet<>();
+        jdbc.queryForList("SELECT a.project_id,a.actor_code FROM framework_project_actor_assignment a JOIN emission_project_registry p ON p.project_id=a.project_id WHERE p.tenant_id=? AND a.active_yn='Y' AND lower(a.user_id)=lower(?)",tenant,account)
+                .forEach(row -> allowed.add(text(row.get("project_id"))+"|"+text(row.get("actor_code"))));
+        workflows.forEach(task -> {
+            boolean actorActionable=allowed.contains(text(task.get("projectId"))+"|"+text(task.get("actorCode")));
+            task.put("actorActionable",actorActionable);
+            task.put("actionable",Boolean.TRUE.equals(task.get("actionable"))&&actorActionable);
+            if(!actorActionable&&text(task.get("blockedReason")).isBlank()) task.put("blockedReason","다른 액터에게 배정된 단계입니다.");
+        });
     }
 
     private void enrichCompletionReadiness(Map<String,Object> task) {
