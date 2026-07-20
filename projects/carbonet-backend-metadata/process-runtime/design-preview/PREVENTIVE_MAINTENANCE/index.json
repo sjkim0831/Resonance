@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "PREVENTIVE_MAINTENANCE",
+      "stepCode": "PM_EXECUTE",
+      "package": "PREVENTIVE_MAINTENANCE__PM_EXECUTE.json",
+      "packageHash": "077d09b273e965a21137bc23191a2fe28ffea9b3209f08d641d43634277eca93",
+      "pages": 2
+    },
+    {
+      "processCode": "PREVENTIVE_MAINTENANCE",
+      "stepCode": "PM_PLAN",
+      "package": "PREVENTIVE_MAINTENANCE__PM_PLAN.json",
+      "packageHash": "6360970c94ae556c13dda742e008c89bcbe7164ee6619fc542095afc0a9448d6",
+      "pages": 2
+    },
+    {
+      "processCode": "PREVENTIVE_MAINTENANCE",
+      "stepCode": "PM_RETURN_SERVICE",
+      "package": "PREVENTIVE_MAINTENANCE__PM_RETURN_SERVICE.json",
+      "packageHash": "69013fa0eb70faf94d91f0a51703ed2b7418844f52b88b9c08e866e27a6669f8",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "3958e9a816495a5a25358707bed61b0c0f4f4c707a551d231d46adfa5c4b03c9"
+}

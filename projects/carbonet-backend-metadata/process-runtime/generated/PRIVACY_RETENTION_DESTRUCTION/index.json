@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "PRIVACY_RETENTION_DESTRUCTION",
+      "stepCode": "PRD_ACCESS",
+      "package": "PRIVACY_RETENTION_DESTRUCTION__PRD_ACCESS.json",
+      "packageHash": "c6daadb713f1ae7d6c8512423a09b622887526ef5051d987687294f146f64dee",
+      "pages": 2
+    },
+    {
+      "processCode": "PRIVACY_RETENTION_DESTRUCTION",
+      "stepCode": "PRD_CLASSIFY",
+      "package": "PRIVACY_RETENTION_DESTRUCTION__PRD_CLASSIFY.json",
+      "packageHash": "95ab9a03574d08318354dd9f0a88852366da9d748e8c513941f15c5a206dc955",
+      "pages": 2
+    },
+    {
+      "processCode": "PRIVACY_RETENTION_DESTRUCTION",
+      "stepCode": "PRD_DESTROY",
+      "package": "PRIVACY_RETENTION_DESTRUCTION__PRD_DESTROY.json",
+      "packageHash": "318dceaa3c53eac02a84407aa458a0ef3cd6b2a5e8580071a7c08c1b6f788e4b",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "3a2f768b7babf359062002a5b4bf59c2fd5b3653e1a2d6f642750428ce4824fb"
+}
