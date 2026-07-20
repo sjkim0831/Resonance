@@ -17,7 +17,7 @@ jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/de
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
 case "$JOB_TYPE" in
-  FULL_STACK_GENERATION)
+  FULL_STACK|FULL_STACK_GENERATION)
     artifact="projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS/index.json"
     FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
       bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS"
