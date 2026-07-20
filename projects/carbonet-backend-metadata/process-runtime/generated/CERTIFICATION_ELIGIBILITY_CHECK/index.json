@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+      "stepCode": "CEC_DECIDE",
+      "package": "CERTIFICATION_ELIGIBILITY_CHECK__CEC_DECIDE.json",
+      "packageHash": "d133a9feaf66143f6ab8bbba7999e4b4d0ed8f435eb91dce9934fca936f42ef9",
+      "pages": 2
+    },
+    {
+      "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+      "stepCode": "CEC_VALIDATE_COMPANY",
+      "package": "CERTIFICATION_ELIGIBILITY_CHECK__CEC_VALIDATE_COMPANY.json",
+      "packageHash": "4659a4305a2ee05c02f053e857a7115ee7bdc9c5096123afacecfbb3a969afe6",
+      "pages": 2
+    },
+    {
+      "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+      "stepCode": "CEC_VERIFY_EXTERNAL",
+      "package": "CERTIFICATION_ELIGIBILITY_CHECK__CEC_VERIFY_EXTERNAL.json",
+      "packageHash": "e84ac34d3eccdace6cdf6d90c6ef4153b28aa9757292c219c3b38bfdcba0e612",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "c0f82edafb1cf9beeb5c654b683e5d1396b0baac0892ea84c13ea9478f0cb8b5"
+}
