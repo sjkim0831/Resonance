@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { buildLocalizedPath, getNavigationEventName, isEnglish } from "../../lib/navigation/runtime";
@@ -6,7 +7,6 @@ import type { SyntheticEvent } from "react";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
-const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
 
 type QueueCard = {
   badge: string;
@@ -620,36 +620,7 @@ export function Co2DemandListMigrationPage() {
             </div>
           </section>
         </main>
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-12 pb-8">
-            <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-gray-100">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img alt={content.govAlt} className="h-8 grayscale opacity-50" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-                  <span className="text-xl font-black text-gray-800 tracking-tight">{content.footerTitle}</span>
-                </div>
-                <address className="not-italic text-sm text-gray-500 leading-relaxed">
-                  {content.footerAddress}<br />
-                  {content.footerDescription}
-                </address>
-              </div>
-              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                {content.footerLinks.map((link) => (
-                  <a className={link === content.footerLinks[0] ? "text-[var(--kr-gov-blue)] hover:underline" : "text-gray-600 hover:underline"} href="#" key={link} onClick={(event) => event.preventDefault()}>
-                    {link}
-                  </a>
-                ))}
-              </div>
-            </div>
-            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-              <p className="text-xs font-medium text-gray-400">{content.footerCopyright}</p>
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">{content.footerChip}</div>
-                <img alt={content.waAlt} className="h-10 opacity-60" src={WA_MARK} />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

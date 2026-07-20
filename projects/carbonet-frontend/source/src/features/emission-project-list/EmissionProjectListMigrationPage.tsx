@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -13,10 +14,6 @@ import {
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import { HomePayload } from "../home-entry/homeEntryTypes";
-
-const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
-const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
-const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
 
 type QueueItem = {
   level: string;
@@ -113,15 +110,6 @@ type NextHomePageProposal = {
   action: string;
 };
 
-function handleGovSymbolError(event: React.SyntheticEvent<HTMLImageElement>) {
-  const image = event.currentTarget;
-  if (image.dataset.fallbackApplied === "1") {
-    image.style.display = "none";
-    return;
-  }
-  image.dataset.fallbackApplied = "1";
-  image.src = GOV_SYMBOL_FALLBACK;
-}
 
 function getQueueHref(item: QueueItem) {
   if (item.icon === "open_in_new" || item.title.includes("Energy") || item.title.includes("에너지")) {
@@ -1188,34 +1176,7 @@ export function EmissionProjectListMigrationPage() {
           </section>
         </main>
 
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-12 pb-8">
-            <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-gray-100">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img alt={en ? "Republic of Korea government symbol" : "대한민국 정부 상징"} className="h-8 grayscale opacity-50" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-                  <span className="text-xl font-black text-gray-800 tracking-tight">{en ? "CCUS Integrated Management Office" : "CCUS 통합관리본부"}</span>
-                </div>
-                <address className="not-italic text-sm text-gray-500 leading-relaxed">
-                  {en ? "(04551) 110 Sejong-daero, Jung-gu, Seoul | Site Management Support Team: 02-1234-5678" : "(04551) 서울특별시 중구 세종대로 110 | 현장 관리 지원팀: 02-1234-5678"}<br />
-                  {en ? "This platform is optimized for enterprise greenhouse-gas site management." : "본 플랫폼은 기업의 온실가스 감축 현장 관리를 위해 최적화되었습니다."}
-                </address>
-              </div>
-              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                <a className="text-[var(--kr-gov-blue)] hover:underline" href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Privacy Policy" : "개인정보처리방침"}</a>
-                <a className="text-gray-600 hover:underline" href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Terms of Use" : "이용약관"}</a>
-                <a className="text-gray-600 hover:underline" href={buildLocalizedPath("/support/post_list", "/en/support/post_list")}>{en ? "Manual Download" : "매뉴얼 다운로드"}</a>
-              </div>
-            </div>
-            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-              <p className="text-xs font-medium text-gray-400">{en ? "© 2025 CCUS Carbon Footprint Platform. Dedicated Site Overseer Portal." : "© 2025 CCUS Carbon Footprint Platform. Dedicated Site Overseer Portal."}</p>
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">{en ? "V 2.5.0 (AI Assistant Enabled)" : "V 2.5.0 (AI Assistant Enabled)"}</div>
-                <img alt={en ? "Web accessibility certification mark" : "웹 접근성 품질인증 마크"} className="h-10 opacity-60" src={WA_MARK} />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

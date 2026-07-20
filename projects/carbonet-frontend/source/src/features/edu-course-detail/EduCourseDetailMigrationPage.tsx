@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type MethodologyCard = {
@@ -543,38 +544,7 @@ export function EduCourseDetailMigrationPage() {
         </aside>
       </main>
 
-      <footer className="mt-20 border-t border-gray-200 bg-white">
-        <div className="mx-auto max-w-[1440px] px-4 py-12 lg:px-8">
-          <div className="flex flex-col items-start justify-between gap-10 md:flex-row">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[24px] text-gray-400">school</span>
-                <span className="text-lg font-black text-gray-800">{copy.footerTitle}</span>
-              </div>
-              <address className="not-italic text-sm leading-relaxed text-gray-500">
-                {copy.footerAddress}
-                <br />
-                {copy.footerBody}
-              </address>
-            </div>
-            <div className="flex gap-8 text-sm font-bold text-gray-500">
-              {copy.footerLinks.map((item) => (
-                <button className="hover:text-[var(--kr-gov-blue)]" key={item} onClick={() => navigate(item.includes("Guide") || item.includes("가이드") ? courseListHref() : inquiryHref())} type="button">{item}</button>
-              ))}
-            </div>
-          </div>
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-gray-100 pt-8 text-xs text-gray-400 md:flex-row">
-            <p>{copy.copyright}</p>
-            <div className="flex gap-4">
-              <img
-                alt={en ? "Government mark" : "정부상징"}
-                className="h-6 opacity-30"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUw404pm2QFmL61j73Dpfn72GnHGEg-KXTkLQ8WVJYUJ4iekrO0IvqJK8cd0cOSNSIh9Yq1LAodkSNj7oHtVAltdnnymj25ZzOI3l167qrrWmkEoYsZGu3ztT-YGo9se-fFR3NhBG3rZ8DYfs2vna0bxSzVG8VjryTnsz40LCDS2SN3-AeqXrbaPEva2ptmrQzO8iQSwbqSGyGKddlGf7FtnhHT25Cz5a5Xhk8MTve0BF4RWxN-ULiw64ZBbrTASIHQUaURqiZXyE"
-              />
-            </div>
-          </div>
-        </div>
-      </footer>
+      <StandardUserFooter english={en} />
     </div>
   );
 }

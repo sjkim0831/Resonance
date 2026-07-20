@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -13,7 +14,6 @@ import type { HomeMenuItem, HomePayload } from "../home-entry/homeEntryTypes";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
-const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
 
 function readString(value: unknown) {
   return String(value || "");
@@ -740,36 +740,7 @@ export function EmissionReportSubmitMigrationPage() {
           </div>
         </main>
 
-        <footer className="bg-white border-t border-[var(--kr-gov-border-light)]">
-          <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-12 pb-8">
-            <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-[var(--kr-gov-border-light)]">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img alt={sharedContent.govAlt} className="h-8 grayscale" src={GOV_SYMBOL} onError={handleGovSymbolError} />
-                  <span className="text-xl font-black text-[var(--kr-gov-text-primary)]">{content.footerOrg}</span>
-                </div>
-                <address className="not-italic text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed whitespace-pre-line">{content.footerAddress}</address>
-              </div>
-              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                <a className="text-[var(--kr-gov-blue)] hover:underline" href="#">{content.footerPolicy}</a>
-                <a className="text-[var(--kr-gov-text-primary)] hover:underline" href="#">{content.footerTerms}</a>
-                <a className="text-[var(--kr-gov-text-primary)] hover:underline" href="#">{content.footerNoSpam}</a>
-              </div>
-            </div>
-            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="text-xs font-medium text-[var(--kr-gov-text-secondary)]">
-                <p>{content.footerCopyright}</p>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2 px-3 py-1 bg-[var(--kr-gov-bg-gray)] rounded-[var(--kr-gov-radius)] text-xs font-bold text-[var(--kr-gov-text-secondary)]">
-                  <span>{content.footerUpdated}</span>
-                  <time dateTime="2025-08-20">2025.08.20</time>
-                </div>
-                <img alt="웹 접근성 품질인증 마크" className="h-10" src={WA_MARK} />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

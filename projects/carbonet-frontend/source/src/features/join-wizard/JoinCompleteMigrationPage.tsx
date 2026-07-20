@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { resetJoinSession } from "../../lib/api/joinSession";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -207,42 +208,7 @@ export function JoinCompleteMigrationPage() {
         </div>
       </main>
 
-      <footer className="bg-white border-t border-[var(--kr-gov-border-light)] mt-20">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-12 pb-8">
-          <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-[var(--kr-gov-border-light)]">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <img
-                  alt={en ? "Emblem of the Republic of Korea" : "대한민국 정부 상징"}
-                  className="h-8 grayscale"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUw404pm2QFmL61j73Dpfn72GnHGEg-KXTkLQ8WVJYUJ4iekrO0IvqJK8cd0cOSNSIh9Yq1LAodkSNj7oHtVAltdnnymj25ZzOI3l167qrrWmkEoYsZGu3ztT-YGo9se-fFR3NhBG3rZ8DYfs2vna0bxSzVG8VjryTnsz40LCDS2SN3-AeqXrbaPEva2ptmrQzO8iQSwbqSGyGKddlGf7FtnhHT25Cz5a5Xhk8MTve0BF4RWxN-ULiw64ZBbrTASIHQUaURqiZXyE"
-                />
-                <span className="text-xl font-black text-[var(--kr-gov-text-primary)]">{en ? "CCUS Integrated Management Office" : "CCUS 통합관리본부"}</span>
-              </div>
-              <address className="not-italic text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed">
-                {en
-                  ? "(04551) 110 Sejong-daero, Jung-gu, Seoul, Korea | Main Contact: 02-1234-5678 (Weekdays 09:00~18:00)"
-                  : "(04551) 서울특별시 중구 세종대로 110 | 대표전화: 02-1234-5678 (평일 09:00~18:00)"}
-                <br />
-                {en
-                  ? "This service manages greenhouse gas reduction performance in accordance with relevant laws."
-                  : "본 서비스는 관계 법령에 의거하여 온실가스 감축 성과를 관리합니다."}
-              </address>
-            </div>
-            <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-              {(en ? ["Privacy Policy", "Terms of Use", "Email Collection Refusal"] : ["개인정보처리방침", "이용약관", "이메일무단수집거부"]).map((item, index) => (
-                <a
-                  className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-[var(--kr-gov-text-primary)] hover:underline"}
-                  href="#"
-                  key={item}
-                >
-                  {item}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+      <StandardUserFooter english={en} />
     </div>
   );
 }

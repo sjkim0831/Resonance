@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
@@ -14,7 +15,6 @@ import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
-const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
 
 type LciRecord = {
   code: string;
@@ -675,39 +675,7 @@ export function EmissionLciMigrationPage() {
           </section>
         </main>
 
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-12 pb-8">
-            <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-gray-100">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img alt={en ? "Government symbol" : "대한민국 정부 상징"} className="h-8 grayscale opacity-50" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-                  <span className="text-xl font-black text-gray-800 tracking-tight">{en ? "CCUS Integrated Operations" : "CCUS 통합관리본부"}</span>
-                </div>
-                <address className="not-italic text-sm text-gray-500 leading-relaxed">
-                  {en
-                    ? "(04551) 110, Sejong-daero, Jung-gu, Seoul | Support: 02-1234-5678"
-                    : "(04551) 서울특별시 중구 세종대로 110 | 기술 지원: 02-1234-5678"}
-                  <br />
-                  {en
-                    ? "This portal provides LCI datasets for precise carbon footprint analysis."
-                    : "본 포털은 정밀한 탄소 발자국 산정을 위한 LCI 데이터 제공을 목적으로 합니다."}
-                </address>
-              </div>
-              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                <a className="text-[var(--kr-gov-blue)] hover:underline" href="#">{en ? "Privacy Policy" : "개인정보처리방침"}</a>
-                <a className="text-gray-600 hover:underline" href="#">{en ? "LCI Terms of Use" : "LCI 데이터 이용약관"}</a>
-                <a className="text-gray-600 hover:underline" href="#">{en ? "DB Manual Download" : "DB 매뉴얼 다운로드"}</a>
-              </div>
-            </div>
-            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-              <p className="text-xs font-medium text-gray-400">© 2025 CCUS Carbon Footprint Platform. LCI Analysis Portal.</p>
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">V 2.5.0 (LCI DB Integrated)</div>
-                <img alt={en ? "Web accessibility mark" : "웹 접근성 품질인증 마크"} className="h-10 opacity-60" src={WA_MARK} />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { resetJoinSession } from "../../lib/api/joinSession";
 import { buildLocalizedPath, getSearchParam, isEnglish, navigate } from "../../lib/navigation/runtime";
@@ -174,45 +175,7 @@ export function JoinCompanyRegisterCompleteMigrationPage() {
         </div>
       </main>
 
-      <footer className="bg-white border-t border-[var(--kr-gov-border-light)] mt-auto">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <img
-                  alt={en ? "Government Emblem" : "대한민국 정부 상징"}
-                  className="h-8 grayscale"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUw404pm2QFmL61j73Dpfn72GnHGEg-KXTkLQ8WVJYUJ4iekrO0IvqJK8cd0cOSNSIh9Yq1LAodkSNj7oHtVAltdnnymj25ZzOI3l167qrrWmkEoYsZGu3ztT-YGo9se-fFR3NhBG3rZ8DYfs2vna0bxSzVG8VjryTnsz40LCDS2SN3-AeqXrbaPEva2ptmrQzO8iQSwbqSGyGKddlGf7FtnhHT25Cz5a5Xhk8MTve0BF4RWxN-ULiw64ZBbrTASIHQUaURqiZXyE"
-                />
-                <span className="text-xl font-black text-[var(--kr-gov-text-primary)]">
-                  {en ? "Carbon Neutral CCUS Management Headquarters" : "탄소중립 CCUS 통합관리본부"}
-                </span>
-              </div>
-              <address className="not-italic text-sm text-[var(--kr-gov-text-secondary)] leading-relaxed">
-                {en ? "(04551) 110 Sejong-daero, Jung-gu, Seoul | Main Tel: 02-1234-5678" : "(04551) 서울특별시 중구 세종대로 110 | 대표전화: 02-1234-5678"}
-                <br />
-                © 2025 CCUS Integration Management Portal. All rights reserved.
-              </address>
-            </div>
-            <div className="flex flex-col items-end gap-4">
-              <div className="flex flex-wrap gap-6 text-sm font-bold">
-                <a className="text-[var(--kr-gov-blue)] hover:underline" href="#">{en ? "Privacy Policy" : "개인정보처리방침"}</a>
-                <a className="text-[var(--kr-gov-text-primary)] hover:underline" href="#">{en ? "Terms of Service" : "이용약관"}</a>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="px-3 py-1 bg-[var(--kr-gov-bg-gray)] rounded-[var(--kr-gov-radius)] text-[11px] font-bold text-[var(--kr-gov-text-secondary)]">
-                  {en ? "Last Updated:" : "최종 수정일:"} <time dateTime="2025-08-14">2025.08.14</time>
-                </div>
-                <img
-                  alt={en ? "Web Accessibility Certification Mark" : "웹 접근성 품질인증 마크"}
-                  className="h-10"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <StandardUserFooter english={en} />
     </div>
   );
 }

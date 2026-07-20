@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -6,12 +7,11 @@ import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { readBootstrappedHomePayload } from "../../lib/api/bootstrap";
 import { buildLocalizedPath, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu } from "../home-entry/HomeEntrySections";
-import { HOME_ENTRY_ASSETS, LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
+import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
-const WA_MARK = HOME_ENTRY_ASSETS.WA_MARK;
 
 type Recommendation = {
   category: string;
@@ -578,40 +578,7 @@ export function EmissionSimulateMigrationPage() {
           </section>
         </main>
 
-        <footer className="border-t border-gray-200 bg-white">
-          <div className="max-w-[1600px] mx-auto px-4 lg:px-8 py-10">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-emerald-600">eco</span>
-                  </div>
-                  <div>
-                    <strong className="block text-lg font-black text-slate-900">{en ? "Carbon analysis HQ" : "탄소배출 종합분석 센터"}</strong>
-                    <p className="text-sm text-slate-500">
-                      {en
-                        ? "(04551) 110 Sejong-daero, Jung-gu, Seoul | Support 02-987-6543"
-                        : "(04551) 서울특별시 중구 세종대로 110 | 전략 수립 지원실: 02-987-6543"}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {en
-                    ? "Simulation results are for planning use only and should be finalized through the verification workflow."
-                    : "본 시뮬레이션 결과는 전략 검토용이며 최종 판단 수립은 검증 절차 완료 후 가능합니다."}
-                </p>
-              </div>
-              <div className="flex flex-col items-start gap-4 lg:items-end">
-                <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium text-slate-500">
-                  <a href={buildLocalizedPath("/support/faq", "/en/support/faq")}>{en ? "Data retention policy" : "데이터 보관 지침"}</a>
-                  <a href={buildLocalizedPath("/support/post_list", "/en/support/post_list")}>{en ? "System guide" : "시스템 가이드라인"}</a>
-                  <a href={buildLocalizedPath("/emission/data_history", "/en/emission/data_history")}>{en ? "No unauthorized analysis" : "분석 변환물 금지"}</a>
-                </nav>
-                <img alt={content.waAlt} className="h-10 w-auto" src={WA_MARK} />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

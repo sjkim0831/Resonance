@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -9,7 +10,6 @@ import type { HomePayload } from "../home-entry/homeEntryTypes";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
-const WA_MARK = "https://lh3.googleusercontent.com/aida-public/AB6AXuAzkKwREcbsB7LV3B2b7fBK7y2M_9Exa0vlGVzxNy2qM0n1LFMRlBCIa_XiIBeCfvv3DkMb9Z0D05Y-RMuAytisqlCS8QTpbtebgKnMnWoefEx5uJOgRW5H_8Pw9jmaRvkiW6sVRrifgIhrWc5hi2PRUGHgXn-q8-veHvu9wSwDhtcvbHKYyokgnP-hqdR10ahEAdBe4vFFkR88N_By8pjpp34KH9TwHOouRLBwdfVCsRGmDCS6wnvQZDwf6s4HyScSMXyJJGQjl8Y";
 
 type Recommendation = {
   badge: string;
@@ -748,50 +748,7 @@ export function Co2ProductionListMigrationPage() {
             </div>
           </section>
         </main>
-        <footer className="bg-white border-t border-gray-200 mt-20">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-12">
-            <div className="flex flex-col md:flex-row justify-between gap-10">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img alt={content.govAlt} className="h-8 grayscale opacity-50" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-                  <span className="text-xl font-black text-gray-800 tracking-tight">{content.footerTitle}</span>
-                </div>
-                <p className="text-sm text-gray-500 max-w-md leading-relaxed">{content.footerDescription}</p>
-              </div>
-              <div className="flex flex-wrap gap-12">
-                {content.footerSections.map((section) => (
-                  <div className="space-y-4" key={section.title}>
-                    <h5 className="text-sm font-black text-gray-800">{section.title}</h5>
-                    <ul className="text-xs text-gray-500 space-y-2 font-bold">
-                      {section.links.map((link, index) => (
-                        <li key={link}>
-                          <a
-                            className={index === 0 && section.firstLinkAccent ? "text-[var(--kr-gov-blue)]" : "hover:text-[var(--kr-gov-blue)]"}
-                            href={index === 0 && section.firstLinkAccent ? buildLocalizedPath("/sitemap", "/en/sitemap") : "#"}
-                            onClick={(event) => {
-                              if (!(index === 0 && section.firstLinkAccent)) {
-                                event.preventDefault();
-                              }
-                            }}
-                          >
-                            {link}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-              <p className="text-xs font-medium text-gray-400">{content.footerCopyright}</p>
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-black text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">{content.footerChip}</div>
-                <img alt={content.waAlt} className="h-10 opacity-40" src={WA_MARK} />
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

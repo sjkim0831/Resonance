@@ -1,4 +1,5 @@
 import { useEffect, type SyntheticEvent } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { isEnglish } from "../../lib/navigation/runtime";
 
@@ -815,36 +816,7 @@ export function Co2SearchMigrationPage() {
         </section>
       </main>
 
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 lg:px-8">
-          <div className="flex flex-col justify-between gap-10 border-b border-gray-100 pb-10 md:flex-row">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <img alt={en ? "Government symbol" : "대한민국 정부 상징"} className="h-8 opacity-50 grayscale" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-                <span className="text-xl font-black tracking-tight text-gray-800">{content.footerTitle}</span>
-              </div>
-              <address className="not-italic text-sm leading-relaxed text-gray-500">
-                {content.footerAddress}
-                <br />
-                {content.footerDescription}
-              </address>
-            </div>
-            <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-              {content.footerLinks.map((link, index) => (
-                <a key={link} className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-gray-600 hover:underline"} href="#">
-                  {link}
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="mt-8 flex flex-col items-center justify-between gap-6 md:flex-row">
-            <p className="text-xs font-medium text-gray-400">{content.footerCopy}</p>
-            <div className="flex items-center gap-4">
-              <div className="rounded bg-gray-50 px-2 py-1 text-[10px] font-bold text-gray-400">{content.version}</div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <StandardUserFooter english={en} />
     </div>
   );
 }

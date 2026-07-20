@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
@@ -938,37 +939,7 @@ export function Co2CreditMigrationPage() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-[1440px] mx-auto px-4 lg:px-8 pt-12 pb-8">
-            <div className="flex flex-col md:flex-row justify-between gap-10 pb-10 border-b border-gray-100">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <img alt={content.govAlt} className="h-8 grayscale opacity-50" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-                  <span className="text-xl font-black text-gray-800 tracking-tight">{content.footerTitle}</span>
-                </div>
-                <address className="not-italic text-sm text-gray-500 leading-relaxed whitespace-pre-line">{content.footerDescription}</address>
-              </div>
-              <div className="flex flex-wrap gap-x-8 gap-y-4 text-sm font-bold">
-                {content.footerLinks.flatMap((section) => section.links).map((link, index) => (
-                  <a
-                    className={index === 0 ? "text-[var(--kr-gov-blue)] hover:underline" : "text-gray-600 hover:underline"}
-                    href="#"
-                    key={link}
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    {link}
-                  </a>
-                ))}
-              </div>
-            </div>
-            <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-6">
-              <p className="text-xs font-medium text-gray-400">{content.footerCopyright}</p>
-              <div className="flex items-center gap-4">
-                <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded">{content.footerBadge}</div>
-              </div>
-            </div>
-          </div>
-        </footer>
+        <StandardUserFooter english={en} />
       </div>
     </>
   );

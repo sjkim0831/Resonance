@@ -40,6 +40,7 @@ MANIFEST_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/platform/screen
 COMMON_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/CommonUserFooter.tsx"
 HOME_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/features/home-entry/HomeEntrySections.tsx"
 PORTAL_CHROME_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/UserPortalChrome.tsx"
+STANDARD_FOOTER_SOURCE="$ROOT_DIR/projects/carbonet-frontend/source/src/components/user-shell/StandardUserFooter.tsx"
 
 [[ -f "$WORKFLOW_SOURCE" ]] && grep -q 'data-common-component="COMMON_STEP_FLOW"' "$WORKFLOW_SOURCE" || {
   echo "[common-design-assets] FAIL COMMON_STEP_FLOW source implementation missing" >&2; exit 1;
@@ -82,4 +83,34 @@ grep -q 'CommonUserFooter' "$HOME_FOOTER_SOURCE" && grep -q 'CommonUserFooter' "
 if grep -q '<footer' "$HOME_FOOTER_SOURCE" || grep -q '<footer' "$PORTAL_CHROME_SOURCE"; then
   echo "[common-design-assets] FAIL duplicate footer markup remains in home wrappers" >&2; exit 1;
 fi
+grep -q 'CommonUserFooter' "$STANDARD_FOOTER_SOURCE" || {
+  echo "[common-design-assets] FAIL standard user footer is not connected to COMMON_PAGE_FOOTER" >&2; exit 1;
+}
+for source in \
+  co2-analysis/Co2AnalysisMigrationPage.tsx \
+  co2-credit/Co2CreditMigrationPage.tsx \
+  co2-demand-list/Co2DemandListMigrationPage.tsx \
+  co2-integrity/Co2IntegrityMigrationPage.tsx \
+  co2-production-list/Co2ProductionListMigrationPage.tsx \
+  co2-search/Co2SearchMigrationPage.tsx \
+  edu-course-detail/EduCourseDetailMigrationPage.tsx \
+  emission-lci/EmissionLciMigrationPage.tsx \
+  emission-project-list/EmissionProjectListMigrationPage.tsx \
+  emission-report-submit/EmissionReportSubmitMigrationPage.tsx \
+  emission-simulate/EmissionSimulateMigrationPage.tsx \
+  join-company-register/JoinCompanyRegisterCompleteMigrationPage.tsx \
+  join-wizard/JoinAuthMigrationPage.tsx \
+  join-wizard/JoinCompleteMigrationPage.tsx \
+  join-wizard/JoinWizardMigrationPage.tsx \
+  monitoring-track/MonitoringTrackMigrationPage.tsx \
+  public-entry/PublicEntryPages.tsx \
+  public-entry/publicEntryShared.tsx; do
+  page="$ROOT_DIR/projects/carbonet-frontend/source/src/features/$source"
+  grep -q 'StandardUserFooter' "$page" || {
+    echo "[common-design-assets] FAIL common footer reference missing: $source" >&2; exit 1;
+  }
+  if grep -q '<footer' "$page"; then
+    echo "[common-design-assets] FAIL duplicate page footer markup remains: $source" >&2; exit 1;
+  fi
+done
 echo "[common-design-assets] PASS source reuse contract"
