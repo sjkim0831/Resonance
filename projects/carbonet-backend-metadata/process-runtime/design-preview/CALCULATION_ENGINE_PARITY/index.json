@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 3,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "CALCULATION_ENGINE_PARITY",
+      "stepCode": "CEP_BASELINE",
+      "package": "CALCULATION_ENGINE_PARITY__CEP_BASELINE.json",
+      "packageHash": "b939d267ec697bfbaea14a31bb2db517a4ae48b9e1971a3e76ce43b6fc960419",
+      "pages": 2
+    },
+    {
+      "processCode": "CALCULATION_ENGINE_PARITY",
+      "stepCode": "CEP_COMPARE",
+      "package": "CALCULATION_ENGINE_PARITY__CEP_COMPARE.json",
+      "packageHash": "034f8ef1bac2f0f3d65c4f35db431a8a7dc2277af6f380384017ce29277c9b95",
+      "pages": 2
+    },
+    {
+      "processCode": "CALCULATION_ENGINE_PARITY",
+      "stepCode": "CEP_GATE",
+      "package": "CALCULATION_ENGINE_PARITY__CEP_GATE.json",
+      "packageHash": "2ee3a34c48d7cf2bc9ebe314101d603f35724820ba810b73b9363d281a9fbb06",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "a336a6e1e97863ad8edfc5f8351475d47a0ec045d90a6f4775ada363cea13102"
+}
