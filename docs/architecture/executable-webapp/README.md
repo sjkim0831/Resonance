@@ -36,6 +36,35 @@ scenario families. Legal interpretation and customer-specific policy remain
 
 No Java or frontend generation may start for a process unless both gates pass.
 
+## Current DB-first generation contract
+
+The static catalogue above is retained as the reference baseline. The current
+runtime source of truth is PostgreSQL because actors, processes and steps can be
+added from the governance screens after a source release.
+
+`framework_step_execution_spec` compiles every live process step into one
+versioned contract containing actor, business, transition, input/output,
+screen, field, command, API, persistence, handoff, test, guide and
+non-functional definitions. `framework_process_generation_snapshot()` exports
+that contract without claiming that planned routes are implemented.
+
+```bash
+# all approved process steps
+bash ops/scripts/generate-full-stack-design-packages.sh /opt/Resonance
+
+# one process only
+bash ops/scripts/generate-full-stack-design-packages.sh /opt/Resonance EMISSION_PROJECT
+
+bash ops/scripts/validate-full-stack-design-generation.sh /opt/Resonance
+```
+
+The renderer writes shared-runtime packages under
+`projects/carbonet-backend-metadata/process-runtime/generated/`. Packages use
+`COMMON_SDUI_RUNTIME`, `COMMON_PROCESS_COMMAND_RUNTIME`, common KRDS layout and
+the normalized process transaction runtime. A generated package is metadata,
+not completion evidence. Real routes, APIs, relations and scenario runs must
+still pass their implementation gates before a step becomes verified.
+
 ## Reference ingestion contract
 
 Every source document must later be catalogued with its absolute source path,

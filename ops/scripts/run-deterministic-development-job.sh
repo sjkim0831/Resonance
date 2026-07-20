@@ -17,6 +17,14 @@ jq -e 'type == "object" and (.requirement | type == "string")' "$SPEC_FILE" >/de
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
 case "$JOB_TYPE" in
+  FULL_STACK_GENERATION)
+    artifact="projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS/index.json"
+    FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
+      bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS"
+    jq -e --arg process "$PROCESS" '
+      .packageCount>0 and ([.packages[].processCode]|all(.==$process))
+    ' "$WT/$artifact" >/dev/null
+    ;;
   TEST|ACTOR_TEST|INTEGRATION)
     validator="$WT/ops/scripts/validate-existing-emission-project-journey.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
