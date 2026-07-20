@@ -1,42 +1,42 @@
 {
   "schemaVersion": "2.0.0",
   "process": {
-    "code": "COMPANY_MANAGER_DELEGATION",
-    "name": "회원사 담당자 위임·승계·업무 인계",
-    "domain": "MEMBER",
-    "workType": "MEMBER",
-    "goal": "회원사 담당자 지정·위임·승계와 직원 승인 권한을 기간·범위·미결업무 인계와 함께 관리한다."
+    "code": "LEGAL_NOTIFICATION_DELIVERY",
+    "name": "법적·업무 통지·수신증 관리",
+    "domain": "SYSTEM",
+    "workType": "SYSTEM",
+    "goal": "신청·보완·승인·반려·납부·발급·취소 통지를 SMS·이메일·국민비서로 전달하고 도달 증적을 관리한다."
   },
   "step": {
-    "code": "CMD_REQUEST",
+    "code": "LND_DELIVER",
     "version": 1,
     "actor": {
-      "actorCode": "COMPANY_ADMIN",
-      "ownerActorCode": "COMPANY_ADMIN",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "PLATFORM_OPERATOR",
       "tenantIsolation": true,
       "projectIsolation": true,
       "delegationChecked": true,
       "segregationOfDuties": true
     },
     "business": {
-      "goal": "회원사 담당자 지정·위임·승계와 직원 승인 권한을 기간·범위·미결업무 인계와 함께 관리한다.",
-      "slaHours": 48,
-      "stepName": "위임·승계 요청과 후보 검증",
+      "goal": "신청·보완·승인·반려·납부·발급·취소 통지를 SMS·이메일·국민비서로 전달하고 도달 증적을 관리한다.",
+      "slaHours": 4,
+      "stepName": "다중채널 발송·실패 대체",
       "riskLevel": "HIGH",
-      "domainCode": "MEMBER",
-      "processName": "회원사 담당자 위임·승계·업무 인계",
-      "requirement": "위임 범위·기간·사유·후임자 재직·미결업무를 확인한다.",
-      "completionRule": "유효 후보와 인계 대상 업무가 확정됨",
-      "regulationRefs": "회원정보 관리기능-2 담당자 위임 요구사항"
+      "domainCode": "SYSTEM",
+      "processName": "법적·업무 통지·수신증 관리",
+      "requirement": "SMS·이메일·국민비서로 발송하고 실패 시 정책에 따라 재시도·대체한다.",
+      "completionRule": "채널별 요청·응답·도달 상태가 추적됨",
+      "regulationRefs": "회원·인증 단계별 SMS·이메일·국민비서 통지 요구사항"
     },
     "transition": {
-      "toState": "IN_PROGRESS",
+      "toState": "REVIEW_READY",
       "stepType": "TASK",
-      "fromState": "READY",
-      "stepOrder": 1,
-      "commandCode": "REQUEST_MANAGER_DELEGATION",
+      "fromState": "IN_PROGRESS",
+      "stepOrder": 2,
+      "commandCode": "DELIVER_LEGAL_NOTICE",
       "auditRequired": true,
-      "completionRule": "유효 후보와 인계 대상 업무가 확정됨",
+      "completionRule": "채널별 요청·응답·도달 상태가 추적됨",
       "optimisticLock": true,
       "parentStepCode": null,
       "idempotencyRequired": true
@@ -54,31 +54,31 @@
       "evidenceHash": "string"
     },
     "guide": {
-      "title": "위임·승계 요청과 후보 검증",
-      "purpose": "위임 범위·기간·사유·후임자 재직·미결업무를 확인한다.",
-      "stepCode": "CMD_REQUEST",
-      "userPath": "/work/company-manager-delegation?step=cmd_request",
-      "actorCode": "COMPANY_ADMIN",
-      "adminPath": "/admin/work/company-manager-delegation?step=cmd_request",
-      "stepOrder": 1,
-      "processCode": "COMPANY_MANAGER_DELEGATION",
-      "nextStepCode": "CMD_APPROVE",
-      "workTypeCode": "MEMBER",
-      "entryCondition": "READY",
-      "completionCondition": "유효 후보와 인계 대상 업무가 확정됨"
+      "title": "다중채널 발송·실패 대체",
+      "purpose": "SMS·이메일·국민비서로 발송하고 실패 시 정책에 따라 재시도·대체한다.",
+      "stepCode": "LND_DELIVER",
+      "userPath": "/work/legal-notification-delivery?step=lnd_deliver",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "adminPath": "/admin/work/legal-notification-delivery?step=lnd_deliver",
+      "stepOrder": 2,
+      "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+      "nextStepCode": "LND_RECEIPT",
+      "workTypeCode": "SYSTEM",
+      "entryCondition": "IN_PROGRESS",
+      "completionCondition": "채널별 요청·응답·도달 상태가 추적됨"
     }
   },
   "frontend": {
     "renderer": "COMMON_SDUI_RUNTIME",
     "pages": [
       {
-        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_ADMIN",
-        "route": "/admin/work/company-manager-delegation?step=cmd_request",
+        "pageCode": "LEGAL_NOTIFICATION_DELIVERY_LND_DELIVER_ADMIN",
+        "route": "/admin/work/legal-notification-delivery?step=lnd_deliver",
         "routeStatus": "DESIGN_ONLY",
         "audience": "ADMIN",
         "screenType": "WORK_EXECUTION",
-        "title": "위임·승계 요청과 후보 검증 관리자 검토 화면",
-        "purpose": "위임 범위·기간·사유·후임자 재직·미결업무를 확인한다.",
+        "title": "다중채널 발송·실패 대체 관리자 검토 화면",
+        "purpose": "SMS·이메일·국민비서로 발송하고 실패 시 정책에 따라 재시도·대체한다.",
         "layout": "COMMON_KRDS_TASK_LAYOUT",
         "theme": "COMMON_KRDS_GOV",
         "sections": [
@@ -108,7 +108,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -131,7 +131,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -154,7 +154,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -177,7 +177,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -200,7 +200,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -226,7 +226,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -249,7 +249,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -272,7 +272,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -295,7 +295,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -321,7 +321,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -344,7 +344,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -372,7 +372,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 20
           },
@@ -395,7 +395,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -418,17 +418,17 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 20
           }
         ],
         "commands": [
           {
-            "actorCode": "COMPANY_ADMIN",
-            "entryState": "READY",
-            "commandCode": "REQUEST_MANAGER_DELEGATION",
-            "resultState": "IN_PROGRESS",
+            "actorCode": "SYSTEM_INTEGRATOR",
+            "entryState": "IN_PROGRESS",
+            "commandCode": "DELIVER_LEGAL_NOTICE",
+            "resultState": "REVIEW_READY",
             "auditRequired": true,
             "validationRequired": true,
             "serverAuthorization": true
@@ -459,13 +459,13 @@
         }
       },
       {
-        "pageCode": "COMPANY_MANAGER_DELEGATION_CMD_REQUEST_USER",
-        "route": "/work/company-manager-delegation?step=cmd_request",
+        "pageCode": "LEGAL_NOTIFICATION_DELIVERY_LND_DELIVER_USER",
+        "route": "/work/legal-notification-delivery?step=lnd_deliver",
         "routeStatus": "DESIGN_ONLY",
         "audience": "USER",
         "screenType": "WORK_EXECUTION",
-        "title": "위임·승계 요청과 후보 검증 업무 화면",
-        "purpose": "위임 범위·기간·사유·후임자 재직·미결업무를 확인한다.",
+        "title": "다중채널 발송·실패 대체 업무 화면",
+        "purpose": "SMS·이메일·국민비서로 발송하고 실패 시 정책에 따라 재시도·대체한다.",
         "layout": "COMMON_KRDS_TASK_LAYOUT",
         "theme": "COMMON_KRDS_GOV",
         "sections": [
@@ -495,7 +495,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -518,7 +518,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -541,7 +541,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -564,7 +564,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -587,7 +587,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -613,7 +613,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -636,7 +636,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -659,7 +659,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -682,7 +682,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -708,7 +708,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -731,7 +731,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -759,7 +759,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 20
           },
@@ -782,7 +782,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -805,17 +805,17 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 20
           }
         ],
         "commands": [
           {
-            "actorCode": "COMPANY_ADMIN",
-            "entryState": "READY",
-            "commandCode": "REQUEST_MANAGER_DELEGATION",
-            "resultState": "IN_PROGRESS",
+            "actorCode": "SYSTEM_INTEGRATOR",
+            "entryState": "IN_PROGRESS",
+            "commandCode": "DELIVER_LEGAL_NOTICE",
+            "resultState": "REVIEW_READY",
             "auditRequired": true,
             "validationRequired": true,
             "serverAuthorization": true
@@ -864,23 +864,23 @@
         ],
         "transactional": true,
         "idempotencyKey": true,
-        "declaredContract": "/api/work/company-manager-delegation/cmd_request"
+        "declaredContract": "/api/work/legal-notification-delivery/lnd_deliver"
       }
     ],
     "commands": [
       {
-        "actorCode": "COMPANY_ADMIN",
-        "entryState": "READY",
-        "commandCode": "REQUEST_MANAGER_DELEGATION",
-        "resultState": "IN_PROGRESS",
+        "actorCode": "SYSTEM_INTEGRATOR",
+        "entryState": "IN_PROGRESS",
+        "commandCode": "DELIVER_LEGAL_NOTICE",
+        "resultState": "REVIEW_READY",
         "auditRequired": true,
         "validationRequired": true,
         "serverAuthorization": true
       }
     ],
     "authorization": {
-      "actorCode": "COMPANY_ADMIN",
-      "ownerActorCode": "COMPANY_ADMIN",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "PLATFORM_OPERATOR",
       "tenantIsolation": true,
       "projectIsolation": true,
       "delegationChecked": true,
@@ -914,7 +914,7 @@
           "optimisticLock": true,
           "immutableSnapshot": true
         },
-        "toStepCode": "CMD_APPROVE",
+        "toStepCode": "LND_RECEIPT",
         "contextKeys": [
           "tenantId",
           "projectId",
@@ -923,13 +923,13 @@
           "rowVersion"
         ],
         "authorization": {
-          "toActor": "AUTHORITY_ADMIN",
-          "fromActor": "COMPANY_ADMIN",
+          "toActor": "AUDITOR",
+          "fromActor": "SYSTEM_INTEGRATOR",
           "tenantIsolation": true,
           "projectIsolation": true,
           "segregationChecked": true
         },
-        "toProcessCode": "COMPANY_MANAGER_DELEGATION"
+        "toProcessCode": "LEGAL_NOTIFICATION_DELIVERY"
       }
     ]
   },
@@ -956,7 +956,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -979,7 +979,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1002,7 +1002,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1025,7 +1025,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1048,7 +1048,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1074,7 +1074,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1097,7 +1097,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1120,7 +1120,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1143,7 +1143,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -1169,7 +1169,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -1192,7 +1192,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -1220,7 +1220,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": true,
             "responsivePriority": 20
           },
@@ -1243,7 +1243,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1266,7 +1266,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:ADMIN",
+            "permissionCode": "SYSTEM_INTEGRATOR:ADMIN",
             "evidenceRequired": false,
             "responsivePriority": 20
           }
@@ -1294,7 +1294,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1317,7 +1317,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1340,7 +1340,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1363,7 +1363,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1386,7 +1386,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1412,7 +1412,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1435,7 +1435,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1458,7 +1458,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1481,7 +1481,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -1507,7 +1507,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -1530,7 +1530,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": true,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 10
           },
@@ -1558,7 +1558,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": true,
             "responsivePriority": 20
           },
@@ -1581,7 +1581,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 10
           },
@@ -1604,7 +1604,7 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "searchEnabled": false,
-            "permissionCode": "COMPANY_ADMIN:USER",
+            "permissionCode": "SYSTEM_INTEGRATOR:USER",
             "evidenceRequired": false,
             "responsivePriority": 20
           }
@@ -1616,7 +1616,7 @@
     "historyRequired": true,
     "indexesRequired": true,
     "primaryEntities": [
-      "company_manager_delegation_record"
+      "legal_notification_delivery_record"
     ],
     "migrationRequired": true,
     "softDeleteDefault": true,
@@ -1624,7 +1624,7 @@
   },
   "tests": [
     {
-      "name": "회원사 담당자 위임·승계·업무 인계 · 권한·직무분리 위반",
+      "name": "법적·업무 통지·수신증 관리 · 권한·직무분리 위반",
       "type": "AUTHORITY",
       "steps": [
         "금지 명령",
@@ -1632,7 +1632,7 @@
         "거부"
       ],
       "status": "APPROVED",
-      "caseCode": "COMPANY_MANAGER_DELEGATION_AUTHORITY",
+      "caseCode": "LEGAL_NOTIFICATION_DELIVERY_AUTHORITY",
       "assertions": [
         "403",
         "상태 불변",
@@ -1641,7 +1641,7 @@
       "preconditions": "권한 없는 사용자 또는 자기승인 시도"
     },
     {
-      "name": "회원사 담당자 위임·승계·업무 인계 · 필수값·외부검증 실패",
+      "name": "법적·업무 통지·수신증 관리 · 필수값·외부검증 실패",
       "type": "EXCEPTION",
       "steps": [
         "오류 입력",
@@ -1650,7 +1650,7 @@
         "보완요청"
       ],
       "status": "APPROVED",
-      "caseCode": "COMPANY_MANAGER_DELEGATION_EXCEPTION",
+      "caseCode": "LEGAL_NOTIFICATION_DELIVERY_EXCEPTION",
       "assertions": [
         "완료 차단",
         "사유·담당자·기한 저장",
@@ -1659,7 +1659,7 @@
       "preconditions": "필수값 누락 또는 외부검증 불일치가 존재함"
     },
     {
-      "name": "회원사 담당자 위임·승계·업무 인계 · 정상 완료",
+      "name": "법적·업무 통지·수신증 관리 · 정상 완료",
       "type": "HAPPY_PATH",
       "steps": [
         "요청",
@@ -1669,7 +1669,7 @@
         "후속업무 인계"
       ],
       "status": "APPROVED",
-      "caseCode": "COMPANY_MANAGER_DELEGATION_HAPPY",
+      "caseCode": "LEGAL_NOTIFICATION_DELIVERY_HAPPY",
       "assertions": [
         "상태 COMPLETED",
         "증적 해시 보존",
@@ -1678,7 +1678,7 @@
       "preconditions": "유효한 액터·선행업무·기준정보·증적이 존재함"
     },
     {
-      "name": "회원사 담당자 위임·승계·업무 인계 · 테넌트·프로젝트 격리",
+      "name": "법적·업무 통지·수신증 관리 · 테넌트·프로젝트 격리",
       "type": "ISOLATION",
       "steps": [
         "교차범위 요청",
@@ -1686,7 +1686,7 @@
         "거부"
       ],
       "status": "APPROVED",
-      "caseCode": "COMPANY_MANAGER_DELEGATION_ISOLATION",
+      "caseCode": "LEGAL_NOTIFICATION_DELIVERY_ISOLATION",
       "assertions": [
         "데이터 미노출",
         "변경 없음",
@@ -1695,7 +1695,7 @@
       "preconditions": "다른 기업 또는 프로젝트 식별자로 접근 시도"
     },
     {
-      "name": "회원사 담당자 위임·승계·업무 인계 · 중단·중복·연계 실패 복구",
+      "name": "법적·업무 통지·수신증 관리 · 중단·중복·연계 실패 복구",
       "type": "RECOVERY",
       "steps": [
         "실패 발생",
@@ -1703,7 +1703,7 @@
         "재조회 또는 롤백"
       ],
       "status": "APPROVED",
-      "caseCode": "COMPANY_MANAGER_DELEGATION_RECOVERY",
+      "caseCode": "LEGAL_NOTIFICATION_DELIVERY_RECOVERY",
       "assertions": [
         "중복 없음",
         "일관 상태 복구",
@@ -1763,8 +1763,8 @@
       "errorSummary": true
     }
   },
-  "sourceHash": "6d75168ae097d576100de872df2d2e58",
+  "sourceHash": "f4538b3789331a1064e32b4d0da5d623",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "3cd83b6b161912dff0a6e97e6d150c8df5e1373952f6d588471551d5dcfd31c4"
+  "packageHash": "99cd7ce73839d3e64802f82c84240b85e5c22ac408c2544698d0900a40d27897"
 }

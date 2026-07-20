@@ -7,23 +7,23 @@
       "processCode": "COMPANY_MANAGER_DELEGATION",
       "stepCode": "CMD_APPROVE",
       "package": "COMPANY_MANAGER_DELEGATION__CMD_APPROVE.json",
-      "packageHash": "38cae39c57262589a4ae19e7dff7e13ed0c9107436aba971389ebbfa19ac3191",
+      "packageHash": "dc198950b301cfb41771b29a177c6dda0ceea7b1a8f7a29a699a6c1464a0b37e",
       "pages": 2
     },
     {
       "processCode": "COMPANY_MANAGER_DELEGATION",
       "stepCode": "CMD_HANDOVER",
       "package": "COMPANY_MANAGER_DELEGATION__CMD_HANDOVER.json",
-      "packageHash": "5ce4b3b7a00b4d8df24b54f93400ec90500510e413d75946bb2387020cd89615",
+      "packageHash": "4579ab5a21b1ac232aac294771e0cbb6b05741fdbfada9a47990e4fb6a08b88d",
       "pages": 2
     },
     {
       "processCode": "COMPANY_MANAGER_DELEGATION",
       "stepCode": "CMD_REQUEST",
       "package": "COMPANY_MANAGER_DELEGATION__CMD_REQUEST.json",
-      "packageHash": "20a5085dd3b31229415e07404493380c2638c6a1c7254292dc181edb92a28a3a",
+      "packageHash": "3cd83b6b161912dff0a6e97e6d150c8df5e1373952f6d588471551d5dcfd31c4",
       "pages": 2
     }
   ],
-  "manifestHash": "1c4669d1d61e2b6480fdcc8db8c2ce258f54bec418358e6c3ab4fc121716bc66"
+  "manifestHash": "dd67a845903812fd675856bf307a24005494a495f8172a1959f2818af4cb26ac"
 }

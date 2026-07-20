@@ -7,23 +7,23 @@
       "processCode": "CO2_INJECTION_STORAGE_OPERATION",
       "stepCode": "CISO_OPERATE",
       "package": "CO2_INJECTION_STORAGE_OPERATION__CISO_OPERATE.json",
-      "packageHash": "321b6190dc8a7a5cc3fe083242e3906aa78bf15a3a161d8c37ba72c24a62491b",
+      "packageHash": "472571f0179ba131a24fb70ce5b352c4d8e017d696d65209c4274e2d7d0237f1",
       "pages": 2
     },
     {
       "processCode": "CO2_INJECTION_STORAGE_OPERATION",
       "stepCode": "CISO_PLAN",
       "package": "CO2_INJECTION_STORAGE_OPERATION__CISO_PLAN.json",
-      "packageHash": "d75136433e80099c25f4364c7b94fa6059d65f8dc88bbe6dd7a6e15d2e523ca0",
+      "packageHash": "9cf3ab5c4f95ad9dfc270a18baa0654df848a52e29ff1ab7f413d68e6b2d6a5b",
       "pages": 2
     },
     {
       "processCode": "CO2_INJECTION_STORAGE_OPERATION",
       "stepCode": "CISO_REVIEW",
       "package": "CO2_INJECTION_STORAGE_OPERATION__CISO_REVIEW.json",
-      "packageHash": "84f8f93971739a839f5e5cd7fb94e85786ae87e18849973f8bb753e58c6a2503",
+      "packageHash": "b8bf2aa6d73e3c8c85e3ebe6b4b913c23bc091d551b511e62f6062ad2e602cdc",
       "pages": 2
     }
   ],
-  "manifestHash": "0999dce2c4fdb3c2d10548abe7f8473a50b4c07fc7fc07dc0d2bf04cb6747693"
+  "manifestHash": "6e49888be23d36d760f3020c3b041d6053c01c3b3f9670985360ad3efe9b2167"
 }
