@@ -18,7 +18,7 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
   exit 1
 }
 
-IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count <<<"$(
+IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count classification_mismatch_count strategic_work_type_count <<<"$(
   kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -At -F '|' -c "
       select
@@ -52,7 +52,9 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
         (select designed_count from framework_process_execution_topology_audit),
         (select invalid_predecessor_count from framework_process_execution_topology_audit),
         (select runtime_missing_predecessor_count from framework_process_execution_topology_audit),
-        (select invalid_completed_task_count from framework_process_execution_topology_audit);
+        (select invalid_completed_task_count from framework_process_execution_topology_audit),
+        (select classification_mismatch_count from framework_work_type_classification_audit),
+        (select strategic_work_type_count from framework_work_type_classification_audit);
     "
 )"
 
@@ -108,5 +110,13 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
   echo "[unified-work-design] completed tasks have incomplete predecessors: $invalid_completed_task_count" >&2
   exit 14
 }
+[[ "$classification_mismatch_count" == "0" ]] || {
+  echo "[unified-work-design] work type/process/sequence/topology mismatch: $classification_mismatch_count" >&2
+  exit 15
+}
+[[ "$active_work_type_count" == "13" && "$strategic_work_type_count" == "3" ]] || {
+  echo "[unified-work-design] professional work type catalog mismatch: active=$active_work_type_count strategic=$strategic_work_type_count" >&2
+  exit 16
+}
 
-echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count topology=$topology_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"
+echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count strategic-work-types=$strategic_work_type_count topology=$topology_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"
