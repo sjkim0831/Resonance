@@ -265,7 +265,39 @@ public class EmissionProjectRegistryService {
         result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE p.tenant_id=?"+(showAll?"":" AND lower(coalesce(t.assignee_id,''))=lower(?)"),showAll?new Object[]{tenant}:new Object[]{tenant,actor}));
         result.put("notifications",jdbc.queryForList("SELECT notification_id AS \"id\",project_id AS \"projectId\",task_id AS \"taskId\",event_type AS \"eventType\",title,message_text AS \"message\",target_url AS \"targetUrl\",read_at AS \"readAt\",created_at AS \"createdAt\" FROM emission_workflow_notification WHERE tenant_id=? AND (? OR lower(recipient_id)=lower(?)) ORDER BY (read_at IS NULL) DESC,created_at DESC LIMIT 20",tenant,showAll,actor));
         result.put("unreadNotificationCount",jdbc.queryForObject("SELECT count(*) FROM emission_workflow_notification WHERE tenant_id=? AND read_at IS NULL AND (? OR lower(recipient_id)=lower(?))",Integer.class,tenant,showAll,actor));
+        applyProcessNavigation(result);
         return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyProcessNavigation(Map<String,Object> result) {
+        List<Map<String,Object>> navigation=jdbc.queryForList(
+                "SELECT process_code AS \"processCode\",menu_code AS \"menuCode\",navigation_type AS \"navigationType\","+
+                "target_path AS \"targetPath\",business_screen_implemented AS \"businessScreenImplemented\","+
+                "navigation_status AS \"navigationStatus\",page_design_count AS \"pageDesignCount\","+
+                "implemented_page_count AS \"implementedPageCount\" FROM framework_process_navigation_coverage ORDER BY process_code");
+        Map<String,Map<String,Object>> byProcess=new LinkedHashMap<>();
+        navigation.forEach(row -> byProcess.put(text(row.get("processCode")),row));
+        Object catalogValue=result.get("processCatalog");
+        if(catalogValue instanceof List<?> catalog) {
+            for(Object item:catalog) {
+                if(!(item instanceof Map<?,?> raw)) continue;
+                Map<String,Object> process=(Map<String,Object>)raw;
+                Map<String,Object> binding=byProcess.get(text(process.get("processCode")));
+                if(binding==null) continue;
+                process.put("menuCode",binding.get("menuCode"));
+                process.put("navigationType",binding.get("navigationType"));
+                process.put("navigationStatus",binding.get("navigationStatus"));
+                process.put("businessScreenImplemented",binding.get("businessScreenImplemented"));
+                process.put("targetUrl",binding.get("targetPath"));
+            }
+        }
+        result.put("processNavigation",navigation);
+        result.put("processNavigationSummary",jdbc.queryForMap(
+                "SELECT process_count AS \"processCount\",navigation_bound_count AS \"navigationBoundCount\","+
+                "navigation_missing_count AS \"navigationMissingCount\",business_screen_ready_count AS \"businessScreenReadyCount\","+
+                "design_workspace_only_count AS \"designWorkspaceOnlyCount\",page_design_missing_count AS \"pageDesignMissingCount\" "+
+                "FROM framework_process_navigation_summary"));
     }
 
     private void applyWorkflowActorAccess(List<Map<String,Object>> workflows,String tenant,String account,boolean showAll) {

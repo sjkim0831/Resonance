@@ -18,7 +18,7 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
   exit 1
 }
 
-IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count classification_mismatch_count strategic_work_type_count <<<"$(
+IFS='|' read -r process_count assurance_count active_work_type_count work_type_count project_binding_count embedded_assurance_count invalid_generated_count required_page_count page_design_count incomplete_page_count field_count required_field_count handoff_gap_count owner_gap_count topology_count invalid_topology_count runtime_predecessor_gap_count invalid_completed_task_count classification_mismatch_count strategic_work_type_count navigation_process_count navigation_bound_count navigation_missing_count <<<"$(
   kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -At -F '|' -c "
       select
@@ -54,7 +54,10 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
         (select runtime_missing_predecessor_count from framework_process_execution_topology_audit),
         (select invalid_completed_task_count from framework_process_execution_topology_audit),
         (select classification_mismatch_count from framework_work_type_classification_audit),
-        (select strategic_work_type_count from framework_work_type_classification_audit);
+        (select strategic_work_type_count from framework_work_type_classification_audit),
+        (select process_count from framework_process_navigation_summary),
+        (select navigation_bound_count from framework_process_navigation_summary),
+        (select navigation_missing_count from framework_process_navigation_summary);
     "
 )"
 
@@ -118,5 +121,9 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
   echo "[unified-work-design] professional work type catalog mismatch: active=$active_work_type_count strategic=$strategic_work_type_count" >&2
   exit 16
 }
+[[ "$process_count" == "$navigation_process_count" && "$process_count" == "$navigation_bound_count" && "$navigation_missing_count" == "0" ]] || {
+  echo "[unified-work-design] reverse process navigation coverage mismatch: process=$process_count catalog=$navigation_process_count bound=$navigation_bound_count missing=$navigation_missing_count" >&2
+  exit 17
+}
 
-echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count strategic-work-types=$strategic_work_type_count topology=$topology_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"
+echo "[unified-work-design] PASS processes=$process_count work-types=$work_type_count strategic-work-types=$strategic_work_type_count topology=$topology_count navigation=$navigation_bound_count/$navigation_process_count pages=$page_design_count fields=$field_count handoffs=complete project-bindings=$project_binding_count invalid-generated=0 runtime-predecessor-gaps=0"

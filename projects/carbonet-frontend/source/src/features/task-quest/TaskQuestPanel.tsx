@@ -136,6 +136,10 @@ type QuestResponse = {
     blockedTasks?: number;
     nextAction?: string;
     targetUrl?: string;
+    menuCode?: string;
+    navigationType?: string;
+    navigationStatus?: string;
+    businessScreenImplemented?: boolean;
     runtimeTaskCount?: number;
     runtimeCompletedCount?: number;
     runtimeState?: string;
@@ -188,6 +192,14 @@ type QuestResponse = {
     processesWithoutDevelopmentJobs?: number;
     menusWithoutProcessBinding?: number;
     processesWithoutScreenRoute?: number;
+  };
+  processNavigationSummary?: {
+    processCount?: number;
+    navigationBoundCount?: number;
+    navigationMissingCount?: number;
+    businessScreenReadyCount?: number;
+    designWorkspaceOnlyCount?: number;
+    pageDesignMissingCount?: number;
   };
   allVisible?: boolean;
   summary?: { total?: number; completed?: number; overdue?: number };
@@ -620,6 +632,8 @@ export function TaskQuestPanel() {
                       assurance?.assuranceStatus === "IMPLEMENTATION_PENDING" ||
                       assurance?.assuranceStatus === "REVIEW_REQUIRED"
                     ? "IMPLEMENTATION_PENDING"
+                    : !item.businessScreenImplemented
+                      ? "PAGE_NOT_IMPLEMENTED"
                     : selectedProjectId && !applicability
                       ? "NOT_APPLICABLE"
                       : item.targetUrl
@@ -1361,6 +1375,38 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
+                  {data?.processNavigationSummary ? (
+                    <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                            {en ? "Navigation and implementation" : "메뉴·화면 실제 연결"}
+                          </p>
+                          <h3 className="mt-1 font-black text-[#052b57]">
+                            {Number(data.processNavigationSummary.navigationMissingCount || 0) === 0
+                              ? en ? "Every process has a safe destination" : "모든 프로세스 안전한 진입점 연결"
+                              : en ? "Navigation gaps remain" : "프로세스 진입점 누락 있음"}
+                          </h3>
+                        </div>
+                        <span className="rounded-full bg-white px-3 py-2 text-xs font-black text-blue-800">
+                          {data.processNavigationSummary.navigationBoundCount || 0}/{data.processNavigationSummary.processCount || 0}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                        {[
+                          [en ? "Navigation gaps" : "진입점 누락", data.processNavigationSummary.navigationMissingCount],
+                          [en ? "Business screens" : "실제 업무 화면", data.processNavigationSummary.businessScreenReadyCount],
+                          [en ? "Design workspaces" : "설계 작업공간", data.processNavigationSummary.designWorkspaceOnlyCount],
+                          [en ? "Design gaps" : "화면 설계 누락", data.processNavigationSummary.pageDesignMissingCount],
+                        ].map(([label, count]) => (
+                          <div className="rounded-lg bg-white px-3 py-2 text-slate-700" key={String(label)}>
+                            <span className="block font-bold">{label}</span>
+                            <strong className="text-lg text-[#052b57]">{count || 0}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
                   <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                     {[
                       [en ? "Total" : "전체", workflowTotal, "assignment"],
@@ -1605,9 +1651,11 @@ export function TaskQuestPanel() {
                       <div className="mt-4 overflow-x-auto pb-2">
                         <ol className="flex min-w-max items-stretch gap-2">
                           {selectedCatalogSteps.map((step, index) => {
-                            const route =
-                              step.userPath ||
-                              (data.allVisible ? step.adminPath : "");
+                            const route = selectedCatalogProcess.businessScreenImplemented
+                              ? step.userPath || (data.allVisible ? step.adminPath : "")
+                              : data.allVisible
+                                ? selectedCatalogProcess.targetUrl || ""
+                                : "";
                             const active = index === selectedCatalogStep;
                             return (
                               <li
