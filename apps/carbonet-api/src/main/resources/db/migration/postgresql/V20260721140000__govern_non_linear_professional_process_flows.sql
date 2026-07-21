@@ -83,7 +83,7 @@ FROM framework_process_flow_edge edge
 JOIN framework_process_definition process USING(process_code)
 JOIN framework_process_step source ON source.process_code=edge.process_code AND source.step_code=edge.from_step_code
 JOIN framework_process_step target ON target.process_code=edge.process_code AND target.step_code=edge.to_step_code
-LEFT JOIN framework_business_process_sequence sequence USING(process_code)
+LEFT JOIN framework_business_process_sequence sequence ON sequence.process_code=edge.process_code
 WHERE edge.use_at='Y';
 
 SELECT framework_refresh_process_flow_edges(NULL);
@@ -101,4 +101,3 @@ BEGIN
   IF missing>0 THEN RAISE EXCEPTION '% multi-step processes have no governed flow edge',missing; END IF;
   IF invalid>0 THEN RAISE EXCEPTION '% flow edges reference a missing step',invalid; END IF;
 END $verification$;
-
