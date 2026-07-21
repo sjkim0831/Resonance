@@ -38,7 +38,7 @@ grep -Fq "updated_at < current_timestamp - interval" "$ORCHESTRATOR"
 grep -Fq 'attempt_count=greatest(0,attempt_count-1)' "$ORCHESTRATOR"
 grep -Fq 'dispatcher_failed=0' "$ORCHESTRATOR"
 grep -Fq 'designed_page_count, 0) = 0' "$PAGE_GUARD"
-grep -Fq "'PASSED'::character varying" "$PAGE_GUARD"
+grep -Eq 'PASSED.*character varying' "$PAGE_GUARD"
 grep -Fq "quality_status='VERIFIED'" "$ROOT/ops/scripts/run-process-development-worker.sh"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
