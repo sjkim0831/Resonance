@@ -32,6 +32,7 @@ while IFS='|' read -r orphan_job_id orphan_worker_id; do
     with recovered as (
       update framework_development_job
       set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+          attempt_count=greatest(0,attempt_count-1),
           last_error='orphan worker process disappeared',updated_at=current_timestamp
       where job_id=${orphan_job_id} and job_status='RUNNING' and worker_id='${orphan_worker_id}'
       returning job_id
@@ -41,7 +42,8 @@ while IFS='|' read -r orphan_job_id orphan_worker_id; do
            jsonb_build_object('missingPid',${orphan_pid}) from recovered;" >/dev/null
 done < <(psqlq -c "
   select job_id,worker_id from framework_development_job
-  where job_status='RUNNING' and worker_id like '${host_worker_prefix}%';")
+  where job_status='RUNNING' and worker_id like '${host_worker_prefix}%'
+    and updated_at < current_timestamp - interval '${ORPHAN_WORKER_GRACE_MINUTES:-5} minutes';")
 run_id="$(cat /proc/sys/kernel/random/uuid)"
 psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
 trap 'psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
@@ -406,15 +408,16 @@ if [[ "$executable" -gt 0 ]] && ! bash "$ROOT_DIR/ops/scripts/verify-hermes-proj
   echo "[project-auto-completion] ATTENTION_REQUIRED reason=HERMES_PROJECT_WORK_POLICY_INVALID executable=$executable"
   exit 0
 fi
+dispatcher_failed=0
 if [[ "$executable" -gt 0 ]]; then
   ROOT_DIR="$ROOT_DIR" MAX_PARALLEL_WORKERS="$MAX_PARALLEL_WORKERS" \
     PGDATABASE="$DB" PGUSER="$DB_USER" PGPASSWORD="${PGPASSWORD:-local-trust}" \
     POSTGRES_POD="$leader" PGHOST="127.0.0.1" K8S_NAMESPACE="$NAMESPACE" \
-    PROJECT_WORK_RUNNER="$PROJECT_WORK_RUNNER" bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh"
+    PROJECT_WORK_RUNNER="$PROJECT_WORK_RUNNER" bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh" || dispatcher_failed=1
 fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
-status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) ]] && status="ATTENTION_REQUIRED"
-psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining contractCompletion=$contract_completion_result"
+status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
+psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result"
