@@ -640,20 +640,47 @@ public class ActorProcessGovernanceService {
         request.put("requestJson","{\"smoke\":true}");request.put("resultJson","{\"rolledBack\":true}");
         Map<String,Object> first=executeProcessCommand(executionId,request,account);
         Map<String,Object> duplicate=executeProcessCommand(executionId,request,account);
+        boolean recoveryVerified=Boolean.TRUE.equals(duplicate.get("idempotent"));
         boolean isolationRejected=false;
         try{
             Map<String,Object> crossTenant=new LinkedHashMap<>(request);crossTenant.put("tenantId",tenant+"-CROSS-TENANT");crossTenant.put("idempotencyKey",key+"-isolation");
             executeProcessCommand(executionId,crossTenant,account);
         }catch(IllegalArgumentException expected){isolationRejected=true;}
-        Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=? and idempotency_key=?",Integer.class,executionId,key);
-        boolean passed=Boolean.TRUE.equals(first.get("success"))&&Boolean.TRUE.equals(duplicate.get("idempotent"))&&isolationRejected&&eventCount!=null&&eventCount==1;
+        boolean authorityRejected=false;
+        try{
+            Map<String,Object> wrongActor=new LinkedHashMap<>(request);wrongActor.put("actorCode","UNAUTHORIZED_ACTOR");wrongActor.put("idempotencyKey",key+"-authority");
+            executeProcessCommand(executionId,wrongActor,account);
+        }catch(IllegalArgumentException expected){authorityRejected=true;}
+        boolean exceptionRejected=false;
+        try{
+            Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",String.valueOf(first.getOrDefault("nextStepCode",step)));invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
+            executeProcessCommand(executionId,invalidCommand,account);
+        }catch(IllegalArgumentException|IllegalStateException expected){exceptionRejected=true;}
+        List<Map<String,Object>> transitions=new java.util.ArrayList<>();
+        transitions.add(Map.of("stepCode",step,"actorCode",actor,"commandCode",command,"fromState",fixture.get("fromState"),"toState",fixture.get("toState"),"accountId",account));
+        List<Map<String,Object>> processSteps=jdbc.queryForList("select step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\" from framework_process_step where process_code=? and step_order>(select step_order from framework_process_step where process_code=? and step_code=?) order by step_order",process,process,step);
+        String executionStatus=String.valueOf(first.getOrDefault("executionStatus","RUNNING"));
+        int sequence=1;
+        for(Map<String,Object> nextStep:processSteps){
+            String nextActor=String.valueOf(nextStep.get("actorCode"));
+            List<Map<String,Object>> accounts=jdbc.queryForList("select account_id as \"accountId\" from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date) order by account_id limit 1",tenant,project,nextActor);
+            if(accounts.isEmpty())throw new IllegalStateException("No active account is assigned for process actor: "+nextActor);
+            String nextAccount=String.valueOf(accounts.get(0).get("accountId")),nextKey=key+"-step-"+(++sequence);
+            Map<String,Object> nextRequest=new LinkedHashMap<>();nextRequest.put("tenantId",tenant);nextRequest.put("projectId",project);nextRequest.put("processCode",process);nextRequest.put("stepCode",String.valueOf(nextStep.get("stepCode")));nextRequest.put("actorCode",nextActor);nextRequest.put("commandCode",String.valueOf(nextStep.get("commandCode")));nextRequest.put("idempotencyKey",nextKey);nextRequest.put("requestJson","{\"smoke\":true,\"sequence\":"+sequence+"}");nextRequest.put("resultJson","{\"rolledBack\":true}");
+            Map<String,Object> nextResult=executeProcessCommand(executionId,nextRequest,nextAccount);executionStatus=String.valueOf(nextResult.getOrDefault("executionStatus","RUNNING"));
+            transitions.add(Map.of("stepCode",nextStep.get("stepCode"),"actorCode",nextActor,"commandCode",nextStep.get("commandCode"),"fromState",nextStep.get("fromState"),"toState",nextStep.get("toState"),"accountId",nextAccount));
+        }
+        Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
+        boolean workflowCompleted="COMPLETED".equals(executionStatus)&&eventCount!=null&&eventCount==transitions.size();
+        boolean passed=Boolean.TRUE.equals(first.get("success"))&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted;
         TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",passed);result.put("rolledBack",true);result.put("executedBy",executedBy);
         result.put("executionId",executionId);result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
         result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
-        result.put("idempotencyVerified",Boolean.TRUE.equals(duplicate.get("idempotent"))&&eventCount!=null&&eventCount==1);
-        result.put("tenantIsolationVerified",isolationRejected);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
+        result.put("idempotencyVerified",recoveryVerified);result.put("recoveryVerified",recoveryVerified);
+        result.put("tenantIsolationVerified",isolationRejected);result.put("authorityVerified",authorityRejected);result.put("exceptionVerified",exceptionRejected);
+        result.put("workflowCompleted",workflowCompleted);result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
         if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
         return result;
     }

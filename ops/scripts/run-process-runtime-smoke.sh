@@ -25,11 +25,13 @@ code="$(curl -sS -b "$cookie" -o "$runtime" -w '%{http_code}' -X POST --get --da
 RUNTIME="$runtime" python3 - <<'PY'
 import json, os
 p=json.load(open(os.environ['RUNTIME'],encoding='utf-8'))
-required=('success','rolledBack','idempotencyVerified','tenantIsolationVerified')
+required=('success','rolledBack','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted')
 if not all(p.get(k) is True for k in required):
     raise SystemExit(f'runtime assertions failed: {p}')
 for key in ('processCode','stepCode','actorCode','stateTransition'):
     if not p.get(key): raise SystemExit(f'missing evidence field: {key}')
+if p.get('stepCount',0) < 1 or len(p.get('transitions',[])) != p.get('stepCount'):
+    raise SystemExit(f'invalid transition evidence: {p}')
 PY
 
 execution_id="$(RUNTIME="$runtime" python3 - <<'PY'
@@ -47,7 +49,7 @@ if p.get('success') is not True or p.get('executionRows') != 0 or p.get('eventRo
     raise SystemExit(f'rollback persistence check failed: {p}')
 PY
 
-for route in /home /admin /emission/project_list /admin/system/actor-process; do
+for route in /home /admin /emission/project_list /admin/system/actor-process /emission/organizational-boundary /admin/emission/organizational-boundary; do
   page_code="$(curl -sS -b "$cookie" -o /dev/null -w '%{http_code}' "$BASE$route")"
   [[ "$page_code" == 200 ]] || { echo "[process-runtime-smoke] FAIL route=$route status=$page_code" >&2; exit 1; }
 done
@@ -57,7 +59,7 @@ import json,sys,datetime
 p=json.load(open(sys.argv[1],encoding='utf-8'))
 p['rollbackPersistenceCheck']=json.load(open(sys.argv[2],encoding='utf-8'))
 p['verifiedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()
-p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-process']
+p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-process','/emission/organizational-boundary','/admin/emission/organizational-boundary']
 json.dump(p,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
 PY
 ln -sfn "$stamp.json" "$EVIDENCE_DIR/latest.json"
