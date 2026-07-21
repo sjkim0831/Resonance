@@ -171,6 +171,25 @@ fi
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
 
+# Jobs created before requirement_text became part of every generated
+# specification can still be valid approved work. Resolve the missing value
+# from the governed process-step contract so every deterministic generator and
+# AI fallback receives the same authoritative requirement. Do not overwrite a
+# requirement already captured on the job.
+if ! jq -e '.requirement | type == "string" and length > 0' <<<"$SPEC" >/dev/null 2>&1; then
+  LEGACY_REQUIREMENT="$(psqlq -c "
+    select coalesce(nullif(requirement_text,''),nullif(step_name,''),'')
+    from framework_process_step
+    where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}'
+    limit 1;")"
+  if [ -z "$LEGACY_REQUIREMENT" ]; then
+    fail_job "governed process-step requirement is missing for legacy specification"
+  fi
+  SPEC="$(jq -c --arg requirement "$LEGACY_REQUIREMENT" '. + {requirement:$requirement}' <<<"$SPEC")"
+  event "LEGACY_REQUIREMENT_ENRICHED" "RUNNING" "RUNNING" \
+    "{\"source\":\"framework_process_step\",\"reason\":\"requirement missing\"}"
+fi
+
 # DESIGN jobs created before the professional screen contract upgrade do not
 # contain designContracts. Enrich those immutable legacy specifications from
 # the governed DB contract at execution time instead of failing or producing an
