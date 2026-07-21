@@ -29,7 +29,22 @@ model="$(jq -r --arg route "$selection" '.workers[$route].model' "$POLICY")"
 provider="$(jq -r --arg route "$selection" '.workers[$route].provider' "$POLICY")"
 [[ "$provider" == nvidia ]] || { echo 'FAIL non-NVIDIA generation route blocked' >&2; exit 1; }
 echo "[hermes-router] selector=$selector_model route=$selection worker=$provider/$model" >&2
+task_timeout="${HERMES_TASK_TIMEOUT:-600}"
+[[ "$task_timeout" =~ ^[0-9]+$ ]] || task_timeout=600
+# A systemd environment override previously kept silent provider calls alive for
+# 45 minutes. Bound every call in code so a stalled provider releases its worker
+# and can enter the governed retry path promptly.
+(( task_timeout < 60 )) && task_timeout=60
+(( task_timeout > 900 )) && task_timeout=900
 started="$(date +%s%N)"
-(cd "$WORKDIR" && HERMES_DISABLE_FALLBACK=1 timeout --signal=TERM --kill-after=15s "${HERMES_TASK_TIMEOUT:-600}" "$HERMES_BIN" chat -q "$TASK" -m "$model" --provider "$provider" -t "$HERMES_TOOLSETS" -Q --max-turns "${HERMES_MAX_TURNS:-20}")
+set +e
+(cd "$WORKDIR" && HERMES_DISABLE_FALLBACK=1 timeout --signal=TERM --kill-after=15s "$task_timeout" "$HERMES_BIN" chat -q "$TASK" -m "$model" --provider "$provider" -t "$HERMES_TOOLSETS" -Q --max-turns "${HERMES_MAX_TURNS:-20}")
+task_code=$?
+set -e
 ended="$(date +%s%N)"
+if (( task_code == 124 || task_code == 137 )); then
+  echo "[hermes-router] FAIL provider task timed out route=$selection timeout_seconds=$task_timeout elapsed_ms=$(((ended-started)/1000000))" >&2
+  exit 124
+fi
+(( task_code == 0 )) || exit "$task_code"
 echo "[hermes-router] completed route=$selection elapsed_ms=$(((ended-started)/1000000))" >&2
