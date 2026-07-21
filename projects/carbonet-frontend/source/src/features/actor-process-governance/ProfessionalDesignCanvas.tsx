@@ -15,6 +15,7 @@ const jsonArray = (input: unknown): Row[] => {
 const statusStyle = (status: string) => status === "VERIFIED"
   ? "border-emerald-400 bg-emerald-50 text-emerald-900"
   : status === "IMPLEMENTED" ? "border-blue-400 bg-blue-50 text-blue-950" : "border-amber-400 bg-amber-50 text-amber-950";
+const previewPath = (route: string) => `${route}${route.includes("?") ? "&" : "?"}canvasPreview=1`;
 
 export function ProfessionalDesignCanvas({ base, en }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -186,7 +187,7 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
         <div className="space-y-5 p-5">
           <Info label="업무 단계" text={`${value(selected.row, "stepOrder")}. ${value(selected.row, "stepName")}`} /><div className="grid grid-cols-2 gap-3"><Info label="담당 액터" text={value(selected.row, "actorCode")} /><Info label="상태 전이" text={`${value(selected.row, "fromState")} → ${value(selected.row, "toState")}`} /></div><Info label="실행 명령" text={value(selected.row, "commandCode")} /><Info label="실제 경로" text={value(selected.row, "routePath")} />
           <div className="flex gap-2"><a className="flex-1 rounded-lg bg-[#246beb] px-4 py-3 text-center font-bold text-white" href={value(selected.row, "routePath")} target="_blank" rel="noreferrer">실제 화면 열기</a><button className="rounded-lg border px-4 py-3 font-bold" onClick={() => setPreview(current => !current)} type="button">{preview ? "미리보기 닫기" : "화면 미리보기"}</button></div>
-          {preview && <iframe className="h-72 w-full rounded-xl border bg-white" src={value(selected.row, "routePath")} title={`${value(selected.row, "screenName")} 미리보기`} />}
+          {preview && <iframe className="h-72 w-full rounded-xl border bg-white" src={previewPath(value(selected.row, "routePath"))} title={`${value(selected.row, "screenName")} 미리보기`} />}
           <ContractList title="화면 기능" rows={jsonArray(selected.row.capabilities)} primary="name" secondary="capabilityCode" /><ContractList title="입·출력 데이터 계보" rows={jsonArray(selected.row.dataElements)} primary="name" secondary="dataElementCode" /><ContractList title="테스트 시나리오" rows={jsonArray(selected.row.tests)} primary="caseCode" secondary="scope" /><ContractList title="실제 프로젝트 실행 업무" rows={jsonArray(selected.row.actualProjectTasks)} primary="taskName" secondary="status" />
         </div>
       </aside>}
