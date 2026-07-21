@@ -43,5 +43,6 @@ grep -Eq 'PASSED.*character varying' "$PAGE_GUARD"
 grep -Fq "quality_status='VERIFIED'" "$ROOT/ops/scripts/run-process-development-worker.sh"
 grep -Fq 'framework_ensure_step_screen_contract' "$DESIGN_FACTORY"
 grep -Fq "framework_ensure_step_screen_contract('" "$ROOT/ops/scripts/run-process-development-worker.sh"
+grep -Fq 'DESIGN_FACTORY_RETRY' "$ORCHESTRATOR"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
