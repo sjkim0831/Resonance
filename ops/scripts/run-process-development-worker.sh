@@ -224,6 +224,43 @@ if [[ "$JOB_TYPE" == "DESIGN" ]] && ! jq -e '.designContracts | type == "array" 
 fi
 SPEC_FILE="$WT/.automation-spec.json"
 printf '%s' "$SPEC" >"$SPEC_FILE"
+GOVERNANCE_FILE="$WT/.automation-governance.json"
+psqlq -c "
+  select json_build_object(
+    'processCode',s.process_code,
+    'stepCode',s.step_code,
+    'actorCode',coalesce(nullif(s.actor_code,''),'UNASSIGNED'),
+    'requirement',coalesce(nullif(s.requirement_text,''),s.step_name),
+    'screenContractCount',count(c.contract_id),
+    'routeCount',count(distinct c.route_path) filter(where nullif(c.route_path,'') is not null),
+    'apiVerified',coalesce(bool_and(c.api_verified) filter(where c.contract_id is not null),false) or exists(
+      select 1 from framework_development_job j where j.process_code=s.process_code and j.step_code=s.step_code
+        and j.job_type in ('API','API_QUALITY','BACKEND','BACKEND_QUALITY') and j.job_status in ('VERIFIED','COMPLETED')),
+    'databaseVerified',coalesce(bool_and(c.database_verified) filter(where c.contract_id is not null),false) or exists(
+      select 1 from framework_development_job j where j.process_code=s.process_code and j.step_code=s.step_code
+        and j.job_type in ('DATABASE','DATABASE_QUALITY') and j.job_status in ('VERIFIED','COMPLETED')),
+    'authorityVerified',coalesce(bool_and(c.authority_verified) filter(where c.contract_id is not null),false) or exists(
+      select 1 from framework_development_job j where j.process_code=s.process_code and j.step_code=s.step_code
+        and j.job_type='ACTOR_TEST' and j.job_status in ('VERIFIED','COMPLETED')),
+    'responsiveVerified',coalesce(bool_and(c.responsive_verified) filter(where c.contract_id is not null),false),
+    'accessibilityVerified',coalesce(bool_and(c.accessibility_verified) filter(where c.contract_id is not null),false),
+    'exceptionStatesVerified',coalesce(bool_and(c.exception_states_verified) filter(where c.contract_id is not null),false) or exists(
+      select 1 from framework_development_job j where j.process_code=s.process_code and j.step_code=s.step_code
+        and j.job_type in ('TEST','INTEGRATION') and j.job_status in ('VERIFIED','COMPLETED'))
+  )::text
+  from framework_process_step s
+  left join framework_professional_screen_contract c
+    on c.process_code=s.process_code and c.step_code=s.step_code
+  where s.process_code='${PROCESS_CODE}' and s.step_code='${STEP_CODE}'
+  group by s.process_code,s.step_code,s.actor_code,s.requirement_text,s.step_name;" >"$GOVERNANCE_FILE"
+PROFESSIONAL_VALIDATOR="$WT/ops/scripts/validate-professional-development-contract.sh"
+if PROFESSIONAL_RESULT="$(bash "$PROFESSIONAL_VALIDATOR" "$WT" "$JOB_TYPE" "$SPEC_FILE" "$GOVERNANCE_FILE" 2>>"$LOG_FILE")"; then
+  gate_result "PROFESSIONAL_CONTRACT" "PASSED" "$PROFESSIONAL_RESULT"
+  event "CONTRACT_PREFLIGHT" "RUNNING" "RUNNING" "$PROFESSIONAL_RESULT"
+else
+  gate_result "PROFESSIONAL_CONTRACT" "FAILED" "approved actor, process, screen, authority, API, DB, responsive, accessibility, or exception contract is incomplete"
+  fail_job "professional development contract preflight failed"
+fi
 SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
 if ! SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"; then
   SEARCH_CONTEXT="$WT/.automation-search-context-fallback.txt"
@@ -235,10 +272,12 @@ cat >"$WT/.automation-prompt.txt" <<PROMPT
 You are implementing one approved Resonance development job.
 Job: ${JOB_ID}; process=${PROCESS_CODE}; step=${STEP_CODE}; type=${JOB_TYPE}; target=${TARGET_PATH}
 Specification: ${SPEC}
+Professional delivery policy: $(jq -c '{policyId,version,completionOrder,mandatoryDimensions,screenTypeTemplates,minimumProfessionalScore,failClosed}' "$WT/ops/runtime-metadata/professional-development-policy.json")
 
 Read AGENTS.md and obey it. Inspect /opt/reference only as read-only evidence. Inspect existing DB/API/page implementations before editing.
 Implement exactly one bounded, production-useful increment for this job. Reuse registered KRDS theme, sections and components. For page-only work prefer SDUI and project-owned metadata/overlay paths with no build/deploy. Do not edit generated bundles manually.
 Add or update automated tests and evidence. Never modify credentials, backups, database data, Kubernetes state, deployment scripts, CI permissions, or unrelated files. Do not commit or push; the worker will validate and publish.
+Satisfy every applicable professional policy dimension. Do not represent a thin page, placeholder, document-only claim, or unexecuted test as implementation completion.
 If the specification is too broad, choose the highest-priority missing behavior supported by a reference and document the remaining gap in a project-owned markdown or metadata artifact.
 Do not recursively enumerate large reference or repository directories. Use targeted rg/find queries derived from the process and step codes.
 Start with the precomputed candidate list below. Search outside it only when a concrete missing symbol or contract requires it.
@@ -449,7 +488,7 @@ Immediate instruction: $INITIAL_MESSAGE"
     KILO_CODE=$?
   fi
 fi
-rm -f "$WT/.automation-prompt.txt" "$SPEC_FILE"
+rm -f "$WT/.automation-prompt.txt" "$SPEC_FILE" "$GOVERNANCE_FILE"
 if [ "$KILO_CODE" -ne 0 ] && grep -Eq 'HTTP 429|Too Many Requests|status.?=.?429' "$LOG_FILE.hermes" 2>/dev/null; then
   defer_rate_limited_job
 fi

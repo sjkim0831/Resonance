@@ -1,0 +1,50 @@
+{
+  "policyId": "resonance-professional-development-pipeline",
+  "version": "1.0.0",
+  "completionOrder": [
+    "DESIGN_CONTRACT_VERIFIED",
+    "EXISTING_IMPLEMENTATION_SEARCHED",
+    "DETERMINISTIC_GENERATION_ATTEMPTED",
+    "AI_GAP_ESCALATION",
+    "SOURCE_CONNECTED",
+    "AUTOMATED_TESTED",
+    "RUNTIME_VERIFIED",
+    "VERIFIED"
+  ],
+  "mandatoryDimensions": [
+    "actorAndAuthority",
+    "tenantAndProjectBoundary",
+    "upstreamAndDownstream",
+    "inputAndOutputContract",
+    "stateTransition",
+    "loadingEmptyErrorForbiddenReadyStates",
+    "apiAndTransaction",
+    "databaseAndAuditEvidence",
+    "responsiveAndAccessibility",
+    "happyExceptionAuthorityIsolationRecoveryTests"
+  ],
+  "screenGovernedJobTypes": [
+    "DESIGN",
+    "DESIGN_PREFLIGHT",
+    "FRONTEND_USER",
+    "FRONTEND_ADMIN",
+    "COMPONENT_COMMON",
+    "CLASS_PROPERTY_COMMON",
+    "UI_QUALITY"
+  ],
+  "screenRuntimeQualityJobTypes": ["UI_QUALITY"],
+  "screenTypeTemplates": {
+    "LIST": ["search", "filters", "pagination", "emptyState", "detailNavigation", "bulkAction"],
+    "FORM": ["fieldValidation", "duplicateCheck", "draftSave", "submit", "conflictRecovery"],
+    "DETAIL": ["summary", "evidence", "history", "relatedTasks", "nextAction"],
+    "APPROVAL": ["authority", "approvalLine", "approve", "reject", "resubmit", "auditHistory"],
+    "CALCULATION": ["formula", "unitConversion", "factorMapping", "calculationEvidence", "recalculation", "versioning"],
+    "UPLOAD": ["preview", "mapping", "rowValidation", "transaction", "rollback", "resultEvidence"],
+    "REPORT": ["frozenDataset", "render", "download", "hash", "visualFingerprint", "verification"],
+    "ADMIN": ["referenceData", "permissions", "bulkAction", "audit", "recovery"]
+  },
+  "minimumProfessionalScore": 90,
+  "failClosed": true,
+  "allowPromptOnlyCompletion": false,
+  "allowUnverifiedCompletion": false
+}
