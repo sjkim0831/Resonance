@@ -102,7 +102,7 @@ function DetailModal({ selected, detail, onClose }: { selected: Row; detail: Det
       <DetailSection title="백엔드·기능 계약" rows={detail.capabilities ?? []} keys={[["capabilityName","기능"],["capabilityType","유형"],["implementationStatus","상태"],["commandContract","명령 계약"],["errorContract","오류 계약"]]}/>
       <DetailSection title="화면 컬럼·DB 계보" rows={detail.fields ?? []} keys={[["fieldName","컬럼"],["controlType","컴포넌트"],["apiProperty","API 속성"],["sourceTable","DB 테이블"],["sourceColumn","DB 컬럼"],["lineageStatus","계보"]]}/>
       <DetailSection title="테스트 시나리오" rows={detail.tests ?? []} keys={[["caseName","시나리오"],["caseType","유형"],["caseStatus","상태"]]}/>
-      <div className="flex flex-wrap gap-2"><a href={value(selected, "routePath")} target="_blank" rel="noreferrer" className="rounded-lg bg-[#246beb] px-4 py-3 font-bold text-white">실제 화면 미리보기</a><a href={`/admin/system/actor-process?process=${encodeURIComponent(value(selected, "processCodes").split(",")[0] || "")}`} className="rounded-lg border border-blue-300 px-4 py-3 font-bold text-blue-700">액터·프로세스에서 보기</a></div>
+      <div className="flex flex-wrap gap-2"><a href={`/admin/system/page-design-studio?itemId=${encodeURIComponent(value(selected, "itemId"))}`} className="rounded-lg bg-emerald-600 px-4 py-3 font-bold text-white">전문 설계 스튜디오</a><a href={value(selected, "routePath")} target="_blank" rel="noreferrer" className="rounded-lg bg-[#246beb] px-4 py-3 font-bold text-white">실제 화면 미리보기</a><a href={`/admin/system/actor-process?process=${encodeURIComponent(value(selected, "processCodes").split(",")[0] || "")}`} className="rounded-lg border border-blue-300 px-4 py-3 font-bold text-blue-700">액터·프로세스에서 보기</a></div>
     </div>}
   </section></div>;
 }
