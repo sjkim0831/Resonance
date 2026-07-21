@@ -45,5 +45,6 @@ grep -Fq 'framework_ensure_step_screen_contract' "$DESIGN_FACTORY"
 grep -Fq "framework_ensure_step_screen_contract('" "$ROOT/ops/scripts/run-process-development-worker.sh"
 grep -Fq 'DESIGN_FACTORY_RETRY' "$ORCHESTRATOR"
 grep -Fq 'DESIGN_PREFLIGHT_RETRY' "$ORCHESTRATOR"
+grep -Fq 'POST_DESIGN_STACK_RETRY' "$ORCHESTRATOR"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
