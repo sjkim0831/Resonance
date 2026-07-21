@@ -6,7 +6,12 @@ import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionN
 type Row = Record<string, unknown>;
 type Payload = { success?: boolean; summary?: Row; processes?: Row[]; items?: Row[]; message?: string };
 type Detail = { item?: Row; bindings?: Row[]; capabilities?: Row[]; fields?: Row[]; tests?: Row[] };
-const value = (row: Row | undefined, key: string) => String(row?.[key] ?? "");
+const value = (row: Row | undefined, key: string) => {
+  const raw = row?.[key];
+  if (raw == null) return "";
+  if (typeof raw === "object") return JSON.stringify(raw, null, 2);
+  return String(raw);
+};
 const statusTone = (status: string) => status === "VERIFIED" || status === "DEPLOYED" || status === "CUSTOMER_READY" || status === "CONNECTED"
   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
   : status === "IMPLEMENTED" || status === "DESIGNED" || status === "DEFINED"
