@@ -216,7 +216,22 @@ if [[ "$JOB_TYPE" == "DESIGN" ]] && ! jq -e '.designContracts | type == "array" 
     where s.process_code='${PROCESS_CODE}' and s.step_code='${STEP_CODE}'
     group by s.requirement_text,s.step_name;")"
   if ! jq -e '.designContracts | type == "array" and length > 0' <<<"$ENRICHED_DESIGN_SPEC" >/dev/null 2>&1; then
-    fail_job "governed professional screen contracts are missing for legacy DESIGN specification"
+    psqlq -c "select framework_ensure_step_screen_contract('${PROCESS_CODE}','${STEP_CODE}','PROCESS_DEVELOPMENT_WORKER');" >/dev/null
+    ENRICHED_DESIGN_SPEC="$(psqlq -c "
+      select json_build_object('requirement',coalesce(nullif(s.requirement_text,''),s.step_name),
+        'designContracts',json_agg(json_build_object(
+          'audience',c.audience,'routePath',c.route_path,'screenName',c.screen_name,'actorCode',c.actor_code,
+          'businessPurpose',c.business_purpose,'entryCondition',c.entry_condition,'exitCondition',c.exit_condition,
+          'kpis',c.kpi_contract::json,'sections',c.section_contract::json,'fields',c.field_contract::json,
+          'commands',c.command_contract::json,'states',c.state_contract::json,'apis',c.api_contract::json,
+          'data',c.data_contract::json,'evidence',c.evidence_contract::json,'responsive',c.responsive_contract,
+          'accessibility',c.accessibility_contract,'security',c.security_contract) order by c.audience,c.route_path))::text
+      from framework_process_step s join framework_professional_screen_contract c
+        on c.process_code=s.process_code and c.step_code=s.step_code
+      where s.process_code='${PROCESS_CODE}' and s.step_code='${STEP_CODE}'
+      group by s.requirement_text,s.step_name;")"
+    jq -e '.designContracts | type == "array" and length > 0' <<<"$ENRICHED_DESIGN_SPEC" >/dev/null 2>&1 ||
+      fail_job "professional screen contract self-heal failed for DESIGN specification"
   fi
   SPEC="$(jq -c --argjson governed "$ENRICHED_DESIGN_SPEC" '. + $governed' <<<"$SPEC")"
   event "LEGACY_SPEC_ENRICHED" "RUNNING" "RUNNING" \
