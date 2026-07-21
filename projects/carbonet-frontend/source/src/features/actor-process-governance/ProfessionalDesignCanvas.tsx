@@ -186,11 +186,19 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
         <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-white p-5"><div><p className="text-xs font-black text-[#246beb]">{value(selected.row, "workTypeCode")} / {value(selected.row, "processCode")}</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{value(selected.row, "screenName")}</h3></div><button aria-label="상세 닫기" className="rounded-lg border px-3 py-2 font-black" onClick={() => setSelected(null)} type="button">×</button></div>
         <div className="space-y-5 p-5">
           <Info label="업무 단계" text={`${value(selected.row, "stepOrder")}. ${value(selected.row, "stepName")}`} /><div className="grid grid-cols-2 gap-3"><Info label="담당 액터" text={value(selected.row, "actorCode")} /><Info label="상태 전이" text={`${value(selected.row, "fromState")} → ${value(selected.row, "toState")}`} /></div><Info label="실행 명령" text={value(selected.row, "commandCode")} /><Info label="실제 경로" text={value(selected.row, "routePath")} />
-          <div className="flex gap-2"><a className="flex-1 rounded-lg bg-[#246beb] px-4 py-3 text-center font-bold text-white" href={value(selected.row, "routePath")} target="_blank" rel="noreferrer">실제 화면 열기</a><button className="rounded-lg border px-4 py-3 font-bold" onClick={() => setPreview(current => !current)} type="button">{preview ? "미리보기 닫기" : "화면 미리보기"}</button></div>
-          {preview && <iframe className="h-72 w-full rounded-xl border bg-white" src={previewPath(value(selected.row, "routePath"))} title={`${value(selected.row, "screenName")} 미리보기`} />}
+          <div className="flex gap-2"><a className="flex-1 rounded-lg bg-[#246beb] px-4 py-3 text-center font-bold text-white" href={value(selected.row, "routePath")} target="_blank" rel="noreferrer">실제 화면 열기</a><button className="rounded-lg border px-4 py-3 font-bold" onClick={() => setPreview(true)} type="button">미리보기 팝업</button></div>
           <ContractList title="화면 기능" rows={jsonArray(selected.row.capabilities)} primary="name" secondary="capabilityCode" /><ContractList title="입·출력 데이터 계보" rows={jsonArray(selected.row.dataElements)} primary="name" secondary="dataElementCode" /><ContractList title="테스트 시나리오" rows={jsonArray(selected.row.tests)} primary="caseCode" secondary="scope" /><ContractList title="실제 프로젝트 실행 업무" rows={jsonArray(selected.row.actualProjectTasks)} primary="taskName" secondary="status" />
         </div>
       </aside>}
+      {selected && preview && <div aria-modal="true" className="fixed inset-0 z-[1500] flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" role="dialog" onMouseDown={event => { if (event.target === event.currentTarget) setPreview(false); }}>
+        <section className="flex h-[92vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <header className="flex items-center justify-between gap-4 border-b bg-white px-4 py-3 sm:px-6">
+            <div className="min-w-0"><p className="text-xs font-black text-[#246beb]">LIVE SCREEN PREVIEW</p><h3 className="truncate text-lg font-black text-[#052b57]">{value(selected.row, "screenName")}</h3><p className="truncate font-mono text-xs text-slate-500">{value(selected.row, "routePath")}</p></div>
+            <div className="flex shrink-0 gap-2"><a className="rounded-lg bg-[#246beb] px-4 py-2 text-sm font-bold text-white" href={value(selected.row, "routePath")} target="_blank" rel="noreferrer">새 창에서 열기</a><button aria-label="미리보기 팝업 닫기" className="rounded-lg border px-4 py-2 text-sm font-black" onClick={() => setPreview(false)} type="button">닫기</button></div>
+          </header>
+          <iframe className="min-h-0 flex-1 bg-white" src={previewPath(value(selected.row, "routePath"))} title={`${value(selected.row, "screenName")} 미리보기`} />
+        </section>
+      </div>}
     </div>
   </section>;
 }
