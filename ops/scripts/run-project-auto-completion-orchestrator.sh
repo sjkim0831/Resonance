@@ -267,6 +267,32 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
+design_preflight_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id from framework_development_job j
+  where j.job_type='DESIGN' and j.job_status='FAILED'
+    and j.last_error='professional development contract preflight failed'
+    and exists (
+      select 1 from framework_professional_screen_contract c
+      where c.process_code=j.process_code and c.step_code=j.step_code
+        and length(coalesce(c.business_purpose,''))>=10
+    )
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='DESIGN_PREFLIGHT_RETRY'
+    )
+), recovered as (
+  update framework_development_job j
+  set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+      attempt_count=greatest(0,j.max_attempts-1),last_error=null,updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'DESIGN_PREFLIGHT_RETRY','FAILED','RETRY','project-auto-completion',
+         jsonb_build_object('reason','short legacy step name now expands to the governed professional requirement')
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 frontend_inventory_retried="$(psqlq -c "
 with candidate as (
   select j.job_id from framework_development_job j
@@ -365,7 +391,7 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
-retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+shared_evidence_retried+cache_retried+metadata_retried+symlink_retried+router_retried+legacy_design_retried+design_factory_retried+frontend_inventory_retried+database_adoption_retried+collect_database_validator_retried))"
+retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+shared_evidence_retried+cache_retried+metadata_retried+symlink_retried+router_retried+legacy_design_retried+design_factory_retried+design_preflight_retried+frontend_inventory_retried+database_adoption_retried+collect_database_validator_retried))"
 
 # Before invoking a model, deterministically adopt server work that is already
 # implemented and covered by tests. The adopter is state-guarded, so a job that

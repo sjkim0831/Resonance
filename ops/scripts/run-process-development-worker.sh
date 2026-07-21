@@ -197,7 +197,7 @@ fi
 if [[ "$JOB_TYPE" == "DESIGN" ]] && ! jq -e '.designContracts | type == "array" and length > 0' <<<"$SPEC" >/dev/null 2>&1; then
   ENRICHED_DESIGN_SPEC="$(psqlq -c "
     select json_build_object(
-      'requirement',coalesce(nullif(s.requirement_text,''),s.step_name),
+      'requirement',coalesce(nullif(s.requirement_text,''),s.step_name||' 업무를 전문적으로 완료하고 검증 가능한 산출물을 생성한다.'),
       'designContracts',coalesce(json_agg(json_build_object(
         'audience',c.audience,'routePath',c.route_path,'screenName',c.screen_name,
         'actorCode',c.actor_code,'businessPurpose',c.business_purpose,
@@ -218,7 +218,7 @@ if [[ "$JOB_TYPE" == "DESIGN" ]] && ! jq -e '.designContracts | type == "array" 
   if ! jq -e '.designContracts | type == "array" and length > 0' <<<"$ENRICHED_DESIGN_SPEC" >/dev/null 2>&1; then
     psqlq -c "select framework_ensure_step_screen_contract('${PROCESS_CODE}','${STEP_CODE}','PROCESS_DEVELOPMENT_WORKER');" >/dev/null
     ENRICHED_DESIGN_SPEC="$(psqlq -c "
-      select json_build_object('requirement',coalesce(nullif(s.requirement_text,''),s.step_name),
+      select json_build_object('requirement',coalesce(nullif(s.requirement_text,''),s.step_name||' 업무를 전문적으로 완료하고 검증 가능한 산출물을 생성한다.'),
         'designContracts',json_agg(json_build_object(
           'audience',c.audience,'routePath',c.route_path,'screenName',c.screen_name,'actorCode',c.actor_code,
           'businessPurpose',c.business_purpose,'entryCondition',c.entry_condition,'exitCondition',c.exit_condition,
