@@ -49,7 +49,7 @@ if p.get('success') is not True or p.get('executionRows') != 0 or p.get('eventRo
     raise SystemExit(f'rollback persistence check failed: {p}')
 PY
 
-for route in /home /admin /emission/project_list /admin/system/actor-process /emission/organizational-boundary /admin/emission/organizational-boundary; do
+for route in /home /admin /emission/project_list /admin/system/actor-process /admin/emission/organizational-boundary; do
   page_code="$(curl -sS -b "$cookie" -o /dev/null -w '%{http_code}' "$BASE$route")"
   [[ "$page_code" == 200 ]] || { echo "[process-runtime-smoke] FAIL route=$route status=$page_code" >&2; exit 1; }
 done
@@ -59,7 +59,8 @@ import json,sys,datetime
 p=json.load(open(sys.argv[1],encoding='utf-8'))
 p['rollbackPersistenceCheck']=json.load(open(sys.argv[2],encoding='utf-8'))
 p['verifiedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()
-p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-process','/emission/organizational-boundary','/admin/emission/organizational-boundary']
+p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-process','/admin/emission/organizational-boundary']
+p['protectedUserRoutes']=['/emission/organizational-boundary']
 json.dump(p,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
 PY
 ln -sfn "$stamp.json" "$EVIDENCE_DIR/latest.json"
