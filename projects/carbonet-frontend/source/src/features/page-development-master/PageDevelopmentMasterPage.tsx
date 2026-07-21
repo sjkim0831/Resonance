@@ -4,7 +4,7 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 
 type Row = Record<string, unknown>;
-type Payload = { success?: boolean; summary?: Row; processes?: Row[]; items?: Row[]; message?: string };
+type Payload = { success?: boolean; summary?: Row; processes?: Row[]; items?: Row[]; templateStandards?: Row[]; message?: string };
 type Detail = { item?: Row; designGate?: Row; bindings?: Row[]; capabilities?: Row[]; fields?: Row[]; tests?: Row[] };
 const value = (row: Row | undefined, key: string) => {
   const raw = row?.[key];
@@ -64,6 +64,7 @@ export function PageDevelopmentMasterPage() {
       </section>
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{cards.map(([label, key]) => <article className="rounded-xl border bg-white p-4" key={key}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(summary, key) || "0"}</strong></article>)}</section>
+      <TemplateStandardCoverage rows={data.templateStandards ?? []} />
       <section className="grid gap-3 rounded-2xl border bg-white p-4 lg:grid-cols-[1.3fr_1fr_0.8fr_auto]">
         <label className="text-sm font-bold text-slate-700">화면·URL·액터 검색<input className="mt-2 h-11 w-full rounded-lg border px-3" value={query} onChange={event => setQuery(event.target.value)} placeholder="화면명, URL, 액터, 프로세스" /></label>
         <label className="text-sm font-bold text-slate-700">프로세스<select className="mt-2 h-11 w-full rounded-lg border bg-white px-3" value={processCode} onChange={event => setProcessCode(event.target.value)}><option value="">전체 프로세스</option>{(data.processes ?? []).map(row => <option key={value(row, "processCode")} value={value(row, "processCode")}>{value(row, "processName")}</option>)}</select></label>
@@ -87,6 +88,21 @@ export function PageDevelopmentMasterPage() {
     </div>
     {selected && <DetailModal selected={selected} detail={detail} onClose={() => { setSelected(null); setDetail(null); }} />}
   </AdminPageShell>;
+}
+
+function TemplateStandardCoverage({ rows }: { rows: Row[] }) {
+  const approved = rows.filter(row => value(row, "standardStatus") === "APPROVED").length;
+  return <section className="overflow-hidden rounded-2xl border bg-white">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-slate-50 px-5 py-4">
+      <div><h3 className="font-black text-[#052b57]">전문 화면 표준화 현황</h3><p className="mt-1 text-xs text-slate-600">대표 화면이 설계 게이트 100점을 통과한 유형만 대량 생성에 사용합니다.</p></div>
+      <strong className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm text-blue-800">승인 {approved} / {rows.length}</strong>
+    </header>
+    <div className="overflow-x-auto"><table className="w-full min-w-[1100px] text-left text-sm"><thead><tr className="bg-white">{["화면 유형","표준","전체 화면","구현됨","게이트 통과","대표 화면","대표 점수","상태"].map(label=><th key={label} className="border-b px-4 py-3 text-xs font-black text-slate-600">{label}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={value(row,"screenType")} className="border-b last:border-0">
+      <td className="px-4 py-3 font-black text-slate-900">{value(row,"screenType")}</td><td className="px-4 py-3">{value(row,"standardName")}</td><td className="px-4 py-3">{value(row,"pageCount")}</td><td className="px-4 py-3">{value(row,"implementedCount")}</td><td className="px-4 py-3">{value(row,"gatePassedCount")}</td>
+      <td className="px-4 py-3">{value(row,"representativeRoute") ? <a className="font-bold text-blue-700 hover:underline" href={value(row,"representativeRoute")} target="_blank" rel="noreferrer">{value(row,"representativeScreenName") || value(row,"representativeRoute")}</a> : <span className="text-amber-700">대표 화면 선정 필요</span>}</td>
+      <td className="px-4 py-3 font-black">{value(row,"representativeGateScore")}</td><td className="px-4 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${statusTone(value(row,"standardStatus"))}`}>{value(row,"standardStatus")}</span>{value(row,"representativeGateIssues") && <p className="mt-2 max-w-[260px] text-xs leading-5 text-amber-800">{value(row,"representativeGateIssues")}</p>}</td>
+    </tr>)}</tbody></table></div>
+  </section>;
 }
 
 function CellButton({ row, label, status, onOpen }: { row: Row; label: string; status: string; onOpen: (row: Row) => Promise<void> }) {
