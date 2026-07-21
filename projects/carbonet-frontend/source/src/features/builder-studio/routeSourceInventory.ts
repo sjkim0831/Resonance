@@ -13,18 +13,6 @@ export type RouteSourceInventoryRow = {
 
 export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   {
-    "routeId": "emission-project-operations-admin",
-    "label": "배출량 프로젝트 운영",
-    "group": "admin",
-    "koPath": "/admin/emission/project-operations",
-    "enPath": "/en/admin/emission/project-operations",
-    "exportName": "AdminEmissionProjectOperationsPage",
-    "sourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
-    "effectiveExportName": "AdminEmissionProjectOperationsPage",
-    "effectiveSourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
-    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
-  },
-  {
     "routeId": "access-history",
     "label": "접속 로그",
     "group": "admin",
@@ -702,10 +690,22 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "admin",
     "koPath": "/admin/system/component-management",
     "enPath": "/en/admin/system/component-management",
-    "exportName": "ComponentManagementPage",
-    "sourcePath": "features/builder-studio/ComponentManagementPage.tsx",
-    "effectiveExportName": "ComponentManagementPage",
-    "effectiveSourcePath": "features/builder-studio/ComponentManagementPage.tsx",
+    "exportName": "DesignAssetRegistryPage",
+    "sourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveExportName": "DesignAssetRegistryPage",
+    "effectiveSourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "consent-history",
+    "label": "약관·동의 이력",
+    "group": "admin",
+    "koPath": "/admin/system/consent-history",
+    "enPath": "/en/admin/system/consent-history",
+    "exportName": "ConsentHistoryMigrationPage",
+    "sourcePath": "features/consent-history/ConsentHistoryMigrationPage.tsx",
+    "effectiveExportName": "ConsentHistoryMigrationPage",
+    "effectiveSourcePath": "features/consent-history/ConsentHistoryMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -730,6 +730,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
     "effectiveExportName": "CronMonitoringPage",
     "effectiveSourcePath": "features/admin-monitoring/AdminMonitoringOperationsPages.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "css-management",
+    "label": "CSS 관리",
+    "group": "admin",
+    "koPath": "/admin/system/css-management",
+    "enPath": "/en/admin/system/css-management",
+    "exportName": "DesignAssetRegistryPage",
+    "sourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveExportName": "DesignAssetRegistryPage",
+    "effectiveSourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -793,6 +805,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/adminMemberFamily.ts"
   },
   {
+    "routeId": "design-management",
+    "label": "디자인 관리",
+    "group": "admin",
+    "koPath": "/admin/system/design-management",
+    "enPath": "/en/admin/system/design-management",
+    "exportName": "DesignAssetRegistryPage",
+    "sourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveExportName": "DesignAssetRegistryPage",
+    "effectiveSourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
     "routeId": "download-list",
     "label": "자료실",
     "group": "home",
@@ -803,6 +827,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "effectiveExportName": "DownloadListMigrationPage",
     "effectiveSourcePath": "features/download-list/DownloadListMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
+  },
+  {
+    "routeId": "dynamic-page-runtime",
+    "label": "Dynamic Page Runtime",
+    "group": "home",
+    "koPath": "/runtime/page",
+    "enPath": "/en/runtime/page",
+    "exportName": "DynamicPageRuntime",
+    "sourcePath": "features/dynamic-page/DynamicPageRuntime.tsx",
+    "effectiveExportName": "DynamicPageRuntime",
+    "effectiveSourcePath": "features/dynamic-page/DynamicPageRuntime.tsx",
+    "routeFamilyFile": "app/routes/families/appOwnedFamily.ts"
   },
   {
     "routeId": "edu-apply",
@@ -954,10 +990,10 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "home",
     "koPath": "/emission/calculation",
     "enPath": "/en/emission/calculation",
-    "exportName": "EmissionSimulateMigrationPage",
-    "sourcePath": "features/emission-simulate/EmissionSimulateMigrationPage.tsx",
-    "effectiveExportName": "EmissionSimulateMigrationPage",
-    "effectiveSourcePath": "features/emission-simulate/EmissionSimulateMigrationPage.tsx",
+    "exportName": "EmissionProjectResultPage",
+    "sourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
+    "effectiveExportName": "EmissionProjectResultPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectResultPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1040,8 +1076,8 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "enPath": "/en/emission/data-request",
     "exportName": "EmissionDataRequestPage",
     "sourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
-    "effectiveExportName": "EmissionDataRequestPage",
-    "effectiveSourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
+    "effectiveExportName": "EmissionDataRequestFunctionalPage",
+    "effectiveSourcePath": "features/emission-carbon-workflow/EmissionDataRequestFunctionalPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1321,6 +1357,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-project-operations-admin",
+    "label": "배출량 프로젝트 운영",
+    "group": "admin",
+    "koPath": "/admin/emission/project-operations",
+    "enPath": "/en/admin/emission/project-operations",
+    "exportName": "AdminEmissionProjectOperationsPage",
+    "sourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
+    "effectiveExportName": "AdminEmissionProjectOperationsPage",
+    "effectiveSourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-project-progress",
     "label": "프로세스 진행",
     "group": "home",
@@ -1342,6 +1390,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/emission-reduction/EmissionReductionMigrationPage.tsx",
     "effectiveExportName": "EmissionReductionMigrationPage",
     "effectiveSourcePath": "features/emission-reduction/EmissionReductionMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-regulatory-submissions-admin",
+    "label": "규제 제출 현황",
+    "group": "admin",
+    "koPath": "/admin/emission/regulatory-submissions",
+    "enPath": "/en/admin/emission/regulatory-submissions",
+    "exportName": "AdminRegulatorySubmissionPage",
+    "sourcePath": "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx",
+    "effectiveExportName": "AdminRegulatorySubmissionPage",
+    "effectiveSourcePath": "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1398,10 +1458,10 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "home",
     "koPath": "/emission/report-submission",
     "enPath": "/en/emission/report-submission",
-    "exportName": "EmissionReportSubmissionPage",
-    "sourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
-    "effectiveExportName": "EmissionReportSubmissionPage",
-    "effectiveSourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
+    "exportName": "EmissionRegulatorySubmissionPage",
+    "sourcePath": "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx",
+    "effectiveExportName": "EmissionRegulatorySubmissionPage",
+    "effectiveSourcePath": "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
@@ -1490,7 +1550,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "emission-simulate",
-    "label": "배출량 산정",
+    "label": "감축 전략 시뮬레이션",
     "group": "home",
     "koPath": "/emission/simulate",
     "enPath": "/en/emission/simulate",
@@ -1946,7 +2006,7 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
   },
   {
     "routeId": "home-page-workbench",
-    "label": "홈 페이지 작업대",
+    "label": "홈 구성 스튜디오",
     "group": "admin",
     "koPath": "/admin/system/home-page-workbench",
     "enPath": "/en/admin/system/home-page-workbench",
@@ -2557,6 +2617,42 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
+    "routeId": "ops-capability-bridge",
+    "label": "Ops 통합 관제",
+    "group": "admin",
+    "koPath": "/admin/system/ops-bridge",
+    "enPath": "/en/admin/system/ops-bridge",
+    "exportName": "OpsCapabilityBridgePage",
+    "sourcePath": "features/ops-capability-bridge/OpsCapabilityBridgePage.tsx",
+    "effectiveExportName": "OpsCapabilityBridgePage",
+    "effectiveSourcePath": "features/ops-capability-bridge/OpsCapabilityBridgePage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "organizational-boundary",
+    "label": "조직경계 설정",
+    "group": "home",
+    "koPath": "/emission/organizational-boundary",
+    "enPath": "/en/emission/organizational-boundary",
+    "exportName": "OrganizationalBoundaryPage",
+    "sourcePath": "features/organizational-boundary/index.ts",
+    "effectiveExportName": "OrganizationalBoundaryPage",
+    "effectiveSourcePath": "features/organizational-boundary/OrganizationalBoundaryPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "organizational-boundary-admin",
+    "label": "조직경계 검토",
+    "group": "admin",
+    "koPath": "/admin/emission/organizational-boundary",
+    "enPath": "/en/admin/emission/organizational-boundary",
+    "exportName": "OrganizationalBoundaryPage",
+    "sourcePath": "features/organizational-boundary/index.ts",
+    "effectiveExportName": "OrganizationalBoundaryPage",
+    "effectiveSourcePath": "features/organizational-boundary/OrganizationalBoundaryPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "page-management",
     "label": "화면 관리",
     "group": "admin",
@@ -2725,6 +2821,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/contentSupportFamily.ts"
   },
   {
+    "routeId": "process-orchestration",
+    "label": "전문 업무 프로세스 작업공간",
+    "group": "admin",
+    "koPath": "/admin/system/process-workspace",
+    "enPath": "/en/admin/system/process-workspace",
+    "exportName": "ProcessOrchestrationPage",
+    "sourcePath": "features/process-orchestration/ProcessOrchestrationPage.tsx",
+    "effectiveExportName": "ProcessOrchestrationPage",
+    "effectiveSourcePath": "features/process-orchestration/ProcessOrchestrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
     "routeId": "qna-category",
     "label": "Q&A 분류",
     "group": "admin",
@@ -2850,10 +2958,10 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "admin",
     "koPath": "/admin/system/section-management",
     "enPath": "/en/admin/system/section-management",
-    "exportName": "BuilderStudioPage",
-    "sourcePath": "features/builder-studio/BuilderStudioPage.tsx",
-    "effectiveExportName": "BuilderStudioPage",
-    "effectiveSourcePath": "features/builder-studio/BuilderStudioPage.tsx",
+    "exportName": "DesignAssetRegistryPage",
+    "sourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveExportName": "DesignAssetRegistryPage",
+    "effectiveSourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -3150,10 +3258,10 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "group": "admin",
     "koPath": "/admin/system/theme-management",
     "enPath": "/en/admin/system/theme-management",
-    "exportName": "ThemeManagementMigrationPage",
-    "sourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
-    "effectiveExportName": "ThemeManagementMigrationPage",
-    "effectiveSourcePath": "features/builder-governance/BuilderGovernancePages.tsx",
+    "exportName": "DesignAssetRegistryPage",
+    "sourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveExportName": "DesignAssetRegistryPage",
+    "effectiveSourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
