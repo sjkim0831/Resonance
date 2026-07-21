@@ -20,6 +20,7 @@ const previewPath = (route: string) => `${route}${route.includes("?") ? "&" : "?
 export function ProfessionalDesignCanvas({ base, en }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const [flowEdges, setFlowEdges] = useState<Row[]>([]);
   const [summary, setSummary] = useState<Row>({});
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -38,7 +39,7 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
     setLoading(true);
     fetch(`${base}/design/professional-graph`, { credentials: "include" })
       .then(async response => { const body = await response.json(); if (!response.ok) throw new Error(body.message || "설계 지도를 불러오지 못했습니다."); return body; })
-      .then(body => { if (active) { setRows(body.items || []); setSummary(body.summary || {}); setError(""); } })
+      .then(body => { if (active) { setRows(body.items || []); setFlowEdges(body.edges || []); setSummary(body.summary || {}); setError(""); } })
       .catch(reason => active && setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
@@ -142,11 +143,14 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
   const edges = useMemo(() => {
     const byProcess = new Map<string, CanvasNode[]>();
     layout.nodes.forEach(node => { const key = value(node.row, "processCode"); const list = byProcess.get(key) || []; list.push(node); byProcess.set(key, list); });
-    return Array.from(byProcess.values()).flatMap(nodes => {
-      const primary = Array.from(new Map(nodes.sort((a, b) => number(a.row, "stepOrder") - number(b.row, "stepOrder")).map(node => [number(node.row, "stepOrder"), node])).values());
-      return primary.slice(0, -1).map((node, index) => ({ from: node, to: primary[index + 1] }));
+    return flowEdges.flatMap(edge => {
+      const nodes = byProcess.get(value(edge, "processCode")) || [];
+      const from = nodes.find(node => value(node.row, "stepCode") === value(edge, "fromStepCode"));
+      const to = nodes.find(node => value(node.row, "stepCode") === value(edge, "toStepCode"));
+      return from && to ? [{ from, to, edge }] : [];
     });
-  }, [layout.nodes]);
+  }, [flowEdges, layout.nodes]);
+  const edgeColor = (type: string) => type === "REJECT" ? "#dc2626" : type === "RETRY" ? "#d97706" : type === "BRANCH" ? "#7c3aed" : type === "PARALLEL" || type === "JOIN" ? "#0891b2" : "#8aa1b8";
 
   return <section className="overflow-hidden rounded-2xl border border-slate-300 bg-[#eef3f8] shadow-sm">
     <header className="relative z-30 border-b bg-white p-4">
@@ -172,14 +176,14 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
       <div className="absolute left-0 top-0 origin-top-left" style={{ width: layout.width, height: layout.height, transform: `translate(${transform.x}px,${transform.y}px) scale(${transform.scale})` }}>
         {Array.from(layout.groupY.entries()).map(([type, y]) => <div className="absolute left-8 flex items-center gap-3" key={type} style={{ top: y }}><span className="rounded-lg bg-[#052b57] px-4 py-2 text-base font-black text-white">{type}</span><span className="text-sm font-bold text-slate-500">업무 영역</span></div>)}
         {layout.processes.map(process => { const y = layout.processY.get(value(process, "processCode")) || 0; return <div className="absolute left-8 w-52 rounded-xl border border-slate-300 bg-white/90 p-3 shadow-sm" key={value(process, "processCode")} style={{ top: y + 48 }}><span className="text-[11px] font-black text-[#246beb]">{value(process, "processCode")}</span><strong className="mt-1 block text-sm text-[#052b57]">{value(process, "processName")}</strong><span className="mt-2 block text-xs text-slate-500">실행 순서 {value(process, "workflowOrder")}</span></div>; })}
-        <svg className="pointer-events-none absolute inset-0 overflow-visible" width={layout.width} height={layout.height} aria-hidden="true"><defs><marker id="canvas-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8aa1b8" /></marker></defs>{edges.map((edge, index) => <path d={`M ${edge.from.x + edge.from.width} ${edge.from.y + 76} C ${edge.from.x + edge.from.width + 46} ${edge.from.y + 76}, ${edge.to.x - 46} ${edge.to.y + 76}, ${edge.to.x} ${edge.to.y + 76}`} fill="none" key={index} markerEnd="url(#canvas-arrow)" stroke="#8aa1b8" strokeWidth="3" />)}</svg>
+        <svg className="pointer-events-none absolute inset-0 overflow-visible" width={layout.width} height={layout.height} aria-hidden="true"><defs>{["NEXT","BRANCH","REJECT","RETRY","PARALLEL","JOIN","SUBPROCESS","EVENT","EXTERNAL"].map(type => <marker id={`canvas-arrow-${type}`} key={type} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={edgeColor(type)} /></marker>)}</defs>{edges.map((item, index) => { const type=value(item.edge,"edgeType")||"NEXT", color=edgeColor(type), midX=(item.from.x+item.from.width+item.to.x)/2, midY=(item.from.y+item.to.y)/2+70; return <g key={`${value(item.edge,"edgeId")}-${index}`}><path d={`M ${item.from.x + item.from.width} ${item.from.y + 76} C ${item.from.x + item.from.width + 46} ${item.from.y + 76}, ${item.to.x - 46} ${item.to.y + 76}, ${item.to.x} ${item.to.y + 76}`} fill="none" markerEnd={`url(#canvas-arrow-${type})`} stroke={color} strokeDasharray={value(item.edge,"reviewStatus")==="REVIEW_REQUIRED"?"8 6":undefined} strokeWidth="3"/><g transform={`translate(${midX},${midY})`}><rect x="-44" y="-11" width="88" height="22" rx="11" fill="white" stroke={color}/><text fill={color} fontSize="10" fontWeight="800" textAnchor="middle" dominantBaseline="middle">{type}</text></g></g>; })}</svg>
         {layout.nodes.map(node => { const row = node.row, matched = matchingKeys.has(node.key), chosen = selected?.key === node.key; return <button className={`absolute overflow-hidden rounded-xl border-2 p-3 text-left shadow-md transition-[box-shadow,border-color] hover:shadow-xl ${statusStyle(value(row, "implementationStatus"))} ${matched ? "ring-4 ring-fuchsia-400" : ""} ${chosen ? "ring-4 ring-[#052b57]" : ""}`} key={node.key} style={{ left: node.x, top: node.y, width: node.width, height: node.height }} onClick={event => { event.stopPropagation(); setSelected(node); setPreview(false); }} type="button">
           <div className="flex items-start justify-between gap-2"><span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-black">{value(row, "audience")} · {value(row, "entryMode")}</span><span className="text-[10px] font-black">{value(row, "implementationStatus")}</span></div>
           <strong className="mt-2 block line-clamp-2 text-sm">{value(row, "screenName")}</strong><span className="mt-1 block truncate text-[11px] font-bold opacity-75">{value(row, "stepName")} · {value(row, "actorCode")}</span><span className="mt-2 block truncate rounded bg-white/70 px-2 py-1 font-mono text-[10px]">{value(row, "routePath")}</span>
         </button>; })}
       </div>
 
-      <div className="absolute bottom-4 left-4 z-20 flex flex-wrap gap-2 rounded-xl border bg-white/95 p-2 text-[11px] font-bold shadow"><span className="rounded bg-emerald-100 px-2 py-1 text-emerald-900">VERIFIED</span><span className="rounded bg-blue-100 px-2 py-1 text-blue-900">IMPLEMENTED</span><span className="rounded bg-amber-100 px-2 py-1 text-amber-900">DESIGN ONLY</span><span className="px-2 py-1 text-slate-500">휠: 확대/축소 · 빈 공간 드래그: 이동 · 카드 선택: 상세</span></div>
+      <div className="absolute bottom-4 left-4 z-20 flex max-w-[70%] flex-wrap gap-2 rounded-xl border bg-white/95 p-2 text-[11px] font-bold shadow"><span className="rounded bg-emerald-100 px-2 py-1 text-emerald-900">VERIFIED</span><span className="rounded bg-blue-100 px-2 py-1 text-blue-900">IMPLEMENTED</span><span className="rounded bg-amber-100 px-2 py-1 text-amber-900">DESIGN ONLY</span>{["NEXT","BRANCH","REJECT","RETRY","PARALLEL","JOIN"].map(type=><span className="rounded border px-2 py-1" key={type} style={{borderColor:edgeColor(type),color:edgeColor(type)}}>{type}</span>)}<span className="px-2 py-1 text-slate-500">실선: 확정 · 점선: 검토 필요</span></div>
       <div className="absolute bottom-4 right-4 z-20 h-28 w-48 overflow-hidden rounded-xl border bg-white/95 shadow" aria-label="미니맵"><div className="absolute inset-0 origin-top-left" style={{ transform: `scale(${180 / layout.width},${100 / layout.height})`, transformOrigin: "8px 8px" }}>{layout.nodes.map(node => <span className="absolute rounded bg-[#246beb]" key={`mini-${node.key}`} style={{ left: node.x, top: node.y, width: Math.max(30, node.width), height: Math.max(22, node.height) }} />)}</div><span className="absolute bottom-1 left-2 text-[10px] font-black text-slate-500">전체 지도</span></div>
 
       {selected && <aside className="absolute bottom-0 right-0 top-0 z-40 w-full max-w-[470px] overflow-y-auto border-l bg-white shadow-2xl">

@@ -100,17 +100,19 @@ public class ActorProcessGovernanceService {
     public Map<String,Object> generateProfessionalDesignGraph(String processCode,String actor){
         String process=processCode==null||processCode.isBlank()?null:processCode.trim();
         Map<String,Object> generated=jdbc.queryForMap("select framework_generate_professional_design_graph(?,?) as result",process,actor);
+        Object flow=jdbc.queryForObject("select framework_refresh_process_flow_edges(?)::text",String.class,process);
         Object raw=generated.get("result");
         Map<String,Object> summary=jdbc.queryForMap("select process_count as \"processCount\",step_count as \"stepCount\",ready_step_count as \"readyStepCount\",blocked_step_count as \"blockedStepCount\",screen_binding_count as \"screenBindingCount\",capability_binding_count as \"capabilityBindingCount\",test_binding_count as \"testBindingCount\" from framework_professional_design_graph_summary");
-        return Map.of("success",true,"result",raw==null?"{}":raw,"summary",summary);
+        return Map.of("success",true,"result",raw==null?"{}":raw,"flow",flow==null?"{}":flow,"summary",summary);
     }
 
     public Map<String,Object> professionalDesignGraph(String workTypeCode,String processCode){
         String work=workTypeCode==null?"":workTypeCode.trim().toUpperCase(Locale.ROOT);
         String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
         List<Map<String,Object>> rows=jdbc.queryForList("select work_type_code as \"workTypeCode\",workflow_order as \"workflowOrder\",workflow_phase as \"workflowPhase\",process_code as \"processCode\",process_name as \"processName\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",from_state as \"fromState\",command_code as \"commandCode\",to_state as \"toState\",binding_id as \"bindingId\",audience,entry_mode as \"entryMode\",screen_resource_id as \"screenResourceId\",route_key as \"routePath\",screen_name as \"screenName\",screen_type as \"screenType\",implementation_status as \"implementationStatus\",context_contract as \"contextContract\",visibility_contract as \"visibilityContract\",completion_contract as \"completionContract\",guide_contract as \"guideContract\",capabilities,data_elements as \"dataElements\",tests,actual_project_tasks as \"actualProjectTasks\" from framework_professional_design_graph where (?='' or work_type_code=?) and (?='' or process_code=?) order by work_type_code,workflow_order,process_code,step_order,audience,binding_id",work,work,process,process);
+        List<Map<String,Object>> edges=jdbc.queryForList("select edge_id as \"edgeId\",work_type_code as \"workTypeCode\",process_code as \"processCode\",from_step_code as \"fromStepCode\",from_step_name as \"fromStepName\",from_step_order as \"fromStepOrder\",to_step_code as \"toStepCode\",to_step_name as \"toStepName\",to_step_order as \"toStepOrder\",edge_type as \"edgeType\",condition_code as \"conditionCode\",condition_contract as \"conditionContract\",actor_code as \"actorCode\",source_kind as \"sourceKind\",review_status as \"reviewStatus\" from framework_professional_process_flow where (?='' or work_type_code=?) and (?='' or process_code=?) order by work_type_code,workflow_order,process_code,from_step_order,to_step_order,edge_id",work,work,process,process);
         Map<String,Object> summary=jdbc.queryForMap("select count(distinct process_code) as \"processCount\",count(distinct (process_code,step_code)) as \"stepCount\",count(distinct screen_resource_id) as \"screenCount\",count(*) as \"bindingCount\",count(*) filter(where implementation_status='VERIFIED') as \"verifiedScreenBindings\",count(*) filter(where implementation_status='IMPLEMENTED') as \"implementedScreenBindings\",count(*) filter(where implementation_status='DESIGN_ONLY') as \"designOnlyBindings\" from framework_professional_design_graph where (?='' or work_type_code=?) and (?='' or process_code=?)",work,work,process,process);
-        return Map.of("success",true,"summary",summary,"items",rows);
+        return Map.of("success",true,"summary",summary,"items",rows,"edges",edges);
     }
 
     @Transactional public Map<String,Object> validateProcessDesign(String process,String actor){
@@ -172,6 +174,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
         for(String process:processes){
             deliveries.add(autoImplementCompletedDesign(process,actor));
+            generateProfessionalDesignGraph(process,actor);
         }
         List<Map<String,Object>> outputs=jdbc.queryForList(
             "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
@@ -193,6 +196,7 @@ public class ActorProcessGovernanceService {
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
         String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
         Map<String,Object> automation=autoImplementCompletedDesign(process,actor);
+        generateProfessionalDesignGraph(process,actor);
         return Map.of("success",true,"contract",readiness,"autoImplementation",automation);
     }
 
