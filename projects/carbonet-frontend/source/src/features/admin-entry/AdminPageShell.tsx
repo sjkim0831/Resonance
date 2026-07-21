@@ -437,9 +437,20 @@ function findDomainKeyByPrefix(menuTree: Record<string, AdminMenuDomain>, ...pre
 function resolveFallbackDomainKey(menuTree: Record<string, AdminMenuDomain>, currentPath: string) {
   const currentBase = pathOnly(currentPath);
   if (currentBase.startsWith("/admin/emission/") || currentBase.startsWith("/en/admin/emission/")) {
-    return findDomainKeyByPrefix(menuTree, "A002");
+    return findDomainKeyByPrefix(menuTree, "A103", "A002");
   }
   return "";
+}
+
+function resolveSidebarVariantDomainKey(menuTree: Record<string, AdminMenuDomain>, variant: string | undefined) {
+  const normalized = String(variant || "").trim().toLowerCase();
+  if (!normalized) {
+    return "";
+  }
+  return Object.entries(menuTree).find(([domainKey, domain]) => {
+    const values = [domainKey, domain.label, domain.labelEn].map((value) => String(value || "").trim().toLowerCase());
+    return values.some((value) => value === normalized || value.startsWith(normalized) || value.includes(normalized));
+  })?.[0] || "";
 }
 
 function resolveFirstDomainPath(domain: AdminMenuDomain | undefined) {
@@ -551,7 +562,7 @@ export function AdminPageShell({
   actions,
   breadcrumbs,
   contextStrip,
-  sidebarVariant: _sidebarVariant,
+  sidebarVariant,
   loading = false,
   loadingLabel,
   children
@@ -576,10 +587,11 @@ export function AdminPageShell({
   );
   const menuIndex = useMemo(() => buildMenuIndex(menuTree), [menuTree]);
   const activeMenuEntry = useMemo(() => resolveMenuIndexEntry(menuIndex, currentPath), [menuIndex, currentPath]);
+  const variantDomainKey = useMemo(() => resolveSidebarVariantDomainKey(menuTree, sidebarVariant), [menuTree, sidebarVariant]);
   const fallbackActiveDomainKey = useMemo(() => resolveFallbackDomainKey(menuTree, currentPath), [currentPath, menuTree]);
-  const activeDomainKey = activeMenuEntry?.domainKey || fallbackActiveDomainKey || Object.keys(menuTree)[0] || "";
+  const activeDomainKey = activeMenuEntry?.domainKey || variantDomainKey || fallbackActiveDomainKey || Object.keys(menuTree)[0] || "";
   const [selectedDomainKey, setSelectedDomainKey] = useState(
-    () => readStoredSelectedDomain(menuTree, currentPath) || activeDomainKey
+    () => activeMenuEntry?.domainKey || variantDomainKey || fallbackActiveDomainKey || readStoredSelectedDomain(menuTree, currentPath) || activeDomainKey
   );
   const [menuFilter, setMenuFilter] = useState("");
   const deferredMenuFilter = useDeferredValue(menuFilter);
@@ -657,10 +669,11 @@ export function AdminPageShell({
 
   useEffect(() => {
     const storedDomainKey = readStoredSelectedDomain(menuTree, currentPath);
-    if (storedDomainKey || activeDomainKey) {
-      setSelectedDomainKey(storedDomainKey || activeDomainKey);
+    const routeDomainKey = activeMenuEntry?.domainKey || variantDomainKey || fallbackActiveDomainKey;
+    if (routeDomainKey || storedDomainKey || activeDomainKey) {
+      setSelectedDomainKey(routeDomainKey || storedDomainKey || activeDomainKey);
     }
-  }, [activeDomainKey, currentPath, menuTree]);
+  }, [activeDomainKey, activeMenuEntry?.domainKey, currentPath, fallbackActiveDomainKey, menuTree, variantDomainKey]);
 
   useEffect(() => {
     if (!selectedDomain) {
@@ -948,10 +961,10 @@ export function AdminPageShell({
       </div>
 
       <header className="z-40 shrink-0 border-b border-[var(--kr-gov-border-light)] bg-white">
-        <div className="mx-auto max-w-full px-6">
+        <div className="mx-auto max-w-full px-3 2xl:px-6">
           <div className="flex h-20 items-center justify-between">
             <a
-              className="admin-brand-link flex items-center gap-2.5"
+              className="admin-brand-link mr-2 flex shrink-0 items-center gap-1.5 2xl:mr-4 2xl:gap-2.5"
               href={buildLocalizedPath("/admin/", "/en/admin/")}
               onClick={(e) => {
                 e.preventDefault();
@@ -964,11 +977,11 @@ export function AdminPageShell({
               </span>
               <div className="admin-brand-copy flex min-w-0 flex-col">
                 <h1 className="admin-brand-title font-black tracking-[-.03em] text-[#082b61]">CCUS</h1>
-                <p className="admin-brand-subtitle mt-1 whitespace-nowrap font-extrabold tracking-[-.025em] text-[#246beb]">{en ? "Carbon Neutrality Platform" : "탄소중립 플랫폼"}</p>
+                <p className="admin-brand-subtitle mt-1 hidden whitespace-nowrap font-extrabold tracking-[-.025em] text-[#246beb] 2xl:block">{en ? "Carbon Neutrality Platform" : "탄소중립 플랫폼"}</p>
               </div>
             </a>
 
-            <nav aria-label={en ? "Admin Main Menu" : "관리자 주 메뉴"} className="hidden h-full items-stretch space-x-1 xl:flex" id="adminGnbMenu">
+            <nav aria-label={en ? "Admin Main Menu" : "관리자 주 메뉴"} className="hidden h-full min-w-0 flex-1 items-stretch justify-evenly gap-0.5 xl:flex" id="adminGnbMenu">
               {gnbItems.map((item) => {
                 const active = item.domain === (selectedDomainKey || activeDomainKey);
                 return (
@@ -981,13 +994,13 @@ export function AdminPageShell({
                       storeSelectedDomain(item.domain, currentPath);
                       setSelectedDomainKey(item.domain);
                     }}
-                    className={`js-gnb-menu inline-flex h-full items-center border-b-[3px] px-5 text-[16px] font-bold transition-colors ${
+                    className={`js-gnb-menu inline-flex h-full shrink-0 items-center border-b-[3px] px-1.5 text-[12px] font-bold transition-colors 2xl:px-2.5 2xl:text-[13px] ${
                       active
                         ? "border-[var(--kr-gov-blue)] text-[var(--kr-gov-blue)]"
                         : "border-transparent text-[var(--kr-gov-text-secondary)] hover:border-[var(--kr-gov-border-light)] hover:text-[var(--kr-gov-blue)]"
                     }`}
                   >
-                    <span className="inline-flex items-center leading-none">{item.label}</span>
+                    <span className="inline-flex items-center whitespace-nowrap leading-none">{item.label}</span>
                   </a>
                 );
               })}
