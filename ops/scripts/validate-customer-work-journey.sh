@@ -26,8 +26,8 @@ member_codes={row.get("processCode") for row in payload.get("processCatalog",[])
 member_steps=[row for row in payload.get("processCatalogSteps",[]) if row.get("processCode") in member_codes]
 if len(member_codes)!=17 or len(member_steps)<68:
     raise SystemExit(f"member guide catalog mismatch processes={len(member_codes)} steps={len(member_steps)}")
-if any(not row.get("userPath") or not row.get("adminPath") for row in member_steps):
-    raise SystemExit("member guide route gap")
+if any(not row.get("userPath") and not row.get("adminPath") for row in member_steps):
+    raise SystemExit("member guide route gap: every step requires at least one audience-appropriate route")
 PY
 while IFS= read -r target;do [[ -n "$target" ]]||continue;code="$(curl -sS -L -b "$COOKIE" -o /dev/null -w '%{http_code}' "$BASE$target")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL member-guide-page=$target status=$code" >&2;exit 1;};done < <(python3 - "$API_BODY" <<'PY'
 import json,sys
