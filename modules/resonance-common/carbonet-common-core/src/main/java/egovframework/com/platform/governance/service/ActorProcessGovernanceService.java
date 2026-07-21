@@ -105,6 +105,14 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"result",raw==null?"{}":raw,"summary",summary);
     }
 
+    public Map<String,Object> professionalDesignGraph(String workTypeCode,String processCode){
+        String work=workTypeCode==null?"":workTypeCode.trim().toUpperCase(Locale.ROOT);
+        String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
+        List<Map<String,Object>> rows=jdbc.queryForList("select work_type_code as \"workTypeCode\",workflow_order as \"workflowOrder\",workflow_phase as \"workflowPhase\",process_code as \"processCode\",process_name as \"processName\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",from_state as \"fromState\",command_code as \"commandCode\",to_state as \"toState\",binding_id as \"bindingId\",audience,entry_mode as \"entryMode\",screen_resource_id as \"screenResourceId\",route_key as \"routePath\",screen_name as \"screenName\",screen_type as \"screenType\",implementation_status as \"implementationStatus\",context_contract as \"contextContract\",visibility_contract as \"visibilityContract\",completion_contract as \"completionContract\",guide_contract as \"guideContract\",capabilities,data_elements as \"dataElements\",tests,actual_project_tasks as \"actualProjectTasks\" from framework_professional_design_graph where (?='' or work_type_code=?) and (?='' or process_code=?) order by work_type_code,workflow_order,process_code,step_order,audience,binding_id",work,work,process,process);
+        Map<String,Object> summary=jdbc.queryForMap("select count(distinct process_code) as \"processCount\",count(distinct (process_code,step_code)) as \"stepCount\",count(distinct screen_resource_id) as \"screenCount\",count(*) as \"bindingCount\",count(*) filter(where implementation_status='VERIFIED') as \"verifiedScreenBindings\",count(*) filter(where implementation_status='IMPLEMENTED') as \"implementedScreenBindings\",count(*) filter(where implementation_status='DESIGN_ONLY') as \"designOnlyBindings\" from framework_professional_design_graph where (?='' or work_type_code=?) and (?='' or process_code=?)",work,work,process,process);
+        return Map.of("success",true,"summary",summary,"items",rows);
+    }
+
     @Transactional public Map<String,Object> validateProcessDesign(String process,String actor){
         Map<String,Object> summary=jdbc.queryForMap("select * from framework_validate_process_design(?,?)",process,actor);
         Map<String,Object> result=new LinkedHashMap<>(summary);

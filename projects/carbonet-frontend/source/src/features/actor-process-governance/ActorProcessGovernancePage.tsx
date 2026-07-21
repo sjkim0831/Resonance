@@ -4,6 +4,7 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
 import { DeliveryControlPanel } from "./DeliveryControlPanel";
 import { ProcessDesignMap } from "./ProcessDesignMap";
+import { ProfessionalDesignCanvas } from "./ProfessionalDesignCanvas";
 import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
 
 type Row = Record<string, unknown>;
@@ -81,7 +82,7 @@ export function ActorProcessGovernancePage() {
   const readiness = Number(data.summary?.readinessPercent ?? 0);
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
-  const tabs = [["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["account-readiness", "액터 계정 검증"], ["work-types", "업무 종류"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
+  const tabs = [["design-canvas", "전체 화면 캔버스"], ["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["account-readiness", "액터 계정 검증"], ["work-types", "업무 종류"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
@@ -107,6 +108,7 @@ export function ActorProcessGovernancePage() {
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">{en?"Executable design contract":"실행 가능한 설계 계약"}</h3><p className="mt-2 text-sm leading-6 text-slate-700">{en?"A process is not implementation-ready until actor authority, state transitions, input/output data, screens, APIs, five safety scenarios, and development evidence all agree.":"액터 권한, 상태 전이, 입출력 데이터, 화면, API, 정상·예외·권한·격리·복구 테스트와 개발 증적이 모두 일치해야 구현 완료로 판정합니다."}</p></section>
         <Table heads={en?["Process","Status","Score","Blockers","Actor","State","Data","Routes","Screens","API","Safety tests","Implementation","Required action"]:["프로세스","판정","정확도","차단","액터","상태 전이","데이터","경로","화면 계약","API","안전 테스트","구현 증적","필수 조치"]} rows={(data.designAssurance??[]).map(row=>[`${value(row,"processName")} (${value(row,"processCode")})`,value(row,"assuranceStatus"),`${value(row,"designAccuracyScore")}%`,value(row,"designBlockerCount"),value(row,"actorContractGaps"),value(row,"stateFlowGaps"),value(row,"dataContractGaps"),value(row,"routeGaps"),value(row,"screenContractGaps"),value(row,"apiContractGaps"),`${value(row,"approvedSafetyTestTypeCount")}/5`,`${value(row,"verifiedJobCount")}/${value(row,"requiredJobCount")}`,value(row,"nextAction")])}/>
       </>}
+      {tab === "design-canvas" && <ProfessionalDesignCanvas base={base} en={en}/>}
       {tab === "process-map" && <ProcessDesignMap actors={data.actors} artifacts={data.artifacts} busy={busy} cases={data.cases} jobs={data.developmentJobs} onDirectDevelop={code=>void post("development/direct",{processCode:code})} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
       {tab === "professional" && <>
         <Form onSubmit={event=>void submit(event,"professional-factory/execute")} cols="lg:grid-cols-3">
