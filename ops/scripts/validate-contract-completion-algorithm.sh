@@ -10,6 +10,7 @@ GENERATOR_SPEC="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgres
 RUNTIME_RETRY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721135000__retry_contract_jobs_after_runtime_gate_fix.sql"
 RACE_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721136000__close_contract_completion_races_and_page_gaps.sql"
 PAGE_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721137000__require_step_page_contract_and_verified_quality.sql"
+DESIGN_FACTORY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721138000__self_heal_orchestration_step_screen_contracts.sql"
 ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 test -s "$MIGRATION"
@@ -40,5 +41,7 @@ grep -Fq 'dispatcher_failed=0' "$ORCHESTRATOR"
 grep -Fq 'designed_page_count, 0) = 0' "$PAGE_GUARD"
 grep -Eq 'PASSED.*character varying' "$PAGE_GUARD"
 grep -Fq "quality_status='VERIFIED'" "$ROOT/ops/scripts/run-process-development-worker.sh"
+grep -Fq 'framework_ensure_step_screen_contract' "$DESIGN_FACTORY"
+grep -Fq "framework_ensure_step_screen_contract('" "$ROOT/ops/scripts/run-process-development-worker.sh"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
