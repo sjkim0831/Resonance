@@ -916,7 +916,7 @@ export function AdminPageShell({
   }
 
   const sessionTimerClassName = [
-    "hidden lg:flex items-center gap-2 px-3 py-2 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white text-[12px] font-bold text-[var(--kr-gov-text-secondary)]",
+    "hidden 2xl:flex items-center gap-2 px-3 py-2 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] bg-white text-[12px] font-bold text-[var(--kr-gov-text-secondary)]",
     sessionRemainingMs <= ADMIN_SESSION_DANGER_MS
       ? "session-danger"
       : (sessionRemainingMs <= ADMIN_SESSION_WARNING_MS ? "session-warning" : "")
