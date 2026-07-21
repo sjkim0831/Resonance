@@ -89,8 +89,20 @@ echo "[screen-overlay-apply] backup overlay"
 bash "$GUARD_SCRIPT" backup >/dev/null
 
 if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
-  echo "[screen-overlay-apply] npm build only; no gradle, no image, no rollout"
-  (cd "$SOURCE_DIR" && CARBONET_NODE_HEAP_MB="$CARBONET_NODE_HEAP_MB" npm run build)
+  echo "[screen-overlay-apply] isolated npm build only; no gradle, no image, no rollout"
+  staging_dir="$(mktemp -d "$STATUS_DIR/react-overlay-build.XXXXXX")"
+  if ! (cd "$SOURCE_DIR" && CARBONET_NODE_HEAP_MB="$CARBONET_NODE_HEAP_MB" VITE_OUT_DIR="$staging_dir" npm run build); then
+    rm -rf "$staging_dir"
+    exit 1
+  fi
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
+  # Copy immutable assets before atomically replacing the entry document. Do
+  # not delete old hashes here: already-open browsers may still request them.
+  rsync -a --exclude='/index.html' "$staging_dir/" "$OVERLAY_DIR/"
+  cp "$staging_dir/index.html" "$OVERLAY_DIR/.index.html.next"
+  mv -f "$OVERLAY_DIR/.index.html.next" "$OVERLAY_DIR/index.html"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
+  rm -rf "$staging_dir"
 else
   echo "[screen-overlay-apply] frontend build skipped by SKIP_FRONTEND_BUILD=true"
 fi

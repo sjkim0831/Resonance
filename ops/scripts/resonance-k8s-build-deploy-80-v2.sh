@@ -355,11 +355,28 @@ build_frontend() {
   fi
 
   local start_time=$(date +%s)
+  local staging_dir
+  staging_dir="$(mktemp -d "$ROOT_DIR/var/run/react-build.XXXXXX")"
+
+  # Never let Vite empty or partially rewrite the live hostPath overlay. Build
+  # into an isolated directory, verify its complete hashed-asset closure, copy
+  # assets first, and switch index.html last. Existing hashed files are kept so
+  # browsers that loaded the previous index can finish lazy chunk requests.
+  promote_frontend_staging() {
+    node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
+    root_cmd mkdir -p "$OVERLAY_HOST_PATH"
+    root_cmd rsync -a --exclude='/index.html' "$staging_dir/" "$OVERLAY_HOST_PATH/"
+    root_cmd cp "$staging_dir/index.html" "$OVERLAY_HOST_PATH/.index.html.next"
+    root_cmd mv -f "$OVERLAY_HOST_PATH/.index.html.next" "$OVERLAY_HOST_PATH/index.html"
+    node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
+    rm -rf "$staging_dir"
+  }
 
   if [[ -d "$FRONTEND_DIR/node_modules" ]]; then
     log "Using incremental build (node_modules exists, skipping npm ci)"
     log_cmd "cd $FRONTEND_DIR && npm run build"
-    cd "$FRONTEND_DIR" && npm run build > >(tee "$FRONTEND_ERROR_LOG") 2>&1 || {
+    cd "$FRONTEND_DIR" && VITE_OUT_DIR="$staging_dir" npm run build > >(tee "$FRONTEND_ERROR_LOG") 2>&1 || {
+      rm -rf "$staging_dir"
       log_error "Frontend build failed"
       rollback_and_fail "FRONTEND_BUILD_FAILED" \
         "Frontend npm build failed" \
@@ -370,13 +387,16 @@ build_frontend() {
     mkdir -p "$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static"
     log_cmd "cd $FRONTEND_DIR && npm ci && npm run build"
     cd "$FRONTEND_DIR" && npm ci > >(tee "$FRONTEND_ERROR_LOG") 2>&1 && \
-      npm run build > >(tee -a "$FRONTEND_ERROR_LOG") 2>&1 || {
-      log_error "Frontend build failed"
+      VITE_OUT_DIR="$staging_dir" npm run build > >(tee -a "$FRONTEND_ERROR_LOG") 2>&1 || {
+        rm -rf "$staging_dir"
+        log_error "Frontend build failed"
       rollback_and_fail "FRONTEND_BUILD_FAILED" \
         "Frontend npm ci/build failed" \
         "cd $FRONTEND_DIR && npm run build 2>&1 | tail -100"
     }
   fi
+
+  promote_frontend_staging
 
   validate_frontend
   guard_frontend_overlay write-marker
