@@ -396,6 +396,7 @@ bash ops/scripts/validate-actor-account-customer-journey.sh
 bash ops/scripts/validate-design-direct-development.sh
 bash ops/scripts/validate-common-design-assets.sh
 bash ops/scripts/validate-project-auto-completion.sh
+bash ops/scripts/validate-contract-completion-algorithm.sh
 bash ops/scripts/validate-unified-work-design-runtime.sh
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
