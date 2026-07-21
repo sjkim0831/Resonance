@@ -90,7 +90,7 @@ print(json.dumps({'caseCode':os.environ['CASE_CODE'],'result':'PASSED','evidence
 PY
 )"
     code="$(curl -sS -b "$cookie" -o "$tmp/run.json" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/admin/api/system/actor-process/runs" --data "$payload")"
-    [[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL promote case=$case_code status=$code" >&2; exit 1; }
+    [[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL promote case=$case_code status=$code body=$(tr -d '\n' < "$tmp/run.json" | head -c 2000)" >&2; exit 1; }
   done < "$cases"
 fi
 echo "[process-runtime-smoke] PASS process=$process_name evidence=$EVIDENCE_DIR/$stamp.json"
