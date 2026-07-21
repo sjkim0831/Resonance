@@ -5,8 +5,15 @@ ROOT="${1:?repository root is required}"
 PROCESS="${2:?process code is required}"
 STEP="${3:?step code is required}"
 JOB_TYPE="${4:?job type is required}"
-[[ "$PROCESS" == "EMISSION_PROJECT" ]] || exit 3
-
+if [[ "$PROCESS" == "ORGANIZATIONAL_BOUNDARY" ]]; then
+  case "$STEP" in
+    ORGANIZATIONAL_BOUNDARY_S1|ORGANIZATIONAL_BOUNDARY_S2|ORGANIZATIONAL_BOUNDARY_S3|ORGANIZATIONAL_BOUNDARY_S4)
+      relations=(emission_organizational_boundary emission_organizational_boundary_member emission_organizational_boundary_elimination emission_organizational_boundary_consolidation)
+      evidence=(V20260721093000__implement_organizational_boundary_workflow.sql V20260721102000__normalize_organizational_boundary_api_contracts.sql)
+      ;;
+    *) exit 3 ;;
+  esac
+elif [[ "$PROCESS" == "EMISSION_PROJECT" ]]; then
 case "$STEP" in
   EMISSION_PROJECT_SETUP)
     relations=(emission_project_registry emission_project_member emission_project_task emission_project_history)
@@ -39,6 +46,9 @@ case "$STEP" in
     ;;
   *) exit 3 ;;
 esac
+else
+  exit 3
+fi
 
 migration_root="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql"
 for file in "${evidence[@]}"; do [[ -s "$migration_root/$file" ]] || { echo "missing migration evidence: $file" >&2; exit 1; }; done
