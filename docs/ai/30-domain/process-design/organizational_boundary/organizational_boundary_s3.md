@@ -14,81 +14,17 @@
 
 ### Layout, fields, and commands
 
-- KPI: [
-  "includedEntityCount",
-  "excludedEntityCount",
-  "grossEmission",
-  "eliminatedEmission",
-  "netEmission",
-  "reconciliationDifference"
-]
-- Sections: [
-  "workflowSummary",
-  "boundaryVersion",
-  "entityRegister",
-  "inclusionDecision",
-  "eliminationLedger",
-  "consolidationResult",
-  "approvalHistory"
-]
-- Fields: [
-  "boundaryMethod",
-  "reportingBasis",
-  "effectiveFrom",
-  "effectiveUntil",
-  "entityCode",
-  "entityName",
-  "entityType",
-  "countryCode",
-  "ownershipPercent",
-  "controlType",
-  "includedYn",
-  "exclusionReason",
-  "evidenceRef",
-  "grossEmission",
-  "eliminatedEmission",
-  "netEmission",
-  "reviewComment"
-]
-- Commands and navigation: [
-  "saveDraft",
-  "markReviewReady",
-  "runConsolidation",
-  "approve",
-  "reject",
-  "viewHistory",
-  "continueGuide"
-]
-- Required UI states: [
-  "LOADING",
-  "EMPTY",
-  "EDITING",
-  "VALIDATION_ERROR",
-  "FORBIDDEN",
-  "CONFLICT",
-  "READY",
-  "LOCKED"
-]
+- KPI: ["includedEntityCount","excludedEntityCount","grossEmission","eliminatedEmission","netEmission","reconciliationDifference"]
+- Sections: ["workflowSummary","boundaryVersion","entityRegister","inclusionDecision","eliminationLedger","consolidationResult","approvalHistory"]
+- Fields: ["boundaryMethod","reportingBasis","effectiveFrom","effectiveUntil","entityCode","entityName","entityType","countryCode","ownershipPercent","controlType","includedYn","exclusionReason","evidenceRef","grossEmission","eliminatedEmission","netEmission","reviewComment"]
+- Commands and navigation: ["saveDraft","markReviewReady","runConsolidation","approve","reject","viewHistory","continueGuide"]
+- Required UI states: ["LOADING","EMPTY","EDITING","VALIDATION_ERROR","FORBIDDEN","CONFLICT","READY","LOCKED"]
 
 ### API, transaction, and data contract
 
-- API: [
-  "POST /home/api/emission-projects/{id}/organizational-boundary/consolidate"
-]
-- Database entities: [
-  "emission_organizational_boundary",
-  "emission_organizational_boundary_member",
-  "emission_organizational_boundary_elimination",
-  "emission_organizational_boundary_consolidation",
-  "framework_process_execution_event"
-]
-- Audit and evidence: [
-  "ownershipEvidence",
-  "controlEvidence",
-  "exclusionReason",
-  "internalTransactionEvidence",
-  "approvalAudit"
-]
+- API: ["POST /home/api/emission-projects/{id}/organizational-boundary/consolidate"]
+- Database entities: ["emission_organizational_boundary","emission_organizational_boundary_member","emission_organizational_boundary_elimination","emission_organizational_boundary_consolidation","framework_process_execution_event"]
+- Audit and evidence: ["ownershipEvidence","controlEvidence","exclusionReason","internalTransactionEvidence","approvalAudit"]
 - Security and tenant isolation: 서버에서 tenantId·projectId·actorCode·commandCode·version을 검증하고 최소권한, 업무분리, 객체수준 접근통제, 낙관적 잠금과 감사 이벤트를 적용한다.
 
 ### Responsive and accessibility contract
@@ -106,81 +42,17 @@
 
 ### Layout, fields, and commands
 
-- KPI: [
-  "includedEntityCount",
-  "excludedEntityCount",
-  "grossEmission",
-  "eliminatedEmission",
-  "netEmission",
-  "reconciliationDifference"
-]
-- Sections: [
-  "workflowSummary",
-  "boundaryVersion",
-  "entityRegister",
-  "inclusionDecision",
-  "eliminationLedger",
-  "consolidationResult",
-  "approvalHistory"
-]
-- Fields: [
-  "boundaryMethod",
-  "reportingBasis",
-  "effectiveFrom",
-  "effectiveUntil",
-  "entityCode",
-  "entityName",
-  "entityType",
-  "countryCode",
-  "ownershipPercent",
-  "controlType",
-  "includedYn",
-  "exclusionReason",
-  "evidenceRef",
-  "grossEmission",
-  "eliminatedEmission",
-  "netEmission",
-  "reviewComment"
-]
-- Commands and navigation: [
-  "saveDraft",
-  "markReviewReady",
-  "runConsolidation",
-  "approve",
-  "reject",
-  "viewHistory",
-  "continueGuide"
-]
-- Required UI states: [
-  "LOADING",
-  "EMPTY",
-  "EDITING",
-  "VALIDATION_ERROR",
-  "FORBIDDEN",
-  "CONFLICT",
-  "READY",
-  "LOCKED"
-]
+- KPI: ["includedEntityCount","excludedEntityCount","grossEmission","eliminatedEmission","netEmission","reconciliationDifference"]
+- Sections: ["workflowSummary","boundaryVersion","entityRegister","inclusionDecision","eliminationLedger","consolidationResult","approvalHistory"]
+- Fields: ["boundaryMethod","reportingBasis","effectiveFrom","effectiveUntil","entityCode","entityName","entityType","countryCode","ownershipPercent","controlType","includedYn","exclusionReason","evidenceRef","grossEmission","eliminatedEmission","netEmission","reviewComment"]
+- Commands and navigation: ["saveDraft","markReviewReady","runConsolidation","approve","reject","viewHistory","continueGuide"]
+- Required UI states: ["LOADING","EMPTY","EDITING","VALIDATION_ERROR","FORBIDDEN","CONFLICT","READY","LOCKED"]
 
 ### API, transaction, and data contract
 
-- API: [
-  "POST /home/api/emission-projects/{id}/organizational-boundary/consolidate"
-]
-- Database entities: [
-  "emission_organizational_boundary",
-  "emission_organizational_boundary_member",
-  "emission_organizational_boundary_elimination",
-  "emission_organizational_boundary_consolidation",
-  "framework_process_execution_event"
-]
-- Audit and evidence: [
-  "ownershipEvidence",
-  "controlEvidence",
-  "exclusionReason",
-  "internalTransactionEvidence",
-  "approvalAudit"
-]
+- API: ["POST /home/api/emission-projects/{id}/organizational-boundary/consolidate"]
+- Database entities: ["emission_organizational_boundary","emission_organizational_boundary_member","emission_organizational_boundary_elimination","emission_organizational_boundary_consolidation","framework_process_execution_event"]
+- Audit and evidence: ["ownershipEvidence","controlEvidence","exclusionReason","internalTransactionEvidence","approvalAudit"]
 - Security and tenant isolation: 서버에서 tenantId·projectId·actorCode·commandCode·version을 검증하고 최소권한, 업무분리, 객체수준 접근통제, 낙관적 잠금과 감사 이벤트를 적용한다.
 
 ### Responsive and accessibility contract
