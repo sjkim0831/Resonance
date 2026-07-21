@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_01_PLAN",
+      "package": "ACTIVITY_DATA__ACTIVITY_DATA_01_PLAN.json",
+      "packageHash": "7d96e0ad39c9bb0ae1270ed19216aa0eeb9b03b0e707dca6ac0b7e747b7d6145",
+      "pages": 2
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_02_WORK",
+      "package": "ACTIVITY_DATA__ACTIVITY_DATA_02_WORK.json",
+      "packageHash": "56ca671ca7ddbf61f60075d5819daa37f428bd28053562660de68efa45dfb03c",
+      "pages": 2
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_03_VERIFY",
+      "package": "ACTIVITY_DATA__ACTIVITY_DATA_03_VERIFY.json",
+      "packageHash": "aba9f47601203f87921c531d423645ec0c90f5475eea88d614545986119beec3",
+      "pages": 2
+    },
+    {
+      "processCode": "ACTIVITY_DATA",
+      "stepCode": "ACTIVITY_DATA_04_APPROVE",
+      "package": "ACTIVITY_DATA__ACTIVITY_DATA_04_APPROVE.json",
+      "packageHash": "d57128a26e0dc7a554a4bff29b245b2e57424e7e2eb397e0d00108e6a68e1a40",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "c5953364100b23898faa7f603401a3753aef691890ef9a812013fe5398b26ebf"
+}
