@@ -21,6 +21,9 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
   const [rows, setRows] = useState<Row[]>([]);
   const [summary, setSummary] = useState<Row>({});
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState("");
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [workType, setWorkType] = useState("");
@@ -38,7 +41,29 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
       .catch(reason => active && setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [base]);
+  }, [base, refreshVersion]);
+
+  const synchronizeDesign = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    setError("");
+    try {
+      const response = await fetch(`${base}/design/generate-professional-graph`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = await response.json();
+      if (!response.ok || body.success === false) throw new Error(body.message || "설계 그래프 동기화에 실패했습니다.");
+      setLastSyncedAt(new Date().toLocaleTimeString());
+      setRefreshVersion(current => current + 1);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSyncing(false);
+    }
+  }, [base, syncing]);
 
   const workTypes = useMemo(() => Array.from(new Set(rows.map(row => value(row, "workTypeCode")))).sort(), [rows]);
   const filtered = useMemo(() => rows.filter(row => !workType || value(row, "workTypeCode") === workType), [rows, workType]);
@@ -135,7 +160,9 @@ export function ProfessionalDesignCanvas({ base, en }: Props) {
         <div className="flex min-w-0 flex-1"><input aria-label="화면 검색" className="h-11 min-w-0 flex-1 rounded-l-lg border px-3 text-sm" placeholder="화면명, 경로, 프로세스, 단계, 액터 검색" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === "Enter" && jumpToMatch()} /><button className="h-11 rounded-r-lg bg-[#246beb] px-4 font-bold text-white" onClick={jumpToMatch} type="button">찾기 {matchingKeys.size ? `(${matchingKeys.size})` : ""}</button></div>
         <div className="flex overflow-hidden rounded-lg border bg-white"><button aria-label="축소" className="h-11 w-11 text-xl font-bold hover:bg-slate-100" onClick={() => zoomAt(transform.scale / 1.2)} type="button">−</button><span className="flex min-w-16 items-center justify-center border-x text-xs font-black">{Math.round(transform.scale * 100)}%</span><button aria-label="확대" className="h-11 w-11 text-xl font-bold hover:bg-slate-100" onClick={() => zoomAt(transform.scale * 1.2)} type="button">＋</button></div>
         <button className="h-11 rounded-lg border bg-white px-4 text-sm font-bold" onClick={fitAll} type="button">전체 맞춤</button><button className="h-11 rounded-lg border bg-white px-4 text-sm font-bold" onClick={reset} type="button">100% 위치</button>
+        <button className="h-11 rounded-lg bg-[#052b57] px-4 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60" disabled={syncing || loading} onClick={synchronizeDesign} type="button">{syncing ? "설계 동기화 중…" : "설계 전체 동기화"}</button>
       </div>
+      {lastSyncedAt && <p className="mt-2 text-right text-xs font-bold text-emerald-700">DB 설계와 캔버스 동기화 완료 · {lastSyncedAt}</p>}
     </header>
 
     <div ref={viewportRef} className="relative h-[72vh] min-h-[620px] touch-none cursor-grab overflow-hidden bg-[radial-gradient(#b8c5d3_1px,transparent_1px)] bg-[size:20px_20px] active:cursor-grabbing" onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
