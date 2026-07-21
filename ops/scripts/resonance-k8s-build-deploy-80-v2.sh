@@ -507,6 +507,17 @@ prepare_immutable_frontend() {
   root_cmd mkdir -p "$backend_dir"
   root_cmd cp -a "$frontend_dir/." "$backend_dir/"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$backend_dir"
+
+  # The immutable asset directory is copied immediately before the backend
+  # build. Gradle can otherwise reuse an up-to-date processResources/bootJar
+  # result when copied files preserve their timestamps. Invalidate only the
+  # resource output and final JAR; compiled Java/Kotlin and dependency caches
+  # remain incremental.
+  if [[ "${BUILD_TOOL:-}" == "gradle" ]]; then
+    root_cmd rm -rf "$MAVEN_DIR/build/resources/main/static/react-app"
+    root_cmd find "$MAVEN_DIR/build/libs" -maxdepth 1 -type f -name '*.jar' -delete 2>/dev/null || true
+    log "Invalidated immutable React resources and JAR only (compiled classes preserved)"
+  fi
 }
 
 verify_immutable_frontend_jar() {
