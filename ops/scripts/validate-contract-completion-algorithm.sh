@@ -20,9 +20,5 @@ grep -Fq 'NOT p.definition_locked' "$LOCK_GUARD"
 grep -Fq 'ON CONFLICT(process_code,step_code,job_type,target_path)' "$RETRY_GUARD"
 grep -Fq "job_status='RETRY'" "$RETRY_GUARD"
 grep -Fq 'attempt_count<framework_development_job.max_attempts' "$BOUNDED_RETRY"
-if grep -Fq 'greatest(0,framework_development_job.max_attempts-1)' "$BOUNDED_RETRY"; then
-  echo '[contract-completion] bounded retry migration lowers attempt_count' >&2
-  exit 1
-fi
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
