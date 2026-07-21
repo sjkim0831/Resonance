@@ -93,7 +93,7 @@ export function JoinWizardMigrationPage() {
     <div className="join-step1-screen bg-[var(--kr-gov-bg-gray)] text-[var(--kr-gov-text-primary)] min-h-screen flex flex-col">
       <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
-      <UserGovernmentBar governmentText={en ? "Official Government Service of the Republic of Korea" : "대한민국 정부 공식 서비스"} />
+      <UserGovernmentBar governmentText={en ? "Official Government Service of the Republic of Korea" : "대한민국정부 공식 누리집"} />
       <UserPortalHeader
         brandSubtitle="Carbon Footprint Platform"
         brandTitle={en ? "CCUS Carbon Footprint Platform" : "CCUS 탄소발자국 플랫폼"}
@@ -106,14 +106,14 @@ export function JoinWizardMigrationPage() {
           <div className="text-center mb-10" data-help-id="join-hero">
             <h2 className="text-3xl font-bold text-[var(--kr-gov-text-primary)] mb-2">{en ? "Registration" : "회원가입"}</h2>
             <p className="text-[var(--kr-gov-text-secondary)]">
-              {en ? "Please select the membership type that fits your organization." : "사용자 환경에 맞는 회원 유형을 선택해 주세요."}
+              {en ? "Please select the membership type that fits your organization." : "소속 기관과 수행 업무에 맞는 회원 유형을 선택해 주세요."}
             </p>
           </div>
 
           <div className="max-w-5xl mx-auto mb-12">
             <div className="flex justify-between relative">
               {[
-                en ? "Member Type" : "회원유형 선택",
+                en ? "Member Type" : "회원 유형",
                 en ? "Terms" : "약관 동의",
                 en ? "Verification" : "본인 확인",
                 en ? "Information" : "정보 입력",
@@ -196,7 +196,7 @@ export function JoinWizardMigrationPage() {
             <div className="flex gap-3">
               <span className="material-symbols-outlined text-blue-600">help</span>
               <div className="text-sm text-[var(--kr-gov-text-secondary)]">
-                <p className="font-bold text-[var(--kr-gov-text-primary)] mb-1">{en ? "Registration Guide" : "회원가입 관련 안내"}</p>
+                <p className="font-bold text-[var(--kr-gov-text-primary)] mb-1">{en ? "Registration Guide" : "회원가입 안내"}</p>
                 <ul className="list-disc ml-4 space-y-1">
                   {(en
                     ? [
@@ -206,10 +206,10 @@ export function JoinWizardMigrationPage() {
                         "All information entered during registration is managed in accordance with applicable laws."
                       ]
                     : [
-                        "기업 회원은 사업자등록번호 인증이 필요합니다.",
-                        "수행 기업 및 진흥센터 회원은 관련 승인 절차가 진행될 수 있습니다.",
-                        "기관 회원은 소속 기관의 인증서 또는 공문 확인이 필요할 수 있습니다.",
-                        "가입 과정에서 입력하신 정보는 관련 법령에 따라 철저히 관리됩니다."
+                        "기업 회원은 정보 입력 단계에서 사업자등록번호 확인이 필요합니다.",
+                        "사업 수행 기업과 진흥센터는 담당 업무와 소속 기관의 승인을 거칩니다.",
+                        "주무관청·행정기관 회원은 소속 확인을 위한 공문 또는 증빙이 필요할 수 있습니다.",
+                        "선택한 회원 유형은 소속·권한 검증 기준으로 사용되며 정보 입력 전까지 변경할 수 있습니다."
                       ]).map((item) => (
                     <li key={item}>{item}</li>
                   ))}

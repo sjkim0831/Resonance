@@ -149,7 +149,7 @@ public class MemberJoinController {
         String normalizedMembershipType = normalizeMembershipCode(membershipType);
         if (!hasText(normalizedMembershipType)) {
             response.put("success", false);
-            response.put("message", "유효한 회원유형을 선택해 주세요.");
+            response.put("message", "유효한 회원 유형을 선택해 주세요.");
             return ResponseEntity.badRequest().body(response);
         }
         joinVO.setEntrprsSeCode(normalizedMembershipType);

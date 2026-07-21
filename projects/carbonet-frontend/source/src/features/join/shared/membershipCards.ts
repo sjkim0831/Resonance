@@ -15,8 +15,8 @@ export const KO_MEMBERSHIP_CARDS: MembershipCard[] = [
     iconWrapClass: "bg-blue-50",
     iconClass: "text-[var(--kr-gov-blue)]",
     hoverIconWrapClass: "group-hover:bg-[var(--kr-gov-blue)]",
-    title: "CO2 배출 및 포집 기업",
-    description: "이산화탄소를 배출하거나\n포집 시설을 운영하는 기업"
+    title: "CO₂ 배출·포집 기업",
+    description: "온실가스를 배출하거나\n탄소 포집 설비를 운영하는 기업"
   },
   {
     value: "PERFORMER",
@@ -25,7 +25,7 @@ export const KO_MEMBERSHIP_CARDS: MembershipCard[] = [
     iconClass: "text-cyan-600",
     hoverIconWrapClass: "group-hover:bg-cyan-700",
     title: "CCUS 사업 수행 기업",
-    description: "수송·저장 및 활용 등\nCCUS 사업을 수행하는 기업"
+    description: "CO₂ 운송·저장·활용 등\nCCUS 사업을 수행하는 기업"
   },
   {
     value: "CENTER",
@@ -34,7 +34,7 @@ export const KO_MEMBERSHIP_CARDS: MembershipCard[] = [
     iconClass: "text-[#008450]",
     hoverIconWrapClass: "group-hover:bg-[#008450]",
     title: "CCUS 진흥센터",
-    description: "시스템 운영 및 CCUS 기술\n진흥 업무를 담당하는 기관"
+    description: "플랫폼 운영과 CCUS 기술\n진흥 업무를 담당하는 기관"
   },
   {
     value: "GOV",
@@ -42,8 +42,8 @@ export const KO_MEMBERSHIP_CARDS: MembershipCard[] = [
     iconWrapClass: "bg-slate-100",
     iconClass: "text-slate-600",
     hoverIconWrapClass: "group-hover:bg-slate-700",
-    title: "주무관청 / 행정기관",
-    description: "정책 수립 및 관리를 담당하는\n정부 부처 및 행정기관"
+    title: "주무관청·행정기관",
+    description: "정책 수립과 관리·감독을 담당하는\n정부 부처 및 행정기관"
   }
 ];
 
