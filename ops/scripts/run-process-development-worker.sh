@@ -270,7 +270,17 @@ fi
 EXISTING_ADOPTED=0
 ADOPTION_ARTIFACT="docs/ai/80-adopted-existing/${PROCESS_CODE,,}/job-${JOB_ID}.md"
 if [[ "$JOB_TYPE" == FRONTEND_* ]]; then
-  if ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH" 2>>"$LOG_FILE")"; then
+  ADOPTION_TARGET="$TARGET_PATH"
+  if [[ "$ADOPTION_TARGET" == design://* ]]; then
+    if [[ "$JOB_TYPE" == "FRONTEND_ADMIN" ]]; then
+      ADOPTION_TARGET="$(psqlq -c "select coalesce(nullif(admin_path,''),'') from framework_process_step where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}'")"
+    else
+      ADOPTION_TARGET="$(psqlq -c "select coalesce(nullif(user_path,''),'') from framework_process_step where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}'")"
+    fi
+    [[ "$ADOPTION_TARGET" == /* ]] && event "LEGACY_TARGET_RESOLVED" "RUNNING" "RUNNING" \
+      "{\"legacyTarget\":\"${TARGET_PATH}\",\"routeTarget\":\"${ADOPTION_TARGET}\"}"
+  fi
+  if ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$ADOPTION_TARGET" 2>>"$LOG_FILE")"; then
     verify_adopted_frontend_tree || fail_job "existing frontend adoption type check failed"
     git -C "$WT" restore --worktree -- '*.tsbuildinfo' 2>/dev/null || true
     gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
