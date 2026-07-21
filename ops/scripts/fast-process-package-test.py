@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 
 REQUIRED_SCENARIOS = {"HAPPY_PATH", "EXCEPTION", "AUTHORITY", "ISOLATION", "RECOVERY"}
+SERVER_CONTEXT_FIELDS = {
+    "tenantId", "projectId", "processCode", "stepCode", "actorCode", "fromState",
+}
 
 
 def stable(value: Any) -> str:
@@ -85,7 +88,7 @@ def test_package(path: Path) -> dict[str, Any]:
         require(page.get("theme") == "COMMON_KRDS_GOV", "common theme", failures)
         require(len(page.get("fields", [])) >= 10, "professional field contract", failures)
         field_codes = {field.get("code") for field in page.get("fields", [])}
-        client_input_fields = set(step.get("input", {})) - {"tenantId"}
+        client_input_fields = set(step.get("input", {})) - SERVER_CONTEXT_FIELDS
         for field in client_input_fields:
             require(field in field_codes, f"required field {field}", failures)
         accessibility = page.get("accessibility", {})
