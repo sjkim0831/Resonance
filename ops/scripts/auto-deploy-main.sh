@@ -113,6 +113,17 @@ eval "$(bash ops/scripts/plan-incremental-work.sh "$deployed_commit" "$target_co
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
+# Keep pre-deploy restore points bounded before build and backup I/O begins.
+# Containerd and PostgreSQL backups share /opt; allowing unlimited dump history
+# can taint the only Kubernetes node with DiskPressure and stall every rollout.
+bash ops/scripts/prune-predeploy-backups.sh
+
+opt_usage="$(df -P /opt | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+if [[ "$opt_usage" -ge 82 ]]; then
+  echo "[auto-deploy] refusing deployment: /opt disk usage is ${opt_usage}% after backup retention" >&2
+  exit 18
+fi
+
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [[ "$root_usage" -ge 88 ]]; then
   echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker images before build"
@@ -328,6 +339,10 @@ if [[ "$backup_required" == "true" ]]; then
 else
   echo "[auto-deploy] database backup skipped: no schema migration in selected work"
 fi
+
+# Apply the same policy after a successful dump so retries cannot accumulate
+# duplicate full backups faster than the hourly cleanup cadence.
+bash ops/scripts/prune-predeploy-backups.sh
 
 # Backend-only and migration-only commits reuse the last verified immutable
 # frontend closure. Rebuilding TypeScript for such commits creates avoidable
