@@ -86,10 +86,11 @@ FROM audited a;
 -- orphan recovery. Reconcile only cryptographically addressable evidence; no
 -- job is promoted merely because it stopped running.
 WITH verified_event AS (
-  SELECT DISTINCT ON (e.job_id) e.job_id,e.created_at,e.detail_json->>'commit' AS commit_hash
+  SELECT DISTINCT ON (e.job_id) e.job_id,e.created_at,
+    substring(e.detail_json from '"commit"[[:space:]]*:[[:space:]]*"([0-9a-f]{40})"') AS commit_hash
   FROM framework_development_job_event e
   WHERE e.event_type='VERIFIED'
-    AND coalesce(e.detail_json->>'commit','') ~ '^[0-9a-f]{40}$'
+    AND e.detail_json ~ '"commit"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"'
   ORDER BY e.job_id,e.created_at DESC
 ), orphan_event AS (
   SELECT e.job_id,max(e.created_at) AS orphaned_at
