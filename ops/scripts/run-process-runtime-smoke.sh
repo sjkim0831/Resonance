@@ -64,7 +64,11 @@ p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-proc
 p['protectedUserRoutes']=['/emission/organizational-boundary']
 json.dump(p,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
 PY
+exec 8>"$EVIDENCE_DIR/.latest.lock"
+flock 8
 ln -sfn "$stamp.json" "$EVIDENCE_DIR/latest.json"
+flock -u 8
+exec 8>&-
 process_name="$(RUNTIME="$runtime" python3 - <<'PY'
 import json,os
 print(json.load(open(os.environ['RUNTIME'],encoding='utf-8'))['processCode'])
