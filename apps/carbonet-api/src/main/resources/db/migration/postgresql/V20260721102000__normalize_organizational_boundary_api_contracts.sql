@@ -5,7 +5,7 @@ WITH contracts(step_code,api_contract) AS (VALUES
   ('ORGANIZATIONAL_BOUNDARY_S4','["POST /home/api/emission-projects/{id}/organizational-boundary/decision"]')
 )
 UPDATE framework_process_step step
-SET api_contract=contracts.api_contract,updated_at=current_timestamp
+SET api_contract=contracts.api_contract
 FROM contracts
 WHERE step.process_code='ORGANIZATIONAL_BOUNDARY' AND step.step_code=contracts.step_code;
 
