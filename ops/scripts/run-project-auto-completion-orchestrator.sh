@@ -4,6 +4,14 @@ ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-pro
 PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
 exec 9>"$LOCK_FILE"; flock -n 9 || exit 0
+# framework_development_job_event.event_type is varchar(30). Fail before any
+# mutation if a newly added static recovery event exceeds that DB contract.
+while IFS= read -r event_code; do
+  if (( ${#event_code} > 30 )); then
+    echo "[project-auto-completion] event code exceeds 30 characters: $event_code" >&2
+    exit 2
+  fi
+done < <(grep -oE "select job_id,'[A-Z_]+" "$0" | sed "s/.*'//" | sort -u)
 leader=""
 while IFS= read -r pod; do
   [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]] && { leader="$pod"; break; }
@@ -191,7 +199,7 @@ with candidate as (
     and j.last_error='deterministic generation unavailable and the single automatic AI escalation was already consumed'
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='FRONTEND_INVENTORY_ADOPTION_RETRY'
+      where e.job_id=j.job_id and e.event_type='FRONTEND_INVENTORY_RETRY'
     )
 ), recovered as (
   update framework_development_job j
@@ -200,7 +208,7 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'FRONTEND_INVENTORY_ADOPTION_RETRY','FAILED','RETRY','project-auto-completion',
+  select job_id,'FRONTEND_INVENTORY_RETRY','FAILED','RETRY','project-auto-completion',
          jsonb_build_object('reason','route-source inventory refreshed; retry exact existing frontend adoption')
   from recovered returning 1
 )
