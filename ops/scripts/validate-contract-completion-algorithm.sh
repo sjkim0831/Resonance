@@ -24,5 +24,7 @@ grep -Fq 'attempt_count<framework_development_job.max_attempts' "$BOUNDED_RETRY"
 grep -Fq "'generatorRequired',true" "$GENERATOR_SPEC"
 grep -Fq "'requirement'" "$GENERATOR_SPEC"
 grep -Fq 'SPEC_REPAIR_RETRY' "$GENERATOR_SPEC"
+grep -Fq 'build/resources/main/static/react-app' "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+grep -Fq 'compiled classes preserved' "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
