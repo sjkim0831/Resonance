@@ -170,6 +170,39 @@ if [[ -d "$frontend_root/node_modules" && -d "$frontend_worktree" && ! -e "$fron
 fi
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
+
+# DESIGN jobs created before the professional screen contract upgrade do not
+# contain designContracts. Enrich those immutable legacy specifications from
+# the governed DB contract at execution time instead of failing or producing an
+# empty design artifact. New specifications pass through unchanged.
+if [[ "$JOB_TYPE" == "DESIGN" ]] && ! jq -e '.designContracts | type == "array" and length > 0' <<<"$SPEC" >/dev/null 2>&1; then
+  ENRICHED_DESIGN_SPEC="$(psqlq -c "
+    select json_build_object(
+      'requirement',coalesce(nullif(s.requirement_text,''),s.step_name),
+      'designContracts',coalesce(json_agg(json_build_object(
+        'audience',c.audience,'routePath',c.route_path,'screenName',c.screen_name,
+        'actorCode',c.actor_code,'businessPurpose',c.business_purpose,
+        'entryCondition',c.entry_condition,'exitCondition',c.exit_condition,
+        'kpis',c.kpi_contract::json,'sections',c.section_contract::json,
+        'fields',c.field_contract::json,'commands',c.command_contract::json,
+        'states',c.state_contract::json,'apis',c.api_contract::json,
+        'data',c.data_contract::json,'evidence',c.evidence_contract::json,
+        'responsive',c.responsive_contract,'accessibility',c.accessibility_contract,
+        'security',c.security_contract
+      ) order by c.audience,c.route_path) filter(where c.contract_id is not null),'[]'::json)
+    )::text
+    from framework_process_step s
+    left join framework_professional_screen_contract c
+      on c.process_code=s.process_code and c.step_code=s.step_code
+    where s.process_code='${PROCESS_CODE}' and s.step_code='${STEP_CODE}'
+    group by s.requirement_text,s.step_name;")"
+  if ! jq -e '.designContracts | type == "array" and length > 0' <<<"$ENRICHED_DESIGN_SPEC" >/dev/null 2>&1; then
+    fail_job "governed professional screen contracts are missing for legacy DESIGN specification"
+  fi
+  SPEC="$(jq -c --argjson governed "$ENRICHED_DESIGN_SPEC" '. + $governed' <<<"$SPEC")"
+  event "LEGACY_SPEC_ENRICHED" "RUNNING" "RUNNING" \
+    "{\"source\":\"framework_professional_screen_contract\",\"reason\":\"designContracts missing\"}"
+fi
 SPEC_FILE="$WT/.automation-spec.json"
 printf '%s' "$SPEC" >"$SPEC_FILE"
 SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
