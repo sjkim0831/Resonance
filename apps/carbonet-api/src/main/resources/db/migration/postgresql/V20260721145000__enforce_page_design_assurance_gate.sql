@@ -92,13 +92,13 @@ SELECT i.item_id,i.plan_code,i.sequence_no,i.priority_score,i.manual_lock,
   i.menu_code,i.menu_name,i.menu_status,i.permission_code,i.permission_name,i.permission_status,
   i.blocker_reason,i.next_action,i.updated_at,
   coalesce(q.professional_score,0) quality_score,coalesce(q.customer_readiness,'IMPLEMENTATION_REQUIRED') customer_readiness,
-  coalesce(g.design_gate_score,0) design_gate_score,coalesce(g.design_gate_status,'FAILED') design_gate_status,
-  coalesce(g.design_gate_issues,ARRAY['DESIGN_GATE_NOT_EVALUATED']::text[]) design_gate_issues,
   coalesce((SELECT string_agg(DISTINCT b.actor_code,', ' ORDER BY b.actor_code) FROM framework_process_step_screen_binding b WHERE b.screen_resource_id=r.screen_resource_id AND b.binding_status='ACTIVE'),'') actor_codes,
   coalesce((SELECT string_agg(DISTINCT b.process_code,', ' ORDER BY b.process_code) FROM framework_process_step_screen_binding b WHERE b.screen_resource_id=r.screen_resource_id AND b.binding_status='ACTIVE'),'') process_codes,
   coalesce((SELECT count(DISTINCT (b.process_code,b.step_code)) FROM framework_process_step_screen_binding b WHERE b.screen_resource_id=r.screen_resource_id AND b.binding_status='ACTIVE'),0) process_step_count,
   coalesce((SELECT count(*) FROM framework_screen_capability c WHERE c.screen_resource_id=r.screen_resource_id),0) capability_count,
-  coalesce((SELECT count(*) FROM framework_screen_data_binding d WHERE d.screen_resource_id=r.screen_resource_id),0) field_count
+  coalesce((SELECT count(*) FROM framework_screen_data_binding d WHERE d.screen_resource_id=r.screen_resource_id),0) field_count,
+  coalesce(g.design_gate_score,0) design_gate_score,coalesce(g.design_gate_status,'FAILED') design_gate_status,
+  coalesce(g.design_gate_issues,ARRAY['DESIGN_GATE_NOT_EVALUATED']::text[]) design_gate_issues
 FROM framework_page_development_item i
 JOIN framework_screen_resource r USING(screen_resource_id)
 LEFT JOIN framework_screen_professional_quality q USING(screen_resource_id)
