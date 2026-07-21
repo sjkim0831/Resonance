@@ -7,23 +7,31 @@ DECLARE
   original_definition text := pg_get_viewdef('framework_contract_completion_queue'::regclass,true);
   patched_definition text;
 BEGIN
-  patched_definition := replace(
-    original_definition,
-    'COALESCE(pa.designed_page_count, 0) < (',
-    'COALESCE(pa.designed_page_count, 0) = 0 OR COALESCE(pa.designed_page_count, 0) < ('
-  );
-  IF patched_definition=original_definition THEN
-    RAISE EXCEPTION 'page contract predicate was not found in completion queue';
+  IF position('COALESCE(pa.designed_page_count, 0) = 0' IN original_definition)>0 THEN
+    patched_definition := original_definition;
+  ELSE
+    patched_definition := replace(
+      original_definition,
+      'COALESCE(pa.designed_page_count, 0) < (',
+      'COALESCE(pa.designed_page_count, 0) = 0 OR COALESCE(pa.designed_page_count, 0) < ('
+    );
+    IF patched_definition=original_definition THEN
+      RAISE EXCEPTION 'page contract predicate was not found in completion queue';
+    END IF;
   END IF;
 
   original_definition := patched_definition;
-  patched_definition := replace(
-    original_definition,
-    'j.quality_status::text = ''VERIFIED''::text',
-    'j.quality_status::text = ANY (ARRAY[''VERIFIED''::character varying,''PASSED''::character varying]::text[])'
-  );
-  IF patched_definition=original_definition THEN
-    RAISE EXCEPTION 'quality evidence predicate was not found in completion queue';
+  IF position('''PASSED''::character varying' IN original_definition)>0 THEN
+    patched_definition := original_definition;
+  ELSE
+    patched_definition := replace(
+      original_definition,
+      'j.quality_status::text = ''VERIFIED''::text',
+      'j.quality_status::text = ANY (ARRAY[''VERIFIED''::character varying,''PASSED''::character varying]::text[])'
+    );
+    IF patched_definition=original_definition THEN
+      RAISE EXCEPTION 'quality evidence predicate was not found in completion queue';
+    END IF;
   END IF;
 
   EXECUTE 'CREATE OR REPLACE VIEW framework_contract_completion_queue AS '||patched_definition;
