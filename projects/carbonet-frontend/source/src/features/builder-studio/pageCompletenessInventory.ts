@@ -52,7 +52,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 113,
+    "lineCount": 312,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -350,7 +350,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 294,
+    "lineCount": 358,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -621,10 +621,9 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "ThemeManagementMigrationPage"
     ],
     "routeIds": [
-      "theme",
-      "theme-management"
+      "theme"
     ],
-    "routeCount": 2,
+    "routeCount": 1,
     "status": "implemented",
     "lineCount": 1193,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
@@ -643,35 +642,13 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "BuilderStudioPage"
     ],
     "routeIds": [
-      "builder-studio",
-      "section-management"
-    ],
-    "routeCount": 2,
-    "status": "implemented",
-    "lineCount": 2912,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
-    "hasForm": true,
-    "hasTable": true,
-    "hasBuilderLink": true
-  },
-  {
-    "sourcePath": "features/builder-studio/ComponentManagementPage.tsx",
-    "effectiveSourcePath": "features/builder-studio/ComponentManagementPage.tsx",
-    "effectiveSourcePaths": [
-      "features/builder-studio/ComponentManagementPage.tsx"
-    ],
-    "effectiveExportNames": [
-      "ComponentManagementPage"
-    ],
-    "routeIds": [
-      "component-management"
+      "builder-studio"
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 311,
-    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
-    "hasAsyncData": false,
+    "lineCount": 3036,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
     "hasForm": true,
     "hasTable": true,
     "hasBuilderLink": true
@@ -942,7 +919,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 699,
+    "lineCount": 615,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -963,7 +940,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 946,
+    "lineCount": 868,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -984,7 +961,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 644,
+    "lineCount": 570,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1005,7 +982,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 700,
+    "lineCount": 616,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1026,7 +1003,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 780,
+    "lineCount": 688,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1047,7 +1024,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 817,
+    "lineCount": 753,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": true,
@@ -1157,6 +1134,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasAsyncData": true,
     "hasForm": true,
     "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/consent-history/ConsentHistoryMigrationPage.tsx",
+    "effectiveSourcePath": "features/consent-history/ConsentHistoryMigrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/consent-history/ConsentHistoryMigrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ConsentHistoryMigrationPage"
+    ],
+    "routeIds": [
+      "consent-history"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 88,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1286,6 +1284,31 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveSourcePath": "features/design-asset-registry/DesignAssetRegistryPage.tsx",
+    "effectiveSourcePaths": [
+      "features/design-asset-registry/DesignAssetRegistryPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "DesignAssetRegistryPage"
+    ],
+    "routeIds": [
+      "component-management",
+      "css-management",
+      "design-management",
+      "section-management",
+      "theme-management"
+    ],
+    "routeCount": 5,
+    "status": "implemented",
+    "lineCount": 70,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/download-list/index.ts",
     "effectiveSourcePath": "features/download-list/DownloadListMigrationPage.tsx",
     "effectiveSourcePaths": [
@@ -1304,6 +1327,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasAsyncData": false,
     "hasForm": true,
     "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/dynamic-page/DynamicPageRuntime.tsx",
+    "effectiveSourcePath": "features/dynamic-page/DynamicPageRuntime.tsx",
+    "effectiveSourcePaths": [
+      "features/dynamic-page/DynamicPageRuntime.tsx"
+    ],
+    "effectiveExportNames": [
+      "DynamicPageRuntime"
+    ],
+    "routeIds": [
+      "dynamic-page-runtime"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 22,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -1383,7 +1427,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 555,
+    "lineCount": 497,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": false,
@@ -1476,29 +1520,28 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
   },
   {
     "sourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
-    "effectiveSourcePath": "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx",
+    "effectiveSourcePath": "features/emission-carbon-workflow/EmissionDataRequestFunctionalPage.tsx",
     "effectiveSourcePaths": [
+      "features/emission-carbon-workflow/EmissionDataRequestFunctionalPage.tsx",
       "features/emission-carbon-workflow/EmissionCarbonWorkflowPages.tsx"
     ],
     "effectiveExportNames": [
-      "EmissionDataRequestPage",
+      "EmissionDataRequestFunctionalPage",
       "EmissionExternalDataPage",
-      "EmissionFinalizationPage",
-      "EmissionReportSubmissionPage"
+      "EmissionFinalizationPage"
     ],
     "routeIds": [
       "emission-data-request",
       "emission-external-data",
-      "emission-finalization",
-      "emission-report-submission"
+      "emission-finalization"
     ],
-    "routeCount": 4,
+    "routeCount": 3,
     "status": "implemented",
-    "lineCount": 35,
+    "lineCount": 33,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
-    "hasTable": true,
+    "hasTable": false,
     "hasBuilderLink": false
   },
   {
@@ -1561,7 +1604,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 4,
     "status": "implemented",
-    "lineCount": 46,
+    "lineCount": 42,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1648,11 +1691,11 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 370,
+    "lineCount": 275,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
-    "hasTable": true,
+    "hasTable": false,
     "hasBuilderLink": false
   },
   {
@@ -1690,7 +1733,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 684,
+    "lineCount": 652,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1712,6 +1755,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "routeCount": 1,
     "status": "implemented",
     "lineCount": 4234,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
+    "effectiveSourcePath": "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-project-list/AdminEmissionProjectOperationsPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "AdminEmissionProjectOperationsPage"
+    ],
+    "routeIds": [
+      "emission-project-operations-admin"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 25,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1774,11 +1838,11 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 299,
+    "lineCount": 177,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
-    "hasTable": true,
+    "hasTable": false,
     "hasBuilderLink": false
   },
   {
@@ -1795,7 +1859,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 43,
+    "lineCount": 431,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1816,7 +1880,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 37,
+    "lineCount": 34,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1859,7 +1923,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 2,
     "status": "implemented",
-    "lineCount": 29,
+    "lineCount": 25,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1876,12 +1940,13 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionProjectResultPage"
     ],
     "routeIds": [
+      "emission-calculation",
       "emission-calculation-results",
       "emission-result"
     ],
-    "routeCount": 2,
+    "routeCount": 3,
     "status": "implemented",
-    "lineCount": 8,
+    "lineCount": 31,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -1904,7 +1969,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 3,
     "status": "implemented",
-    "lineCount": 37,
+    "lineCount": 33,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1925,7 +1990,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 4,
+    "lineCount": 162,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": false,
@@ -2021,6 +2086,29 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx",
+    "effectiveSourcePath": "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx",
+    "effectiveSourcePaths": [
+      "features/emission-regulatory-submission/RegulatorySubmissionPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "AdminRegulatorySubmissionPage",
+      "EmissionRegulatorySubmissionPage"
+    ],
+    "routeIds": [
+      "emission-regulatory-submissions-admin",
+      "emission-report-submission"
+    ],
+    "routeCount": 2,
+    "status": "implemented",
+    "lineCount": 44,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/emission-report-submit/EmissionReportSubmitMigrationPage.tsx",
     "effectiveSourcePath": "features/emission-report-submit/EmissionReportSubmitMigrationPage.tsx",
     "effectiveSourcePaths": [
@@ -2034,7 +2122,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 744,
+    "lineCount": 715,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2093,12 +2181,11 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
       "EmissionSimulateMigrationPage"
     ],
     "routeIds": [
-      "emission-calculation",
       "emission-simulate"
     ],
-    "routeCount": 2,
+    "routeCount": 1,
     "status": "implemented",
-    "lineCount": 583,
+    "lineCount": 550,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2119,10 +2206,10 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 204,
+    "lineCount": 227,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": false,
+    "hasForm": true,
     "hasTable": true,
     "hasBuilderLink": false
   },
@@ -2190,7 +2277,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 5,
     "status": "implemented",
-    "lineCount": 3920,
+    "lineCount": 4935,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -2697,8 +2784,8 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 158,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "lineCount": 110,
+    "reason": "데이터 기반 포털/조회 화면으로 구성되어 있습니다.",
     "hasAsyncData": true,
     "hasForm": false,
     "hasTable": false,
@@ -2718,12 +2805,12 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 277,
-    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
-    "hasAsyncData": false,
+    "lineCount": 34,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
     "hasForm": true,
     "hasTable": false,
-    "hasBuilderLink": true
+    "hasBuilderLink": false
   },
   {
     "sourcePath": "features/home-placeholder/HomeMenuPlaceholderPage.tsx",
@@ -2823,7 +2910,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 203,
+    "lineCount": 166,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": false,
@@ -2865,7 +2952,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 462,
+    "lineCount": 428,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": false,
@@ -2886,7 +2973,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 234,
+    "lineCount": 200,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": false,
@@ -2928,7 +3015,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 264,
+    "lineCount": 288,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": true,
@@ -2949,7 +3036,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 253,
+    "lineCount": 210,
     "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
     "hasAsyncData": false,
     "hasForm": true,
@@ -3389,9 +3476,9 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 962,
-    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
-    "hasAsyncData": true,
+    "lineCount": 864,
+    "reason": "자체 UI와 동작 로직이 있는 라우트 화면입니다.",
+    "hasAsyncData": false,
     "hasForm": false,
     "hasTable": false,
     "hasBuilderLink": false
@@ -3697,6 +3784,49 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasBuilderLink": false
   },
   {
+    "sourcePath": "features/ops-capability-bridge/OpsCapabilityBridgePage.tsx",
+    "effectiveSourcePath": "features/ops-capability-bridge/OpsCapabilityBridgePage.tsx",
+    "effectiveSourcePaths": [
+      "features/ops-capability-bridge/OpsCapabilityBridgePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "OpsCapabilityBridgePage"
+    ],
+    "routeIds": [
+      "ops-capability-bridge"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 84,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
+    "hasBuilderLink": true
+  },
+  {
+    "sourcePath": "features/organizational-boundary/index.ts",
+    "effectiveSourcePath": "features/organizational-boundary/OrganizationalBoundaryPage.tsx",
+    "effectiveSourcePaths": [
+      "features/organizational-boundary/OrganizationalBoundaryPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "OrganizationalBoundaryPage"
+    ],
+    "routeIds": [
+      "organizational-boundary",
+      "organizational-boundary-admin"
+    ],
+    "routeCount": 2,
+    "status": "implemented",
+    "lineCount": 32,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
     "sourcePath": "features/page-management/PageManagementMigrationPage.tsx",
     "effectiveSourcePath": "features/page-management/PageManagementMigrationPage.tsx",
     "effectiveSourcePaths": [
@@ -3967,6 +4097,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasAsyncData": true,
     "hasForm": true,
     "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/process-orchestration/ProcessOrchestrationPage.tsx",
+    "effectiveSourcePath": "features/process-orchestration/ProcessOrchestrationPage.tsx",
+    "effectiveSourcePaths": [
+      "features/process-orchestration/ProcessOrchestrationPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ProcessOrchestrationPage"
+    ],
+    "routeIds": [
+      "process-orchestration"
+    ],
+    "routeCount": 1,
+    "status": "thin",
+    "lineCount": 60,
+    "reason": "라우트 화면으로 등록되어 있으나 데이터/폼/표/액션 신호가 부족해 보강 여부 점검이 필요합니다.",
+    "hasAsyncData": true,
+    "hasForm": false,
+    "hasTable": false,
     "hasBuilderLink": false
   },
   {
