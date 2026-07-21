@@ -35,9 +35,18 @@ jq -e '
 if jq -e --arg type "$JOB_TYPE" '.screenGovernedJobTypes | index($type) != null' "$POLICY" >/dev/null; then
   jq -e '
     (.screenContractCount >= 1) and
-    (.routeCount >= 1) and
+    (.routeCount >= 1)
+  ' "$GOVERNANCE_FILE" >/dev/null
+fi
+
+# The UI quality phase is the final screen gate. Earlier design and frontend
+# phases may run before server/test phases, but UI quality cannot pass until
+# those independently verified contracts are present. Responsive and
+# accessibility flags are outcomes recorded by the UI quality job itself.
+if jq -e --arg type "$JOB_TYPE" '.screenRuntimeQualityJobTypes | index($type) != null' "$POLICY" >/dev/null; then
+  jq -e '
     .apiVerified and .databaseVerified and .authorityVerified and
-    .responsiveVerified and .accessibilityVerified and .exceptionStatesVerified
+    .exceptionStatesVerified
   ' "$GOVERNANCE_FILE" >/dev/null
 fi
 
