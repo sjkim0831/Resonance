@@ -831,6 +831,78 @@ public class EmissionProjectRegistryService {
         if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+actorCode);
     }
 
+    public Map<String,Object> organizationalBoundary(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId");assertTenantAccess(projectId,tenant);
+        Map<String,Object> out=new LinkedHashMap<>();out.put("project",detail(projectId));
+        List<Map<String,Object>> boundaries=jdbc.queryForList("SELECT boundary_id AS \"id\",version_no AS version,boundary_method AS \"boundaryMethod\",reporting_basis AS \"reportingBasis\",rationale,effective_from AS \"effectiveFrom\",effective_until AS \"effectiveUntil\",boundary_status AS status,row_version AS \"rowVersion\",created_by AS \"createdBy\",approved_by AS \"approvedBy\",approved_at AS \"approvedAt\",updated_at AS \"updatedAt\" FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId);
+        out.put("versions",boundaries);
+        if(boundaries.isEmpty()){out.put("members",List.of());out.put("eliminations",List.of());out.put("consolidations",List.of());return out;}
+        long boundaryId=((Number)boundaries.get(0).get("id")).longValue();
+        out.put("members",jdbc.queryForList("SELECT member_id AS id,entity_code AS \"entityCode\",entity_name AS \"entityName\",entity_type AS \"entityType\",country_code AS \"countryCode\",ownership_percent AS \"ownershipPercent\",control_type AS \"controlType\",included_yn AS \"includedYn\",exclusion_reason AS \"exclusionReason\",evidence_ref AS \"evidenceRef\" FROM emission_organizational_boundary_member WHERE boundary_id=? ORDER BY included_yn DESC,entity_name",boundaryId));
+        out.put("eliminations",jdbc.queryForList("SELECT elimination_id AS id,source_entity_code AS \"sourceEntityCode\",counterparty_entity_code AS \"counterpartyEntityCode\",activity_category AS \"activityCategory\",gross_emission AS \"grossEmission\",eliminated_emission AS \"eliminatedEmission\",unit,evidence_ref AS \"evidenceRef\" FROM emission_organizational_boundary_elimination WHERE boundary_id=? ORDER BY elimination_id",boundaryId));
+        out.put("consolidations",jdbc.queryForList("SELECT consolidation_id AS id,gross_emission AS \"grossEmission\",eliminated_emission AS \"eliminatedEmission\",net_emission AS \"netEmission\",included_entity_count AS \"includedEntityCount\",excluded_entity_count AS \"excludedEntityCount\",reconciliation_difference AS \"reconciliationDifference\",calculation_hash AS \"calculationHash\",calculated_by AS \"calculatedBy\",calculated_at AS \"calculatedAt\" FROM emission_organizational_boundary_consolidation WHERE boundary_id=? ORDER BY consolidation_id DESC",boundaryId));
+        return out;
+    }
+
+    @Transactional public Map<String,Object> saveOrganizationalBoundary(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String method=required(body,"boundaryMethod"),basis=required(body,"reportingBasis"),rationale=required(body,"rationale"),from=required(body,"effectiveFrom");
+        if(!List.of("OPERATIONAL_CONTROL","FINANCIAL_CONTROL","EQUITY_SHARE").contains(method))throw new IllegalArgumentException("INVALID_BOUNDARY_METHOD");
+        List<Map<String,Object>> current=jdbc.queryForList("SELECT boundary_id AS id,version_no AS version,boundary_status AS status,row_version AS \"rowVersion\" FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC LIMIT 1 FOR UPDATE",tenant,projectId);
+        long id;
+        if(current.isEmpty()||"APPROVED".equals(String.valueOf(current.get(0).get("status")))){
+            int version=current.isEmpty()?1:((Number)current.get(0).get("version")).intValue()+1;
+            id=jdbc.queryForObject("INSERT INTO emission_organizational_boundary(tenant_id,project_id,version_no,boundary_method,reporting_basis,rationale,effective_from,effective_until,created_by) VALUES (?,?,?,?,?,?,?::date,nullif(?,'')::date,?) RETURNING boundary_id",Long.class,tenant,projectId,version,method,basis,rationale,from,String.valueOf(body.getOrDefault("effectiveUntil","")),user);
+        }else{
+            id=((Number)current.get(0).get("id")).longValue();int expected=Integer.parseInt(String.valueOf(body.getOrDefault("rowVersion",current.get(0).get("rowVersion"))));
+            int changed=jdbc.update("UPDATE emission_organizational_boundary SET boundary_method=?,reporting_basis=?,rationale=?,effective_from=?::date,effective_until=nullif(?,'')::date,boundary_status='DRAFT',row_version=row_version+1,updated_at=current_timestamp WHERE boundary_id=? AND row_version=?",method,basis,rationale,from,String.valueOf(body.getOrDefault("effectiveUntil","")),id,expected);
+            if(changed==0)throw new IllegalStateException("BOUNDARY_VERSION_CONFLICT");
+            jdbc.update("DELETE FROM emission_organizational_boundary_member WHERE boundary_id=?",id);
+        }
+        Object raw=body.get("members");if(!(raw instanceof List<?> members)||members.isEmpty())throw new IllegalArgumentException("BOUNDARY_MEMBER_REQUIRED");
+        for(Object item:members){if(!(item instanceof Map<?,?> m))throw new IllegalArgumentException("INVALID_BOUNDARY_MEMBER");
+            String code=mapValue(m,"entityCode","").trim(),name=mapValue(m,"entityName","").trim(),included=mapValue(m,"includedYn","Y");
+            if(code.isEmpty()||name.isEmpty())throw new IllegalArgumentException("BOUNDARY_ENTITY_REQUIRED");
+            String exclusion=mapValue(m,"exclusionReason","");if("N".equals(included)&&exclusion.isBlank())throw new IllegalArgumentException("EXCLUSION_REASON_REQUIRED:"+code);
+            jdbc.update("INSERT INTO emission_organizational_boundary_member(boundary_id,entity_code,entity_name,entity_type,country_code,ownership_percent,control_type,included_yn,exclusion_reason,evidence_ref) VALUES (?,?,?,?,?,?::numeric,?,?,?,nullif(?,'') )",id,code,name,mapValue(m,"entityType","LEGAL_ENTITY"),mapValue(m,"countryCode","KR"),mapValue(m,"ownershipPercent","100"),mapValue(m,"controlType","OPERATIONAL"),included,exclusion,mapValue(m,"evidenceRef",""));
+        }
+        return Map.of("success",true,"boundaryId",id,"status","DRAFT");
+    }
+
+    @Transactional public Map<String,Object> markOrganizationalBoundaryReviewReady(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        Long id=jdbc.query("SELECT boundary_id FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? AND boundary_status='DRAFT' ORDER BY version_no DESC LIMIT 1",rs->rs.next()?rs.getLong(1):null,tenant,projectId);
+        if(id==null)throw new IllegalStateException("DRAFT_BOUNDARY_NOT_FOUND");
+        Integer included=jdbc.queryForObject("SELECT count(*) FROM emission_organizational_boundary_member WHERE boundary_id=? AND included_yn='Y'",Integer.class,id);if(included==null||included==0)throw new IllegalStateException("INCLUDED_ENTITY_REQUIRED");
+        jdbc.update("UPDATE emission_organizational_boundary SET boundary_status='REVIEW_READY',row_version=row_version+1,updated_at=current_timestamp WHERE boundary_id=?",id);
+        return Map.of("success",true,"boundaryId",id,"status","REVIEW_READY","reviewedBy",user);
+    }
+
+    @Transactional public Map<String,Object> consolidateOrganizationalBoundary(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,"CALCULATOR",override);
+        Long id=jdbc.query("SELECT boundary_id FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? AND boundary_status IN ('REVIEW_READY','CONSOLIDATED') ORDER BY version_no DESC LIMIT 1 FOR UPDATE",rs->rs.next()?rs.getLong(1):null,tenant,projectId);if(id==null)throw new IllegalStateException("BOUNDARY_NOT_READY_FOR_CONSOLIDATION");
+        java.math.BigDecimal gross=new java.math.BigDecimal(required(body,"grossEmission"));jdbc.update("DELETE FROM emission_organizational_boundary_elimination WHERE boundary_id=?",id);
+        java.math.BigDecimal eliminated=java.math.BigDecimal.ZERO;Object raw=body.getOrDefault("eliminations",List.of());if(raw instanceof List<?> rows)for(Object item:rows){if(!(item instanceof Map<?,?> m))continue;java.math.BigDecimal amount=new java.math.BigDecimal(mapValue(m,"eliminatedEmission","0"));eliminated=eliminated.add(amount);
+            jdbc.update("INSERT INTO emission_organizational_boundary_elimination(boundary_id,source_entity_code,counterparty_entity_code,activity_category,gross_emission,eliminated_emission,unit,evidence_ref,created_by) VALUES (?,?,?,?,?::numeric,?::numeric,?,?,?)",id,requiredMap(m,"sourceEntityCode"),requiredMap(m,"counterpartyEntityCode"),requiredMap(m,"activityCategory"),mapValue(m,"grossEmission",amount.toPlainString()),amount.toPlainString(),mapValue(m,"unit","tCO2e"),requiredMap(m,"evidenceRef"),user);}
+        if(eliminated.compareTo(gross)>0)throw new IllegalArgumentException("ELIMINATION_EXCEEDS_GROSS");java.math.BigDecimal net=gross.subtract(eliminated);
+        Map<String,Object> counts=jdbc.queryForMap("SELECT count(*) FILTER(WHERE included_yn='Y') AS included,count(*) FILTER(WHERE included_yn='N') AS excluded FROM emission_organizational_boundary_member WHERE boundary_id=?",id);
+        String hash=jdbc.queryForObject("SELECT md5(?||':'||?||':'||?||':'||?)",String.class,id.toString(),gross.toPlainString(),eliminated.toPlainString(),counts.toString());
+        jdbc.update("INSERT INTO emission_organizational_boundary_consolidation(boundary_id,gross_emission,eliminated_emission,net_emission,included_entity_count,excluded_entity_count,calculation_hash,calculated_by) VALUES (?,?::numeric,?::numeric,?::numeric,?,?,?,?) ON CONFLICT(boundary_id,calculation_hash) DO NOTHING",id,gross.toPlainString(),eliminated.toPlainString(),net.toPlainString(),((Number)counts.get("included")).intValue(),((Number)counts.get("excluded")).intValue(),hash,user);
+        jdbc.update("UPDATE emission_organizational_boundary SET boundary_status='CONSOLIDATED',row_version=row_version+1,updated_at=current_timestamp WHERE boundary_id=?",id);
+        return Map.of("success",true,"boundaryId",id,"grossEmission",gross,"eliminatedEmission",eliminated,"netEmission",net,"calculationHash",hash);
+    }
+
+    @Transactional public Map<String,Object> decideOrganizationalBoundary(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision");requireProjectActor(projectId,tenant,user,"APPROVER",override);
+        if(!List.of("APPROVE","REJECT").contains(decision))throw new IllegalArgumentException("INVALID_BOUNDARY_DECISION");
+        Long id=jdbc.query("SELECT boundary_id FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? AND boundary_status='CONSOLIDATED' ORDER BY version_no DESC LIMIT 1 FOR UPDATE",rs->rs.next()?rs.getLong(1):null,tenant,projectId);if(id==null)throw new IllegalStateException("CONSOLIDATED_BOUNDARY_NOT_FOUND");
+        jdbc.update("UPDATE emission_organizational_boundary SET boundary_status=?,approved_by=?,approved_at=current_timestamp,row_version=row_version+1,updated_at=current_timestamp WHERE boundary_id=?","APPROVE".equals(decision)?"APPROVED":"REJECTED",user,id);
+        return Map.of("success",true,"boundaryId",id,"status","APPROVE".equals(decision)?"APPROVED":"REJECTED");
+    }
+
+    private String requiredMap(Map<?,?> body,String key){Object value=body.get(key);String normalized=value==null?"":String.valueOf(value).trim();if(normalized.isEmpty())throw new IllegalArgumentException(key+" is required");return normalized;}
+    private String mapValue(Map<?,?> body,String key,String fallback){Object value=body.get(key);return value==null?fallback:String.valueOf(value);}
+
     private void reopenForCorrection(String projectId,String actor,String reason) {
         jdbc.update("UPDATE emission_project_task SET task_status=CASE WHEN task_code='ACTIVITY_DATA' THEN 'READY' ELSE 'BLOCKED' END,blocked_reason=CASE WHEN task_code='ACTIVITY_DATA' THEN null ELSE '보완 자료 재제출이 필요합니다.' END,completed_at=null,completed_by=null,updated_at=current_timestamp WHERE project_id=? AND task_code IN ('ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT')",projectId);
         jdbc.update("UPDATE emission_project_registry SET current_step='보완·재제출',project_status='보완 필요',updated_at=current_timestamp WHERE project_id=?",projectId);

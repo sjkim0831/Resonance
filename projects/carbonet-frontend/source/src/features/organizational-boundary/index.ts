@@ -1,0 +1,1 @@
+export { OrganizationalBoundaryPage } from "./OrganizationalBoundaryPage";
