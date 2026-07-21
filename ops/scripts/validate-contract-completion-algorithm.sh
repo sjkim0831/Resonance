@@ -7,6 +7,7 @@ LOCK_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V
 RETRY_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721132000__reuse_failed_contract_completion_jobs.sql"
 BOUNDED_RETRY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721133000__bound_contract_completion_retries.sql"
 GENERATOR_SPEC="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721134000__complete_contract_job_generator_spec.sql"
+RUNTIME_RETRY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721135000__retry_contract_jobs_after_runtime_gate_fix.sql"
 ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 test -s "$MIGRATION"
@@ -26,5 +27,8 @@ grep -Fq "'requirement'" "$GENERATOR_SPEC"
 grep -Fq 'SPEC_REPAIR_RETRY' "$GENERATOR_SPEC"
 grep -Fq 'build/resources/main/static/react-app' "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 grep -Fq 'compiled classes preserved' "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+grep -Fq 'SERVER_CONTEXT_FIELDS' "$ROOT/ops/scripts/fast-process-package-test.py"
+grep -Fq 'executable_tests' "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
+grep -Fq 'RUNTIME_GATE_REPAIR' "$RUNTIME_RETRY"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'

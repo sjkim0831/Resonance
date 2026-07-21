@@ -230,7 +230,8 @@ psqlq -c "
     'processCode',s.process_code,
     'stepCode',s.step_code,
     'actorCode',coalesce(nullif(s.actor_code,''),'UNASSIGNED'),
-    'requirement',coalesce(nullif(s.requirement_text,''),s.step_name),
+    'requirement',coalesce(nullif(btrim(s.requirement_text),''),
+      s.step_name||' 업무를 전문적으로 완료하고 검증 가능한 산출물을 생성한다.'),
     'screenContractCount',count(c.contract_id),
     'routeCount',count(distinct c.route_path) filter(where nullif(c.route_path,'') is not null),
     'apiVerified',coalesce(bool_and(c.api_verified) filter(where c.contract_id is not null),false) or exists(

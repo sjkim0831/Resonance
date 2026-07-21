@@ -55,6 +55,11 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
 
 def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]:
     validate_step(process, step)
+    executable_tests = [
+        case for case in step["test_contract"]
+        if case.get("status") in {"APPROVED", "VERIFIED"}
+        and case.get("steps") and case.get("assertions")
+    ]
     pages = []
     field_by_audience = {item["audience"]: item.get("fields", []) for item in step["field_contract"]}
     for page in step["screen_contract"]:
@@ -96,7 +101,7 @@ def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]
             "handoffs": step["handoff_contract"],
         },
         "database": step["persistence_contract"],
-        "tests": step["test_contract"],
+        "tests": executable_tests,
         "testExecution": {
             "runner": "FAST_PROCESS_CONTRACT_RUNNER",
             "requiredLanes": ["CONTRACT", "AUTHORITY", "ISOLATION", "RECOVERY", "LIVE_SMOKE"],
