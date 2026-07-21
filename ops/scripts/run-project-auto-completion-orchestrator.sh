@@ -11,7 +11,7 @@ while IFS= read -r event_code; do
     echo "[project-auto-completion] event code exceeds 30 characters: $event_code" >&2
     exit 2
   fi
-done < <(grep -oE "select job_id,'[A-Z_]+" "$0" | sed "s/.*'//" | sort -u)
+done < <(sed -n "s/.*select job_id,'\([A-Z_][A-Z_]*\)'.*/\1/p" "$0" | sort -u)
 leader=""
 while IFS= read -r pod; do
   [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]] && { leader="$pod"; break; }

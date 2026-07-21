@@ -89,7 +89,9 @@ for route in "${routes[@]}"; do grep -Fq "$route" "$controller" || { echo "missi
 for test in "${tests[@]}"; do [[ -s "$ROOT/ops/tests/$test" ]] || { echo "missing executable SQL test: $test" >&2; exit 1; }; done
 
 if [[ "$PROCESS" == "ORGANIZATIONAL_BOUNDARY" ]]; then
-  evidence_dir="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$ROOT/var/test-evidence/process-runtime-smoke}"
+  common_git_dir="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
+  shared_root="$(dirname "$common_git_dir")"
+  evidence_dir="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$shared_root/var/test-evidence/process-runtime-smoke}"
   runtime_evidence="$(python3 - "$evidence_dir" <<'PY'
 import glob,json,os,sys
 for path in sorted(glob.glob(os.path.join(sys.argv[1],'*.json')),key=os.path.getmtime,reverse=True):
