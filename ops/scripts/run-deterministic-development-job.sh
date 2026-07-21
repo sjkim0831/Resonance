@@ -39,7 +39,7 @@ case "$JOB_TYPE" in
     CARBONET_RUNTIME_SMOKE_PROCESS="$PROCESS" CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR="$runtime_evidence_root" \
       bash "$WT/ops/scripts/run-process-runtime-smoke.sh" 1>&2
     runtime_evidence="$runtime_evidence_root/latest.json"
-    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
 # Verified actor journey adoption: $PROCESS / $STEP
@@ -57,7 +57,7 @@ EOF
   SEARCH)
     validator="$WT/ops/scripts/validate-existing-emission-project-search.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
-    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
 # Verified integrated search adoption: $PROCESS / $STEP
@@ -73,7 +73,7 @@ EOF
   PERFORMANCE)
     validator="$WT/ops/scripts/validate-existing-emission-project-performance.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
-    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
 # Verified runtime performance adoption: $PROCESS / $STEP
@@ -89,7 +89,7 @@ EOF
   NOTIFICATION)
     validator="$WT/ops/scripts/validate-existing-emission-project-notification.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
-    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
 # Verified existing in-app notification adoption: $PROCESS / $STEP
@@ -105,7 +105,7 @@ EOF
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     validator="$WT/ops/scripts/validate-existing-emission-project-api.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
-    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
 # Verified existing server adoption: $PROCESS / $STEP
@@ -122,7 +122,7 @@ EOF
   DATABASE|DATABASE_QUALITY)
     validator="$WT/ops/scripts/validate-existing-emission-project-database.sh"
     adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
-    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE.md"
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
 # Verified existing database adoption: $PROCESS / $STEP
