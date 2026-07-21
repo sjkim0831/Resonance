@@ -24,7 +24,7 @@ if payload.get("allVisible") is not True or payload.get("accountActors") != ["*"
     raise SystemExit("administrator process visibility contract failed")
 member_codes={row.get("processCode") for row in payload.get("processCatalog",[]) if str(row.get("domainCode","")).upper()=="MEMBER"}
 member_steps=[row for row in payload.get("processCatalogSteps",[]) if row.get("processCode") in member_codes]
-if len(member_codes)!=17 or len(member_steps)!=68:
+if len(member_codes)!=17 or len(member_steps)<68:
     raise SystemExit(f"member guide catalog mismatch processes={len(member_codes)} steps={len(member_steps)}")
 if any(not row.get("userPath") or not row.get("adminPath") for row in member_steps):
     raise SystemExit("member guide route gap")

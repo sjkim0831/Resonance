@@ -163,8 +163,11 @@ generated_paths=(
 )
 for generated_path in "${generated_paths[@]}"; do
   # A missing/ignored path must not cancel restoration of every later path.
-  # This was the cause of repeated merge failures after successful builds.
-  if git ls-files -- "$generated_path" | grep -q .; then
+  # Capture the complete result instead of piping into `grep -q`: with
+  # pipefail enabled, grep's early exit can SIGPIPE git and falsely report that
+  # a large tracked directory has no files.
+  tracked_generated_files="$(git ls-files -- "$generated_path")"
+  if [[ -n "$tracked_generated_files" ]]; then
     git restore --worktree -- "$generated_path"
   fi
 done
