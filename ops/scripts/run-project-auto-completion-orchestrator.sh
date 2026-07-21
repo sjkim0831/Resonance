@@ -18,6 +18,29 @@ while IFS= read -r pod; do
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
 [[ -n "$leader" ]] || { echo "[project-auto-completion] writable PostgreSQL leader not found" >&2; exit 1; }
 psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"; }
+host_worker_prefix="$(hostname)-hermes-"
+while IFS='|' read -r orphan_job_id orphan_worker_id; do
+  [[ -n "$orphan_job_id" && "$orphan_worker_id" == "$host_worker_prefix"* ]] || continue
+  orphan_pid="${orphan_worker_id##*-}"
+  [[ "$orphan_pid" =~ ^[0-9]+$ ]] || continue
+  if kill -0 "$orphan_pid" 2>/dev/null; then
+    orphan_cmd="$(tr '\0' ' ' <"/proc/$orphan_pid/cmdline" 2>/dev/null || true)"
+    [[ "$orphan_cmd" == *run-process-development-worker.sh* && "$orphan_cmd" == *" $orphan_job_id "* ]] && continue
+  fi
+  psqlq -c "
+    with recovered as (
+      update framework_development_job
+      set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+          last_error='orphan worker process disappeared',updated_at=current_timestamp
+      where job_id=${orphan_job_id} and job_status='RUNNING' and worker_id='${orphan_worker_id}'
+      returning job_id
+    )
+    insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+    select job_id,'ORPHAN_WORKER_RECOVERED','RUNNING','RETRY','project-auto-completion',
+           jsonb_build_object('missingPid',${orphan_pid}) from recovered;" >/dev/null
+done < <(psqlq -c "
+  select job_id,worker_id from framework_development_job
+  where job_status='RUNNING' and worker_id like '${host_worker_prefix}%';")
 run_id="$(cat /proc/sys/kernel/random/uuid)"
 psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
 trap 'psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
