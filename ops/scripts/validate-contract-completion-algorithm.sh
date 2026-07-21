@@ -8,6 +8,7 @@ RETRY_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/
 BOUNDED_RETRY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721133000__bound_contract_completion_retries.sql"
 GENERATOR_SPEC="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721134000__complete_contract_job_generator_spec.sql"
 RUNTIME_RETRY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721135000__retry_contract_jobs_after_runtime_gate_fix.sql"
+RACE_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721136000__close_contract_completion_races_and_page_gaps.sql"
 ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 test -s "$MIGRATION"
@@ -30,5 +31,10 @@ grep -Fq 'compiled classes preserved' "$ROOT/ops/scripts/resonance-k8s-build-dep
 grep -Fq 'SERVER_CONTEXT_FIELDS' "$ROOT/ops/scripts/fast-process-package-test.py"
 grep -Fq 'executable_tests' "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
 grep -Fq 'RUNTIME_GATE_REPAIR' "$RUNTIME_RETRY"
+grep -Fq 'REQUIRED_PAGE_DESIGN_MISSING' "$RACE_GUARD"
+grep -Fq 'ORPHAN_RESULT_RECONCILED' "$RACE_GUARD"
+grep -Fq "updated_at < current_timestamp - interval" "$ORCHESTRATOR"
+grep -Fq 'attempt_count=greatest(0,attempt_count-1)' "$ORCHESTRATOR"
+grep -Fq 'dispatcher_failed=0' "$ORCHESTRATOR"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
