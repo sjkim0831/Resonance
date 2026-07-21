@@ -981,7 +981,7 @@ export function AdminPageShell({
               </div>
             </a>
 
-            <nav aria-label={en ? "Admin Main Menu" : "관리자 주 메뉴"} className="hidden h-full min-w-0 flex-1 items-stretch justify-evenly gap-0.5 xl:flex" id="adminGnbMenu">
+            <nav aria-label={en ? "Admin Main Menu" : "관리자 주 메뉴"} className="hidden h-full min-w-0 flex-1 flex-wrap content-center items-center justify-center gap-x-0.5 gap-y-0 xl:flex 2xl:gap-x-1" id="adminGnbMenu">
               {gnbItems.map((item) => {
                 const active = item.domain === (selectedDomainKey || activeDomainKey);
                 return (
@@ -994,7 +994,7 @@ export function AdminPageShell({
                       storeSelectedDomain(item.domain, currentPath);
                       setSelectedDomainKey(item.domain);
                     }}
-                    className={`js-gnb-menu inline-flex h-full shrink-0 items-center border-b-[3px] px-1.5 text-[12px] font-bold transition-colors 2xl:px-2.5 2xl:text-[13px] ${
+                    className={`js-gnb-menu inline-flex h-9 shrink-0 items-center border-b-[3px] px-1.5 text-[12px] font-bold transition-colors 2xl:px-2.5 2xl:text-[13px] ${
                       active
                         ? "border-[var(--kr-gov-blue)] text-[var(--kr-gov-blue)]"
                         : "border-transparent text-[var(--kr-gov-text-secondary)] hover:border-[var(--kr-gov-border-light)] hover:text-[var(--kr-gov-blue)]"
