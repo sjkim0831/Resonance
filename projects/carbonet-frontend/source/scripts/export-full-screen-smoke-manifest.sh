@@ -10,6 +10,7 @@ manifest_path="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/manifest.json}"
 baseline_path="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
 shards="${FULL_SCREEN_SMOKE_SHARDS:-8}"
 changed_only="${FULL_SCREEN_SMOKE_CHANGED_ONLY:-false}"
+route_pattern="${FULL_SCREEN_SMOKE_ROUTE_PATTERN:-}"
 
 mkdir -p "$cache_dir"
 tmp_path="$cache_dir/contracts.jsonl.tmp.$$"
@@ -47,4 +48,5 @@ node "$root_dir/scripts/generate-full-screen-smoke-manifest.mjs" \
   --output "$manifest_path" \
   --baseline "$baseline_path" \
   --shards "$shards" \
-  --changedOnly "$changed_only"
+  --changedOnly "$changed_only" \
+  --routePattern "$route_pattern"

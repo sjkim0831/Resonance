@@ -32,6 +32,8 @@ const outputPath = path.resolve(readArg("output", ".cache/full-screen-smoke/mani
 const baselinePath = path.resolve(readArg("baseline", ".cache/full-screen-smoke/last-success.json"));
 const shardCount = Math.max(1, Number.parseInt(readArg("shards", "8"), 10) || 8);
 const changedOnly = asBoolean(readArg("changedOnly", "false"));
+const routePattern = readArg("routePattern", "");
+const routeMatcher = routePattern ? new RegExp(routePattern) : null;
 
 const rows = (await readFile(inputPath, "utf8"))
   .split(/\r?\n/)
@@ -87,7 +89,8 @@ const routes = [...grouped.entries()].map(([routePath, contracts]) => {
   };
 }).sort((left, right) => left.routePath.localeCompare(right.routePath));
 
-const selectedRoutes = changedOnly ? routes.filter((route) => route.changed) : routes;
+const changedRoutes = changedOnly ? routes.filter((route) => route.changed) : routes;
+const selectedRoutes = routeMatcher ? changedRoutes.filter((route) => routeMatcher.test(route.routePath)) : changedRoutes;
 const shards = Array.from({ length: shardCount }, (_, index) => ({ index, routeIds: [] }));
 selectedRoutes.forEach((route, index) => shards[index % shardCount].routeIds.push(route.id));
 
@@ -96,7 +99,7 @@ const manifest = {
   generatedAt: new Date().toISOString(),
   inputPath,
   baselinePath,
-  options: { changedOnly, shardCount },
+  options: { changedOnly, shardCount, routePattern },
   counts: {
     contractCount: rows.length,
     routeCount: routes.length,
