@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 
 @Service
 public class EmissionProjectRegistryService {
@@ -236,6 +238,58 @@ public class EmissionProjectRegistryService {
         Long id=jdbc.queryForObject("INSERT INTO emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) VALUES (?,?,?,?,?,?,?) RETURNING activity_id",Long.class,projectId,name,category,period,quantity,unit,note);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'ACTIVITY_ADDED',?||' 활동자료가 등록되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,name,projectId);
         return id==null?0:id;
+    }
+
+    public Map<String,Object> activityEvidence(String projectId,long activityId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireAnyProjectActor(projectId,tenant,user,override); requireActivity(projectId,activityId);
+        return Map.of("items",jdbc.queryForList("SELECT evidence_id AS \"id\",evidence_type AS \"type\",original_name AS \"name\",content_type AS \"contentType\",file_size AS \"size\",sha256,uploaded_by AS \"uploadedBy\",uploaded_at AS \"uploadedAt\" FROM emission_activity_evidence WHERE tenant_id=? AND project_id=? AND activity_id=? ORDER BY uploaded_at DESC,evidence_id DESC",tenant,projectId,activityId));
+    }
+
+    @Transactional
+    public Map<String,Object> uploadActivityEvidence(String projectId,long activityId,String tenantId,String actor,boolean override,MultipartFile file) throws Exception {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        if(file==null||file.isEmpty()) throw new IllegalArgumentException("EVIDENCE_FILE_REQUIRED");
+        if(file.getSize()>10L*1024*1024) throw new IllegalArgumentException("EVIDENCE_FILE_TOO_LARGE");
+        String name=file.getOriginalFilename()==null?"evidence":file.getOriginalFilename().replaceAll("[\\r\\n]","_").trim();
+        String contentType=file.getContentType()==null?"application/octet-stream":file.getContentType().toLowerCase();
+        Set<String> allowed=Set.of("application/pdf","image/png","image/jpeg","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        if(!allowed.contains(contentType)) throw new IllegalArgumentException("EVIDENCE_FILE_TYPE_NOT_ALLOWED");
+        byte[] content=file.getBytes(); String sha256=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        List<Map<String,Object>> existing=jdbc.queryForList("SELECT evidence_id AS id FROM emission_activity_evidence WHERE tenant_id=? AND project_id=? AND activity_id=? AND sha256=?",tenant,projectId,activityId,sha256);
+        if(!existing.isEmpty()) return Map.of("id",existing.get(0).get("id"),"sha256",sha256,"duplicate",true);
+        Long id=jdbc.queryForObject("INSERT INTO emission_activity_evidence(tenant_id,project_id,activity_id,original_name,content_type,file_size,sha256,file_content,uploaded_by) VALUES (?,?,?,?,?,?,?,?,?) RETURNING evidence_id",Long.class,tenant,projectId,activityId,name,contentType,content.length,sha256,content,user);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'ACTIVITY_EVIDENCE_ADDED',?,?)",projectId,name,user);
+        return Map.of("id",id==null?0:id,"sha256",sha256,"duplicate",false);
+    }
+
+    public Map<String,Object> downloadActivityEvidence(String projectId,long activityId,long evidenceId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireAnyProjectActor(projectId,tenant,user,override); requireActivity(projectId,activityId);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT original_name AS name,content_type AS \"contentType\",file_content AS content,sha256 FROM emission_activity_evidence WHERE evidence_id=? AND tenant_id=? AND project_id=? AND activity_id=?",evidenceId,tenant,projectId,activityId);
+        if(rows.isEmpty()) throw new IllegalArgumentException("EVIDENCE_NOT_FOUND"); return rows.get(0);
+    }
+
+    @Transactional
+    public int deleteActivityEvidence(String projectId,long activityId,long evidenceId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        int changed=jdbc.update("DELETE FROM emission_activity_evidence WHERE evidence_id=? AND tenant_id=? AND project_id=? AND activity_id=?",evidenceId,tenant,projectId,activityId);
+        if(changed==0) throw new IllegalArgumentException("EVIDENCE_NOT_FOUND");
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'ACTIVITY_EVIDENCE_DELETED',?,?)",projectId,String.valueOf(evidenceId),user);
+        return changed;
+    }
+
+    private void requireActivity(String projectId,long activityId) {
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE project_id=? AND activity_id=?",Integer.class,projectId,activityId);
+        if(count==null||count==0) throw new IllegalArgumentException("ACTIVITY_NOT_FOUND");
+    }
+
+    private void requireAnyProjectActor(String projectId,String tenant,String user,boolean override) {
+        assertTenantAccess(projectId,tenant); if(override)return;
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment WHERE project_id=? AND lower(user_id)=lower(?) AND active_yn='Y'",Integer.class,projectId,user);
+        if(count==null||count==0) throw new SecurityException("PROJECT_ACTOR_SCOPE_DENIED");
     }
 
     @Transactional
@@ -562,7 +616,7 @@ public class EmissionProjectRegistryService {
         Map<String,Object> project=detail(projectId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
-        List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",projectId);
+        List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit,(SELECT count(*) FROM emission_activity_evidence e WHERE e.tenant_id=? AND e.project_id=a.project_id AND e.activity_id=a.activity_id) AS evidenceFileCount FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",tenant,projectId);
         List<QualityIssue> issues=new ArrayList<>();
         Set<String> allowedUnits=Set.of("L","Nm3","kWh","ton","kg","km","m3","GJ","MJ");
         String start=text(project.get("periodStart")),end=text(project.get("periodEnd"));
@@ -576,7 +630,7 @@ public class EmissionProjectRegistryService {
             if(unit.isBlank()||!allowedUnits.contains(unit)) issues.add(issue(id,"INVALID_UNIT","BLOCKING","unit","지원하지 않는 단위입니다: "+(unit.isBlank()?"(없음)":unit),"L, Nm3, kWh, ton, kg, km, m3, GJ, MJ 중 올바른 단위를 선택하세요."));
             if(row.get("factorId")==null) issues.add(issue(id,"UNMAPPED_FACTOR","WARNING","factorId","배출계수가 아직 매핑되지 않았습니다.","제출 후 산정 담당자가 배출계수를 매핑합니다."));
             else if(row.get("factorUnit")!=null&&!unit.equals(text(row.get("factorUnit")))) issues.add(issue(id,"FACTOR_UNIT_MISMATCH","WARNING","factorId","활동자료 단위와 배출계수 단위가 다릅니다.","산정 담당자가 단위를 확인하고 적합한 배출계수를 선택합니다."));
-            if(note.isBlank()) issues.add(issue(id,"MISSING_EVIDENCE","BLOCKING","note","증빙 또는 산정 근거가 없습니다.","증빙자료 설명이나 원본 문서 식별 정보를 입력하세요."));
+            if(note.isBlank()&&((Number)row.get("evidenceFileCount")).longValue()==0) issues.add(issue(id,"MISSING_EVIDENCE","BLOCKING","note","증빙 또는 산정 근거가 없습니다.","증빙 파일을 첨부하거나 원본 문서 식별 정보를 입력하세요."));
             if(!period.matches("\\d{4}-(0[1-9]|1[0-2])")) issues.add(issue(id,"INVALID_PERIOD","BLOCKING","period","기간 형식이 올바르지 않습니다.","YYYY-MM 형식의 기간을 입력하세요."));
             else if((!start.isBlank()&&period.compareTo(start.substring(0,Math.min(7,start.length())))<0)||(!end.isBlank()&&period.compareTo(end.substring(0,Math.min(7,end.length())))>0)) issues.add(issue(id,"PERIOD_OUT_OF_RANGE","BLOCKING","period","프로젝트 산정기간을 벗어났습니다.","프로젝트 산정기간 안의 월로 정정하세요."));
         }
@@ -628,15 +682,16 @@ public class EmissionProjectRegistryService {
             Integer count=jdbc.queryForObject("SELECT count(*) FROM emission_activity_data WHERE activity_id=? AND project_id=? AND quantity>=0 AND unit<>''",Integer.class,activityId,projectId);
             if(count==null||count==0) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
             jdbc.update("INSERT INTO emission_activity_submission_item(submission_id,activity_id,activity_name,category,activity_period,quantity,unit,evidence_note,source_hash) SELECT ?,activity_id,activity_name,category,activity_period,quantity,unit,evidence_note,md5(concat_ws('|',activity_name,category,activity_period,quantity,unit,evidence_note)) FROM emission_activity_data WHERE activity_id=? AND project_id=? ON CONFLICT(submission_id,activity_id) DO NOTHING",submissionId,activityId,projectId);
-            jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_name,uploaded_actor) SELECT ?,activity_id,'ACTIVITY_DATA',left(evidence_note,200),? FROM emission_activity_data WHERE activity_id=? AND project_id=? ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,user,activityId,projectId);
+            jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_name,uploaded_actor) SELECT ?,activity_id,'REFERENCE',left(evidence_note,200),? FROM emission_activity_data WHERE activity_id=? AND project_id=? AND nullif(trim(evidence_note),'') IS NOT NULL ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,user,activityId,projectId);
+            jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_path,evidence_name,evidence_sha256,uploaded_actor) SELECT ?,activity_id,'FILE_'||evidence_id,'db://activity-evidence/'||evidence_id,original_name,sha256,? FROM emission_activity_evidence WHERE tenant_id=? AND project_id=? AND activity_id=? ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,user,tenant,projectId,activityId);
         }
-        jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,quality_run_id=?,submitted_item_count=(SELECT count(*) FROM emission_activity_submission_item WHERE submission_id=?),snapshot_hash=(SELECT md5(coalesce(string_agg(source_hash,'|' ORDER BY activity_id),'')) FROM emission_activity_submission_item WHERE submission_id=?),updated_at=current_timestamp WHERE submission_id=?",user,quality.get("runId"),submissionId,submissionId,submissionId);
+        jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,quality_run_id=?,submitted_item_count=(SELECT count(*) FROM emission_activity_submission_item WHERE submission_id=?),snapshot_hash=(SELECT md5(coalesce((SELECT string_agg(source_hash,'|' ORDER BY activity_id) FROM emission_activity_submission_item WHERE submission_id=?),'')||'|'||coalesce((SELECT string_agg(evidence_sha256,'|' ORDER BY activity_id,evidence_type) FROM emission_activity_submission_evidence WHERE submission_id=? AND evidence_sha256 IS NOT NULL),''))),updated_at=current_timestamp WHERE submission_id=?",user,quality.get("runId"),submissionId,submissionId,submissionId,submissionId);
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
         jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
         Object requestedId=body.get("requestId");
         List<Map<String,Object>> requests=requestedId==null
-            ? jdbc.queryForList("SELECT request_id AS id,request_status AS status FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND lower(assignee_id)=lower(?) AND request_status IN ('REQUESTED','IN_PROGRESS','CORRECTION_REQUIRED') ORDER BY created_at DESC",projectId,tenant,user)
-            : jdbc.queryForList("SELECT request_id AS id,request_status AS status FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? AND lower(assignee_id)=lower(?) AND request_status IN ('REQUESTED','IN_PROGRESS','CORRECTION_REQUIRED')",Long.parseLong(String.valueOf(requestedId)),projectId,tenant,user);
+            ? jdbc.queryForList("SELECT request_id AS id,request_status AS status FROM emission_activity_request WHERE project_id=? AND tenant_id=? AND (? OR lower(assignee_id)=lower(?)) AND request_status IN ('REQUESTED','IN_PROGRESS','CORRECTION_REQUIRED') ORDER BY created_at DESC",projectId,tenant,override,user)
+            : jdbc.queryForList("SELECT request_id AS id,request_status AS status FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? AND (? OR lower(assignee_id)=lower(?)) AND request_status IN ('REQUESTED','IN_PROGRESS','CORRECTION_REQUIRED')",Long.parseLong(String.valueOf(requestedId)),projectId,tenant,override,user);
         for(Map<String,Object> request:requests) {
             long requestId=((Number)request.get("id")).longValue(); String previous=text(request.get("status"));
             jdbc.update("UPDATE emission_activity_request SET request_status='SUBMITTED',last_submission_id=?,submitted_by=?,submitted_at=current_timestamp,updated_at=current_timestamp WHERE request_id=?",submissionId,user,requestId);

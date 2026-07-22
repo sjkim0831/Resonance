@@ -26,6 +26,7 @@ psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0
 
 project_id="$(psqlq "select project.project_id from emission_project_registry project join framework_project_actor_assignment actor on actor.project_id=project.project_id where project.project_status<>'DELETED' group by project.project_id,project.created_at having count(distinct actor.actor_code)>=5 order by project.created_at desc limit 1")"
 [[ -n "$project_id" ]] || { echo "[activity-runtime] FAIL no testable emission project" >&2; exit 1; }
+activity_id="$(psqlq "select activity_id from emission_activity_data where project_id='$project_id' order by activity_id limit 1")"
 
 login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
   --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
@@ -50,6 +51,7 @@ api_paths=(
   "/home/api/emission-projects/$project_id/review-workflow"
   "/home/api/emission-projects/$project_id/quality"
 )
+[[ -z "$activity_id" ]] || api_paths+=("/home/api/emission-projects/$project_id/activities/$activity_id/evidence")
 for path in "${api_paths[@]}"; do
   code="$(curl -sS -b "$COOKIE_JAR" -o "$API_BODY" -w '%{http_code}' "$BASE_URL$path")"
   [[ "$code" == "200" ]] || { echo "[activity-runtime] FAIL authenticated API $path status=$code" >&2; exit 1; }
@@ -97,6 +99,8 @@ db_gate="$(psqlq "select
   and (select count(*) from framework_simulation_case c where process_code='ACTIVITY_DATA' and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))=(select count(*) from framework_simulation_case where process_code='ACTIVITY_DATA')
   and exists(select 1 from information_schema.columns where table_name='emission_activity_request' and column_name='accepted_at')
   and exists(select 1 from information_schema.tables where table_name='emission_activity_request_event')
+  and exists(select 1 from information_schema.tables where table_name='emission_activity_evidence')
+  and exists(select 1 from information_schema.columns where table_name='emission_activity_submission_evidence' and column_name='evidence_sha256')
   and exists(select 1 from framework_project_actor_assignment where project_id='$project_id' group by project_id having count(distinct actor_code)>=5)")"
 [[ "$db_gate" == "t" ]] || { echo "[activity-runtime] FAIL DB/actor/scenario gate" >&2; exit 1; }
 

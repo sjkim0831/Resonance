@@ -3,6 +3,9 @@ package egovframework.com.feature.home.web;
 import egovframework.com.feature.home.service.EmissionProjectRegistryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequiredArgsConstructor
@@ -66,6 +70,18 @@ public class EmissionProjectRegistryController {
 
     @PostMapping({"/home/api/emission-projects/{id}/activities/upload","/en/home/api/emission-projects/{id}/activities/upload"})
     public ResponseEntity<?> uploadActivities(@PathVariable String id,@RequestParam("file") MultipartFile file,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"count",service.uploadActivities(id,tenant(c),c.getUserId(),c.isWebmaster(),file)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
+
+    @GetMapping({"/home/api/emission-projects/{id}/activities/{activityId}/evidence","/en/home/api/emission-projects/{id}/activities/{activityId}/evidence"})
+    public ResponseEntity<?> activityEvidence(@PathVariable String id,@PathVariable long activityId,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.activityEvidence(id,activityId,tenant(c),c.getUserId(),c.isWebmaster()));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/activities/{activityId}/evidence","/en/home/api/emission-projects/{id}/activities/{activityId}/evidence"})
+    public ResponseEntity<?> uploadActivityEvidence(@PathVariable String id,@PathVariable long activityId,@RequestParam("file") MultipartFile file,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(service.uploadActivityEvidence(id,activityId,tenant(c),c.getUserId(),c.isWebmaster(),file));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @GetMapping({"/home/api/emission-projects/{id}/activities/{activityId}/evidence/{evidenceId}/download","/en/home/api/emission-projects/{id}/activities/{activityId}/evidence/{evidenceId}/download"})
+    public ResponseEntity<?> downloadActivityEvidence(@PathVariable String id,@PathVariable long activityId,@PathVariable long evidenceId,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{Map<String,Object> file=service.downloadActivityEvidence(id,activityId,evidenceId,tenant(c),c.getUserId(),c.isWebmaster());HttpHeaders headers=new HttpHeaders();headers.setContentDisposition(ContentDisposition.attachment().filename(String.valueOf(file.get("name")),StandardCharsets.UTF_8).build());headers.setCacheControl("no-store");headers.setContentType(MediaType.parseMediaType(String.valueOf(file.get("contentType"))));return new ResponseEntity<>((byte[])file.get("content"),headers,HttpStatus.OK);}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalArgumentException e){return ResponseEntity.notFound().build();}}
+
+    @DeleteMapping({"/home/api/emission-projects/{id}/activities/{activityId}/evidence/{evidenceId}","/en/home/api/emission-projects/{id}/activities/{activityId}/evidence/{evidenceId}"})
+    public ResponseEntity<?> deleteActivityEvidence(@PathVariable String id,@PathVariable long activityId,@PathVariable long evidenceId,HttpServletRequest request) {var c=currentUserContextService.resolve(request);if(!c.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",service.deleteActivityEvidence(id,activityId,evidenceId,tenant(c),c.getUserId(),c.isWebmaster())>0));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
     @PostMapping({"/home/api/emission-projects/{id}/activities/{activityId}/factor","/en/home/api/emission-projects/{id}/activities/{activityId}/factor"})
     public ResponseEntity<?> mapFactor(@PathVariable String id,@PathVariable long activityId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",service.mapFactor(id,activityId,tenant(c),c.getUserId(),c.isWebmaster(),body)>0));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }

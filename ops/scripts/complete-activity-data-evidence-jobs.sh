@@ -46,7 +46,7 @@ begin
      and audience='ADMIN' and lower(split_part(route_path,'?',1))='/admin/emission/survey-admin-data';
 
   select count(*) into missing_tables from (values
-    ('emission_activity_request'),('emission_activity_data'),('emission_activity_quality_run'),
+    ('emission_activity_request'),('emission_activity_data'),('emission_activity_evidence'),('emission_activity_quality_run'),
     ('emission_activity_submission'),('emission_activity_submission_item'),('emission_activity_submission_evidence'),
     ('emission_activity_submission_event'),('emission_submission_review')
   ) required(name) where to_regclass(required.name) is null;
