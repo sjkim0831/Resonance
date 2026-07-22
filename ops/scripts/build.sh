@@ -33,7 +33,9 @@ init_build_tool() {
             GRADLE_PROJECT_CACHE_DIR="${RESONANCE_GRADLE_PROJECT_CACHE_DIR:-${GRADLE_CACHE_ROOT}/project}"
             GRADLE_USER_HOME="${GRADLE_USER_HOME:-${GRADLE_CACHE_ROOT}/user-home}"
             mkdir -p "$GRADLE_PROJECT_CACHE_DIR" "$GRADLE_USER_HOME"
-            GRADLE_BIN=("${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR")
+            # Gradle 8.10 rejects --watch-fs together with an external project
+            # cache. A one-shot/CI deploy does not benefit from VFS watching.
+            GRADLE_BIN=("${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR" "--no-watch-fs")
             export GRADLE_BIN BUILD_TOOL GRADLE_CACHE_ROOT GRADLE_PROJECT_CACHE_DIR GRADLE_USER_HOME
             ;;
         maven)
