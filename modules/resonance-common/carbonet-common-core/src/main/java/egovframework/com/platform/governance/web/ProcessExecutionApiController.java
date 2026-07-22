@@ -4,6 +4,7 @@ import egovframework.com.platform.governance.service.ActorProcessGovernanceServi
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -17,8 +18,10 @@ public class ProcessExecutionApiController {
     private final ActorProcessGovernanceService service;
 
     @GetMapping
-    public ResponseEntity<?> find(@RequestParam String tenantId,@RequestParam String projectId,@RequestParam String processCode){
-        try{return ResponseEntity.ok(service.findProcessExecution(tenantId,projectId,processCode));}catch(Exception e){return bad(e);}
+    public ResponseEntity<?> find(@RequestParam String tenantId,@RequestParam String projectId,@RequestParam String processCode,HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.findProcessExecution(tenantId,projectId,processCode,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
     @GetMapping("/screen-contract")
@@ -29,14 +32,17 @@ public class ProcessExecutionApiController {
     @PostMapping("/start")
     public ResponseEntity<?> start(@RequestBody Map<String,Object> body,HttpServletRequest request){
         Principal principal=request.getUserPrincipal();
-        try{return ResponseEntity.ok(service.startProcessExecution(body,principal==null?"SYSTEM":principal.getName()));}catch(Exception e){return bad(e);}
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.startProcessExecution(body,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
     @PostMapping("/{executionId}/commands")
     public ResponseEntity<?> command(@PathVariable UUID executionId,@RequestBody Map<String,Object> body,HttpServletRequest request){
         Principal principal=request.getUserPrincipal();
-        try{return ResponseEntity.ok(service.executeProcessCommand(executionId,body,principal==null?"SYSTEM":principal.getName()));}catch(Exception e){return bad(e);}
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.executeProcessCommand(executionId,body,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
+    private ResponseEntity<?> forbidden(Exception e){return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success",false,"message",e.getMessage()==null?"Access denied":e.getMessage()));}
     private ResponseEntity<?> bad(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}
 }

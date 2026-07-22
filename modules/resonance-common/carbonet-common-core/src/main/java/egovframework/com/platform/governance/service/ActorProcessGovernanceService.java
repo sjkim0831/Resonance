@@ -642,7 +642,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> steps=jdbc.queryForList("select step_code,actor_code,from_state from framework_process_step where process_code=? order by step_order limit 1",process);
         if(steps.isEmpty())throw new IllegalArgumentException("프로세스 단계가 없습니다: "+process);
         Map<String,Object> first=steps.get(0);String requiredActor=String.valueOf(first.get("actor_code"));
-        if(!requiredActor.equals(actor))throw new IllegalArgumentException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
+        if(!requiredActor.equals(actor))throw new SecurityException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
         requireActorAssignment(tenant,project,actor,user);
         List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_status='RUNNING'",tenant,project,process);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
@@ -664,7 +664,7 @@ public class ActorProcessGovernanceService {
         if(executions.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
         Map<String,Object> execution=executions.get(0);
         if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
-        if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new IllegalArgumentException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
+        if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         requireActorAssignment(tenant,project,actor,user);
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
         if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
@@ -678,7 +678,7 @@ public class ActorProcessGovernanceService {
             if(!correctionDecision)throw new IllegalArgumentException("허용되지 않은 결과 상태입니다: "+requestedToState);
             to=requestedToState;
         }
-        if(!requiredActor.equals(actor))throw new IllegalArgumentException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
+        if(!requiredActor.equals(actor))throw new SecurityException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
         if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
         if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
@@ -716,12 +716,12 @@ public class ActorProcessGovernanceService {
         try{
             Map<String,Object> crossTenant=new LinkedHashMap<>(request);crossTenant.put("tenantId",tenant+"-CROSS-TENANT");crossTenant.put("idempotencyKey",key+"-isolation");
             executeProcessCommand(executionId,crossTenant,account);
-        }catch(IllegalArgumentException expected){isolationRejected=true;}
+        }catch(IllegalArgumentException|SecurityException expected){isolationRejected=true;}
         boolean authorityRejected=false;
         try{
             Map<String,Object> wrongActor=new LinkedHashMap<>(request);wrongActor.put("actorCode","UNAUTHORIZED_ACTOR");wrongActor.put("idempotencyKey",key+"-authority");
             executeProcessCommand(executionId,wrongActor,account);
-        }catch(IllegalArgumentException expected){authorityRejected=true;}
+        }catch(IllegalArgumentException|SecurityException expected){authorityRejected=true;}
         boolean exceptionRejected=false;
         try{
             Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",String.valueOf(first.getOrDefault("nextStepCode",step)));invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
@@ -765,10 +765,12 @@ public class ActorProcessGovernanceService {
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
         Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
-        if(count==null||count==0)throw new IllegalArgumentException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
+        if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
     }
 
-    public Map<String,Object> findProcessExecution(String tenant,String project,String process){
+    public Map<String,Object> findProcessExecution(String tenant,String project,String process,String user){
+        Integer assignmentCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment a where a.tenant_id=? and a.project_id=? and lower(a.account_id)=lower(?) and a.assignment_status='ACTIVE' and (a.valid_from is null or a.valid_from<=current_date) and (a.valid_until is null or a.valid_until>=current_date) and exists(select 1 from framework_process_step s where s.process_code=? and s.actor_code=a.actor_code)",Integer.class,tenant,project,user,process);
+        if(assignmentCount==null||assignmentCount==0)throw new SecurityException("No active actor assignment exists for this project process.");
         List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
         if(rows.isEmpty())return Map.of("found",false);
         Map<String,Object> out=new LinkedHashMap<>(rows.get(0));

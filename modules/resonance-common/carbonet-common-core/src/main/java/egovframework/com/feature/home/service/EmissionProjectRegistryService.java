@@ -423,7 +423,7 @@ public class EmissionProjectRegistryService {
         Map<String,String> actorMap=Map.ofEntries(Map.entry("BASIC_INFO","COMPANY_MANAGER"),Map.entry("ACTIVITY_DATA","SITE_DATA_OWNER"),Map.entry("CALCULATION","CALCULATOR"),Map.entry("VERIFICATION","VERIFIER"),Map.entry("APPROVAL","APPROVER"),Map.entry("REPORT","COMPANY_MANAGER"),Map.entry("REGULATORY_SUBMISSION","COMPANY_MANAGER"));
         Map<String,String> commandMap=Map.ofEntries(Map.entry("BASIC_INFO","CONFIRM_SCOPE"),Map.entry("ACTIVITY_DATA","SUBMIT_ACTIVITY_DATA"),Map.entry("CALCULATION","CALCULATE"),Map.entry("VERIFICATION","VALIDATE"),Map.entry("APPROVAL","APPROVE"),Map.entry("REPORT","PUBLISH_REPORT"),Map.entry("REGULATORY_SUBMISSION","ACCEPT_SUBMISSION"));
         String step=stepMap.get(taskCode);if(step==null)return;
-        Map<String,Object> found=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
+        Map<String,Object> found=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT",user);
         if(!Boolean.TRUE.equals(found.get("found"))){
             Map<String,Object> started=processGovernanceService.startProcessExecution(Map.of("tenantId",tenant,"projectId",projectId,"processCode","EMISSION_PROJECT","actorCode","COMPANY_MANAGER"),user);
             Object id=started.get("executionId");if(id==null&&started.get("execution") instanceof Map<?,?> execution)id=execution.get("executionId");
@@ -914,7 +914,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'CORRECTION_REQUESTED',?,?)",projectId,reason,actor);
         jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT p.tenant_id,t.project_id,t.task_id,'CORRECTION',t.assignee_id,t.actor_code,'활동자료 보완이 요청되었습니다',?,t.target_url FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE t.project_id=? AND t.task_code='ACTIVITY_DATA' AND coalesce(t.assignee_id,'')<>'' ON CONFLICT DO NOTHING",reason,projectId);
         String tenant=jdbc.queryForObject("select tenant_id from emission_project_registry where project_id=?",String.class,projectId);
-        Map<String,Object> execution=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT");
+        Map<String,Object> execution=processGovernanceService.findProcessExecution(tenant,projectId,"EMISSION_PROJECT",actor);
         String current=String.valueOf(execution.get("currentStepCode"));
         if("EMISSION_PROJECT_VALIDATE".equals(current))synchronizeProcessExecution(projectId,"VERIFICATION",actor,"CORRECTION_REQUIRED");
         else if("EMISSION_PROJECT_APPROVE".equals(current))synchronizeProcessExecution(projectId,"APPROVAL",actor,"CORRECTION_REQUIRED");
