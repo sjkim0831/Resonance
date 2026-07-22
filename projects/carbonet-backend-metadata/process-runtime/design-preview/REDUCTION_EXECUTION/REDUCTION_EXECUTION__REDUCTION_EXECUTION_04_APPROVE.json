@@ -69,64 +69,8 @@
   },
   "frontend": {
     "renderer": "COMMON_SDUI_RUNTIME",
-    "pages": [
-      {
-        "pageCode": "REDUCTION_EXECUTION_04_APPROVE_ADMIN_WORKSPACE",
-        "route": "/admin/reduction/result?tab=approval",
-        "routeStatus": "IMPLEMENTED",
-        "audience": "ADMIN",
-        "screenType": "PROCESS_ORCHESTRATION",
-        "title": "승인·확정",
-        "purpose": "",
-        "layout": "COMMON_KRDS_TASK_LAYOUT",
-        "theme": "COMMON_KRDS_GOV",
-        "sections": [
-          "TASK_CONTEXT",
-          "TASK_ACTIONS",
-          "TASK_CONTENT",
-          "TASK_EVIDENCE",
-          "TASK_HANDOFF"
-        ],
-        "fields": [],
-        "commands": [
-          {
-            "actorCode": "APPROVER",
-            "entryState": "VERIFIED",
-            "commandCode": "APPROVE",
-            "resultState": "COMPLETED",
-            "auditRequired": true,
-            "validationRequired": true,
-            "serverAuthorization": true
-          }
-        ],
-        "states": {
-          "states": [
-            "loading",
-            "empty",
-            "authority-denied",
-            "design-blocked",
-            "dependency-blocked",
-            "conflict",
-            "server-error"
-          ],
-          "recovery": "last verified workflow state"
-        },
-        "responsive": {
-          "mobile": "single-column ordered steps",
-          "tablet": "two-column summary",
-          "desktop": "six-metric control board",
-          "overflow": "wrap; local table scroll"
-        },
-        "accessibility": {
-          "labels": true,
-          "keyboard": true,
-          "standard": "WCAG 2.1 AA",
-          "landmarks": true,
-          "focusManagement": true,
-          "statusNotColorOnly": true
-        }
-      }
-    ]
+    "required": false,
+    "pages": []
   },
   "backend": {
     "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
@@ -364,5 +308,5 @@
   "sourceHash": "a2050ecf4587cefc00dfe8ce6615bcf7",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "3ac599ac83b3e004b4a3f4aaf7463734f9d59933d09dd1e064b44488a09fd923"
+  "packageHash": "7a811c98baa0b2c788ad86c4966d30dfec1a9e107b61b8df168c40261fd4ba84"
 }

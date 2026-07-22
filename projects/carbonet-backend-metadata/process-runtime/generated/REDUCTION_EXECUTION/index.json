@@ -7,30 +7,30 @@
       "processCode": "REDUCTION_EXECUTION",
       "stepCode": "REDUCTION_EXECUTION_01_PLAN",
       "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_01_PLAN.json",
-      "packageHash": "578f823de3db00455802b90bc609d335a80cfec184c1d7db51dd9d983e6b4b0c",
+      "packageHash": "ac42ac258da7765c67cb98a1e82105471c08e638d32a884e69d8ebe7e752ffc0",
       "pages": 1
     },
     {
       "processCode": "REDUCTION_EXECUTION",
       "stepCode": "REDUCTION_EXECUTION_02_WORK",
       "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_02_WORK.json",
-      "packageHash": "462c8da581d1e8f070288e3e70058c80452c3fdb7d80f1faf4f04bbaef1a7d55",
-      "pages": 1
+      "packageHash": "8af29427d9b1b978a80d9467905dac393bfcafc93bf2cc24d09a37c59c3321ef",
+      "pages": 0
     },
     {
       "processCode": "REDUCTION_EXECUTION",
       "stepCode": "REDUCTION_EXECUTION_03_VERIFY",
       "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_03_VERIFY.json",
-      "packageHash": "ff4d09fae911632e76c084f6ef4227f779e36a718b89e547c64c7ee1d085a3f3",
-      "pages": 1
+      "packageHash": "f43806f04b88b99226575834c166de543cb1ee8dd1c12798dbe563872bd48f23",
+      "pages": 0
     },
     {
       "processCode": "REDUCTION_EXECUTION",
       "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
       "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_04_APPROVE.json",
-      "packageHash": "3ac599ac83b3e004b4a3f4aaf7463734f9d59933d09dd1e064b44488a09fd923",
-      "pages": 1
+      "packageHash": "7a811c98baa0b2c788ad86c4966d30dfec1a9e107b61b8df168c40261fd4ba84",
+      "pages": 0
     }
   ],
-  "manifestHash": "7f6f8ca494e2d7db1371113af8b99121fb64ee3eff1e1a8be3a5e5020c5f938d"
+  "manifestHash": "725af16896a8540e4456da16a389e3b549f3c70cf62c722ed7c9794bd10d784d"
 }

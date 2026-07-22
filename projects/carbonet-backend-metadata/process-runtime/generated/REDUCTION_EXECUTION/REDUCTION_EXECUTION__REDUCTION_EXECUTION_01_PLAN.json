@@ -69,6 +69,7 @@
   },
   "frontend": {
     "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
     "pages": [
       {
         "pageCode": "REDUCTION_EXECUTION_ORCHESTRATION_ADMIN",
@@ -1746,5 +1747,5 @@
   "sourceHash": "4f89e973eabd55c22bc72c53a9c18828",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "578f823de3db00455802b90bc609d335a80cfec184c1d7db51dd9d983e6b4b0c"
+  "packageHash": "ac42ac258da7765c67cb98a1e82105471c08e638d32a884e69d8ebe7e752ffc0"
 }

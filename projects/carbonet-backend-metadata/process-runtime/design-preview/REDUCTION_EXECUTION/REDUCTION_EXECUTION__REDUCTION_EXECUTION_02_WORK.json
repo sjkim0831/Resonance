@@ -69,64 +69,8 @@
   },
   "frontend": {
     "renderer": "COMMON_SDUI_RUNTIME",
-    "pages": [
-      {
-        "pageCode": "REDUCTION_EXECUTION_02_WORK_ADMIN_WORKSPACE",
-        "route": "/admin/reduction/task",
-        "routeStatus": "IMPLEMENTED",
-        "audience": "ADMIN",
-        "screenType": "PROCESS_ORCHESTRATION",
-        "title": "자료 입력·업무 수행",
-        "purpose": "",
-        "layout": "COMMON_KRDS_TASK_LAYOUT",
-        "theme": "COMMON_KRDS_GOV",
-        "sections": [
-          "TASK_CONTEXT",
-          "TASK_ACTIONS",
-          "TASK_CONTENT",
-          "TASK_EVIDENCE",
-          "TASK_HANDOFF"
-        ],
-        "fields": [],
-        "commands": [
-          {
-            "actorCode": "REDUCTION_MANAGER",
-            "entryState": "PLANNED",
-            "commandCode": "WORK",
-            "resultState": "SUBMITTED",
-            "auditRequired": true,
-            "validationRequired": true,
-            "serverAuthorization": true
-          }
-        ],
-        "states": {
-          "states": [
-            "loading",
-            "empty",
-            "authority-denied",
-            "design-blocked",
-            "dependency-blocked",
-            "conflict",
-            "server-error"
-          ],
-          "recovery": "last verified workflow state"
-        },
-        "responsive": {
-          "mobile": "single-column ordered steps",
-          "tablet": "two-column summary",
-          "desktop": "six-metric control board",
-          "overflow": "wrap; local table scroll"
-        },
-        "accessibility": {
-          "labels": true,
-          "keyboard": true,
-          "standard": "WCAG 2.1 AA",
-          "landmarks": true,
-          "focusManagement": true,
-          "statusNotColorOnly": true
-        }
-      }
-    ]
+    "required": false,
+    "pages": []
   },
   "backend": {
     "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
@@ -371,5 +315,5 @@
   "sourceHash": "4cc903982bc8f21d95843d31ee5f45dc",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "462c8da581d1e8f070288e3e70058c80452c3fdb7d80f1faf4f04bbaef1a7d55"
+  "packageHash": "8af29427d9b1b978a80d9467905dac393bfcafc93bf2cc24d09a37c59c3321ef"
 }
