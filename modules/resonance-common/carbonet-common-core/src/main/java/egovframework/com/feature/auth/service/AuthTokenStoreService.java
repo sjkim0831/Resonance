@@ -88,6 +88,18 @@ public class AuthTokenStoreService {
         }
     }
 
+    /** Revoke every persisted refresh/access token for an account after credential recovery. */
+    public void revokeAll(String userId) {
+        if (ObjectUtils.isEmpty(userId)) {
+            return;
+        }
+        try {
+            authLoginMapper.deleteAuthTokenByUserId(userId);
+        } catch (DataAccessException e) {
+            throw new IllegalStateException("Failed to revoke active authentication tokens", e);
+        }
+    }
+
     private String resolveClientIp(HttpServletRequest request) {
         if (request == null) {
             return "";

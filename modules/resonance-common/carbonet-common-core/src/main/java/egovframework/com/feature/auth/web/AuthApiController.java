@@ -7,6 +7,7 @@ import egovframework.com.feature.auth.dto.request.LoginRequestDTO;
 import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
 import egovframework.com.feature.auth.service.AuthService;
 import egovframework.com.feature.auth.service.AuthTokenStoreService;
+import egovframework.com.feature.auth.service.AccountRecoveryService;
 import egovframework.com.feature.auth.util.ClientIpUtil;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
@@ -57,6 +58,7 @@ public class AuthApiController {
     private final AdminLoginHistoryService adminLoginHistoryService;
     private final JwtTokenProvider jwtProvider;
     private final AuthTokenStoreService authTokenStoreService;
+    private final AccountRecoveryService accountRecoveryService;
     private final ReloadableResourceBundleMessageSource messageSource;
     private final EgovReloadableFilterInvocationSecurityMetadataSource securityMetadataSource;
 
@@ -66,12 +68,14 @@ public class AuthApiController {
             AdminLoginHistoryService adminLoginHistoryService,
             JwtTokenProvider jwtProvider,
             AuthTokenStoreService authTokenStoreService,
+            AccountRecoveryService accountRecoveryService,
             @Qualifier("messageSource") ReloadableResourceBundleMessageSource messageSource,
             EgovReloadableFilterInvocationSecurityMetadataSource securityMetadataSource) {
         this.service = service;
         this.adminLoginHistoryService = adminLoginHistoryService;
         this.jwtProvider = jwtProvider;
         this.authTokenStoreService = authTokenStoreService;
+        this.accountRecoveryService = accountRecoveryService;
         this.messageSource = messageSource;
         this.securityMetadataSource = securityMetadataSource;
     }
@@ -401,6 +405,40 @@ public class AuthApiController {
         return ResponseEntity.ok("Success");
     }
 
+    @PostMapping("/account-recovery/requests")
+    @ResponseBody
+    public ResponseEntity<?> requestAccountRecovery(@RequestBody Map<String, String> params,
+            HttpServletRequest request) {
+        boolean isEn = "en".equalsIgnoreCase(params.getOrDefault("language", ""));
+        AccountRecoveryService.RequestResult result = accountRecoveryService.requestCode(
+                params.getOrDefault("userId", ""), params.getOrDefault("email", ""),
+                resolveClientIp(request), request.getHeader("User-Agent"), isEn);
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", result.status());
+        body.put("requestId", result.requestId());
+        body.put("message", result.message());
+        if (!ObjectUtils.isEmpty(result.developmentCode())) {
+            body.put("developmentCode", result.developmentCode());
+        }
+        return ResponseEntity.accepted().body(body);
+    }
+
+    @PostMapping("/account-recovery/requests/{requestId}/verify")
+    @ResponseBody
+    public ResponseEntity<?> verifyAccountRecovery(@PathVariable String requestId,
+            @RequestBody Map<String, String> params, HttpServletRequest request) {
+        boolean isEn = "en".equalsIgnoreCase(params.getOrDefault("language", ""));
+        AccountRecoveryService.VerifyResult result = accountRecoveryService.verifyCode(
+                requestId, params.getOrDefault("code", ""), resolveClientIp(request), isEn);
+        Map<String, Object> body = new HashMap<>();
+        body.put("status", result.status());
+        body.put("message", result.message());
+        if (!ObjectUtils.isEmpty(result.recoveryProof())) {
+            body.put("recoveryProof", result.recoveryProof());
+        }
+        return ResponseEntity.ok(body);
+    }
+
     @PostMapping("/resetPassword")
     @ResponseBody
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> params, HttpServletRequest request) {
@@ -425,7 +463,10 @@ public class AuthApiController {
             return ResponseEntity.ok(message);
         }
 
-        boolean updated = service.resetPassword(userId, newPassword);
+        AccountRecoveryService.CompleteResult recoveryResult = accountRecoveryService.complete(
+                params.getOrDefault("requestId", ""), params.getOrDefault("recoveryProof", ""),
+                newPassword, resolveClientIp(request), isEn);
+        boolean updated = "success".equals(recoveryResult.status());
         if (!updated) {
             message.put("status", "fail");
             message.put("errors", isEn ? "No matching user was found." : "?쇱튂?섎뒗 ?ъ슜?먮? 李얠쓣 ???놁뒿?덈떎.");

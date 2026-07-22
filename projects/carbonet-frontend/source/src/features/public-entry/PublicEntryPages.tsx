@@ -1044,7 +1044,8 @@ export function FindPasswordPage() {
   const [userId, setUserId] = useState("");
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [sentCode, setSentCode] = useState("");
+  const [recoveryRequestId, setRecoveryRequestId] = useState("");
+  const [recoveryProof, setRecoveryProof] = useState("");
   const [verified, setVerified] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1059,18 +1060,27 @@ export function FindPasswordPage() {
     setVerified(true);
   }
 
-  function handleSendCode() {
-    if (!email.trim()) {
+  async function handleSendCode() {
+    if (!userId.trim() || !email.trim()) {
       window.alert(en ? "Please enter your email address." : "이메일 주소를 입력해 주세요.");
       return;
     }
-    const nextCode = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
-    setSentCode(nextCode);
+    const body = await postJsonWithSession<{ requestId?: string; message?: string; developmentCode?: string }>(
+      buildLocalizedPath("/signin/account-recovery/requests", "/en/signin/account-recovery/requests"),
+      { userId: userId.trim(), email: email.trim(), language: en ? "en" : "ko" }
+    );
+    const nextCode = body.developmentCode || "";
+    setRecoveryRequestId(body.requestId || "");
+    setRecoveryProof("");
     setVerificationCode("");
+    if (!nextCode) {
+      window.alert(body.message || (en ? "If the account matches, a code will be sent." : "계정 정보가 일치하면 인증번호가 발송됩니다."));
+      return;
+    }
     window.alert(`${en ? "Verification code: " : "인증번호: "}${nextCode}`);
   }
 
-  function verifyEmailAndProceed() {
+  async function verifyEmailAndProceed() {
     if (!userId.trim()) {
       window.alert(en ? "Please enter your ID." : "아이디를 입력해 주세요.");
       return;
@@ -1079,7 +1089,7 @@ export function FindPasswordPage() {
       window.alert(en ? "Please enter your email address." : "이메일 주소를 입력해 주세요.");
       return;
     }
-    if (!sentCode) {
+    if (!recoveryRequestId) {
       window.alert(en ? "Please send the verification code first." : "먼저 인증번호를 발송해 주세요.");
       return;
     }
@@ -1087,11 +1097,19 @@ export function FindPasswordPage() {
       window.alert(en ? "Please enter the verification code." : "인증번호를 입력해 주세요.");
       return;
     }
-    if (verificationCode.trim() !== sentCode) {
-      window.alert(en ? "The verification code does not match." : "인증번호가 일치하지 않습니다.");
-      return;
+    try {
+      const body = await postJsonWithSession<{ status?: string; recoveryProof?: string; message?: string }>(
+        buildLocalizedPath(`/signin/account-recovery/requests/${recoveryRequestId}/verify`, `/en/signin/account-recovery/requests/${recoveryRequestId}/verify`),
+        { code: verificationCode.trim(), language: en ? "en" : "ko" }
+      );
+      if (body.status !== "success" || !body.recoveryProof) {
+        throw new Error(body.message || (en ? "Verification failed." : "인증에 실패했습니다."));
+      }
+      setRecoveryProof(body.recoveryProof);
+      setVerified(true);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : (en ? "Verification failed." : "인증에 실패했습니다."));
     }
-    setVerified(true);
   }
 
   function isPasswordPolicyValid(password: string) {
@@ -1120,6 +1138,8 @@ export function FindPasswordPage() {
     try {
       const body = await postJsonWithSession<{ status?: string; errors?: string }>(buildLocalizedPath("/signin/resetPassword", "/en/signin/resetPassword"), {
         userId: userId.trim(),
+        requestId: recoveryRequestId,
+        recoveryProof,
         newPassword,
         language: en ? "en" : "ko"
       });
@@ -1184,10 +1204,10 @@ export function FindPasswordPage() {
                     <label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="user-id">{en ? "User ID" : "아이디"} <span className="text-red-600">*</span></label>
                     <AppInput className="public-field public-field--auth" id="user-id" onChange={(event) => setUserId(event.target.value)} placeholder={en ? "Please enter your registered ID" : "등록된 아이디를 입력하세요"} type="text" value={userId} />
                   </div>
-                  {tab === "overseas" ? (
+                  {true ? (
                     <div className="p-6 bg-slate-50 border border-slate-200 rounded-[var(--kr-gov-radius)] space-y-4">
                       <p className="text-sm font-medium text-[var(--kr-gov-text-secondary)]">
-                        {en ? "Overseas users can reset passwords via registered email verification." : "해외 사용자는 등록된 이메일 인증으로 비밀번호를 재설정할 수 있습니다."}
+                        {en ? "Reset your password using the email address registered to this account." : "계정에 등록된 이메일 인증으로 비밀번호를 재설정합니다."}
                       </p>
                       <div>
                         <label className="block text-sm font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="user-email">{en ? "Email Address" : "이메일 주소"} <span className="text-red-600">*</span></label>
