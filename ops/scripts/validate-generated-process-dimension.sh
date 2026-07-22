@@ -76,7 +76,8 @@ case "$DIMENSION" in
       .database.transactional == true
       and .database.historyRequired == true
       and (.backend.apis | length) > 0
-      and (.frontend.pages | length) > 0
+      and ((.frontend.required == false and (.frontend.pages | length) == 0)
+        or ((.frontend.required // true) == true and (.frontend.pages | length) > 0))
       and (.tests | length) >= 5
       and .testExecution.liveSmokeRequiredForVerified == true
       and .nonfunctional.security.serverAuthorization == true
