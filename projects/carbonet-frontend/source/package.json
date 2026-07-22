@@ -10,6 +10,7 @@
     "generate:verification-center-inventory": "node scripts/generate-verification-center-inventory.mjs",
     "generate:screens": "node scripts/generate-screen-blueprints.mjs",
     "verify:screen-generator": "node scripts/generate-screen-blueprints.mjs --input scripts/fixtures/screen-blueprint-export-v2.example.json --outDir .cache/screen-generator-verification --strict true",
+    "verify:screen-generator-scale": "node scripts/verify-screen-generator-scale.mjs",
     "predev": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:system-component-catalog && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:framework-contract-metadata && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:verification-center-inventory && NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" npm run generate:page-completeness-inventory",
     "dev": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" vite",
     "prebuild": "node scripts/run-frontend-pipeline.mjs",
