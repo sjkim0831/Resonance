@@ -43,6 +43,15 @@ runtime_is_healthy() {
   health_url="$(runtime_health_url)" || return 1
   curl -fsS --max-time 10 "$health_url" | jq -e '.status == "UP"' >/dev/null
 }
+deployment_is_ready() {
+  local counts desired updated ready available
+  counts="$(kubectl -n "$K8S_NAMESPACE" get deploy carbonet-runtime \
+    -o jsonpath='{.spec.replicas}|{.status.updatedReplicas}|{.status.readyReplicas}|{.status.availableReplicas}' \
+    2>/dev/null || true)"
+  IFS='|' read -r desired updated ready available <<<"$counts"
+  [[ "$desired" =~ ^[0-9]+$ && "$desired" -gt 0 ]] || return 1
+  [[ "$updated" = "$desired" && "$ready" = "$desired" && "$available" = "$desired" ]]
+}
 WORKER_ID="$(hostname)-hermes-$$"
 LEASE_TOKEN="$(cat /proc/sys/kernel/random/uuid)"
 
@@ -655,12 +664,13 @@ fi
 
 for _ in $(seq 1 90); do
   DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
-  READY="$(kubectl -n carbonet-prod get deploy carbonet-runtime -o jsonpath='{.status.readyReplicas}/{.spec.replicas}' 2>/dev/null || true)"
-  if git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null && [ "$READY" = "2/2" ] && runtime_is_healthy; then break; fi
+  if git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
+    && deployment_is_ready && runtime_is_healthy; then break; fi
   sleep 10
 done
 DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
 git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null || fail_job "result commit was not deployed"
+deployment_is_ready || fail_job "deployment replica readiness check failed"
 runtime_is_healthy || fail_job "deployment health check failed"
 
 EVIDENCE="git:${RESULT_COMMIT};log:${LOG_FILE}"
