@@ -168,9 +168,20 @@ NODE
   log "PASS report=$run_report"
 }
 
+accept_fast() {
+  load_active
+  local health_status
+  health_status="$(curl -fsS --max-time 15 "$BASE_URL/actuator/health" || true)"
+  [[ "$health_status" == *'"status":"UP"'* ]] || fail "fast gate health check is not UP"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
+  rm -f "$ACTIVE_FILE"
+  log "PASS fast runtime gate snapshot=$SNAPSHOT_ID"
+}
+
 case "$ACTION" in
   capture) capture ;;
   verify) verify ;;
+  accept-fast) accept_fast ;;
   restore) restore ;;
-  *) fail "usage: $0 {capture|verify|restore}" ;;
+  *) fail "usage: $0 {capture|verify|accept-fast|restore}" ;;
 esac

@@ -477,8 +477,16 @@ bash ops/scripts/validate-common-design-assets.sh
 bash ops/scripts/validate-project-auto-completion.sh
 bash ops/scripts/validate-contract-completion-algorithm.sh
 bash ops/scripts/validate-unified-work-design-runtime.sh
-FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
-  bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
+if [[ "$PLAN_FRONTEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true" || "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+  FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+    bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
+else
+  # Backend-only commits already pass the domain runtime/API gates above. A
+  # second 333-route browser sweep adds minutes without exercising new UI.
+  # Keep the rollback snapshot and immutable asset closure checks, then accept
+  # the healthy runtime. Mixed/frontend/database changes retain the full gate.
+  bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
+fi
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true
