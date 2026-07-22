@@ -107,6 +107,44 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"processCode",process,"count",cases.size(),"cases",cases);
     }
 
+    /**
+     * Compact, process-scoped design projection for runtime gates and focused
+     * clients. The full governance dashboard is intentionally broad and can be
+     * tens of megabytes; validators must not depend on that aggregate payload.
+     */
+    public Map<String,Object> processDesign(String requestedProcess) {
+        String process=req(Map.of("processCode",requestedProcess),"processCode");
+        List<Map<String,Object>> definitions=jdbc.queryForList(
+            "select process_code as \"processCode\",process_name as \"processName\",process_status as \"processStatus\",risk_level as \"riskLevel\" " +
+            "from framework_process_definition where process_code=?",
+            process
+        );
+        if(definitions.isEmpty())throw new IllegalArgumentException("프로세스가 존재하지 않습니다: "+process);
+        List<Map<String,Object>> steps=jdbc.queryForList(
+            "select process_code as \"processCode\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",user_path as \"userPath\",admin_path as \"adminPath\" " +
+            "from framework_process_step where process_code=? order by step_order",
+            process
+        );
+        List<Map<String,Object>> specs=jdbc.queryForList(
+            "select step_code as \"stepCode\",field_contract::text as \"fieldContract\",business_contract::text as \"businessContract\",guide_contract::text as \"guideContract\",design_status as \"designStatus\",approval_status as \"approvalStatus\",generation_status as \"generationStatus\" " +
+            "from framework_step_execution_spec where process_code=? order by step_code",
+            process
+        );
+        List<Map<String,Object>> screens=jdbc.queryForList(
+            "select step_code as \"stepCode\",audience,route_path as \"routePath\",design_readiness_score as \"designReadinessScore\" " +
+            "from framework_professional_screen_design_readiness where process_code=? order by step_code,audience,route_path",
+            process
+        );
+        return Map.of(
+            "success",true,
+            "process",definitions.get(0),
+            "stepCount",steps.size(),
+            "steps",steps,
+            "stepExecutionSpecs",specs,
+            "professionalScreens",screens
+        );
+    }
+
     @Transactional
     public Map<String,Object> generateProfessionalDesignGraph(String processCode,String actor){
         String process=processCode==null||processCode.isBlank()?null:processCode.trim();

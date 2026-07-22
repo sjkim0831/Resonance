@@ -40,14 +40,15 @@ runtime_evidence="$(readlink -f "$EVIDENCE_DIR/latest.json")"
 
 login_code="$(curl -sS -c "$COOKIE_JAR" -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE_URL/signin/actionLogin" --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
 [[ "$login_code" == 200 ]] || { echo "[governance-change-runtime] FAIL login status=$login_code" >&2; exit 1; }
-api_code="$(curl -sS -b "$COOKIE_JAR" -o "$DASHBOARD" -w '%{http_code}' "$BASE_URL/admin/api/system/actor-process")"
-[[ "$api_code" == 200 ]] || { echo "[governance-change-runtime] FAIL dashboard status=$api_code" >&2; exit 1; }
+api_code="$(curl -sS -b "$COOKIE_JAR" -o "$DASHBOARD" -w '%{http_code}' "$BASE_URL/admin/api/system/actor-process/process-design?processCode=GOVERNANCE_CHANGE")"
+[[ "$api_code" == 200 ]] || { echo "[governance-change-runtime] FAIL process design status=$api_code" >&2; exit 1; }
 jq -e '
-  ([.processes[]|select(.processCode=="GOVERNANCE_CHANGE" and .processName=="기준·워크플로 변경관리")]|length)==1 and
+  (.process.processCode=="GOVERNANCE_CHANGE") and
   ([.steps[]|select(.processCode=="GOVERNANCE_CHANGE" and (.requirementText|length)>20)]|length)==6 and
-  ([.stepExecutionSpecs[]|select(.processCode=="GOVERNANCE_CHANGE")|(.fieldContract|fromjson|length)]|length)==6 and
-  ([.stepExecutionSpecs[]|select(.processCode=="GOVERNANCE_CHANGE")|(.fieldContract|fromjson|length)]|all(.>=8))
-' "$DASHBOARD" >/dev/null || { echo '[governance-change-runtime] FAIL dashboard professional contracts' >&2; exit 1; }
+  ([.stepExecutionSpecs[]|(.fieldContract|fromjson|length)]|length)==6 and
+  ([.stepExecutionSpecs[]|(.fieldContract|fromjson|length)]|all(.>=8)) and
+  ([.professionalScreens[]|select(.designReadinessScore==100)]|length)>=12
+' "$DASHBOARD" >/dev/null || { echo '[governance-change-runtime] FAIL process-scoped professional contracts' >&2; exit 1; }
 
 page_code="$(curl -sS -L -b "$COOKIE_JAR" -o "$PAGE" -w '%{http_code}' "$BASE_URL/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_REQUEST")"
 [[ "$page_code" == 200 ]] && grep -qi '<!doctype html' "$PAGE" || { echo "[governance-change-runtime] FAIL workspace status=$page_code" >&2; exit 1; }
