@@ -57,6 +57,7 @@ public final class ReactPageUrlMapper {
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-report-certificates", "/admin/emission/report-certificates", "/admin/emission/report-certificates");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-report-access-admin", "/admin/emission/report-access-history", "/admin/emission/report-access-history");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-project-completion-admin", "/admin/emission/project-completion", "/admin/emission/project-completion");
+        registerAdmin(adminPathToRoute, adminRouteToPath, "organizational-boundary-admin", "/admin/emission/organizational-boundary", "/admin/emission/organizational-boundary");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-regulatory-submissions-admin", "/admin/emission/regulatory-submissions", "/admin/emission/regulatory-submissions");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-definition-studio", "/admin/emission/definition-studio", "/admin/emission/definition-studio");
         registerAdmin(adminPathToRoute, adminRouteToPath, "emission-gwp-values", "/admin/emission/gwp-values", "/admin/emission/gwp-values");
@@ -73,6 +74,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_detail", "/emission/project/detail", "/en/emission/project/detail", "/emission/project/detail");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_progress", "/emission/project/progress", "/en/emission/project/progress", "/emission/project/progress");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_my_tasks", "/emission/my-tasks", "/en/emission/my-tasks", "/emission/my-tasks");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "organizational-boundary", "/emission/organizational-boundary", "/en/emission/organizational-boundary", "/emission/organizational-boundary");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_deadline_status", "/emission/deadline-status", "/en/emission/deadline-status", "/emission/deadline-status");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_data_input", "/emission/data_input", "/en/emission/data_input", "/emission/data_input");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_result", "/emission/result", "/en/emission/result", "/emission/result");
