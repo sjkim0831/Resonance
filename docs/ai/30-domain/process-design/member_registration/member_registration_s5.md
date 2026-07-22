@@ -305,32 +305,81 @@
 ]
 - Required UI states: [
   "LOADING",
-  "EMPTY",
   "READY",
-  "VALIDATION_ERROR",
-  "AUTHORITY_DENIED",
-  "DEPENDENCY_BLOCKED",
-  "CONFLICT",
-  "SERVER_ERROR"
+  "EMPTY",
+  "DESIGN_BLOCKED",
+  "IMPLEMENTATION_PENDING",
+  "IMPLEMENTATION_VERIFIED",
+  "ERROR",
+  "FORBIDDEN",
+  "SESSION_EXPIRED"
 ]
 
 ### API, transaction, and data contract
 
-- API: []
+- API: [
+  {
+    "path": "/admin/api/system/actor-process",
+    "scope": "actor and process governance",
+    "method": "GET"
+  },
+  {
+    "path": "/home/api/process-executions",
+    "scope": "tenant, project and actor",
+    "method": "GET"
+  },
+  {
+    "path": "/home/api/process-executions/start",
+    "guard": "first step actor",
+    "method": "POST"
+  },
+  {
+    "path": "/home/api/process-executions/{executionId}/commands",
+    "method": "POST",
+    "idempotency": "required"
+  }
+]
 - Database entities: [
-  "framework_process_step",
-  "framework_development_job",
-  "framework_process_artifact"
+  {
+    "version": "2.0.0",
+    "entity": "framework_process_definition",
+    "versionColumn": "process_version"
+  },
+  {
+    "entity": "framework_process_step",
+    "relation": "ordered state machine"
+  },
+  {
+    "entity": "framework_simulation_case",
+    "relation": "independent expectations"
+  },
+  {
+    "entity": "framework_development_job",
+    "relation": "implementation evidence"
+  },
+  {
+    "view": "framework_process_development_progress"
+  },
+  {
+    "view": "framework_process_design_assurance_matrix"
+  }
 ]
 - Audit and evidence: [
-  "actor",
-  "stateTransition",
-  "inputSnapshot",
-  "decision",
-  "timestamp",
-  "sourceCommit"
+  {
+    "version": "2.0.0",
+    "tests": [
+      "HAPPY_PATH",
+      "AUTHORITY",
+      "ROUTE_INTEGRITY",
+      "STATE_MACHINE",
+      "TEST_COVERAGE",
+      "DEVELOPMENT_EVIDENCE",
+      "RECOVERY"
+    ],
+    "failClosed": "design blockers prevent generator promotion"
+  }
 ]
-- Security and tenant isolation: 테넌트·프로젝트·액터 권한, 업무 분리와 상태 전이를 서버에서 검증하고 감사 로그를 남긴다.
+- Security and tenant isolation: {"authentication":"ADMIN","authority":"PERM_PROCESS_ORCHESTRATION_READ","writeMode":"read-only workspace; changes occur in governed management screens","tenantData":"no customer records returned","audit":"selected process and opened route are governance trace events"}
 
 ### Responsive and accessibility contract
 
