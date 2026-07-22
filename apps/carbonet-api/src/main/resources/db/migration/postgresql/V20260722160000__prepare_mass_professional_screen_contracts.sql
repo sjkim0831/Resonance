@@ -23,22 +23,6 @@ LANGUAGE sql IMMUTABLE AS $$
   END::varchar;
 $$;
 
--- Normalize the established simulation taxonomy into the five professional
--- safety lanes. This reuses verified evidence instead of fabricating duplicate
--- cases for locked, implemented process definitions.
-CREATE OR REPLACE FUNCTION framework_canonical_professional_scenario_type(
-  requested_type text
-) RETURNS varchar
-LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
-  SELECT CASE upper(coalesce(requested_type,''))
-    WHEN 'TENANT_ISOLATION' THEN 'ISOLATION'
-    WHEN 'PROJECT_ISOLATION' THEN 'ISOLATION'
-    WHEN 'VALIDATION' THEN 'EXCEPTION'
-    WHEN 'INVALID_STATE' THEN 'EXCEPTION'
-    ELSE upper(coalesce(requested_type,''))
-  END::varchar;
-$$;
-
 CREATE OR REPLACE FUNCTION framework_prepare_mass_professional_screens(
   requested_limit integer DEFAULT 1000,
   requested_by varchar DEFAULT 'SYSTEM_MASS_SCREEN_DESIGNER'
@@ -208,39 +192,6 @@ BEGIN
     RETURNING 1
   ) SELECT count(*)::integer INTO contracts_changed FROM changed;
 
-  -- Repair only missing shared-workspace API metadata and the three legacy
-  -- state contracts that predate the professional LOADING/EMPTY/ERROR/
-  -- FORBIDDEN readiness rule. Reviewed business semantics remain untouched.
-  WITH repaired AS (
-    UPDATE framework_professional_screen_contract c SET
-      api_contract=CASE
-        WHEN c.api_contract='[]'
-          AND lower(split_part(c.route_path,'?',1))='/admin/system/process-workspace'
-        THEN jsonb_build_array(
-          jsonb_build_object('method','GET','path','/admin/api/system/actor-process','scope','actor and process governance'),
-          jsonb_build_object('method','GET','path','/home/api/process-executions','scope','tenant, project and actor'),
-          jsonb_build_object('method','POST','path','/home/api/process-executions/start','guard','first step actor'),
-          jsonb_build_object('method','POST','path','/home/api/process-executions/{executionId}/commands','idempotency','required')
-        )::text
-        ELSE c.api_contract
-      END,
-      state_contract=CASE
-        WHEN c.contract_id=251
-          AND NOT (c.state_contract LIKE '%LOADING%' AND c.state_contract LIKE '%EMPTY%'
-            AND c.state_contract LIKE '%ERROR%' AND c.state_contract LIKE '%FORBIDDEN%')
-        THEN jsonb_build_array('LOADING','READY','EMPTY','SIMULATED','SAVED','SUBMITTED','ERROR','FORBIDDEN')::text
-        WHEN c.contract_id IN (742,744) AND c.state_contract NOT LIKE '%"EMPTY"%'
-        THEN (framework_try_jsonb(c.state_contract)||jsonb_build_array('EMPTY'))::text
-        ELSE c.state_contract
-      END,
-      updated_by=requested_by,updated_at=current_timestamp
-    WHERE (c.api_contract='[]' AND lower(split_part(c.route_path,'?',1))='/admin/system/process-workspace')
-       OR (c.contract_id=251 AND NOT (c.state_contract LIKE '%LOADING%' AND c.state_contract LIKE '%EMPTY%'
-         AND c.state_contract LIKE '%ERROR%' AND c.state_contract LIKE '%FORBIDDEN%'))
-       OR (c.contract_id IN (742,744) AND c.state_contract NOT LIKE '%"EMPTY"%')
-    RETURNING 1
-  ) SELECT contracts_changed+count(*)::integer INTO contracts_changed FROM repaired;
-
   SELECT count(*)::integer,count(*) FILTER(WHERE design_readiness_score=100)::integer
     INTO contract_bindings,ready_contracts
     FROM framework_professional_screen_design_readiness;
@@ -307,9 +258,9 @@ BEGIN
     JOIN framework_process_definition p USING(process_code)
     JOIN framework_process_step s USING(process_code,step_code)
     WHERE c.design_readiness_score=100
-      AND (SELECT count(DISTINCT framework_canonical_professional_scenario_type(case_type)) FROM framework_simulation_case test
+      AND (SELECT count(DISTINCT case_type) FROM framework_simulation_case test
             WHERE test.process_code=c.process_code
-              AND framework_canonical_professional_scenario_type(test.case_type) IN ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))=5
+              AND test.case_type IN ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))=5
     ORDER BY lower(split_part(c.route_path,'?',1)),
       CASE WHEN lower(split_part(c.route_path,'?',1)) LIKE '/admin/%' AND c.audience='ADMIN' THEN 0
            WHEN lower(split_part(c.route_path,'?',1)) NOT LIKE '/admin/%' AND c.audience='USER' THEN 0 ELSE 1 END,
@@ -346,9 +297,9 @@ BEGIN
       JOIN framework_process_definition p USING(process_code)
       JOIN framework_process_step s USING(process_code,step_code)
       WHERE c.design_readiness_score=100
-        AND (SELECT count(DISTINCT framework_canonical_professional_scenario_type(case_type)) FROM framework_simulation_case test
+        AND (SELECT count(DISTINCT case_type) FROM framework_simulation_case test
               WHERE test.process_code=c.process_code
-                AND framework_canonical_professional_scenario_type(test.case_type) IN ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))=5
+                AND test.case_type IN ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))=5
       ORDER BY lower(split_part(c.route_path,'?',1)),
         CASE WHEN lower(split_part(c.route_path,'?',1)) LIKE '/admin/%' AND c.audience='ADMIN' THEN 0
              WHEN lower(split_part(c.route_path,'?',1)) NOT LIKE '/admin/%' AND c.audience='USER' THEN 0 ELSE 1 END,
@@ -408,9 +359,9 @@ BEGIN
       JOIN framework_process_definition p USING(process_code)
       JOIN framework_process_step s USING(process_code,step_code)
       WHERE c.design_readiness_score=100
-        AND (SELECT count(DISTINCT framework_canonical_professional_scenario_type(case_type)) FROM framework_simulation_case test
+        AND (SELECT count(DISTINCT case_type) FROM framework_simulation_case test
               WHERE test.process_code=c.process_code
-                AND framework_canonical_professional_scenario_type(test.case_type) IN ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))=5
+                AND test.case_type IN ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'))=5
       ORDER BY lower(split_part(c.route_path,'?',1)),
         CASE WHEN lower(split_part(c.route_path,'?',1)) LIKE '/admin/%' AND c.audience='ADMIN' THEN 0
              WHEN lower(split_part(c.route_path,'?',1)) NOT LIKE '/admin/%' AND c.audience='USER' THEN 0 ELSE 1 END,
