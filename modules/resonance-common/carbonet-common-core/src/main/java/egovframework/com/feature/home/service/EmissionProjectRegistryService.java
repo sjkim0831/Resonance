@@ -114,8 +114,9 @@ public class EmissionProjectRegistryService {
         String tenant=requiredValue(tenantId,"tenantId");
         assertTenantAccess(projectId,tenant);
         Map<String,Object> result=new LinkedHashMap<>();
-        result.put("project",detail(projectId));
-        result.put("metrics",jdbc.queryForMap("SELECT " +
+        Map<String,Object> project=detail(projectId);
+        result.put("project",project);
+        Map<String,Object> metrics=jdbc.queryForMap("SELECT " +
             "(SELECT count(*) FROM emission_activity_data WHERE project_id=?) AS \"activityCount\"," +
             "(SELECT count(*) FROM emission_activity_data WHERE project_id=? AND coalesce(trim(evidence_note),'')='') AS \"missingEvidenceCount\"," +
             "(SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL) AS \"unmappedCount\"," +
@@ -125,14 +126,50 @@ public class EmissionProjectRegistryService {
             "coalesce((SELECT submit_ready FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=? ORDER BY executed_at DESC,run_id DESC LIMIT 1),false) AS \"submitReady\"," +
             "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state IN ('SUBMITTED','IN_VERIFICATION','VERIFIED')) AS \"approvalPendingCount\"," +
             "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state='CORRECTION_REQUIRED') AS \"correctionCount\"," +
+            "(SELECT count(*) FROM emission_calculation_run WHERE project_id=?) AS \"calculationRunCount\"," +
+            "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state IN ('VERIFIED','APPROVED')) AS \"verifiedCount\"," +
+            "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state='APPROVED') AS \"approvedCount\"," +
             "coalesce((SELECT total_emission FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1),0) AS \"totalEmission\"," +
             "(SELECT count(*) FROM emission_project_report WHERE project_id=? AND tenant_id=? AND report_status='FINALIZED') AS \"finalizedReportCount\"",
-            projectId,projectId,projectId,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,projectId,tenant));
+            projectId,projectId,projectId,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,projectId,tenant,projectId,tenant,projectId,tenant,projectId,projectId,tenant);
+        result.put("metrics",metrics);
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> tasks=(List<Map<String,Object>>)project.get("tasks");
+        for(Map<String,Object> task:tasks) applyEffectiveTaskStatus(task,metrics);
         result.put("recentActivities",jdbc.queryForList("SELECT activity_id AS \"id\",activity_name AS \"name\",category,activity_period AS \"period\",quantity,unit,evidence_note AS \"evidence\",mapping_status AS \"mappingStatus\",updated_at AS \"updatedAt\" FROM emission_activity_data WHERE project_id=? ORDER BY updated_at DESC,activity_id DESC LIMIT 6",projectId));
         result.put("recentSubmissions",jdbc.queryForList("SELECT submission_id AS \"id\",version_no AS version,submission_state AS state,submitted_actor AS \"submittedActor\",submitted_at AS \"submittedAt\",deadline_date AS \"deadlineDate\" FROM emission_activity_submission WHERE project_id=? AND tenant_id=? ORDER BY version_no DESC LIMIT 5",projectId,tenant));
         result.put("emissionBreakdown",jdbc.queryForList("SELECT a.category AS label,sum(i.emission_value) AS value FROM emission_calculation_run r JOIN emission_calculation_item i ON i.calculation_id=r.calculation_id JOIN emission_activity_data a ON a.activity_id=i.activity_id WHERE r.calculation_id=(SELECT calculation_id FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1) GROUP BY a.category ORDER BY value DESC",projectId));
         result.put("messages",jdbc.queryForList("SELECT event_type AS type,event_description AS description,actor_name AS actor,created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? AND event_type IN ('COMMENT','WORK_REQUEST','ALERT') ORDER BY created_at DESC LIMIT 20",projectId));
         return result;
+    }
+
+    private void applyEffectiveTaskStatus(Map<String,Object> task,Map<String,Object> metrics) {
+        String code=text(task.get("code")),effective=text(task.get("status")),reason="";
+        int activities=((Number)metrics.get("activityCount")).intValue();
+        int missing=((Number)metrics.get("missingEvidenceCount")).intValue();
+        int unmapped=((Number)metrics.get("unmappedCount")).intValue();
+        int calculations=((Number)metrics.get("calculationRunCount")).intValue();
+        int verified=((Number)metrics.get("verifiedCount")).intValue();
+        int approved=((Number)metrics.get("approvedCount")).intValue();
+        int reports=((Number)metrics.get("finalizedReportCount")).intValue();
+        if("ACTIVITY_DATA".equals(code)&&("DONE".equals(effective)||"IN_PROGRESS".equals(effective))) {
+            if(activities==0){effective="READY";reason="ACTIVITY_DATA_REQUIRED";}
+            else if(missing>0){effective="IN_PROGRESS";reason="EVIDENCE_REQUIRED:"+missing;}
+        } else if("CALCULATION".equals(code)) {
+            if(activities==0){effective="BLOCKED";reason="ACTIVITY_DATA_REQUIRED";}
+            else if(unmapped>0){effective="BLOCKED";reason="FACTOR_MAPPING_REQUIRED:"+unmapped;}
+            else if(calculations==0&&"DONE".equals(effective)){effective="READY";reason="CALCULATION_RESULT_REQUIRED";}
+        } else if("VERIFICATION".equals(code)&&"DONE".equals(effective)&&verified==0) {
+            effective="READY";reason="VERIFICATION_RESULT_REQUIRED";
+        } else if("APPROVAL".equals(code)&&"DONE".equals(effective)&&approved==0) {
+            effective="READY";reason="APPROVAL_RESULT_REQUIRED";
+        } else if("REPORT".equals(code)&&"DONE".equals(effective)&&reports==0) {
+            effective="READY";reason="FINAL_REPORT_REQUIRED";
+        }
+        task.put("storedStatus",task.get("status"));
+        task.put("status",effective);
+        task.put("effectiveStatus",effective);
+        task.put("effectiveReason",reason);
     }
 
     @Transactional

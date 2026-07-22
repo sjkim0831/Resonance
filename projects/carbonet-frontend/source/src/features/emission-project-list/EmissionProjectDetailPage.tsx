@@ -5,10 +5,10 @@ import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/ru
 import { HeaderBrand, HeaderDesktopNav, HomeInlineStyles } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 
-type Task={id:number;code:string;name:string;order:number;status:string;weight:number;dueDate:string;targetUrl:string;actorCode?:string;assignee?:string;priority?:string;completionRule?:string;blockedReason?:string;completedAt?:string;completedBy?:string};
+type Task={id:number;code:string;name:string;order:number;status:string;effectiveStatus?:string;effectiveReason?:string;weight:number;dueDate:string;targetUrl:string;actorCode?:string;assignee?:string;priority?:string;completionRule?:string;blockedReason?:string;completedAt?:string;completedBy?:string};
 type Project={id:string;name:string;site:string;period:string;scope:string;owner:string;progress:number;step:string;dueDate:string;status:string;tasks:Task[];members:{name:string;role:string}[];history:HistoryItem[]};
 type HistoryItem={type:string;description:string;actor:string;createdAt:string};
-type Metrics={activityCount:number;missingEvidenceCount:number;unmappedCount:number;blockingCount:number;warningCount:number;qualityScore:number;submitReady:boolean;approvalPendingCount:number;correctionCount:number;totalEmission:number;finalizedReportCount:number};
+type Metrics={activityCount:number;missingEvidenceCount:number;unmappedCount:number;blockingCount:number;warningCount:number;qualityScore:number;submitReady:boolean;approvalPendingCount:number;correctionCount:number;calculationRunCount:number;verifiedCount:number;approvedCount:number;totalEmission:number;finalizedReportCount:number};
 type Activity={id:number;name:string;category:string;period:string;quantity:number;unit:string;evidence?:string;mappingStatus:string;updatedAt:string};
 type Submission={id:number;version:number;state:string;submittedActor?:string;submittedAt?:string;deadlineDate?:string};
 type Breakdown={label:string;value:number};
@@ -47,9 +47,10 @@ export function EmissionProjectDetailPage(){
   async function load(){if(!id)throw new Error(en?"Select a project first.":"프로젝트를 먼저 선택해 주세요.");const body=await json(await fetch(workspaceApi,{credentials:"include",headers:{Accept:"application/json"}}));setData(body);setOwner(body.project.owner||"");setDueDate(body.project.dueDate||"");}
   useEffect(()=>{void load().catch(reason=>setError(reason instanceof Error?reason.message:String(reason)))},[id]);
   const tasks=data?.project.tasks||[];
-  const current=useMemo(()=>tasks.find(task=>task.status==="IN_PROGRESS")||tasks.find(task=>task.status==="READY")||tasks.find(task=>task.status!=="DONE"),[tasks]);
-  const completed=tasks.filter(task=>task.status==="DONE").length,metrics=data?.metrics;
-  const readiness=metrics?Math.round(((metrics.activityCount>0?1:0)+(metrics.missingEvidenceCount===0&&metrics.activityCount>0?1:0)+(metrics.unmappedCount===0&&metrics.activityCount>0?1:0)+(metrics.blockingCount===0?1:0))*25):0;
+  const effective=(task:Task)=>task.effectiveStatus||task.status;
+  const current=useMemo(()=>tasks.find(task=>effective(task)==="IN_PROGRESS")||tasks.find(task=>effective(task)==="READY")||tasks.find(task=>effective(task)!=="DONE"),[tasks]);
+  const completed=tasks.filter(task=>effective(task)==="DONE").length,metrics=data?.metrics;
+  const readiness=metrics?Math.round(((metrics.activityCount>0?1:0)+(metrics.missingEvidenceCount===0&&metrics.activityCount>0?1:0)+(metrics.unmappedCount===0&&metrics.activityCount>0?1:0)+(metrics.blockingCount===0&&metrics.activityCount>0?1:0))*25):0;
   const maxEmission=Math.max(1,...(data?.emissionBreakdown||[]).map(row=>Number(row.value)||0));
   async function mutate(request:()=>Promise<Response>,success:string){setWorking(true);setError("");setNotice("");try{await json(await request());setNotice(success);await load();}catch(reason){setError(reason instanceof Error?reason.message:String(reason))}finally{setWorking(false)}}
   async function saveProject(event:FormEvent){event.preventDefault();await mutate(()=>fetch(workspaceApi,{method:"PATCH",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({owner,dueDate})}),en?"Project settings updated.":"담당자와 마감일을 변경했습니다.");setEdit(false)}
