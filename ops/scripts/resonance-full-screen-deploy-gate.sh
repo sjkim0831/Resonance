@@ -13,6 +13,7 @@ OVERLAY_DIR="${OVERLAY_DIR:-$ROOT_DIR/projects/carbonet-frontend/src/main/resour
 STATE_DIR="${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}"
 REPORT_DIR="${FULL_SCREEN_GATE_REPORT_DIR:-$ROOT_DIR/var/reports/full-screen-deploy-gate}"
 CREDENTIAL_SECRET="${FULL_SCREEN_GATE_CREDENTIAL_SECRET:-carbonet-screen-smoke}"
+STATUS_PAGE_TEMPLATE="${FULL_SCREEN_GATE_STATUS_PAGE_TEMPLATE:-$ROOT_DIR/ops/assets/full-screen-deploy-gate-status.html}"
 ACTIVE_FILE="$STATE_DIR/active.env"
 ACTION="${1:-verify}"
 
@@ -131,6 +132,26 @@ fs.writeFileSync(path, JSON.stringify({
   snapshotId,
   ok: Number(status) === 0,
   smokeExitCode: Number(status)
+}, null, 2) + '\n');
+NODE
+  test -s "$STATUS_PAGE_TEMPLATE"
+  cp "$STATUS_PAGE_TEMPLATE" "$OVERLAY_DIR/full-screen-deploy-gate-status.html"
+  node - "$run_report/gate-status.json" "$run_report/summary.json" "$OVERLAY_DIR/full-screen-deploy-gate-status.json" <<'NODE'
+const fs = require('node:fs');
+const [gatePath, summaryPath, outputPath] = process.argv.slice(2);
+const gate = JSON.parse(fs.readFileSync(gatePath, 'utf8'));
+const summary = fs.existsSync(summaryPath) ? JSON.parse(fs.readFileSync(summaryPath, 'utf8')) : null;
+fs.writeFileSync(outputPath, JSON.stringify({
+  schemaVersion: 1,
+  completedAt: gate.completedAt,
+  ok: gate.ok,
+  smokeExitCode: gate.smokeExitCode,
+  contractCount: summary?.manifestCounts?.contractCount ?? 0,
+  routeCount: summary?.manifestCounts?.routeCount ?? 0,
+  testedRouteCount: summary?.testedRouteCount ?? 0,
+  passedRouteCount: summary?.passedRouteCount ?? 0,
+  failedRouteCount: summary?.failedRouteCount ?? 0,
+  recoveredRouteCount: summary?.recoveredRouteCount ?? 0
 }, null, 2) + '\n');
 NODE
 

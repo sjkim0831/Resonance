@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="refresh" content="60">
+  <title>전체 화면 배포 게이트</title>
+  <style>
+    :root{font-family:Arial,"Noto Sans KR",sans-serif;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.top{background:#123a72;color:#fff;padding:28px 6vw}.top p{margin:6px 0 0;color:#dbe8fa}.wrap{max-width:1120px;margin:28px auto;padding:0 20px}.status{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:22px;box-shadow:0 8px 30px #183b6914}.dot{width:15px;height:15px;border-radius:50%;background:#9aa6b5}.ok .dot{background:#16a064;box-shadow:0 0 0 7px #16a06418}.fail .dot{background:#d73737;box-shadow:0 0 0 7px #d7373718}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:18px}.card{background:#fff;border:1px solid #e3e9f2;border-radius:14px;padding:20px}.label{font-size:14px;color:#64748b}.value{font-size:32px;font-weight:800;margin-top:8px}.meta{margin-top:18px;padding:18px;background:#eaf1fb;border-radius:12px;color:#334155}code{font-size:13px}@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <header class="top"><h1>전체 화면 배포 게이트</h1><p>배포 차단 · 자동 복구 · 화면 계약 검증 현황</p></header>
+  <main class="wrap">
+    <section id="status" class="status"><span class="dot"></span><div><strong id="headline">상태를 불러오는 중입니다</strong><div id="completed" class="label"></div></div></section>
+    <section class="grid">
+      <article class="card"><div class="label">화면 계약</div><div id="contracts" class="value">-</div></article>
+      <article class="card"><div class="label">전체 URL</div><div id="routes" class="value">-</div></article>
+      <article class="card"><div class="label">통과 URL</div><div id="passed" class="value">-</div></article>
+      <article class="card"><div class="label">실패 URL</div><div id="failed" class="value">-</div></article>
+    </section>
+    <section class="meta">60초마다 자동 갱신됩니다. 실패 시 배포 성공 마커를 차단하고 직전 런타임 이미지, 웹 설정, 프론트 오버레이를 복원합니다.</section>
+  </main>
+  <script>
+    fetch('./full-screen-deploy-gate-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(String(r.status));return r.json()}).then(s=>{
+      const box=document.querySelector('#status'); box.classList.add(s.ok?'ok':'fail');
+      document.querySelector('#headline').textContent=s.ok?'정상 · 배포 허용':'실패 · 배포 차단 및 복구';
+      document.querySelector('#completed').textContent=new Date(s.completedAt).toLocaleString('ko-KR');
+      for(const [id,key] of Object.entries({contracts:'contractCount',routes:'routeCount',passed:'passedRouteCount',failed:'failedRouteCount'})) document.querySelector('#'+id).textContent=(s[key]??0).toLocaleString('ko-KR');
+    }).catch(e=>{document.querySelector('#headline').textContent='상태 데이터 조회 실패';document.querySelector('#completed').textContent=e.message});
+  </script>
+</body>
+</html>
