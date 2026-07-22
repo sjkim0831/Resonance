@@ -302,7 +302,7 @@ function MemberListPageScreen({ variant }: { variant: MemberListPageVariant }) {
           </div>
           <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" data-help-id="member-list-search" onSubmit={handleSearchSubmit}>
             <div>
-              <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">회원 유형</span>
+              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="member-type">회원 유형</label>
               <AdminSelect id="member-type" value={draftFilters.membershipType} onChange={(event) => updateDraft("membershipType", event.target.value)}>
                 {memberTypeOptions.map((option) => (
                   <option key={option.value || "all"} value={option.value}>{option.label}</option>
@@ -310,7 +310,7 @@ function MemberListPageScreen({ variant }: { variant: MemberListPageVariant }) {
               </AdminSelect>
             </div>
             <div>
-              <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">상태</span>
+              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="status">상태</label>
               <AdminSelect id="status" value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
                 {memberStatusOptions.map((option) => (
                   <option key={option.value || "all"} value={option.value}>{option.label}</option>
@@ -318,7 +318,7 @@ function MemberListPageScreen({ variant }: { variant: MemberListPageVariant }) {
               </AdminSelect>
             </div>
             <div className="md:col-span-2">
-              <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">검색어</span>
+              <label className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2" htmlFor="keyword">검색어</label>
               <div className="flex gap-2">
                 <AdminInput className="flex-1" id="keyword" placeholder="신청자명, 아이디, 회사명 검색" value={draftFilters.searchKeyword} onChange={(event) => updateDraft("searchKeyword", event.target.value)} />
               </div>

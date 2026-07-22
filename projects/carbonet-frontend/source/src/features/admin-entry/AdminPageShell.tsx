@@ -1196,6 +1196,7 @@ export function AdminPageShell({
           <div className="mb-6">
             <div className="relative">
               <input
+                aria-label={en ? "Search admin menu" : "관리자 메뉴 검색"}
                 className="w-full rounded-[var(--kr-gov-radius)] border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[var(--kr-gov-blue)] focus:ring-2 focus:ring-[var(--kr-gov-blue)]"
                 id="gnbMenuFilter"
                 onChange={(event) => setMenuFilter(event.target.value)}
