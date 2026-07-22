@@ -1,9 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useAsyncValue } from "../../app/hooks/useAsyncValue";
-import { fetchHomePayload } from "../../lib/api/appBootstrap";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { HeaderBrand, HeaderDesktopNav, HomeInlineStyles } from "../home-entry/HomeEntrySections";
-import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 
 type Task={id:number;code:string;name:string;order:number;status:string;effectiveStatus?:string;effectiveReason?:string;weight:number;dueDate:string;targetUrl:string;actorCode?:string;assignee?:string;priority?:string;completionRule?:string;blockedReason?:string;completedAt?:string;completedBy?:string};
 type Project={id:string;name:string;site:string;period:string;scope:string;owner:string;progress:number;step:string;dueDate:string;status:string;tasks:Task[];members:{name:string;role:string}[];history:HistoryItem[]};
@@ -37,7 +33,7 @@ function MetricCard({label,value,tone="blue",hint}:{label:string;value:string|nu
 }
 
 export function EmissionProjectDetailPage(){
-  const en=isEnglish(),content=LOCALIZED_CONTENT[en?"en":"ko"],home=useAsyncValue(()=>fetchHomePayload(),[en]);
+  const en=isEnglish();
   const id=new URLSearchParams(location.search).get("id")||new URLSearchParams(location.search).get("projectId")||"";
   const [data,setData]=useState<Workspace|null>(null),[error,setError]=useState(""),[notice,setNotice]=useState(""),[working,setWorking]=useState(false);
   const [edit,setEdit]=useState(false),[owner,setOwner]=useState(""),[dueDate,setDueDate]=useState("");
@@ -58,7 +54,7 @@ export function EmissionProjectDetailPage(){
   async function startTask(task:Task){await mutate(()=>fetch(buildLocalizedPath(`/home/api/emission-tasks/${task.id}/status`,`/en/home/api/emission-tasks/${task.id}/status`),{method:"POST",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({status:"IN_PROGRESS"})}),en?"Task started.":"업무를 시작했습니다.")}
   async function copyProject(){await mutate(()=>fetch(`${base}/copy`,{method:"POST",credentials:"include"}),en?"Project copied.":"프로젝트를 복사했습니다.")}
   async function removeProject(){if(!confirm(en?"Delete this project?":"이 프로젝트를 삭제하시겠습니까?"))return;setWorking(true);try{await json(await fetch(base,{method:"DELETE",credentials:"include"}));navigate(buildLocalizedPath("/emission/project_list","/en/emission/project_list"))}catch(reason){setError(reason instanceof Error?reason.message:String(reason));setWorking(false)}}
-  return <><HomeInlineStyles en={en}/><div className="min-h-screen bg-[#f5f7fa]"><div role="banner" className="border-b-2 border-[#001e40] bg-white"><div className="mx-auto flex h-16 max-w-7xl items-center px-4 lg:px-8"><HeaderBrand content={content} en={en}/><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu||[]}/></div></div><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
+  return <div className="min-h-screen bg-[#f5f7fa]"><main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
     <nav className="text-sm text-slate-500"><a href={buildLocalizedPath("/emission/project_list","/en/emission/project_list")}>{en?"Emission Projects":"배출량 프로젝트"}</a><span className="mx-2">/</span>{en?"Project Control Workspace":"프로젝트 통합 작업공간"}</nav>
     {error&&<div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-800" role="alert">{error}</div>}{notice&&<div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 font-bold text-blue-900" role="status">{notice}</div>}{!data&&!error&&<p className="mt-8 font-bold text-slate-600">{en?"Loading workspace...":"프로젝트 작업공간을 불러오는 중입니다."}</p>}
     {data&&<><section className="mt-5 overflow-hidden rounded-3xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-lg lg:p-8"><div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end"><div><p className="text-sm font-black text-blue-200">{data.project.id} · {data.project.status}</p><h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">{data.project.name}</h1><p className="mt-3 text-blue-100">{data.project.site} · {data.project.period} · {data.project.scope}</p></div><div className="flex flex-wrap gap-2"><button className="rounded-xl border border-white/50 px-4 py-3 font-bold hover:bg-white/10" onClick={()=>setEdit(value=>!value)}>{en?"Manage project":"담당자·일정 관리"}</button><a className="rounded-xl bg-white px-5 py-3 font-black text-blue-900 shadow" href={current?localizedTarget(current.targetUrl,id,en):buildLocalizedPath(`/emission/project/completion?projectId=${id}`,`/en/emission/project/completion?projectId=${id}`)}>{current?(en?"Continue current work":"현재 업무 바로 실행"):(en?"View completion":"완료 결과 확인")} →</a></div></div></section>
@@ -73,7 +69,7 @@ export function EmissionProjectDetailPage(){
         <article className="rounded-2xl border bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><h2 className="text-xl font-black text-[#052b57]">{en?"Change and approval history":"변경·승인 이력"}</h2><span className="text-sm text-slate-500">{data.project.history.length}{en?" events":"건"}</span></div><div className="mt-4 max-h-[420px] divide-y overflow-y-auto">{data.project.history.map((item,index)=><div className="grid gap-2 py-4 sm:grid-cols-[120px_1fr_auto] sm:items-start" key={`${item.createdAt}-${index}`}><span className="w-fit rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-700">{item.type}</span><div><strong className="text-sm text-slate-900">{item.description}</strong><p className="mt-1 text-xs text-slate-500">{item.actor||"-"}</p></div><time className="text-xs text-slate-400">{String(item.createdAt).replace("T"," ")}</time></div>)}</div></article></section>
       <section className="mt-5 flex flex-col justify-between gap-4 rounded-2xl border bg-white p-5 sm:flex-row sm:items-center"><div><h2 className="font-black text-[#052b57]">{en?"Project administration":"프로젝트 관리"}</h2><p className="mt-1 text-sm text-slate-500">{en?"Copy or delete only when necessary. All operations are recorded.":"복사·삭제는 필요한 경우에만 사용하며 변경 이력에 기록됩니다."}</p></div><div className="flex gap-2"><a className="rounded-lg border px-4 py-2 font-bold" href={buildLocalizedPath("/admin/system/actor-process?process=EMISSION_PROJECT","/en/admin/system/actor-process?process=EMISSION_PROJECT")}>{en?"Design contract":"설계 계약"}</a><button className="rounded-lg border px-4 py-2 font-bold" disabled={working} onClick={()=>void copyProject()}>{en?"Copy":"복사"}</button><button className="rounded-lg border border-red-300 px-4 py-2 font-bold text-red-700" disabled={working} onClick={()=>void removeProject()}>{en?"Delete":"삭제"}</button></div></section>
     </>}
-  </main></div></>;
+  </main></div>;
 }
 
 function Condition({ok,label,value}:{ok:boolean;label:string;value:string}){return <div className={`flex items-center justify-between rounded-xl border p-3 ${ok?"border-emerald-200 bg-emerald-50":"border-amber-200 bg-amber-50"}`}><div className="flex items-center gap-2"><span className={`grid h-6 w-6 place-items-center rounded-full text-xs font-black text-white ${ok?"bg-emerald-600":"bg-amber-600"}`}>{ok?"✓":"!"}</span><strong className="text-sm">{label}</strong></div><span className="text-xs font-bold text-slate-600">{value}</span></div>}
