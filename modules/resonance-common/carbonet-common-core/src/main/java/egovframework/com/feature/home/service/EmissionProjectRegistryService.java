@@ -104,10 +104,61 @@ public class EmissionProjectRegistryService {
         List<Map<String, Object>> projects = jdbc.queryForList("SELECT project_id AS \"id\",project_name AS \"name\",site_name AS \"site\",calculation_period AS \"period\",scope_name AS \"scope\",owner_name AS \"owner\",progress_percent AS \"progress\",current_step AS \"step\",due_date AS \"dueDate\",project_status AS \"status\",reporting_year AS \"reportingYear\",period_start AS \"periodStart\",period_end AS \"periodEnd\",organization_boundary AS \"organizationBoundary\",emission_standard AS \"emissionStandard\",methodology_version AS \"methodologyVersion\",verification_level AS \"verificationLevel\",collection_cycle AS \"collectionCycle\",materiality_threshold AS \"materialityThreshold\",settings_snapshot AS \"settingsSnapshot\" FROM emission_project_registry WHERE project_id=?", id);
         if (projects.isEmpty()) throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다.");
         Map<String, Object> result = new LinkedHashMap<>(projects.get(0));
-        result.put("tasks", jdbc.queryForList("SELECT task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\",target_url AS \"targetUrl\",process_code AS \"processCode\",process_step_code AS \"processStepCode\",actor_code AS \"actorCode\",predecessor_codes AS \"predecessorCodes\",completion_rule AS \"completionRule\",blocked_reason AS \"blockedReason\",started_at AS \"startedAt\",completed_at AS \"completedAt\",completed_by AS \"completedBy\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
+        result.put("tasks", jdbc.queryForList("SELECT task_id AS \"id\",task_code AS \"code\",task_name AS \"name\",step_order AS \"order\",task_status AS \"status\",progress_weight AS \"weight\",due_date AS \"dueDate\",target_url AS \"targetUrl\",process_code AS \"processCode\",process_step_code AS \"processStepCode\",actor_code AS \"actorCode\",assignee_id AS \"assignee\",priority,predecessor_codes AS \"predecessorCodes\",completion_rule AS \"completionRule\",blocked_reason AS \"blockedReason\",started_at AS \"startedAt\",completed_at AS \"completedAt\",completed_by AS \"completedBy\" FROM emission_project_task WHERE project_id=? ORDER BY step_order", id));
         result.put("members", jdbc.queryForList("SELECT member_name AS \"name\",role_code AS \"role\" FROM emission_project_member WHERE project_id=? ORDER BY created_at", id));
         result.put("history", jdbc.queryForList("SELECT event_type AS \"type\",event_description AS \"description\",actor_name AS \"actor\",created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? ORDER BY created_at DESC LIMIT 30", id));
         return result;
+    }
+
+    public Map<String,Object> workspace(String projectId,String tenantId) {
+        String tenant=requiredValue(tenantId,"tenantId");
+        assertTenantAccess(projectId,tenant);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("project",detail(projectId));
+        result.put("metrics",jdbc.queryForMap("SELECT " +
+            "(SELECT count(*) FROM emission_activity_data WHERE project_id=?) AS \"activityCount\"," +
+            "(SELECT count(*) FROM emission_activity_data WHERE project_id=? AND coalesce(trim(evidence_note),'')='') AS \"missingEvidenceCount\"," +
+            "(SELECT count(*) FROM emission_activity_data WHERE project_id=? AND factor_id IS NULL) AS \"unmappedCount\"," +
+            "coalesce((SELECT blocking_count FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=? ORDER BY executed_at DESC,run_id DESC LIMIT 1),0) AS \"blockingCount\"," +
+            "coalesce((SELECT warning_count FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=? ORDER BY executed_at DESC,run_id DESC LIMIT 1),0) AS \"warningCount\"," +
+            "coalesce((SELECT quality_score FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=? ORDER BY executed_at DESC,run_id DESC LIMIT 1),0) AS \"qualityScore\"," +
+            "coalesce((SELECT submit_ready FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=? ORDER BY executed_at DESC,run_id DESC LIMIT 1),false) AS \"submitReady\"," +
+            "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state IN ('SUBMITTED','IN_VERIFICATION','VERIFIED')) AS \"approvalPendingCount\"," +
+            "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state='CORRECTION_REQUIRED') AS \"correctionCount\"," +
+            "coalesce((SELECT total_emission FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1),0) AS \"totalEmission\"," +
+            "(SELECT count(*) FROM emission_project_report WHERE project_id=? AND tenant_id=? AND report_status='FINALIZED') AS \"finalizedReportCount\"",
+            projectId,projectId,projectId,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,projectId,tenant));
+        result.put("recentActivities",jdbc.queryForList("SELECT activity_id AS \"id\",activity_name AS \"name\",category,activity_period AS \"period\",quantity,unit,evidence_note AS \"evidence\",mapping_status AS \"mappingStatus\",updated_at AS \"updatedAt\" FROM emission_activity_data WHERE project_id=? ORDER BY updated_at DESC,activity_id DESC LIMIT 6",projectId));
+        result.put("recentSubmissions",jdbc.queryForList("SELECT submission_id AS \"id\",version_no AS version,submission_state AS state,submitted_actor AS \"submittedActor\",submitted_at AS \"submittedAt\",deadline_date AS \"deadlineDate\" FROM emission_activity_submission WHERE project_id=? AND tenant_id=? ORDER BY version_no DESC LIMIT 5",projectId,tenant));
+        result.put("emissionBreakdown",jdbc.queryForList("SELECT a.category AS label,sum(i.emission_value) AS value FROM emission_calculation_run r JOIN emission_calculation_item i ON i.calculation_id=r.calculation_id JOIN emission_activity_data a ON a.activity_id=i.activity_id WHERE r.calculation_id=(SELECT calculation_id FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1) GROUP BY a.category ORDER BY value DESC",projectId));
+        result.put("messages",jdbc.queryForList("SELECT event_type AS type,event_description AS description,actor_name AS actor,created_at AS \"createdAt\" FROM emission_project_history WHERE project_id=? AND event_type IN ('COMMENT','WORK_REQUEST','ALERT') ORDER BY created_at DESC LIMIT 20",projectId));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> updateWorkspace(String projectId,String tenantId,String actor,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccess(projectId,tenant);
+        Map<String,Object> current=detail(projectId);
+        String owner=text(body.get("owner")); if(owner.isBlank())owner=text(current.get("owner"));
+        String due=text(body.get("dueDate")); if(due.isBlank())due=text(current.get("dueDate"));
+        LocalDate dueDate=LocalDate.parse(due);
+        jdbc.update("UPDATE emission_project_registry SET owner_name=?,due_date=?,updated_at=current_timestamp WHERE project_id=? AND tenant_id=?",owner,dueDate,projectId,tenant);
+        jdbc.update("UPDATE emission_project_task SET due_date=?,updated_at=current_timestamp WHERE project_id=? AND task_status<>'DONE'",dueDate,projectId);
+        jdbc.update("INSERT INTO emission_project_member(project_id,member_name,role_code) SELECT ?,?,'OWNER' WHERE NOT EXISTS (SELECT 1 FROM emission_project_member WHERE project_id=? AND member_name=? AND role_code='OWNER')",projectId,owner,projectId,owner);
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'PROJECT_UPDATED',?,?)",projectId,"Owner: "+owner+", Due: "+due,user);
+        return detail(projectId);
+    }
+
+    @Transactional
+    public Map<String,Object> addWorkspaceMessage(String projectId,String tenantId,String actor,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccess(projectId,tenant);
+        String type=text(body.get("type")).toUpperCase();
+        if(!List.of("COMMENT","WORK_REQUEST","ALERT").contains(type)) throw new IllegalArgumentException("MESSAGE_TYPE_INVALID");
+        String description=required(body,"description");
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,?,?,?)",projectId,type,description,user);
+        return Map.of("success",true,"type",type);
     }
 
     public void assertTenantAccess(String projectId,String tenantId) {

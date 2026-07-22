@@ -136,6 +136,15 @@ public class EmissionProjectRegistryController {
     @GetMapping({"/home/api/emission-projects/{id}/completion","/en/home/api/emission-projects/{id}/completion"})
     public ResponseEntity<?> completion(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.projectCompletion(id,tenant(c)));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
 
+    @GetMapping({"/home/api/emission-projects/{id}/workspace","/en/home/api/emission-projects/{id}/workspace"})
+    public ResponseEntity<?> workspace(@PathVariable String id,HttpServletRequest request){var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.workspace(id,tenant(c)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PatchMapping({"/home/api/emission-projects/{id}/workspace","/en/home/api/emission-projects/{id}/workspace"})
+    public ResponseEntity<?> updateWorkspace(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request){var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.updateWorkspace(id,tenant(c),c.getUserId(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
+    @PostMapping({"/home/api/emission-projects/{id}/workspace/messages","/en/home/api/emission-projects/{id}/workspace/messages"})
+    public ResponseEntity<?> addWorkspaceMessage(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request){var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(service.addWorkspaceMessage(id,tenant(c),c.getUserId(),body));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}
+
     @PostMapping({"/home/api/emission-projects/{id}/processes/sync","/en/home/api/emission-projects/{id}/processes/sync"})
     public ResponseEntity<?> synchronizeProcesses(@PathVariable String id,HttpServletRequest request) {
         var context=currentUserContextService.resolve(request);
