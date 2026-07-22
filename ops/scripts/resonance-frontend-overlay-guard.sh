@@ -191,7 +191,7 @@ verify_local() {
   )
   local pattern
   for pattern in "${required_patterns[@]}"; do
-    if ! find "$OVERLAY_DIR/assets" -maxdepth 1 -type f -name "*${pattern}*.js" | grep -q .; then
+    if ! find "$OVERLAY_DIR/assets" -maxdepth 1 -type f -name "*${pattern}*.js" -print -quit | grep -q .; then
       echo "[guard] missing required monitoring/observability bundle pattern: $pattern" >&2
       exit 15
     fi

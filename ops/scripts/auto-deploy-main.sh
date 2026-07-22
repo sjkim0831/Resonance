@@ -418,8 +418,7 @@ bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
 # rollback material and stale-chunk protection.
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
    && "$PLAN_BACKEND_REQUIRED" != "true" \
-   && "$PLAN_DATABASE_REQUIRED" != "true" \
-   && "$PLAN_INFRASTRUCTURE_REQUIRED" != "true" ]]; then
+   && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
   BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}" \
     bash ops/scripts/resonance-screen-overlay-apply.sh
   health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
