@@ -379,7 +379,8 @@ design_preflight_retried="$(psqlq -c "
 with candidate as (
   select j.job_id from framework_development_job j
   where j.job_type='DESIGN' and j.job_status='FAILED'
-    and j.last_error='professional development contract preflight failed'
+    and j.last_error in ('professional development contract preflight failed',
+      'AI completed without a source or metadata change')
     and exists (
       select 1 from framework_professional_screen_contract c
       where c.process_code=j.process_code and c.step_code=j.step_code
@@ -387,7 +388,7 @@ with candidate as (
     )
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='DESIGN_PREFLIGHT_V2_RETRY'
+      where e.job_id=j.job_id and e.event_type='DESIGN_PREFLIGHT_V3_RETRY'
     )
 ), recovered as (
   update framework_development_job j
@@ -396,7 +397,7 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'DESIGN_PREFLIGHT_V2_RETRY','FAILED','RETRY','project-auto-completion',
+  select job_id,'DESIGN_PREFLIGHT_V3_RETRY','FAILED','RETRY','project-auto-completion',
          jsonb_build_object('reason','governed contract renderer can adopt an identical existing professional design')
   from recovered returning 1
 )
@@ -786,7 +787,7 @@ with candidate as (
     and s.approval_status='APPROVED' and s.generation_status='GENERATED'
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='GENERATED_DIMENSION_V4_RETRY'
+      where e.job_id=j.job_id and e.event_type='GENERATED_DIMENSION_V5_RETRY'
     )
 ), released as (
   update framework_development_job j
@@ -796,7 +797,7 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'GENERATED_DIMENSION_V4_RETRY',job_status,'RETRY','project-auto-completion',
+  select job_id,'GENERATED_DIMENSION_V5_RETRY',job_status,'RETRY','project-auto-completion',
          jsonb_build_object('reason','exact generated step dimension can self-heal shared runtime API and persistence before validation')
   from released returning 1
 )

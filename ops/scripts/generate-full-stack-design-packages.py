@@ -162,7 +162,7 @@ def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
 def apis_for_step(step: dict[str, Any]) -> list[dict[str, Any]]:
     """Normalize legacy references to the selected common command API."""
     apis = copy.deepcopy(step["api_contract"])
-    if not step["screen_contract"] and not step["field_contract"] and step["command_contract"]:
+    if step["command_contract"]:
         for api in apis:
             if not api.get("path") and not api.get("declaredContract"):
                 api["declaredContract"] = "COMMON_PROCESS_EXECUTION_RUNTIME_V1"

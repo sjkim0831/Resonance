@@ -102,7 +102,7 @@ grep -Fq 'APPROVED_GENERATOR_V7_RETRY' "$ROOT/ops/scripts/run-project-auto-compl
 grep -Fq 'exact step package missing' "$RUNNER"
 grep -Fq 'fast-process-package-test.py" "$generated_step_package"' "$RUNNER"
 grep -Fq 'main push rejected after 3 guarded attempts' "$WORKER"
-grep -Fq 'GENERATED_DIMENSION_V4_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'GENERATED_DIMENSION_V5_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'EXACT_GENERATED_DIMENSION_FALLBACK' "$WORKER"
 grep -Fq "j.job_type='FRONTEND_ADMIN' and step.requires_admin_page=false" "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'IDENTICAL_GOVERNED_DESIGN' "$WORKER"
