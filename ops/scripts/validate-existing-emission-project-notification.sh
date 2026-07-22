@@ -4,11 +4,29 @@ set -Eeuo pipefail
 ROOT="${1:?repository root is required}"
 PROCESS="${2:?process code is required}"
 STEP="${3:?step code is required}"
-[[ "$PROCESS" == "EMISSION_PROJECT" ]] || exit 3
-
 service="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java"
 controller="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java"
 [[ -s "$service" && -s "$controller" ]] || exit 1
+
+if [[ "$PROCESS" == "ORGANIZATIONAL_BOUNDARY" ]]; then
+  [[ "$STEP" =~ ^ORGANIZATIONAL_BOUNDARY_S[1-4]$ ]] || exit 3
+  grep -Fq 'notifyOrganizationalBoundaryHandoff(' "$service"
+  grep -Fq 'emission_workflow_notification' "$service"
+  grep -Fq 'readWorkflowNotification(' "$service"
+  grep -Fq 'readTaskNotification(' "$controller"
+  case "$STEP" in
+    ORGANIZATIONAL_BOUNDARY_S1) events=(BOUNDARY_DRAFT_SAVED) ;;
+    ORGANIZATIONAL_BOUNDARY_S2) events=(BOUNDARY_REVIEW_READY) ;;
+    ORGANIZATIONAL_BOUNDARY_S3) events=(BOUNDARY_CONSOLIDATED) ;;
+    ORGANIZATIONAL_BOUNDARY_S4) events=(BOUNDARY_APPROVED BOUNDARY_REJECTED) ;;
+  esac
+  for event in "${events[@]}"; do grep -Fq "\"$event\"" "$service" || { echo "missing organizational-boundary event: $event" >&2; exit 1; }; done
+  runtime="$(CARBONET_ORG_BOUNDARY_PROMOTE_JOBS=false bash "$ROOT/ops/scripts/validate-organizational-boundary-runtime.sh")"
+  jq -cn --arg process "$PROCESS" --arg step "$STEP" --arg runtime "$runtime" --argjson events "${#events[@]}" \
+    '{handled:true,strategy:"EXACT_ORGANIZATIONAL_BOUNDARY_NOTIFICATION",process:$process,step:$step,events:$events,runtime:$runtime}'
+  exit 0
+fi
+[[ "$PROCESS" == "EMISSION_PROJECT" ]] || exit 3
 
 case "$STEP" in
   EMISSION_PROJECT_SETUP)

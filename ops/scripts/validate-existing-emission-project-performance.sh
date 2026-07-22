@@ -4,6 +4,13 @@ set -Eeuo pipefail
 ROOT="${1:?repository root is required}"
 PROCESS="${2:?process code is required}"
 STEP="${3:?step code is required}"
+if [[ "$PROCESS" == "ORGANIZATIONAL_BOUNDARY" ]]; then
+  [[ "$STEP" =~ ^ORGANIZATIONAL_BOUNDARY_S[1-4]$ ]] || exit 3
+  runtime_result="$(CARBONET_ORG_BOUNDARY_PROMOTE_JOBS=false bash "$ROOT/ops/scripts/validate-organizational-boundary-runtime.sh")"
+  jq -cn --arg process "$PROCESS" --arg step "$STEP" --arg runtime "$runtime_result" \
+    '{handled:true,strategy:"EXACT_ORGANIZATIONAL_BOUNDARY_PERFORMANCE",process:$process,step:$step,runtime:$runtime}'
+  exit 0
+fi
 [[ "$PROCESS" == "EMISSION_PROJECT" ]] || exit 3
 
 grep -Eq '^org\.gradle\.(caching|parallel)=true' "$ROOT/gradle.properties"

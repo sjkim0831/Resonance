@@ -5,8 +5,17 @@ ROOT="${1:?repository root is required}"
 PROCESS="${2:?process code is required}"
 STEP="${3:?step code is required}"
 JOB_TYPE="${4:?job type is required}"
-[[ "$PROCESS" == "EMISSION_PROJECT" ]] || exit 3
 [[ "$JOB_TYPE" =~ ^(TEST|ACTOR_TEST|INTEGRATION)$ ]] || exit 3
+
+if [[ "$PROCESS" == "ORGANIZATIONAL_BOUNDARY" ]]; then
+  [[ "$STEP" =~ ^ORGANIZATIONAL_BOUNDARY_S[1-4]$ ]] || exit 3
+  validator="$ROOT/ops/scripts/validate-organizational-boundary-runtime.sh"
+  runtime="$(CARBONET_ORG_BOUNDARY_PROMOTE_JOBS=false bash "$validator")"
+  jq -cn --arg process "$PROCESS" --arg step "$STEP" --arg type "$JOB_TYPE" --arg runtime "$runtime" \
+    '{handled:true,strategy:"EXACT_ORGANIZATIONAL_BOUNDARY_JOURNEY",process:$process,step:$step,jobType:$type,runtime:$runtime}'
+  exit 0
+fi
+[[ "$PROCESS" == "EMISSION_PROJECT" ]] || exit 3
 
 case "$STEP" in
   EMISSION_PROJECT_SETUP|EMISSION_PROJECT_COLLECT|EMISSION_PROJECT_VALIDATE|EMISSION_PROJECT_CORRECT)

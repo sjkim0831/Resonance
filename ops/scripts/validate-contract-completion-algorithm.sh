@@ -12,6 +12,8 @@ RACE_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V
 PAGE_GUARD="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721137000__require_step_page_contract_and_verified_quality.sql"
 DESIGN_FACTORY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260721138000__self_heal_orchestration_step_screen_contracts.sql"
 ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+ORGANIZATIONAL_BOUNDARY_GATE="$ROOT/ops/scripts/validate-organizational-boundary-runtime.sh"
+AUTO_DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
 
 test -s "$MIGRATION"
 grep -Fq 'framework_contract_completion_queue' "$MIGRATION"
@@ -46,5 +48,10 @@ grep -Fq "framework_ensure_step_screen_contract('" "$ROOT/ops/scripts/run-proces
 grep -Fq 'DESIGN_FACTORY_RETRY' "$ORCHESTRATOR"
 grep -Fq 'DESIGN_PREFLIGHT_RETRY' "$ORCHESTRATOR"
 grep -Fq 'POST_DESIGN_STACK_RETRY' "$ORCHESTRATOR"
+test -s "$ORGANIZATIONAL_BOUNDARY_GATE"
+grep -Fq 'CARBONET_ORG_BOUNDARY_PROMOTE_JOBS' "$ORGANIZATIONAL_BOUNDARY_GATE"
+grep -Fq 'framework_professional_design_graph_quality' "$ORGANIZATIONAL_BOUNDARY_GATE"
+grep -Fq 'RUNTIME_ASSURANCE_VERIFIED' "$ORGANIZATIONAL_BOUNDARY_GATE"
+grep -Fq 'validate-organizational-boundary-runtime.sh' "$AUTO_DEPLOY"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
