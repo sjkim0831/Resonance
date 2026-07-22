@@ -18,7 +18,7 @@ export function EmissionDataRequestFunctionalPage(){
  const api=(path:string)=>buildLocalizedPath(`/home/api${path}`,`/en/home/api${path}`);
  const canManage=payload.actorRoles?.includes("COMPANY_MANAGER");
  const summary=useMemo(()=>({open:payload.items.filter(i=>!["ACCEPTED","CLOSED","CANCELLED"].includes(i.status)).length,review:payload.items.filter(i=>i.status==="SUBMITTED").length,correction:payload.items.filter(i=>i.status==="CORRECTION_REQUIRED").length}),[payload.items]);
- useEffect(()=>{json(api("/emission-projects?size=100")).then(v=>{setProjects(v.items||[]);if(!projectId&&v.items?.[0])setProjectId(v.items[0].id)}).catch(e=>setError(e.message))},[]);
+ useEffect(()=>{json(api("/emission-projects?page=1&size=100")).then(v=>{setProjects(v.items||[]);if(!projectId&&v.items?.[0])setProjectId(v.items[0].id)}).catch(e=>setError(e.message))},[]);
  const load=()=>projectId?json(api(`/emission-projects/${projectId}/activity-requests`)).then(v=>{setPayload(v);if(!form.assignee&&v.dataOwners?.[0])setForm(f=>({...f,assignee:v.dataOwners[0].id}))}).catch(e=>setError(e.message)):Promise.resolve();
  useEffect(()=>{void load()},[projectId]);
  const submit=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setError("");setMessage("");try{await json(api(`/emission-projects/${projectId}/activity-requests`),{method:"POST",body:JSON.stringify(form)});setMessage("담당자에게 제출 요청과 마감 알림을 전송했습니다.");await load()}catch(x){setError((x as Error).message)}finally{setBusy(false)}};

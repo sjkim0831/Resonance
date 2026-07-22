@@ -22,11 +22,17 @@ public class EmissionProjectRegistryController {
     public ResponseEntity<?> list(@RequestParam(defaultValue = "") String keyword,
                                     @RequestParam(defaultValue = "") String status,
                                     @RequestParam(defaultValue = "") String site,
-                                    @RequestParam(defaultValue = "1") int page,HttpServletRequest request) {
+                                    @RequestParam(name="page",required=false) String page,
+                                    @RequestParam(name="size",required=false) String size,HttpServletRequest request) {
         var context=currentUserContextService.resolve(request);
         if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
-        try { return ResponseEntity.ok(service.listForActor(tenant(context),context.getUserId(),context.isWebmaster(),keyword,status,site,page)); }
+        try { return ResponseEntity.ok(service.listForActor(tenant(context),context.getUserId(),context.isWebmaster(),keyword,status,site,positiveInt(page,1,1_000_000),positiveInt(size,10,100))); }
         catch(SecurityException e) { return ResponseEntity.status(403).body(Map.of("message",e.getMessage())); }
+    }
+
+    private int positiveInt(String value,int fallback,int maximum) {
+        try { return Math.min(maximum,Math.max(1,Integer.parseInt(value==null?"":value.trim()))); }
+        catch(NumberFormatException ignored) { return fallback; }
     }
 
     @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})

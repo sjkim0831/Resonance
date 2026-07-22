@@ -15,7 +15,7 @@ const PAGE = {
 
 function WorkflowPage({pageKey}:{pageKey:PageKey}){
   const en=isEnglish(), meta=PAGE[pageKey];
-  const projects=useAsyncValue<ProjectPayload>(async()=>{const r=await fetch(buildLocalizedPath("/home/api/emission-projects?size=100","/en/home/api/emission-projects?size=100"),{credentials:"include",headers:{Accept:"application/json"}});if(!r.ok)throw new Error("프로젝트 목록을 불러오지 못했습니다.");return r.json()},[en],{initialValue:{items:[],total:0}});
+  const projects=useAsyncValue<ProjectPayload>(async()=>{const r=await fetch(buildLocalizedPath("/home/api/emission-projects?page=1&size=100","/en/home/api/emission-projects?page=1&size=100"),{credentials:"include",headers:{Accept:"application/json"}});if(!r.ok)throw new Error("프로젝트 목록을 불러오지 못했습니다.");return r.json()},[en],{initialValue:{items:[],total:0}});
   const [keyword,setKeyword]=useState("");
   const rows=useMemo(()=>projects.value?.items.filter(p=>`${p.name} ${p.site} ${p.owner} ${p.id}`.toLowerCase().includes(keyword.toLowerCase()))||[],[projects.value,keyword]);
   const href=(path:string,id:string)=>buildLocalizedPath(`${path}${path.includes("?")?"&":"?"}projectId=${encodeURIComponent(id)}`,`/en${path}${path.includes("?")?"&":"?"}projectId=${encodeURIComponent(id)}`);

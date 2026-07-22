@@ -41,6 +41,8 @@ jq -e --arg user "$LOGIN_USER" '.authenticated == true and (.userId | ascii_down
   || { echo "[activity-runtime] FAIL authenticated session identity mismatch" >&2; exit 1; }
 
 api_paths=(
+  "/home/api/emission-projects?size=100"
+  "/home/api/emission-projects?page=&size=100"
   "/home/api/emission-projects/$project_id"
   "/home/api/emission-projects/$project_id/activities"
   "/home/api/emission-projects/$project_id/activity-requests"
