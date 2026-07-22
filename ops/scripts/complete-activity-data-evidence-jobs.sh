@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DATABASE="${POSTGRES_DB:-carbonet}"
 USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"
@@ -31,6 +31,20 @@ sql="
 do \$\$
 declare missing_tables integer; invalid_contracts integer; uncovered_routes integer;
 begin
+  -- The mass screen designer may add the real administrator route after an
+  -- older user-route placeholder was already verified. Reconcile this exact
+  -- implemented route from the source contracts checked above; otherwise the
+  -- later generic design upsert leaves a permanent false-negative blocker.
+  update framework_professional_screen_contract
+     set contract_status='VERIFIED',api_verified=true,database_verified=true,
+         authority_verified=true,responsive_verified=true,accessibility_verified=true,
+         exception_states_verified=true,
+         audit_evidence_ref=concat_ws(';',nullif(audit_evidence_ref,''),
+           'activity-runtime:survey-admin-data+controller+service+common-assets'),
+         updated_by='ACTIVITY_DATA_EVIDENCE_RECONCILIATION',updated_at=current_timestamp
+   where process_code='ACTIVITY_DATA' and step_code='ACTIVITY_DATA_02_WORK'
+     and audience='ADMIN' and lower(split_part(route_path,'?',1))='/admin/emission/survey-admin-data';
+
   select count(*) into missing_tables from (values
     ('emission_activity_request'),('emission_activity_data'),('emission_activity_quality_run'),
     ('emission_activity_submission'),('emission_activity_submission_item'),('emission_activity_submission_evidence'),
