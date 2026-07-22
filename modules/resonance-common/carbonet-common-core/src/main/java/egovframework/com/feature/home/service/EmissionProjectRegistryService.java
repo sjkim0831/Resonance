@@ -155,9 +155,11 @@ public class EmissionProjectRegistryService {
         int verified=((Number)metrics.get("verifiedCount")).intValue();
         int approved=((Number)metrics.get("approvedCount")).intValue();
         int reports=((Number)metrics.get("finalizedReportCount")).intValue();
-        if("ACTIVITY_DATA".equals(code)&&("DONE".equals(effective)||"IN_PROGRESS".equals(effective))) {
-            if(activities==0){effective="READY";reason="ACTIVITY_DATA_REQUIRED";}
-            else if(missing>0){effective="IN_PROGRESS";reason="EVIDENCE_REQUIRED:"+missing;}
+        if("ACTIVITY_DATA".equals(code)) {
+            // A user-started task must remain visibly in progress even before the first row is saved.
+            // Only stale DONE data is reopened when its actual completion evidence disappeared.
+            if("DONE".equals(effective)&&activities==0){effective="READY";reason="ACTIVITY_DATA_REQUIRED";}
+            else if(activities>0&&missing>0){effective="IN_PROGRESS";reason="EVIDENCE_REQUIRED:"+missing;}
         } else if("CALCULATION".equals(code)) {
             if(activities==0){effective="BLOCKED";reason="ACTIVITY_DATA_REQUIRED";}
             else if(unmapped>0){effective="BLOCKED";reason="FACTOR_MAPPING_REQUIRED:"+unmapped;}
@@ -221,7 +223,7 @@ public class EmissionProjectRegistryService {
         result.put("project", detail(projectId));
         result.put("items",jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND (?='' OR a.activity_name ILIKE ? OR a.category ILIKE ?) ORDER BY a.activity_period DESC,a.activity_id DESC",projectId,term,like,like));
         result.put("factors",jdbc.queryForList("SELECT factor_id AS \"id\",factor_name AS \"name\",category,unit,factor_value AS \"value\",source_name AS \"source\" FROM emission_factor_reference ORDER BY category,factor_name"));
-        result.put("collectionHealth",jdbc.queryForMap("SELECT collection_health AS \"status\",activity_count AS \"activityCount\",missing_evidence_count AS \"missingEvidenceCount\",invalid_value_count AS \"invalidValueCount\",submitted_version_count AS \"submittedVersionCount\",unsealed_submission_count AS \"unsealedSubmissionCount\" FROM emission_activity_collection_health WHERE project_id=?",projectId));
+        result.put("collectionHealth",jdbc.queryForMap("SELECT h.collection_health AS \"status\",h.activity_count AS \"activityCount\",h.missing_evidence_count AS \"missingEvidenceCount\",h.invalid_value_count AS \"invalidValueCount\",h.submitted_version_count AS \"submittedVersionCount\",h.unsealed_submission_count AS \"unsealedSubmissionCount\",(SELECT count(*) FROM emission_activity_request r WHERE r.project_id=h.project_id AND r.tenant_id=h.tenant_id AND r.request_status='ACCEPTED') AS \"acceptedRequestCount\",(SELECT count(*) FROM emission_activity_request r WHERE r.project_id=h.project_id AND r.tenant_id=h.tenant_id AND r.request_status IN ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')) AS \"pendingRequestCount\" FROM emission_activity_collection_health h WHERE h.project_id=?",projectId));
         return result;
     }
 
