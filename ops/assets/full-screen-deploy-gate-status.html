@@ -18,6 +18,8 @@
       <article class="card"><div class="label">전체 URL</div><div id="routes" class="value">-</div></article>
       <article class="card"><div class="label">통과 URL</div><div id="passed" class="value">-</div></article>
       <article class="card"><div class="label">실패 URL</div><div id="failed" class="value">-</div></article>
+      <article class="card"><div class="label">평균 품질 점수</div><div id="quality" class="value">-</div></article>
+      <article class="card"><div class="label">개발 우선 큐</div><div id="queue" class="value">-</div></article>
     </section>
     <section class="meta">60초마다 자동 갱신됩니다. 실패 시 배포 성공 마커를 차단하고 직전 런타임 이미지, 웹 설정, 프론트 오버레이를 복원합니다.</section>
   </main>
@@ -28,6 +30,10 @@
       document.querySelector('#completed').textContent=new Date(s.completedAt).toLocaleString('ko-KR');
       for(const [id,key] of Object.entries({contracts:'contractCount',routes:'routeCount',passed:'passedRouteCount',failed:'failedRouteCount'})) document.querySelector('#'+id).textContent=(s[key]??0).toLocaleString('ko-KR');
     }).catch(e=>{document.querySelector('#headline').textContent='상태 데이터 조회 실패';document.querySelector('#completed').textContent=e.message});
+    fetch('./full-screen-quality-report.json',{cache:'no-store'}).then(r=>r.json()).then(q=>{
+      document.querySelector('#quality').textContent=(q.summary?.averageScore??0).toLocaleString('ko-KR');
+      const counts=q.summary?.priorityCounts||{}; document.querySelector('#queue').textContent=((counts.P0||0)+(counts.P1||0)+(counts.P2||0)+(counts.P3||0)).toLocaleString('ko-KR');
+    }).catch(()=>{});
   </script>
 </body>
 </html>

@@ -16,6 +16,7 @@ mkdir -p "$result_dir"
 rm -f "$result_dir"/shard-*.json
 
 bash "$root_dir/scripts/export-full-screen-smoke-manifest.sh"
+bash "$root_dir/scripts/export-full-screen-quality-context.sh"
 set +e
 PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
   npx playwright test e2e/full-screen-smoke.spec.ts \
@@ -28,6 +29,17 @@ set +e
 node "$root_dir/scripts/finalize-full-screen-smoke.mjs"
 finalize_status=$?
 set -e
-if [[ "$test_status" -ne 0 || "$finalize_status" -ne 0 ]]; then
+
+set +e
+node "$root_dir/scripts/build-full-screen-quality-queue.mjs"
+quality_status=$?
+set -e
+if [[ "$quality_status" -eq 0 ]]; then
+  publish_dir="${FULL_SCREEN_QUALITY_PUBLISH_DIR:-$root_dir/../src/main/resources/static/react-app}"
+  mkdir -p "$publish_dir"
+  cp "$cache_dir/quality-report.json" "$publish_dir/full-screen-quality-report.json"
+  cp "$cache_dir/development-priority-queue.json" "$publish_dir/full-screen-development-priority-queue.json"
+fi
+if [[ "$test_status" -ne 0 || "$finalize_status" -ne 0 || "$quality_status" -ne 0 ]]; then
   exit 1
 fi

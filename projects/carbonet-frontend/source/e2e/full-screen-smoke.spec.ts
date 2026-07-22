@@ -29,6 +29,14 @@ type RouteResult = {
   bodyTextLength: number;
   overflowX: boolean;
   loginRedirect: boolean;
+  mainLandmarkCount: number;
+  headingCount: number;
+  unlabeledFormControlCount: number;
+  imageMissingAltCount: number;
+  consoleErrorCount: number;
+  pageErrorCount: number;
+  apiFailureCount: number;
+  apiFailures: string[];
   errors: string[];
   durationMs: number;
 };
@@ -65,12 +73,21 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
   const startedAt = Date.now();
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
+  const apiFailures: string[] = [];
   const onConsole = (message: ConsoleMessage) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   };
   const onPageError = (error: Error) => pageErrors.push(error.message);
+  const onResponse = (response: { status(): number; url(): string }) => {
+    const status = response.status();
+    const url = response.url();
+    if (status >= 400 && new URL(url).origin === new URL(baseUrl).origin && /\/api\/|\/actuator\//.test(new URL(url).pathname)) {
+      apiFailures.push(`${status} ${url}`);
+    }
+  };
   page.on("console", onConsole);
   page.on("pageerror", onPageError);
+  page.on("response", onResponse);
   let status = 0;
   let navigationError = "";
   try {
@@ -93,7 +110,7 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
     navigationError = error instanceof Error ? error.message : String(error);
   }
 
-  let metrics: { finalUrl: string; bodyTextLength: number; rootChildren: number; overflowX: boolean; loginRedirect: boolean; bootstrapStuck: boolean } | null = null;
+  let metrics: { finalUrl: string; bodyTextLength: number; rootChildren: number; overflowX: boolean; loginRedirect: boolean; bootstrapStuck: boolean; mainLandmarkCount: number; headingCount: number; unlabeledFormControlCount: number; imageMissingAltCount: number } | null = null;
   for (let metricAttempt = 0; metricAttempt < 3 && !metrics; metricAttempt += 1) {
     try {
       metrics = await page.evaluate(() => {
@@ -102,13 +119,27 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
         const text = (body?.innerText || "").trim();
         const width = Math.max(document.documentElement.scrollWidth, body?.scrollWidth || 0);
         const loginRedirect = /\/admin\/login\/loginView$/.test(location.pathname);
+        const visible = (element: Element) => {
+          const style = getComputedStyle(element);
+          return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+        };
+        const controls = [...document.querySelectorAll("input:not([type=hidden]),select,textarea")].filter(visible);
+        const unlabeledFormControlCount = controls.filter((control) => {
+          const id = control.getAttribute("id");
+          return !control.getAttribute("aria-label") && !control.getAttribute("aria-labelledby") &&
+            !(id && document.querySelector(`label[for="${CSS.escape(id)}"]`)) && !control.closest("label");
+        }).length;
         return {
           finalUrl: location.href,
           bodyTextLength: text.length,
           rootChildren: root?.children.length ?? -1,
           overflowX: width > document.documentElement.clientWidth + 2,
           loginRedirect,
-          bootstrapStuck: /Bootstrap loaded\. Waiting for React app mount/.test(text)
+          bootstrapStuck: /Bootstrap loaded\. Waiting for React app mount/.test(text),
+          mainLandmarkCount: document.querySelectorAll("main,[role=main]").length,
+          headingCount: document.querySelectorAll("h1,h2,[role=heading]").length,
+          unlabeledFormControlCount,
+          imageMissingAltCount: [...document.querySelectorAll("img")].filter((image) => visible(image) && !image.hasAttribute("alt")).length
         };
       });
     } catch (error) {
@@ -123,10 +154,15 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
     rootChildren: 0,
     overflowX: false,
     loginRedirect: /\/admin\/login\/loginView$/.test(new URL(page.url()).pathname),
-    bootstrapStuck: false
+    bootstrapStuck: false,
+    mainLandmarkCount: 0,
+    headingCount: 0,
+    unlabeledFormControlCount: 0,
+    imageMissingAltCount: 0
   };
   page.off("console", onConsole);
   page.off("pageerror", onPageError);
+  page.off("response", onResponse);
 
   const errors = [navigationError, ...pageErrors, ...consoleErrors].filter(Boolean);
   if (status >= 400) errors.push(`HTTP_${status}`);
@@ -150,6 +186,14 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
     bodyTextLength: metrics.bodyTextLength,
     overflowX: metrics.overflowX,
     loginRedirect: metrics.loginRedirect,
+    mainLandmarkCount: metrics.mainLandmarkCount,
+    headingCount: metrics.headingCount,
+    unlabeledFormControlCount: metrics.unlabeledFormControlCount,
+    imageMissingAltCount: metrics.imageMissingAltCount,
+    consoleErrorCount: consoleErrors.length,
+    pageErrorCount: pageErrors.length,
+    apiFailureCount: apiFailures.length,
+    apiFailures: [...new Set(apiFailures)].slice(0, 20),
     errors: [...new Set(errors)].map((error) => String(error).slice(0, 500)),
     durationMs: Date.now() - startedAt
   } satisfies RouteResult;
