@@ -4,7 +4,7 @@ import { buildLocalizedPath } from "../../lib/navigation/runtime";
 type Project={id:string;name:string;site:string;step:string};
 type RequestItem={id:number;title:string;detail:string;requestedItems:string;requester:string;assignee:string;dueDate:string;status:string;submissionId?:number;correctionReason?:string;correctionDueDate?:string;correctionCount?:number;acceptedBy?:string;acceptedAt?:string};
 type EventItem={id:number;requestId:number;code:string;previousStatus?:string;newStatus:string;actor:string;note?:string;createdAt:string};
-type Payload={items:RequestItem[];dataOwners:{id:string}[];actorRoles:string[];events:EventItem[]};
+type Payload={items:RequestItem[];dataOwners:{id:string}[];actorRoles:string[];events:EventItem[];canManage:boolean};
 
 const statusLabel:Record<string,string>={REQUESTED:"요청",IN_PROGRESS:"수집 중",SUBMITTED:"접수 검토",CORRECTION_REQUIRED:"보완 필요",ACCEPTED:"접수 완료",CLOSED:"종료",CANCELLED:"취소"};
 async function json(url:string,init?:RequestInit){const response=await fetch(url,{credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json",...(init?.headers||{})},...init});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.message||"요청 처리에 실패했습니다.");return body;}
@@ -12,11 +12,11 @@ async function json(url:string,init?:RequestInit){const response=await fetch(url
 export function EmissionDataRequestFunctionalPage(){
  const params=new URLSearchParams(location.search);
  const [projects,setProjects]=useState<Project[]>([]),[projectId,setProjectId]=useState(params.get("projectId")||"");
- const [payload,setPayload]=useState<Payload>({items:[],dataOwners:[],actorRoles:[],events:[]}),[error,setError]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
+ const [payload,setPayload]=useState<Payload>({items:[],dataOwners:[],actorRoles:[],events:[],canManage:false}),[error,setError]=useState(""),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  const [form,setForm]=useState({title:"월별 활동자료 및 증빙 제출 요청",detail:"산정기간의 활동자료를 입력하고 원본 증빙을 함께 제출해 주세요.",requestedItems:"연료 사용량, 전력 사용량, 생산량, 계량기·고지서 증빙",assignee:"",dueDate:""});
  const [correction,setCorrection]=useState<Record<number,{reason:string;dueDate:string}>>({});
  const api=(path:string)=>buildLocalizedPath(`/home/api${path}`,`/en/home/api${path}`);
- const canManage=payload.actorRoles?.includes("COMPANY_MANAGER");
+ const canManage=payload.canManage||payload.actorRoles?.includes("COMPANY_MANAGER");
  const summary=useMemo(()=>({open:payload.items.filter(i=>!["ACCEPTED","CLOSED","CANCELLED"].includes(i.status)).length,review:payload.items.filter(i=>i.status==="SUBMITTED").length,correction:payload.items.filter(i=>i.status==="CORRECTION_REQUIRED").length}),[payload.items]);
  useEffect(()=>{json(api("/emission-projects?page=1&size=100")).then(v=>{setProjects(v.items||[]);if(!projectId&&v.items?.[0])setProjectId(v.items[0].id)}).catch(e=>setError(e.message))},[]);
  const load=()=>projectId?json(api(`/emission-projects/${projectId}/activity-requests`)).then(v=>{setPayload(v);if(!form.assignee&&v.dataOwners?.[0])setForm(f=>({...f,assignee:v.dataOwners[0].id}))}).catch(e=>setError(e.message)):Promise.resolve();
