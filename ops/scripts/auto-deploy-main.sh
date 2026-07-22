@@ -371,6 +371,11 @@ fi
 rm -rf "$merge_overlay_backup"
 bash ops/scripts/validate-deterministic-development-policy.sh
 
+# Capture the last known-good runtime, web proxy and frontend overlay before
+# any deployable artifact changes. The post-deploy screen gate restores this
+# snapshot automatically if a governed route becomes blank or unavailable.
+bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
+
 # A frontend-only commit is compiled directly into the already mounted,
 # guarded React overlay. The overlay script verifies the complete hashed asset
 # closure and the HTTP response before the deployment marker advances. This
@@ -388,6 +393,8 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
     exit 17
   fi
   bash ops/scripts/validate-common-design-assets.sh
+  FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+    bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   bash ops/scripts/sync-unified-asset-catalog.sh
   bash ops/scripts/validate-e4b-selectable-assets.sh
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
@@ -435,6 +442,8 @@ bash ops/scripts/validate-common-design-assets.sh
 bash ops/scripts/validate-project-auto-completion.sh
 bash ops/scripts/validate-contract-completion-algorithm.sh
 bash ops/scripts/validate-unified-work-design-runtime.sh
+FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+  bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true
