@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_EXPORT",
+      "package": "MONITORING_ANALYSIS__MONITORING_EXPORT.json",
+      "packageHash": "36d2ae99d217b71083990ca7f51531124234688cd2c0be6dd1843e68623f7152",
+      "pages": 1
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_REVIEW",
+      "package": "MONITORING_ANALYSIS__MONITORING_REVIEW.json",
+      "packageHash": "be45160a74a7fe345ab8c5b9f9bc1b884cd22b8f26a4eeb3031cd3c33f9eb93f",
+      "pages": 1
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_SCOPE",
+      "package": "MONITORING_ANALYSIS__MONITORING_SCOPE.json",
+      "packageHash": "04ae9bf9e69a843c207d2906a2d2531c517350c32468b46949ced9f7f430dc0b",
+      "pages": 1
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_SHARE",
+      "package": "MONITORING_ANALYSIS__MONITORING_SHARE.json",
+      "packageHash": "47848516f8b438f23e05440dd30039ebe7e67b121befdfcb27ee1b90c76b58dc",
+      "pages": 1
+    }
+  ],
+  "manifestHash": "29219aa9c5b43ed6d3ff08d1ab2a0fa98329934920ca76904e8bc4295c0e9608"
+}

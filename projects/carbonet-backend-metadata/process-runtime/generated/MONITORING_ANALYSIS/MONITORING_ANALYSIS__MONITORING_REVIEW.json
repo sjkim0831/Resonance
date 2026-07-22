@@ -1,0 +1,375 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "MONITORING_ANALYSIS",
+    "name": "모니터링·분석",
+    "domain": "MONITORING",
+    "workType": "MONITORING",
+    "goal": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다."
+  },
+  "step": {
+    "code": "MONITORING_REVIEW",
+    "version": 1,
+    "actor": {
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다.",
+      "slaHours": 720,
+      "stepName": "지표·품질·이상치 분석",
+      "riskLevel": "MEDIUM",
+      "domainCode": "MONITORING",
+      "processName": "모니터링·분석",
+      "requirement": "",
+      "completionRule": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다.",
+      "regulationRefs": "데이터 품질·정보공개·감사 기준"
+    },
+    "transition": {
+      "toState": "ANALYZED",
+      "stepType": "TASK",
+      "fromState": "SCOPED",
+      "stepOrder": 2,
+      "commandCode": "ANALYZE",
+      "auditRequired": true,
+      "completionRule": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "MONITORING_REVIEW",
+      "actorCode": "VERIFIER",
+      "fromState": "SCOPED",
+      "processCode": "MONITORING_ANALYSIS"
+    },
+    "output": {
+      "toState": "ANALYZED",
+      "completionRule": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다.",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "지표·품질·이상치 분석",
+      "purpose": "",
+      "stepCode": "MONITORING_REVIEW",
+      "userPath": "/monitoring/statistics",
+      "actorCode": "VERIFIER",
+      "adminPath": "/admin/emission/validation-rule",
+      "stepOrder": 2,
+      "processCode": "MONITORING_ANALYSIS",
+      "nextStepCode": "MONITORING_EXPORT",
+      "workTypeCode": "MONITORING",
+      "entryCondition": "SCOPED",
+      "completionCondition": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "MONITORING_REVIEW_ADMIN_WORKSPACE",
+        "route": "/admin/emission/validation-rule",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_ORCHESTRATION",
+        "title": "지표·품질·이상치 분석",
+        "purpose": "",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [],
+        "commands": [
+          {
+            "actorCode": "VERIFIER",
+            "entryState": "SCOPED",
+            "commandCode": "ANALYZE",
+            "resultState": "ANALYZED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "loading",
+            "empty",
+            "authority-denied",
+            "design-blocked",
+            "dependency-blocked",
+            "conflict",
+            "server-error"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered steps",
+          "tablet": "two-column summary",
+          "desktop": "six-metric control board",
+          "overflow": "wrap; local table scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "landmarks": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "GET /home/api/monitoring"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "VERIFIER",
+        "entryState": "SCOPED",
+        "commandCode": "ANALYZE",
+        "resultState": "ANALYZED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "MONITORING_EXPORT",
+            "actorCode": "COMPANY_MANAGER",
+            "fromState": "ANALYZED",
+            "processCode": "MONITORING_ANALYSIS"
+          },
+          "fromOutput": {
+            "toState": "ANALYZED",
+            "completionRule": "지표 근거와 품질·이상치가 원본 데이터까지 추적된다.",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "MONITORING_EXPORT",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "COMPANY_MANAGER",
+          "fromActor": "VERIFIER",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "MONITORING_ANALYSIS"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "모니터링·분석 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "55a5b5cd71f3aee16eb58f4e0694cda8",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "be45160a74a7fe345ab8c5b9f9bc1b884cd22b8f26a4eeb3031cd3c33f9eb93f"
+}

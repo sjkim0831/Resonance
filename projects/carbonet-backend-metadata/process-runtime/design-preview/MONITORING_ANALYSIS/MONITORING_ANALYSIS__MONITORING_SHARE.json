@@ -1,0 +1,368 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "MONITORING_ANALYSIS",
+    "name": "모니터링·분석",
+    "domain": "MONITORING",
+    "workType": "MONITORING",
+    "goal": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다."
+  },
+  "step": {
+    "code": "MONITORING_SHARE",
+    "version": 1,
+    "actor": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "배출·LCA·감축 데이터를 품질과 목표 관점에서 분석하고 공유한다.",
+      "slaHours": 720,
+      "stepName": "이해관계자 공유",
+      "riskLevel": "MEDIUM",
+      "domainCode": "MONITORING",
+      "processName": "모니터링·분석",
+      "requirement": "",
+      "completionRule": "승인된 대상과 기간에만 분석 결과가 공유된다.",
+      "regulationRefs": "데이터 품질·정보공개·감사 기준"
+    },
+    "transition": {
+      "toState": "COMPLETED",
+      "stepType": "TASK",
+      "fromState": "EXPORTED",
+      "stepOrder": 4,
+      "commandCode": "SHARE",
+      "auditRequired": true,
+      "completionRule": "승인된 대상과 기간에만 분석 결과가 공유된다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "MONITORING_SHARE",
+      "actorCode": "APPROVER",
+      "fromState": "EXPORTED",
+      "processCode": "MONITORING_ANALYSIS"
+    },
+    "output": {
+      "toState": "COMPLETED",
+      "completionRule": "승인된 대상과 기간에만 분석 결과가 공유된다.",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "이해관계자 공유",
+      "purpose": "",
+      "stepCode": "MONITORING_SHARE",
+      "userPath": "/monitoring/share",
+      "actorCode": "APPROVER",
+      "adminPath": "/admin/permissions",
+      "stepOrder": 4,
+      "processCode": "MONITORING_ANALYSIS",
+      "nextStepCode": null,
+      "workTypeCode": "MONITORING",
+      "entryCondition": "EXPORTED",
+      "completionCondition": "승인된 대상과 기간에만 분석 결과가 공유된다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "MONITORING_SHARE_ADMIN_WORKSPACE",
+        "route": "/admin/permissions",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_ORCHESTRATION",
+        "title": "이해관계자 공유",
+        "purpose": "",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [],
+        "commands": [
+          {
+            "actorCode": "APPROVER",
+            "entryState": "EXPORTED",
+            "commandCode": "SHARE",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "loading",
+            "empty",
+            "authority-denied",
+            "design-blocked",
+            "dependency-blocked",
+            "conflict",
+            "server-error"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered steps",
+          "tablet": "two-column summary",
+          "desktop": "six-metric control board",
+          "overflow": "wrap; local table scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "landmarks": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "POST /home/api/monitoring/share"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "APPROVER",
+        "entryState": "EXPORTED",
+        "commandCode": "SHARE",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "PROCESS",
+        "failure": {
+          "onInvalid": "DESIGN_REVIEW_REQUIRED",
+          "onInapplicable": "SKIP_WITH_AUDIT",
+          "onMissingNextProcess": "WORKFLOW_COMPLETE"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "required",
+            "projectId": "contextual",
+            "idempotencyKey": "required",
+            "businessPayload": "required"
+          },
+          "fromOutput": {
+            "toState": "COMPLETED",
+            "completionRule": "승인된 대상과 기간에만 분석 결과가 공유된다.",
+            "evidenceRequired": true
+          },
+          "completionCondition": "분석 결과·이상치·내보내기 이력이 감사 가능하게 저장된다."
+        },
+        "integrity": {
+          "handoffAudit": true,
+          "immutableOutputVersion": true,
+          "completedProcessRequired": true
+        },
+        "toStepCode": "INTEGRATED_MONITORING_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "recordId",
+          "completedProcessCode",
+          "outputVersion"
+        ],
+        "authorization": {
+          "toActor": "DATA_ANALYST",
+          "fromActor": "APPROVER",
+          "segregationChecked": true,
+          "projectApplicabilityRequired": true
+        },
+        "toProcessCode": "INTEGRATED_MONITORING"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "모니터링·분석 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "모니터링·분석 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "MONITORING_ANALYSIS"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "MONITORING_ANALYSIS_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "5a0f9196497b17492916e006e7e57263",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "47848516f8b438f23e05440dd30039ebe7e67b121befdfcb27ee1b90c76b58dc"
+}
