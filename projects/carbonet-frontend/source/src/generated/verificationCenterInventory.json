@@ -20,7 +20,7 @@
     "uniqueRouteCount": 13,
     "functionCount": 59,
     "uniqueFunctionCount": 45,
-    "frontendE2eCount": 7,
+    "frontendE2eCount": 8,
     "backendTestCount": 0,
     "highRiskPageCount": 26,
     "highRiskApiCount": 1,
@@ -2782,6 +2782,7 @@
   ],
   "tests": {
     "frontendE2e": [
+      "source/e2e/admin-access-recovery.spec.ts",
       "source/e2e/emission-data-history.spec.ts",
       "source/e2e/emission-result-detail.spec.ts",
       "source/e2e/emission-result-list.spec.ts",
