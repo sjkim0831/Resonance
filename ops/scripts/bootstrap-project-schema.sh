@@ -6,7 +6,7 @@ set -euo pipefail
 
 PROJECT_ID="${1:-}"
 MODE="${2:---dry-run}"
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
 SOURCE_DATABASE="${SOURCE_DATABASE:-carbonet}"
 MANIFEST="$ROOT/projects/$PROJECT_ID/manifest.json"
@@ -39,8 +39,6 @@ PY
 )
 database="${binding[0]}"
 role="${binding[1]}"
-resource_id="$(tr '[:upper:]_' '[:lower:]-' <<<"$PROJECT_ID" | sed 's/[^a-z0-9-]//g')"
-secret="$resource_id-runtime-secret"
 
 echo "projectId=$PROJECT_ID source=$SOURCE_DATABASE target=$database role=$role mode=$MODE"
 if [[ "$MODE" == "--dry-run" ]]; then
@@ -57,28 +55,56 @@ for pod in $(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name); 
   fi
 done
 [[ -n "$leader" ]] || { echo "Patroni leader not found." >&2; exit 1; }
-password="$(kubectl -n "$NAMESPACE" get secret "$secret" -o jsonpath='{.data.DB_PASSWORD}' | base64 -d)"
 
-table_count="$(kubectl -n "$NAMESPACE" exec "$leader" -- env PGPASSWORD="$password" \
-  psql -h 127.0.0.1 -U "$role" -d "$database" -Atc \
-  "select count(*) from pg_tables where schemaname = 'public';")"
+table_count="$(kubectl -n "$NAMESPACE" exec "$leader" -- \
+  psql -h 127.0.0.1 -U postgres -d "$database" -X -Atc \
+    "select count(*) from pg_tables where schemaname = 'public';")"
 if (( table_count > 0 )); then
-  marker="$(kubectl -n "$NAMESPACE" exec "$leader" -- env PGPASSWORD="$password" \
-    psql -h 127.0.0.1 -U "$role" -d "$database" -Atc \
-    "select to_regclass('public.resonance_project_schema_bootstrap') is not null;" || true)"
+  marker="$(kubectl -n "$NAMESPACE" exec "$leader" -- \
+    psql -h 127.0.0.1 -U postgres -d "$database" -X -Atc \
+      "select to_regclass('public.resonance_project_schema_bootstrap') is not null;" || true)"
   [[ "$marker" == "t" ]] && { echo "Project schema already bootstrapped."; exit 0; }
   echo "Target database is not empty and has no Resonance bootstrap marker." >&2
   exit 1
 fi
 
-kubectl -n "$NAMESPACE" exec "$leader" -- \
-  pg_dump -h 127.0.0.1 -U postgres -d "$SOURCE_DATABASE" \
-    --schema-only --clean --if-exists --no-owner --no-privileges --schema=public \
-  | kubectl -n "$NAMESPACE" exec -i "$leader" -- env PGPASSWORD="$password" \
-      psql -h 127.0.0.1 -U "$role" -d "$database" -v ON_ERROR_STOP=1 >/dev/null
+# A schema-only dump omits extension-owned objects. Install source extensions
+# first so operator classes such as pg_trgm.gin_trgm_ops exist for indexes.
+while IFS= read -r extension; do
+  [[ -n "$extension" ]] || continue
+  kubectl -n "$NAMESPACE" exec -i "$leader" -- \
+    psql -h 127.0.0.1 -U postgres -d "$database" -X -v ON_ERROR_STOP=1 \
+      -v extension_name="$extension" <<'SQL' >/dev/null
+SELECT format('CREATE EXTENSION IF NOT EXISTS %I', :'extension_name')
+\gexec
+SQL
+done < <(kubectl -n "$NAMESPACE" exec "$leader" -- \
+  psql -h 127.0.0.1 -U postgres -d "$SOURCE_DATABASE" -X -Atc \
+    "select extname from pg_extension where extname <> 'plpgsql' order by extname")
 
-kubectl -n "$NAMESPACE" exec -i "$leader" -- env PGPASSWORD="$password" \
-  psql -h 127.0.0.1 -U "$role" -d "$database" -v ON_ERROR_STOP=1 <<SQL
+# Keep the dump inside the leader pod. A second interactive kubectl stream can
+# remain open after its producer exits; using a bounded temporary file avoids
+# that deadlock and is substantially faster for large canonical schemas.
+dump_path="/tmp/resonance-${database}-schema-$$.sql"
+kubectl -n "$NAMESPACE" exec "$leader" -- sh -ceu '
+  source_database=$1
+  target_database=$2
+  target_role=$3
+  dump_path=$4
+  trap '\''rm -f "$dump_path"'\'' EXIT
+  {
+    printf '\''SET ROLE %s;\n'\'' "$target_role"
+    pg_dump -h 127.0.0.1 -U postgres -d "$source_database" \
+      --schema-only --no-owner --no-privileges --schema=public
+  } >"$dump_path"
+  sed -i '\''/^CREATE SCHEMA public;$/d'\'' "$dump_path"
+  psql -h 127.0.0.1 -U postgres -d "$target_database" -X \
+    -v ON_ERROR_STOP=1 -f "$dump_path" >/dev/null
+' sh "$SOURCE_DATABASE" "$database" "$role" "$dump_path"
+
+kubectl -n "$NAMESPACE" exec -i "$leader" -- \
+  psql -h 127.0.0.1 -U postgres -d "$database" -X -v ON_ERROR_STOP=1 <<SQL
+SET ROLE $role;
 CREATE TABLE resonance_project_schema_bootstrap (
   project_id varchar(32) PRIMARY KEY,
   source_database varchar(63) NOT NULL,

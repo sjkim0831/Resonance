@@ -1,5 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# HostPath DirectoryOrCreate paths are created as root:root 0755. Backup Pods
+# deliberately run as UID/GID 1000, so prepare every writable root before the
+# CronJobs are applied. This makes redeployments self-healing after a directory
+# is recreated or a new node is provisioned.
+prepare_backup_directory() {
+  local expected="$1" resolved
+  resolved="$(readlink -m -- "$expected")"
+  case "$resolved" in
+    /opt/Resonance/var/postgres-backups|\
+    /opt/Resonance/var/postgres-backups-ha|\
+    /opt/Resonance/var/postgres-basebackups|\
+    /opt/Resonance/var/postgres-basebackups-ha|\
+    /opt/Resonance/var/postgres-patroni-wal-archive) ;;
+    *) echo "Refusing unexpected backup path: $resolved" >&2; return 2 ;;
+  esac
+  if [[ "$(id -u)" -eq 0 ]]; then
+    install -d -o 1000 -g 1000 -m 2770 -- "$resolved"
+  else
+    sudo -n install -d -o 1000 -g 1000 -m 2770 -- "$resolved"
+  fi
+}
+
+for backup_directory in \
+  /opt/Resonance/var/postgres-backups \
+  /opt/Resonance/var/postgres-backups-ha \
+  /opt/Resonance/var/postgres-basebackups \
+  /opt/Resonance/var/postgres-basebackups-ha \
+  /opt/Resonance/var/postgres-patroni-wal-archive; do
+  prepare_backup_directory "$backup_directory"
+done
+
 kubectl apply -f - <<'YAML'
 apiVersion: batch/v1
 kind: CronJob
