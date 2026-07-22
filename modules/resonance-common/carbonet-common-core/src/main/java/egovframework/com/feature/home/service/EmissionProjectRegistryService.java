@@ -57,6 +57,11 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
+    public Map<String,Object> detailForActor(String projectId,String tenantId,String actor,boolean override) {
+        assertProjectParticipant(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),override);
+        return detail(projectId);
+    }
+
     public boolean nameAvailable(String tenantId,String name) {
         Integer count = jdbc.queryForObject("SELECT count(*) FROM emission_project_registry WHERE tenant_id=? AND lower(trim(project_name))=lower(trim(?))", Integer.class, requiredValue(tenantId,"tenantId"),name == null ? "" : name);
         return count == null || count == 0;

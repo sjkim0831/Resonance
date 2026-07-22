@@ -19,12 +19,14 @@ public class EmissionProjectRegistryController {
     private final CurrentUserContextService currentUserContextService;
 
     @GetMapping({"/home/api/emission-projects", "/en/home/api/emission-projects"})
-    public Map<String, Object> list(@RequestParam(defaultValue = "") String keyword,
+    public ResponseEntity<?> list(@RequestParam(defaultValue = "") String keyword,
                                     @RequestParam(defaultValue = "") String status,
                                     @RequestParam(defaultValue = "") String site,
                                     @RequestParam(defaultValue = "1") int page,HttpServletRequest request) {
         var context=currentUserContextService.resolve(request);
-        return service.listForActor(tenant(context),context.getUserId(),context.isWebmaster(),keyword,status,site,page);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try { return ResponseEntity.ok(service.listForActor(tenant(context),context.getUserId(),context.isWebmaster(),keyword,status,site,page)); }
+        catch(SecurityException e) { return ResponseEntity.status(403).body(Map.of("message",e.getMessage())); }
     }
 
     @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})
@@ -34,8 +36,11 @@ public class EmissionProjectRegistryController {
     public Map<String, Object> nameAvailability(@RequestParam String name,HttpServletRequest request) { return Map.of("available",service.nameAvailable(tenant(currentUserContextService.resolve(request)),name)); }
 
     @GetMapping({"/home/api/emission-projects/{id}", "/en/home/api/emission-projects/{id}"})
-    public ResponseEntity<?> detail(@PathVariable String id) {
-        try { return ResponseEntity.ok(service.detail(id)); }
+    public ResponseEntity<?> detail(@PathVariable String id,HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try { return ResponseEntity.ok(service.detailForActor(id,tenant(context),context.getUserId(),context.isWebmaster())); }
+        catch (SecurityException e) { return ResponseEntity.status(403).body(Map.of("message",e.getMessage())); }
         catch (IllegalArgumentException e) { return ResponseEntity.notFound().build(); }
     }
 
