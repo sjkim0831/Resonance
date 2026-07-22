@@ -64,6 +64,24 @@ step = {
 projected = module.screens_for_step(step, [prototype])
 assert projected[0]["actualRoute"] == "/admin/work?step=REVIEW"
 assert projected[0]["pageCode"] == "REVIEW_ADMIN_WORKSPACE"
+
+backend_only = {
+    "screen_contract": [], "field_contract": [],
+    "command_contract": [{"commandCode": "WORK"}],
+    "api_contract": [{"declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1"}],
+    "persistence_contract": {
+        "primaryEntities": [], "fieldMappings": [], "migrationRequired": True,
+        "transactional": True, "historyRequired": True,
+    },
+}
+persistence = module.persistence_for_step(backend_only)
+assert persistence["contractSource"] == "COMMON_PROCESS_COMMAND_RUNTIME"
+assert persistence["primaryEntities"] == [
+    "framework_process_execution",
+    "framework_process_execution_event",
+    "framework_process_work_draft",
+]
+assert len(persistence["fieldMappings"]) == 6
 PY
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-database.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-api.sh"
@@ -81,9 +99,11 @@ grep -Fq 'APPROVED_GENERATOR_V7_RETRY' "$ROOT/ops/scripts/run-project-auto-compl
 grep -Fq 'exact step package missing' "$RUNNER"
 grep -Fq 'fast-process-package-test.py" "$generated_step_package"' "$RUNNER"
 grep -Fq 'main push rejected after 3 guarded attempts' "$WORKER"
-grep -Fq 'GENERATED_DIMENSION_V2_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'GENERATED_DIMENSION_V3_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'EXACT_GENERATED_DIMENSION_FALLBACK' "$WORKER"
 grep -Fq "j.job_type='FRONTEND_ADMIN' and step.requires_admin_page=false" "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'IDENTICAL_GOVERNED_DESIGN' "$WORKER"
+grep -Fq 'COMMON_PROCESS_COMMAND_RUNTIME' "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
 grep -Fq 'incomplete_spec_demoted' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 deterministic_line="$(grep -n 'DETERMINISTIC_RUNNER=' "$WORKER" | head -1 | cut -d: -f1)"

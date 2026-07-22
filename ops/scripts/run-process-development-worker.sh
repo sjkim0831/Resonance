@@ -484,6 +484,12 @@ elif [ "$JOB_TYPE" = "DESIGN" ]; then
 - Integration is complete only when the UI payload, API schema, persisted version, process event, notification, and displayed next task agree.
 EOF
   } >"$WT/$ARTIFACT_PATH"
+  if git -C "$WT" ls-files --error-unmatch "$ARTIFACT_PATH" >/dev/null 2>&1 \
+      && git -C "$WT" diff --quiet -- "$ARTIFACT_PATH"; then
+    gate_result "ADOPT_EXISTING_SOURCE" "PASSED" \
+      "{\"strategy\":\"IDENTICAL_GOVERNED_DESIGN\",\"artifact\":\"${ARTIFACT_PATH}\"}"
+    EXISTING_ADOPTED=1
+  fi
   KILO_CODE=0
 elif [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ]; then
   cat >>"$WT/$ARTIFACT_PATH" <<EOF

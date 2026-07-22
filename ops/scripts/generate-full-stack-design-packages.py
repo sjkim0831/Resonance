@@ -123,6 +123,42 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
     return projected
 
 
+def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
+    """Apply the shared command-runtime persistence contract when appropriate.
+
+    Backend-only approved steps intentionally have no screen field contract,
+    but they still persist state, draft payloads, and immutable events through
+    the common process runtime.  Treating an empty ``primaryEntities`` array as
+    a complete database design made the DATABASE lane impossible to verify.
+    This default adds no domain meaning; it only declares the already selected
+    COMMON_PROCESS_COMMAND_RUNTIME storage boundary.
+    """
+    persistence = copy.deepcopy(step["persistence_contract"])
+    if (
+        not step["screen_contract"]
+        and not step["field_contract"]
+        and step["command_contract"]
+        and step["api_contract"]
+        and persistence.get("migrationRequired") is True
+        and not persistence.get("primaryEntities")
+    ):
+        persistence["primaryEntities"] = [
+            "framework_process_execution",
+            "framework_process_execution_event",
+            "framework_process_work_draft",
+        ]
+        persistence["fieldMappings"] = [
+            {"contextKey": "tenantId", "entity": "framework_process_execution", "column": "tenant_id"},
+            {"contextKey": "projectId", "entity": "framework_process_execution", "column": "project_id"},
+            {"contextKey": "recordId", "entity": "framework_process_execution", "column": "execution_id"},
+            {"contextKey": "statusCode", "entity": "framework_process_execution", "column": "current_state"},
+            {"contextKey": "rowVersion", "entity": "framework_process_work_draft", "column": "draft_version"},
+            {"contextKey": "payload", "entity": "framework_process_work_draft", "column": "payload_json"},
+        ]
+        persistence["contractSource"] = "COMMON_PROCESS_COMMAND_RUNTIME"
+    return persistence
+
+
 def render_step(
     process: dict[str, Any], step: dict[str, Any], shared_screens: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -176,7 +212,7 @@ def render_step(
             "commands": step["command_contract"], "authorization": step["actor_contract"],
             "handoffs": step["handoff_contract"],
         },
-        "database": step["persistence_contract"],
+        "database": persistence_for_step(step),
         "tests": executable_tests,
         "testExecution": {
             "runner": "FAST_PROCESS_CONTRACT_RUNNER",
