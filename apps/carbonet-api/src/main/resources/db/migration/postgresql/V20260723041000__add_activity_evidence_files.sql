@@ -20,6 +20,11 @@ CREATE INDEX IF NOT EXISTS ix_emission_activity_evidence_activity
 ALTER TABLE emission_activity_submission_evidence
     ADD COLUMN IF NOT EXISTS evidence_sha256 varchar(64);
 
+-- Executable workflow contracts can legitimately describe several endpoints.
+-- Keep them lossless instead of truncating new evidence lifecycle operations.
+ALTER TABLE framework_process_step
+    ALTER COLUMN api_contract TYPE text;
+
 CREATE OR REPLACE VIEW emission_activity_collection_health AS
 SELECT project.project_id,project.tenant_id,
  count(activity.activity_id) activity_count,

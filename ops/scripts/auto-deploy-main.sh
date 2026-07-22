@@ -85,6 +85,13 @@ if [[ -z "$POSTGRES_POD" ]]; then
 fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 backup_application_name="carbonet-auto-deploy-$$"
+# A disconnected kubectl/pg_dump pipeline can survive the systemd process and
+# retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
+# are far older than any configured backup timeout before Flyway can be blocked.
+kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+  psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
+  -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and backend_start < current_timestamp - interval '2 hours' and pid<>pg_backend_pid()" \
+  >/dev/null 2>&1 || true
 cleanup_remote_backup() {
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
   # only sessions owned by this deploy invocation, preventing duplicate dumps
