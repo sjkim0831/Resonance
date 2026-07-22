@@ -87,11 +87,13 @@ with candidate as (
 select count(*) from adopted;")"
 not_applicable_completed="$(psqlq -c "
 with candidate as (
-  select j.job_id,j.job_status old_status,source_job.job_id source_job_id,source_job.evidence_ref
+  select j.job_id,j.job_status old_status,j.job_type,
+         source_job.job_id source_job_id,source_job.evidence_ref
   from framework_development_job j
   join framework_process_step step
     on step.process_code=j.process_code and step.step_code=j.step_code
-   and step.requires_user_page=false
+   and ((j.job_type='FRONTEND_USER' and step.requires_user_page=false)
+     or (j.job_type='FRONTEND_ADMIN' and step.requires_admin_page=false))
   join lateral (
     select verified.job_id,verified.evidence_ref
     from framework_development_job verified
@@ -101,21 +103,24 @@ with candidate as (
       and nullif(verified.evidence_ref,'') is not null
     order by verified.completed_at desc nulls last,verified.job_id desc limit 1
   ) source_job on true
-  where j.job_type='FRONTEND_USER' and j.approval_status in ('PENDING','APPROVED')
-    and j.job_status in ('PLANNED','RETRY')
+  where j.job_type in ('FRONTEND_USER','FRONTEND_ADMIN')
+    and j.approval_status in ('PENDING','APPROVED')
+    and j.job_status in ('PLANNED','RETRY','FAILED','BLOCKED')
 ), completed as (
   update framework_development_job j
   set job_status='COMPLETED',quality_status='VERIFIED',approval_status='APPROVED',
       evidence_ref=c.evidence_ref,
-      result_json=jsonb_build_object('strategy','APPROVED_CONTRACT_NOT_APPLICABLE','sourceJobId',c.source_job_id,'requiresUserPage',false)::text,
+      result_json=jsonb_build_object('strategy','APPROVED_CONTRACT_NOT_APPLICABLE',
+        'sourceJobId',c.source_job_id,'jobType',c.job_type,'requiredAudiencePage',false)::text,
       completed_at=current_timestamp,worker_id=null,lease_token=null,lease_until=null,
       last_error=null,updated_at=current_timestamp
   from candidate c where j.job_id=c.job_id
-  returning j.job_id,c.old_status,c.source_job_id
+  returning j.job_id,c.old_status,c.source_job_id,c.job_type
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
   select job_id,'CONTRACT_NOT_APPLICABLE',old_status,'COMPLETED','project-auto-completion',
-         jsonb_build_object('sourceJobId',source_job_id,'reason','approved step contract does not require a user page')
+         jsonb_build_object('sourceJobId',source_job_id,'jobType',job_type,
+           'reason','approved step contract does not require this audience page')
   from completed returning 1
 )
 select count(*) from completed;")"
@@ -781,7 +786,7 @@ with candidate as (
     and s.approval_status='APPROVED' and s.generation_status='GENERATED'
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='GENERATED_DIMENSION_V1_RETRY'
+      where e.job_id=j.job_id and e.event_type='GENERATED_DIMENSION_V2_RETRY'
     )
 ), released as (
   update framework_development_job j
@@ -791,8 +796,8 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'GENERATED_DIMENSION_V1_RETRY',job_status,'RETRY','project-auto-completion',
-         jsonb_build_object('reason','exact approved generated step dimension is now deterministically validated')
+  select job_id,'GENERATED_DIMENSION_V2_RETRY',job_status,'RETRY','project-auto-completion',
+         jsonb_build_object('reason','exact approved generated step dimension can satisfy the professional preflight fallback')
   from released returning 1
 )
 select count(*) from released;")"

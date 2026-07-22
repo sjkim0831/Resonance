@@ -283,8 +283,15 @@ if PROFESSIONAL_RESULT="$(bash "$PROFESSIONAL_VALIDATOR" "$WT" "$JOB_TYPE" "$SPE
   gate_result "PROFESSIONAL_CONTRACT" "PASSED" "$PROFESSIONAL_RESULT"
   event "CONTRACT_PREFLIGHT" "RUNNING" "RUNNING" "$PROFESSIONAL_RESULT"
 else
-  gate_result "PROFESSIONAL_CONTRACT" "FAILED" "approved actor, process, screen, authority, API, DB, responsive, accessibility, or exception contract is incomplete"
-  fail_job "professional development contract preflight failed"
+  GENERATED_DIMENSION_VALIDATOR="$WT/ops/scripts/validate-generated-process-dimension.sh"
+  if [[ -x "$GENERATED_DIMENSION_VALIDATOR" ]] \
+      && GENERATED_PREFLIGHT_RESULT="$(bash "$GENERATED_DIMENSION_VALIDATOR" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" 2>>"$LOG_FILE")"; then
+    gate_result "PROFESSIONAL_CONTRACT" "PASSED" "$GENERATED_PREFLIGHT_RESULT"
+    event "CONTRACT_PREFLIGHT" "RUNNING" "RUNNING" "$(jq -c '. + {preflightStrategy:"EXACT_GENERATED_DIMENSION_FALLBACK"}' <<<"$GENERATED_PREFLIGHT_RESULT")"
+  else
+    gate_result "PROFESSIONAL_CONTRACT" "FAILED" "approved actor, process, screen, authority, API, DB, responsive, accessibility, or exception contract is incomplete"
+    fail_job "professional development contract preflight failed"
+  fi
 fi
 SEARCH_PREPARER="${AI_SEARCH_CONTEXT_PREPARER:-$ROOT_DIR/ops/scripts/prepare-ai-search-context.sh}"
 if ! SEARCH_CONTEXT="$(ROOT_DIR="$ROOT_DIR" "$SEARCH_PREPARER" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" "$TARGET_PATH")"; then
