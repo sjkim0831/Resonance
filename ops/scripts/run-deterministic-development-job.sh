@@ -138,7 +138,11 @@ EOF
     ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     if [[ -s "$generated_step_package" ]]; then
-      adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+      if ! adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")"; then
+        FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
+          bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
+        adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+      fi
     else
       validator="$WT/ops/scripts/validate-existing-emission-project-api.sh"
       adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?

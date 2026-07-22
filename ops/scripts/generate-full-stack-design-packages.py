@@ -159,6 +159,17 @@ def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
     return persistence
 
 
+def apis_for_step(step: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize legacy references to the selected common command API."""
+    apis = copy.deepcopy(step["api_contract"])
+    if not step["screen_contract"] and not step["field_contract"] and step["command_contract"]:
+        for api in apis:
+            if not api.get("path") and not api.get("declaredContract"):
+                api["declaredContract"] = "COMMON_PROCESS_EXECUTION_RUNTIME_V1"
+                api.setdefault("method", "CONTRACT")
+    return apis
+
+
 def render_step(
     process: dict[str, Any], step: dict[str, Any], shared_screens: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -208,7 +219,7 @@ def render_step(
             "pages": pages,
         },
         "backend": {
-            "runtime": "COMMON_PROCESS_COMMAND_RUNTIME", "apis": step["api_contract"],
+            "runtime": "COMMON_PROCESS_COMMAND_RUNTIME", "apis": apis_for_step(step),
             "commands": step["command_contract"], "authorization": step["actor_contract"],
             "handoffs": step["handoff_contract"],
         },

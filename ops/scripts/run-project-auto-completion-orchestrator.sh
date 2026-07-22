@@ -786,7 +786,7 @@ with candidate as (
     and s.approval_status='APPROVED' and s.generation_status='GENERATED'
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='GENERATED_DIMENSION_V3_RETRY'
+      where e.job_id=j.job_id and e.event_type='GENERATED_DIMENSION_V4_RETRY'
     )
 ), released as (
   update framework_development_job j
@@ -796,8 +796,8 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'GENERATED_DIMENSION_V3_RETRY',job_status,'RETRY','project-auto-completion',
-         jsonb_build_object('reason','exact generated step dimension can self-heal shared runtime persistence before validation')
+  select job_id,'GENERATED_DIMENSION_V4_RETRY',job_status,'RETRY','project-auto-completion',
+         jsonb_build_object('reason','exact generated step dimension can self-heal shared runtime API and persistence before validation')
   from released returning 1
 )
 select count(*) from released;")"
