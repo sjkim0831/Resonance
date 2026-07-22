@@ -37,7 +37,7 @@ case "$JOB_TYPE" in
       exit 4
     }
     jq -e --arg process "$PROCESS" --arg step "$STEP" '
-      .processCode==$process and .stepCode==$step
+      .process.code==$process and .step.code==$step
     ' "$generated_step_package" >/dev/null
     python3 "$WT/ops/scripts/fast-process-package-test.py" "$WT/$artifact" \
       --cache-dir "$WT/var/verification/process-package-tests" \
