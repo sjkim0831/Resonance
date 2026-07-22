@@ -396,6 +396,43 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
+generator_spec_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id,s.requirement_text,s.step_name
+  from framework_development_job j
+  join framework_process_step s
+    on s.process_code=j.process_code and s.step_code=j.step_code
+  where j.job_type='FULL_STACK' and j.job_status='FAILED'
+    and j.last_error in ('professional development contract preflight failed',
+      'deterministic generator failed with code 1')
+    and (
+      not (coalesce(nullif(j.specification_json,''),'{}')::jsonb ? 'generatorRequired')
+      or coalesce((coalesce(nullif(j.specification_json,''),'{}')::jsonb->>'generatorRequired')::boolean,false)=false
+      or nullif(btrim(coalesce(coalesce(nullif(j.specification_json,''),'{}')::jsonb->>'requirement','')),'') is null
+    )
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='GENERATOR_SPEC_SYNC_RETRY'
+    )
+), recovered as (
+  update framework_development_job j
+  set specification_json=(coalesce(nullif(j.specification_json,''),'{}')::jsonb
+        || jsonb_build_object(
+          'generatorRequired',true,
+          'reuseCommonAssets',true,
+          'requirement',coalesce(nullif(btrim(c.requirement_text),''),
+            c.step_name||' 업무를 전문적으로 완료하고 검증 가능한 산출물을 생성한다.'),
+          'specRepairVersion','CONTRACT_GENERATOR_SPEC_V2'))::text,
+      job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+      attempt_count=greatest(0,j.max_attempts-1),last_error=null,updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'GENERATOR_SPEC_SYNC_RETRY','FAILED','RETRY','project-auto-completion',
+         jsonb_build_object('reason','stale full-stack job synchronized with the governed generator contract')
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 post_design_fullstack_retried="$(psqlq -c "
 with candidate as (
   select j.job_id from framework_development_job j
@@ -584,7 +621,7 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
-retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+shared_evidence_retried+cache_retried+metadata_retried+symlink_retried+router_retried+legacy_design_retried+design_factory_retried+design_preflight_retried+post_design_fullstack_retried+flat_field_contract_retried+ready_package_retried+frontend_inventory_retried+database_adoption_retried+collect_database_validator_retried))"
+retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+shared_evidence_retried+cache_retried+metadata_retried+symlink_retried+router_retried+legacy_design_retried+design_factory_retried+design_preflight_retried+generator_spec_retried+post_design_fullstack_retried+flat_field_contract_retried+ready_package_retried+frontend_inventory_retried+database_adoption_retried+collect_database_validator_retried))"
 
 # Before invoking a model, deterministically adopt server work that is already
 # implemented and covered by tests. The adopter is state-guarded, so a job that
