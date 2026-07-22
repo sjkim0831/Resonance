@@ -13,12 +13,23 @@ const historyPath = path.resolve(process.env.FULL_SCREEN_QUALITY_HISTORY || path
 
 const readJson = async (file, fallback) => { try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; } };
 const normalizeRoute = (value) => { try { return new URL(String(value), "http://quality.local").pathname.replace(/\/$/, "") || "/"; } catch { return String(value).split("?")[0].replace(/\/$/, "") || "/"; } };
+const semanticRouteKey = (value) => {
+  const parts = normalizeRoute(value).split("/").filter(Boolean);
+  return `${parts[0] === "admin" ? "admin" : "user"}|${parts.slice(-2).join("/")}`;
+};
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 const manifest = await readJson(manifestPath, null);
 if (!manifest) throw new Error(`manifest not found: ${manifestPath}`);
 const contextRows = (await readFile(contextPath, "utf8")).split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
 const contextByRoute = new Map(contextRows.map((row) => [normalizeRoute(row.routeKey), row]));
+const contextBySemanticRoute = new Map();
+for (const row of contextRows) {
+  const key = semanticRouteKey(row.routeKey);
+  const matches = contextBySemanticRoute.get(key) || [];
+  matches.push(row);
+  contextBySemanticRoute.set(key, matches);
+}
 const resultFiles = (await readdir(resultDir)).filter((name) => /^shard-\d+\.json$/.test(name));
 const currentResults = [];
 for (const file of resultFiles) currentResults.push(...((await readJson(path.join(resultDir, file), {})).results || []));
@@ -69,13 +80,16 @@ for (const route of manifest.routes) {
     if (prior) scoredRoutes.push(prior);
     continue;
   }
-  const db = contextByRoute.get(normalizeRoute(route.routePath));
+  const exactDb = contextByRoute.get(normalizeRoute(route.routePath));
+  const semanticMatches = contextBySemanticRoute.get(semanticRouteKey(route.routePath)) || [];
+  const db = exactDb || (semanticMatches.length === 1 ? semanticMatches[0] : undefined);
+  const routeMatch = exactDb ? "EXACT" : db ? "SEMANTIC_ALIAS" : "UNMATCHED";
   const scored = scoreRoute(route, result, db);
   scoredRoutes.push({
     routeId: route.id, routePath: route.routePath, contractIds: route.contractIds,
     actorCodes: route.actorCodes, processCodes: route.processCodes,
     screenName: db?.screenName || route.contracts?.[0]?.screenName || "",
-    sourceRef: db?.sourceRef || "", professionalScore: Number(db?.professionalScore || 0),
+    sourceRef: db?.sourceRef || "", routeMatch, professionalScore: Number(db?.professionalScore || 0),
     taskCount: Number(db?.actualTaskCount || 0), testCount: Number(db?.testCount || 0),
     durationMs: result.durationMs, ...scored,
     suggestedFix: suggestion(scored.gaps)
@@ -92,8 +106,9 @@ for (const route of manifest.routes) {
   }
 }
 const manifestRoutes = new Set(manifest.routes.map((route) => normalizeRoute(route.routePath)));
-const screenInventoryCandidates = contextRows.filter((row) => !manifestRoutes.has(normalizeRoute(row.routeKey)) || Number(row.bindingCount || 0) === 0).map((row) => {
-  const contracted = manifestRoutes.has(normalizeRoute(row.routeKey));
+const manifestSemanticRoutes = new Set(manifest.routes.map((route) => semanticRouteKey(route.routePath)));
+const screenInventoryCandidates = contextRows.filter((row) => (!manifestRoutes.has(normalizeRoute(row.routeKey)) && !manifestSemanticRoutes.has(semanticRouteKey(row.routeKey))) || Number(row.bindingCount || 0) === 0).map((row) => {
+  const contracted = manifestRoutes.has(normalizeRoute(row.routeKey)) || manifestSemanticRoutes.has(semanticRouteKey(row.routeKey));
   const reason = !contracted && row.implementationStatus === "DESIGN_ONLY" ? "PLANNED_NOT_CONTRACTED"
     : !contracted ? "IMPLEMENTED_WITHOUT_CONTRACT" : "NO_PROCESS_BINDING";
   return { routePath: row.routeKey, screenName: row.screenName, sourceRef: row.sourceRef, implementationStatus: row.implementationStatus, reason };
