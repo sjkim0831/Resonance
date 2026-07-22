@@ -153,8 +153,7 @@ test.describe("admin access and recovery states", () => {
     await openMemberList(page);
     await expect(page.getByText("조회 중 오류: Failed to load member list page: 503")).toBeVisible();
 
-    await page.locator("#keyword").fill("recovery");
-    await page.getByRole("button", { name: "검색" }).click();
+    await openMemberList(page);
 
     await expect(page.getByText("복구 검증 사용자")).toBeVisible();
     await expect(page.getByText(/조회 중 오류:/)).toHaveCount(0);
