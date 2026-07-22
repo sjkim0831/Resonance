@@ -387,7 +387,7 @@ with candidate as (
     )
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='DESIGN_PREFLIGHT_RETRY'
+      where e.job_id=j.job_id and e.event_type='DESIGN_PREFLIGHT_V2_RETRY'
     )
 ), recovered as (
   update framework_development_job j
@@ -396,8 +396,8 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'DESIGN_PREFLIGHT_RETRY','FAILED','RETRY','project-auto-completion',
-         jsonb_build_object('reason','short legacy step name now expands to the governed professional requirement')
+  select job_id,'DESIGN_PREFLIGHT_V2_RETRY','FAILED','RETRY','project-auto-completion',
+         jsonb_build_object('reason','governed contract renderer can adopt an identical existing professional design')
   from recovered returning 1
 )
 select count(*) from recovered;")"

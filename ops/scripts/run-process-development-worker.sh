@@ -288,6 +288,17 @@ else
       && GENERATED_PREFLIGHT_RESULT="$(bash "$GENERATED_DIMENSION_VALIDATOR" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_TYPE" 2>>"$LOG_FILE")"; then
     gate_result "PROFESSIONAL_CONTRACT" "PASSED" "$GENERATED_PREFLIGHT_RESULT"
     event "CONTRACT_PREFLIGHT" "RUNNING" "RUNNING" "$(jq -c '. + {preflightStrategy:"EXACT_GENERATED_DIMENSION_FALLBACK"}' <<<"$GENERATED_PREFLIGHT_RESULT")"
+  elif [[ "$JOB_TYPE" =~ ^DATABASE(_QUALITY)?$ ]] \
+      && jq -e --arg process "$PROCESS_CODE" --arg step "$STEP_CODE" '
+        .approvalStatus == "APPROVED"
+        and .process.code == $process and .step.code == $step
+        and .backend.runtime == "COMMON_PROCESS_COMMAND_RUNTIME"
+        and .database.migrationRequired == true
+      ' "$WT/projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS_CODE/${PROCESS_CODE}__${STEP_CODE}.json" >/dev/null 2>&1; then
+    gate_result "PROFESSIONAL_CONTRACT" "PASSED" \
+      "{\"strategy\":\"APPROVED_DATABASE_PACKAGE_REPAIR_PENDING\",\"processCode\":\"${PROCESS_CODE}\",\"stepCode\":\"${STEP_CODE}\"}"
+    event "CONTRACT_PREFLIGHT" "RUNNING" "RUNNING" \
+      "{\"preflightStrategy\":\"APPROVED_DATABASE_PACKAGE_REPAIR_PENDING\"}"
   else
     gate_result "PROFESSIONAL_CONTRACT" "FAILED" "approved actor, process, screen, authority, API, DB, responsive, accessibility, or exception contract is incomplete"
     fail_job "professional development contract preflight failed"

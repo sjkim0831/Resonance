@@ -103,6 +103,7 @@ grep -Fq 'GENERATED_DIMENSION_V3_RETRY' "$ROOT/ops/scripts/run-project-auto-comp
 grep -Fq 'EXACT_GENERATED_DIMENSION_FALLBACK' "$WORKER"
 grep -Fq "j.job_type='FRONTEND_ADMIN' and step.requires_admin_page=false" "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'IDENTICAL_GOVERNED_DESIGN' "$WORKER"
+grep -Fq 'APPROVED_DATABASE_PACKAGE_REPAIR_PENDING' "$WORKER"
 grep -Fq 'COMMON_PROCESS_COMMAND_RUNTIME' "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
 grep -Fq 'incomplete_spec_demoted' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
