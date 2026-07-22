@@ -67,13 +67,13 @@ with candidate as (
     order by case verified.job_type when 'DESIGN' then 0 else 1 end,verified.completed_at desc nulls last,verified.job_id desc
     limit 1
   ) source_job on true
-  where j.job_type='DESIGN' and j.approval_status='APPROVED'
+  where j.job_type='DESIGN' and j.approval_status in ('PENDING','APPROVED')
     and j.job_status in ('PLANNED','RETRY')
 ), adopted as (
   update framework_development_job j
-  set job_status='VERIFIED',quality_status='VERIFIED',
+  set job_status='VERIFIED',quality_status='VERIFIED',approval_status='APPROVED',
       evidence_ref=c.evidence_ref,
-      result_json=jsonb_build_object('strategy','VERIFIED_DESIGN_EVIDENCE_ADOPTION','sourceJobId',c.source_job_id,'sourceResult',c.result_json),
+      result_json=jsonb_build_object('strategy','VERIFIED_DESIGN_EVIDENCE_ADOPTION','sourceJobId',c.source_job_id,'sourceResult',framework_try_jsonb(c.result_json))::text,
       completed_at=current_timestamp,worker_id=null,lease_token=null,lease_until=null,
       last_error=null,updated_at=current_timestamp
   from candidate c where j.job_id=c.job_id
@@ -101,13 +101,13 @@ with candidate as (
       and nullif(verified.evidence_ref,'') is not null
     order by verified.completed_at desc nulls last,verified.job_id desc limit 1
   ) source_job on true
-  where j.job_type='FRONTEND_USER' and j.approval_status='APPROVED'
+  where j.job_type='FRONTEND_USER' and j.approval_status in ('PENDING','APPROVED')
     and j.job_status in ('PLANNED','RETRY')
 ), completed as (
   update framework_development_job j
-  set job_status='COMPLETED',quality_status='VERIFIED',
+  set job_status='COMPLETED',quality_status='VERIFIED',approval_status='APPROVED',
       evidence_ref=c.evidence_ref,
-      result_json=jsonb_build_object('strategy','APPROVED_CONTRACT_NOT_APPLICABLE','sourceJobId',c.source_job_id,'requiresUserPage',false),
+      result_json=jsonb_build_object('strategy','APPROVED_CONTRACT_NOT_APPLICABLE','sourceJobId',c.source_job_id,'requiresUserPage',false)::text,
       completed_at=current_timestamp,worker_id=null,lease_token=null,lease_until=null,
       last_error=null,updated_at=current_timestamp
   from candidate c where j.job_id=c.job_id
@@ -119,6 +119,38 @@ with candidate as (
   from completed returning 1
 )
 select count(*) from completed;")"
+contract_jobs_approved="$(psqlq -c "
+with candidate as (
+  select j.job_id,full_stack.job_id source_job_id
+  from framework_development_job j
+  join framework_step_execution_spec spec
+    on spec.process_code=j.process_code and spec.step_code=j.step_code
+   and spec.design_status='DESIGN_COMPLETE' and spec.approval_status='APPROVED'
+  join lateral (
+    select verified.job_id
+    from framework_development_job verified
+    where verified.process_code=j.process_code and verified.step_code=j.step_code
+      and verified.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+      and verified.job_status='VERIFIED' and verified.quality_status='VERIFIED'
+      and nullif(verified.evidence_ref,'') is not null
+    order by verified.completed_at desc nulls last,verified.job_id desc limit 1
+  ) full_stack on true
+  where j.approval_status='PENDING' and j.job_status in ('PLANNED','RETRY')
+    and j.job_type in ('DATABASE','DATABASE_QUALITY','API','API_QUALITY','BACKEND','BACKEND_QUALITY','FRONTEND_ADMIN','TEST','ACTOR_TEST','INTEGRATION')
+), approved as (
+  update framework_development_job j
+  set approval_status='APPROVED',
+      result_json=(coalesce(framework_try_jsonb(j.result_json),'{}'::jsonb)||jsonb_build_object('approvalStrategy','APPROVED_STEP_CONTRACT','approvalSourceJobId',c.source_job_id))::text,
+      updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id
+  returning j.job_id,c.source_job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'STEP_CONTRACT_APPROVED','PENDING','PLANNED','project-auto-completion',
+         jsonb_build_object('sourceJobId',source_job_id,'reason','approved execution spec and verified full-stack package cover the exact process step')
+  from approved returning 1
+)
+select count(*) from approved;")"
 legacy_retried="$(psqlq -c "
 with candidate as (
   select j.job_id from framework_development_job j
@@ -634,4 +666,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result"
