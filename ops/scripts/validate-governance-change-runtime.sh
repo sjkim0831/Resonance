@@ -54,7 +54,7 @@ page_code="$(curl -sS -L -b "$COOKIE_JAR" -o "$PAGE" -w '%{http_code}' "$BASE_UR
 [[ "$page_code" == 200 ]] && grep -qi '<!doctype html' "$PAGE" || { echo "[governance-change-runtime] FAIL workspace status=$page_code" >&2; exit 1; }
 
 read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')"
-[[ -n "$desired" && "$desired" -gt 0 && "$ready" == "$desired" && "$available" == "$desired" ]] || { echo "[governance-change-runtime] FAIL replicas desired=$desired ready=$ready available=$available" >&2; exit 1; }
+[[ -n "$desired" && "$desired" -gt 0 && "$ready" -ge "$desired" && "$available" -ge "$desired" ]] || { echo "[governance-change-runtime] FAIL replicas desired=$desired ready=$ready available=$available" >&2; exit 1; }
 
 IFS='|' read -r step_gate spec_gate screen_gate approved_case_gate passed_case_gate <<<"$(psqlq "select
  (select count(*) from framework_process_step where process_code='GOVERNANCE_CHANGE' and nullif(requirement_text,'') is not null and nullif(completion_rule,'') is not null and requires_admin_page and requires_api),

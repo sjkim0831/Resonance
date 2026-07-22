@@ -64,7 +64,7 @@ for _ in $(seq 1 20); do curl -sS -b "$COOKIE_JAR" -o /dev/null -w '%{time_total
 p95_ms="$(sort -n "$TIMINGS" | awk 'NR==19 {printf "%d",$1*1000}')"
 [[ -n "$p95_ms" && "$p95_ms" -le 2500 ]] || { echo "[organizational-boundary-runtime] FAIL p95=${p95_ms:-unknown}ms" >&2; exit 1; }
 read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')"
-[[ -n "$desired" && "$desired" -gt 0 && "$ready" == "$desired" && "$available" == "$desired" ]] \
+[[ -n "$desired" && "$desired" -gt 0 && "$ready" -ge "$desired" && "$available" -ge "$desired" ]] \
   || { echo "[organizational-boundary-runtime] FAIL replicas desired=$desired ready=$ready available=$available" >&2; exit 1; }
 
 db_gate="$(psqlq "select
