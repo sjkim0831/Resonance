@@ -1,0 +1,368 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "REDUCTION_EXECUTION",
+    "name": "감축 과제 수행",
+    "domain": "REDUCTION",
+    "workType": "REDUCTION",
+    "goal": "감축 목표를 과제로 실행하고 실적을 검증한다."
+  },
+  "step": {
+    "code": "REDUCTION_EXECUTION_04_APPROVE",
+    "version": 1,
+    "actor": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "감축 목표를 과제로 실행하고 실적을 검증한다.",
+      "slaHours": 720,
+      "stepName": "승인·확정",
+      "riskLevel": "MEDIUM",
+      "domainCode": "REDUCTION",
+      "processName": "감축 과제 수행",
+      "requirement": "",
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+    },
+    "transition": {
+      "toState": "COMPLETED",
+      "stepType": "TASK",
+      "fromState": "VERIFIED",
+      "stepOrder": 4,
+      "commandCode": "APPROVE",
+      "auditRequired": true,
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "fromState": "VERIFIED",
+      "processCode": "REDUCTION_EXECUTION"
+    },
+    "output": {
+      "toState": "COMPLETED",
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "승인·확정",
+      "purpose": "",
+      "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
+      "userPath": "/emission/reduction?tab=approval",
+      "actorCode": "APPROVER",
+      "adminPath": "/admin/reduction/result?tab=approval",
+      "stepOrder": 4,
+      "processCode": "REDUCTION_EXECUTION",
+      "nextStepCode": null,
+      "workTypeCode": "REDUCTION",
+      "entryCondition": "VERIFIED",
+      "completionCondition": "승인 이력과 최종 결과가 확정됨"
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "REDUCTION_EXECUTION_04_APPROVE_ADMIN_WORKSPACE",
+        "route": "/admin/reduction/result?tab=approval",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_ORCHESTRATION",
+        "title": "승인·확정",
+        "purpose": "",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [],
+        "commands": [
+          {
+            "actorCode": "APPROVER",
+            "entryState": "VERIFIED",
+            "commandCode": "APPROVE",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "loading",
+            "empty",
+            "authority-denied",
+            "design-blocked",
+            "dependency-blocked",
+            "conflict",
+            "server-error"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered steps",
+          "tablet": "two-column summary",
+          "desktop": "six-metric control board",
+          "overflow": "wrap; local table scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "landmarks": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": null
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "APPROVER",
+        "entryState": "VERIFIED",
+        "commandCode": "APPROVE",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "PROCESS",
+        "failure": {
+          "onInvalid": "DESIGN_REVIEW_REQUIRED",
+          "onInapplicable": "SKIP_WITH_AUDIT",
+          "onMissingNextProcess": "WORKFLOW_COMPLETE"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "required",
+            "projectId": "contextual",
+            "idempotencyKey": "required",
+            "businessPayload": "required"
+          },
+          "fromOutput": {
+            "toState": "COMPLETED",
+            "completionRule": "승인 이력과 최종 결과가 확정됨",
+            "evidenceRequired": true
+          },
+          "completionCondition": "감축 실적이 승인되어 보고됨"
+        },
+        "integrity": {
+          "handoffAudit": true,
+          "immutableOutputVersion": true,
+          "completedProcessRequired": true
+        },
+        "toStepCode": "REDUCTION_SCENARIO_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "recordId",
+          "completedProcessCode",
+          "outputVersion"
+        ],
+        "authorization": {
+          "toActor": "DATA_ANALYST",
+          "fromActor": "APPROVER",
+          "segregationChecked": true,
+          "projectApplicabilityRequired": true
+        },
+        "toProcessCode": "REDUCTION_SCENARIO"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "감축 과제 수행 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "REDUCTION_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REDUCTION_EXECUTION_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "감축 과제 수행 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "REDUCTION_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REDUCTION_EXECUTION_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "감축 과제 수행 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "REDUCTION_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REDUCTION_EXECUTION_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "감축 과제 수행 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "REDUCTION_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REDUCTION_EXECUTION_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "감축 과제 수행 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "REDUCTION_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REDUCTION_EXECUTION_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "a2050ecf4587cefc00dfe8ce6615bcf7",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "3ac599ac83b3e004b4a3f4aaf7463734f9d59933d09dd1e064b44488a09fd923"
+}

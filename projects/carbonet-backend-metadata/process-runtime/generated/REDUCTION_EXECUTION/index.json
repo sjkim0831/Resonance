@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_01_PLAN",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_01_PLAN.json",
+      "packageHash": "578f823de3db00455802b90bc609d335a80cfec184c1d7db51dd9d983e6b4b0c",
+      "pages": 1
+    },
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_02_WORK",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_02_WORK.json",
+      "packageHash": "462c8da581d1e8f070288e3e70058c80452c3fdb7d80f1faf4f04bbaef1a7d55",
+      "pages": 1
+    },
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_03_VERIFY",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_03_VERIFY.json",
+      "packageHash": "ff4d09fae911632e76c084f6ef4227f779e36a718b89e547c64c7ee1d085a3f3",
+      "pages": 1
+    },
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_04_APPROVE.json",
+      "packageHash": "3ac599ac83b3e004b4a3f4aaf7463734f9d59933d09dd1e064b44488a09fd923",
+      "pages": 1
+    }
+  ],
+  "manifestHash": "7f6f8ca494e2d7db1371113af8b99121fb64ee3eff1e1a8be3a5e5020c5f938d"
+}
