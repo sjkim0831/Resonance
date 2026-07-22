@@ -689,7 +689,15 @@ select count(*) from recovered;")"
 # pending reviews wait, while an approved package is released automatically.
 incomplete_spec_demoted="$(psqlq -c "
 with candidate as (
-  select e.process_code,e.step_code
+  select e.process_code,e.step_code,
+    jsonb_array_length(e.screen_contract)=0 as screen_missing,
+    (case
+      when jsonb_array_length(e.field_contract)=0 then 0
+      when jsonb_typeof(e.field_contract->0->'fields')='array' then
+        coalesce((select sum(jsonb_array_length(grouped->'fields'))
+                  from jsonb_array_elements(e.field_contract) grouped),0)
+      else jsonb_array_length(e.field_contract)
+    end)<8 as fields_incomplete
   from framework_step_execution_spec e
   join framework_process_step s using(process_code,step_code)
   where e.approval_status='APPROVED'
@@ -709,7 +717,11 @@ with candidate as (
   set design_status='DESIGN_BLOCKED',approval_status='REVIEW_REQUIRED',
       generation_status='BLOCKED',approved_by=null,approved_at=null,
       blocker_codes=(select jsonb_agg(distinct blocker)
-        from jsonb_array_elements(e.blocker_codes||'[\"FIELD_CONTRACT_INCOMPLETE\"]'::jsonb) blocker),
+        from jsonb_array_elements(
+          e.blocker_codes
+          ||case when c.screen_missing then '[\"SCREEN_CONTRACT_MISSING\"]'::jsonb else '[]'::jsonb end
+          ||case when c.fields_incomplete then '[\"FIELD_CONTRACT_INCOMPLETE\"]'::jsonb else '[]'::jsonb end
+        ) blocker),
       updated_at=current_timestamp
   from candidate c where e.process_code=c.process_code and e.step_code=c.step_code
   returning e.process_code,e.step_code
