@@ -165,14 +165,50 @@
     ]
   },
   "database": {
-    "fieldMappings": [],
+    "fieldMappings": [
+      {
+        "contextKey": "tenantId",
+        "entity": "framework_process_execution",
+        "column": "tenant_id"
+      },
+      {
+        "contextKey": "projectId",
+        "entity": "framework_process_execution",
+        "column": "project_id"
+      },
+      {
+        "contextKey": "recordId",
+        "entity": "framework_process_execution",
+        "column": "execution_id"
+      },
+      {
+        "contextKey": "statusCode",
+        "entity": "framework_process_execution",
+        "column": "current_state"
+      },
+      {
+        "contextKey": "rowVersion",
+        "entity": "framework_process_work_draft",
+        "column": "draft_version"
+      },
+      {
+        "contextKey": "payload",
+        "entity": "framework_process_work_draft",
+        "column": "payload_json"
+      }
+    ],
     "transactional": true,
     "historyRequired": true,
     "indexesRequired": true,
-    "primaryEntities": [],
+    "primaryEntities": [
+      "framework_process_execution",
+      "framework_process_execution_event",
+      "framework_process_work_draft"
+    ],
     "migrationRequired": true,
     "softDeleteDefault": true,
-    "foreignKeysRequired": true
+    "foreignKeysRequired": true,
+    "contractSource": "COMMON_PROCESS_COMMAND_RUNTIME"
   },
   "tests": [
     {
@@ -315,5 +351,5 @@
   "sourceHash": "4cc903982bc8f21d95843d31ee5f45dc",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "8af29427d9b1b978a80d9467905dac393bfcafc93bf2cc24d09a37c59c3321ef"
+  "packageHash": "cf7a3589f6cc6bfcb4cb1f17925e7fefbc222284dfa876f4dbc38211dfc27b32"
 }
