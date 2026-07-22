@@ -159,7 +159,7 @@ spec:
   jobTemplate:
     spec:
       activeDeadlineSeconds: 1800
-      backoffLimit: 0
+      backoffLimit: 1
       template:
         metadata:
           labels: {app: postgres-backup, type: basebackup}
@@ -179,8 +179,24 @@ spec:
               ts=$(date +%Y%m%d_%H%M%S)
               dir=/base/carbonet_base_${ts}
               name=carbonet_base_${ts}.tar.gz
+              failure=/base/basebackup-last.failure
+              success=/base/basebackup-last.success
               mkdir -p /base /mirror
-              trap 'status=$?; if [ "$status" -ne 0 ]; then rm -rf "$dir"; rm -f "/base/$name" "/base/$name.sha256"; fi; exit "$status"' EXIT
+              finish() {
+                status=$?
+                if [ "$status" -ne 0 ]; then
+                  rm -rf "$dir"
+                  rm -f "/base/$name" "/base/$name.sha256" "/mirror/$name" "/mirror/$name.sha256"
+                  printf 'status=FAILED timestamp=%s archive=%s exit_code=%s\n' "$(date -Iseconds)" "$name" "$status" \
+                    | tee "$failure" > /dev/termination-log
+                else
+                  rm -f "$failure"
+                  printf 'status=VERIFIED timestamp=%s archive=%s checksum=%s\n' \
+                    "$(date -Iseconds)" "$name" "$(awk '{print $1}' "/base/$name.sha256")" > "$success"
+                fi
+                exit "$status"
+              }
+              trap finish EXIT
               set +e
               pg_basebackup -v -h postgres-haproxy.carbonet-prod.svc.cluster.local -U postgres -D "$dir" -Fp -Xs -P
               base_rc=$?
