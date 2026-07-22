@@ -195,6 +195,32 @@ root_cmd() {
   fi
 }
 
+quarantine_build_output() {
+  local build_dir="$1"
+  local quarantine_dir="${build_dir}.failed.$(date +%s).$$"
+  [[ -e "$build_dir" ]] || return 0
+
+  # A failed Gradle daemon can finish copying resources after the client has
+  # exited. Deleting the live directory in that window intermittently fails
+  # with "Directory not empty" and causes the deploy timer to rebuild the same
+  # commit forever. Rename is atomic on this filesystem and gives the fallback
+  # build a clean path immediately; quarantine cleanup is best-effort.
+  if root_cmd mv "$build_dir" "$quarantine_dir"; then
+    for _ in 1 2 3 4 5; do
+      root_cmd rm -rf "$quarantine_dir" && return 0
+      sleep 1
+    done
+    log_warning "Deferred cleanup of quarantined build output: $quarantine_dir"
+    return 0
+  fi
+
+  for _ in 1 2 3 4 5; do
+    root_cmd rm -rf "$build_dir" && return 0
+    sleep 1
+  done
+  return 1
+}
+
 preflight_check() {
   log_step "Pre-flight Checks"
 
@@ -489,7 +515,9 @@ build_maven() {
     log "Using clean ${BUILD_TOOL:-backend} build"
     if [[ "${BUILD_TOOL:-}" == "gradle" ]]; then
       log_cmd "root_cmd rm -rf $MAVEN_DIR/build"
-      root_cmd rm -rf "$MAVEN_DIR/build"
+      if ! quarantine_build_output "$MAVEN_DIR/build"; then
+        rollback_and_fail "BACKEND_BUILD_CLEANUP_FAILED" "Unable to isolate failed Gradle output" "ls -la $MAVEN_DIR"
+      fi
     else
       log_cmd "root_cmd rm -rf $MAVEN_DIR/target/classes/static"
       root_cmd rm -rf "$MAVEN_DIR/target/classes/static"
@@ -508,7 +536,9 @@ build_maven() {
       else
         rollback_and_fail "GRADLE_CACHE_ISOLATION_INVALID" "Gradle project cache is not isolated from source" "printf '%s\n' \"${GRADLE_PROJECT_CACHE_DIR:-unset}\""
       fi
-      root_cmd rm -rf "$MAVEN_DIR/build"
+      if ! quarantine_build_output "$MAVEN_DIR/build"; then
+        rollback_and_fail "BACKEND_BUILD_CLEANUP_FAILED" "Unable to isolate failed Gradle output" "ls -la $MAVEN_DIR"
+      fi
       if ! (cd "$ROOT_DIR" && MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package > >(tee -a "$MAVEN_ERROR_LOG") 2>&1); then
         rollback_and_fail "BACKEND_BUILD_FAILED" "Incremental and clean fallback builds failed" "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -100"
       fi
