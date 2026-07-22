@@ -131,7 +131,10 @@ public class EmissionProjectRegistryService {
             "(SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND submission_state='APPROVED') AS \"approvedCount\"," +
             "coalesce((SELECT total_emission FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1),0) AS \"totalEmission\"," +
             "(SELECT count(*) FROM emission_project_report WHERE project_id=? AND tenant_id=? AND report_status='FINALIZED') AS \"finalizedReportCount\"",
-            projectId,projectId,projectId,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,projectId,projectId,tenant,projectId,tenant,projectId,tenant,projectId,projectId,tenant);
+            projectId,projectId,projectId,
+            projectId,tenant,projectId,tenant,projectId,tenant,projectId,tenant,
+            projectId,tenant,projectId,tenant,projectId,
+            projectId,tenant,projectId,tenant,projectId,projectId,tenant);
         result.put("metrics",metrics);
         @SuppressWarnings("unchecked")
         List<Map<String,Object>> tasks=(List<Map<String,Object>>)project.get("tasks");
