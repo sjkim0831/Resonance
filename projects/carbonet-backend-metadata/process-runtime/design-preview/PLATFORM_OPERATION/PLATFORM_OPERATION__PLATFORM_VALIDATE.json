@@ -1,0 +1,375 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "PLATFORM_OPERATION",
+    "name": "플랫폼 운영",
+    "domain": "SYSTEM",
+    "workType": "SYSTEM",
+    "goal": "메뉴·화면·권한·배포·감사를 안정적으로 운영한다."
+  },
+  "step": {
+    "code": "PLATFORM_VALIDATE",
+    "version": 1,
+    "actor": {
+      "actorCode": "PLATFORM_OPERATOR",
+      "ownerActorCode": "PLATFORM_OPERATOR",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "메뉴·화면·권한·배포·감사를 안정적으로 운영한다.",
+      "slaHours": 720,
+      "stepName": "코드·계약·고객 여정 검증",
+      "riskLevel": "MEDIUM",
+      "domainCode": "SYSTEM",
+      "processName": "플랫폼 운영",
+      "requirement": "",
+      "completionRule": "컴파일·권한·메뉴·Task·모바일·복구 게이트를 통과한다.",
+      "regulationRefs": "개인정보보호법, 전자정부법, 정보보안지침"
+    },
+    "transition": {
+      "toState": "VALIDATED",
+      "stepType": "TASK",
+      "fromState": "DESIGNED",
+      "stepOrder": 2,
+      "commandCode": "VALIDATE_CHANGE",
+      "auditRequired": true,
+      "completionRule": "컴파일·권한·메뉴·Task·모바일·복구 게이트를 통과한다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "PLATFORM_VALIDATE",
+      "actorCode": "PLATFORM_OPERATOR",
+      "fromState": "DESIGNED",
+      "processCode": "PLATFORM_OPERATION"
+    },
+    "output": {
+      "toState": "VALIDATED",
+      "completionRule": "컴파일·권한·메뉴·Task·모바일·복구 게이트를 통과한다.",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "코드·계약·고객 여정 검증",
+      "purpose": "",
+      "stepCode": "PLATFORM_VALIDATE",
+      "userPath": null,
+      "actorCode": "PLATFORM_OPERATOR",
+      "adminPath": "/admin/system/actor-process",
+      "stepOrder": 2,
+      "processCode": "PLATFORM_OPERATION",
+      "nextStepCode": "PLATFORM_DEPLOY",
+      "workTypeCode": "SYSTEM",
+      "entryCondition": "DESIGNED",
+      "completionCondition": "컴파일·권한·메뉴·Task·모바일·복구 게이트를 통과한다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "PLATFORM_VALIDATE_ADMIN_WORKSPACE",
+        "route": "/admin/system/actor-process",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_ORCHESTRATION",
+        "title": "코드·계약·고객 여정 검증",
+        "purpose": "",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [],
+        "commands": [
+          {
+            "actorCode": "PLATFORM_OPERATOR",
+            "entryState": "DESIGNED",
+            "commandCode": "VALIDATE_CHANGE",
+            "resultState": "VALIDATED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "loading",
+            "empty",
+            "authority-denied",
+            "design-blocked",
+            "dependency-blocked",
+            "conflict",
+            "server-error"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered steps",
+          "tablet": "two-column summary",
+          "desktop": "six-metric control board",
+          "overflow": "wrap; local table scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "landmarks": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "GET /admin/api/system/actor-process"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "PLATFORM_OPERATOR",
+        "entryState": "DESIGNED",
+        "commandCode": "VALIDATE_CHANGE",
+        "resultState": "VALIDATED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "PLATFORM_OPERATOR",
+      "ownerActorCode": "PLATFORM_OPERATOR",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "PLATFORM_DEPLOY",
+            "actorCode": "PLATFORM_OPERATOR",
+            "fromState": "VALIDATED",
+            "processCode": "PLATFORM_OPERATION"
+          },
+          "fromOutput": {
+            "toState": "VALIDATED",
+            "completionRule": "컴파일·권한·메뉴·Task·모바일·복구 게이트를 통과한다.",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "PLATFORM_DEPLOY",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "PLATFORM_OPERATOR",
+          "fromActor": "PLATFORM_OPERATOR",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "PLATFORM_OPERATION"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "플랫폼 운영 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "PLATFORM_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "PLATFORM_OPERATION_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "플랫폼 운영 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "PLATFORM_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "PLATFORM_OPERATION_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "플랫폼 운영 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "PLATFORM_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "PLATFORM_OPERATION_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "플랫폼 운영 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "PLATFORM_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "PLATFORM_OPERATION_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "플랫폼 운영 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "PLATFORM_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "PLATFORM_OPERATION_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "a3f251d12a859c2c1db1ad3b1d3b210f",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "5074e0a368403115a51634d89958177b20fbd3523f9ed64e43b4193211673320"
+}

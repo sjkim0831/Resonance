@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_AUDIT",
+      "package": "PLATFORM_OPERATION__PLATFORM_AUDIT.json",
+      "packageHash": "1bae1d4628d9f2052d48a907f4a9b2943d15fddbbdae9874a1bbdaf02a250363",
+      "pages": 1
+    },
+    {
+      "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_DEPLOY",
+      "package": "PLATFORM_OPERATION__PLATFORM_DEPLOY.json",
+      "packageHash": "5c9da92484f58a1f2112ff96038d86c9a7db2a9ec1e2ddff5ef6f77ad4c403ba",
+      "pages": 1
+    },
+    {
+      "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_DESIGN",
+      "package": "PLATFORM_OPERATION__PLATFORM_DESIGN.json",
+      "packageHash": "ff0a2cfdc855329ce2b2417afd909118f28ef20290e892bf6ad92d4ffc94f6a9",
+      "pages": 1
+    },
+    {
+      "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_VALIDATE",
+      "package": "PLATFORM_OPERATION__PLATFORM_VALIDATE.json",
+      "packageHash": "5074e0a368403115a51634d89958177b20fbd3523f9ed64e43b4193211673320",
+      "pages": 1
+    }
+  ],
+  "manifestHash": "1d5ef1d86c889b81b425cc450ae5521e90cd7e8d524ad46e32af3c280256635e"
+}
