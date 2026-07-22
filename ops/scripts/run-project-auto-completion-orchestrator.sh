@@ -676,6 +676,68 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
+
+# FULL_STACK generation is allowed only after the governed execution spec is
+# approved. Older workers treated REVIEW_REQUIRED as a generator failure and
+# exhausted retries. Reconcile that state without claiming implementation:
+# pending reviews wait, while an approved package is released automatically.
+spec_approval_waiting="$(psqlq -c "
+with candidate as (
+  select j.job_id
+  from framework_development_job j
+  join framework_step_execution_spec s
+    on s.process_code=j.process_code and s.step_code=j.step_code
+  where j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+    and j.job_status in ('FAILED','RETRY')
+    and s.approval_status<>'APPROVED'
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='SPEC_APPROVAL_WAIT_V1'
+    )
+), waiting as (
+  update framework_development_job j
+  set job_status='PLANNED',approval_status='PENDING',attempt_count=0,
+      worker_id=null,lease_token=null,lease_until=null,
+      last_error='awaiting governed execution spec approval',updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'SPEC_APPROVAL_WAIT_V1','FAILED','PLANNED','project-auto-completion',
+         jsonb_build_object('reason','full-stack generation waits for governed execution spec approval')
+  from waiting returning 1
+)
+select count(*) from waiting;")"
+
+approved_generator_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id,j.job_status
+  from framework_development_job j
+  join framework_step_execution_spec s
+    on s.process_code=j.process_code and s.step_code=j.step_code
+  where j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+    and j.job_status in ('FAILED','PLANNED')
+    and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+    and jsonb_array_length(s.screen_contract)>0
+    and jsonb_array_length(s.field_contract)>0
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='APPROVED_GENERATOR_V3_RETRY'
+    )
+), released as (
+  update framework_development_job j
+  set job_status='RETRY',approval_status='APPROVED',
+      attempt_count=greatest(0,j.max_attempts-1),worker_id=null,
+      lease_token=null,lease_until=null,last_error=null,updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'APPROVED_GENERATOR_V3_RETRY',job_status,'RETRY','project-auto-completion',
+         jsonb_build_object('reason','approved execution package released to deterministic generator v3')
+  from released returning 1
+)
+select count(*) from released;")"
+
+retried="$((retried+spec_approval_waiting+approved_generator_retried))"
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
 where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status='RETRY' and (j.lease_until is null or j.lease_until<current_timestamp))) and j.attempt_count<j.max_attempts
@@ -717,4 +779,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"

@@ -30,6 +30,15 @@ case "$JOB_TYPE" in
     jq -e --arg process "$PROCESS" '
       .packageCount>0 and ([.packages[].processCode]|all(.==$process))
     ' "$WT/$artifact" >/dev/null
+    # Process-level output cannot prove a different step is implemented.
+    # The exact step package is the deterministic completion boundary.
+    [[ -s "$generated_step_package" ]] || {
+      echo "[deterministic-development] exact step package missing: $PROCESS/$STEP" >&2
+      exit 4
+    }
+    jq -e --arg process "$PROCESS" --arg step "$STEP" '
+      .processCode==$process and .stepCode==$step
+    ' "$generated_step_package" >/dev/null
     python3 "$WT/ops/scripts/fast-process-package-test.py" "$WT/$artifact" \
       --cache-dir "$WT/var/verification/process-package-tests" \
       --evidence "$WT/var/test-evidence/process-package-tests/$PROCESS.json" 1>&2
