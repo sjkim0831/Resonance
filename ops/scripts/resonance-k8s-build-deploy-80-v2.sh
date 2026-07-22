@@ -501,7 +501,13 @@ build_maven() {
   log_cmd "jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package"
   if ! (cd "$ROOT_DIR" && MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package > >(tee "$MAVEN_ERROR_LOG") 2>&1); then
     if [[ "$INCREMENTAL" == "true" && "${BUILD_TOOL:-}" == "gradle" ]]; then
-      log_warning "Incremental Gradle build failed; clearing only the application output and retrying once"
+      log_warning "Incremental Gradle build failed; quarantining external project metadata, clearing only the application output, and retrying once"
+      if [[ -n "${GRADLE_PROJECT_CACHE_DIR:-}" && "$GRADLE_PROJECT_CACHE_DIR" != "$ROOT_DIR" && "$GRADLE_PROJECT_CACHE_DIR" != "$ROOT_DIR"/* ]]; then
+        rm -rf "$GRADLE_PROJECT_CACHE_DIR"
+        mkdir -p "$GRADLE_PROJECT_CACHE_DIR"
+      else
+        rollback_and_fail "GRADLE_CACHE_ISOLATION_INVALID" "Gradle project cache is not isolated from source" "printf '%s\n' \"${GRADLE_PROJECT_CACHE_DIR:-unset}\""
+      fi
       root_cmd rm -rf "$MAVEN_DIR/build"
       if ! (cd "$ROOT_DIR" && MAVEN_OPTS="$MAVEN_OPTS" jbuild -q -pl apps/carbonet-api -am -Dmaven.test.skip=true package > >(tee -a "$MAVEN_ERROR_LOG") 2>&1); then
         rollback_and_fail "BACKEND_BUILD_FAILED" "Incremental and clean fallback builds failed" "cd $ROOT_DIR && ./gradlew :apps:carbonet-api:bootJar --console=plain 2>&1 | tail -100"

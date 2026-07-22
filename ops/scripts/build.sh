@@ -25,8 +25,16 @@ init_build_tool() {
     BUILD_TOOL="$(BUILD_TOOL_DETECT)"
     case "$BUILD_TOOL" in
         gradle)
-            GRADLE_BIN=("${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}")
-            export GRADLE_BIN BUILD_TOOL
+            # Never let a build daemon write cache/lock metadata into the Git
+            # checkout. Deploy fast-forward and build can overlap at file-system
+            # boundaries, and a partially written .gradle metadata.bin makes all
+            # subsequent incremental builds fail before task execution.
+            GRADLE_CACHE_ROOT="${RESONANCE_GRADLE_CACHE_ROOT:-${HOME}/.cache/resonance-gradle}"
+            GRADLE_PROJECT_CACHE_DIR="${RESONANCE_GRADLE_PROJECT_CACHE_DIR:-${GRADLE_CACHE_ROOT}/project}"
+            GRADLE_USER_HOME="${GRADLE_USER_HOME:-${GRADLE_CACHE_ROOT}/user-home}"
+            mkdir -p "$GRADLE_PROJECT_CACHE_DIR" "$GRADLE_USER_HOME"
+            GRADLE_BIN=("${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR")
+            export GRADLE_BIN BUILD_TOOL GRADLE_CACHE_ROOT GRADLE_PROJECT_CACHE_DIR GRADLE_USER_HOME
             ;;
         maven)
             export BUILD_TOOL
