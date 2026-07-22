@@ -113,6 +113,34 @@ def existing_hash(path: Path) -> str:
         return ""
 
 
+def verified_inventory(out: Path) -> dict[str, Any]:
+    """Return artifacts whose manifest entry and file content agree."""
+    manifest_path = out / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"schemaVersion": "3.0.0", "screens": []}
+    verified: list[dict[str, Any]] = []
+    for entry in manifest.get("screens", []):
+        try:
+            blueprint_id = int(entry["blueprintId"])
+            design_hash = str(entry["designHash"])
+            artifact_hash = str(entry["artifactHash"])
+            artifact_path = out / str(entry["artifact"])
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            embedded_hash = str(artifact.pop("artifactHash"))
+        except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError):
+            continue
+        if (
+            artifact.get("blueprintId") == blueprint_id
+            and artifact.get("designHash") == design_hash
+            and embedded_hash == artifact_hash
+            and sha256(artifact) == artifact_hash
+        ):
+            verified.append({"blueprintId": blueprint_id, "designHash": design_hash})
+    return {"schemaVersion": "3.0.0", "screens": verified}
+
+
 def generate(snapshot: dict[str, Any], out: Path, workers: int, check: bool) -> dict[str, Any]:
     if snapshot.get("schemaVersion") != "3.0.0" or not isinstance(snapshot.get("screens"), list):
         fail("snapshot schemaVersion/screens is invalid")
@@ -218,8 +246,13 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 4))
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--benchmark", type=int, choices=range(1, 1001), metavar="COUNT")
+    parser.add_argument("--inventory", type=Path,
+                        help="print verified runtime artifact inventory and exit")
     parser.add_argument("--max-millis", type=int, default=180_000)
     args = parser.parse_args()
+    if args.inventory:
+        print(stable(verified_inventory(args.inventory)))
+        return
     if args.benchmark:
         with tempfile.TemporaryDirectory(prefix="screen-generation-benchmark-") as temporary:
             snapshot = synthetic_snapshot(args.benchmark)

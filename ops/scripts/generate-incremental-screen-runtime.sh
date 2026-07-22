@@ -24,8 +24,8 @@ LOCK_FILE="${SCREEN_GENERATION_LOCK:-/tmp/resonance-incremental-screen-generatio
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo '{"success":true,"status":"ALREADY_RUNNING"}'; exit 0; }
 
-snapshot="$(mktemp)"; result="$(mktemp)"
-trap 'rm -f "$snapshot" "$result"' EXIT
+snapshot="$(mktemp)"; result="$(mktemp)"; inventory="$(mktemp)"
+trap 'rm -f "$snapshot" "$result" "$inventory"' EXIT
 
 leader=""
 while IFS= read -r candidate; do
@@ -36,6 +36,32 @@ while IFS= read -r candidate; do
   fi
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
 [[ -n "$leader" ]] || { echo '[incremental-screen-generator] writable PostgreSQL leader not found' >&2; exit 1; }
+
+# Reconcile DB state with the runtime volume. Missing, truncated, or stale
+# generated artifacts are marked DIRTY and rebuilt in this same invocation.
+python3 "$ROOT/ops/scripts/generate-incremental-screen-runtime.py" --inventory "$OUT" >"$inventory"
+inventory_base64="$(base64 -w0 "$inventory")"
+kubectl -n "$NAMESPACE" exec -i "$leader" -c patroni -- \
+  psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 <<SQL >/dev/null
+with verified as (
+  select (item->>'blueprintId')::bigint as blueprint_id,
+         item->>'designHash' as design_hash
+    from jsonb_array_elements(
+      convert_from(decode('$inventory_base64','base64'),'UTF8')::jsonb->'screens'
+    ) item
+)
+update framework_screen_generation_state state
+   set sync_status='DIRTY',
+       last_error='runtime artifact missing, corrupt, or stale',
+       updated_at=current_timestamp
+ where state.ownership_mode <> 'MANUAL'
+   and state.sync_status='GENERATED'
+   and not exists (
+     select 1 from verified
+      where verified.blueprint_id=state.blueprint_id
+        and verified.design_hash=state.generated_hash
+   );
+SQL
 
 selector="null"
 [[ -n "$PROCESS_CODE" ]] && selector="'$PROCESS_CODE'"
