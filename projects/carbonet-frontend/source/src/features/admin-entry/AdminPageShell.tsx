@@ -946,16 +946,16 @@ export function AdminPageShell({
       <a className="skip-link" href="#main-content">{en ? "Skip to content" : "본문 바로가기"}</a>
 
       <div className="z-50 shrink-0 border-b border-[var(--kr-gov-border-light)] bg-[var(--kr-gov-bg-gray)]">
-        <div className="mx-auto flex max-w-full items-center justify-between px-6 py-1.5">
-          <div className="flex items-center gap-2">
-            <img alt={en ? "Government Symbol of the Republic of Korea" : "대한민국정부 상징"} className="h-3.5" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
-            <span className="text-[12px] font-medium text-[var(--kr-gov-text-secondary)]">
+        <div className="mx-auto flex max-w-full items-center justify-between gap-2 px-3 py-1.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+            <img alt={en ? "Government Symbol of the Republic of Korea" : "대한민국정부 상징"} className="h-3.5 shrink-0" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_SYMBOL} />
+            <span className="truncate whitespace-nowrap text-[11px] font-medium text-[var(--kr-gov-text-secondary)] sm:text-[12px]">
               {en ? "Official Government Service of the Republic of Korea" : "대한민국정부 공식 누리집"}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-[11px] font-medium text-[var(--kr-gov-text-secondary)]">
-            <span><span id="admin-login-label">{en ? "Admin Login:" : "관리자 로그인:"}</span> <span>관리자</span></span>
-            <button className="hover:underline" onClick={() => void handleAdminLogout()} type="button">{en ? "Logout" : "로그아웃"}</button>
+          <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-medium text-[var(--kr-gov-text-secondary)] sm:gap-4">
+            <span aria-label={en ? "Admin Login: Administrator" : "관리자 로그인: 관리자"}><span className="hidden sm:inline" id="admin-login-label">{en ? "Admin Login:" : "관리자 로그인:"} </span><span>{en ? "Admin" : "관리자"}</span></span>
+            <button className="min-h-8 px-1 hover:underline" onClick={() => void handleAdminLogout()} type="button">{en ? "Logout" : "로그아웃"}</button>
           </div>
         </div>
       </div>
@@ -1335,21 +1335,21 @@ export function AdminPageShell({
         </main>
       </div>
 
-      <footer className="relative z-40 border-t border-[var(--kr-gov-border-light)] bg-white">
-        <div className="mx-auto flex max-w-full flex-col items-center justify-between gap-6 px-6 py-6 md:flex-row">
-          <div className="flex items-center gap-4">
-            <img alt={en ? "Government Symbol of the Republic of Korea" : "대한민국정부 상징"} className="h-8 grayscale opacity-70" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_FOOTER_SYMBOL} />
-            <div className="border-l border-gray-200 pl-4 text-[12px] leading-tight text-[var(--kr-gov-text-secondary)]">
-              <p className="mb-0.5 text-[13px] font-bold">{en ? "Net Zero CCUS Integrated Management HQ (Admin Console)" : "탄소중립 CCUS 통합관리본부 (Admin Console)"}</p>
+      <footer className="relative z-40 border-t border-[var(--kr-gov-border-light)] bg-white pb-28 md:pb-0">
+        <div className="mx-auto flex max-w-full flex-col items-stretch justify-between gap-4 px-4 py-5 sm:px-6 md:flex-row md:items-center md:gap-6 md:py-6">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+            <img alt={en ? "Government Symbol of the Republic of Korea" : "대한민국정부 상징"} className="mt-0.5 h-6 shrink-0 grayscale opacity-70 sm:mt-0 sm:h-8" data-fallback-applied="0" onError={handleGovSymbolError} src={GOV_FOOTER_SYMBOL} />
+            <div className="min-w-0 border-l border-gray-200 pl-3 text-[11px] leading-snug text-[var(--kr-gov-text-secondary)] sm:pl-4 sm:text-[12px] sm:leading-tight">
+              <p className="mb-0.5 text-[12px] font-bold sm:text-[13px]">{en ? "Net Zero CCUS Integrated Management HQ (Admin Console)" : "탄소중립 CCUS 통합관리본부 (Admin Console)"}</p>
               <p>© 2025 CCUS Integration Management Portal. All rights reserved.</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-[12px] font-medium text-[var(--kr-gov-text-secondary)]">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-[11px] font-medium text-[var(--kr-gov-text-secondary)] sm:gap-x-4 sm:text-[12px] md:justify-end">
             <a className="hover:underline" href="#">{en ? "Terms of Service" : "서비스 이용약관"}</a>
-            <span className="text-gray-300">|</span>
+            <span className="hidden text-gray-300 sm:inline">|</span>
             <a className="hover:underline" href="#">{en ? "Privacy Policy" : "개인정보처리방침"}</a>
-            <span className="text-gray-300">|</span>
-            <div className="rounded-[5px] border border-gray-200 bg-[var(--kr-gov-bg-gray)] px-3 py-1 text-[11px] font-bold">
+            <span className="hidden text-gray-300 sm:inline">|</span>
+            <div className="rounded-[5px] border border-gray-200 bg-[var(--kr-gov-bg-gray)] px-2.5 py-1 text-[10px] font-bold sm:px-3 sm:text-[11px]">
               <span>{en ? "Last Updated: 2025.08.14 14:45" : "최종 업데이트: 2025.08.14 14:45"}</span>
             </div>
           </div>
