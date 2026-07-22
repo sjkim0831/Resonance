@@ -348,6 +348,41 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
+ready_package_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id from framework_development_job j
+  where j.job_type='FULL_STACK' and j.job_status='FAILED'
+    and j.last_error='deterministic generator failed with code 1'
+    and exists (
+      select 1 from framework_step_execution_spec s
+      where s.process_code=j.process_code and s.step_code=j.step_code
+        and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+        and jsonb_array_length(s.screen_contract)>0
+        and (
+          jsonb_array_length(s.field_contract)>=8
+          or exists (
+            select 1 from jsonb_array_elements(s.field_contract) field_group
+            where jsonb_typeof(field_group->'fields')='array'
+              and jsonb_array_length(field_group->'fields')>=8
+          )
+        )
+    )
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='READY_PACKAGE_RETRY'
+    )
+), recovered as (
+  update framework_development_job j
+  set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,
+      attempt_count=greatest(0,j.max_attempts-1),last_error=null,updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id
+), logged as (
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'READY_PACKAGE_RETRY','FAILED','RETRY','project-auto-completion',
+         jsonb_build_object('reason','approved screen and professional field package is now generator-ready')
+  from recovered returning 1
+)
+select count(*) from recovered;")"
 frontend_inventory_retried="$(psqlq -c "
 with candidate as (
   select j.job_id from framework_development_job j
@@ -446,7 +481,7 @@ with candidate as (
   from recovered returning 1
 )
 select count(*) from recovered;")"
-retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+shared_evidence_retried+cache_retried+metadata_retried+symlink_retried+router_retried+legacy_design_retried+design_factory_retried+design_preflight_retried+post_design_fullstack_retried+flat_field_contract_retried+frontend_inventory_retried+database_adoption_retried+collect_database_validator_retried))"
+retried="$((retried+legacy_retried+pool_retried+adoption_retried+binding_retried+shared_evidence_retried+cache_retried+metadata_retried+symlink_retried+router_retried+legacy_design_retried+design_factory_retried+design_preflight_retried+post_design_fullstack_retried+flat_field_contract_retried+ready_package_retried+frontend_inventory_retried+database_adoption_retried+collect_database_validator_retried))"
 
 # Before invoking a model, deterministically adopt server work that is already
 # implemented and covered by tests. The adopter is state-guarded, so a job that
