@@ -21,7 +21,19 @@ segregation="$(q "select count(*)=5 and count(distinct user_id)=5 and count(*) f
 task_binding="$(q "select count(*)=7 and count(distinct assignee_id)=5 and bool_and(assignee_id=case task_code when 'BASIC_INFO' then 'qaowner26' when 'ACTIVITY_DATA' then 'qadata26' when 'CALCULATION' then 'qacalc26' when 'VERIFICATION' then 'qaverify26' when 'APPROVAL' then 'qaapprove26' when 'REPORT' then 'qaowner26' when 'REGULATORY_SUBMISSION' then 'qaowner26' end) from emission_project_task where project_id='$PROJECT'")"
 [[ "$task_binding" == t ]] || { echo '[actor-account-journey] FAIL task-account binding' >&2; exit 1; }
 
-account_contract="$(q "select count(*)=5 and count(distinct actor_code)=5 from framework_account_actor_assignment where project_id='$PROJECT' and assignment_status='ACTIVE' and account_id in ('qaowner26','qadata26','qacalc26','qaverify26','qaapprove26')")"
+account_contract="$(q "select count(*)=5 from (
+  select distinct assignment.account_id,assignment.actor_code
+  from framework_account_actor_assignment assignment
+  join (values
+    ('qaowner26','COMPANY_MANAGER'),
+    ('qadata26','SITE_DATA_OWNER'),
+    ('qacalc26','CALCULATOR'),
+    ('qaverify26','VERIFIER'),
+    ('qaapprove26','APPROVER')
+  ) expected(account_id,actor_code)
+    on expected.account_id=assignment.account_id and expected.actor_code=assignment.actor_code
+  where assignment.project_id='$PROJECT' and assignment.assignment_status='ACTIVE'
+) required_pairs")"
 [[ "$account_contract" == t ]] || { echo '[actor-account-journey] FAIL account actor contract' >&2; exit 1; }
 
 if [[ -z "$PASSWORD" ]]; then
