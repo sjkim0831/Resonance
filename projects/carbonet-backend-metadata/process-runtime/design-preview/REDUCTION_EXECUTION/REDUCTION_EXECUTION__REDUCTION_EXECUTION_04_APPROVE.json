@@ -89,7 +89,8 @@
         ],
         "transactional": true,
         "idempotencyKey": true,
-        "declaredContract": null
+        "declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1",
+        "method": "CONTRACT"
       }
     ],
     "commands": [
@@ -344,5 +345,5 @@
   "sourceHash": "a2050ecf4587cefc00dfe8ce6615bcf7",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "f8613219cf98d5a01c61dd592ff70e20bdb9c209e64022e9aaa3b2e20b4495f0"
+  "packageHash": "9a608e46e3b544f6ba1c19397b8f108e8ab3b47973659cc4ff8c4e4c81dd4ee0"
 }
