@@ -425,6 +425,7 @@ bash ops/scripts/validate-activity-data-runtime.sh
 bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
 bash ops/scripts/validate-emission-calculation-runtime.sh
 bash ops/scripts/validate-organizational-boundary-runtime.sh
+bash ops/scripts/validate-governance-change-runtime.sh
 bash ops/scripts/complete-report-certification-evidence-jobs.sh
 bash ops/scripts/validate-report-certification-runtime.sh
 bash ops/scripts/validate-customer-work-journey.sh
