@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_01_PLAN",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_01_PLAN.json",
+      "packageHash": "ab0275a5cfb756a48854a6079e1400815ee7f597132796e1a2a0d2874b744a92",
+      "pages": 1
+    },
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_02_WORK",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_02_WORK.json",
+      "packageHash": "66c9e18bd2d3518b6ee66d09d73da4a08e1ba1c7532a2ff84e58b68695769baa",
+      "pages": 0
+    },
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_03_VERIFY",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_03_VERIFY.json",
+      "packageHash": "e19e1c3ca442bb98c33e77c0da3bb5009c685de1fe0f8414aef9604fb2254a55",
+      "pages": 0
+    },
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_04_APPROVE",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_04_APPROVE.json",
+      "packageHash": "5ba00121962b95fbb515062ae02691635394d0959917ac3259407dcb568966b8",
+      "pages": 0
+    }
+  ],
+  "manifestHash": "86256dc0af0b1ca826bb9fb45864b4543304792b077440420f12808c9eff7dd7"
+}

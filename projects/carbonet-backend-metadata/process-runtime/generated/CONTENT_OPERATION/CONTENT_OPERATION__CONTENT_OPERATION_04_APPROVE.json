@@ -1,0 +1,312 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "CONTENT_OPERATION",
+    "name": "콘텐츠·교육·지원 운영",
+    "domain": "EDUCATION",
+    "workType": "EDUCATION",
+    "goal": "콘텐츠와 교육·지원을 게시·운영"
+  },
+  "step": {
+    "code": "CONTENT_OPERATION_04_APPROVE",
+    "version": 1,
+    "actor": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "콘텐츠와 교육·지원을 게시·운영",
+      "slaHours": 720,
+      "stepName": "승인·확정",
+      "riskLevel": "MEDIUM",
+      "domainCode": "EDUCATION",
+      "processName": "콘텐츠·교육·지원 운영",
+      "requirement": "",
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+    },
+    "transition": {
+      "toState": "COMPLETED",
+      "stepType": "TASK",
+      "fromState": "VERIFIED",
+      "stepOrder": 4,
+      "commandCode": "APPROVE",
+      "auditRequired": true,
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "CONTENT_OPERATION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "fromState": "VERIFIED",
+      "processCode": "CONTENT_OPERATION"
+    },
+    "output": {
+      "toState": "COMPLETED",
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "승인·확정",
+      "purpose": "",
+      "stepCode": "CONTENT_OPERATION_04_APPROVE",
+      "userPath": null,
+      "actorCode": "APPROVER",
+      "adminPath": null,
+      "stepOrder": 4,
+      "processCode": "CONTENT_OPERATION",
+      "nextStepCode": null,
+      "workTypeCode": "EDUCATION",
+      "entryCondition": "VERIFIED",
+      "completionCondition": "승인 이력과 최종 결과가 확정됨"
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": false,
+    "pages": []
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": null
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "APPROVER",
+        "entryState": "VERIFIED",
+        "commandCode": "APPROVE",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "PROCESS",
+        "failure": {
+          "onInvalid": "DESIGN_REVIEW_REQUIRED",
+          "onInapplicable": "SKIP_WITH_AUDIT",
+          "onMissingNextProcess": "WORKFLOW_COMPLETE"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "required",
+            "projectId": "contextual",
+            "idempotencyKey": "required",
+            "businessPayload": "required"
+          },
+          "fromOutput": {
+            "toState": "COMPLETED",
+            "completionRule": "승인 이력과 최종 결과가 확정됨",
+            "evidenceRequired": true
+          },
+          "completionCondition": "공개 상태와 권한 일치"
+        },
+        "integrity": {
+          "handoffAudit": true,
+          "immutableOutputVersion": true,
+          "completedProcessRequired": true
+        },
+        "toStepCode": "NOTICE_PUBLICATION_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "recordId",
+          "completedProcessCode",
+          "outputVersion"
+        ],
+        "authorization": {
+          "toActor": "CONTENT_MANAGER",
+          "fromActor": "APPROVER",
+          "segregationChecked": true,
+          "projectApplicabilityRequired": true
+        },
+        "toProcessCode": "NOTICE_PUBLICATION"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "콘텐츠·교육·지원 운영 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "CONTENT_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CONTENT_OPERATION_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "콘텐츠·교육·지원 운영 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "CONTENT_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CONTENT_OPERATION_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "콘텐츠·교육·지원 운영 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "CONTENT_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CONTENT_OPERATION_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "콘텐츠·교육·지원 운영 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "CONTENT_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CONTENT_OPERATION_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "콘텐츠·교육·지원 운영 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "CONTENT_OPERATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CONTENT_OPERATION_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "047f0ff62f2e17edd33b1fd3350e51ae",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "5ba00121962b95fbb515062ae02691635394d0959917ac3259407dcb568966b8"
+}
