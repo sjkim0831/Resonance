@@ -19,6 +19,33 @@ bash -n "$RUNNER"
 bash -n "$ROOT/ops/scripts/generate-full-stack-design-packages.sh"
 bash -n "$ROOT/ops/scripts/validate-full-stack-design-generation.sh"
 python3 -m py_compile "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
+python3 - "$ROOT" <<'PY'
+import importlib.util
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+path = root / "ops/scripts/generate-full-stack-design-packages.py"
+spec = importlib.util.spec_from_file_location("full_stack_generator", path)
+module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(module)
+
+flat = [
+    {"fieldCode": "title", "label": "Title", "controlType": "TEXT"},
+    {"fieldCode": "decision", "label": "Decision", "controlType": "SELECT"},
+]
+assert module.group_fields_by_audience(flat) == {"*": flat}
+
+legacy = [
+    {"audience": "USER", "fields": [{"fieldCode": "title"}]},
+    {"audience": "ADMIN", "fields": [{"fieldCode": "decision"}]},
+]
+assert module.group_fields_by_audience(legacy) == {
+    "USER": [{"fieldCode": "title"}],
+    "ADMIN": [{"fieldCode": "decision"}],
+}
+PY
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-database.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-api.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-notification.sh"
