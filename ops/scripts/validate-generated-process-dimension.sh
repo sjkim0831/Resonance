@@ -26,7 +26,7 @@ jq -e --arg process "$PROCESS" --arg step "$STEP" '
   and .frontend.renderer == "COMMON_SDUI_RUNTIME"
   and .backend.runtime == "COMMON_PROCESS_COMMAND_RUNTIME"
   and ((.frontend.required == false and (.frontend.pages | length) == 0)
-    or (.frontend.required == true and (.frontend.pages | length) > 0
+    or ((.frontend.required // true) == true and (.frontend.pages | length) > 0
       and all(.frontend.pages[]; (.fields | length) >= 8)))
   and (.backend.commands | length) > 0
 ' "$PACKAGE" >/dev/null
