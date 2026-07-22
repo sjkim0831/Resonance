@@ -56,6 +56,7 @@ deploy/k8s/**/*.secret.yaml
 !deploy/k8s/**/*.secret.example.yaml
 
 # Java
+.gradle/
 *.class
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
