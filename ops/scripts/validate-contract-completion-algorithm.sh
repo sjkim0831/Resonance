@@ -46,7 +46,7 @@ grep -Fq "quality_status='VERIFIED'" "$ROOT/ops/scripts/run-process-development-
 grep -Fq 'framework_ensure_step_screen_contract' "$DESIGN_FACTORY"
 grep -Fq "framework_ensure_step_screen_contract('" "$ROOT/ops/scripts/run-process-development-worker.sh"
 grep -Fq 'DESIGN_FACTORY_RETRY' "$ORCHESTRATOR"
-grep -Fq 'DESIGN_PREFLIGHT_RETRY' "$ORCHESTRATOR"
+grep -Fq 'DESIGN_PREFLIGHT_V3_RETRY' "$ORCHESTRATOR"
 grep -Fq 'POST_DESIGN_STACK_RETRY' "$ORCHESTRATOR"
 test -s "$ORGANIZATIONAL_BOUNDARY_GATE"
 grep -Fq 'CARBONET_ORG_BOUNDARY_PROMOTE_JOBS' "$ORGANIZATIONAL_BOUNDARY_GATE"
