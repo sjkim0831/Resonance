@@ -56,10 +56,12 @@ PY
 }
 
 write_marker() {
-  local hash ts
+  local hash ts index_hash manifest_hash
   hash="$(source_hash)"
   ts="$(date -Iseconds)"
-  python3 - "$MARKER_FILE" "$hash" "$ts" <<'PY'
+  index_hash="$(sha256sum "$OVERLAY_DIR/index.html" | awk '{print $1}')"
+  manifest_hash="$(sha256sum "$OVERLAY_DIR/.vite/manifest.json" | awk '{print $1}')"
+  python3 - "$MARKER_FILE" "$hash" "$ts" "$index_hash" "$manifest_hash" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -68,6 +70,8 @@ path = Path(sys.argv[1])
 path.write_text(json.dumps({
     "sourceHash": sys.argv[2],
     "builtAt": sys.argv[3],
+    "indexHash": sys.argv[4],
+    "manifestHash": sys.argv[5],
     "sourceDir": "projects/carbonet-frontend/source",
     "overlayDir": "projects/carbonet-frontend/src/main/resources/static/react-app"
 }, ensure_ascii=False, indent=2) + "\n")
@@ -81,21 +85,36 @@ verify_source() {
     echo "[guard] run npm build or guard write-marker after a verified build" >&2
     exit 30
   }
-  local expected actual
+  local expected actual expected_index actual_index expected_manifest actual_manifest
   actual="$(source_hash)"
-  expected="$(python3 - "$MARKER_FILE" <<'PY'
+  readarray -t marker_values < <(python3 - "$MARKER_FILE" <<'PY'
 import json
 import sys
 from pathlib import Path
-print(json.loads(Path(sys.argv[1]).read_text()).get("sourceHash", ""))
+data = json.loads(Path(sys.argv[1]).read_text())
+print(data.get("sourceHash", ""))
+print(data.get("indexHash", ""))
+print(data.get("manifestHash", ""))
 PY
-)"
+)
+  expected="${marker_values[0]:-}"
+  expected_index="${marker_values[1]:-}"
+  expected_manifest="${marker_values[2]:-}"
   if [[ -z "$expected" || "$actual" != "$expected" ]]; then
     echo "[guard] React source hash does not match overlay build marker" >&2
     echo "[guard] expected=$expected" >&2
     echo "[guard] actual=$actual" >&2
     echo "[guard] run frontend build before deploying" >&2
     exit 31
+  fi
+  actual_index="$(sha256sum "$OVERLAY_DIR/index.html" | awk '{print $1}')"
+  actual_manifest="$(sha256sum "$OVERLAY_DIR/.vite/manifest.json" | awk '{print $1}')"
+  if [[ -z "$expected_index" || -z "$expected_manifest" \
+     || "$actual_index" != "$expected_index" \
+     || "$actual_manifest" != "$expected_manifest" ]]; then
+    echo "[guard] React entry graph does not match the verified build marker" >&2
+    echo "[guard] rebuild the frontend closure before deploying" >&2
+    exit 32
   fi
   echo "[guard] source marker OK ($actual)"
 }

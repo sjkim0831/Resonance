@@ -158,6 +158,26 @@ if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
   exit 3
 fi
 
+# The React hostPath is the live runtime closure, while index.html and the Vite
+# manifest are still tracked for repository compatibility. Preserve the live
+# closure before restoring generated worktree files: otherwise a catalog-only
+# fast-forward can replace a freshly verified bundle graph with the stale
+# repository copy after the screen gate has already passed.
+live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
+if [[ -f "$live_frontend_overlay/index.html" ]]; then
+  rsync -a "$live_frontend_overlay/" "$merge_overlay_backup/"
+fi
+
+restore_live_frontend_overlay() {
+  if [[ -f "$merge_overlay_backup/index.html" ]]; then
+    rsync -a --delete "$merge_overlay_backup/" "$live_frontend_overlay/"
+    node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
+  fi
+  rm -rf "$merge_overlay_backup"
+  merge_overlay_backup=""
+}
+
 # The standard build updates tracked generated bundles and Gradle state. They are
 # deployment artifacts, not server-authored source changes, so restore only these
 # known paths before the fast-forward merge.
@@ -195,6 +215,7 @@ fi
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
 if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   git merge --ff-only "$target_commit"
+  restore_live_frontend_overlay
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
@@ -379,21 +400,10 @@ skip_frontend=true
 [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]] && skip_frontend=false
 echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] && echo no || echo yes)"
 
-# The repository still contains generated frontend output for compatibility,
-# so a fast-forward merge can rewrite the live hostPath before the new build
-# has completed. Preserve the last verified runtime closure across the merge;
-# the isolated frontend build will replace it only after closure validation.
-live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
-merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
-if [[ -f "$live_frontend_overlay/index.html" ]]; then
-  rsync -a "$live_frontend_overlay/" "$merge_overlay_backup/"
-fi
+# Preserve the last verified runtime closure across the merge. The isolated
+# frontend build will replace it only after closure validation.
 git merge --ff-only "$target_commit"
-if [[ -f "$merge_overlay_backup/index.html" ]]; then
-  rsync -a --delete "$merge_overlay_backup/" "$live_frontend_overlay/"
-  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
-fi
-rm -rf "$merge_overlay_backup"
+restore_live_frontend_overlay
 bash ops/scripts/validate-deterministic-development-policy.sh
 
 # Capture the last known-good runtime, web proxy and frontend overlay before
