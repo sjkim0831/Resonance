@@ -53,6 +53,41 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
         fail(f"{identity}: design is blocked: {step.get('blocker_codes')}")
 
 
+def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Accept both legacy audience groups and the current flat field contract.
+
+    Structured professional contracts store one field per array item and apply
+    that list to every screen unless a field declares an audience. Older
+    contracts wrap fields in ``{"audience": ..., "fields": [...]}``. Keeping
+    both forms deterministic lets immutable, already-applied contracts and new
+    contracts share the same generator.
+    """
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    shared: list[dict[str, Any]] = []
+    for item in field_contract:
+        if not isinstance(item, dict):
+            fail("field_contract entries must be objects")
+        nested_fields = item.get("fields")
+        if isinstance(nested_fields, list):
+            audience = item.get("audience")
+            if not isinstance(audience, str) or not audience:
+                fail("grouped field_contract entries require audience")
+            grouped.setdefault(audience, []).extend(nested_fields)
+            continue
+        if "fieldCode" not in item:
+            fail("flat field_contract entries require fieldCode")
+        audience = item.get("audience")
+        if audience is None:
+            shared.append(item)
+        elif isinstance(audience, str) and audience:
+            grouped.setdefault(audience, []).append(item)
+        else:
+            fail("field_contract audience must be a non-empty string")
+    if shared:
+        grouped["*"] = shared
+    return grouped
+
+
 def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]:
     validate_step(process, step)
     executable_tests = [
@@ -61,7 +96,7 @@ def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]
         and case.get("steps") and case.get("assertions")
     ]
     pages = []
-    field_by_audience = {item["audience"]: item.get("fields", []) for item in step["field_contract"]}
+    field_by_audience = group_fields_by_audience(step["field_contract"])
     for page in step["screen_contract"]:
         audience = page["audience"]
         pages.append({
@@ -75,7 +110,7 @@ def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]
             "layout": "COMMON_KRDS_TASK_LAYOUT",
             "theme": "COMMON_KRDS_GOV",
             "sections": ["TASK_CONTEXT", "TASK_ACTIONS", "TASK_CONTENT", "TASK_EVIDENCE", "TASK_HANDOFF"],
-            "fields": field_by_audience.get(audience, []),
+            "fields": field_by_audience.get(audience, field_by_audience.get("*", [])),
             "commands": step["command_contract"],
             "states": page["exceptions"],
             "responsive": page["responsive"],
