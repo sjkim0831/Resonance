@@ -686,6 +686,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
         if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,executionId);
         else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,executionId);
+        jdbc.update("update framework_process_work_draft set draft_status='SUBMITTED',submitted_at=current_timestamp,updated_at=current_timestamp where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) and draft_status='DRAFT'",tenant,project,process,step,user);
         return Map.of("success",true,"idempotent",false,"eventId",eventId,"fromState",from,"toState",to,"executionStatus",next.isEmpty()?"COMPLETED":"RUNNING","nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")),"nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
     }
 
@@ -766,6 +767,39 @@ public class ActorProcessGovernanceService {
     private void requireActorAssignment(String tenant,String project,String actor,String user){
         Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
+    }
+
+    public Map<String,Object> loadWorkDraft(String tenant,String project,String process,String step,String user){
+        List<Map<String,Object>> contracts=jdbc.queryForList("select step_code as \"stepCode\",step_name as \"stepName\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",input_contract as \"inputContract\",output_contract as \"outputContract\",api_contract as \"apiContract\" from framework_process_step where process_code=? and step_code=?",process,step);
+        if(contracts.isEmpty())throw new IllegalArgumentException("Work step contract does not exist: "+process+" / "+step);
+        Map<String,Object> contract=contracts.get(0);
+        requireActorAssignment(tenant,project,String.valueOf(contract.get("actorCode")),user);
+        List<Map<String,Object>> drafts=jdbc.queryForList("select draft_id as \"draftId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",payload_json::text as \"payloadJson\",evidence_json::text as \"evidenceJson\",draft_version as \"draftVersion\",draft_status as \"draftStatus\",saved_at as \"savedAt\",submitted_at as \"submittedAt\" from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,user);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("found",!drafts.isEmpty());result.put("contract",contract);
+        result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED"):drafts.get(0));
+        return result;
+    }
+
+    @Transactional public Map<String,Object> saveWorkDraft(Map<String,Object>b,String user){
+        String tenant=req(b,"tenantId"),project=req(b,"projectId"),process=req(b,"processCode"),step=req(b,"stepCode"),actor=req(b,"actorCode");
+        String payload=def(b,"payloadJson","{}"),evidence=def(b,"evidenceJson","{}");int expectedVersion=integerOr(b,"expectedVersion",0);
+        List<Map<String,Object>> contracts=jdbc.queryForList("select actor_code from framework_process_step where process_code=? and step_code=?",process,step);
+        if(contracts.isEmpty())throw new IllegalArgumentException("Work step contract does not exist: "+process+" / "+step);
+        String requiredActor=String.valueOf(contracts.get(0).get("actor_code"));
+        if(!requiredActor.equals(actor))throw new SecurityException("The required actor for this step is "+requiredActor+".");
+        requireActorAssignment(tenant,project,actor,user);
+        List<Map<String,Object>> existing=jdbc.queryForList("select draft_id,draft_version,draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
+        if(existing.isEmpty()){
+            if(expectedVersion!=0)throw new IllegalStateException("The draft version changed. Reload the latest work.");
+            jdbc.update("insert into framework_process_work_draft(draft_id,tenant_id,project_id,process_code,step_code,account_id,actor_code,payload_json,evidence_json,draft_version,draft_status,saved_at) values(?,?,?,?,?,?,?,cast(? as jsonb),cast(? as jsonb),1,'DRAFT',current_timestamp)",UUID.randomUUID(),tenant,project,process,step,user,actor,payload,evidence);
+        }else{
+            Map<String,Object> current=existing.get(0);int currentVersion=((Number)current.get("draft_version")).intValue();
+            if(currentVersion!=expectedVersion)throw new IllegalStateException("The draft version changed. Reload the latest work.");
+            if("SUBMITTED".equals(String.valueOf(current.get("draft_status"))))throw new IllegalStateException("A submitted work item cannot be edited.");
+            jdbc.update("update framework_process_work_draft set actor_code=?,payload_json=cast(? as jsonb),evidence_json=cast(? as jsonb),draft_version=draft_version+1,saved_at=current_timestamp,updated_at=current_timestamp where draft_id=?",actor,payload,evidence,current.get("draft_id"));
+        }
+        return loadWorkDraft(tenant,project,process,step,user);
     }
 
     public Map<String,Object> findProcessExecution(String tenant,String project,String process,String user){

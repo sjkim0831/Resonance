@@ -30,7 +30,7 @@ class ActorProcessGovernanceServiceSecurityTest {
         when(jdbc.queryForObject(argThat(sql -> sql.contains("lower(account_id)=lower(?)")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(0);
 
-        assertThrows(IllegalArgumentException.class, () -> service.startProcessExecution(Map.of(
+        assertThrows(SecurityException.class, () -> service.startProcessExecution(Map.of(
                 "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
                 "actorCode", "COMPANY_MANAGER"), "user-a"));
 
@@ -46,7 +46,7 @@ class ActorProcessGovernanceServiceSecurityTest {
                 "execution_status", "RUNNING", "tenant_id", "TENANT_B", "project_id", "PROJECT_B",
                 "process_code", "PROCESS_A", "current_step_code", "STEP_1")));
 
-        assertThrows(IllegalArgumentException.class, () -> service.executeProcessCommand(executionId, Map.of(
+        assertThrows(SecurityException.class, () -> service.executeProcessCommand(executionId, Map.of(
                 "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
                 "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
                 "idempotencyKey", "same-key"), "user-a"));
@@ -100,5 +100,35 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         assertEquals(false, result.get("changed"));
         verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void workDraftRejectsAnActorThatDoesNotOwnTheStep() {
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("select actor_code from framework_process_step")), any(Object[].class)))
+                .thenReturn(List.of(Map.of("actor_code", "SITE_DATA_OWNER")));
+
+        assertThrows(SecurityException.class, () -> service.saveWorkDraft(Map.of(
+                "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "EMISSION_PROJECT",
+                "stepCode", "EMISSION_PROJECT_COLLECT", "actorCode", "UNAUTHORIZED_ACTOR",
+                "expectedVersion", 0, "payloadJson", "{}", "evidenceJson", "{}"), "user-a"));
+
+        verify(jdbc, never()).update(argThat(sql -> sql != null && sql.contains("framework_process_work_draft")), any(Object[].class));
+    }
+
+    @Test
+    void workDraftRejectsAStaleOptimisticVersion() {
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("select actor_code from framework_process_step")), any(Object[].class)))
+                .thenReturn(List.of(Map.of("actor_code", "SITE_DATA_OWNER")));
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("lower(account_id)=lower(?)")),
+                org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("from framework_process_work_draft") && sql.contains("for update")), any(Object[].class)))
+                .thenReturn(List.of(Map.of("draft_id", UUID.randomUUID(), "draft_version", 2, "draft_status", "DRAFT")));
+
+        assertThrows(IllegalStateException.class, () -> service.saveWorkDraft(Map.of(
+                "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "EMISSION_PROJECT",
+                "stepCode", "EMISSION_PROJECT_COLLECT", "actorCode", "SITE_DATA_OWNER",
+                "expectedVersion", 1, "payloadJson", "{}", "evidenceJson", "{}"), "user-a"));
+
+        verify(jdbc, never()).update(argThat(sql -> sql != null && sql.startsWith("update framework_process_work_draft")), any(Object[].class));
     }
 }

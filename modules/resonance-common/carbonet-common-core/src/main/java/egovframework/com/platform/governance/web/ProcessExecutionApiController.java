@@ -43,6 +43,24 @@ public class ProcessExecutionApiController {
         try{return ResponseEntity.ok(service.executeProcessCommand(executionId,body,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
+    @GetMapping("/draft")
+    public ResponseEntity<?> draft(@RequestParam String tenantId,@RequestParam String projectId,@RequestParam String processCode,
+                                   @RequestParam String stepCode,HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.loadWorkDraft(tenantId,projectId,processCode,stepCode,principal.getName()));}
+        catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
+    }
+
+    @PutMapping("/draft")
+    public ResponseEntity<?> saveDraft(@RequestBody Map<String,Object> body,HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.saveWorkDraft(body,principal.getName()));}
+        catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
+    }
+
     private ResponseEntity<?> forbidden(Exception e){return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success",false,"message",e.getMessage()==null?"Access denied":e.getMessage()));}
+    private ResponseEntity<?> conflict(Exception e){return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success",false,"message",e.getMessage()==null?"The work version is stale.":e.getMessage()));}
     private ResponseEntity<?> bad(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}
 }
