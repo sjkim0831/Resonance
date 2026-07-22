@@ -19,6 +19,7 @@ bash -n "$RUNNER"
 bash -n "$ROOT/ops/scripts/generate-full-stack-design-packages.sh"
 bash -n "$ROOT/ops/scripts/validate-full-stack-design-generation.sh"
 python3 -m py_compile "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
+bash "$ROOT/ops/scripts/validate-incremental-screen-generation.sh" "$ROOT" >/dev/null
 python3 - "$ROOT" <<'PY'
 import importlib.util
 import pathlib
