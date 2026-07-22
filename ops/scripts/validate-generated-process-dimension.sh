@@ -14,9 +14,9 @@ EVIDENCE_DIR="$ROOT/var/test-evidence/process-package-tests"
 
 [[ -s "$INDEX" && -s "$PACKAGE" && -x "$TESTER" ]] || exit 3
 mkdir -p "$EVIDENCE_DIR"
-python3 "$TESTER" "$INDEX" \
+python3 "$TESTER" "$PACKAGE" \
   --cache-dir "$ROOT/var/verification/process-package-tests" \
-  --evidence "$EVIDENCE_DIR/$PROCESS.json" >/dev/null
+  --evidence "$EVIDENCE_DIR/${PROCESS}__${STEP}.json" >/dev/null
 
 jq -e --arg process "$PROCESS" --arg step "$STEP" '
   .schemaVersion == "2.0.0"
@@ -25,12 +25,25 @@ jq -e --arg process "$PROCESS" --arg step "$STEP" '
   and .step.code == $step
   and .frontend.renderer == "COMMON_SDUI_RUNTIME"
   and .backend.runtime == "COMMON_PROCESS_COMMAND_RUNTIME"
-  and (.frontend.pages | length) > 0
-  and (.frontend.pages[0].fields | length) >= 8
+  and ((.frontend.required == false and (.frontend.pages | length) == 0)
+    or (.frontend.required == true and (.frontend.pages | length) > 0
+      and all(.frontend.pages[]; (.fields | length) >= 8)))
   and (.backend.commands | length) > 0
 ' "$PACKAGE" >/dev/null
 
 case "$DIMENSION" in
+  FRONTEND_USER|FRONTEND_ADMIN)
+    expected_audience="USER"
+    [[ "$DIMENSION" == "FRONTEND_ADMIN" ]] && expected_audience="ADMIN"
+    jq -e --arg audience "$expected_audience" '
+      any(.frontend.pages[];
+        .audience == $audience
+        and (.route | type == "string" and startswith("/"))
+        and (.fields | length) >= 8
+        and .layout == "COMMON_KRDS_TASK_LAYOUT"
+        and .theme == "COMMON_KRDS_GOV")
+    ' "$PACKAGE" >/dev/null
+    ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     jq -e '
       (.backend.apis | length) > 0
@@ -79,5 +92,5 @@ esac
 
 jq -cn \
   --arg process "$PROCESS" --arg step "$STEP" --arg dimension "$DIMENSION" \
-  --arg package "$PACKAGE" --arg evidence "$EVIDENCE_DIR/$PROCESS.json" \
+  --arg package "$PACKAGE" --arg evidence "$EVIDENCE_DIR/${PROCESS}__${STEP}.json" \
   '{strategy:"APPROVED_FULL_STACK_PACKAGE",processCode:$process,stepCode:$step,dimension:$dimension,package:$package,evidence:$evidence,status:"PASSED"}'

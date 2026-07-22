@@ -12,7 +12,7 @@ jq -e '
   .allowUnverifiedCompletion == false and
   .defaultExecutionOrder[0] == "EXACT_EXISTING_IMPLEMENTATION" and
   .defaultExecutionOrder[-1] == "AI_ESCALATION" and
-  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","FULL_STACK","FULL_STACK_GENERATION","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
+  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","FRONTEND_ADMIN","FRONTEND_USER","FULL_STACK","FULL_STACK_GENERATION","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
 ' "$POLICY" >/dev/null
 bash -n "$WORKER"
 bash -n "$RUNNER"
@@ -57,6 +57,7 @@ prototype = {
 }
 step = {
     "step_code": "REVIEW", "screen_contract": [],
+    "field_contract": [{"fieldCode": "title"}],
     "guide_contract": {"adminPath": "/admin/work?step=REVIEW"},
     "business_contract": {"stepName": "Review", "requirement": "Review the change"},
 }
@@ -76,10 +77,12 @@ grep -Fq 'single automatic AI escalation was already consumed' "$WORKER"
 grep -Fq 'FLAT_FIELD_CONTRACT_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'READY_PACKAGE_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'SPEC_APPROVAL_WAIT_V1' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
-grep -Fq 'APPROVED_GENERATOR_V6_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'APPROVED_GENERATOR_V7_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 grep -Fq 'exact step package missing' "$RUNNER"
 grep -Fq 'fast-process-package-test.py" "$generated_step_package"' "$RUNNER"
 grep -Fq 'main push rejected after 3 guarded attempts' "$WORKER"
+grep -Fq 'GENERATED_DIMENSION_V1_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'incomplete_spec_demoted' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 deterministic_line="$(grep -n 'DETERMINISTIC_RUNNER=' "$WORKER" | head -1 | cut -d: -f1)"
 ai_line="$(grep -n 'bash "$PROJECT_WORK_RUNNER"' "$WORKER" | head -1 | cut -d: -f1)"

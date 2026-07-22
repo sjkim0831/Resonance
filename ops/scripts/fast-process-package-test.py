@@ -77,7 +77,10 @@ def test_package(path: Path) -> dict[str, Any]:
         require(command.get("resultState") == transition.get("toState"), "result state mismatch", failures)
 
     pages = frontend.get("pages", [])
-    require(bool(pages), "page", failures)
+    frontend_required = frontend.get("required", True)
+    require(frontend_required is True or pages == [], "unexpected page for backend-only step", failures)
+    if frontend_required:
+        require(bool(pages), "page", failures)
     page_audiences: set[str] = set()
     for page in pages:
         audience = page.get("audience")

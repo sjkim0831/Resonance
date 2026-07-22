@@ -118,6 +118,24 @@ EOF
 The deterministic validator requires persisted step-specific workflow events, authenticated user-facing readers, executable workflow tests, and a healthy live project workflow. Missing event or reader contracts leave this job incomplete.
 EOF
     ;;
+  FRONTEND_USER|FRONTEND_ADMIN)
+    [[ -s "$generated_step_package" ]] || exit 3
+    adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Verified generated frontend adoption: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Job type: $JOB_TYPE
+- Source commit: $(git -C "$WT" rev-parse HEAD)
+- Validation result: $adoption_json
+
+The exact approved step package supplies the matching USER or ADMIN route,
+professional field contract, shared KRDS layout, responsive behavior,
+accessibility, server authorization, and actor/process traceability.
+EOF
+    ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     if [[ -s "$generated_step_package" ]]; then
       adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?

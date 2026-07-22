@@ -95,6 +95,11 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
     screens = step["screen_contract"]
     if screens:
         return screens
+    # An approved API/database-only step has no page or field contract. Do not
+    # invent a UI by borrowing a sibling screen merely because a guide route is
+    # present for navigation context.
+    if not step["field_contract"]:
+        return []
     guide = step["guide_contract"]
     projected: list[dict[str, Any]] = []
     seen_audiences: set[str] = set()
@@ -161,7 +166,11 @@ def render_step(
             "transition": step["transition_contract"], "input": step["input_contract"],
             "output": step["output_contract"], "guide": step["guide_contract"],
         },
-        "frontend": {"renderer": "COMMON_SDUI_RUNTIME", "pages": pages},
+        "frontend": {
+            "renderer": "COMMON_SDUI_RUNTIME",
+            "required": bool(step["screen_contract"] or step["field_contract"]),
+            "pages": pages,
+        },
         "backend": {
             "runtime": "COMMON_PROCESS_COMMAND_RUNTIME", "apis": step["api_contract"],
             "commands": step["command_contract"], "authorization": step["actor_contract"],
