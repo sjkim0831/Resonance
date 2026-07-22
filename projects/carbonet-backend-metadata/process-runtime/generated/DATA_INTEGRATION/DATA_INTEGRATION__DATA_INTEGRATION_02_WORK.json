@@ -1,0 +1,499 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "DATA_INTEGRATION",
+    "name": "외부 데이터 연계",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "외부 데이터를 계약 기반으로 안전하게 수집하고 원본 무결성·품질·승인·재처리 이력을 보장한다."
+  },
+  "step": {
+    "code": "DATA_INTEGRATION_02_WORK",
+    "version": 2,
+    "actor": {
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "외부 데이터를 계약 기반으로 안전하게 수집·검증·승인한다.",
+      "slaHours": 24,
+      "stepName": "수집 실행·원본 보존",
+      "riskLevel": "HIGH",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "외부 데이터 연계",
+      "requirement": "승인된 계약 버전으로 멱등 수집을 실행하고 원천 생성시각, 수신시각, 건수, 체크섬, 스키마 검사, 재시도 정책과 원본 증적을 기록한다.",
+      "completionRule": "원본 페이로드와 체크섬이 보존되고 중복 방지 키로 수집 배치가 한 번만 확정되며 실패 행은 재처리 가능 상태로 격리된다.",
+      "regulationRefs": [
+        "개인정보 보호법",
+        "전자정부법",
+        "ISO 27001",
+        "ISO 14064-1"
+      ]
+    },
+    "transition": {
+      "toState": "SUBMITTED",
+      "stepType": "TASK",
+      "fromState": "PLANNED",
+      "stepOrder": 2,
+      "commandCode": "WORK",
+      "auditRequired": true,
+      "completionRule": "원본 페이로드와 체크섬이 보존되고 중복 방지 키로 수집 배치가 한 번만 확정되며 실패 행은 재처리 가능 상태로 격리된다.",
+      "optimisticLock": true,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "batchId": "",
+      "checksum": "",
+      "stepCode": "DATA_INTEGRATION_02_WORK",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "fromState": "PLANNED",
+      "receivedAt": "",
+      "evidenceRef": "",
+      "processCode": "DATA_INTEGRATION",
+      "recordCount": 0,
+      "retryPolicy": "",
+      "operatorNote": "",
+      "samplePayload": "",
+      "errorThreshold": 0,
+      "idempotencyKey": "",
+      "sourceGeneratedAt": "",
+      "schemaValidationResult": ""
+    },
+    "output": {
+      "toState": "SUBMITTED",
+      "acceptedCount": 0,
+      "quarantineRef": "",
+      "rejectedCount": 0,
+      "evidenceRequired": true,
+      "ingestionBatchId": ""
+    },
+    "guide": {
+      "title": "수집 실행·원본 보존",
+      "purpose": "승인된 계약 버전으로 멱등 수집을 실행하고 원천 생성시각, 수신시각, 건수, 체크섬, 스키마 검사, 재시도 정책과 원본 증적을 기록한다.",
+      "stepCode": "DATA_INTEGRATION_02_WORK",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "adminPath": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_02_WORK",
+      "stepOrder": 2,
+      "processCode": "DATA_INTEGRATION",
+      "nextStepCode": "DATA_INTEGRATION_03_VERIFY",
+      "workTypeCode": "DATA_GOVERNANCE",
+      "entryCondition": "PLANNED",
+      "completionCondition": "원본 페이로드와 체크섬이 보존되고 중복 방지 키로 수집 배치가 한 번만 확정되며 실패 행은 재처리 가능 상태로 격리된다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "DATA_INTEGRATION_02_WORK_ADMIN_WORKSPACE",
+        "route": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_02_WORK",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_TASK_WORKSPACE",
+        "title": "외부 데이터 연계 - 수집 실행·원본 보존",
+        "purpose": "승인된 계약 버전으로 멱등 수집을 실행하고 원천 생성시각, 수신시각, 건수, 체크섬, 스키마 검사, 재시도 정책과 원본 증적을 기록한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "label": "수집 배치 ID",
+            "required": true,
+            "fieldCode": "batchId",
+            "controlType": "TEXT",
+            "code": "batchId"
+          },
+          {
+            "label": "원천 생성 일시",
+            "required": true,
+            "fieldCode": "sourceGeneratedAt",
+            "controlType": "DATETIME",
+            "code": "sourceGeneratedAt"
+          },
+          {
+            "label": "수신 일시",
+            "required": true,
+            "fieldCode": "receivedAt",
+            "controlType": "DATETIME",
+            "code": "receivedAt"
+          },
+          {
+            "label": "수신 건수",
+            "required": true,
+            "fieldCode": "recordCount",
+            "controlType": "NUMBER",
+            "code": "recordCount"
+          },
+          {
+            "label": "원본 체크섬",
+            "required": true,
+            "fieldCode": "checksum",
+            "controlType": "TEXT",
+            "code": "checksum"
+          },
+          {
+            "label": "스키마 검사 결과",
+            "options": [
+              "PASS",
+              "PARTIAL",
+              "FAIL"
+            ],
+            "required": true,
+            "fieldCode": "schemaValidationResult",
+            "controlType": "SELECT",
+            "code": "schemaValidationResult"
+          },
+          {
+            "label": "중복 방지 키",
+            "required": true,
+            "fieldCode": "idempotencyKey",
+            "controlType": "TEXT",
+            "code": "idempotencyKey"
+          },
+          {
+            "label": "재시도 정책",
+            "required": true,
+            "fieldCode": "retryPolicy",
+            "controlType": "TEXTAREA",
+            "code": "retryPolicy"
+          },
+          {
+            "label": "허용 오류율(%)",
+            "required": true,
+            "fieldCode": "errorThreshold",
+            "controlType": "NUMBER",
+            "code": "errorThreshold"
+          },
+          {
+            "label": "원본·전송 증적",
+            "required": true,
+            "fieldCode": "evidenceRef",
+            "controlType": "TEXT",
+            "code": "evidenceRef"
+          },
+          {
+            "label": "실행 메모",
+            "required": false,
+            "fieldCode": "operatorNote",
+            "controlType": "TEXTAREA",
+            "code": "operatorNote"
+          },
+          {
+            "label": "마스킹 표본 데이터",
+            "required": true,
+            "fieldCode": "samplePayload",
+            "controlType": "TEXTAREA",
+            "code": "samplePayload"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "SYSTEM_INTEGRATOR",
+            "entryState": "PLANNED",
+            "commandCode": "WORK",
+            "resultState": "SUBMITTED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "LOADING",
+            "READY",
+            "EMPTY",
+            "VALIDATION_ERROR",
+            "FORBIDDEN",
+            "CONFLICT",
+            "DEPENDENCY_BLOCKED",
+            "RETRYING",
+            "ERROR"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered task",
+          "tablet": "two-column task and evidence",
+          "desktop": "three-region contract execution verification",
+          "overflow": "local table scroll",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/start",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "SYSTEM_INTEGRATOR",
+        "entryState": "PLANNED",
+        "commandCode": "WORK",
+        "resultState": "SUBMITTED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "DATA_INTEGRATION_03_VERIFY",
+            "actorCode": "SYSTEM_INTEGRATOR",
+            "fromState": "SUBMITTED",
+            "processCode": "DATA_INTEGRATION"
+          },
+          "fromOutput": {
+            "toState": "SUBMITTED",
+            "completionRule": "필수 입력과 증빙이 제출됨",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "DATA_INTEGRATION_03_VERIFY",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "SYSTEM_INTEGRATOR",
+          "fromActor": "SYSTEM_INTEGRATOR",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "DATA_INTEGRATION"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [
+      "framework_process_execution",
+      "framework_process_execution_event",
+      "framework_process_work_draft"
+    ],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "외부 데이터 연계 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "07c8dfdd3a9300682448f4e796d6018c",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "dd03da707e78f8e970a81cab006af871e232d7e1b84628d1d0ca9c2547e7d3e9"
+}

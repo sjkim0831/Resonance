@@ -1,0 +1,522 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "DATA_INTEGRATION",
+    "name": "외부 데이터 연계",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "외부 데이터를 계약 기반으로 안전하게 수집하고 원본 무결성·품질·승인·재처리 이력을 보장한다."
+  },
+  "step": {
+    "code": "DATA_INTEGRATION_01_PLAN",
+    "version": 2,
+    "actor": {
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "외부 데이터를 계약 기반으로 안전하게 수집·검증·승인한다.",
+      "slaHours": 24,
+      "stepName": "연계 계획·계약 확정",
+      "riskLevel": "HIGH",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "외부 데이터 연계",
+      "requirement": "연계 책임자는 원천 시스템, 데이터 도메인, 인터페이스·인증 방식, 동기화 주기, 스키마 버전, 보존·개인정보 등급과 롤백 기준을 확정한다.",
+      "completionRule": "연계 소유자와 기술·보안·데이터 계약이 승인 가능한 수준으로 저장되고 변경 불가능한 계획 스냅샷이 생성된다.",
+      "regulationRefs": [
+        "개인정보 보호법",
+        "전자정부법",
+        "ISO 27001",
+        "ISO 14064-1"
+      ]
+    },
+    "transition": {
+      "toState": "PLANNED",
+      "stepType": "TASK",
+      "fromState": "DRAFT",
+      "stepOrder": 1,
+      "commandCode": "PLAN",
+      "auditRequired": true,
+      "completionRule": "연계 소유자와 기술·보안·데이터 계약이 승인 가능한 수준으로 저장되고 변경 불가능한 계획 스냅샷이 생성된다.",
+      "optimisticLock": true,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "DATA_INTEGRATION_01_PLAN",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "fromState": "DRAFT",
+      "authMethod": "",
+      "dataDomain": "",
+      "endpointUrl": "",
+      "processCode": "DATA_INTEGRATION",
+      "privacyLevel": "",
+      "sourceSystem": "",
+      "syncSchedule": "",
+      "interfaceType": "",
+      "retentionDays": 0,
+      "schemaVersion": "",
+      "integrationName": "",
+      "ownerOrganization": "",
+      "rollbackCriterion": ""
+    },
+    "output": {
+      "toState": "PLANNED",
+      "planSnapshotId": "",
+      "contractVersion": 1,
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "연계 계획·계약 확정",
+      "purpose": "연계 책임자는 원천 시스템, 데이터 도메인, 인터페이스·인증 방식, 동기화 주기, 스키마 버전, 보존·개인정보 등급과 롤백 기준을 확정한다.",
+      "stepCode": "DATA_INTEGRATION_01_PLAN",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "adminPath": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_01_PLAN",
+      "stepOrder": 1,
+      "processCode": "DATA_INTEGRATION",
+      "nextStepCode": "DATA_INTEGRATION_02_WORK",
+      "workTypeCode": "DATA_GOVERNANCE",
+      "entryCondition": "DRAFT",
+      "completionCondition": "연계 소유자와 기술·보안·데이터 계약이 승인 가능한 수준으로 저장되고 변경 불가능한 계획 스냅샷이 생성된다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "DATA_INTEGRATION_01_PLAN_ADMIN_WORKSPACE",
+        "route": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_01_PLAN",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_TASK_WORKSPACE",
+        "title": "외부 데이터 연계 - 연계 계획·계약 확정",
+        "purpose": "연계 책임자는 원천 시스템, 데이터 도메인, 인터페이스·인증 방식, 동기화 주기, 스키마 버전, 보존·개인정보 등급과 롤백 기준을 확정한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "label": "연계명",
+            "required": true,
+            "fieldCode": "integrationName",
+            "controlType": "TEXT",
+            "description": "업무와 원천을 식별하는 고유 연계명",
+            "code": "integrationName"
+          },
+          {
+            "label": "원천 시스템",
+            "required": true,
+            "fieldCode": "sourceSystem",
+            "controlType": "TEXT",
+            "description": "기관·시스템·환경 식별자",
+            "code": "sourceSystem"
+          },
+          {
+            "label": "데이터 도메인",
+            "options": [
+              "배출량",
+              "활동자료",
+              "LCA",
+              "감축",
+              "MRV",
+              "기준정보"
+            ],
+            "required": true,
+            "fieldCode": "dataDomain",
+            "controlType": "SELECT",
+            "code": "dataDomain"
+          },
+          {
+            "label": "소유 기관·담당자",
+            "required": true,
+            "fieldCode": "ownerOrganization",
+            "controlType": "TEXT",
+            "code": "ownerOrganization"
+          },
+          {
+            "label": "연계 방식",
+            "options": [
+              "REST API",
+              "WEBHOOK",
+              "SFTP",
+              "DATABASE",
+              "FILE"
+            ],
+            "required": true,
+            "fieldCode": "interfaceType",
+            "controlType": "SELECT",
+            "code": "interfaceType"
+          },
+          {
+            "label": "엔드포인트·접속 대상",
+            "required": true,
+            "fieldCode": "endpointUrl",
+            "controlType": "TEXT",
+            "code": "endpointUrl"
+          },
+          {
+            "label": "인증 방식",
+            "options": [
+              "OAUTH2",
+              "API_KEY",
+              "MTLS",
+              "SSH_KEY",
+              "PRIVATE_NETWORK"
+            ],
+            "required": true,
+            "fieldCode": "authMethod",
+            "controlType": "SELECT",
+            "code": "authMethod"
+          },
+          {
+            "label": "동기화 주기",
+            "required": true,
+            "fieldCode": "syncSchedule",
+            "controlType": "TEXT",
+            "code": "syncSchedule"
+          },
+          {
+            "label": "스키마 버전",
+            "required": true,
+            "fieldCode": "schemaVersion",
+            "controlType": "TEXT",
+            "code": "schemaVersion"
+          },
+          {
+            "label": "보존 기간(일)",
+            "required": true,
+            "fieldCode": "retentionDays",
+            "controlType": "NUMBER",
+            "code": "retentionDays"
+          },
+          {
+            "label": "보안·개인정보 등급",
+            "options": [
+              "PUBLIC",
+              "INTERNAL",
+              "CONFIDENTIAL",
+              "RESTRICTED"
+            ],
+            "required": true,
+            "fieldCode": "privacyLevel",
+            "controlType": "SELECT",
+            "code": "privacyLevel"
+          },
+          {
+            "label": "중단·롤백 기준",
+            "required": true,
+            "fieldCode": "rollbackCriterion",
+            "controlType": "TEXTAREA",
+            "code": "rollbackCriterion"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "SYSTEM_INTEGRATOR",
+            "entryState": "DRAFT",
+            "commandCode": "PLAN",
+            "resultState": "PLANNED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "LOADING",
+            "READY",
+            "EMPTY",
+            "VALIDATION_ERROR",
+            "FORBIDDEN",
+            "CONFLICT",
+            "DEPENDENCY_BLOCKED",
+            "RETRYING",
+            "ERROR"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered task",
+          "tablet": "two-column task and evidence",
+          "desktop": "three-region contract execution verification",
+          "overflow": "local table scroll",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/start",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "SYSTEM_INTEGRATOR",
+        "entryState": "DRAFT",
+        "commandCode": "PLAN",
+        "resultState": "PLANNED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "DATA_INTEGRATION_02_WORK",
+            "actorCode": "SYSTEM_INTEGRATOR",
+            "fromState": "PLANNED",
+            "processCode": "DATA_INTEGRATION"
+          },
+          "fromOutput": {
+            "toState": "PLANNED",
+            "completionRule": "책임자·기간·범위가 지정됨",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "DATA_INTEGRATION_02_WORK",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "SYSTEM_INTEGRATOR",
+          "fromActor": "SYSTEM_INTEGRATOR",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "DATA_INTEGRATION"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [
+      "framework_process_execution",
+      "framework_process_execution_event",
+      "framework_process_work_draft"
+    ],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "외부 데이터 연계 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "82930e6c2f2b14e8e6f63fa08becfa1f",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "53e4b4b11d33ee5bc6b065c2a381a1a359366f56a1643d8949a67e6c1a12ef5a"
+}

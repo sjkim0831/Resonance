@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "DATA_INTEGRATION",
+      "stepCode": "DATA_INTEGRATION_01_PLAN",
+      "package": "DATA_INTEGRATION__DATA_INTEGRATION_01_PLAN.json",
+      "packageHash": "53e4b4b11d33ee5bc6b065c2a381a1a359366f56a1643d8949a67e6c1a12ef5a",
+      "pages": 1
+    },
+    {
+      "processCode": "DATA_INTEGRATION",
+      "stepCode": "DATA_INTEGRATION_02_WORK",
+      "package": "DATA_INTEGRATION__DATA_INTEGRATION_02_WORK.json",
+      "packageHash": "dd03da707e78f8e970a81cab006af871e232d7e1b84628d1d0ca9c2547e7d3e9",
+      "pages": 1
+    },
+    {
+      "processCode": "DATA_INTEGRATION",
+      "stepCode": "DATA_INTEGRATION_03_VERIFY",
+      "package": "DATA_INTEGRATION__DATA_INTEGRATION_03_VERIFY.json",
+      "packageHash": "0d6c2f21c4ada01f054add7cba3a5b54246dcdb03cc34da356971e0abf06f2f3",
+      "pages": 1
+    },
+    {
+      "processCode": "DATA_INTEGRATION",
+      "stepCode": "DATA_INTEGRATION_04_APPROVE",
+      "package": "DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json",
+      "packageHash": "4ac01e8122f9f4b2de3832602ba354c843873b10d2918f503061e4853b710668",
+      "pages": 1
+    }
+  ],
+  "manifestHash": "87253679781a526407e3c8b8584c671e0828cfca3b111f5d9252c57fe0c96d8e"
+}

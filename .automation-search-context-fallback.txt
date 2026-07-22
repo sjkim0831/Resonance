@@ -1,6 +1,6 @@
-process=CO2_INJECTION_STORAGE_OPERATION
-step=CISO_PLAN
+process=DATA_INTEGRATION
+step=DATA_INTEGRATION_02_WORK
 type=FULL_STACK
-target=/ccus/facility/co2-injection-storage-operation?step=ciso_plan
+target=contract://DATA_INTEGRATION/DATA_INTEGRATION_02_WORK
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
