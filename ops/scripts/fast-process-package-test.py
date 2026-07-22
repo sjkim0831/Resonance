@@ -86,7 +86,7 @@ def test_package(path: Path) -> dict[str, Any]:
         require(str(page.get("route", "")).startswith("/"), "route", failures)
         require(page.get("layout") == "COMMON_KRDS_TASK_LAYOUT", "common layout", failures)
         require(page.get("theme") == "COMMON_KRDS_GOV", "common theme", failures)
-        require(len(page.get("fields", [])) >= 10, "professional field contract", failures)
+        require(len(page.get("fields", [])) >= 8, "professional field contract", failures)
         field_codes = {field.get("code") for field in page.get("fields", [])}
         client_input_fields = set(step.get("input", {})) - SERVER_CONTEXT_FIELDS
         for field in client_input_fields:

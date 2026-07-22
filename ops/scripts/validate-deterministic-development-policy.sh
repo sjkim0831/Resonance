@@ -35,7 +35,10 @@ flat = [
     {"fieldCode": "title", "label": "Title", "controlType": "TEXT"},
     {"fieldCode": "decision", "label": "Decision", "controlType": "SELECT"},
 ]
-assert module.group_fields_by_audience(flat) == {"*": flat}
+assert module.group_fields_by_audience(flat) == {"*": [
+    {**flat[0], "code": "title"},
+    {**flat[1], "code": "decision"},
+]}
 
 legacy = [
     {"audience": "USER", "fields": [{"fieldCode": "title"}]},
@@ -45,6 +48,20 @@ assert module.group_fields_by_audience(legacy) == {
     "USER": [{"fieldCode": "title"}],
     "ADMIN": [{"fieldCode": "decision"}],
 }
+
+prototype = {
+    "audience": "ADMIN", "pageCode": "SHARED", "title": "Shared",
+    "purpose": "Shared workspace", "plannedRoute": "/admin/shared",
+    "actualRoute": "/admin/shared", "routeStatus": "IMPLEMENTED",
+}
+step = {
+    "step_code": "REVIEW", "screen_contract": [],
+    "guide_contract": {"adminPath": "/admin/work?step=REVIEW"},
+    "business_contract": {"stepName": "Review", "requirement": "Review the change"},
+}
+projected = module.screens_for_step(step, [prototype])
+assert projected[0]["actualRoute"] == "/admin/work?step=REVIEW"
+assert projected[0]["pageCode"] == "REVIEW_ADMIN_WORKSPACE"
 PY
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-database.sh"
 bash -n "$ROOT/ops/scripts/validate-existing-emission-project-api.sh"

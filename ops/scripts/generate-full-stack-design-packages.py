@@ -9,6 +9,7 @@ contracts into shared SDUI, backend-command, persistence and test manifests.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -76,6 +77,8 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
             continue
         if "fieldCode" not in item:
             fail("flat field_contract entries require fieldCode")
+        item = dict(item)
+        item.setdefault("code", item["fieldCode"])
         audience = item.get("audience")
         if audience is None:
             shared.append(item)
@@ -88,7 +91,36 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
     return grouped
 
 
-def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]:
+def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    screens = step["screen_contract"]
+    if screens:
+        return screens
+    guide = step["guide_contract"]
+    projected: list[dict[str, Any]] = []
+    seen_audiences: set[str] = set()
+    for prototype in shared_screens:
+        audience = prototype.get("audience")
+        if audience in seen_audiences:
+            continue
+        route_key = "adminPath" if audience == "ADMIN" else "userPath"
+        route = guide.get(route_key)
+        if not isinstance(route, str) or not route.startswith("/"):
+            continue
+        page = copy.deepcopy(prototype)
+        page["pageCode"] = f"{step['step_code']}_{audience}_WORKSPACE"
+        page["title"] = step["business_contract"]["stepName"]
+        page["purpose"] = step["business_contract"]["requirement"]
+        page["plannedRoute"] = route
+        page["actualRoute"] = route
+        page["routeStatus"] = "IMPLEMENTED"
+        projected.append(page)
+        seen_audiences.add(audience)
+    return projected
+
+
+def render_step(
+    process: dict[str, Any], step: dict[str, Any], shared_screens: list[dict[str, Any]]
+) -> dict[str, Any]:
     validate_step(process, step)
     executable_tests = [
         case for case in step["test_contract"]
@@ -97,7 +129,7 @@ def render_step(process: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]
     ]
     pages = []
     field_by_audience = group_fields_by_audience(step["field_contract"])
-    for page in step["screen_contract"]:
+    for page in screens_for_step(step, shared_screens):
         audience = page["audience"]
         pages.append({
             "pageCode": page["pageCode"],
@@ -167,11 +199,16 @@ def main() -> None:
     packages: list[tuple[str, dict[str, Any]]] = []
     skipped_review = 0
     for process in data["processes"]:
+        shared_screens = [
+            screen
+            for process_step in process.get("steps", [])
+            for screen in process_step.get("screen_contract", [])
+        ]
         for step in process.get("steps", []):
             if step.get("approval_status") != "APPROVED" and not args.allow_review_required:
                 skipped_review += 1
                 continue
-            package = render_step(process, step)
+            package = render_step(process, step, shared_screens)
             packages.append((f"{process['processCode']}__{step['step_code']}.json", package))
     if args.check:
         print(stable({"valid": True, "packages": len(packages), "skippedReview": skipped_review}))

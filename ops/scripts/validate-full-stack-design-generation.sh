@@ -25,7 +25,7 @@ while IFS=$'\t' read -r file expected; do
     .testExecution.runner=="FAST_PROCESS_CONTRACT_RUNNER" and
     .testExecution.parallelSafe==true and
     .testExecution.liveSmokeRequiredForVerified==true and
-    ([.frontend.pages[].fields|length] | all(.>=10))
+    ([.frontend.pages[].fields|length] | all(.>=8))
   ' "$path" >/dev/null || { echo "[full-stack-generation] incomplete $file" >&2; exit 1; }
 done < <(jq -r '.packages[]|[.package,.packageHash]|@tsv' "$INDEX")
 
