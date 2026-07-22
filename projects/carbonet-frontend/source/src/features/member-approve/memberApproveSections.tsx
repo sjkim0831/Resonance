@@ -60,19 +60,20 @@ export function MemberApproveSearchSection({
       <div className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4">
         <div>
           <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">회원 유형</span>
-          <AdminSelect value={draftFilters.membershipType} onChange={(event) => updateDraft("membershipType", event.target.value)}>
+          <AdminSelect aria-label="회원 유형" value={draftFilters.membershipType} onChange={(event) => updateDraft("membershipType", event.target.value)}>
             {MEMBER_TYPE_OPTIONS.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
           </AdminSelect>
         </div>
         <div>
           <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">상태</span>
-          <AdminSelect value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
+          <AdminSelect aria-label="승인 상태" value={draftFilters.status} onChange={(event) => updateDraft("status", event.target.value)}>
             {MEMBER_APPROVAL_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </AdminSelect>
         </div>
         <div className="md:col-span-2">
           <span className="mb-2 block text-[14px] font-bold text-[var(--kr-gov-text-secondary)]">검색어</span>
           <AdminInput
+            aria-label="회원 승인 검색어"
             className="flex-1"
             placeholder="신청자명, 회원사명, 사업자등록번호 검색"
             value={draftFilters.searchKeyword}
@@ -140,7 +141,7 @@ export function MemberApproveTableSection({
           <thead className="border-b border-[var(--kr-gov-border-light)] bg-gray-50">
             <tr className="text-left text-[var(--kr-gov-text-secondary)]">
               <th className="w-12 px-4 py-4 text-center">
-                <input checked={approvalRows.length > 0 && selectedIds.length === approvalRows.length} className="rounded border-gray-300" onChange={(event) => toggleSelectAll(event.target.checked)} type="checkbox" />
+                <input aria-label="회원 전체 선택" checked={approvalRows.length > 0 && selectedIds.length === approvalRows.length} className="rounded border-gray-300" onChange={(event) => toggleSelectAll(event.target.checked)} type="checkbox" />
               </th>
               <th className="px-4 py-4 font-bold">신청자</th>
               <th className="px-4 py-4 font-bold">회원사</th>
@@ -164,7 +165,7 @@ export function MemberApproveTableSection({
               return (
                 <tr className="border-b border-[var(--kr-gov-border-light)] align-top" key={memberId}>
                   <td className="px-4 py-4 text-center">
-                    <input checked={selectedIds.includes(memberId)} className="rounded border-gray-300" onChange={() => toggleSelection(memberId)} type="checkbox" />
+                    <input aria-label={`${memberId} 선택`} checked={selectedIds.includes(memberId)} className="rounded border-gray-300" onChange={() => toggleSelection(memberId)} type="checkbox" />
                   </td>
                   <td className="px-4 py-4">
                     <div className="font-bold text-gray-900">{String(row.memberName || "-")}</div>

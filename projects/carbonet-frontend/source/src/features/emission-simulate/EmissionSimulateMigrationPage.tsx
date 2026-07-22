@@ -495,7 +495,7 @@ export function EmissionSimulateMigrationPage() {
                         <span>{builderCopy.tech}</span>
                         <span className="text-emerald-600">₩{techInvestment.toLocaleString()}M</span>
                       </div>
-                      <input className="scenario-slider" max="100" min="0" onChange={(event) => setTechInvestment(Number(event.target.value))} type="range" value={techInvestment} />
+                      <input aria-label={builderCopy.tech} className="scenario-slider" max="100" min="0" onChange={(event) => setTechInvestment(Number(event.target.value))} type="range" value={techInvestment} />
                     </div>
 
                     <div className="space-y-3">
@@ -503,7 +503,7 @@ export function EmissionSimulateMigrationPage() {
                         <span>{builderCopy.efficiency}</span>
                         <span className="text-emerald-600">+{efficiencyGain}%</span>
                       </div>
-                      <input className="scenario-slider" max="100" min="0" onChange={(event) => setEfficiencyGain(Number(event.target.value))} type="range" value={efficiencyGain} />
+                      <input aria-label={builderCopy.efficiency} className="scenario-slider" max="100" min="0" onChange={(event) => setEfficiencyGain(Number(event.target.value))} type="range" value={efficiencyGain} />
                     </div>
 
                     <div className="space-y-3">
@@ -511,7 +511,7 @@ export function EmissionSimulateMigrationPage() {
                         <span>{builderCopy.renewable}</span>
                         <span className="text-emerald-600">{renewableRate}%</span>
                       </div>
-                      <input className="scenario-slider" max="100" min="0" onChange={(event) => setRenewableRate(Number(event.target.value))} type="range" value={renewableRate} />
+                      <input aria-label={builderCopy.renewable} className="scenario-slider" max="100" min="0" onChange={(event) => setRenewableRate(Number(event.target.value))} type="range" value={renewableRate} />
                     </div>
 
                     <div className="space-y-3">
@@ -519,7 +519,7 @@ export function EmissionSimulateMigrationPage() {
                         <span>{builderCopy.ccus}</span>
                         <span className="text-emerald-600">{ccusScale}%</span>
                       </div>
-                      <input className="scenario-slider" max="100" min="0" onChange={(event) => setCcusScale(Number(event.target.value))} type="range" value={ccusScale} />
+                      <input aria-label={builderCopy.ccus} className="scenario-slider" max="100" min="0" onChange={(event) => setCcusScale(Number(event.target.value))} type="range" value={ccusScale} />
                     </div>
 
                     <div className="rounded-2xl bg-slate-50 border border-slate-200 p-5">

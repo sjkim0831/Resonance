@@ -152,14 +152,14 @@ export function CompanyListMigrationPage() {
           <form className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-4" onSubmit={handleSearchSubmit}>
             <div>
               <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">상태</span>
-              <AdminSelect value={draftFilters.status} onChange={(e) => updateDraft("status", e.target.value)}>
+              <AdminSelect aria-label="회원사 상태" value={draftFilters.status} onChange={(e) => updateDraft("status", e.target.value)}>
                 {STATUS_OPTIONS.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
               </AdminSelect>
             </div>
             <div className="md:col-span-3">
               <span className="block text-[14px] font-bold text-[var(--kr-gov-text-secondary)] mb-2">검색어</span>
               <div className="flex gap-2">
-                <AdminInput className="flex-1" placeholder="기관명, 사업자등록번호 검색" value={draftFilters.searchKeyword} onChange={(e) => updateDraft("searchKeyword", e.target.value)} />
+                <AdminInput aria-label="회원사 검색어" className="flex-1" placeholder="기관명, 사업자등록번호 검색" value={draftFilters.searchKeyword} onChange={(e) => updateDraft("searchKeyword", e.target.value)} />
               </div>
             </div>
             <div className="md:col-span-4">
