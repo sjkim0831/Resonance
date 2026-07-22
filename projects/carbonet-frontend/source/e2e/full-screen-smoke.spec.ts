@@ -55,6 +55,10 @@ async function ensureAdminSession(page: Page) {
     page.waitForURL((url) => !/\/admin\/login\/loginView$/.test(url.pathname), { timeout: 15_000 }),
     page.getByRole("button", { name: /로그인/ }).click()
   ]);
+  await page.waitForFunction(() => {
+    const text = (document.body?.innerText || "").trim();
+    return !/관리자 화면을 준비하고 있습니다|Bootstrap loaded\. Waiting for React app mount|Loading admin shell/.test(text);
+  }, undefined, { polling: 100, timeout: 5_000 }).catch(() => undefined);
 }
 
 async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, attempt: number) {
@@ -70,8 +74,17 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
   let status = 0;
   let navigationError = "";
   try {
-    const response = await page.goto(`${baseUrl}${route.routePath}`, { waitUntil: "domcontentloaded", timeout: 12_000 });
-    status = response?.status() || 0;
+    if (attempt === 1) {
+      const response = await page.request.get(`${baseUrl}${route.routePath}`, { failOnStatusCode: false, timeout: 6_000 });
+      status = response.status();
+      await page.evaluate((targetPath) => {
+        window.history.pushState({}, "", targetPath);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      }, route.routePath);
+    } else {
+      const response = await page.goto(`${baseUrl}${route.routePath}`, { waitUntil: "domcontentloaded", timeout: 12_000 });
+      status = response?.status() || 0;
+    }
     await page.waitForFunction(() => {
       const text = (document.body?.innerText || "").trim();
       return !/관리자 화면을 준비하고 있습니다|Bootstrap loaded\. Waiting for React app mount|Loading admin shell|화면 준비 중/.test(text);
@@ -80,21 +93,38 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
     navigationError = error instanceof Error ? error.message : String(error);
   }
 
-  const metrics = await page.evaluate(() => {
-    const body = document.body;
-    const root = document.querySelector("#root");
-    const text = (body?.innerText || "").trim();
-    const width = Math.max(document.documentElement.scrollWidth, body?.scrollWidth || 0);
-    const loginRedirect = /\/admin\/login\/loginView$/.test(location.pathname);
-    return {
-      finalUrl: location.href,
-      bodyTextLength: text.length,
-      rootChildren: root?.children.length ?? -1,
-      overflowX: width > document.documentElement.clientWidth + 2,
-      loginRedirect,
-      bootstrapStuck: /Bootstrap loaded\. Waiting for React app mount/.test(text)
-    };
-  });
+  let metrics: { finalUrl: string; bodyTextLength: number; rootChildren: number; overflowX: boolean; loginRedirect: boolean; bootstrapStuck: boolean } | null = null;
+  for (let metricAttempt = 0; metricAttempt < 3 && !metrics; metricAttempt += 1) {
+    try {
+      metrics = await page.evaluate(() => {
+        const body = document.body;
+        const root = document.querySelector("#root");
+        const text = (body?.innerText || "").trim();
+        const width = Math.max(document.documentElement.scrollWidth, body?.scrollWidth || 0);
+        const loginRedirect = /\/admin\/login\/loginView$/.test(location.pathname);
+        return {
+          finalUrl: location.href,
+          bodyTextLength: text.length,
+          rootChildren: root?.children.length ?? -1,
+          overflowX: width > document.documentElement.clientWidth + 2,
+          loginRedirect,
+          bootstrapStuck: /Bootstrap loaded\. Waiting for React app mount/.test(text)
+        };
+      });
+    } catch (error) {
+      navigationError ||= error instanceof Error ? error.message : String(error);
+      await page.waitForLoadState("domcontentloaded", { timeout: 1_000 }).catch(() => undefined);
+      await page.waitForTimeout(80);
+    }
+  }
+  metrics ||= {
+    finalUrl: page.url(),
+    bodyTextLength: 0,
+    rootChildren: 0,
+    overflowX: false,
+    loginRedirect: /\/admin\/login\/loginView$/.test(new URL(page.url()).pathname),
+    bootstrapStuck: false
+  };
   page.off("console", onConsole);
   page.off("pageerror", onPageError);
 
@@ -106,7 +136,7 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
   if (route.audiences.includes("ADMIN") && metrics.loginRedirect) errors.push("ADMIN_LOGIN_REDIRECT");
   const ok = errors.length === 0;
   if (!ok && attempt === 2) {
-    await page.screenshot({ path: testInfo.outputPath(`route-${route.id}.png`), fullPage: false });
+    await page.screenshot({ path: testInfo.outputPath(`route-${route.id}.png`), fullPage: false }).catch(() => undefined);
   }
   return {
     routeId: route.id,
