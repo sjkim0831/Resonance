@@ -748,12 +748,11 @@ rollout_image() {
     -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"reference-root\",\"hostPath\":{\"path\":\"/opt/reference\",\"type\":\"DirectoryOrCreate\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"volumeMounts\":[{\"name\":\"reference-root\",\"mountPath\":\"/opt/reference\",\"readOnly\":true}]}]}}}}" \
     >/dev/null || rollback_and_fail "REFERENCE_MOUNT_FAILED" "Failed to mount /opt/reference read-only" "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
 
-  # Keep at least two of three replicas available while allowing Kubernetes to
-  # replace one old pod as the surge pod starts. The previous 0-unavailable
-  # policy serialized every ~60s Spring startup and made a rollout take three
-  # full startup cycles.
+  # Preserve the cluster's zero-unavailable admission policy while starting
+  # two replacement pods in parallel. The previous surge of one serialized
+  # every ~60s Spring startup and made a rollout take three startup cycles.
   kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='merge' \
-    -p='{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":1,"maxUnavailable":1}}}}' \
+    -p='{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":2,"maxUnavailable":0}}}}' \
     >/dev/null || rollback_and_fail "ROLLOUT_STRATEGY_FAILED" "Failed to apply bounded parallel rollout strategy" "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
 
   log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
