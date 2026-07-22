@@ -27,6 +27,9 @@
     "lane:09:loop": "bash scripts/run-resonance-lane-09-loop.sh",
     "test:e2e": "playwright test",
     "test:e2e:member-list": "playwright test e2e/member-list.spec.ts",
+    "generate:full-screen-smoke": "bash scripts/export-full-screen-smoke-manifest.sh",
+    "test:e2e:full-screen-smoke": "bash scripts/run-full-screen-smoke.sh",
+    "test:e2e:full-screen-smoke:changed": "FULL_SCREEN_SMOKE_CHANGED_ONLY=true bash scripts/run-full-screen-smoke.sh",
     "generate:page-completeness-inventory": "node scripts/generate-page-completeness-inventory.mjs"
   },
   "dependencies": {
