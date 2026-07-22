@@ -101,4 +101,5 @@ select framework_complete_incremental_screen_generation(
 SQL
 
 jq --arg runCode "$run_code" --arg processCode "$PROCESS_CODE" \
-  '. + {runCode:$runCode,processCode:$processCode,status:"GENERATED"}' "$result"
+  '. + {runCode:$runCode,processCode:$processCode,status:"GENERATED",
+        artifactCount:(.artifacts | length)} | del(.artifacts)' "$result"
