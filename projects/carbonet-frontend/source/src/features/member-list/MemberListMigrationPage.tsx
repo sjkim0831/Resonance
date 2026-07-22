@@ -257,7 +257,19 @@ function MemberListPageScreen({ variant }: { variant: MemberListPageVariant }) {
       loading={pageState.loading && !page && !error}
       loadingLabel="회원 목록을 불러오는 중입니다."
     >
-      {error ? <section className="border border-red-200 bg-red-50 rounded-[var(--kr-gov-radius)] px-4 py-3 mb-4"><p className="text-sm text-red-700">조회 중 오류: {error}</p></section> : null}
+      {error ? (
+        <section className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--kr-gov-radius)] border border-red-200 bg-red-50 px-4 py-3" role="alert">
+          <p className="text-sm text-red-700">조회 중 오류: {error}</p>
+          <button
+            className="min-h-10 rounded-lg border border-red-300 bg-white px-4 text-sm font-black text-red-700 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+            disabled={pageState.loading}
+            onClick={() => void pageState.reload()}
+            type="button"
+          >
+            {pageState.loading ? "복구 중..." : "다시 시도"}
+          </button>
+        </section>
+      ) : null}
       {showAccessDenied ? (
         <MemberStateCard
           description="현재 계정으로는 이 회원 관리 화면을 조회할 수 없습니다."

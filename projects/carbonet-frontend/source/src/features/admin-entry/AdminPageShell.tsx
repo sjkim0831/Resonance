@@ -158,6 +158,9 @@ function ensureAdminSessionExpireAt() {
   if (stored > now) {
     return stored;
   }
+  if (stored > 0) {
+    return stored;
+  }
   const next = now + ADMIN_SESSION_DURATION_MS;
   window.sessionStorage.setItem(ADMIN_SESSION_STORAGE_KEY, String(next));
   return next;
