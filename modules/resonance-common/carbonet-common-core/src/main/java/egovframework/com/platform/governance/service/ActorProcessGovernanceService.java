@@ -97,6 +97,16 @@ public class ActorProcessGovernanceService {
         return out;
     }
 
+    public Map<String,Object> simulationCases(String requestedProcess) {
+        String process=req(Map.of("processCode",requestedProcess),"processCode");
+        List<Map<String,Object>> cases=jdbc.queryForList(
+            "select case_code as \"caseCode\",process_code as \"processCode\",case_name as \"caseName\",case_type as \"caseType\",case_status as \"status\" " +
+            "from framework_simulation_case where process_code=? order by case_type,case_code",
+            process
+        );
+        return Map.of("success",true,"processCode",process,"count",cases.size(),"cases",cases);
+    }
+
     @Transactional
     public Map<String,Object> generateProfessionalDesignGraph(String processCode,String actor){
         String process=processCode==null||processCode.isBlank()?null:processCode.trim();

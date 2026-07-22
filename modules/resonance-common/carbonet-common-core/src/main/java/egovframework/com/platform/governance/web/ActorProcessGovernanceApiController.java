@@ -15,6 +15,7 @@ import java.util.UUID;
 public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
     @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
+    @GetMapping("/cases") public ResponseEntity<?> cases(@RequestParam String processCode){try{return ResponseEntity.ok(service.simulationCases(processCode));}catch(Exception e){return bad(e);}}
     @GetMapping("/design-assets") public Map<String,Object> designAssets(){return service.designAssetInventory();}
     @GetMapping("/assets/search") public Map<String,Object> searchAssets(@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="") String assetType,@RequestParam(defaultValue="30") int limit){return service.searchAssetCatalog(query,assetType,limit);}
     @GetMapping("/assets/impact") public ResponseEntity<?> assetImpact(@RequestParam String assetId,@RequestParam(defaultValue="2") int depth){try{return ResponseEntity.ok(service.assetImpact(assetId,depth));}catch(Exception e){return bad(e);}}

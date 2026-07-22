@@ -75,12 +75,12 @@ print(json.load(open(os.environ['RUNTIME'],encoding='utf-8'))['processCode'])
 PY
 )"
 if [[ "$PROMOTE" == "true" ]]; then
-  dashboard="$tmp/dashboard.json"; cases="$tmp/cases.tsv"
-  code="$(curl -sS -b "$cookie" -o "$dashboard" -w '%{http_code}' "$BASE/admin/api/system/actor-process")"
-  [[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL dashboard status=$code" >&2; exit 1; }
-  DASHBOARD="$dashboard" PROCESS="$process_name" python3 - <<'PY' > "$cases"
+  case_response="$tmp/case-response.json"; cases="$tmp/cases.tsv"
+  code="$(curl -sS -b "$cookie" -o "$case_response" -w '%{http_code}' --get --data-urlencode "processCode=$process_name" "$BASE/admin/api/system/actor-process/cases")"
+  [[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL cases status=$code" >&2; exit 1; }
+  CASE_RESPONSE="$case_response" PROCESS="$process_name" python3 - <<'PY' > "$cases"
 import json,os
-p=json.load(open(os.environ['DASHBOARD'],encoding='utf-8'))
+p=json.load(open(os.environ['CASE_RESPONSE'],encoding='utf-8'))
 required={'HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'}
 rows=[x for x in p.get('cases',[]) if x.get('processCode')==os.environ['PROCESS'] and x.get('caseType') in required]
 found={x.get('caseType') for x in rows}
