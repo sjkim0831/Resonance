@@ -56,13 +56,16 @@ page_code="$(curl -sS -L -b "$COOKIE_JAR" -o "$PAGE" -w '%{http_code}' "$BASE_UR
 read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')"
 [[ -n "$desired" && "$desired" -gt 0 && "$ready" == "$desired" && "$available" == "$desired" ]] || { echo "[governance-change-runtime] FAIL replicas desired=$desired ready=$ready available=$available" >&2; exit 1; }
 
-db_gate="$(psqlq "select
- (select count(*) from framework_process_step where process_code='GOVERNANCE_CHANGE' and nullif(requirement_text,'') is not null and nullif(completion_rule,'') is not null and requires_admin_page and requires_api)=6
- and (select count(*) from framework_step_execution_spec where process_code='GOVERNANCE_CHANGE' and design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and jsonb_array_length(field_contract)>=8)=6
- and (select count(*) from framework_professional_screen_contract where process_code='GOVERNANCE_CHANGE' and lower(split_part(route_path,'?',1))='/admin/system/process-workspace' and contract_status='VERIFIED' and api_verified and database_verified and authority_verified and responsive_verified and accessibility_verified and exception_states_verified)=6
- and (select count(distinct case when case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else case_type end) from framework_simulation_case where process_code='GOVERNANCE_CHANGE' and case_status in('APPROVED','VERIFIED') and case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION'))=5
- and (select count(distinct case when c.case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else c.case_type end) from framework_simulation_case c where c.process_code='GOVERNANCE_CHANGE' and c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION') and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))=5")"
-[[ "$db_gate" == t ]] || { echo '[governance-change-runtime] FAIL design/screen/test gate' >&2; exit 1; }
+IFS='|' read -r step_gate spec_gate screen_gate approved_case_gate passed_case_gate <<<"$(psqlq "select
+ (select count(*) from framework_process_step where process_code='GOVERNANCE_CHANGE' and nullif(requirement_text,'') is not null and nullif(completion_rule,'') is not null and requires_admin_page and requires_api),
+ (select count(*) from framework_step_execution_spec where process_code='GOVERNANCE_CHANGE' and design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and jsonb_array_length(field_contract)>=8),
+ (select count(distinct step_code) from framework_professional_screen_contract where process_code='GOVERNANCE_CHANGE' and lower(split_part(route_path,'?',1))='/admin/system/process-workspace' and contract_status='VERIFIED' and api_verified and database_verified and authority_verified and responsive_verified and accessibility_verified and exception_states_verified),
+ (select count(distinct case when case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else case_type end) from framework_simulation_case where process_code='GOVERNANCE_CHANGE' and case_status in('APPROVED','VERIFIED') and case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION')),
+ (select count(distinct case when c.case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else c.case_type end) from framework_simulation_case c where c.process_code='GOVERNANCE_CHANGE' and c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION') and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))")"
+[[ "$step_gate" == 6 && "$spec_gate" == 6 && "$screen_gate" == 6 && "$approved_case_gate" == 5 && "$passed_case_gate" == 5 ]] || {
+  echo "[governance-change-runtime] FAIL design/screen/test gate steps=$step_gate specs=$spec_gate screens=$screen_gate approvedCases=$approved_case_gate passedCases=$passed_case_gate" >&2
+  exit 1
+}
 
 if [[ "$PROMOTE_JOBS" == true ]]; then
   evidence="runtime:governance-change+professional-fields+actor+isolation+rollback+deployment:$SOURCE_COMMIT"
