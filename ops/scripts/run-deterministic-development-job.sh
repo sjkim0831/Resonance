@@ -20,6 +20,8 @@ fi
 
 slug_process="$(tr '[:upper:]' '[:lower:]' <<<"$PROCESS")"
 slug_step="$(tr '[:upper:]' '[:lower:]' <<<"$STEP")"
+generated_dimension_validator="$WT/ops/scripts/validate-generated-process-dimension.sh"
+generated_step_package="$WT/projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS/${PROCESS}__${STEP}.json"
 case "$JOB_TYPE" in
   FULL_STACK|FULL_STACK_GENERATION)
     artifact="projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS/index.json"
@@ -33,12 +35,17 @@ case "$JOB_TYPE" in
       --evidence "$WT/var/test-evidence/process-package-tests/$PROCESS.json" 1>&2
     ;;
   TEST|ACTOR_TEST|INTEGRATION)
-    validator="$WT/ops/scripts/validate-existing-emission-project-journey.sh"
-    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
-    runtime_evidence_root="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$WT/var/test-evidence/process-runtime-smoke}"
-    CARBONET_RUNTIME_SMOKE_PROCESS="$PROCESS" CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR="$runtime_evidence_root" \
-      bash "$WT/ops/scripts/run-process-runtime-smoke.sh" 1>&2
-    runtime_evidence="$runtime_evidence_root/latest.json"
+    if [[ -s "$generated_step_package" ]]; then
+      adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+      runtime_evidence="$(jq -r '.evidence' <<<"$adoption_json")"
+    else
+      validator="$WT/ops/scripts/validate-existing-emission-project-journey.sh"
+      adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+      runtime_evidence_root="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$WT/var/test-evidence/process-runtime-smoke}"
+      CARBONET_RUNTIME_SMOKE_PROCESS="$PROCESS" CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR="$runtime_evidence_root" \
+        bash "$WT/ops/scripts/run-process-runtime-smoke.sh" 1>&2
+      runtime_evidence="$runtime_evidence_root/latest.json"
+    fi
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
@@ -103,8 +110,12 @@ The deterministic validator requires persisted step-specific workflow events, au
 EOF
     ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
-    validator="$WT/ops/scripts/validate-existing-emission-project-api.sh"
-    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
+    if [[ -s "$generated_step_package" ]]; then
+      adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    else
+      validator="$WT/ops/scripts/validate-existing-emission-project-api.sh"
+      adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP")" || exit $?
+    fi
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
@@ -120,8 +131,12 @@ The deterministic validator requires the step-specific controller routes, servic
 EOF
     ;;
   DATABASE|DATABASE_QUALITY)
-    validator="$WT/ops/scripts/validate-existing-emission-project-database.sh"
-    adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    if [[ -s "$generated_step_package" ]]; then
+      adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    else
+      validator="$WT/ops/scripts/validate-existing-emission-project-database.sh"
+      adoption_json="$(bash "$validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    fi
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
