@@ -39,9 +39,9 @@ case "$JOB_TYPE" in
     jq -e --arg process "$PROCESS" --arg step "$STEP" '
       .process.code==$process and .step.code==$step
     ' "$generated_step_package" >/dev/null
-    python3 "$WT/ops/scripts/fast-process-package-test.py" "$WT/$artifact" \
+    python3 "$WT/ops/scripts/fast-process-package-test.py" "$generated_step_package" \
       --cache-dir "$WT/var/verification/process-package-tests" \
-      --evidence "$WT/var/test-evidence/process-package-tests/$PROCESS.json" 1>&2
+      --evidence "$WT/var/test-evidence/process-package-tests/${PROCESS}__${STEP}.json" 1>&2
     ;;
   TEST|ACTOR_TEST|INTEGRATION)
     if [[ -s "$generated_step_package" ]]; then
