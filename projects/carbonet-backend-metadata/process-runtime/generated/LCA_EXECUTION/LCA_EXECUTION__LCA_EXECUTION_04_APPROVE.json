@@ -1,0 +1,510 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "LCA_EXECUTION",
+    "name": "제품 LCA 수행",
+    "domain": "LCA",
+    "workType": "LCA",
+    "goal": "제품·공정의 목표와 범위를 확정하고 전과정 인벤토리, 영향평가, 품질·불확도 검증과 승인 가능한 LCA 결과를 재현 가능하게 생성한다."
+  },
+  "step": {
+    "code": "LCA_EXECUTION_04_APPROVE",
+    "version": 2,
+    "actor": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "승인 가능한 제품 전과정평가 결과를 재현 가능하게 생성한다.",
+      "slaHours": 48,
+      "stepName": "검토·확정·보고 승인",
+      "riskLevel": "HIGH",
+      "domainCode": "LCA",
+      "processName": "제품 LCA 수행",
+      "requirement": "승인자는 목표·범위, 인벤토리·배출계수, 영향평가, 질량수지, 제품·공정 GWP, 민감도·불확도, 예외 조건과 보고서 무결성을 직무분리 원칙으로 검토한다.",
+      "completionRule": "승인 결정과 결과 버전이 잠기고 총계·GWP·보고서 해시·검토 의견·조건부 승인 사항이 감사 이력과 함께 확정된다.",
+      "regulationRefs": [
+        "ISO 14040",
+        "ISO 14044",
+        "ISO 14067",
+        "ISO 14025"
+      ]
+    },
+    "transition": {
+      "toState": "COMPLETED",
+      "stepType": "TASK",
+      "fromState": "VERIFIED",
+      "stepOrder": 4,
+      "commandCode": "APPROVE",
+      "auditRequired": true,
+      "completionRule": "승인 결정과 결과 버전이 잠기고 총계·GWP·보고서 해시·검토 의견·조건부 승인 사항이 감사 이력과 함께 확정된다.",
+      "optimisticLock": true,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "decision": null,
+      "reportId": null,
+      "stepCode": "LCA_EXECUTION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "fromState": "VERIFIED",
+      "approvedAt": null,
+      "reportHash": null,
+      "processCode": "LCA_EXECUTION",
+      "reviewOpinion": null,
+      "totalEmission": null,
+      "approverComment": null,
+      "totalOutputMass": null,
+      "approvedProcessGwp": null,
+      "approvedProductGwp": null,
+      "exceptionConditions": null,
+      "approvedResultVersion": null
+    },
+    "output": {
+      "toState": "COMPLETED",
+      "resultVersion": "",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "검토·확정·보고 승인",
+      "purpose": "승인자는 목표·범위, 인벤토리·배출계수, 영향평가, 질량수지, 제품·공정 GWP, 민감도·불확도, 예외 조건과 보고서 무결성을 직무분리 원칙으로 검토한다.",
+      "stepCode": "LCA_EXECUTION_04_APPROVE",
+      "actorCode": "APPROVER",
+      "adminPath": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_04_APPROVE",
+      "stepOrder": 4,
+      "processCode": "LCA_EXECUTION",
+      "nextStepCode": null,
+      "workTypeCode": "LCA",
+      "entryCondition": "VERIFIED",
+      "completionCondition": "승인 결정과 결과 버전이 잠기고 총계·GWP·보고서 해시·검토 의견·조건부 승인 사항이 감사 이력과 함께 확정된다.",
+      "relatedBusinessRoute": "/admin/emission/survey-report"
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "LCA_EXECUTION_04_APPROVE_ADMIN_WORKSPACE",
+        "route": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_04_APPROVE",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_TASK_WORKSPACE",
+        "title": "제품 LCA 수행 - 검토·확정·보고 승인",
+        "purpose": "승인자는 목표·범위, 인벤토리·배출계수, 영향평가, 질량수지, 제품·공정 GWP, 민감도·불확도, 예외 조건과 보고서 무결성을 직무분리 원칙으로 검토한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "label": "승인 결정",
+            "options": [
+              "APPROVE",
+              "CONDITIONAL_APPROVE",
+              "REJECT"
+            ],
+            "required": true,
+            "fieldCode": "decision",
+            "controlType": "SELECT",
+            "code": "decision"
+          },
+          {
+            "label": "승인 결과 버전",
+            "required": true,
+            "fieldCode": "approvedResultVersion",
+            "controlType": "TEXT",
+            "code": "approvedResultVersion"
+          },
+          {
+            "label": "승인 제품 GWP",
+            "required": true,
+            "fieldCode": "approvedProductGwp",
+            "controlType": "NUMBER",
+            "code": "approvedProductGwp"
+          },
+          {
+            "label": "승인 공정 GWP",
+            "required": true,
+            "fieldCode": "approvedProcessGwp",
+            "controlType": "NUMBER",
+            "code": "approvedProcessGwp"
+          },
+          {
+            "label": "총 산출물 질량",
+            "required": true,
+            "fieldCode": "totalOutputMass",
+            "controlType": "NUMBER",
+            "code": "totalOutputMass"
+          },
+          {
+            "label": "총 탄소배출량",
+            "required": true,
+            "fieldCode": "totalEmission",
+            "controlType": "NUMBER",
+            "code": "totalEmission"
+          },
+          {
+            "label": "LCA 보고서 ID",
+            "required": true,
+            "fieldCode": "reportId",
+            "controlType": "TEXT",
+            "code": "reportId"
+          },
+          {
+            "label": "보고서 무결성 해시",
+            "required": true,
+            "fieldCode": "reportHash",
+            "controlType": "TEXT",
+            "code": "reportHash"
+          },
+          {
+            "label": "검토 의견",
+            "required": true,
+            "fieldCode": "reviewOpinion",
+            "controlType": "TEXTAREA",
+            "code": "reviewOpinion"
+          },
+          {
+            "label": "예외·조건부 승인 사항",
+            "required": false,
+            "fieldCode": "exceptionConditions",
+            "controlType": "TEXTAREA",
+            "code": "exceptionConditions"
+          },
+          {
+            "label": "승인자 의견",
+            "required": true,
+            "fieldCode": "approverComment",
+            "controlType": "TEXTAREA",
+            "code": "approverComment"
+          },
+          {
+            "label": "승인 일시",
+            "required": true,
+            "fieldCode": "approvedAt",
+            "controlType": "DATETIME",
+            "code": "approvedAt"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "APPROVER",
+            "entryState": "VERIFIED",
+            "commandCode": "APPROVE",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "LOADING",
+            "READY",
+            "EMPTY",
+            "VALIDATION_ERROR",
+            "FORBIDDEN",
+            "CONFLICT",
+            "DEPENDENCY_BLOCKED",
+            "RETRYING",
+            "ERROR"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered task",
+          "tablet": "two-column task and evidence",
+          "desktop": "three-region contract execution verification",
+          "overflow": "local table scroll",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/start",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "APPROVER",
+        "entryState": "VERIFIED",
+        "commandCode": "APPROVE",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "PROCESS",
+        "failure": {
+          "onInvalid": "DESIGN_REVIEW_REQUIRED",
+          "onInapplicable": "SKIP_WITH_AUDIT",
+          "onMissingNextProcess": "WORKFLOW_COMPLETE"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "LCA_PRACTITIONER",
+            "projectId": "required",
+            "stepOrder": 1,
+            "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+            "idempotencyKey": "required"
+          },
+          "fromOutput": {
+            "toState": "COMPLETED",
+            "completionRule": "승인 이력과 최종 결과가 확정됨",
+            "evidenceRequired": true
+          },
+          "completionCondition": "LCA 결과가 검토·확정됨"
+        },
+        "integrity": {
+          "handoffAudit": true,
+          "immutableOutputVersion": true,
+          "completedProcessRequired": true
+        },
+        "toStepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "recordId",
+          "completedProcessCode",
+          "outputVersion"
+        ],
+        "authorization": {
+          "toActor": "LCA_PRACTITIONER",
+          "fromActor": "APPROVER",
+          "segregationChecked": true,
+          "projectApplicabilityRequired": true
+        },
+        "toProcessCode": "LCA_DATA_QUALITY_UNCERTAINTY"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [
+      "framework_process_execution",
+      "framework_process_execution_event",
+      "framework_process_work_draft"
+    ],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "제품 LCA 수행 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_AUTHORITY",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "CRITICAL",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_EXCEPTION",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "MAJOR",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_HAPPY_PATH",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "CRITICAL",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_ISOLATION",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "CRITICAL",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_RECOVERY",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "MAJOR",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "auditRequired": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "segregationOfDuties": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column ordered task",
+      "tablet": "two-column task and evidence",
+      "desktop": "three-region contract execution verification",
+      "overflow": "local table scroll",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true,
+      "focusManagement": true,
+      "statusNotColorOnly": true
+    }
+  },
+  "sourceHash": "8122f5e023e33b75a7bb0d359669df86",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "763c561cfc2fa1990c5b65137f4d2e4327b6fc95d35643fc30001320ab19fb98"
+}

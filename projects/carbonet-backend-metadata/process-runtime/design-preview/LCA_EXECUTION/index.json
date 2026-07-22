@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "LCA_EXECUTION",
+      "stepCode": "LCA_EXECUTION_01_PLAN",
+      "package": "LCA_EXECUTION__LCA_EXECUTION_01_PLAN.json",
+      "packageHash": "751be6e8131d4df0e042b8ac0a3e834a0d842a916286768af2828d8ab495c106",
+      "pages": 1
+    },
+    {
+      "processCode": "LCA_EXECUTION",
+      "stepCode": "LCA_EXECUTION_02_WORK",
+      "package": "LCA_EXECUTION__LCA_EXECUTION_02_WORK.json",
+      "packageHash": "c7a65cfffb4dc11a31fba194bbf770012a9ba14efc35edb7e88af17796add386",
+      "pages": 1
+    },
+    {
+      "processCode": "LCA_EXECUTION",
+      "stepCode": "LCA_EXECUTION_03_VERIFY",
+      "package": "LCA_EXECUTION__LCA_EXECUTION_03_VERIFY.json",
+      "packageHash": "d91e45a06d6e27d6efb69836237f7e28b1b34d1de6885d8e2149b226277d27dc",
+      "pages": 1
+    },
+    {
+      "processCode": "LCA_EXECUTION",
+      "stepCode": "LCA_EXECUTION_04_APPROVE",
+      "package": "LCA_EXECUTION__LCA_EXECUTION_04_APPROVE.json",
+      "packageHash": "763c561cfc2fa1990c5b65137f4d2e4327b6fc95d35643fc30001320ab19fb98",
+      "pages": 1
+    }
+  ],
+  "manifestHash": "f08135f2d533df76dbe55ce424b6236ad448b1d86374ed730d0f16de8bcdfa7a"
+}

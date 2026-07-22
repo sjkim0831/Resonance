@@ -1,0 +1,515 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "LCA_EXECUTION",
+    "name": "제품 LCA 수행",
+    "domain": "LCA",
+    "workType": "LCA",
+    "goal": "제품·공정의 목표와 범위를 확정하고 전과정 인벤토리, 영향평가, 품질·불확도 검증과 승인 가능한 LCA 결과를 재현 가능하게 생성한다."
+  },
+  "step": {
+    "code": "LCA_EXECUTION_02_WORK",
+    "version": 2,
+    "actor": {
+      "actorCode": "LCA_PRACTITIONER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "승인 가능한 제품 전과정평가 결과를 재현 가능하게 생성한다.",
+      "slaHours": 48,
+      "stepName": "인벤토리 수집·매핑·산정",
+      "riskLevel": "HIGH",
+      "domainCode": "LCA",
+      "processName": "제품 LCA 수행",
+      "requirement": "승인된 목표·범위에 따라 원료·보조재, 에너지·스팀, 운송, 제품·부산물, 폐기물·배출물의 수량·단위·증빙을 수집하고 LCI 데이터와 배출계수를 매핑하여 재현 가능한 인벤토리를 산정한다.",
+      "completionRule": "필수 인벤토리의 단위·질량수지·매핑·증빙·데이터 품질 검사가 완료되고 예외 행이 사유와 함께 격리된 산정 버전이 제출된다.",
+      "regulationRefs": [
+        "ISO 14040",
+        "ISO 14044",
+        "ISO 14067",
+        "ISO 14025"
+      ]
+    },
+    "transition": {
+      "toState": "SUBMITTED",
+      "stepType": "TASK",
+      "fromState": "PLANNED",
+      "stepOrder": 2,
+      "commandCode": "WORK",
+      "auditRequired": true,
+      "completionRule": "필수 인벤토리의 단위·질량수지·매핑·증빙·데이터 품질 검사가 완료되고 예외 행이 사유와 함께 격리된 산정 버전이 제출된다.",
+      "optimisticLock": true,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "LCA_EXECUTION_02_WORK",
+      "actorCode": "LCA_PRACTITIONER",
+      "datasetId": null,
+      "fromState": "PLANNED",
+      "outputMass": null,
+      "outputUnit": null,
+      "processCode": "LCA_EXECUTION",
+      "dataQualityScore": null,
+      "evidenceCoverage": null,
+      "inventoryVersion": null,
+      "energyCompleteness": null,
+      "inventoryEvidenceRef": null,
+      "mappingExceptionCount": null,
+      "transportCompleteness": null,
+      "emissionFactorCoverage": null,
+      "rawMaterialCompleteness": null
+    },
+    "output": {
+      "toState": "SUBMITTED",
+      "resultVersion": "",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "인벤토리 수집·매핑·산정",
+      "purpose": "승인된 목표·범위에 따라 원료·보조재, 에너지·스팀, 운송, 제품·부산물, 폐기물·배출물의 수량·단위·증빙을 수집하고 LCI 데이터와 배출계수를 매핑하여 재현 가능한 인벤토리를 산정한다.",
+      "stepCode": "LCA_EXECUTION_02_WORK",
+      "actorCode": "LCA_PRACTITIONER",
+      "adminPath": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_02_WORK",
+      "stepOrder": 2,
+      "processCode": "LCA_EXECUTION",
+      "nextStepCode": "LCA_EXECUTION_03_VERIFY",
+      "workTypeCode": "LCA",
+      "entryCondition": "PLANNED",
+      "completionCondition": "필수 인벤토리의 단위·질량수지·매핑·증빙·데이터 품질 검사가 완료되고 예외 행이 사유와 함께 격리된 산정 버전이 제출된다.",
+      "relatedBusinessRoute": "/admin/emission/survey-admin"
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": [
+      {
+        "pageCode": "LCA_EXECUTION_02_WORK_ADMIN_WORKSPACE",
+        "route": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_02_WORK",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_TASK_WORKSPACE",
+        "title": "제품 LCA 수행 - 인벤토리 수집·매핑·산정",
+        "purpose": "승인된 목표·범위에 따라 원료·보조재, 에너지·스팀, 운송, 제품·부산물, 폐기물·배출물의 수량·단위·증빙을 수집하고 LCI 데이터와 배출계수를 매핑하여 재현 가능한 인벤토리를 산정한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "label": "인벤토리 버전",
+            "required": true,
+            "fieldCode": "inventoryVersion",
+            "controlType": "TEXT",
+            "code": "inventoryVersion"
+          },
+          {
+            "label": "업로드 데이터셋 ID",
+            "required": true,
+            "fieldCode": "datasetId",
+            "controlType": "TEXT",
+            "code": "datasetId"
+          },
+          {
+            "label": "원료·보조재 완전성(%)",
+            "required": true,
+            "fieldCode": "rawMaterialCompleteness",
+            "controlType": "NUMBER",
+            "code": "rawMaterialCompleteness"
+          },
+          {
+            "label": "에너지·스팀 완전성(%)",
+            "required": true,
+            "fieldCode": "energyCompleteness",
+            "controlType": "NUMBER",
+            "code": "energyCompleteness"
+          },
+          {
+            "label": "운송 데이터 완전성(%)",
+            "required": true,
+            "fieldCode": "transportCompleteness",
+            "controlType": "NUMBER",
+            "code": "transportCompleteness"
+          },
+          {
+            "label": "총 산출물 질량",
+            "required": true,
+            "fieldCode": "outputMass",
+            "controlType": "NUMBER",
+            "code": "outputMass"
+          },
+          {
+            "label": "산출물 단위",
+            "options": [
+              "kg",
+              "t"
+            ],
+            "required": true,
+            "fieldCode": "outputUnit",
+            "controlType": "SELECT",
+            "code": "outputUnit"
+          },
+          {
+            "label": "배출계수 매핑률(%)",
+            "required": true,
+            "fieldCode": "emissionFactorCoverage",
+            "controlType": "NUMBER",
+            "code": "emissionFactorCoverage"
+          },
+          {
+            "label": "매핑 예외 건수",
+            "required": true,
+            "fieldCode": "mappingExceptionCount",
+            "controlType": "NUMBER",
+            "code": "mappingExceptionCount"
+          },
+          {
+            "label": "증빙 연결률(%)",
+            "required": true,
+            "fieldCode": "evidenceCoverage",
+            "controlType": "NUMBER",
+            "code": "evidenceCoverage"
+          },
+          {
+            "label": "데이터 품질 점수",
+            "required": true,
+            "fieldCode": "dataQualityScore",
+            "controlType": "NUMBER",
+            "code": "dataQualityScore"
+          },
+          {
+            "label": "인벤토리 증적 참조",
+            "required": true,
+            "fieldCode": "inventoryEvidenceRef",
+            "controlType": "TEXT",
+            "code": "inventoryEvidenceRef"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "LCA_PRACTITIONER",
+            "entryState": "PLANNED",
+            "commandCode": "WORK",
+            "resultState": "SUBMITTED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "idempotencyRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "states": [
+            "LOADING",
+            "READY",
+            "EMPTY",
+            "VALIDATION_ERROR",
+            "FORBIDDEN",
+            "CONFLICT",
+            "DEPENDENCY_BLOCKED",
+            "RETRYING",
+            "ERROR"
+          ],
+          "recovery": "last verified workflow state"
+        },
+        "responsive": {
+          "mobile": "single-column ordered task",
+          "tablet": "two-column task and evidence",
+          "desktop": "three-region contract execution verification",
+          "overflow": "local table scroll",
+          "noTextOverflow": true
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true,
+          "statusNotColorOnly": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "path": "/home/api/process-executions",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/screen-contract",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/start",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/{executionId}/commands",
+        "method": "POST"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "GET"
+      },
+      {
+        "path": "/home/api/process-executions/draft",
+        "method": "PUT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "LCA_PRACTITIONER",
+        "entryState": "PLANNED",
+        "commandCode": "WORK",
+        "resultState": "SUBMITTED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "idempotencyRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "LCA_PRACTITIONER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "LCA_EXECUTION_03_VERIFY",
+            "actorCode": "LCA_PRACTITIONER",
+            "fromState": "SUBMITTED",
+            "processCode": "LCA_EXECUTION"
+          },
+          "fromOutput": {
+            "toState": "SUBMITTED",
+            "completionRule": "필수 입력과 증빙이 제출됨",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "LCA_EXECUTION_03_VERIFY",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "LCA_PRACTITIONER",
+          "fromActor": "LCA_PRACTITIONER",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "LCA_EXECUTION"
+      }
+    ]
+  },
+  "database": {
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [
+      "framework_process_execution",
+      "framework_process_execution_event",
+      "framework_process_work_draft"
+    ],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "제품 LCA 수행 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_AUTHORITY",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "CRITICAL",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_EXCEPTION",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "MAJOR",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_HAPPY_PATH",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "CRITICAL",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_ISOLATION",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "CRITICAL",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ]
+    },
+    {
+      "name": "제품 LCA 수행 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "LCA_EXECUTION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_EXECUTION_RECOVERY",
+      "evidence": [
+        "SQL_ASSERTION,CONSTRAINT_METADATA,EVIDENCE_HASH"
+      ],
+      "severity": "MAJOR",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ]
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "auditRequired": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "segregationOfDuties": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column ordered task",
+      "tablet": "two-column task and evidence",
+      "desktop": "three-region contract execution verification",
+      "overflow": "local table scroll",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "labels": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true,
+      "focusManagement": true,
+      "statusNotColorOnly": true
+    }
+  },
+  "sourceHash": "ca0ed2b8bf483a7ae4c0bdef1813e45a",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "c7a65cfffb4dc11a31fba194bbf770012a9ba14efc35edb7e88af17796add386"
+}
