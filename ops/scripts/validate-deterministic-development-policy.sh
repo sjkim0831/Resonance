@@ -55,6 +55,7 @@ bash -n "$ROOT/ops/scripts/validate-existing-emission-project-journey.sh"
 grep -Fq 'DETERMINISTIC_FIRST' "$WORKER"
 grep -Fq 'AI_ESCALATED' "$WORKER"
 grep -Fq 'single automatic AI escalation was already consumed' "$WORKER"
+grep -Fq 'FLAT_FIELD_CONTRACT_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 deterministic_line="$(grep -n 'DETERMINISTIC_RUNNER=' "$WORKER" | head -1 | cut -d: -f1)"
 ai_line="$(grep -n 'bash "$PROJECT_WORK_RUNNER"' "$WORKER" | head -1 | cut -d: -f1)"
