@@ -1,6 +1,6 @@
 process=DATA_INTEGRATION
-step=DATA_INTEGRATION_02_WORK
-type=FULL_STACK
-target=contract://DATA_INTEGRATION/DATA_INTEGRATION_02_WORK
+step=DATA_INTEGRATION_03_VERIFY
+type=FRONTEND_ADMIN
+target=design://process/data_integration/data_integration_03_verify/frontend_admin
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
