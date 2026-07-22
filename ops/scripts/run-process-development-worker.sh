@@ -636,7 +636,21 @@ if [ "$(git -C "$WT" rev-parse origin/main)" != "$BASE_COMMIT" ]; then
   fi
 fi
 RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
-git -C "$WT" push origin "HEAD:main" >>"$LOG_FILE" 2>&1 || fail_job "main push rejected"
+publish_succeeded=0
+for publish_attempt in 1 2 3; do
+  if git -C "$WT" push origin "HEAD:main" >>"$LOG_FILE" 2>&1; then
+    publish_succeeded=1
+    break
+  fi
+  printf 'main push attempt %s failed; refreshing remote before retry\n' "$publish_attempt" >>"$LOG_FILE"
+  sleep "$((publish_attempt * 2))"
+  git -C "$WT" fetch origin main >>"$LOG_FILE" 2>&1 || continue
+  if ! git -C "$WT" merge-base --is-ancestor origin/main HEAD; then
+    git -C "$WT" rebase origin/main >>"$LOG_FILE" 2>&1 || fail_job "parallel publish rebase conflict"
+    RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
+  fi
+done
+[ "$publish_succeeded" = 1 ] || fail_job "main push rejected after 3 guarded attempts"
 flock -u 8
 exec 8>&-
 
