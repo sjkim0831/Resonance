@@ -214,6 +214,7 @@ backup_required="$PLAN_DATABASE_REQUIRED"
 menu_backup_only=false
 governance_backup_only=false
 activity_backup_only=false
+identity_backup_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
@@ -221,6 +222,7 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
   [[ "$backup_scope" == "menu" ]] && menu_backup_only=true
   [[ "$backup_scope" == "governance" ]] && governance_backup_only=true
   [[ "$backup_scope" == "activity" ]] && activity_backup_only=true
+  [[ "$backup_scope" == "identity" ]] && identity_backup_only=true
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi
 if [[ "$backup_required" == "true" ]]; then
@@ -303,6 +305,29 @@ if [[ "$backup_required" == "true" ]]; then
       exit 11
     fi
     echo "[auto-deploy] targeted activity-workflow backup verified: $backup_file (${backup_bytes} bytes)"
+  elif [[ "$identity_backup_only" == "true" ]]; then
+    backup_file="$BACKUP_DIR/carbonet-identity-$timestamp-$current_commit.sql.gz"
+    echo "[auto-deploy] identity-only migration detected; creating targeted transactional backup"
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+      kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
+          -t comtngnrlmber -t comtnentrprsmber -t comtnemplyrinfo \
+          -t comtnpasswordresethist -t comtnauthtokenstore \
+          -t spring_session -t spring_session_attributes \
+          -t account_recovery_request -t account_recovery_audit \
+      | gzip -1 > "$backup_file"; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: targeted identity backup failed" >&2
+      exit 14
+    fi
+    backup_bytes="$(stat -c %s "$backup_file")"
+    if [[ "$backup_bytes" -lt 1024 ]] || ! gzip -t "$backup_file"; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: targeted identity backup is invalid (${backup_bytes} bytes)" >&2
+      exit 11
+    fi
+    echo "[auto-deploy] targeted identity backup verified: $backup_file (${backup_bytes} bytes)"
   else
   echo "[auto-deploy] database migration detected; creating full pre-deploy backup"
   echo "[auto-deploy] backing up PostgreSQL roles to $roles_backup_file"

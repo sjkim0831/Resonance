@@ -10,6 +10,8 @@ elif ! grep -Evi '/[^/]*(actor|process|governance|delivery|workflow|topology|por
   echo governance
 elif ! grep -Evi '/[^/]*(activity|submission|quality|evidence|collection|acceptance|accepted|calculation|factor|mapping)[^/]*\.sql$' <<<"$paths" | grep -q .; then
   echo activity
+elif ! grep -Evi '/[^/]*(account|member|identity|credential|password|signin|login|auth|recovery|session|token)[^/]*\.sql$' <<<"$paths" | grep -q .; then
+  echo identity
 else
   echo full
 fi
