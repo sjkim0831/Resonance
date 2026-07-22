@@ -253,6 +253,9 @@ if [[ "$backup_required" == "true" ]]; then
         pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges -h 127.0.0.1 \
           -t framework_actor_definition -t framework_account_actor_assignment \
           -t framework_process_definition -t framework_process_step \
+          -t framework_business_process_sequence \
+          -t framework_process_execution_topology \
+          -t framework_process_navigation_binding \
           -t framework_simulation_case -t framework_simulation_run \
           -t framework_development_job -t framework_process_artifact \
           -t framework_project_actor_assignment \
