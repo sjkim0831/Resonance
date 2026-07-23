@@ -80,7 +80,7 @@ if ((${#evidence_terms[@]})); then
       'modules/resonance-common/**' \
       'ops/tests/**' \
       'ops/scripts/validate-*.sh' 2>/dev/null \
-      | head -n 120 \
+      | sed -n '1,120p' \
       | jq -R -s 'split("\n") | map(select(length>0))'
   )"
 fi
