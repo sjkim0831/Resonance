@@ -34,12 +34,19 @@ q "select jsonb_pretty(jsonb_build_object(
  'steps',(select coalesce(jsonb_agg(jsonb_build_object('order',step_order,'stepCode',step_code,'name',step_name,'actor',actor_code,'fromState',from_state,'command',command_code,'toState',to_state,'completionRule',completion_rule,'userPath',user_path,'adminPath',admin_path,'apiContract',api_contract,'inputContract',input_contract,'outputContract',output_contract) order by step_order),'[]') from framework_process_step where process_code='$PROCESS'),
  'scenarios',(select coalesce(jsonb_agg(jsonb_build_object('caseCode',case_code,'name',case_name,'type',case_type,'preconditions',preconditions,'steps',steps_json,'assertions',assertions_json,'status',case_status) order by case_code),'[]') from framework_simulation_case where process_code='$PROCESS'),
  'screens',(select coalesce(jsonb_agg(jsonb_build_object(
-   'stepCode',step_code,'audience',audience,'route',route_path,'name',screen_name,'actor',actor_code,
+   'stepCode',step_code,'userRoute',user_route,'adminRoute',admin_route,'name',screen_name,'actor',actor_code,
    'purpose',business_purpose,'entry',entry_condition,'exit',exit_condition,
    'api',api_contract,'data',data_contract,'evidence',evidence_contract,'security',security_contract,
    'verification',jsonb_build_object('api',api_verified,'database',database_verified,'authority',authority_verified,'responsive',responsive_verified,'accessibility',accessibility_verified,'exceptions',exception_states_verified),
    'auditEvidence',audit_evidence_ref,'status',contract_status
- ) order by step_code,audience),'[]') from framework_professional_screen_contract where process_code='$PROCESS'),
+ ) order by step_code),'[]') from (
+   select distinct on (c.step_code) c.*,
+     (select u.route_path from framework_professional_screen_contract u where u.process_code=c.process_code and u.step_code=c.step_code and u.audience='USER' order by u.contract_id limit 1) user_route,
+     (select a.route_path from framework_professional_screen_contract a where a.process_code=c.process_code and a.step_code=c.step_code and a.audience='ADMIN' order by a.contract_id limit 1) admin_route
+   from framework_professional_screen_contract c
+   where c.process_code='$PROCESS'
+   order by c.step_code,c.contract_id
+ ) screen_contract),
  'databaseContracts',(
    with relation_names as (
      select distinct relation_name
@@ -59,7 +66,7 @@ q "select jsonb_pretty(jsonb_build_object(
      'relation',relation_name,'exists',jsonb_array_length(columns)>0,'columns',columns
    ) order by relation_name),'[]') from relation_columns
  ),
- 'jobs',(select coalesce(jsonb_agg(jsonb_build_object('stepCode',step_code,'jobType',job_type,'count',job_count,'completed',completed_count) order by step_code,job_type),'[]') from (select step_code,job_type,count(*) job_count,count(*) filter(where job_status='COMPLETED') completed_count from framework_development_job where process_code='$PROCESS' and approval_status='APPROVED' group by step_code,job_type) j)
+ 'jobs',(select coalesce(jsonb_agg(jsonb_build_object('jobType',job_type,'count',job_count,'completed',completed_count) order by job_type),'[]') from (select job_type,count(*) job_count,count(*) filter(where job_status='COMPLETED') completed_count from framework_development_job where process_code='$PROCESS' and approval_status='APPROVED' group by job_type) j)
 ))" > "$out/process-packet.json"
 jq -e '.process.processCode and (.steps|length)>0 and (.scenarios|length)>0' "$out/process-packet.json" >/dev/null
 
@@ -75,7 +82,7 @@ if ((${#evidence_terms[@]})); then
       'modules/resonance-common/**/*.java' \
       'ops/tests/**' \
       'ops/scripts/validate-*.sh' 2>/dev/null \
-      | awk 'NR<=20 { print substr($0,1,300) }' \
+      | awk 'NR<=8 { print substr($0,1,300) }' \
       | jq -R -s 'split("\n") | map(select(length>0))'
   )"
 fi
