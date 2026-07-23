@@ -16,7 +16,12 @@ OUT_ROOT="${KILO_M3_OUT_ROOT:-$ROOT/var/ai-runtime/kilo-m3}"
 [[ -x "$KILO_BIN" ]] || { echo 'FAIL Kilo CLI unavailable' >&2; exit 1; }; command -v jq >/dev/null; command -v kubectl >/dev/null
 bash "$ROOT/ops/scripts/verify-kilo-m3-policy.sh"
 "$KILO_BIN" models | grep -Fx "$MODEL" >/dev/null || { echo "FAIL model unavailable: $MODEL" >&2; exit 1; }
-timeout 40 "$KILO_BIN" roll-call "$MODEL" | grep -q 'YES' || { echo "FAIL M3 provider preflight failed: $MODEL" >&2; exit 1; }
+roll_call_output="$(timeout 40 "$KILO_BIN" roll-call "$MODEL")" || { echo "FAIL M3 provider preflight failed: $MODEL" >&2; exit 1; }
+if ! grep -Eq "^${MODEL//./\\.}[[:space:]]*\\|[[:space:]]*YES([[:space:]]*\\||[[:space:]]*$)" <<<"$roll_call_output"; then
+  printf '%s\n' "$roll_call_output" >&2
+  echo "FAIL M3 provider preflight rejected model: $MODEL" >&2
+  exit 1
+fi
 
 leader=""
 while read -r pod; do
