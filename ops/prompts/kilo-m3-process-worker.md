@@ -13,5 +13,9 @@ Rules:
 7. Never invent an endpoint or table. Mark an unresolved dependency as BLOCKED in the result.
 8. Finish by writing `.kilo-m3-result.json` with: summary, changedFiles, tests, unresolvedDependencies, rollbackNote.
    Use the file write/edit tool to create it. Printing JSON in the response is not sufficient.
+9. Treat `databaseContracts` and `implementationEvidence` as authoritative
+   existing-runtime evidence. Do not report a table, column, algorithm, API or
+   validator as missing when that evidence already defines or implements it.
+   Report only the remaining delta between the packet contracts and evidence.
 
 In plan mode, use only `.kilo-m3-process-packet.json` and `.kilo-m3-policy.json` as evidence. Do not inspect the repository or run discovery commands: the packet already contains the authoritative process, steps, scenarios, screens, and jobs. Write `.kilo-m3-result.json` immediately after reading those two files, containing the bounded implementation plan.
