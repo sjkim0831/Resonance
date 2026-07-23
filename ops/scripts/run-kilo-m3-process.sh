@@ -17,7 +17,7 @@ OUT_ROOT="${KILO_M3_OUT_ROOT:-$ROOT/var/ai-runtime/kilo-m3}"
 bash "$ROOT/ops/scripts/verify-kilo-m3-policy.sh"
 "$KILO_BIN" models | grep -Fx "$MODEL" >/dev/null || { echo "FAIL model unavailable: $MODEL" >&2; exit 1; }
 roll_call_output="$(timeout 40 "$KILO_BIN" roll-call "$MODEL")" || { echo "FAIL M3 provider preflight failed: $MODEL" >&2; exit 1; }
-if ! awk -F'|' -v model="$MODEL" '{gsub(/[[:space:]]/,"",$1);gsub(/[[:space:]]/,"",$2);if($1==model&&$2=="YES")ok=1} END{exit !ok}' <<<"$roll_call_output"; then
+if ! grep -F "$MODEL" <<<"$roll_call_output" | grep -Eq '\|[[:space:]]*YES[[:space:]]*\|'; then
   printf '%s\n' "$roll_call_output" >&2
   echo "FAIL M3 provider preflight rejected model: $MODEL" >&2
   exit 1
