@@ -51,8 +51,7 @@ q "select jsonb_pretty(jsonb_build_object(
    ), relation_columns as (
      select r.relation_name,
             coalesce(jsonb_agg(jsonb_build_object(
-              'name',col.column_name,'type',col.data_type,'nullable',col.is_nullable,
-              'default',col.column_default,'ordinal',col.ordinal_position
+              'name',col.column_name,'type',col.data_type,'nullable',col.is_nullable
             ) order by col.ordinal_position) filter (where col.column_name is not null),'[]') columns
      from relation_names r
      left join information_schema.columns col
@@ -76,11 +75,10 @@ if ((${#evidence_terms[@]})); then
   evidence_pattern="$(IFS='|'; printf '%s' "${evidence_terms[*]}")"
   evidence_json="$(
     git -C "$ROOT" grep -n -E "$evidence_pattern" -- \
-      'apps/carbonet-api/src/**' \
-      'modules/resonance-common/**' \
+      'modules/resonance-common/**/*.java' \
       'ops/tests/**' \
       'ops/scripts/validate-*.sh' 2>/dev/null \
-      | sed -n '1,120p' \
+      | awk 'NR<=60 { print substr($0,1,600) }' \
       | jq -R -s 'split("\n") | map(select(length>0))'
   )"
 fi
