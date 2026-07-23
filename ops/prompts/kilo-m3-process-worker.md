@@ -13,4 +13,4 @@ Rules:
 7. Never invent an endpoint or table. Mark an unresolved dependency as BLOCKED in the result.
 8. Finish by writing `.kilo-m3-result.json` with: summary, changedFiles, tests, unresolvedDependencies, rollbackNote.
 
-In plan mode, do not modify project files. Write only `.kilo-m3-result.json` containing the bounded implementation plan.
+In plan mode, use only `.kilo-m3-process-packet.json` and `.kilo-m3-policy.json` as evidence. Do not inspect the repository or run discovery commands: the packet already contains the authoritative process, steps, scenarios, screens, and jobs. Write `.kilo-m3-result.json` immediately after reading those two files, containing the bounded implementation plan.
