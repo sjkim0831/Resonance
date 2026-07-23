@@ -126,9 +126,19 @@ echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 bash ops/scripts/prune-predeploy-backups.sh
 
 opt_usage="$(df -P /opt | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
-if [[ "$opt_usage" -ge 82 ]]; then
-  echo "[auto-deploy] refusing deployment: /opt disk usage is ${opt_usage}% after backup retention" >&2
+opt_available_kb="$(df -Pk /opt | awk 'NR==2 {print $4}')"
+opt_min_free_gb="${CARBONET_OPT_MIN_FREE_GB:-150}"
+opt_min_free_kb="$((opt_min_free_gb * 1024 * 1024))"
+# /opt is a multi-terabyte volume. A percentage-only threshold rejected safe
+# database-only deployments despite hundreds of GiB remaining. Keep a hard
+# percentage ceiling, but below it use actual free capacity as the operative
+# safety guard.
+if [[ "$opt_usage" -ge 92 || "$opt_available_kb" -lt "$opt_min_free_kb" ]]; then
+  echo "[auto-deploy] refusing deployment: /opt usage=${opt_usage}% available_kb=${opt_available_kb} required_kb=${opt_min_free_kb}" >&2
   exit 18
+fi
+if [[ "$opt_usage" -ge 82 ]]; then
+  echo "[auto-deploy] /opt usage warning: ${opt_usage}% with $((opt_available_kb / 1024 / 1024))GiB available; capacity guard passed"
 fi
 
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
