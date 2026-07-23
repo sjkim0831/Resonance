@@ -36,9 +36,7 @@ q "select jsonb_pretty(jsonb_build_object(
  'screens',(select coalesce(jsonb_agg(jsonb_build_object(
    'stepCode',step_code,'audience',audience,'route',route_path,'name',screen_name,'actor',actor_code,
    'purpose',business_purpose,'entry',entry_condition,'exit',exit_condition,
-   'kpis',kpi_contract,'sections',section_contract,'fields',field_contract,'commands',command_contract,'states',state_contract,
-   'api',api_contract,'data',data_contract,'evidence',evidence_contract,
-   'responsive',responsive_contract,'accessibility',accessibility_contract,'security',security_contract,
+   'api',api_contract,'data',data_contract,'evidence',evidence_contract,'security',security_contract,
    'verification',jsonb_build_object('api',api_verified,'database',database_verified,'authority',authority_verified,'responsive',responsive_verified,'accessibility',accessibility_verified,'exceptions',exception_states_verified),
    'auditEvidence',audit_evidence_ref,'status',contract_status
  ) order by step_code,audience),'[]') from framework_professional_screen_contract where process_code='$PROCESS'),
@@ -50,9 +48,8 @@ q "select jsonb_pretty(jsonb_build_object(
      where c.process_code='$PROCESS' and relation_name ~ '^[a-z][a-z0-9_]{2,62}$'
    ), relation_columns as (
      select r.relation_name,
-            coalesce(jsonb_agg(jsonb_build_object(
-              'name',col.column_name,'type',col.data_type,'nullable',col.is_nullable
-            ) order by col.ordinal_position) filter (where col.column_name is not null),'[]') columns
+            coalesce(jsonb_agg(col.column_name||':'||col.data_type
+              order by col.ordinal_position) filter (where col.column_name is not null),'[]') columns
      from relation_names r
      left join information_schema.columns col
        on col.table_schema='public' and col.table_name=r.relation_name
@@ -78,7 +75,7 @@ if ((${#evidence_terms[@]})); then
       'modules/resonance-common/**/*.java' \
       'ops/tests/**' \
       'ops/scripts/validate-*.sh' 2>/dev/null \
-      | awk 'NR<=60 { print substr($0,1,600) }' \
+      | awk 'NR<=20 { print substr($0,1,300) }' \
       | jq -R -s 'split("\n") | map(select(length>0))'
   )"
 fi
