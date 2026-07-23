@@ -61,6 +61,18 @@ Read .kilo-m3-process-packet.json and .kilo-m3-policy.json before acting."
     timeout --signal=TERM --kill-after=10s "${KILO_M3_RUN_TIMEOUT:-180}" \
     "$KILO_BIN" run --pure --auto --agent codex-m3 --model "$MODEL" -- "$prompt" 2>&1 | tee "$out/kilo.log"
 )
+if [[ ! -s "$worktree/.kilo-m3-result.json" ]]; then
+  # Some providers return the required JSON as a fenced final response instead
+  # of invoking the file writer. Recover the last valid fenced JSON so a
+  # correct bounded result is not discarded because of a tool-call variance.
+  awk '/^```json[[:space:]]*$/{capture=1;buffer="";next} /^```[[:space:]]*$/{if(capture){printf "%s",buffer;capture=0};next} capture{buffer=buffer $0 ORS}' "$out/kilo.log" \
+    | jq -s 'if length>0 then .[-1] else empty end' > "$worktree/.kilo-m3-result.json.tmp" || true
+  if jq -e 'type=="object" and has("summary") and has("changedFiles") and has("tests") and has("unresolvedDependencies") and has("rollbackNote")' "$worktree/.kilo-m3-result.json.tmp" >/dev/null 2>&1; then
+    mv "$worktree/.kilo-m3-result.json.tmp" "$worktree/.kilo-m3-result.json"
+  else
+    rm -f "$worktree/.kilo-m3-result.json.tmp"
+  fi
+fi
 [[ -s "$worktree/.kilo-m3-result.json" ]] || { echo 'FAIL M3 result contract missing' >&2; exit 1; }
 jq empty "$worktree/.kilo-m3-result.json"
 
