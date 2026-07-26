@@ -25,7 +25,7 @@ echo "=============================================="
 echo ""
 
 # Step 1: Run the builder pipeline
-echo "[1/3] Running builder pipeline..."
+echo "[1/4] Running builder pipeline..."
 cd "$BUILDER_DIR"
 
 if [ "$FORCE" = true ]; then
@@ -36,14 +36,21 @@ fi
 
 echo ""
 
-# Step 2: Sync to frontend
-echo "[2/3] Syncing to frontend..."
+# Step 2: Fail-closed design and generated-source promotion gate
+echo "[2/4] Verifying executable design and generated sources..."
+bash "$SCRIPT_DIR/quality-gate.sh" \
+  "/tmp/builder_output/07_export/catalog.json"
+
+echo ""
+
+# Step 3: Sync to frontend only after the quality gate promotes the manifest
+echo "[3/4] Syncing to frontend..."
 bash "$SCRIPT_DIR/sync-to-frontend.sh"
 
 echo ""
 
-# Step 3: Generate summary
-echo "[3/3] Generating summary..."
+# Step 4: Generate summary
+echo "[4/4] Generating summary..."
 
 OUTPUT_DIR="/tmp/builder_output"
 echo ""
