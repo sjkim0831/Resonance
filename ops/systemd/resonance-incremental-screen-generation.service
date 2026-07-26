@@ -1,12 +1,12 @@
 [Unit]
-Description=Regenerate changed Resonance screen contracts without an application build
+Description=Regenerate changed Resonance DB-first framework resources without an application build
 After=network-online.target
 
 [Service]
 Type=oneshot
 User=sjkim
 WorkingDirectory=/opt/Resonance
-ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-incremental-screen-runtime.sh
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-db-first-framework.sh
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
