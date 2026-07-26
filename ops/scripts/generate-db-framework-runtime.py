@@ -29,7 +29,14 @@ def main():
     data = json.loads(Path(args.snapshot).read_text(encoding="utf-8"))
     root = Path(args.out)
     artifacts, generated, unchanged = [], 0, 0
-    manifest = []
+    manifest_path = root / "manifest.json"
+    existing = {}
+    if manifest_path.exists():
+        try:
+            for item in json.loads(manifest_path.read_text(encoding="utf-8")).get("resources", []):
+                existing[(item["kind"], item["scope"], item["key"])] = item
+        except (OSError, ValueError, KeyError, TypeError):
+            existing = {}
     for resource in data.get("resources", []):
         kind = SAFE.sub("-", resource["kind"].lower()).strip("-")
         scope = SAFE.sub("-", resource["scope"].lower()).strip("-")
@@ -46,10 +53,12 @@ def main():
             unchanged += 1
         artifacts.append({"resourceId": resource["resourceId"],
                           "sourceHash": resource["sourceHash"], "status": status})
-        manifest.append({"kind": resource["kind"], "scope": resource["scope"],
-                         "key": resource["key"], "revision": resource["revision"],
-                         "path": relative.as_posix(), "sourceHash": resource["sourceHash"]})
-    atomic_write(root / "manifest.json", canonical({"schemaVersion": "1.0.0",
+        existing[(resource["kind"], resource["scope"], resource["key"])] = {
+            "kind": resource["kind"], "scope": resource["scope"], "key": resource["key"],
+            "revision": resource["revision"], "path": relative.as_posix(),
+            "sourceHash": resource["sourceHash"], "active": resource["active"]}
+    manifest = sorted(existing.values(), key=lambda x: (x["kind"], x["scope"], x["key"]))
+    atomic_write(manifest_path, canonical({"schemaVersion": "1.0.0",
         "resources": manifest}) + "\n")
     result = {"success": True, "requested": len(artifacts), "generated": generated,
               "unchanged": unchanged, "failed": 0,
