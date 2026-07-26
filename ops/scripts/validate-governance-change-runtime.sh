@@ -43,10 +43,16 @@ login_code="$(curl -sS -c "$COOKIE_JAR" -o /dev/null -w '%{http_code}' -H 'Conte
 api_code="$(curl -sS -b "$COOKIE_JAR" -o "$DASHBOARD" -w '%{http_code}' "$BASE_URL/admin/api/system/actor-process/process-design?processCode=GOVERNANCE_CHANGE")"
 [[ "$api_code" == 200 ]] || { echo "[governance-change-runtime] FAIL process design status=$api_code" >&2; exit 1; }
 jq -e '
+  def field_count:
+    if type!="array" then 0
+    elif length==0 then 0
+    elif .[0].fields? then ([.[] | .fields[]?] | length)
+    else length
+    end;
   (.process.processCode=="GOVERNANCE_CHANGE") and
   ([.steps[]|select(.processCode=="GOVERNANCE_CHANGE" and (.requirementText|length)>20)]|length)==6 and
-  ([.stepExecutionSpecs[]|(.fieldContract|fromjson|length)]|length)==6 and
-  ([.stepExecutionSpecs[]|(.fieldContract|fromjson|length)]|all(.>=8)) and
+  ([.stepExecutionSpecs[]|(.fieldContract|fromjson|field_count)]|length)==6 and
+  ([.stepExecutionSpecs[]|(.fieldContract|fromjson|field_count)]|all(.>=8)) and
   ([.professionalScreens[]|select(.designReadinessScore==100)]|length)>=12
 ' "$DASHBOARD" >/dev/null || { echo '[governance-change-runtime] FAIL process-scoped professional contracts' >&2; exit 1; }
 
@@ -58,7 +64,13 @@ read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbone
 
 IFS='|' read -r step_gate spec_gate screen_gate approved_case_gate passed_case_gate <<<"$(psqlq "select
  (select count(*) from framework_process_step where process_code='GOVERNANCE_CHANGE' and nullif(requirement_text,'') is not null and nullif(completion_rule,'') is not null and requires_admin_page and requires_api),
- (select count(*) from framework_step_execution_spec where process_code='GOVERNANCE_CHANGE' and design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and jsonb_array_length(field_contract)>=8),
+ (select count(*) from framework_step_execution_spec where process_code='GOVERNANCE_CHANGE' and design_status='DESIGN_COMPLETE' and approval_status='APPROVED'
+    and case
+      when jsonb_typeof(field_contract)='array' and jsonb_array_length(field_contract)>0 and (field_contract->0 ? 'fields')
+        then (select count(*) from jsonb_array_elements(field_contract) schema_set
+              cross join lateral jsonb_array_elements(coalesce(schema_set->'fields','[]'::jsonb)))
+      when jsonb_typeof(field_contract)='array' then jsonb_array_length(field_contract)
+      else 0 end >=8),
  (select count(distinct step_code) from framework_professional_screen_contract where process_code='GOVERNANCE_CHANGE' and lower(split_part(route_path,'?',1))='/admin/system/process-workspace' and contract_status='VERIFIED' and api_verified and database_verified and authority_verified and responsive_verified and accessibility_verified and exception_states_verified),
  (select count(distinct case when case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else case_type end) from framework_simulation_case where process_code='GOVERNANCE_CHANGE' and case_status in('APPROVED','VERIFIED') and case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION')),
  (select count(distinct case when c.case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else c.case_type end) from framework_simulation_case c where c.process_code='GOVERNANCE_CHANGE' and c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION') and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))")"
