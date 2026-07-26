@@ -474,6 +474,30 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   exit 0
 fi
 
+# Test/deployment automation changes do not alter the running application.
+# Validate their syntax and planning contract, then advance the marker without
+# rebuilding React, Java, or an immutable image.
+if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
+   && "$PLAN_BACKEND_REQUIRED" != "true" \
+   && "$PLAN_DATABASE_REQUIRED" != "true" \
+   && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+  bash -n ops/scripts/auto-deploy-main.sh
+  bash -n ops/scripts/plan-incremental-work.sh
+  bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
+  bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
+  health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
+  if [[ "$health_status" != *'"status":"UP"'* ]]; then
+    echo "[auto-deploy] refusing automation-only success marker: health check is not UP" >&2
+    exit 17
+  fi
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
+  rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
+  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
+  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  echo "[auto-deploy] automation-only change validated without frontend/backend build: $target_commit"
+  exit 0
+fi
+
 # Flyway is the only schema migration owner. Liquibase stays disabled to avoid
 # two migration engines changing the same schema during a rollout.
 kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \

@@ -33,6 +33,17 @@ add_reason() {
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
+    projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh|\
+    projects/carbonet-frontend/source/scripts/finalize-full-screen-smoke.mjs|\
+    projects/carbonet-frontend/source/scripts/generate-full-screen-smoke-manifest.mjs|\
+    projects/carbonet-frontend/source/scripts/export-full-screen-smoke-manifest.sh|\
+    projects/carbonet-frontend/source/scripts/export-full-screen-quality-context.sh|\
+    projects/carbonet-frontend/source/scripts/build-full-screen-quality-queue.mjs|\
+    projects/carbonet-frontend/source/e2e/full-screen-smoke.spec.ts)
+      infrastructure_required=true
+      add_test "automation:full-screen-smoke"
+      add_reason "smoke-automation-only"
+      ;;
     projects/carbonet-frontend/source/*|frontend/*)
       # React source is served from the verified hostPath overlay. It requires
       # a Vite build, but not a Java/image build or Kubernetes rollout.

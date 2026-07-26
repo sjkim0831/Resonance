@@ -32,9 +32,9 @@ detect_safe_workers() {
 
   (( cpu_count < workers )) && workers="$cpu_count"
   (( available_kb > 0 && available_kb < 3145728 )) && workers=2
-  if awk -v load="$load_one" -v cpu="$cpu_count" 'BEGIN { exit !(cpu > 0 && load / cpu >= 0.75) }'; then
+  if awk -v load_value="$load_one" -v cpu="$cpu_count" 'BEGIN { exit !(cpu > 0 && load_value / cpu >= 0.75) }'; then
     workers=2
-  elif awk -v load="$load_one" -v cpu="$cpu_count" 'BEGIN { exit !(cpu > 0 && load / cpu >= 0.50) }'; then
+  elif awk -v load_value="$load_one" -v cpu="$cpu_count" 'BEGIN { exit !(cpu > 0 && load_value / cpu >= 0.50) }'; then
     (( workers > 3 )) && workers=3
   fi
   (( workers < 1 )) && workers=1
