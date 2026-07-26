@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse,json,os,stat,urllib.request
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument("candidates",type=Path);p.add_argument("--out",type=Path,required=True);p.add_argument("--batch",type=int,default=20);p.add_argument("--key-file",type=Path,default=Path("/etc/resonance/secrets/e4b-api-key"))
+p=argparse.ArgumentParser();p.add_argument("candidates",type=Path);p.add_argument("--out",type=Path,required=True);p.add_argument("--batch",type=int,default=4);p.add_argument("--key-file",type=Path,default=Path("/etc/resonance/secrets/e4b-api-key"))
 a=p.parse_args();rows=json.loads(a.candidates.read_text(encoding="utf-8")).get("candidates",[])
 key=os.environ.get("E4B_API_KEY","")
 if not key and a.key_file.is_file():
@@ -17,7 +17,7 @@ for pos in range(0,len(valid),a.batch):
       "입력 taskId를 그대로 복사하고 JSON 객체만 반환한다: "
       "{\"selections\":[{\"taskId\":\"...\",\"decision\":\"SELECT|REVIEW|REJECT\","
       "\"confidence\":0.0,\"reason\":\"한국어 근거\"}]} INPUT="+json.dumps(batch,ensure_ascii=False))
-    body=json.dumps({"model":"gemma4-e4b-gpu-shadow","temperature":0,"max_tokens":4096,
+    body=json.dumps({"model":"gemma4-e4b-gpu-shadow","temperature":0,"max_tokens":1500,
       "messages":[{"role":"system","content":"Strict JSON contract selector."},{"role":"user","content":prompt}]}).encode()
     req=urllib.request.Request("http://127.0.0.1:24451/v1/chat/completions",data=body,
       headers={"Content-Type":"application/json","Authorization":f"Bearer {key}"},method="POST")
