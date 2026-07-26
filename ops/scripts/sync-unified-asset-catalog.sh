@@ -11,7 +11,9 @@ sql="$(mktemp)"
 trap 'rm -f "$tsv" "$sql"' EXIT
 
 cd "$ROOT_DIR"
-while IFS= read -r path; do
+# Read all tracked blob hashes in one Git process instead of invoking
+# `git rev-parse` once for each of the repository's tens of thousands of files.
+while IFS=$'\t' read -r index_meta path; do
   case "$path" in
     *.java) type="JAVA_CLASS" ;;
     *.tsx|*.ts|*.jsx|*.js) type="FRONTEND_SOURCE" ;;
@@ -23,10 +25,11 @@ while IFS= read -r path; do
     *.md|*.txt) type="DOCUMENT" ;;
     *) continue ;;
   esac
-  hash="$(git rev-parse "HEAD:$path" 2>/dev/null || true)"
+  hash="${index_meta#* }"
+  hash="${hash%% *}"
   [[ -n "$hash" ]] || continue
   printf '%s\t%s\t%s\n' "$path" "$type" "$hash" >> "$tsv"
-done < <(git ls-files)
+done < <(git ls-files -s)
 
 cat > "$sql" <<'SQL'
 BEGIN;
