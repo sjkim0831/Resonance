@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-import argparse,json,urllib.request
+import argparse,json,os,stat,urllib.request
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument("candidates",type=Path);p.add_argument("--out",type=Path,required=True);p.add_argument("--batch",type=int,default=20)
+p=argparse.ArgumentParser();p.add_argument("candidates",type=Path);p.add_argument("--out",type=Path,required=True);p.add_argument("--batch",type=int,default=20);p.add_argument("--key-file",type=Path,default=Path("/etc/resonance/secrets/e4b-api-key"))
 a=p.parse_args();rows=json.loads(a.candidates.read_text(encoding="utf-8")).get("candidates",[])
+key=os.environ.get("E4B_API_KEY","")
+if not key and a.key_file.is_file():
+    if stat.S_IMODE(a.key_file.stat().st_mode)&0o077:raise SystemExit("E4B key file must be mode 0600")
+    key=a.key_file.read_text().strip()
+if not key:raise SystemExit("E4B API key is not configured")
 valid=[{"taskId":x["taskId"],"candidate":x["candidate"]} for x in rows if x.get("deterministicValidation")=="VALID"]
 selections=[]
 for pos in range(0,len(valid),a.batch):
@@ -15,7 +20,7 @@ for pos in range(0,len(valid),a.batch):
     body=json.dumps({"model":"gemma4-e4b-gpu-shadow","temperature":0,"max_tokens":4096,
       "messages":[{"role":"system","content":"Strict JSON contract selector."},{"role":"user","content":prompt}]}).encode()
     req=urllib.request.Request("http://127.0.0.1:24451/v1/chat/completions",data=body,
-      headers={"Content-Type":"application/json"},method="POST")
+      headers={"Content-Type":"application/json","Authorization":f"Bearer {key}"},method="POST")
     with urllib.request.urlopen(req,timeout=120) as response:
         content=json.loads(response.read())["choices"][0]["message"]["content"]
     left,right=content.find("{"),content.rfind("}")
