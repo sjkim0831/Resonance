@@ -131,6 +131,14 @@ class QualityGate:
                     self.add("BLOCKER", "SELECTION_SOURCE_MISSING",
                              f"Selection field has no options or option source: {code}",
                              screen, fieldCode=code)
+                elif source and (
+                    not isinstance(source, dict)
+                    or not source.get("sourceCode")
+                    or source.get("verified") is not True
+                ):
+                    self.add("BLOCKER", "SELECTION_SOURCE_UNVERIFIED",
+                             f"Selection source is not verified: {code}",
+                             screen, fieldCode=code)
             if field.get("required") and field.get("readOnly") and field.get("defaultValue") is None:
                 self.add("BLOCKER", "REQUIRED_READONLY_UNPOPULATED",
                          f"Required read-only field has no value source: {code}",
@@ -181,9 +189,25 @@ class QualityGate:
             by_id[screen.get("contract_id")].append(screen)
         for route, owners in by_route.items():
             if route and len(owners) > 1:
-                self.add("BLOCKER", "ROUTE_OWNERSHIP_CONFLICT",
-                         f"Route has {len(owners)} owners and cannot be generated deterministically",
-                         owners[0], owners=[o.get("contract_id") for o in owners])
+                owner_ids = {owner.get("route_owner_contract_id") for owner in owners}
+                expected_ids = {owner.get("contract_id") for owner in owners}
+                binding_sets = {
+                    frozenset(
+                        binding.get("contractId")
+                        for binding in owner.get("route_bindings", [])
+                        if isinstance(binding, dict)
+                    )
+                    for owner in owners
+                }
+                if (
+                    len(owner_ids) != 1
+                    or None in owner_ids
+                    or len(binding_sets) != 1
+                    or next(iter(binding_sets), frozenset()) != expected_ids
+                ):
+                    self.add("BLOCKER", "ROUTE_OWNERSHIP_CONFLICT",
+                             f"Route has {len(owners)} owners without one canonical workspace binding",
+                             owners[0], owners=sorted(expected_ids))
         for contract_id, owners in by_id.items():
             if contract_id is not None and len(owners) > 1:
                 self.add("BLOCKER", "CONTRACT_ID_DUPLICATE",

@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from builder.common.types import ScreenContract, ApiContract, FieldContract, SectionContract, FIELD_TYPES, HTTP_METHODS
+from builder.common.option_sources import resolve_option_contract
 from builder.common.base import LayerBase, LayerResult
 
 class DesignExtractor(LayerBase):
@@ -74,8 +75,8 @@ class DesignExtractor(LayerBase):
                    c.section_contract, c.command_contract, c.data_contract,
                    c.evidence_contract, c.responsive_contract,
                    c.accessibility_contract, c.security_contract,
-                   ss.input_schema, ss.output_schema, ss.persistence_schema,
-                   ss.handoff_schema, ss.context_keys,
+                   ss.input_schema, ss.output_schema, ss.field_schema,
+                   ss.persistence_schema, ss.handoff_schema, ss.context_keys,
                    jsonb_build_array(jsonb_build_object(
                        'actorCode', coalesce(nullif(c.actor_code, ''), 'USER'),
                        'scope', c.route_path,
@@ -113,6 +114,7 @@ class DesignExtractor(LayerBase):
             return []
         
         contracts = []
+        reference_options = self._extract_reference_options()
         
         for line in result.stdout.strip().split('\n'):
             if not line.strip():
@@ -120,7 +122,7 @@ class DesignExtractor(LayerBase):
             
             try:
                 data = json.loads(line)
-                contract = self._parse_contract_data(data)
+                contract = self._parse_contract_data(data, reference_options)
                 if contract:
                     contracts.append(contract)
             except json.JSONDecodeError as e:
@@ -132,7 +134,7 @@ class DesignExtractor(LayerBase):
         
         return contracts
     
-    def _parse_contract_data(self, data: Dict) -> Optional[ScreenContract]:
+    def _parse_contract_data(self, data: Dict, reference_options: Dict[str, Any]) -> Optional[ScreenContract]:
         """Parse raw DB data into ScreenContract"""
         
         contract_id = data.get('contract_id')
@@ -149,7 +151,17 @@ class DesignExtractor(LayerBase):
         state_contracts = self._parse_state_contract(data.get('state_contract'))
         
         # Parse field contract
-        field_contracts = self._parse_field_contract(data.get('field_contract'))
+        field_contracts = self._parse_field_contract(
+            data.get('field_contract'),
+            data.get('process_code', 'UNKNOWN'),
+            reference_options
+        )
+        if not field_contracts:
+            field_contracts = self._parse_field_contract(
+                data.get('field_schema'),
+                data.get('process_code', 'UNKNOWN'),
+                reference_options
+            )
         
         # Parse section contract
         section_contracts = self._parse_section_contract(data.get('section_contract'))
@@ -243,22 +255,31 @@ class DesignExtractor(LayerBase):
         
         return ['READY']
     
-    def _parse_field_contract(self, text) -> List[FieldContract]:
+    def _parse_field_contract(
+        self,
+        text,
+        process_code: str = "UNKNOWN",
+        reference_options: Dict[str, Any] = None,
+    ) -> List[FieldContract]:
         """Parse field contract - 21 field types supported"""
         if not text:
             return []
         
         try:
-            fields = json.loads(text) if isinstance(text, str) else (text if isinstance(text, list) else [])
+            decoded = json.loads(text) if isinstance(text, str) else text
+            if isinstance(decoded, dict):
+                fields = decoded.get('fields') or decoded.get('items') or []
+            else:
+                fields = decoded if isinstance(decoded, list) else []
         except:
             return []
         
         result = []
         for f in fields:
             if isinstance(f, dict):
-                dtype = (f.get('dataType', 'TEXT') or 'TEXT').upper()
-                if dtype not in FIELD_TYPES:
-                    dtype = 'TEXT'  # Default for unknown types
+                dtype = self._normalize_field_type(
+                    f.get('controlType') or f.get('dataType') or 'TEXT'
+                )
                 
                 result.append(FieldContract(
                     field_code=f.get('fieldCode', f.get('code', 'field')),
@@ -282,7 +303,119 @@ class DesignExtractor(LayerBase):
                     required=False
                 ))
         
+        references = reference_options or {}
+        for field in result:
+            if field.data_type in ['SELECT', 'CODE', 'ENUM', 'RADIO', 'AUTOCOMPLETE'] and not field.options:
+                options, source = resolve_option_contract(
+                    field.field_code,
+                    process_code,
+                    references,
+                )
+                field.options = options
+                field.option_source = source
+
         return result
+
+    def _normalize_field_type(self, raw_type: Any) -> str:
+        value = str(raw_type or 'TEXT').upper()
+        aliases = {
+            'STRING': 'TEXT',
+            'INTEGER': 'NUMBER',
+            'DECIMAL': 'NUMBER',
+            'LONG': 'NUMBER',
+            'BADGE': 'TEXT',
+            'STATUS': 'CODE',
+            'STATUS_SELECT': 'CODE',
+            'QUALITY_SELECT': 'CODE',
+            'DECISION_SELECT': 'CODE',
+            'UNIT_SELECT': 'CODE',
+            'PROJECT_SELECT': 'AUTOCOMPLETE',
+            'ENTITY_SELECT': 'AUTOCOMPLETE',
+            'FILE_UPLOAD': 'FILE',
+            'JSON': 'CODE',
+            'JSON_VIEW': 'CODE',
+            'CODE_VIEW': 'CODE',
+            'METRIC': 'NUMBER',
+            'SEQUENCE': 'NUMBER',
+            'VERSION': 'NUMBER',
+            'ACTION': 'TEXT',
+            'LINK': 'TEXT',
+            'TASK_LINK': 'TEXT',
+        }
+        normalized = aliases.get(value, value)
+        if normalized not in FIELD_TYPES and value.endswith('_SELECT'):
+            normalized = 'SELECT'
+        return normalized if normalized in FIELD_TYPES else 'TEXT'
+
+    def _extract_reference_options(self) -> Dict[str, Any]:
+        """Load reusable option catalogs once, avoiding per-screen DB queries."""
+        sql = """SELECT json_build_object(
+            'PROCESS', coalesce((SELECT json_agg(json_build_object(
+                'value', process_code, 'label', process_name
+            ) ORDER BY development_order, process_code)
+            FROM framework_process_definition), '[]'::json),
+            'PROCESS_STEP', coalesce((SELECT json_agg(json_build_object(
+                'processCode', process_code, 'value', step_code, 'label', step_name
+            ) ORDER BY process_code, step_order)
+            FROM framework_process_step), '[]'::json),
+            'ACTOR', coalesce((SELECT json_agg(json_build_object(
+                'value', actor_code, 'label', actor_name
+            ) ORDER BY actor_type, actor_code)
+            FROM framework_actor_definition WHERE use_at='Y'), '[]'::json),
+            'WORK_TYPE', coalesce((SELECT json_agg(json_build_object(
+                'value', work_type_code, 'label', work_type_name
+            ) ORDER BY sort_order, work_type_code)
+            FROM framework_business_work_type WHERE use_at='Y'), '[]'::json),
+            'AUTHORITY', coalesce((SELECT json_agg(json_build_object(
+                'value', author_code, 'label', author_nm
+            ) ORDER BY author_code)
+            FROM comtnauthorinfo), '[]'::json),
+            'COMMAND', coalesce((SELECT json_agg(json_build_object(
+                'value', command_code, 'label', command_code
+            ) ORDER BY command_code)
+            FROM (SELECT DISTINCT command_code FROM framework_process_step
+                  WHERE nullif(command_code,'') IS NOT NULL) q), '[]'::json),
+            'PROCESS_STATE', coalesce((SELECT json_agg(json_build_object(
+                'value', state_code, 'label', state_code
+            ) ORDER BY state_code)
+            FROM (SELECT DISTINCT from_state AS state_code FROM framework_process_step
+                  UNION SELECT DISTINCT to_state FROM framework_process_step) q
+            WHERE nullif(state_code,'') IS NOT NULL), '[]'::json),
+            'SITE', coalesce((SELECT json_agg(json_build_object(
+                'value', site_name, 'label', site_name
+            ) ORDER BY site_name)
+            FROM (SELECT DISTINCT site_name FROM emission_project_registry
+                  WHERE nullif(site_name,'') IS NOT NULL) q), '[]'::json),
+            'RESOURCE', coalesce((SELECT json_agg(json_build_object(
+                'value', asset_id, 'label', asset_name
+            ) ORDER BY asset_name, asset_id)
+            FROM (SELECT asset_id, asset_name FROM framework_unified_asset
+                  WHERE active_yn='Y' ORDER BY last_seen_at DESC NULLS LAST LIMIT 500) q), '[]'::json)
+        )"""
+        cmd = [
+            "kubectl", "exec", self.db_config['pod'],
+            "-n", self.db_config['namespace'],
+            "--", "psql", "-h", "127.0.0.1",
+            "-U", "postgres", "-d", self.db_config['database'],
+            "-t", "-A", "-c", sql
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if result.returncode != 0:
+            self.log(f"Reference option extraction failed: {result.stderr}", "ERROR")
+            return {}
+        try:
+            catalogs = json.loads(result.stdout.strip())
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        steps = catalogs.pop('PROCESS_STEP', []) or []
+        for item in steps:
+            process = item.get('processCode')
+            if process:
+                catalogs.setdefault(f"PROCESS_STEP:{process}", []).append({
+                    'value': item.get('value'),
+                    'label': item.get('label'),
+                })
+        return catalogs
     
     def _parse_section_contract(self, text) -> List[SectionContract]:
         """Parse section contract for complex layouts"""

@@ -151,6 +151,10 @@ class ScreenComposer(LayerBase):
             if field.options:
                 opts_json = json.dumps(field.options, ensure_ascii=False)
                 field_def += ", options: " + opts_json
+
+            if field.option_source:
+                source_json = json.dumps(field.option_source, ensure_ascii=False)
+                field_def += ", optionSource: " + source_json
             
             if field.placeholder:
                 field_def += ", placeholder: '" + field.placeholder + "'"
@@ -186,10 +190,12 @@ class ScreenComposer(LayerBase):
             "            <Typography variant=\"caption\">{field.label}</Typography>",
             "            <FieldFactory",
             "              type={field.type}",
+            "              label={field.label}",
             "              value={values[field.name]||''}",
             "              onChange={(v) => handleChange(field.name, v)}",
             "              error={!!errors[field.name]}",
             "              helperText={errors[field.name]}",
+            "              options={field.options || []}",
         ]
 
         # Add required prop if any field is required

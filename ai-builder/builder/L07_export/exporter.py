@@ -1,6 +1,7 @@
 """Export routes and catalog"""
 
 import json
+from collections import defaultdict
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 
@@ -61,8 +62,8 @@ class ScreenExporter(LayerBase):
             "  return (",
         ]
         
-        # Add routes
-        for c in contracts:
+        # Add exactly one route entry for a shared multi-process workspace.
+        for c in self._route_owners(contracts).values():
             screen_name = "Screen" + str(c.contract_id)
             route_line = '  <Route path="' + c.route_path + '" element={<' + screen_name + ' />} />'
             lines.append(route_line)
@@ -89,13 +90,19 @@ class ScreenExporter(LayerBase):
             'screens': []
         }
         
+        route_owners = self._route_owners(contracts)
+        route_bindings = self._route_bindings(contracts)
         for c in contracts:
+            owner = route_owners.get(c.route_path, c)
             catalog['screens'].append({
                 'contract_id': c.contract_id,
                 'route': c.route_path,
                 'screen_name': c.screen_name,
                 'process_code': getattr(c, 'process_code', 'UNKNOWN'),
                 'actor_code': getattr(c, 'actor_code', 'USER'),
+                'route_owner_contract_id': owner.contract_id,
+                'route_ownership': 'PRIMARY' if owner.contract_id == c.contract_id else 'SHARED_WORKSPACE',
+                'route_bindings': route_bindings.get(c.route_path, []),
                 'step_code': getattr(c, 'step_code', ''),
                 'audience': getattr(c, 'audience', ''),
                 'business_purpose': getattr(c, 'business_purpose', ''),
@@ -136,6 +143,7 @@ class ScreenExporter(LayerBase):
                         'required': f.required,
                         'section': f.section_code,
                         'options': f.options,
+                        'optionSource': f.option_source,
                         'validation': f.validation,
                         'defaultValue': f.default_value,
                         'placeholder': f.placeholder,
@@ -151,6 +159,39 @@ class ScreenExporter(LayerBase):
             json.dump(catalog, f, ensure_ascii=False, indent=2)
         
         return str(catalog_path)
+
+    def _route_owners(self, contracts: List) -> Dict[str, Any]:
+        """Choose one deterministic owner without discarding step bindings."""
+        grouped: Dict[str, List] = defaultdict(list)
+        for contract in contracts:
+            grouped[contract.route_path].append(contract)
+        return {
+            route: max(
+                owners,
+                key=lambda item: (
+                    item.get_field_count() + item.get_api_count() + item.get_section_count(),
+                    -int(item.contract_id),
+                ),
+            )
+            for route, owners in grouped.items()
+            if route
+        }
+
+    def _route_bindings(self, contracts: List) -> Dict[str, List[Dict[str, Any]]]:
+        grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for contract in contracts:
+            grouped[contract.route_path].append({
+                'contractId': contract.contract_id,
+                'processCode': getattr(contract, 'process_code', ''),
+                'stepCode': getattr(contract, 'step_code', ''),
+                'actorCode': getattr(contract, 'actor_code', ''),
+                'audience': getattr(contract, 'audience', ''),
+            })
+        for bindings in grouped.values():
+            bindings.sort(key=lambda item: (
+                item['processCode'], item['stepCode'], item['contractId']
+            ))
+        return dict(grouped)
     
     def _generate_navigation(self, contracts: List) -> str:
         """Generate navigation configuration"""

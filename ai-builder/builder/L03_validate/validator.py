@@ -91,9 +91,10 @@ class ContractValidator(LayerBase):
         if not contract.screen_name:
             warnings.append('Missing screen_name')
         
-        # Duplicate route check (only error, not blocking)
+        # A route may intentionally be shared by multiple process steps. L07
+        # assigns one canonical owner and emits a single router entry.
         if contract.route_path in self.route_cache:
-            errors.append({'type': 'ERROR', 'message': 'Duplicate route: ' + contract.route_path})
+            warnings.append('Shared route requires canonical ownership: ' + contract.route_path)
         elif contract.route_path:
             self.route_cache.add(contract.route_path)
         

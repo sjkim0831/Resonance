@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT / "ai-builder"))
 
 from builder.L05_compose.composer import ScreenComposer
 from builder.L07_export.exporter import ScreenExporter
+from builder.common.option_sources import resolve_option_contract
 from builder.common.types import (
     ApiContract,
     FieldContract,
@@ -50,6 +51,18 @@ def complete_contract():
 
 
 class ContractGeneratorTest(unittest.TestCase):
+    def test_selection_sources_resolve_from_reference_or_canonical_enum(self):
+        references = {
+            "PROCESS": [{"value": "EMISSION", "label": "배출량 관리"}],
+            "PROCESS_STEP:EMISSION": [{"value": "COLLECT", "label": "자료 수집"}],
+        }
+        options, source = resolve_option_contract("processCode", "EMISSION", references)
+        self.assertEqual("EMISSION", options[0]["value"])
+        self.assertTrue(source["verified"])
+        options, source = resolve_option_contract("decisionCode", "EMISSION", references)
+        self.assertGreaterEqual(len(options), 3)
+        self.assertEqual("CANONICAL_ENUM", source["sourceType"])
+
     def test_react_hooks_and_save_handler_are_inside_component(self):
         contract = complete_contract()
         source = ScreenComposer()._compose_screen(contract)
@@ -80,6 +93,30 @@ class ContractGeneratorTest(unittest.TestCase):
             self.assertEqual(
                 [{"value": "READY", "label": "준비"}],
                 screen["fields"][0]["options"],
+            )
+
+    def test_shared_route_emits_one_router_entry_and_complete_bindings(self):
+        first = complete_contract()
+        second = complete_contract()
+        second.contract_id = 102
+        second.process_code = "LCA"
+        second.step_code = "REVIEW"
+        with tempfile.TemporaryDirectory() as directory:
+            exporter = ScreenExporter(Path(directory))
+            context = GenerationContext(contracts=[first, second])
+            success, artifacts, _ = exporter.execute(context, None)
+            self.assertTrue(success)
+            routes = Path(artifacts["routes"]).read_text(encoding="utf-8")
+            self.assertEqual(1, routes.count('path="/emission/work"'))
+            catalog = json.loads(Path(artifacts["catalog"]).read_text(encoding="utf-8"))
+            screens = catalog["screens"]
+            self.assertEqual(
+                {first.contract_id, second.contract_id},
+                {binding["contractId"] for binding in screens[0]["route_bindings"]},
+            )
+            self.assertEqual(
+                {screen["route_owner_contract_id"] for screen in screens},
+                {first.contract_id},
             )
 
 

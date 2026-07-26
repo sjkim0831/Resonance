@@ -69,6 +69,20 @@ class QualityGateTest(unittest.TestCase):
         self.assertEqual(2, rc)
         self.assertIn("ROUTE_OWNERSHIP_CONFLICT", report["findingCounts"])
 
+    def test_shared_route_with_canonical_binding_is_promotable(self):
+        first = complete_screen(1, "/same")
+        second = complete_screen(2, "/same")
+        bindings = [
+            {"contractId": 1, "processCode": "PROCESS", "stepCode": "S1"},
+            {"contractId": 2, "processCode": "PROCESS", "stepCode": "S2"},
+        ]
+        for screen in (first, second):
+            screen["route_owner_contract_id"] = 1
+            screen["route_bindings"] = bindings
+        rc, report = self.run_gate([first, second])
+        self.assertEqual(0, rc)
+        self.assertNotIn("ROUTE_OWNERSHIP_CONFLICT", report["findingCounts"])
+
 
 if __name__ == "__main__":
     unittest.main()

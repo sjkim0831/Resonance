@@ -30,6 +30,7 @@ class FieldContract:
     data_type: str = "TEXT"
     required: bool = False
     options: List[Dict[str, Any]] = field(default_factory=list)
+    option_source: Dict[str, Any] = field(default_factory=dict)
     validation: Dict[str, Any] = field(default_factory=dict)
     default_value: Any = None
     placeholder: str = ""
