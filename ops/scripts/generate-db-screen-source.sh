@@ -15,6 +15,12 @@ while IFS= read -r pod; do
   [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == f ]] && { leader="$pod"; break; }
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#pod/##')
 [[ -n "$leader" ]] || { echo 'writable PostgreSQL leader not found' >&2; exit 1; }
+allowed="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 \
+  -U postgres -d carbonet -X -Atqc 'select framework_contract_generation_allowed()')"
+if [[ "$allowed" != t ]]; then
+  jq -cn '{success:true,status:"BLOCKED_BY_CONTRACT_COMPILER",requested:0,designGenerated:false}'
+  exit 0
+fi
 
 kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres \
   -d carbonet -X -qAt -v ON_ERROR_STOP=1 -c 'select framework_screen_blueprint_export(1000)' >"$snapshot"
