@@ -182,14 +182,26 @@ fi
 # repository copy after the screen gate has already passed.
 live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
 merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
+merge_overlay_backup_valid=false
 if [[ -f "$live_frontend_overlay/index.html" ]]; then
   rsync -a "$live_frontend_overlay/" "$merge_overlay_backup/"
+  if node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$merge_overlay_backup" >/dev/null 2>&1; then
+    merge_overlay_backup_valid=true
+  elif [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
+    echo "[auto-deploy] stale frontend overlay detected; the new isolated frontend build will replace it"
+  else
+    echo "[auto-deploy] refusing deployment: the existing frontend closure is incomplete and no frontend rebuild is planned" >&2
+    rm -rf "$merge_overlay_backup"
+    exit 20
+  fi
 fi
 
 restore_live_frontend_overlay() {
-  if [[ -f "$merge_overlay_backup/index.html" ]]; then
+  if [[ "$merge_overlay_backup_valid" == "true" && -f "$merge_overlay_backup/index.html" ]]; then
     rsync -a --delete "$merge_overlay_backup/" "$live_frontend_overlay/"
     node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
+  elif [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
+    echo "[auto-deploy] skipped restoration of stale frontend overlay"
   fi
   rm -rf "$merge_overlay_backup"
   merge_overlay_backup=""
