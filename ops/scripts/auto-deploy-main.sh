@@ -156,10 +156,13 @@ fi
 tracked_source_changes="$(git diff --name-only -- \
   . \
   ':(exclude).gradle/**' \
+  ':(exclude)apps/carbonet-api/src/main/resources/static/react-app/**' \
   ':(exclude)projects/carbonet-assets/static/react-app/**' \
   ':(exclude)projects/carbonet-backend-metadata/builder/platform-builder-store.json' \
   ':(exclude)projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json' \
   ':(exclude)projects/carbonet-frontend/src/main/resources/static/react-app/**' \
+  ':(exclude)projects/carbonet-frontend/source/.cache/full-screen-smoke/**' \
+  ':(exclude)projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenFamily.ts' \
   ':(exclude)projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts' \
   ':(exclude)projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts' \
   ':(exclude)projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo' \
@@ -212,10 +215,13 @@ restore_live_frontend_overlay() {
 # known paths before the fast-forward merge.
 generated_paths=(
   .gradle
+  apps/carbonet-api/src/main/resources/static/react-app
   projects/carbonet-assets/static/react-app
   projects/carbonet-backend-metadata/builder/platform-builder-store.json
   projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json
   projects/carbonet-frontend/src/main/resources/static/react-app
+  projects/carbonet-frontend/source/.cache/full-screen-smoke
+  projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenFamily.ts
   projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts
   projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts
   projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
