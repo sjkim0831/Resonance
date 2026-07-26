@@ -11,6 +11,14 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
 kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres \
   -d carbonet -X -qAt -v ON_ERROR_STOP=1 -c 'select framework_contract_compiler_snapshot()' >"$snapshot"
 python3 "$ROOT/ops/scripts/compile-cross-screen-contracts.py" "$snapshot" >"$result"
+next_hash="$(jq -r '.contractHash' "$result")"
+latest_hash="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 \
+  -U postgres -d carbonet -X -Atqc 'select contract_hash from framework_contract_compilation_run order by compilation_id desc limit 1')"
+if [[ -n "$latest_hash" && "$latest_hash" == "$next_hash" ]]; then
+  jq '{success:true,status:"UNCHANGED",contractHash,screenCount,fieldCount,
+    lineageCount,blockingCount,warningCount,elapsedMillis}' "$result"
+  exit 0
+fi
 encoded="$(base64 -w0 "$result")"
 kubectl -n "$NAMESPACE" exec -i "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres \
   -d carbonet -X -qAt -v ON_ERROR_STOP=1 <<SQL >/dev/null

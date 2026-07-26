@@ -96,7 +96,9 @@ for (process,audience),contracts in screens.items():
               f'{process}:{left["stepCode"]}->{right["stepCode"]}:{audience}',ck,
               "다음 단계의 핵심 필드가 이전 단계에서 전달되지 않습니다.")
 
-payload_for_hash={"fields":list(canon.values()),"bindings":bindings,"lineage":lineage}
+payload_for_hash={"fields":list(canon.values()),"bindings":bindings,"lineage":lineage,
+  "issues":[{"issueCode":x["issueCode"],"resourceKey":x["resourceKey"],
+    "fieldKey":x["fieldKey"],"evidence":x["evidence"]} for x in issues]}
 contract_hash=hashlib.sha256(json.dumps(payload_for_hash,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
 blocking=sum(x["severity"]=="BLOCKING" for x in issues); warnings=len(issues)-blocking
 result={"schemaVersion":"1.0.0","contractHash":contract_hash,
