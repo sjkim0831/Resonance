@@ -1,0 +1,12 @@
+[Unit]
+Description=Generate bounded contract repair candidates through 16 NVIDIA lanes and E4B
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-ai-contract-designs.sh /opt/Resonance 16
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
