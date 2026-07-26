@@ -68,7 +68,7 @@ const normalized = blueprints.map((item) => {
   const id = String(item.pageId).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   const routePath = String(item.routePath || "");
   if (!id || seenIds.has(id)) throw new Error(`Duplicate/invalid page id: ${id}`);
-  if (!routePath.startsWith("/") || seenRoutes.has(routePath)) throw new Error(`Duplicate/invalid route: ${routePath}`);
+  if (!routePath.startsWith("/")) throw new Error(`Invalid route: ${routePath}`);
   seenIds.add(id); seenRoutes.add(routePath);
   const traceability=parse(item.traceabilityJson,item.blueprintCode);
   traceability.requiredScenarioTypes=Array.from(new Set([...(traceability.requiredScenarioTypes||[])]));
@@ -97,7 +97,8 @@ const imports=definitionImports.map(x=>`import { ${x.symbol} } from ${JSON.strin
 const symbols=definitionImports.map(x=>x.symbol).join(",\n  ");
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),`export type DesignCompleteness={score:number;complete:boolean;checks:Record<string,boolean>};\nexport type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; specification:Record<string,any>; traceability:Record<string,any>; designCompleteness:DesignCompleteness; };\n`))contractFilesChanged++;
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG = [\n  ${symbols}\n] as const satisfies readonly GeneratedScreenDefinition[];\nexport function findGeneratedScreen(pathname:string){const normalized=pathname.replace(/^\\/en(?=\\/)/,"")||"/";return GENERATED_SCREEN_CATALOG.find(screen=>screen.routePath===normalized);}\n`))contractFilesChanged++;
-const routes=normalized.map(x=>({id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}));
+const routes=Array.from(new Map(normalized.map(x=>[x.routePath,
+  {id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}])).values());
 const units=normalized.map(x=>`  { id: ${JSON.stringify(x.id)}, exportName: "GeneratedScreenPage", loader: () => import("../../features/generated-screen/GeneratedScreenPage") }`).join(",\n");
 const familyTemplate=await readFile(new URL("../src/generated/screen-generation/generatedScreenFamily.ts",import.meta.url),"utf8");
 const family=familyTemplate.replace(/const GENERATED_SCREEN_ROUTES = [\s\S]*? as const satisfies RouteDefinitionsOf;/,`const GENERATED_SCREEN_ROUTES = ${json(routes)} as const satisfies RouteDefinitionsOf;`).replace(/const GENERATED_SCREEN_PAGE_UNITS = [\s\S]*? as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;/,`const GENERATED_SCREEN_PAGE_UNITS = [\n${units}\n] as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;`);
