@@ -17,10 +17,41 @@ rm -f "$result_dir"/shard-*.json
 
 bash "$root_dir/scripts/export-full-screen-smoke-manifest.sh"
 bash "$root_dir/scripts/export-full-screen-quality-context.sh"
+
+detect_safe_workers() {
+  if [[ -n "${FULL_SCREEN_SMOKE_WORKERS:-}" ]]; then
+    printf '%s' "$FULL_SCREEN_SMOKE_WORKERS"
+    return
+  fi
+
+  local cpu_count available_kb load_one workers
+  cpu_count="$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '2')"
+  available_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || printf '0')"
+  load_one="$(awk '{print $1}' /proc/loadavg 2>/dev/null || printf '0')"
+  workers=4
+
+  (( cpu_count < workers )) && workers="$cpu_count"
+  (( available_kb > 0 && available_kb < 3145728 )) && workers=2
+  if awk -v load="$load_one" -v cpu="$cpu_count" 'BEGIN { exit !(cpu > 0 && load / cpu >= 0.75) }'; then
+    workers=2
+  elif awk -v load="$load_one" -v cpu="$cpu_count" 'BEGIN { exit !(cpu > 0 && load / cpu >= 0.50) }'; then
+    (( workers > 3 )) && workers=3
+  fi
+  (( workers < 1 )) && workers=1
+  printf '%s' "$workers"
+}
+
+smoke_workers="$(detect_safe_workers)"
+printf '[full-screen-smoke] workers=%s cpu=%s load=%s memAvailableKb=%s\n' \
+  "$smoke_workers" \
+  "$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '?')" \
+  "$(awk '{print $1}' /proc/loadavg 2>/dev/null || printf '?')" \
+  "$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || printf '?')"
 set +e
 PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
   npx playwright test e2e/full-screen-smoke.spec.ts \
-  --workers="${FULL_SCREEN_SMOKE_WORKERS:-8}" \
+  --workers="$smoke_workers" \
+  --retries="${FULL_SCREEN_SMOKE_RETRIES:-1}" \
   --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
 test_status=$?
 set -e

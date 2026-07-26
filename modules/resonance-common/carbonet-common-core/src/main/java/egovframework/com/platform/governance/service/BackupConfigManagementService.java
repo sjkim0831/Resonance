@@ -103,8 +103,8 @@ public class BackupConfigManagementService {
     private final ObjectMapper objectMapper;
     private final egovframework.com.common.context.ProjectRuntimeContext projectRuntimeContext;
     private final MaintenanceModeService maintenanceModeService;
-    private final Path documentPath = Paths.get("data", "backup-config", "settings.json");
-    private final Path jobLogDirectory = Paths.get("data", "backup-config", "jobs");
+    private final Path documentPath = resolveRuntimeDataPath("backup-config", "settings.json");
+    private final Path jobLogDirectory = resolveRuntimeDataPath("backup-config", "jobs");
     private final Path deployAutomationEnvPath = Paths.get("ops", "config", "deploy-automation.env");
     private final ConcurrentMap<String, BackupExecutionJob> jobs = new ConcurrentHashMap<>();
     private final ExecutorService backupExecutionExecutor = Executors.newSingleThreadExecutor(runnable -> {
@@ -112,6 +112,25 @@ public class BackupConfigManagementService {
         thread.setDaemon(true);
         return thread;
     });
+
+    /**
+     * Runtime containers use a read-only application filesystem. Keep mutable
+     * backup-management state on the shared backend-metadata mount and fall
+     * back to the pod's writable temporary volume for local/test runtimes.
+     */
+    private static Path resolveRuntimeDataPath(String... segments) {
+        String configuredRoot = System.getenv("CARBONET_RUNTIME_DATA_ROOT");
+        Path root;
+        if (configuredRoot != null && !configuredRoot.trim().isEmpty()) {
+            root = Paths.get(configuredRoot.trim());
+        } else {
+            Path sharedRuntimeRoot = Paths.get("/app/backend-metadata", "runtime-data");
+            root = Files.isDirectory(sharedRuntimeRoot.getParent()) && Files.isWritable(sharedRuntimeRoot.getParent())
+                    ? sharedRuntimeRoot
+                    : Paths.get(System.getProperty("java.io.tmpdir"), "carbonet-runtime-data");
+        }
+        return Paths.get(root.toString(), segments).normalize();
+    }
 
     public synchronized Map<String, Object> buildPageData(boolean isEn) {
         BackupConfigDocument document = loadDocument();
