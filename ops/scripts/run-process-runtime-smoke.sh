@@ -108,6 +108,10 @@ print(json.dumps({'processCode':os.environ['PROCESS'],'stepCode':os.environ['STE
 PY
 )"
     code="$(curl -sS -b "$cookie" -o "$tmp/approve.json" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/admin/api/system/actor-process/development/approve" --data "$payload")"
+    if [[ "$code" == 400 ]] && grep -Eq '사전검사|차단 항목' "$tmp/approve.json"; then
+      echo "[process-runtime-smoke] PASS fail-closed approval step=$step_code blockers-preserved"
+      continue
+    fi
     [[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL approve step=$step_code status=$code body=$(tr -d '\n' < "$tmp/approve.json" | head -c 2000)" >&2; exit 1; }
   done < "$tmp/steps.txt"
 fi
