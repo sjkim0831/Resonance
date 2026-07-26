@@ -4,6 +4,55 @@
   var TARGET_ROUTE = "/admin/system/consent-history";
   var observer;
   var queued = false;
+  var BUILD_HASH_KEY = "resonance-active-build-hash";
+  var ROUTE_RELOAD_KEY = "resonance-route-reload";
+  var ROUTE_FINGERPRINTS = {
+    "/admin/system/page-development-master": {
+      expected: "1천 화면을 하나의 계약과 네 가지 관점으로 관리합니다."
+    }
+  };
+
+  function hardReload(reason, token) {
+    var url = new URL(window.location.href);
+    url.searchParams.set("__runtime", token || Date.now().toString(36));
+    console.warn("[runtime-self-heal] reload", reason);
+    window.location.replace(url.toString());
+  }
+
+  function verifyRouteFingerprint() {
+    var contract = ROUTE_FINGERPRINTS[window.location.pathname];
+    if (!contract) return;
+    var body = document.body ? document.body.innerText : "";
+    if (body.indexOf(contract.expected) >= 0) {
+      sessionStorage.removeItem(ROUTE_RELOAD_KEY);
+      return;
+    }
+    var attempt = Number(sessionStorage.getItem(ROUTE_RELOAD_KEY) || "0");
+    if (attempt >= 1) return;
+    sessionStorage.setItem(ROUTE_RELOAD_KEY, String(attempt + 1));
+    hardReload("route-fingerprint", Date.now().toString(36));
+  }
+
+  async function verifyBuildVersion() {
+    try {
+      var response = await fetch("/assets/react/.resonance-build.json?ts=" + Date.now(), { cache: "no-store", credentials: "same-origin" });
+      if (!response.ok) return;
+      var build = await response.json();
+      var hash = build && build.sourceHash;
+      if (!hash) return;
+      var active = sessionStorage.getItem(BUILD_HASH_KEY);
+      if (!active) {
+        sessionStorage.setItem(BUILD_HASH_KEY, hash);
+        return;
+      }
+      if (active !== hash) {
+        sessionStorage.setItem(BUILD_HASH_KEY, hash);
+        hardReload("build-version", hash.slice(0, 12));
+      }
+    } catch (_) {
+      // The server-side route guard remains authoritative during outages.
+    }
+  }
 
   function mark(element, component, section, classSet) {
     if (!element) return;
@@ -77,6 +126,10 @@
       subtree: true
     });
     window.addEventListener("popstate", schedule);
+    window.setTimeout(verifyRouteFingerprint, 2500);
+    window.setInterval(verifyRouteFingerprint, 15000);
+    void verifyBuildVersion();
+    window.setInterval(verifyBuildVersion, 60000);
   }
 
   if (document.readyState === "loading") {
