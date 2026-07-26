@@ -1,0 +1,12 @@
+[Unit]
+Description=Regenerate changed Resonance screen contracts without an application build
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-incremental-screen-runtime.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

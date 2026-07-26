@@ -1,0 +1,12 @@
+[Unit]
+Description=Detect design changes and refresh generated screens
+
+[Timer]
+OnBootSec=45s
+OnUnitInactiveSec=15s
+AccuracySec=3s
+Persistent=true
+Unit=resonance-incremental-screen-generation.service
+
+[Install]
+WantedBy=timers.target
