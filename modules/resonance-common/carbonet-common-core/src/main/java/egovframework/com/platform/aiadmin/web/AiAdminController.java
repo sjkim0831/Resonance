@@ -61,6 +61,12 @@ public class AiAdminController {
         String actor = request.getUserPrincipal() == null ? "SYSTEM" : request.getUserPrincipal().getName();
         return ResponseEntity.ok(e4bGeneratorSelectionService.selectAndExecute(body, actor));
     }
+    @PostMapping("/e4b/development/precompile") @ResponseBody
+    public ResponseEntity<Map<String, Object>> precompileE4bCandidates(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        primeCsrfToken(request);
+        String actor = request.getUserPrincipal() == null ? "SYSTEM" : request.getUserPrincipal().getName();
+        return ResponseEntity.ok(e4bGeneratorSelectionService.precompile(body, actor));
+    }
     @GetMapping("/agents/page-data") @ResponseBody
     public ResponseEntity<Map<String, Object>> agents(HttpServletRequest request, Locale locale, @RequestParam(required=false) String status) { primeCsrfToken(request); return ResponseEntity.ok(aiAdminService.buildAgentsPage(status, isEnglishRequest(request, locale))); }
     @GetMapping("/logs/page-data") @ResponseBody

@@ -35,6 +35,12 @@ public class E4bGeneratorSelectionService {
         String process = required(body, "processCode");
         String step = text(body, "stepCode");
         boolean execute = Boolean.parseBoolean(String.valueOf(body.getOrDefault("execute", false)));
+        boolean refreshCandidates = Boolean.parseBoolean(String.valueOf(body.getOrDefault("refreshCandidates", false)));
+        if (refreshCandidates) {
+            governance.compileScreenBlueprints(Map.of(
+                "processCode", process, "maxScreens", 1000, "dryRun", false
+            ), actor);
+        }
         List<Map<String, Object>> steps = jdbc.queryForList(
             "select step_code as \"stepCode\",step_name as \"stepName\",actor_code as \"actorCode\"," +
             "requires_user_page as \"requiresUserPage\",requires_admin_page as \"requiresAdminPage\"," +
@@ -45,18 +51,36 @@ public class E4bGeneratorSelectionService {
         List<Map<String, Object>> generators = jdbc.queryForList(
             "select generator_id as \"generatorId\",screen_type as \"screenType\",strategy,template_code as \"templateCode\"," +
             "verification_profile as \"verificationProfile\" from framework_generator_registry where active_yn='Y' order by generator_id");
+        List<Map<String, Object>> candidates = jdbc.queryForList(
+            "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\"," +
+            "step_code as \"stepCode\",actor_code as \"actorCode\",audience,page_id as \"pageId\",page_name as \"pageName\"," +
+            "route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\"," +
+            "implementation_strategy as \"implementationStrategy\" from framework_screen_blueprint " +
+            "where process_code=? and (?='' or step_code=?) and validation_status='VALID' " +
+            "order by step_code,audience,blueprint_id limit 200",
+            process, step, step);
+        if (candidates.isEmpty()) {
+            throw new IllegalStateException(
+                "검증 완료된 사전 생성 후보가 없습니다. 후보를 먼저 컴파일해야 합니다: " + process + " / " + step);
+        }
         List<Map<String, Object>> pages = jdbc.queryForList(
             "select asset_code as \"pageId\",asset_name as \"pageName\",asset_path as route,selection_status as \"selectionStatus\" " +
             "from framework_e4b_selectable_asset where asset_type='PAGE' and (domain_code=(select domain_code from framework_process_definition where process_code=?) " +
             "or lower(coalesce(asset_path,'')) in (select lower(split_part(coalesce(user_path,''),'?',1)) from framework_process_step where process_code=? " +
             "union select lower(split_part(coalesce(admin_path,''),'?',1)) from framework_process_step where process_code=?)) limit 40",
             process, process, process);
-        String prompt = "Select exactly one approved generator for this already-designed Carbonet process. " +
+        String prompt = "Select exactly one precompiled blueprint and one approved generator for this already-designed Carbonet process. " +
             "Prefer ADOPT_EXISTING_PAGE when a matching implemented route exists. Never write source code or invent IDs. " +
             "Every page must reuse registered COMMON theme, section, component and CSS class-set assets; page-local design assets are forbidden. " +
-            "Return JSON only: {generatorId,screenType,strategy,reason,confidence}.\nPROCESS=" + process +
-            "\nSTEPS=" + json(steps) + "\nEXISTING_PAGES=" + json(pages) + "\nALLOWED_GENERATORS=" + json(generators);
+            "The blueprintId and generatorId must be copied exactly from the supplied catalogs. " +
+            "Return JSON only: {blueprintId,generatorId,screenType,strategy,reason,confidence}.\nPROCESS=" + process +
+            "\nSTEPS=" + json(steps) + "\nPRECOMPILED_BLUEPRINTS=" + json(candidates) +
+            "\nEXISTING_PAGES=" + json(pages) + "\nALLOWED_GENERATORS=" + json(generators);
         JsonNode selection = callModel(prompt);
+        long blueprintId = selection.path("blueprintId").asLong(-1);
+        Map<String, Object> candidate = candidates.stream()
+            .filter(row -> blueprintId == ((Number) row.get("blueprintId")).longValue()).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("E4B selected an unregistered blueprint: " + blueprintId));
         String generatorId = selection.path("generatorId").asText();
         Map<String, Object> generator = generators.stream()
             .filter(row -> generatorId.equals(String.valueOf(row.get("generatorId")))).findFirst()
@@ -69,15 +93,16 @@ public class E4bGeneratorSelectionService {
             throw new IllegalArgumentException("E4B screen type does not match the generator registry");
         if (!strategy.equals(selection.path("strategy").asText()))
             throw new IllegalArgumentException("E4B strategy does not match the generator registry");
+        String candidateScreenType = String.valueOf(candidate.get("screenType"));
+        if (!"ADOPT_EXISTING".equals(strategy) && !screenType.equals(candidateScreenType))
+            throw new IllegalArgumentException("E4B generator does not match the precompiled blueprint screen type");
 
         String requestId = "E4B-" + UUID.randomUUID().toString().substring(0, 12).toUpperCase();
         Map<String, Object> execution = Map.of("executed", false);
         Map<String, Object> commonAssets = governance.ensureCommonDesignAssets(process, step, actor);
         String executionStatus = "PLANNED";
         if (execute) {
-            execution = "ADOPT_EXISTING".equals(strategy)
-                ? governance.adoptExistingScreens(Map.of("maxScreens", 1000), actor)
-                : governance.executeDesignDirectDevelopment(Map.of("processCode", process, "force", false), actor);
+            execution = governance.queueSelectedBlueprint(blueprintId, actor);
             executionStatus = Boolean.TRUE.equals(execution.get("success")) ? "COMPLETED" : "FAILED";
         }
         jdbc.update("insert into framework_e4b_generator_selection(request_id,process_code,step_code,model_name,generator_id,screen_type,strategy,selection_json,validation_status,execution_status,execution_result,selected_by,executed_at) values(?,?,?,?,?,?,?,?::jsonb,'VERIFIED',?,?::jsonb,?,case when ? then current_timestamp else null end)",
@@ -86,7 +111,28 @@ public class E4bGeneratorSelectionService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("success", true); result.put("requestId", requestId); result.put("model", model);
         result.put("processCode", process); result.put("stepCode", step); result.put("selection", selection);
+        result.put("candidateCount", candidates.size()); result.put("candidate", candidate);
         result.put("generator", generator); result.put("commonAssets",commonAssets); result.put("execution", execution);
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> precompile(Map<String, Object> body, String actor) {
+        String process = text(body, "processCode");
+        int maxScreens = Math.min(1000, Math.max(1,
+            Integer.parseInt(String.valueOf(body.getOrDefault("maxScreens", 1000)))));
+        Map<String, Object> adopted = process.isBlank()
+            ? governance.adoptExistingScreens(Map.of("maxScreens", maxScreens), actor)
+            : Map.of("skipped", true, "reason", "PROCESS_SCOPED_PRECOMPILE");
+        Map<String, Object> compiled = governance.compileScreenBlueprints(
+            Map.of("processCode", process, "maxScreens", maxScreens, "dryRun", false), actor);
+        Integer candidates = jdbc.queryForObject(
+            "select count(*) from framework_screen_blueprint where (?='' or process_code=?) and validation_status='VALID'",
+            Integer.class, process, process);
+        Map<String, Object> result = new LinkedHashMap<>(compiled);
+        result.put("adoptedExisting", adopted);
+        result.put("precompiledCandidateCount", candidates == null ? 0 : candidates);
+        result.put("selectionMode", "E4B_REGISTERED_CANDIDATES_ONLY");
         return result;
     }
 

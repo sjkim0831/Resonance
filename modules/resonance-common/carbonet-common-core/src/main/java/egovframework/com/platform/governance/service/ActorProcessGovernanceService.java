@@ -1025,6 +1025,32 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"batchId",batchId,"queued",queued);
     }
 
+    @Transactional public Map<String,Object> queueSelectedBlueprint(long blueprintId,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList(
+            "select blueprint_id,blueprint_code,page_name,process_code,step_code,audience,route_path,validation_status " +
+            "from framework_screen_blueprint where blueprint_id=? for update",blueprintId);
+        if(rows.isEmpty())throw new IllegalArgumentException("사전 생성된 화면 후보가 존재하지 않습니다: "+blueprintId);
+        Map<String,Object> blueprint=rows.get(0);
+        if(!"VALID".equals(String.valueOf(blueprint.get("validation_status"))))
+            throw new IllegalStateException("검증 완료된 화면 후보만 실행할 수 있습니다: "+blueprintId);
+        String batchCode="E4B_SELECTED_"+System.currentTimeMillis();
+        Long batchId=jdbc.queryForObject(
+            "insert into framework_screen_generation_batch(batch_code,batch_name,process_code,requested_count,compiled_count,valid_count,invalid_count,dry_run,batch_status,requested_by) " +
+            "values(?,?,?,?,1,1,0,false,'COMPILED',?) returning batch_id",
+            Long.class,batchCode,String.valueOf(blueprint.get("page_name"))+" 선택 실행",
+            String.valueOf(blueprint.get("process_code")),1,actor);
+        jdbc.update(
+            "insert into framework_screen_generation_batch_item(batch_id,blueprint_id,item_order,item_status) values(?,?,1,'VALID')",
+            batchId,blueprintId);
+        Map<String,Object> queued=queueScreenGeneration(batchId,actor);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("batchId",batchId);result.put("batchCode",batchCode);
+        result.put("blueprintId",blueprintId);result.put("blueprintCode",blueprint.get("blueprint_code"));
+        result.put("routePath",blueprint.get("route_path"));result.put("queued",queued.get("queued"));
+        result.put("source","PRECOMPILED_BLUEPRINT");
+        return result;
+    }
+
     public Map<String,Object> exportScreenGeneration(long batchId){
         List<Map<String,Object>> batches=jdbc.queryForList("select batch_id as \"batchId\",batch_code as \"batchCode\",batch_name as \"batchName\",batch_status as \"batchStatus\",compiled_count as \"compiledCount\",valid_count as \"validCount\",invalid_count as \"invalidCount\" from framework_screen_generation_batch where batch_id=?",batchId);
         if(batches.isEmpty())throw new IllegalArgumentException("생성 배치가 존재하지 않습니다.");
