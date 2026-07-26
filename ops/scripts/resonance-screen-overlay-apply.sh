@@ -131,6 +131,13 @@ bash "$GUARD_SCRIPT" write-marker
 echo "[screen-overlay-apply] verify overlay/http/source"
 BASE_URL="$BASE_URL" bash "$GUARD_SCRIPT" verify-all
 echo "[screen-overlay-apply] verify React runtime mount"
+smoke_secret="/etc/resonance/secrets/admin-smoke.env"
+if [[ -r "$smoke_secret" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$smoke_secret"
+  set +a
+fi
 if ! (cd "$SOURCE_DIR" && BASE_URL="$BASE_URL" node "$ROOT_DIR/ops/scripts/verify-react-mount.mjs"); then
   echo "[screen-overlay-apply] React mount failed; restore latest known overlay backup" >&2
   bash "$GUARD_SCRIPT" restore-latest
