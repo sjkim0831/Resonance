@@ -1,4 +1,9 @@
-import { chromium } from "playwright";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+
+const require = createRequire(`${process.cwd()}/package.json`);
+const playwrightEntry = require.resolve("playwright");
+const { chromium } = await import(pathToFileURL(playwrightEntry).href);
 
 const baseUrl = process.env.BASE_URL || "http://127.0.0.1";
 const targetPath = process.env.REACT_MOUNT_PROBE_PATH || "/admin/login/loginView";
