@@ -1,0 +1,13 @@
+[Unit]
+Description=Resonance React route fingerprint self-heal
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+ExecStart=/bin/bash /opt/Resonance/ops/scripts/resonance-react-route-self-heal.sh
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
