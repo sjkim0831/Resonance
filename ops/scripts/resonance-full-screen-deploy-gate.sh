@@ -113,7 +113,6 @@ verify() {
   (
     cd "$FRONTEND_DIR"
     FULL_SCREEN_SMOKE_CHANGED_ONLY="${FULL_SCREEN_SMOKE_CHANGED_ONLY:-false}" \
-    FULL_SCREEN_SMOKE_WORKERS="${FULL_SCREEN_SMOKE_WORKERS:-8}" \
     FULL_SCREEN_SMOKE_SUMMARY="$run_report/summary.json" \
       bash scripts/run-full-screen-smoke.sh
   ) 2>&1 | tee "$run_report/run.log"
