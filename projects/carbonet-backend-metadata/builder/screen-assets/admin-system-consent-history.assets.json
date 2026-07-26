@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0.0",
+  "page": {
+    "pageId": "admin-system-consent-history",
+    "pageName": "약관·동의 이력 관리",
+    "pageNameEn": "Terms and Consent History",
+    "routePath": "/admin/system/consent-history",
+    "domainCode": "MEMBER",
+    "menuCode": "",
+    "layoutVersion": "consent-history.v2",
+    "designTokenVersion": "KRDS_CURRENT",
+    "sourcePath": "projects/carbonet-frontend/source/src/features/consent-history/ConsentHistoryMigrationPage.tsx",
+    "contractIds": [2971, 2973, 2975, 2977],
+    "processCode": "TERMS_CONSENT",
+    "steps": [
+      {"stepCode": "TERMS_CONSENT_S1", "actorCode": "PUBLIC_APPLICANT"},
+      {"stepCode": "TERMS_CONSENT_S2", "actorCode": "PUBLIC_APPLICANT"},
+      {"stepCode": "TERMS_CONSENT_S3", "actorCode": "VERIFIER"},
+      {"stepCode": "TERMS_CONSENT_S4", "actorCode": "APPROVER"}
+    ]
+  },
+  "theme": {
+    "themeId": "KRDS_CURRENT",
+    "name": "KRDS 공공서비스 현재 테마",
+    "description": "Carbonet 공공서비스 공통 디자인 토큰",
+    "classPrefix": "krds-"
+  },
+  "classSets": [
+    {"id": "CH_PAGE", "name": "동의 이력 페이지", "target": "ConsentHistoryMigrationPage", "base": "min-w-0", "responsive": "360px single column; 768px adaptive; 1280px full workspace"},
+    {"id": "CH_SUMMARY", "name": "동의 요약 그리드", "target": "SummarySection", "base": "grid gap-3", "responsive": "grid-cols-2 md:grid-cols-2 lg:grid-cols-4"},
+    {"id": "CH_FILTER", "name": "동의 검색 필터", "target": "FilterForm", "base": "grid gap-3 rounded-lg bg-white", "responsive": "single column; sm two columns; lg structured columns"},
+    {"id": "CH_TABLE", "name": "동의 증적 표", "target": "ConsentTableDesktop", "base": "overflow-x-auto min-w-0", "responsive": "hidden below 1024px; locally scrollable"},
+    {"id": "CH_MOBILE_CARDS", "name": "동의 증적 모바일 카드", "target": "ConsentCardsMobile", "base": "space-y-3", "responsive": "visible below 1024px; single column"},
+    {"id": "CH_FEEDBACK", "name": "동의 상태 피드백", "target": "ErrorOverlay EmptyState LoadingSkeleton", "base": "rounded-lg border p-6", "responsive": "full content width"},
+    {"id": "CH_STATUS", "name": "동의 상태 배지", "target": "ConsentStatusBadge", "base": "rounded-full px-2 py-1 text-xs font-bold", "responsive": "inline non-color labelled status"}
+  ],
+  "components": [
+    {"id": "ADMIN_PAGE_SHELL", "name": "관리자 페이지 셸", "type": "layout", "owner": "COMMON_UI", "props": ["title", "subtitle", "breadcrumbs", "loading", "loadingLabel"], "container": true},
+    {"id": "CONSENT_STATE_ANNOUNCER", "name": "동의 상태 알림", "type": "feedback", "owner": "MEMBER", "props": ["state", "error", "totalRows"]},
+    {"id": "CONSENT_SUMMARY_GRID", "name": "동의 요약 그리드", "type": "section", "owner": "MEMBER", "props": ["summary"], "container": true},
+    {"id": "CONSENT_SUMMARY_CARD", "name": "동의 요약 카드", "type": "data-display", "owner": "MEMBER", "props": ["label", "value"]},
+    {"id": "CONSENT_FILTER_FORM", "name": "동의 검색 필터", "type": "form", "owner": "MEMBER", "props": ["keyword", "consentType", "agreed", "onSubmit", "onReset"], "container": true},
+    {"id": "CONSENT_FILTER_INPUT", "name": "동의 검색 입력", "type": "input", "owner": "MEMBER", "props": ["value", "label", "placeholder"]},
+    {"id": "CONSENT_FILTER_SELECT", "name": "동의 검색 선택", "type": "input", "owner": "MEMBER", "props": ["value", "label", "options"]},
+    {"id": "CONSENT_ACTION_BUTTON", "name": "동의 화면 작업 버튼", "type": "action", "owner": "MEMBER", "props": ["label", "action", "variant"]},
+    {"id": "CONSENT_DATA_TABLE", "name": "동의 증적 표", "type": "data-table", "owner": "MEMBER", "props": ["rows", "caption"]},
+    {"id": "CONSENT_MOBILE_CARD_LIST", "name": "동의 증적 모바일 카드 목록", "type": "data-list", "owner": "MEMBER", "props": ["rows"]},
+    {"id": "CONSENT_STATUS_BADGE", "name": "동의 상태 배지", "type": "status", "owner": "MEMBER", "props": ["agreed", "label"]},
+    {"id": "CONSENT_LOADING_SKELETON", "name": "동의 로딩 스켈레톤", "type": "feedback", "owner": "MEMBER", "props": ["rowCount"]},
+    {"id": "CONSENT_ERROR_PANEL", "name": "동의 오류·권한 패널", "type": "feedback", "owner": "MEMBER", "props": ["state", "error", "onRetry"]},
+    {"id": "CONSENT_EMPTY_PANEL", "name": "동의 빈 결과 패널", "type": "feedback", "owner": "MEMBER", "props": []}
+  ],
+  "sections": [
+    {"id": "CH_STATE_REGION", "name": "화면 상태 알림", "type": "STATUS", "layout": "screen-reader live region", "responsive": "all widths", "accessibility": "aria-live polite and atomic"},
+    {"id": "CH_SUMMARY_SECTION", "name": "동의 증적 요약", "type": "SUMMARY", "layout": "responsive metric grid", "responsive": "2 columns at 360/768 and 4 columns at 1280", "accessibility": "section accessible name"},
+    {"id": "CH_FILTER_SECTION", "name": "동의 검색·필터", "type": "SEARCH_FILTER", "layout": "labelled search form", "responsive": "single/two/structured columns", "accessibility": "visible labels, keyboard submit and reset"},
+    {"id": "CH_CONTENT_SECTION", "name": "동의 증적 결과", "type": "DATA_WORKSPACE", "layout": "desktop table and mobile cards", "responsive": "cards below 1024 and table from 1024", "accessibility": "caption, scoped headers, labelled list items"},
+    {"id": "CH_FEEDBACK_SECTION", "name": "로딩·오류·빈 상태", "type": "FEEDBACK", "layout": "layout-preserving state panel", "responsive": "full content width", "accessibility": "status and alert semantics"}
+  ],
+  "instances": [
+    {"id": "ch-shell", "section": "CH_STATE_REGION", "zone": "PAGE", "component": "ADMIN_PAGE_SHELL", "order": 1},
+    {"id": "ch-announcer", "section": "CH_STATE_REGION", "zone": "STATE", "component": "CONSENT_STATE_ANNOUNCER", "order": 2},
+    {"id": "ch-summary", "section": "CH_SUMMARY_SECTION", "zone": "SUMMARY", "component": "CONSENT_SUMMARY_GRID", "order": 10},
+    {"id": "ch-summary-card", "section": "CH_SUMMARY_SECTION", "zone": "SUMMARY_ITEM", "component": "CONSENT_SUMMARY_CARD", "order": 11},
+    {"id": "ch-filter", "section": "CH_FILTER_SECTION", "zone": "FILTER", "component": "CONSENT_FILTER_FORM", "order": 20},
+    {"id": "ch-filter-input", "section": "CH_FILTER_SECTION", "zone": "FILTER_FIELD", "component": "CONSENT_FILTER_INPUT", "order": 21},
+    {"id": "ch-filter-select", "section": "CH_FILTER_SECTION", "zone": "FILTER_FIELD", "component": "CONSENT_FILTER_SELECT", "order": 22},
+    {"id": "ch-filter-actions", "section": "CH_FILTER_SECTION", "zone": "FILTER_ACTION", "component": "CONSENT_ACTION_BUTTON", "order": 23},
+    {"id": "ch-table", "section": "CH_CONTENT_SECTION", "zone": "DESKTOP_CONTENT", "component": "CONSENT_DATA_TABLE", "order": 30},
+    {"id": "ch-cards", "section": "CH_CONTENT_SECTION", "zone": "MOBILE_CONTENT", "component": "CONSENT_MOBILE_CARD_LIST", "order": 31},
+    {"id": "ch-status", "section": "CH_CONTENT_SECTION", "zone": "ROW_STATUS", "component": "CONSENT_STATUS_BADGE", "order": 32},
+    {"id": "ch-loading", "section": "CH_FEEDBACK_SECTION", "zone": "LOADING", "component": "CONSENT_LOADING_SKELETON", "order": 40},
+    {"id": "ch-error", "section": "CH_FEEDBACK_SECTION", "zone": "ERROR_FORBIDDEN", "component": "CONSENT_ERROR_PANEL", "order": 41},
+    {"id": "ch-empty", "section": "CH_FEEDBACK_SECTION", "zone": "EMPTY", "component": "CONSENT_EMPTY_PANEL", "order": 42}
+  ],
+  "dataElements": [
+    {"code": "MEMBER.CONSENTID", "name": "동의 증적 ID", "type": "INTEGER", "field": "consentId", "control": "HIDDEN", "column": "consent_id", "required": true, "privacy": "INTERNAL"},
+    {"code": "MEMBER.MEMBERID", "name": "회원 ID", "type": "STRING", "field": "memberId", "control": "TEXT", "column": "member_id", "required": false, "privacy": "CONFIDENTIAL"},
+    {"code": "MEMBER.JOINSESSIONID", "name": "가입 세션 ID", "type": "STRING", "field": "joinSessionId", "control": "TEXT", "column": "join_session_id", "required": true, "privacy": "CONFIDENTIAL"},
+    {"code": "MEMBER.MEMBERSHIPTYPE", "name": "회원 유형", "type": "CODE", "field": "membershipType", "control": "TEXT", "column": "membership_type", "required": false, "privacy": "INTERNAL"},
+    {"code": "MEMBER.CONSENTTYPE", "name": "동의 유형", "type": "CODE", "field": "consentType", "control": "SELECT", "column": "consent_type", "required": true, "privacy": "INTERNAL"},
+    {"code": "MEMBER.TERMSVERSION", "name": "약관 버전", "type": "STRING", "field": "termsVersion", "control": "TEXT", "column": "terms_version", "required": true, "privacy": "INTERNAL"},
+    {"code": "MEMBER.TERMSHASH", "name": "약관 증적 해시", "type": "STRING", "field": "termsHash", "control": "HASH_VIEW", "column": "terms_hash", "required": true, "privacy": "INTERNAL"},
+    {"code": "MEMBER.AGREED", "name": "동의 여부", "type": "BOOLEAN", "field": "agreed", "control": "STATUS_BADGE", "column": "agreed", "required": true, "privacy": "INTERNAL"},
+    {"code": "MEMBER.AGREEDAT", "name": "동의 일시", "type": "DATETIME", "field": "agreedAt", "control": "DATETIME", "column": "agreed_at", "required": false, "privacy": "INTERNAL"},
+    {"code": "MEMBER.WITHDRAWNAT", "name": "철회 일시", "type": "DATETIME", "field": "withdrawnAt", "control": "DATETIME", "column": "withdrawn_at", "required": false, "privacy": "INTERNAL"},
+    {"code": "MEMBER.IPADDRESS", "name": "접속 IP", "type": "STRING", "field": "ipAddress", "control": "MASKED_TEXT", "column": "ip_address", "required": false, "privacy": "CONFIDENTIAL"},
+    {"code": "MEMBER.USERAGENT", "name": "사용자 에이전트", "type": "STRING", "field": "userAgent", "control": "TEXT", "column": "user_agent", "required": false, "privacy": "CONFIDENTIAL"}
+  ],
+  "backendFeature": {
+    "code": "CONSENT_EVIDENCE_QUERY",
+    "name": "약관 동의 증적 조회",
+    "version": "1.0.0",
+    "category": "MEMBER",
+    "description": "기존 관리자 API와 회원 동의 증적 저장소를 설치형 공통 기능으로 바인딩한다.",
+    "installStrategy": "BIND_EXISTING",
+    "projectScope": "CARBONET",
+    "apiContract": ["GET /admin/system/consent-history/page-data"],
+    "dataContract": ["member_consent_history"],
+    "uiContract": ["CONSENT_FILTER_FORM", "CONSENT_DATA_TABLE", "CONSENT_MOBILE_CARD_LIST"],
+    "eventContract": [],
+    "permissionContract": ["ADMIN", "PUBLIC_APPLICANT", "VERIFIER", "APPROVER"],
+    "testContract": ["HAPPY_PATH", "AUTHORITY", "ISOLATION", "EXCEPTION", "RECOVERY"]
+  }
+}

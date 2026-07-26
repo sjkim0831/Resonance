@@ -1,0 +1,398 @@
+#!/usr/bin/env bash
+# bin/agent-task - Main agent task executor with queue integration
+
+set -euo pipefail
+
+AGENT_ID="${AGENT_ID:-agent-$$}"
+QUEUE_DIR="${QUEUE_DIR:-/var/tmp/agent-queue}"
+HEARTBEAT_INTERVAL="${HEARTBEAT_INTERVAL:-30}"
+LEASE_EXPIRY_SECONDS="${LEASE_EXPIRY_SECONDS:-300}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(cd "$SCRIPT_DIR/../lib" && pwd)"
+
+# Source libraries
+# shellcheck source=../lib/status.sh
+source "${LIB_DIR}/status.sh"
+# shellcheck source=../lib/queue.sh
+source "${LIB_DIR}/queue.sh"
+# shellcheck source=../lib/safety.sh
+source "${LIB_DIR}/safety.sh"
+
+# Task storage
+TASK_DIR="${QUEUE_DIR}/tasks"
+CLAIM_DIR="${QUEUE_DIR}/claims"
+ARCHIVE_DIR="${QUEUE_DIR}/archive"
+
+mkdir -p "$TASK_DIR" "$CLAIM_DIR" "$ARCHIVE_DIR"
+
+# _usage - Show usage
+_usage() {
+    cat <<EOF
+Usage: agent-task <command> [options]
+
+Commands:
+    enqueue <description> [payload_json] [priority] [required_approval]
+        Add a task to the queue
+
+    claim
+        Claim a pending task atomically
+
+    list [status_filter]
+        List tasks, optionally filtered by status
+
+    status <task_id>
+        Show task details
+
+    heartbeat <task_id>
+        Send heartbeat for task lease
+
+    complete <task_id> [status]
+        Mark task as complete
+
+    fail <task_id> [error_message]
+        Mark task as failed
+
+    retry <task_id>
+        Requeue task for retry
+
+    approve <task_id> [approver]
+        Approve a task
+
+    expire-leases
+        Mark stalled tasks as STALLED
+
+    run
+        Run the agent loop (claim, execute, complete)
+
+    help
+        Show this help message
+
+Environment:
+    AGENT_ID          Worker identifier (default: agent-$$)
+    QUEUE_DIR         Queue directory (default: /var/tmp/agent-queue)
+    HEARTBEAT_INTERVAL Heartbeat interval in seconds (default: 30)
+    LEASE_EXPIRY_SECONDS Lease expiry in seconds (default: 300)
+    SAFETY_ENABLED    Enable safety checks (default: true)
+    DRY_RUN           Dry-run mode (default: false)
+EOF
+}
+
+# _task_execute - Execute a task
+_task_execute() {
+    local task_id="$1"
+    local task_json="$2"
+
+    local description
+    description=$(echo "$task_json" | python3 -c "import json,sys; t=json.load(sys.stdin); print(t.get('description',''))" 2>/dev/null)
+
+    local payload
+    payload=$(echo "$task_json" | python3 -c "import json,sys; t=json.load(sys.stdin); print(json.dumps(t.get('payload',{})))" 2>/dev/null)
+
+    local action
+    action=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('action',''))" 2>/dev/null)
+
+    _safety_log "INFO" "Executing task $task_id: $description"
+
+    case "$action" in
+        COMMIT)
+            safety_block_commit "$task_id" || return 1
+            _exec_commit "$task_id" "$payload"
+            ;;
+        DB_MUTATION)
+            safety_block_db_mutation "$task_id" || return 1
+            _exec_db_mutation "$task_id" "$payload"
+            ;;
+        DEPLOY)
+            safety_block_deploy "$task_id" || return 1
+            _exec_deploy "$task_id" "$payload"
+            ;;
+        PUSH)
+            safety_block_push "$task_id" || return 1
+            _exec_push "$task_id" "$payload"
+            ;;
+        DELETE)
+            safety_block_delete "$task_id" || return 1
+            _exec_delete "$task_id" "$payload"
+            ;;
+        *)
+            _exec_default "$task_id" "$payload"
+            ;;
+    esac
+}
+
+# _exec_commit - Execute commit operation
+_exec_commit() {
+    local task_id="$1"
+    local payload="$2"
+    local repo
+    repo=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('repo',''))" 2>/dev/null)
+    local branch
+    branch=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('branch',''))" 2>/dev/null)
+    local message
+    message=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('message',''))" 2>/dev/null)
+
+    if [[ -z "$repo" || -z "$message" ]]; then
+        echo "ERROR: COMMIT requires repo and message"
+        return 1
+    fi
+
+    echo "Executing COMMIT to $repo branch $branch: $message"
+    return 0
+}
+
+# _exec_db_mutation - Execute DB mutation
+_exec_db_mutation() {
+    local task_id="$1"
+    local payload="$2"
+    local sql
+    sql=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('sql',''))" 2>/dev/null)
+
+    if [[ -z "$sql" ]]; then
+        echo "ERROR: DB_MUTATION requires sql"
+        return 1
+    fi
+
+    echo "Executing DB_MUTATION: $sql"
+    return 0
+}
+
+# _exec_deploy - Execute deploy
+_exec_deploy() {
+    local task_id="$1"
+    local payload="$2"
+    local target
+    target=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('target',''))" 2>/dev/null)
+
+    if [[ -z "$target" ]]; then
+        echo "ERROR: DEPLOY requires target"
+        return 1
+    fi
+
+    echo "Executing DEPLOY to $target"
+    return 0
+}
+
+# _exec_push - Execute push
+_exec_push() {
+    local task_id="$1"
+    local payload="$2"
+    local remote
+    remote=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('remote',''))" 2>/dev/null)
+
+    echo "Executing PUSH to $remote"
+    return 0
+}
+
+# _exec_delete - Execute delete
+_exec_delete() {
+    local task_id="$1"
+    local payload="$2"
+    local path
+    path=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('path',''))" 2>/dev/null)
+
+    if [[ -z "$path" ]]; then
+        echo "ERROR: DELETE requires path"
+        return 1
+    fi
+
+    echo "Executing DELETE on $path"
+    return 0
+}
+
+# _exec_default - Execute default task
+_exec_default() {
+    local task_id="$1"
+    local payload="$2"
+    local command
+    command=$(echo "$payload" | python3 -c "import json,sys; p=json.load(sys.stdin); print(p.get('command',''))" 2>/dev/null)
+
+    if [[ -n "$command" ]]; then
+        echo "Executing: $command"
+        eval "$command"
+        return $?
+    fi
+
+    echo "No action defined for task"
+    return 0
+}
+
+# cmd_enqueue - Add task to queue
+cmd_enqueue() {
+    local desc="$1"
+    local payload="${2:-{}}"
+    local priority="${3:-0}"
+    local required_approval="${4:-}"
+
+    local task_id
+    task_id=$(queue_add "$(_json_escape "$desc")" "$payload" "$priority" "$required_approval")
+    echo "Enqueued task: $task_id"
+}
+
+# cmd_claim - Claim a task
+cmd_claim() {
+    local task_json
+    task_json=$(queue_claim "$AGENT_ID") || { echo "No tasks available"; return 1; }
+
+    local task_id
+    task_id=$(echo "$task_json" | python3 -c "import json,sys; t=json.load(sys.stdin); print(t.get('id',''))" 2>/dev/null)
+
+    echo "$task_json" > "${TASK_DIR}/${task_id}.json"
+    echo "${CLAIM_DIR}/${task_id}-${AGENT_ID}.claim" > "${TASK_DIR}/${task_id}.claim
+    echo "Claimed task: $task_id"
+    echo "$task_json"
+}
+
+# cmd_list - List tasks
+cmd_list() {
+    local filter="${1:-}"
+    queue_list "$filter"
+}
+
+# cmd_status - Show task status
+cmd_status() {
+    local task_id="$1"
+    local task_file="${TASK_DIR}/${task_id}.json"
+
+    if [[ -f "$task_file" ]]; then
+        cat "$task_file"
+    else
+        queue_get "$task_id"
+    fi
+}
+
+# cmd_heartbeat - Send heartbeat
+cmd_heartbeat() {
+    local task_id="$1"
+    local result
+    result=$(queue_heartbeat "$task_id" "$AGENT_ID")
+    echo "Heartbeat for task $task_id: $result"
+}
+
+# cmd_complete - Mark task complete
+cmd_complete() {
+    local task_id="$1"
+    local result_status="${2:-$STATUS_VERIFIED}"
+    local task_file="${TASK_DIR}/${task_id}.json"
+
+    if [[ -f "$task_file" ]]; then
+        python3 -c "
+import json
+with open('$task_file') as f:
+    task = json.load(f)
+task['status'] = '$result_status'
+task['completed_at'] = $(date +%s)
+with open('$task_file', 'w') as f:
+    json.dump(task, f)
+"
+        mv "$task_file" "${ARCHIVE_DIR}/${task_id}.json" 2>/dev/null || true
+        rm -f "${CLAIM_DIR}/${task_id}-${AGENT_ID}.claim" 2>/dev/null || true
+    fi
+
+    queue_complete "$task_id" "$result_status"
+    echo "Task $task_id marked as $result_status"
+}
+
+# cmd_fail - Mark task failed
+cmd_fail() {
+    local task_id="$1"
+    local error_msg="${2:-Unknown error}"
+    local task_file="${TASK_DIR}/${task_id}.json"
+
+    if [[ -f "$task_file" ]]; then
+        python3 -c "
+import json
+with open('$task_file') as f:
+    task = json.load(f)
+task['status'] = '$STATUS_RETRYING'
+task['error'] = $error_msg
+task['retries'] = task.get('retries', 0) + 1
+with open('$task_file', 'w') as f:
+    json.dump(task, f)
+"
+    fi
+
+    queue_fail "$task_id" "$error_msg"
+    echo "Task $task_id marked as failed: $error_msg"
+}
+
+# cmd_retry - Retry task
+cmd_retry() {
+    local task_id="$1"
+    local task_file="${TASK_DIR}/${task_id}.json"
+
+    if [[ -f "$task_file" ]]; then
+        rm -f "$task_file"
+    fi
+
+    queue_requeue "$task_id"
+    echo "Task $task_id requeued for retry"
+}
+
+# cmd_approve - Approve task
+cmd_approve() {
+    local task_id="$1"
+    local approver="${2:-operator}"
+    queue_approve "$task_id" "$approver"
+    echo "Task $task_id approved by $approver"
+}
+
+# cmd_expire_leases - Expire stale leases
+cmd_expire_leases() {
+    queue_expire_leases
+    echo "Lease expiry check completed"
+}
+
+# cmd_run - Run agent loop
+cmd_run() {
+    echo "Starting agent loop for $AGENT_ID"
+
+    while true; do
+        local task_json
+        if task_json=$(queue_claim "$AGENT_ID"); then
+            local task_id
+            task_id=$(echo "$task_json" | python3 -c "import json,sys; t=json.load(sys.stdin); print(t.get('id',''))" 2>/dev/null)
+
+            echo "Processing task $task_id"
+            echo "$task_json" > "${TASK_DIR}/${task_id}.json"
+
+            if _task_execute "$task_id" "$task_json"; then
+                cmd_complete "$task_id" "$STATUS_VERIFIED"
+            else
+                cmd_fail "$task_id" "Task execution failed"
+            fi
+
+            rm -f "${CLAIM_DIR}/${task_id}-${AGENT_ID}.claim" 2>/dev/null || true
+        else
+            echo "No tasks available, waiting ${HEARTBEAT_INTERVAL}s"
+            sleep "$HEARTBEAT_INTERVAL"
+        fi
+    done
+}
+
+# Main command dispatcher
+main() {
+    local cmd="${1:-help}"
+    shift || true
+
+    case "$cmd" in
+        enqueue) cmd_enqueue "$@" ;;
+        claim) cmd_claim ;;
+        list) cmd_list "$@" ;;
+        status) cmd_status "$@" ;;
+        heartbeat) cmd_heartbeat "$@" ;;
+        complete) cmd_complete "$@" ;;
+        fail) cmd_fail "$@" ;;
+        retry) cmd_retry "$@" ;;
+        approve) cmd_approve "$@" ;;
+        expire-leases) cmd_expire_leases ;;
+        run) cmd_run ;;
+        help|--help|-h) _usage ;;
+        *) echo "Unknown command: $cmd" >&2; _usage; exit 1 ;;
+    esac
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

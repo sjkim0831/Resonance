@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "2.0.0",
+  "batch": {
+    "batchId": 74,
+    "batchCode": "MASS_PRO_20260722035111594",
+    "batchStatus": "COMPILED"
+  },
+  "screenCount": 822,
+  "userScreens": 415,
+  "adminScreens": 407,
+  "completeDesigns": 822,
+  "incompleteDesigns": 0,
+  "contractHash": "e2f8255a6139ba3320297b0a10f4f7213e7ade42e81a8354fd4720fd392c274d",
+  "durationMs": 128,
+  "concurrency": 4,
+  "contractFileCount": 826,
+  "contractFilesChanged": 0,
+  "contractFilesUnchanged": 826,
+  "staleFilesRemoved": 0,
+  "filesGenerated": 827
+}

@@ -13,6 +13,7 @@ DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 BASE_URL="${BASE_URL:-http://127.0.0.1}"
 CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}"
 SKIP_FRONTEND_BUILD="${SKIP_FRONTEND_BUILD:-false}"
+FRONTEND_TYPECHECK_MODE="${FRONTEND_TYPECHECK_MODE:-project}"
 UPDATE_GIT_METADATA="${UPDATE_GIT_METADATA:-true}"
 
 usage() {
@@ -20,6 +21,7 @@ usage() {
 Usage:
   bash ops/scripts/resonance-screen-overlay-apply.sh
   SKIP_FRONTEND_BUILD=true bash ops/scripts/resonance-screen-overlay-apply.sh
+  FRONTEND_TYPECHECK_MODE=noemit bash ops/scripts/resonance-screen-overlay-apply.sh
 
 Purpose:
   Apply any existing React-admin/user screen change without container rebuild,
@@ -28,6 +30,8 @@ Purpose:
 What this guarantees:
   - TSX/React source changes: npm/vite build is run, then the hostPath overlay
     is verified. Kubernetes deployment is untouched.
+  - FRONTEND_TYPECHECK_MODE=noemit runs a non-writing full typecheck once and
+    skips the slower project-reference typecheck inside the npm build.
   - Runtime JSON/static-only changes already under the overlay can set
     SKIP_FRONTEND_BUILD=true and only run marker/guard verification.
   - The running pod must already mount:
@@ -91,7 +95,21 @@ bash "$GUARD_SCRIPT" backup >/dev/null
 if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   echo "[screen-overlay-apply] isolated npm build only; no gradle, no image, no rollout"
   staging_dir="$(mktemp -d "$STATUS_DIR/react-overlay-build.XXXXXX")"
-  if ! (cd "$SOURCE_DIR" && CARBONET_NODE_HEAP_MB="$CARBONET_NODE_HEAP_MB" VITE_OUT_DIR="$staging_dir" npm run build); then
+  skip_build_typecheck=false
+  if [[ "$FRONTEND_TYPECHECK_MODE" == "noemit" ]]; then
+    echo "[screen-overlay-apply] typecheck mode=noemit (single pass, no project build metadata writes)"
+    (cd "$SOURCE_DIR" && CARBONET_NODE_HEAP_MB="$CARBONET_NODE_HEAP_MB" npx tsc --noEmit --pretty false)
+    skip_build_typecheck=true
+  elif [[ "$FRONTEND_TYPECHECK_MODE" != "project" ]]; then
+    echo "[screen-overlay-apply] unsupported FRONTEND_TYPECHECK_MODE=$FRONTEND_TYPECHECK_MODE" >&2
+    rm -rf "$staging_dir"
+    exit 2
+  fi
+  if ! (cd "$SOURCE_DIR" && \
+    CARBONET_NODE_HEAP_MB="$CARBONET_NODE_HEAP_MB" \
+    CARBONET_SKIP_BUILD_TYPECHECK="$skip_build_typecheck" \
+    VITE_OUT_DIR="$staging_dir" \
+    npm run build); then
     rm -rf "$staging_dir"
     exit 1
   fi

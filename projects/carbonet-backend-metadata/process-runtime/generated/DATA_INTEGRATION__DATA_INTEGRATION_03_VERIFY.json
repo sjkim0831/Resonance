@@ -1,0 +1,318 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "DATA_INTEGRATION",
+    "name": "외부 데이터 연계",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "외부 자료를 안전하게 수집·검증·재처리한다."
+  },
+  "step": {
+    "code": "DATA_INTEGRATION_03_VERIFY",
+    "version": 1,
+    "actor": {
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "외부 자료를 안전하게 수집·검증·재처리한다.",
+      "slaHours": 720,
+      "stepName": "검증·보완",
+      "riskLevel": "MEDIUM",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "외부 데이터 연계",
+      "requirement": "",
+      "completionRule": "오류가 없고 검증 근거가 남음",
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+    },
+    "transition": {
+      "toState": "VERIFIED",
+      "stepType": "TASK",
+      "fromState": "SUBMITTED",
+      "stepOrder": 3,
+      "commandCode": "VERIFY",
+      "auditRequired": true,
+      "completionRule": "오류가 없고 검증 근거가 남음",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "DATA_INTEGRATION_03_VERIFY",
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "fromState": "SUBMITTED",
+      "processCode": "DATA_INTEGRATION"
+    },
+    "output": {
+      "toState": "VERIFIED",
+      "completionRule": "오류가 없고 검증 근거가 남음",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "검증·보완",
+      "purpose": "",
+      "stepCode": "DATA_INTEGRATION_03_VERIFY",
+      "userPath": null,
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "adminPath": null,
+      "stepOrder": 3,
+      "processCode": "DATA_INTEGRATION",
+      "nextStepCode": "DATA_INTEGRATION_04_APPROVE",
+      "workTypeCode": "DATA_GOVERNANCE",
+      "entryCondition": "SUBMITTED",
+      "completionCondition": "오류가 없고 검증 근거가 남음"
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": []
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": null
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "SYSTEM_INTEGRATOR",
+        "entryState": "SUBMITTED",
+        "commandCode": "VERIFY",
+        "resultState": "VERIFIED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "SYSTEM_INTEGRATOR",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "DATA_INTEGRATION_04_APPROVE",
+            "actorCode": "APPROVER",
+            "fromState": "VERIFIED",
+            "processCode": "DATA_INTEGRATION"
+          },
+          "fromOutput": {
+            "toState": "VERIFIED",
+            "completionRule": "오류가 없고 검증 근거가 남음",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "DATA_INTEGRATION_04_APPROVE",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "APPROVER",
+          "fromActor": "SYSTEM_INTEGRATOR",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "DATA_INTEGRATION"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "권한 없는 액션 차단",
+      "type": "AUTHORITY",
+      "steps": [],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_AUTH",
+      "assertions": [
+        "권한·상태·데이터격리·감사로그 검증"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 계정이 준비되어야 함"
+    },
+    {
+      "name": "외부 데이터 연계 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_HAPPY",
+      "assertions": [
+        "권한·상태·데이터격리·감사로그 검증"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 계정이 준비되어야 함"
+    },
+    {
+      "name": "외부 데이터 연계 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "외부 데이터 연계 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "DATA_INTEGRATION"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "DATA_INTEGRATION_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    }
+  ],
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "3721da04212c7ed1fff419d10e8e8dba",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "READY",
+  "packageHash": "9e4f1f21e94a5d13cb3407568c412ee7dad08369acec0086beabb9c012f88a5c"
+}

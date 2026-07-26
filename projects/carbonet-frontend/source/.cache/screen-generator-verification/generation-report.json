@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "2.0.0",
+  "batch": {
+    "batchId": 2,
+    "batchCode": "DETAILED_EXAMPLE",
+    "batchStatus": "COMPILED"
+  },
+  "screenCount": 1,
+  "userScreens": 1,
+  "adminScreens": 0,
+  "completeDesigns": 1,
+  "incompleteDesigns": 0,
+  "contractHash": "39801753eb4ee9407ce9a0ae5bc4730af98786c017ac9fd547e00b38bf6a7d79",
+  "durationMs": 4,
+  "concurrency": 4,
+  "contractFileCount": 5,
+  "contractFilesChanged": 0,
+  "contractFilesUnchanged": 5,
+  "staleFilesRemoved": 0,
+  "filesGenerated": 6
+}

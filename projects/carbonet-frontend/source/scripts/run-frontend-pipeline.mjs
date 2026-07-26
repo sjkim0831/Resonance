@@ -6,6 +6,7 @@ const env = {
   ...process.env,
   NODE_OPTIONS: `--max-old-space-size=${process.env.CARBONET_NODE_HEAP_MB || "8192"} ${process.env.NODE_OPTIONS || ""}`.trim(),
 };
+const skipBuildTypecheck = process.env.CARBONET_SKIP_BUILD_TYPECHECK === "true";
 
 function run(command, args) {
   const requiresWindowsCommandShell = process.platform === "win32" && (command === npm || command === npx);
@@ -49,6 +50,10 @@ if (!process.argv.includes("--build")) {
 
 if (process.argv.includes("--build")) {
   run(npm, ["run", "audit:route-registry"]);
-  run(npx, ["tsc", "-b"]);
+  if (skipBuildTypecheck) {
+    console.log("[frontend-pipeline] project-reference typecheck skipped; external noEmit evidence required");
+  } else {
+    run(npx, ["tsc", "-b"]);
+  }
   run(npx, ["vite", "build"]);
 }

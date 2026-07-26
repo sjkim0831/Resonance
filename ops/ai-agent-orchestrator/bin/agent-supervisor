@@ -1,0 +1,532 @@
+#!/usr/bin/env bash
+# bin/agent-supervisor - AI Agent Supervisor
+# - Connects queue/worker/search/inventory for orchestrator operations
+# - Enforces Codex approval tokens for COMMIT, DB_WRITE, DEPLOY
+# - Dry-run by default, zero-downtime deploy command generation only
+# - Provides status JSON for builder UI
+# - Manages worktree leases and concurrency
+
+set -euo pipefail
+
+# Source configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORCHESTRATOR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_DIR="${CONFIG_DIR:-${ORCHESTRATOR_DIR}/config}"
+
+# Source libraries
+# shellcheck source=../lib/status.sh
+source "${ORCHESTRATOR_DIR}/lib/status.sh"
+# shellcheck source=../lib/queue.sh
+source "${ORCHESTRATOR_DIR}/lib/queue.sh"
+# shellcheck source=../lib/worker.sh
+source "${ORCHESTRATOR_DIR}/lib/worker.sh"
+# shellcheck source=../lib/search.sh
+source "${ORCHESTRATOR_DIR}/lib/search.sh"
+# shellcheck source=../lib/inventory.sh
+source "${ORCHESTRATOR_DIR}/lib/inventory.sh"
+# shellcheck source=../lib/approval.sh
+source "${ORCHESTRATOR_DIR}/lib/approval.sh"
+
+# Supervisor configuration
+SUPERVISOR_NAME="${SUPERVISOR_NAME:-agent-supervisor}"
+SUPERVISOR_LOG_DIR="${SUPERVISOR_LOG_DIR:-${ORCHESTRATOR_DIR}/logs}"
+SUPERVISOR_STATE_DIR="${SUPERVISOR_STATE_DIR:-/var/tmp/agent-supervisor}"
+
+# Ensure directories exist
+mkdir -p "$SUPERVISOR_LOG_DIR" "$SUPERVISOR_STATE_DIR"
+
+# _supervisor_log - Log with timestamp and level
+_supervisor_log() {
+    local level="$1"
+    shift
+    local msg="$*"
+    local ts
+    ts=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$ts] [$level] $msg" | tee -a "${SUPERVISOR_LOG_DIR}/${SUPERVISOR_NAME}.log"
+}
+
+# _load_config - Load JSON configuration
+_load_config() {
+    local config_file="${1:-${CONFIG_DIR}/default.json}"
+    if [[ -f "$config_file" ]]; then
+        python3 -c "import json; print(json.dumps(json.load(open('$config_file'))))" 2>/dev/null || echo "{}"
+    else
+        echo "{}"
+    fi
+}
+
+# supervisor_status - Get supervisor status
+supervisor_status() {
+    local task_id="${1:-}"
+
+    local queue_count
+    queue_count=$(queue_pending_count 2>/dev/null || echo "0")
+
+    local approval_status
+    approval_status=$(approval_status_json "$task_id" "true")
+
+    local worker_count
+    worker_count=$(find "$WORKER_LOCK_DIR" -name "slot-*.lock" -type d 2>/dev/null | wc -l)
+
+    cat <<EOF
+{
+  "supervisor": "$SUPERVISOR_NAME",
+  "timestamp": $(date +%s),
+  "dry_run": $DRY_RUN,
+  "queue": {
+    "pending_tasks": $queue_count
+  },
+  "workers": {
+    "active_count": $worker_count,
+    "base_dir": "$WORKER_BASE_DIR"
+  },
+  "approval": $approval_status,
+  "inventory": $(inv_all . 2>/dev/null || echo "{}")
+}
+EOF
+}
+
+# supervisor_submit_task - Submit a new task
+supervisor_submit_task() {
+    local description="$1"
+    local payload="${2:-{}}"
+    local priority="${3:-0}"
+    local required_approval="${4:-}"
+
+    _supervisor_log "INFO" "Submitting task: $description"
+
+    local task_id
+    task_id=$(queue_add "$description" "$payload" "$priority" "$required_approval")
+
+    _supervisor_log "INFO" "Task submitted: id=$task_id"
+
+    # Record submission evidence
+    approval_record_failure "$task_id" "task_submitted" "description=$description"
+
+    echo "$task_id"
+}
+
+# supervisor_check_approval - Check if task action is approved
+supervisor_check_approval() {
+    local action="$1"
+    local task_id="$2"
+    local approver="${3:-}"
+
+    if ! approval_check "$action" "$task_id" "$approver"; then
+        echo "ERROR: Action '$action' requires approval for task $task_id"
+        return 1
+    fi
+
+    return 0
+}
+
+# supervisor_execute_commit - Execute commit with approval enforcement
+supervisor_execute_commit() {
+    local task_id="$1"
+    local worktree_path="${2:-}"
+    local approver="${3:-}"
+
+    _supervisor_log "INFO" "Attempting commit: task_id=$task_id"
+
+    # Enforce approval - this will block in dry-run mode
+    if ! approval_enforce_commit "$task_id" "$worktree_path" "$approver"; then
+        echo "COMMIT BLOCKED: Requires approval token for task $task_id"
+        echo "Generate deploy commands only in dry-run mode."
+        return 1
+    fi
+
+    # In dry-run mode, never actually commit
+    if [[ "$DRY_RUN" == "true" ]]; then
+        _supervisor_log "DRYRUN" "Would execute commit: task_id=$task_id"
+        echo "DRYRUN: Commit would execute for task $task_id"
+        return 0
+    fi
+
+    # Actual commit would happen here (disabled)
+    _supervisor_log "ERROR" "Commit execution disabled - use approval token system"
+    return 1
+}
+
+# supervisor_execute_db_write - Execute DB write with approval enforcement
+supervisor_execute_db_write() {
+    local task_id="$1"
+    local db_name="${2:-}"
+    local approver="${3:-}"
+
+    _supervisor_log "INFO" "Attempting DB_WRITE: task_id=$task_id db=$db_name"
+
+    if ! approval_enforce_db_write "$task_id" "$db_name" "$approver"; then
+        echo "DB_WRITE BLOCKED: Requires approval token for task $task_id"
+        return 1
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        _supervisor_log "DRYRUN" "Would execute DB_WRITE: task_id=$task_id"
+        echo "DRYRUN: DB_WRITE would execute for task $task_id"
+        return 0
+    fi
+
+    _supervisor_log "ERROR" "DB_WRITE execution disabled - use approval token system"
+    return 1
+}
+
+# supervisor_execute_deploy - Execute deploy with approval enforcement
+# Generates zero-downtime deploy commands only, never executes
+supervisor_execute_deploy() {
+    local task_id="$1"
+    local target_env="${2:-production}"
+    local approver="${3:-}"
+
+    _supervisor_log "INFO" "Attempting DEPLOY: task_id=$task_id env=$target_env"
+
+    local deploy_commands
+    if ! deploy_commands=$(approval_enforce_deploy "$task_id" "$target_env" "$approver" 2>&1); then
+        echo "DEPLOY BLOCKED: Requires approval token for task $task_id"
+        echo "Deploy commands cannot be generated without approval."
+        return 1
+    fi
+
+    # Always return the generated commands (for builder UI)
+    echo "$deploy_commands"
+    return 0
+}
+
+# supervisor_generate_deploy - Generate deploy commands only
+supervisor_generate_deploy() {
+    local task_id="${1:-unknown}"
+    local target_env="${2:-production}"
+
+    _supervisor_log "INFO" "Generating deploy commands: task_id=$task_id env=$target_env"
+
+    # Generate but do NOT enforce approval - just generates commands
+    local commands
+    commands=$(approval_generate_deploy_commands "$task_id" "$target_env")
+
+    echo "$commands"
+}
+
+# supervisor_check_worktree - Check worktree status and leases
+supervisor_check_worktree() {
+    local worktree_path="${1:-}"
+
+    _supervisor_log "INFO" "Checking worktree: $worktree_path"
+
+    local worktree_info
+    worktree_info=$(approval_get_worktree_evidence "$worktree_path")
+
+    # Check git worktree status
+    local git_status="unknown"
+    if command -v git >/dev/null 2>&1 && [[ -d "$worktree_path/.git" ]]; then
+        git_status=$(git -C "$worktree_path" status --porcelain 2>/dev/null | head -5 || echo "error")
+    fi
+
+    echo "$worktree_info" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d['git_status'] = '''$git_status'''
+print(json.dumps(d, indent=2))
+"
+}
+
+# supervisor_check_concurrency - Check resource concurrency
+supervisor_check_concurrency() {
+    local resource_type="$1"
+    local resource_id="$2"
+    local worker_id="${3:-$$}"
+
+    if ! approval_check_concurrency "$resource_type" "$resource_id" "$worker_id"; then
+        echo "ERROR: Resource ${resource_type}:${resource_id} is locked by another worker"
+        return 1
+    fi
+
+    echo "OK: Resource ${resource_type}:${resource_id} locked by $worker_id"
+    return 0
+}
+
+# supervisor_release_concurrency - Release resource lock
+supervisor_release_concurrency() {
+    local resource_type="$1"
+    local resource_id="$2"
+    local worker_id="${3:-$$}"
+
+    approval_release_concurrency "$resource_type" "$resource_id" "$worker_id"
+    echo "OK: Released lock for ${resource_type}:${resource_id}"
+}
+
+# supervisor_inventory - Get full inventory
+supervisor_inventory() {
+    local base_dir="${1:-.}"
+
+    inv_all "$base_dir"
+}
+
+# supervisor_search - Search codebase
+supervisor_search() {
+    local query="$1"
+    local path="${2:-.}"
+
+    search_code "$query" "$path"
+}
+
+# supervisor_queue_list - List queue tasks
+supervisor_queue_list() {
+    local status_filter="${1:-}"
+
+    queue_list "$status_filter"
+}
+
+# supervisor_queue_status - Get queue status summary
+supervisor_queue_status() {
+    local content
+    content=$(queue_list)
+
+    local pending
+    pending=$(echo "$content" | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for t in d if t.get('status') in ('$STATUS_PENDING','$STATUS_RETRYING','$STATUS_STALLED')))" 2>/dev/null || echo "0")
+
+    local running
+    running=$(echo "$content" | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for t in d if t.get('status')=='$STATUS_RUNNING'))" 2>/dev/null || echo "0")
+
+    local completed
+    completed=$(echo "$content" | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for t in d if t.get('status') in ('$STATUS_VERIFIED','$STATUS_DEPLOY_READY')))" 2>/dev/null || echo "0")
+
+    local failed
+    failed=$(echo "$content" | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for t in d if t.get('status')=='$STATUS_FAILED'))" 2>/dev/null || echo "0")
+
+    cat <<EOF
+{
+  "queue_status": {
+    "pending": $pending,
+    "running": $running,
+    "completed": $completed,
+    "failed": $failed,
+    "timestamp": $(date +%s)
+  }
+}
+EOF
+}
+
+# supervisor_worker_status - Get worker status
+supervisor_worker_status() {
+    local slot="${1:-}"
+
+    if [[ -n "$slot" ]]; then
+        local hb_file="${WORKER_RUN_DIR}/heartbeat-slot-${slot}.json"
+        if [[ -f "$hb_file" ]]; then
+            cat "$hb_file"
+        else
+            echo "{}"
+        fi
+    else
+        # List all workers
+        echo "{"
+        echo "  \"workers\": ["
+        local first=true
+        for hb_file in "${WORKER_RUN_DIR}"/heartbeat-slot-*.json; do
+            [[ -f "$hb_file" ]] || continue
+            if [[ "$first" != "true" ]]; then
+                echo ","
+            fi
+            cat "$hb_file"
+            first=false
+        done
+        echo "  ],"
+        echo "  \"timestamp\": $(date +%s)"
+        echo "}"
+    fi
+}
+
+# supervisor_approval_status - Get approval system status
+supervisor_approval_status() {
+    local task_id="${1:-}"
+
+    approval_status_json "$task_id" "true"
+}
+
+# supervisor_list_approvals - List approval tokens
+supervisor_list_approvals() {
+    local action_filter="${1:-}"
+
+    approval_list_tokens "$action_filter"
+}
+
+# supervisor_create_approval - Create approval token
+supervisor_create_approval() {
+    local action="$1"
+    local task_id="$2"
+    local approver="${3:-system}"
+    local reason="${4:-}"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "DRYRUN: Would create approval token for action=$action task_id=$task_id"
+        return 0
+    fi
+
+    local token
+    token=$(approval_create_token "$action" "$task_id" "$approver" "$reason")
+    echo "Approval token created: $token"
+}
+
+# supervisor_revoke_approval - Revoke approval token
+supervisor_revoke_approval() {
+    local action="$1"
+    local task_id="$2"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "DRYRUN: Would revoke approval token for action=$action task_id=$task_id"
+        return 0
+    fi
+
+    approval_revoke_token "$action" "$task_id"
+    echo "Approval token revoked"
+}
+
+# supervisor_record_failure - Record failure evidence
+supervisor_record_failure() {
+    local task_id="$1"
+    local failure_type="$2"
+    local details="${3:-}"
+
+    local evidence_file
+    evidence_file=$(approval_record_failure "$task_id" "$failure_type" "$details")
+    echo "Failure recorded: $evidence_file"
+}
+
+# supervisor_expire_leases - Expire stale task leases
+supervisor_expire_leases() {
+    _supervisor_log "INFO" "Expiring stale leases"
+    queue_expire_leases
+}
+
+# main - Command dispatcher
+main() {
+    local command="${1:-help}"
+    shift || true
+
+    case "$command" in
+        status)
+            supervisor_status "$@"
+            ;;
+        submit)
+            supervisor_submit_task "$@"
+            ;;
+        check-approval)
+            supervisor_check_approval "$@"
+            ;;
+        commit)
+            supervisor_execute_commit "$@"
+            ;;
+        db-write)
+            supervisor_execute_db_write "$@"
+            ;;
+        deploy)
+            supervisor_execute_deploy "$@"
+            ;;
+        generate-deploy)
+            supervisor_generate_deploy "$@"
+            ;;
+        worktree)
+            supervisor_check_worktree "$@"
+            ;;
+        concurrency-check)
+            supervisor_check_concurrency "$@"
+            ;;
+        concurrency-release)
+            supervisor_release_concurrency "$@"
+            ;;
+        inventory)
+            supervisor_inventory "$@"
+            ;;
+        search)
+            supervisor_search "$@"
+            ;;
+        queue-list)
+            supervisor_queue_list "$@"
+            ;;
+        queue-status)
+            supervisor_queue_status "$@"
+            ;;
+        worker-status)
+            supervisor_worker_status "$@"
+            ;;
+        approval-status)
+            supervisor_approval_status "$@"
+            ;;
+        approval-list)
+            supervisor_list_approvals "$@"
+            ;;
+        approval-create)
+            supervisor_create_approval "$@"
+            ;;
+        approval-revoke)
+            supervisor_revoke_approval "$@"
+            ;;
+        record-failure)
+            supervisor_record_failure "$@"
+            ;;
+        expire-leases)
+            supervisor_expire_leases "$@"
+            ;;
+        help|--help|-h)
+            cat <<EOF
+agent-supervisor - AI Agent Supervisor with Codex Approval Enforcement
+
+Commands:
+  status [task_id]              - Get supervisor status JSON
+  submit <desc> [payload] [pri] [approval] - Submit new task
+  check-approval <action> <task_id> [approver] - Check if action is approved
+  commit <task_id> [path] [approver] - Execute commit (blocked without approval)
+  db-write <task_id> [db] [approver] - Execute DB write (blocked without approval)
+  deploy <task_id> [env] [approver] - Execute deploy (generates commands only)
+  generate-deploy <task_id> [env] - Generate deploy commands without approval
+  worktree [path]               - Check worktree status and leases
+  concurrency-check <type> <id> [worker] - Check resource concurrency
+  concurrency-release <type> <id> [worker] - Release resource lock
+  inventory [base_dir]          - Get full inventory
+  search <query> [path]         - Search codebase
+  queue-list [status]           - List queue tasks
+  queue-status                  - Get queue status summary
+  worker-status [slot]          - Get worker status
+  approval-status [task_id]      - Get approval system status
+  approval-list [action]        - List approval tokens
+  approval-create <action> <task_id> [approver] [reason] - Create approval token
+  approval-revoke <action> <task_id> - Revoke approval token
+  record-failure <task_id> <type> [details] - Record failure evidence
+  expire-leases                 - Expire stale task leases
+
+Environment:
+  DRY_RUN=true|false            - Dry-run mode (default: true)
+  APPROVAL_TOKEN_TTL=3600       - Token validity in seconds
+
+Examples:
+  # Check status
+  agent-supervisor status
+
+  # Submit a task
+  agent-supervisor submit "Build feature X" '{}' 0 "COMMIT,DEPLOY"
+
+  # Generate deploy commands (no approval needed)
+  agent-supervisor generate-deploy task-123 production
+
+  # Execute deploy (requires approval)
+  agent-supervisor deploy task-123 production admin
+
+  # Check approval status
+  agent-supervisor approval-status task-123
+
+  # Create approval token (disabled in dry-run)
+  DRY_RUN=false agent-supervisor approval-create COMMIT task-123 admin "Approved for commit"
+
+EOF
+            ;;
+        *)
+            echo "Unknown command: $command"
+            echo "Run 'agent-supervisor help' for usage"
+            return 1
+            ;;
+    esac
+}
+
+# Run main if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

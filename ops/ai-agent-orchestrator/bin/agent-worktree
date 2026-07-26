@@ -1,0 +1,543 @@
+#!/usr/bin/env bash
+# bin/agent-worktree - CLI for managing per-task git worktrees
+# Usage: agent-worktree <command> [options]
+#
+# Commands:
+#   create <task-id> [branch]     Create a worktree for a task
+#   list [format]                  List all worktrees (table|json)
+#   status <task-id>               Show status of a worktree
+#   verify <task-id>               Verify worktree integrity
+#   cleanup <task-id> [options]    Clean up a worktree
+#   prune                          Prune stale git worktree references
+#   lease <subcommand>             Manage leases (acquire|release|renew|list)
+#
+# Options:
+#   --force            Force operation (e.g., cleanup dirty worktree)
+#   --delete-branch    Also delete the branch when cleaning up
+#   --create-branch    Create branch if it doesn't exist
+#   --ttl SECONDS      Lease TTL (for lease acquire)
+#   --wait SECONDS     Wait for lease to become available
+#   --format FORMAT    Output format (table|json)
+#
+# Examples:
+#   agent-worktree create task-123 feature/new-feature
+#   agent-worktree create task-456 --create-branch
+#   agent-worktree list json
+#   agent-worktree status task-123
+#   agent-worktree cleanup task-123 --force --delete-branch
+#   agent-worktree lease acquire task-123 --ttl 7200
+#   agent-worktree lease release task-123
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Navigate to orchestrator root
+ORCHESTRATOR_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+export PATH="${SCRIPT_DIR}:${PATH}"
+
+# Source libraries
+# shellcheck source=../lib/worktree.sh
+source "${ORCHESTRATOR_ROOT}/lib/worktree.sh"
+# shellcheck source=../lib/file-lease.sh
+source "${ORCHESTRATOR_ROOT}/lib/file-lease.sh"
+# shellcheck source=../lib/status.sh
+source "${ORCHESTRATOR_ROOT}/lib/status.sh"
+# shellcheck source=../lib/safety.sh
+source "${ORCHESTRATOR_ROOT}/lib/safety.sh"
+
+# Usage function
+usage() {
+    cat <<EOF
+agent-worktree - Per-task git worktree management
+
+Usage: agent-worktree <command> [options]
+
+Commands:
+  create <task-id> [branch]     Create a worktree for a task
+  list [format]                  List all worktrees (table|json)
+  status <task-id>               Show status of a worktree
+  verify <task-id>               Verify worktree integrity
+  cleanup <task-id> [options]    Clean up a worktree
+  prune                          Prune stale git worktree references
+  lease <subcommand>             Manage leases (acquire|release|renew|list)
+  help                           Show this help message
+
+Options:
+  --force            Force operation (e.g., cleanup dirty worktree)
+  --delete-branch    Also delete the branch when cleaning up
+  --create-branch    Create branch if it doesn't exist
+  --ttl SECONDS      Lease TTL (for lease acquire)
+  --wait SECONDS     Wait for lease to become available
+  --format FORMAT    Output format (table|json)
+
+Examples:
+  agent-worktree create task-123 feature/new-feature
+  agent-worktree create task-456 --create-branch
+  agent-worktree list json
+  agent-worktree status task-123
+  agent-worktree cleanup task-123 --force --delete-branch
+  agent-worktree lease acquire task-123 --ttl 7200
+  agent-worktree lease release task-123
+EOF
+    exit "${1:-0}"
+}
+
+# Worktree command handlers
+
+cmd_create() {
+    local task_id=""
+    local branch=""
+    local create_branch="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --create-branch)
+                create_branch="true"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree create <task-id> [branch] [--create-branch]"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                if [[ -z "$task_id" ]]; then
+                    task_id="$1"
+                elif [[ -z "$branch" ]]; then
+                    branch="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$task_id" ]]; then
+        echo "Error: task-id is required"
+        echo "Usage: agent-worktree create <task-id> [branch] [--create-branch]"
+        exit 1
+    fi
+
+    worktree_create "$task_id" "$branch" "$create_branch"
+}
+
+cmd_list() {
+    local format="table"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            json|table)
+                format="$1"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree list [json|table]"
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    worktree_list "$format"
+}
+
+cmd_status() {
+    local task_id=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                echo "Usage: agent-worktree status <task-id>"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                task_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$task_id" ]]; then
+        echo "Error: task-id is required"
+        echo "Usage: agent-worktree status <task-id>"
+        exit 1
+    fi
+
+    worktree_status "$task_id"
+}
+
+cmd_verify() {
+    local task_id=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                echo "Usage: agent-worktree verify <task-id>"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                task_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$task_id" ]]; then
+        echo "Error: task-id is required"
+        echo "Usage: agent-worktree verify <task-id>"
+        exit 1
+    fi
+
+    if worktree_verify "$task_id"; then
+        echo "OK: Worktree for task $task_id is valid"
+        exit 0
+    else
+        echo "FAIL: Worktree verification failed for task $task_id"
+        exit 1
+    fi
+}
+
+cmd_cleanup() {
+    local task_id=""
+    local force="false"
+    local delete_branch="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --force)
+                force="true"
+                shift
+                ;;
+            --delete-branch)
+                delete_branch="true"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree cleanup <task-id> [--force] [--delete-branch]"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                task_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$task_id" ]]; then
+        echo "Error: task-id is required"
+        echo "Usage: agent-worktree cleanup <task-id> [--force] [--delete-branch]"
+        exit 1
+    fi
+
+    worktree_cleanup "$task_id" "$force" "$delete_branch"
+}
+
+cmd_prune() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                echo "Usage: agent-worktree prune"
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    worktree_prune
+}
+
+# Lease command handlers
+
+cmd_lease() {
+    local subcommand="${1:-}"
+    shift || true
+
+    case "$subcommand" in
+        acquire)
+            cmd_lease_acquire "$@"
+            ;;
+        release)
+            cmd_lease_release "$@"
+            ;;
+        renew)
+            cmd_lease_renew "$@"
+            ;;
+        list)
+            cmd_lease_list "$@"
+            ;;
+        status)
+            cmd_lease_status "$@"
+            ;;
+        cleanup)
+            cmd_lease_cleanup "$@"
+            ;;
+        help|--help|-h)
+            echo "Usage: agent-worktree lease <subcommand> [options]"
+            echo ""
+            echo "Subcommands:"
+            echo "  acquire <resource-id> [options]   Acquire a lease"
+            echo "  release <resource-id> [options]  Release a lease"
+            echo "  renew <resource-id> [options]    Renew a lease"
+            echo "  list [format]                     List all leases"
+            echo "  status <resource-id>              Show lease status"
+            echo "  cleanup [options]                 Clean up stale leases"
+            echo ""
+            echo "Options:"
+            echo "  --ttl SECONDS    Lease TTL (default: 3600)"
+            echo "  --force          Force operation"
+            echo "  --wait SECONDS   Wait for lease to become available"
+            echo "  --format FORMAT  Output format (table|json)"
+            exit 0
+            ;;
+        "")
+            echo "Error: lease subcommand required"
+            echo "Usage: agent-worktree lease <acquire|release|renew|list|status|cleanup>"
+            exit 1
+            ;;
+        *)
+            echo "Error: unknown lease subcommand: $subcommand"
+            exit 1
+            ;;
+    esac
+}
+
+cmd_lease_acquire() {
+    local resource_id=""
+    local ttl=""
+    local wait_time=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -t|--ttl)
+                ttl="$2"
+                shift 2
+                ;;
+            -w|--wait)
+                wait_time="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree lease acquire <resource-id> [--ttl SECONDS] [--wait SECONDS]"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                resource_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$resource_id" ]]; then
+        echo "Error: resource-id is required"
+        echo "Usage: agent-worktree lease acquire <resource-id> [--ttl SECONDS] [--wait SECONDS]"
+        exit 1
+    fi
+
+    local opts=()
+    [[ -n "$ttl" ]] && opts+=(-t "$ttl")
+    [[ -n "$wait_time" ]] && opts+=(-w "$wait_time")
+
+    lease_acquire "$resource_id" "${opts[@]:-}"
+}
+
+cmd_lease_release() {
+    local resource_id=""
+    local force="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -f|--force)
+                force="true"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree lease release <resource-id> [--force]"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                resource_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$resource_id" ]]; then
+        echo "Error: resource-id is required"
+        echo "Usage: agent-worktree lease release <resource-id> [--force]"
+        exit 1
+    fi
+
+    local opts=()
+    [[ "$force" == "true" ]] && opts+=(--force)
+
+    lease_release "$resource_id" "${opts[@]:-}"
+}
+
+cmd_lease_renew() {
+    local resource_id=""
+    local ttl=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -t|--ttl)
+                ttl="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree lease renew <resource-id> [--ttl SECONDS]"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                resource_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$resource_id" ]]; then
+        echo "Error: resource-id is required"
+        echo "Usage: agent-worktree lease renew <resource-id> [--ttl SECONDS]"
+        exit 1
+    fi
+
+    local opts=()
+    [[ -n "$ttl" ]] && opts+=(-t "$ttl")
+
+    lease_renew "$resource_id" "${opts[@]:-}"
+}
+
+cmd_lease_list() {
+    local format="table"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            json|table)
+                format="$1"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree lease list [json|table]"
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    lease_list "$format"
+}
+
+cmd_lease_status() {
+    local resource_id=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                echo "Usage: agent-worktree lease status <resource-id>"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                resource_id="$1"
+                shift
+                ;;
+        esac
+    done
+
+    if [[ -z "$resource_id" ]]; then
+        echo "Error: resource-id is required"
+        echo "Usage: agent-worktree lease status <resource-id>"
+        exit 1
+    fi
+
+    lease_status "$resource_id"
+}
+
+cmd_lease_cleanup() {
+    local force="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -f|--force)
+                force="true"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: agent-worktree lease cleanup [--force]"
+                exit 0
+                ;;
+            -*)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                echo "Unknown argument: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    lease_cleanup_stale "$force"
+}
+
+# Main command dispatcher
+main() {
+    local command="${1:-help}"
+    shift || true
+
+    case "$command" in
+        create|list|status|verify|cleanup|prune)
+            "cmd_$command" "$@"
+            ;;
+        lease)
+            cmd_lease "$@"
+            ;;
+        help|--help|-h)
+            usage 0
+            ;;
+        *)
+            echo "Error: unknown command: $command"
+            echo ""
+            usage 1
+            ;;
+    esac
+}
+
+main "$@"

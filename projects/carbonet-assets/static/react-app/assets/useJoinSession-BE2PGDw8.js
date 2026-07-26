@@ -1,0 +1,1 @@
+import{f as i}from"./joinSession-Dat050hS.js";import{u as r}from"./environmentManagementHub-Bkj4_P6h.js";function u(n={}){const{enabled:o=!0,onSuccess:e}=n;return r(async()=>{const s=await i();if(!s)throw new Error("Join session is unavailable");return s},[],{enabled:o,onSuccess:e})}export{u};

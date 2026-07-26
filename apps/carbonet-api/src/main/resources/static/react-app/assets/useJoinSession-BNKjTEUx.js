@@ -1,0 +1,1 @@
+import{f as i}from"./joinSession-Dvxy4mfu.js";import{u as r}from"./environmentManagementHub-BFbZze81.js";function u(n={}){const{enabled:o=!0,onSuccess:e}=n;return r(async()=>{const s=await i();if(!s)throw new Error("Join session is unavailable");return s},[],{enabled:o,onSuccess:e})}export{u};

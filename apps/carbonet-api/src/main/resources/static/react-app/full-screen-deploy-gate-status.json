@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "completedAt": "2026-07-22T16:43:11.983Z",
+  "ok": true,
+  "smokeExitCode": 0,
+  "contractCount": 1106,
+  "routeCount": 925,
+  "testedRouteCount": 925,
+  "passedRouteCount": 925,
+  "failedRouteCount": 0,
+  "recoveredRouteCount": 0
+}

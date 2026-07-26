@@ -2653,6 +2653,30 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "page-design-studio",
+    "label": "전문 설계 스튜디오",
+    "group": "admin",
+    "koPath": "/admin/system/page-design-studio",
+    "enPath": "/en/admin/system/page-design-studio",
+    "exportName": "PageDesignStudioPage",
+    "sourcePath": "features/page-development-master/PageDesignStudioPage.tsx",
+    "effectiveExportName": "PageDesignStudioPage",
+    "effectiveSourcePath": "features/page-development-master/PageDesignStudioPage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "page-development-master",
+    "label": "페이지 개발 마스터",
+    "group": "admin",
+    "koPath": "/admin/system/page-development-master",
+    "enPath": "/en/admin/system/page-development-master",
+    "exportName": "PageDevelopmentMasterPage",
+    "sourcePath": "features/page-development-master/PageDevelopmentMasterPage.tsx",
+    "effectiveExportName": "PageDevelopmentMasterPage",
+    "effectiveSourcePath": "features/page-development-master/PageDevelopmentMasterPage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
     "routeId": "page-management",
     "label": "화면 관리",
     "group": "admin",
@@ -2830,6 +2854,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/process-orchestration/ProcessOrchestrationPage.tsx",
     "effectiveExportName": "ProcessOrchestrationPage",
     "effectiveSourcePath": "features/process-orchestration/ProcessOrchestrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "process-step-workspace",
+    "label": "프로세스 단계 실행",
+    "group": "admin",
+    "koPath": "/admin/system/process-step-workspace",
+    "enPath": "/en/admin/system/process-step-workspace",
+    "exportName": "ProcessStepWorkspacePage",
+    "sourcePath": "features/process-step-workspace/ProcessStepWorkspacePage.tsx",
+    "effectiveExportName": "ProcessStepWorkspacePage",
+    "effectiveSourcePath": "features/process-step-workspace/ProcessStepWorkspacePage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
   },
   {
@@ -3455,5 +3491,17 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "effectiveExportName": "WbsManagementMigrationPage",
     "effectiveSourcePath": "features/wbs-management/WbsManagementMigrationPage.tsx",
     "routeFamilyFile": "app/routes/families/adminSystemFamily.ts"
+  },
+  {
+    "routeId": "work-execution",
+    "label": "업무 실행",
+    "group": "home",
+    "koPath": "/work/execution",
+    "enPath": "/en/work/execution",
+    "exportName": "WorkExecutionPage",
+    "sourcePath": "features/work-execution/WorkExecutionPage.tsx",
+    "effectiveExportName": "WorkExecutionPage",
+    "effectiveSourcePath": "features/work-execution/WorkExecutionPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   }
 ];

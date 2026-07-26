@@ -1,0 +1,8 @@
+{
+  "sourceHash": "63d630a2f802d42ffea28a503e101fb5f69f7c3003515cb171d1f07e9d1da6af",
+  "builtAt": "2026-07-23T22:10:50+09:00",
+  "indexHash": "be09c6c38a880604f449b00b8351b4359f9eb45532892911ceb50e41f424a6e3",
+  "manifestHash": "49568da21b4ce09c57be22e91674f5140e375df872838dc38b7c64cd14fca529",
+  "sourceDir": "projects/carbonet-frontend/source",
+  "overlayDir": "projects/carbonet-frontend/src/main/resources/static/react-app"
+}

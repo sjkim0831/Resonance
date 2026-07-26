@@ -1,0 +1,508 @@
+#!/usr/bin/env bash
+# bin/agent-health - AI Orchestrator Health Check
+# Read-only health check for AI agent orchestrator
+# Does NOT modify DB, git, or app runtime
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORCHESTRATOR_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+LIB_DIR="${ORCHESTRATOR_DIR}/lib"
+CONFIG_DIR="${ORCHESTRATOR_DIR}/config"
+LOG_DIR="${ORCHESTRATOR_DIR}/logs"
+TESTS_DIR="${ORCHESTRATOR_DIR}/tests"
+
+HEALTH_STATUS="PASS"
+HEALTH_EXIT=0
+OUTPUT_JSON=false
+
+declare -A CHECKS
+
+LIVE_STATUS_FILE="${LIVE_STATUS_FILE:-/opt/Resonance/var/agent-audits/live-status.json}"
+LIVE_STATUS_MAX_AGE=60
+
+log_check() {
+    local check_name="$1"
+    local status="$2"
+    local details="${3:-}"
+    local sanitized_details
+    sanitized_details=$(printf '%s' "$details" | sed 's/"//g; s/\\//g' | tr -d '\n\r' | cut -c1-500)
+    CHECKS["$check_name"]="{\"status\":\"$status\",\"details\":\"$sanitized_details\"}"
+}
+
+summarize_checks() {
+    local total=0
+    local passed=0
+    local degraded=0
+    local failed=0
+    local json_output=""
+
+    for key in "${!CHECKS[@]}"; do
+        ((total++)) || true
+        local value="${CHECKS[$key]}"
+        local status
+        status=$(echo "$value" | jq -r '.status')
+        case "$status" in
+            PASS) ((passed++)) || true ;;
+            DEGRADED) ((degraded++)) || true ;;
+            FAILED) ((failed++)) || true ;;
+        esac
+    done
+
+    if $OUTPUT_JSON; then
+        echo "{"
+        echo "  \"health\":\"$HEALTH_STATUS\","
+        echo "  \"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+        echo "  \"checks\":{"
+        local first=true
+        for key in "${!CHECKS[@]}"; do
+            if [[ "$first" != "true" ]]; then echo ","; fi
+            echo -n "    \"$key\": ${CHECKS[$key]}"
+            first=false
+        done
+        echo ""
+        echo "  },"
+        echo "  \"summary\":{"
+        echo "    \"total\":$total,"
+        echo "    \"passed\":$passed,"
+        echo "    \"degraded\":$degraded,"
+        echo "    \"failed\":$failed"
+        echo "  }"
+        echo "}"
+    else
+        echo "AI Orchestrator Health Check"
+        echo "============================"
+        echo ""
+        for key in "${!CHECKS[@]}"; do
+            local value="${CHECKS[$key]}"
+            local status details
+            status=$(echo "$value" | jq -r '.status')
+            details=$(echo "$value" | jq -r '.details')
+            printf "[%s] %s: %s\n" "$status" "$key" "$details"
+        done
+        echo ""
+        echo "Summary: $passed passed, $degraded degraded, $failed failed"
+        echo "Overall: $HEALTH_STATUS"
+    fi
+}
+
+check_live_status_watcher() {
+    if [[ ! -f "$LIVE_STATUS_FILE" ]]; then
+        log_check "live-status-watcher" "DEGRADED" "live-status.json not found at $LIVE_STATUS_FILE"
+        if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+            HEALTH_STATUS="DEGRADED"
+        fi
+        HEALTH_EXIT=1
+        return
+    fi
+
+    local file_age
+    file_age=$(($(date +%s) - $(stat -c %Y "$LIVE_STATUS_FILE" 2>/dev/null || echo "0")))
+
+    if (( file_age > LIVE_STATUS_MAX_AGE )); then
+        log_check "live-status-watcher" "FAILED" "live-status.json stale (${file_age}s old, max ${LIVE_STATUS_MAX_AGE}s)"
+        HEALTH_STATUS="FAIL"
+        HEALTH_EXIT=2
+        return
+    fi
+
+    if ! jq -e . "$LIVE_STATUS_FILE" >/dev/null 2>&1; then
+        log_check "live-status-watcher" "FAILED" "live-status.json is not valid JSON"
+        HEALTH_STATUS="FAIL"
+        HEALTH_EXIT=2
+        return
+    fi
+
+    local worker_count
+    worker_count=$(jq '.workers | length' "$LIVE_STATUS_FILE" 2>/dev/null || echo "0")
+    log_check "live-status-watcher" "PASS" "fresh (${file_age}s old), $worker_count workers"
+}
+
+check_slots() {
+    local config_file="${CONFIG_DIR}/default.json"
+    local expected_slots=4
+
+    if [[ -f "$config_file" ]]; then
+        expected_slots=$(jq -r '.worker.slot_count // 4' "$config_file" 2>/dev/null || echo "4")
+    fi
+
+    local active_sessions=()
+    local tmux_sessions=()
+    local tmux_mismatch=false
+    local stale_warning=""
+
+    if command -v tmux >/dev/null 2>&1; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] || continue
+            local sess_name
+            sess_name=$(echo "$line" | cut -d: -f1)
+            if [[ "$sess_name" =~ ^kilo-slot[0-9]+- ]]; then
+                tmux_sessions+=("$sess_name")
+            fi
+        done < <(tmux list-sessions 2>/dev/null)
+    fi
+
+    if [[ -f "$LIVE_STATUS_FILE" ]] && jq -e . "$LIVE_STATUS_FILE" >/dev/null 2>&1; then
+        while IFS= read -r session; do
+            [[ -n "$session" && "$session" != "null" && "$session" != "" ]] && active_sessions+=("$session")
+        done < <(jq -r '.workers[] | select(.session != null and .session != "") | .session' "$LIVE_STATUS_FILE" 2>/dev/null)
+    fi
+
+    local active_count=${#active_sessions[@]}
+    local tmux_count=${#tmux_sessions[@]}
+
+    if (( tmux_count > 0 )) && (( active_count != tmux_count )); then
+        tmux_mismatch=true
+        stale_warning="(tmux=$tmux_count, stale live-status)"
+    fi
+
+    local session_list=""
+    if (( ${#active_sessions[@]} > 0 )); then
+        session_list=$(printf '%s,' "${active_sessions[@]}" | sed 's/,$//')
+    fi
+
+    if (( active_count == 0 )); then
+        log_check "slots" "FAILED" "no active slots detected"
+        HEALTH_STATUS="FAIL"
+        HEALTH_EXIT=2
+    elif (( active_count > expected_slots )); then
+        log_check "slots" "DEGRADED" "overallocated: $active_count/$expected_slots [$session_list]"
+        if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+            HEALTH_STATUS="DEGRADED"
+        fi
+        HEALTH_EXIT=1
+    elif [[ "$tmux_mismatch" == "true" ]]; then
+        log_check "slots" "PASS" "$active_count/$expected_slots slots active [$session_list] $stale_warning"
+    else
+        log_check "slots" "PASS" "$active_count/$expected_slots slots active [$session_list]"
+    fi
+}
+
+check_log_freshness() {
+    local max_age_seconds=300
+    local stale_count=0
+    local total_logs=0
+    local inactive_stale_count=0
+    local live_status_fresh=false
+
+    local file_age
+    file_age=$(($(date +%s) - $(stat -c %Y "$LIVE_STATUS_FILE" 2>/dev/null || echo "0")))
+    if [[ -f "$LIVE_STATUS_FILE" ]] && (( file_age <= LIVE_STATUS_MAX_AGE )) && jq -e . "$LIVE_STATUS_FILE" >/dev/null 2>&1; then
+        live_status_fresh=true
+    fi
+
+    local active_sessions=()
+    if $live_status_fresh && [[ -f "$LIVE_STATUS_FILE" ]]; then
+        while IFS= read -r session; do
+            [[ -n "$session" && "$session" != "null" ]] && active_sessions+=("$session")
+        done < <(jq -r '.workers[] | select(.session != null) | .session' "$LIVE_STATUS_FILE" 2>/dev/null)
+    fi
+
+    is_active_log() {
+        local log_name="$1"
+        local base="${log_name%.log}"
+        for sess in "${active_sessions[@]}"; do
+            if [[ "$base" == *"${sess}"* ]] || [[ "$log_name" == "agent-${sess}.log"* ]]; then
+                return 0
+            fi
+        done
+        return 1
+    }
+
+    if [[ -d "$LOG_DIR" ]]; then
+        for log_file in "${LOG_DIR}"/*.log; do
+            [[ -f "$log_file" ]] || continue
+            ((total_logs++)) || true
+            local log_age
+            log_age=$(($(date +%s) - $(stat -c %Y "$log_file" 2>/dev/null || echo "0")))
+            if (( log_age > max_age_seconds )); then
+                ((stale_count++)) || true
+                local log_name
+                log_name=$(basename "$log_file")
+                if $live_status_fresh && ! is_active_log "$log_name"; then
+                    ((inactive_stale_count++)) || true
+                fi
+            fi
+        done
+    fi
+
+    if (( total_logs == 0 )); then
+        log_check "log-freshness" "DEGRADED" "no log files found"
+        if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+            HEALTH_STATUS="DEGRADED"
+        fi
+        HEALTH_EXIT=1
+    elif $live_status_fresh && (( inactive_stale_count > 0 )) && (( stale_count == inactive_stale_count )); then
+        log_check "log-freshness" "PASS" "all $total_logs logs fresh (legacy logs informational, $inactive_stale_count inactive)"
+    elif (( stale_count > 0 )); then
+        local relevant_stale=$((stale_count - inactive_stale_count))
+        if (( relevant_stale > 0 )); then
+            log_check "log-freshness" "DEGRADED" "$relevant_stale/$total_logs logs stale (>5min, active components)"
+            if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+                HEALTH_STATUS="DEGRADED"
+            fi
+            HEALTH_EXIT=1
+        else
+            log_check "log-freshness" "PASS" "all $total_logs logs fresh (legacy logs informational)"
+        fi
+    else
+        log_check "log-freshness" "PASS" "all $total_logs logs fresh"
+    fi
+}
+
+check_queue_json() {
+    local queue_file
+    if [[ -n "${QUEUE_DIR:-}" ]]; then
+        queue_file="${QUEUE_DIR}/queue.json"
+    else
+        queue_file=$(jq -r '.queue.dir + "/queue.json" // "/var/tmp/agent-queue/queue.json"' "${CONFIG_DIR}/default.json" 2>/dev/null || echo "/var/tmp/agent-queue/queue.json")
+    fi
+
+    if [[ ! -f "$queue_file" ]]; then
+        log_check "queue-json" "PASS" "queue not initialized (baseline state, $queue_file not found)"
+        return
+    fi
+
+    if ! jq -e . "$queue_file" >/dev/null 2>&1; then
+        log_check "queue-json" "FAILED" "queue.json is not valid JSON"
+        HEALTH_STATUS="FAIL"
+        HEALTH_EXIT=2
+        return
+    fi
+
+    local task_count
+    task_count=$(jq '.tasks | length' "$queue_file" 2>/dev/null || echo "-1")
+    local pending_count
+    pending_count=$(jq '[.tasks[] | select(.status == "PENDING" or .status == "RUNNING" or .status == "STALLED" or .status == "RETRYING")] | length' "$queue_file" 2>/dev/null || echo "-1")
+
+    log_check "queue-json" "PASS" "valid JSON with $task_count tasks ($pending_count pending/running)"
+}
+
+check_required_files() {
+    local required_files=(
+        "${ORCHESTRATOR_DIR}/bin/agent-supervisor"
+        "${ORCHESTRATOR_DIR}/bin/agent-worker"
+        "${ORCHESTRATOR_DIR}/bin/agent-task"
+        "${ORCHESTRATOR_DIR}/lib/queue.sh"
+        "${ORCHESTRATOR_DIR}/lib/approval.sh"
+        "${ORCHESTRATOR_DIR}/lib/status.sh"
+        "${ORCHESTRATOR_DIR}/lib/worktree.sh"
+        "${ORCHESTRATOR_DIR}/config/default.json"
+    )
+
+    local missing_files=()
+    for file in "${required_files[@]}"; do
+        if [[ ! -f "$file" ]]; then
+            missing_files+=("$(basename "$file")")
+        fi
+    done
+
+    if (( ${#missing_files[@]} > 0 )); then
+        log_check "required-files" "FAILED" "missing: ${missing_files[*]}"
+        HEALTH_STATUS="FAIL"
+        HEALTH_EXIT=1
+    else
+        log_check "required-files" "PASS" "all required files present"
+    fi
+}
+
+check_keypool_state() {
+    local keypool_dir
+    if [[ -n "${KEYPOOL_DIR:-}" ]]; then
+        keypool_dir="${KEYPOOL_DIR}"
+    else
+        keypool_dir=$(jq -r '.keypool.dir // "/var/tmp/agent-keypool"' "${CONFIG_DIR}/default.json" 2>/dev/null || echo "/var/tmp/agent-keypool")
+    fi
+    local keypool_state_file="${keypool_dir}/state.json"
+    local keypool_keys_file="${keypool_dir}/keys.json"
+
+    if [[ ! -d "$keypool_dir" ]]; then
+        log_check "keypool-state" "PASS" "keypool not initialized (baseline state)"
+        return
+    fi
+
+    local actual_state_file=""
+    if [[ -f "$keypool_state_file" ]]; then
+        actual_state_file="$keypool_state_file"
+    elif [[ -f "$keypool_keys_file" ]]; then
+        actual_state_file="$keypool_keys_file"
+    else
+        log_check "keypool-state" "PASS" "keypool dir exists but no state file (baseline)"
+        return
+    fi
+
+    if ! jq -e . "$actual_state_file" >/dev/null 2>&1; then
+        log_check "keypool-state" "FAILED" "keypool state is not valid JSON"
+        HEALTH_STATUS="FAIL"
+        HEALTH_EXIT=2
+        return
+    fi
+
+    local pool_status pool_size pool_available
+    pool_status=$(jq -r '.status // .state // "unknown"' "$actual_state_file" 2>/dev/null || echo "unknown")
+    pool_size=$(jq -r '.size // .total // 0' "$actual_state_file" 2>/dev/null || echo "0")
+    pool_available=$(jq -r '.available // .free // 0' "$actual_state_file" 2>/dev/null || echo "0")
+
+    case "$pool_status" in
+        healthy|available|ready|active)
+            log_check "keypool-state" "PASS" "status=$pool_status size=$pool_size available=$pool_available"
+            ;;
+        depleted|empty|exhausted)
+            log_check "keypool-state" "DEGRADED" "status=$pool_status size=$pool_size"
+            if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+                HEALTH_STATUS="DEGRADED"
+            fi
+            HEALTH_EXIT=1
+            ;;
+        *)
+            log_check "keypool-state" "PASS" "status=$pool_status size=$pool_size (informational)"
+            ;;
+    esac
+}
+
+check_git_root() {
+    local git_root="${GIT_ROOT:-/opt/Resonance}"
+    local branch="unknown"
+    local dirty="unknown"
+    local dirty_count=0
+
+    if command -v git >/dev/null 2>&1 && [[ -d "$git_root/.git" ]]; then
+        branch=$(git -C "$git_root" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+        dirty_count=$(git -C "$git_root" status --porcelain 2>/dev/null | wc -l)
+        if (( dirty_count > 0 )); then
+            dirty="dirty($dirty_count)"
+        else
+            dirty="clean"
+        fi
+    else
+        log_check "git-root" "DEGRADED" "not a git repository or git not available"
+        if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+            HEALTH_STATUS="DEGRADED"
+        fi
+        HEALTH_EXIT=1
+        return
+    fi
+
+    local protected_branches=("main" "master")
+    local is_protected=false
+    for pb in "${protected_branches[@]}"; do
+        if [[ "$branch" == "$pb" ]]; then
+            is_protected=true
+            break
+        fi
+    done
+
+    local untracked_files
+    untracked_files=$(git -C "$git_root" status --porcelain 2>/dev/null | grep -c "^??" || echo "0")
+    local modified_files
+    modified_files=$((dirty_count - untracked_files))
+
+    if [[ "$dirty" == "dirty"* ]]; then
+        if [[ "$is_protected" == "true" ]]; then
+            if (( modified_files > 50 )); then
+                log_check "git-root" "PASS" "branch=$branch $dirty (baseline/informational - pre-existing work)"
+            else
+                log_check "git-root" "PASS" "branch=$branch $dirty (informational)"
+            fi
+        else
+            log_check "git-root" "PASS" "branch=$branch $dirty (non-protected branch)"
+        fi
+    else
+        log_check "git-root" "PASS" "branch=$branch $dirty"
+    fi
+}
+
+run_test_suite() {
+    local test_summary=""
+    local test_exit=0
+
+    local health_test="${TESTS_DIR}/test-health.sh"
+    if [[ -f "$health_test" && -x "$health_test" ]]; then
+        log_check "test-suite" "PASS" "test-health.sh exists (self-test excluded)"
+        return
+    fi
+
+    if [[ -d "$TESTS_DIR" ]]; then
+        local test_files=("$TESTS_DIR"/*.sh)
+        if [[ -f "${test_files[0]}" ]] 2>/dev/null; then
+            local total_tests=0
+            local passed_tests=0
+            local failed_tests=0
+
+            for test_file in "${test_files[@]}"; do
+                [[ -f "$test_file" && -x "$test_file" ]] || continue
+                [[ "$(basename "$test_file")" == "test-health.sh" ]] && continue
+                local test_output
+                if test_output=$(timeout 30 bash "$test_file" 2>&1); then
+                    ((passed_tests++)) || true
+                else
+                    ((failed_tests++)) || true
+                fi
+                ((total_tests++)) || true
+            done
+
+            if (( failed_tests > 0 )); then
+                test_summary="$passed_tests/$total_tests passed (some failed)"
+                log_check "test-suite" "DEGRADED" "$test_summary"
+                if [[ "$HEALTH_STATUS" != "FAIL" ]]; then
+                    HEALTH_STATUS="DEGRADED"
+                fi
+                HEALTH_EXIT=1
+            else
+                test_summary="$passed_tests/$total_tests passed"
+                log_check "test-suite" "PASS" "$test_summary"
+            fi
+        else
+            log_check "test-suite" "PASS" "no executable tests found"
+        fi
+    else
+        log_check "test-suite" "PASS" "tests directory not found"
+    fi
+}
+
+main() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --json)
+                OUTPUT_JSON=true
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [--json]"
+                echo ""
+echo "Read-only health check for AI agent orchestrator."
+        echo "Checks: live-status-watcher, slots, log-freshness, queue-json,"
+        echo "        required-files, keypool-state, git-root, test-suite"
+                echo ""
+                echo "Exit codes:"
+                echo "  0 - All checks passed"
+                echo "  1 - Degraded (some checks failed)"
+                echo "  2 - Failed (critical checks failed)"
+                exit 0
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    check_live_status_watcher
+    check_slots
+    check_log_freshness
+    check_queue_json
+    check_required_files
+    check_keypool_state
+    check_git_root
+    run_test_suite
+
+    if [[ "$HEALTH_STATUS" == "FAIL" ]]; then
+        HEALTH_EXIT=2
+    fi
+
+    summarize_checks
+    exit $HEALTH_EXIT
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

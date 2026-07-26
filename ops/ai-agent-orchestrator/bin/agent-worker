@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+# bin/agent-worker - AI session worker with slot locking, heartbeat, and retry logic
+# - Requires slot and task file as arguments
+# - Calls /usr/local/bin/kilo-slot
+# - Writes heartbeat every 30s
+# - Captures PID, log result, and exit code
+# - Retries SSE timeout up to 2 times with continuation prompt referencing existing files
+# - Uses exponential backoff
+# - Enforces one active task per slot with mkdir lock
+# - Never allows commit/DB/deploy without safety approval
+
+set -euo pipefail
+
+AGENT_WORKER_VERSION="1.0.0"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(cd "$SCRIPT_DIR/../lib" && pwd)"
+
+# Source libraries
+# shellcheck source=../lib/worker.sh
+source "${LIB_DIR}/worker.sh"
+
+# CLI arguments
+SLOT=""
+TASK_FILE=""
+
+# Worker state
+WORKER_PID=""
+TASK_ID=""
+OUTPUT_FILE=""
+
+# _usage - Show usage
+_usage() {
+    cat <<EOF
+Usage: agent-worker <slot> <task-file> [options]
+
+AI Session Worker - executes tasks on a specific slot with safety checks,
+heartbeat monitoring, and retry logic.
+
+Arguments:
+    slot             Slot number (1-4) for kilo-slot
+    task-file        Path to task JSON file
+
+Options:
+    --pid-file FILE  Write worker PID to file
+    --heartbeat-sec  Heartbeat interval in seconds (default: 30)
+    --max-retries N  Maximum SSE retries (default: 2)
+    --help, -h       Show this help
+
+Environment:
+    WORKER_BASE_DIR       Base directory for worker state (default: /var/tmp/agent-workers)
+    WORKER_LOG_DIR        Directory for logs (default: /var/tmp/agent-workers/logs)
+    HEARTBEAT_INTERVAL    Heartbeat interval (default: 30)
+    MAX_SSE_RETRIES       Max retries on SSE timeout (default: 2)
+    SAFETY_ENABLED        Enable safety checks (default: true)
+
+Examples:
+    agent-worker 1 /var/tmp/task-123.json
+    agent-worker 2 /path/to/task.json --max-retries 3
+
+Safety:
+    This worker enforces safety approval for COMMIT, DB_MUTATION, and DEPLOY actions.
+    Tasks containing these actions without proper approval will be blocked.
+
+EOF
+}
+
+# _parse_args - Parse command line arguments
+_parse_args() {
+    if [[ $# -lt 2 ]]; then
+        _usage
+        exit 1
+    fi
+
+    SLOT="$1"
+    TASK_FILE="$2"
+    shift 2
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --pid-file)
+                PID_FILE="$2"
+                shift 2
+                ;;
+            --heartbeat-sec)
+                HEARTBEAT_INTERVAL="$2"
+                shift 2
+                ;;
+            --max-retries)
+                MAX_SSE_RETRIES="$2"
+                shift 2
+                ;;
+            --help|-h)
+                _usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                _usage
+                exit 1
+                ;;
+        esac
+    done
+
+    # Validate slot
+    case "$SLOT" in
+        1|2|3|4) ;;
+        *)
+            echo "ERROR: Slot must be 1-4, got: $SLOT" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# _worker_heartbeat_loop - Background heartbeat writer
+_worker_heartbeat_loop() {
+    local slot="$1"
+    local task_id="$2"
+    local worker_pid="$3"
+    local interval="${4:-$HEARTBEAT_INTERVAL}"
+
+    while kill -0 "$worker_pid" 2>/dev/null; do
+        sleep "$interval"
+        worker_heartbeat "$slot" "$task_id" "$worker_pid"
+    done
+}
+
+# _shutdown_handler - Cleanup on exit
+_shutdown_handler() {
+    local exit_code=$?
+    _worker_log "INFO" "Shutting down worker (exit code: $exit_code)"
+
+    # Clear heartbeat
+    if [[ -n "$SLOT" ]]; then
+        worker_clear_heartbeat "$SLOT"
+    fi
+
+    # Release slot lock
+    if [[ -n "$SLOT" ]]; then
+        worker_release_slot_lock "$SLOT"
+    fi
+
+    exit "$exit_code"
+}
+
+# main - Main entry point
+main() {
+    _parse_args "$@"
+
+    # Setup shutdown handler
+    trap _shutdown_handler EXIT INT TERM
+
+    # Validate task file
+    worker_validate_task_file "$TASK_FILE" || exit 1
+
+    # Extract task info
+    TASK_ID=$(worker_extract_task_field "$TASK_FILE" "id")
+    if [[ -z "$TASK_ID" ]]; then
+        TASK_ID="task-$$"
+    fi
+
+    _worker_log "INFO" "Starting worker for slot $SLOT, task $TASK_ID"
+    _worker_log "INFO" "Task file: $TASK_FILE"
+
+    # Safety check: block dangerous actions without approval
+    if ! worker_check_dangerous_actions "$TASK_FILE"; then
+        _worker_log "ERROR" "Task $TASK_ID contains dangerous action requiring safety approval"
+        echo "ERROR: Task requires safety approval before execution" >&2
+        exit 1
+    fi
+
+    # Acquire slot lock (enforce one active task per slot)
+    local lock_dir
+    if ! lock_dir=$(worker_acquire_slot_lock "$SLOT"); then
+        _worker_log "ERROR" "Slot $SLOT is already locked by another task"
+        echo "ERROR: Slot $SLOT is busy with another task" >&2
+        exit 1
+    fi
+    _worker_log "INFO" "Acquired lock for slot $SLOT: $lock_dir"
+
+    # Write initial heartbeat
+    WORKER_PID=$$
+    worker_heartbeat "$SLOT" "$TASK_ID" "$WORKER_PID"
+
+    # Start heartbeat loop in background
+    _worker_heartbeat_loop "$SLOT" "$TASK_ID" "$WORKER_PID" "$HEARTBEAT_INTERVAL" &
+    local heartbeat_pid=$!
+
+    # Write PID file if requested
+    if [[ -n "${PID_FILE:-}" ]]; then
+        echo "$WORKER_PID" > "$PID_FILE"
+    fi
+
+    # Execute task with retry logic
+    _worker_log "INFO" "Executing task $TASK_ID with up to $MAX_SSE_RETRIES retries"
+
+    if OUTPUT_FILE=$(worker_execute_with_retry "$SLOT" "$TASK_FILE" "$TASK_ID" "$MAX_SSE_RETRIES"); then
+        local exit_code=0
+        _worker_log "INFO" "Task $TASK_ID completed successfully"
+        worker_capture_result "$TASK_ID" "$OUTPUT_FILE" "$exit_code"
+    else
+        local exit_code=$?
+        _worker_log "ERROR" "Task $TASK_ID failed with exit code $exit_code"
+        worker_capture_result "$TASK_ID" "${WORKER_LOG_DIR}/task-${TASK_ID}-final.log" "$exit_code"
+        # Don't exit here - cleanup happens in trap
+    fi
+
+    # Stop heartbeat loop
+    kill "$heartbeat_pid" 2>/dev/null || true
+
+    _worker_log "INFO" "Worker for slot $SLOT task $TASK_ID finished"
+}
+
+# Run if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

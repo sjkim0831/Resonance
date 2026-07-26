@@ -1,0 +1,52 @@
+#!/bin/bash
+# agent-inventory - CLI for agent orchestrator inventory
+
+set -euo pipefail
+
+INV_LIB="${INV_LIB:-$(dirname "$0")/../lib/inventory.sh}"
+SEARCH_LIB="${SEARCH_LIB:-$(dirname "$0")/../lib/search.sh}"
+
+export INV_MAX="${INV_MAX:-200}"
+
+main() {
+  local cmd="${1:-all}"
+  local base="${2:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+
+  if [[ ! -f "$INV_LIB" ]]; then
+    echo "Error: inventory lib not found: $INV_LIB" >&2
+    exit 1
+  fi
+
+  source "$INV_LIB"
+
+  case "$cmd" in
+    all)
+      inv_all "$base"
+      ;;
+    react-routes)
+      inv_react_routes "${3:-$base/projects/carbonet-frontend/source/src}"
+      ;;
+    java-controllers)
+      inv_java_controllers "${3:-$base/apps}"
+      ;;
+    admin-menu)
+      inv_admin_menu "${3:-$base/apps/carbonet-api/src/main/resources/db/baseline/admin-menu-169.tsv}"
+      ;;
+    page-manifests)
+      inv_page_manifests "${3:-$base/projects/carbonet-frontend/source/src/platform/screen-registry/pageManifests.ts}"
+      ;;
+    sdui-bindings)
+      inv_sdui_bindings "${3:-$base/projects/carbonet-backend-metadata/customer-trace/customer-sdui-bindings.json}"
+      ;;
+    -h|--help)
+      echo "Usage: $0 [cmd] [base-dir] [file]"
+      echo " cmds: all, react-routes, java-controllers, admin-menu, page-manifests, sdui-bindings"
+      ;;
+    *)
+      echo "Unknown cmd: $cmd" >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

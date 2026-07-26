@@ -1,0 +1,2429 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-24T03:02:51.752Z",
+  "inputPath": "/opt/Resonance/projects/carbonet-frontend/source/.cache/full-screen-smoke/contracts_new_routes.jsonl",
+  "baselinePath": "/opt/Resonance/projects/carbonet-frontend/source/.cache/full-screen-smoke/last-success.json",
+  "options": {
+    "changedOnly": false,
+    "shardCount": 1,
+    "routePattern": ""
+  },
+  "counts": {
+    "contractCount": 75,
+    "routeCount": 75,
+    "duplicateContractCount": 0,
+    "selectedRouteCount": 75,
+    "selectedContractCount": 75
+  },
+  "fingerprints": {
+    "/admin/": "6392426a5322d2175c74aa99995aaceda4ebf373752352d9f09e06aa2597677b",
+    "/admin/auth/group": "4b5d8ebf74fde53d13d537ddb7b2d3e0238ea0650f39a5faacbb3d15db56d303",
+    "/admin/certificate/approve": "b59d428ccea0f9c010e047869a8498263eb353d3382d17edbbb0768e3d20af04",
+    "/admin/certificate/audit-log": "e8435a0a1e45f73aa8d09b2722354ebd8a80b68cd4ba2828d7b07267d762d049",
+    "/admin/certificate/objection_list": "019e702f16dd11928296ec2dc9ac6dc0475e414b896af2c44ce08d1094fa1664",
+    "/admin/certificate/pending_list": "4611e34f437c30453b87f07bc1bd0d5637ed78b807857cdbec07507e2b181b15",
+    "/admin/certificate/rec_check": "9efe28ad45f4cb7da5eb832083f9cdee054df41f6f9955b206326a4c6c9c7e1e",
+    "/admin/certificate/review": "8208bf2d94c35dc4a141ab6a4ed7718ce12a07de7b23885296cf74ab7b687070",
+    "/admin/certificate/statistics": "74041e5a64cbe7f12df38c94e780ed1abbdf90c9af6ff0fe8fa6ac20169c1721",
+    "/admin/content/banner_edit": "345f3e3970acdd3c65b8733e57749ac58b6ebe35880673fddc9ef718108ffa30",
+    "/admin/content/banner_list": "8cd5202dc2c01ac63bebde1611e9e2e6fb5e06ac8715d19775969afd1eddd565",
+    "/admin/content/board_add": "f57aa014fd2fde295dc4aa9623036ceba6fa7ed7b8cb0d2a56e52bc5e2cdc59e",
+    "/admin/content/board_list": "b8b23a991c1d9d579d2f6137afbcea3a193c14d18528f4f1ead20c57e1cc3b17",
+    "/admin/content/faq_list": "9857b35c9131cf09f5bb5a59044fe95a153db19dd4725d1d297258adc1b6d46f",
+    "/admin/content/file": "fce0ac54bc8b025ba330dbf5356a829f7f56109fbe2f1437bfe60476871b21d9",
+    "/admin/content/menu": "543dc90aa800a39d36bcfe6e9dfa2fb8dd2de5b908732c1ed1f93c5af3fd7a3d",
+    "/admin/content/popup_edit": "a693c384a2afd56de65cac198c188303b2f41f216f166b4202cbdbc862733d02",
+    "/admin/content/popup_list": "22e5b272df518386d83711d9ab060d3162fd504c79e5b201ab7d95608c7b9ae0",
+    "/admin/content/post_list": "d19f4e9aaf361c1da450812ba0028ed62dd44dab99a390268d22749471acf5fb",
+    "/admin/content/qna": "d30e5b79ca9cd43ebe6bb36cbb112ab04f76c97fb0e69d5b9bf647c9ed37cd80",
+    "/admin/content/sitemap": "68dd41980acd506c9d94232164d9551f83ede8735567e8db260925b787e7c63e",
+    "/admin/content/tag": "05743a7567b4639d788b6befd354cb1ceabdede76192ff7f6cb090e2b1d2ed59",
+    "/admin/emission/audit-log": "6e4c12e0e67e00e3038dba0d7c0ebf9466adbdaae425798cee70f206ffc651f8",
+    "/admin/emission/data_history": "1a177188d9f3f8147ffaddcad04760f67546f72048bd7f69e5656a555449b2d9",
+    "/admin/emission/definition-studio": "dced9624d228c9a54d4d2f3b04da564c1b63e8a7593165e7eae1ad7fcaa74b13",
+    "/admin/emission/ecoinvent": "8a53644ab227e8085c7ebf75d32d40583aa93d168b69a1b60e9e65c6e0d514c1",
+    "/admin/emission/evidence-management": "4d853b2d363fc8b5d1bf45b7407211f50ac50cea28238bd5ce6b92916be42ce2",
+    "/admin/emission/factor-management": "487ad8e6aed08b19feaa984dfa7f955c67d3334cc0dfba42b4883575bb82409b",
+    "/admin/emission/gwp-values": "7143c1ba6166c50e66574a510b6698e39d12ab102c6c890afedddd1c9b32c763",
+    "/admin/emission/input-template": "56c287c4400d7310d874d83452299f6bb8db9d096adb4769c5e5d7eecf1558cd",
+    "/admin/emission/lci-classification": "d803bb31a7e456e72d1a14ea18e67afadf49aafc013c1eec732c0b525e6eefb1",
+    "/admin/emission/management": "dc8b71a7f219d34989b51824ee11b2c11e7c2ef779da5306509793e473b6a4cf",
+    "/admin/emission/report-template": "ff486274b5543f11ffde10cc4c95ebb2486b7e6f210d290bb5866e46de77e5a8",
+    "/admin/emission/survey-admin": "9fd81e5fe85a403b545848596a2a4a4d16ccb7f84189b506ec82287a1ec795b6",
+    "/admin/emission/system-link": "181e045bc42b0a91747ed995db586e4d7176af0e4a1bd9010f2f9d4f179cb641",
+    "/admin/emission/validation-rule": "b2d3cfafe4bfa367ffec67fb833db8ec0bfb9c093bd7001b29e753dc471379be",
+    "/admin/external/connection_list": "1fc9e5a88784c0dc4d517604dce56b8dd91781db73a49af2c56548593cac2a3b",
+    "/admin/external/keys": "9124ce698152988c8f7ba98486df0bc2616ef1cef8a096ea921b39c7c62b60f5",
+    "/admin/external/logs": "8e59bfa209a27637f4ec1586098b386cfeb3ebfedbcc81bdd22a9a5d5303045c",
+    "/admin/external/maintenance": "3be0ce209b3b7157fed97ef23599322f2a62a241a8596028c5d0d9a0ebe51813",
+    "/admin/external/monitoring": "e68f80f52dff845d4123e4f8646e611e038392ae0f91fd527848015c9b2aae46",
+    "/admin/external/retry": "87c11ad3a61d0535282babc916016173dd5faecf558fc5af33bb795571838e14",
+    "/admin/external/schema": "27e6b413b579c85dbb179b042c6745e061af207c8390c704491f48e7e5e93ef9",
+    "/admin/external/sync": "fd550c1b6fdde776e7505fe223c0660fcc670d681bbb11a4aaa7ca54799c421e",
+    "/admin/external/usage": "a21d2bae10a3d0dbb6f8ff67fa95465781cba3b66cd75092c4a1499defccad59",
+    "/admin/external/webhooks": "ff31ecbcd4eb9a005f7ed708d1bb15ae4e5eb5d336616a1c6ff6fdfe9d9936f9",
+    "/admin/member/admin_account": "cacbc44bc9e5da43d202d0e860bd4aadbfa589f331344f666a5afdffd0b89694",
+    "/admin/member/admin_account/permissions": "112bfee66793df1f3120cb3fcacc5acfa7674b0616873b51a2c967e3ca529c65",
+    "/admin/member/admin_list": "e17d46c2c260763df252022ab7f381716e90a9e782780e139d516b3a0560071e",
+    "/admin/member/auth-change": "e3ab216645c9f8644231bccb2df03922b59fed5361edbd41d54b8aceed7e0c5c",
+    "/admin/member/company_account": "f527ccae3c694026f82515d1f0f864d37af20b0dc670d12ded1948410a344063",
+    "/admin/member/register": "590d7662e6dfb7a056863cdff8c40581c07e6db73096d15015f9658389375e39",
+    "/admin/member/stats": "2a99d3e8713abc094ef2913f3aa9a1009f30072515bf6f27952dba28f73b6d5b",
+    "/admin/monitoring/center": "3d105c142fcdf39d7f6f0923c43d9b8d92c552a49ec1cf5474426858a7b205a6",
+    "/admin/payment/refund_list": "648e263a78fa83d4587ab6de2399927acdfa29cbae5c26cd3a1436219b9dd88c",
+    "/admin/payment/refund_process": "a4f4a24c1916e3e794b751d0d6b2227f361142d7a7958ca816899d6f6a18a087",
+    "/admin/payment/settlement": "e3d3c4a6d8435bac19b843d436b2bf27d551d244f9244819c38f6144f432c4c9",
+    "/admin/payment/virtual_issue": "4a923395bd7102842979308bfca834b250ac7aeb9970192162a484ce3ddc47dc",
+    "/admin/system/access_history": "0fcb2b55989426255f0b89324a01eb9b3915b99dcfe296a2fe76fb387db1a6c0",
+    "/admin/system/api-management": "81c67fa3df2dd2b5c9a307df12bfc16c54b03e6481e7b7c7e21c14d91235e160",
+    "/admin/system/asset-gap": "8b95c4dc809464eb8a99f6166bc91d29273bda20d85c9155162895f27dcfe526",
+    "/admin/system/asset-inventory": "e4a0e858606e74380a8bd50a8b18b5f681bc7cdb7bad265068d69d75b6c656e8",
+    "/admin/system/authority-management": "6419a5c2bba349c9eee09cfb3a71db584e3fd1f55be772237400670de1c6405a",
+    "/admin/system/backup": "5aacbeb77f430a344ebbb5bbe727e7974e55b845681ee90b81c581493142414f",
+    "/admin/system/backup_config": "baec0edc5e7d549314d0c9249981ca41fff792db4e6b44f8b76ef7c32b25229d",
+    "/admin/system/batch": "a379daec490be8c61d3611e41b02b44e5c216258cc936db80d4f28c8656fab6f",
+    "/admin/system/batch-monitoring": "438208a990c97644da70382ec116084555347c32b219f0f646d95de6d8089e1d",
+    "/admin/system/blocklist": "c9e5bd946e62542b0e11b193215c1dff1857dd34306acc82eb314cd3c9a45c9c",
+    "/admin/system/builder-studio": "952e9fe8f790fecfd8e85812454635260d7d8879793cedaa324bc829cb7e6d7d",
+    "/admin/system/code": "d733b6937eaf847bd28cd28801cfd19ea3137ac2d7078a135dd8e2500083f86e",
+    "/admin/system/codex-provision": "489f6ff8e75a3dd2301fc5adf04334a9222529ccdb7c851ff4bd9efc4e3f44b1",
+    "/admin/system/column-management": "93e6c4158e3ecdc1117aabc50027fafb9a88a0366104da1001da756d9f8abdaa",
+    "/admin/system/component-management": "88ec02eea9a020e5ec65a064af222d2acb12ee09316e975b3a80a4ef1cc8fa3a",
+    "/admin/system/controller-management": "809b0a8cec6fb014064505fd5bd54fbb1419ba917a0eec9c20f641b1fb4ecf75",
+    "/admin/system/cron-monitoring": "82856dcfd525c6b0467ecb43d9bc0a11a86091289579fa189298411b76c2f8f8"
+  },
+  "routes": [
+    {
+      "id": "75feeba76012e78c",
+      "routePath": "/admin/",
+      "fingerprint": "6392426a5322d2175c74aa99995aaceda4ebf373752352d9f09e06aa2597677b",
+      "changed": true,
+      "contractIds": [
+        26247
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26247,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "관리자 홈",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "d4f748d7b7c30396",
+      "routePath": "/admin/auth/group",
+      "fingerprint": "4b5d8ebf74fde53d13d537ddb7b2d3e0238ea0650f39a5faacbb3d15db56d303",
+      "changed": true,
+      "contractIds": [
+        26248
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26248,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "승인 권한 그룹",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "79c1c1b4d596f666",
+      "routePath": "/admin/certificate/approve",
+      "fingerprint": "b59d428ccea0f9c010e047869a8498263eb353d3382d17edbbb0768e3d20af04",
+      "changed": true,
+      "contractIds": [
+        26245
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CERTIFICATE_ISSUANCE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26245,
+          "processCode": "CERTIFICATE_ISSUANCE",
+          "stepCode": "CERTIFICATE_ISSUANCE_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "인증서 승인",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "fdab6a7d947410a2",
+      "routePath": "/admin/certificate/audit-log",
+      "fingerprint": "e8435a0a1e45f73aa8d09b2722354ebd8a80b68cd4ba2828d7b07267d762d049",
+      "changed": true,
+      "contractIds": [
+        26246
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CERTIFICATE_ISSUANCE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26246,
+          "processCode": "CERTIFICATE_ISSUANCE",
+          "stepCode": "CERTIFICATE_ISSUANCE_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "인증서 감사 로그",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "5618776ad37fe55c",
+      "routePath": "/admin/certificate/objection_list",
+      "fingerprint": "019e702f16dd11928296ec2dc9ac6dc0475e414b896af2c44ce08d1094fa1664",
+      "changed": true,
+      "contractIds": [
+        26249
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26249,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "이의신청 처리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "b71f09889f458327",
+      "routePath": "/admin/certificate/pending_list",
+      "fingerprint": "4611e34f437c30453b87f07bc1bd0d5637ed78b807857cdbec07507e2b181b15",
+      "changed": true,
+      "contractIds": [
+        26244
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CERTIFICATE_ISSUANCE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26244,
+          "processCode": "CERTIFICATE_ISSUANCE",
+          "stepCode": "CERTIFICATE_ISSUANCE_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "인증서 승인 대기",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "0035fb511e4f2d9e",
+      "routePath": "/admin/certificate/rec_check",
+      "fingerprint": "9efe28ad45f4cb7da5eb832083f9cdee054df41f6f9955b206326a4c6c9c7e1e",
+      "changed": true,
+      "contractIds": [
+        26250
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26250,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "REC 중복 확인",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "48fce1dd5906dfb5",
+      "routePath": "/admin/certificate/review",
+      "fingerprint": "8208bf2d94c35dc4a141ab6a4ed7718ce12a07de7b23885296cf74ab7b687070",
+      "changed": true,
+      "contractIds": [
+        26251
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26251,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "발급 검토",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "6f9f817c285285db",
+      "routePath": "/admin/certificate/statistics",
+      "fingerprint": "74041e5a64cbe7f12df38c94e780ed1abbdf90c9af6ff0fe8fa6ac20169c1721",
+      "changed": true,
+      "contractIds": [
+        26252
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CERTIFICATE_ISSUANCE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26252,
+          "processCode": "CERTIFICATE_ISSUANCE",
+          "stepCode": "CERTIFICATE_ISSUANCE_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "인증서 통계",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "7cf8c52eb5e76d80",
+      "routePath": "/admin/content/banner_edit",
+      "fingerprint": "345f3e3970acdd3c65b8733e57749ac58b6ebe35880673fddc9ef718108ffa30",
+      "changed": true,
+      "contractIds": [
+        26253
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26253,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "배너 편집",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "5dcd274ace7c32b6",
+      "routePath": "/admin/content/banner_list",
+      "fingerprint": "8cd5202dc2c01ac63bebde1611e9e2e6fb5e06ac8715d19775969afd1eddd565",
+      "changed": true,
+      "contractIds": [
+        26254
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26254,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "배너 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "e718d1e01717f5e3",
+      "routePath": "/admin/content/board_add",
+      "fingerprint": "f57aa014fd2fde295dc4aa9623036ceba6fa7ed7b8cb0d2a56e52bc5e2cdc59e",
+      "changed": true,
+      "contractIds": [
+        26255
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CONTENT_OPERATION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26255,
+          "processCode": "CONTENT_OPERATION",
+          "stepCode": "CONTENT_OPERATION_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "게시글 등록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "424a50ae0d8d9c2f",
+      "routePath": "/admin/content/board_list",
+      "fingerprint": "b8b23a991c1d9d579d2f6137afbcea3a193c14d18528f4f1ead20c57e1cc3b17",
+      "changed": true,
+      "contractIds": [
+        26256
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26256,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "게시판 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "6e9ce9748bc16671",
+      "routePath": "/admin/content/faq_list",
+      "fingerprint": "9857b35c9131cf09f5bb5a59044fe95a153db19dd4725d1d297258adc1b6d46f",
+      "changed": true,
+      "contractIds": [
+        26257
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CONTENT_OPERATION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26257,
+          "processCode": "CONTENT_OPERATION",
+          "stepCode": "CONTENT_OPERATION_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "FAQ 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "a78faba561e3bd08",
+      "routePath": "/admin/content/file",
+      "fingerprint": "fce0ac54bc8b025ba330dbf5356a829f7f56109fbe2f1437bfe60476871b21d9",
+      "changed": true,
+      "contractIds": [
+        26258
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26258,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "파일 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "89cd9ae026b347ad",
+      "routePath": "/admin/content/menu",
+      "fingerprint": "543dc90aa800a39d36bcfe6e9dfa2fb8dd2de5b908732c1ed1f93c5af3fd7a3d",
+      "changed": true,
+      "contractIds": [
+        26259
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CONTENT_OPERATION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26259,
+          "processCode": "CONTENT_OPERATION",
+          "stepCode": "CONTENT_OPERATION_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "메뉴 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "e3db938b30275ec1",
+      "routePath": "/admin/content/popup_edit",
+      "fingerprint": "a693c384a2afd56de65cac198c188303b2f41f216f166b4202cbdbc862733d02",
+      "changed": true,
+      "contractIds": [
+        26260
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26260,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "팝업 편집",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "2ff5807e495d2383",
+      "routePath": "/admin/content/popup_list",
+      "fingerprint": "22e5b272df518386d83711d9ab060d3162fd504c79e5b201ab7d95608c7b9ae0",
+      "changed": true,
+      "contractIds": [
+        26261
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26261,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "팝업 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "3e67cd059f86b3de",
+      "routePath": "/admin/content/post_list",
+      "fingerprint": "d19f4e9aaf361c1da450812ba0028ed62dd44dab99a390268d22749471acf5fb",
+      "changed": true,
+      "contractIds": [
+        26262
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "CONTENT_OPERATION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26262,
+          "processCode": "CONTENT_OPERATION",
+          "stepCode": "CONTENT_OPERATION_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "게시글 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "6df63f41750515b8",
+      "routePath": "/admin/content/qna",
+      "fingerprint": "d30e5b79ca9cd43ebe6bb36cbb112ab04f76c97fb0e69d5b9bf647c9ed37cd80",
+      "changed": true,
+      "contractIds": [
+        26263
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26263,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "문의 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "7b03fbfbe749096a",
+      "routePath": "/admin/content/sitemap",
+      "fingerprint": "68dd41980acd506c9d94232164d9551f83ede8735567e8db260925b787e7c63e",
+      "changed": true,
+      "contractIds": [
+        26264
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26264,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "사이트맵",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "b274dedcafaf3e1e",
+      "routePath": "/admin/content/tag",
+      "fingerprint": "05743a7567b4639d788b6befd354cb1ceabdede76192ff7f6cb090e2b1d2ed59",
+      "changed": true,
+      "contractIds": [
+        26265
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26265,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "태그 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "b74bc44ef37c3281",
+      "routePath": "/admin/emission/audit-log",
+      "fingerprint": "6e4c12e0e67e00e3038dba0d7c0ebf9466adbdaae425798cee70f206ffc651f8",
+      "changed": true,
+      "contractIds": [
+        26266
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26266,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "감사 로그",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "ceeb6e8543618607",
+      "routePath": "/admin/emission/data_history",
+      "fingerprint": "1a177188d9f3f8147ffaddcad04760f67546f72048bd7f69e5656a555449b2d9",
+      "changed": true,
+      "contractIds": [
+        26267
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26267,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "데이터 변경 이력",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "4f27f4b5da9ee825",
+      "routePath": "/admin/emission/definition-studio",
+      "fingerprint": "dced9624d228c9a54d4d2f3b04da564c1b63e8a7593165e7eae1ad7fcaa74b13",
+      "changed": true,
+      "contractIds": [
+        26268
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "LCA_PRACTITIONER"
+      ],
+      "processCodes": [
+        "LCA_EXECUTION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26268,
+          "processCode": "LCA_EXECUTION",
+          "stepCode": "LCA_EXECUTION_01_PLAN",
+          "actorCode": "LCA_PRACTITIONER",
+          "audience": "ADMIN",
+          "screenName": "LCA 데이터 정의",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "26eac743b1010e7c",
+      "routePath": "/admin/emission/ecoinvent",
+      "fingerprint": "8a53644ab227e8085c7ebf75d32d40583aa93d168b69a1b60e9e65c6e0d514c1",
+      "changed": true,
+      "contractIds": [
+        26269
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "EMISSION_PROJECT"
+      ],
+      "contracts": [
+        {
+          "contractId": 26269,
+          "processCode": "EMISSION_PROJECT",
+          "stepCode": "EMISSION_PROJECT_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "Ecoinvent 데이터",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 01:04:33.774999"
+        }
+      ]
+    },
+    {
+      "id": "a2cd7eafe27e1745",
+      "routePath": "/admin/emission/evidence-management",
+      "fingerprint": "4d853b2d363fc8b5d1bf45b7407211f50ac50cea28238bd5ce6b92916be42ce2",
+      "changed": true,
+      "contractIds": [
+        26270
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26270,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "증거 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "d2b6f38a681b7d1b",
+      "routePath": "/admin/emission/factor-management",
+      "fingerprint": "487ad8e6aed08b19feaa984dfa7f955c67d3334cc0dfba42b4883575bb82409b",
+      "changed": true,
+      "contractIds": [
+        26271
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "EMISSION_PROJECT"
+      ],
+      "contracts": [
+        {
+          "contractId": 26271,
+          "processCode": "EMISSION_PROJECT",
+          "stepCode": "EMISSION_PROJECT_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "배출계수 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 01:04:33.774999"
+        }
+      ]
+    },
+    {
+      "id": "80eadfe8ee20c5b5",
+      "routePath": "/admin/emission/gwp-values",
+      "fingerprint": "7143c1ba6166c50e66574a510b6698e39d12ab102c6c890afedddd1c9b32c763",
+      "changed": true,
+      "contractIds": [
+        26272
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26272,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "GWP 값 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "51082f2bab9d16c2",
+      "routePath": "/admin/emission/input-template",
+      "fingerprint": "56c287c4400d7310d874d83452299f6bb8db9d096adb4769c5e5d7eecf1558cd",
+      "changed": true,
+      "contractIds": [
+        26273
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26273,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "입력 템플릿",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "286d7955c3003228",
+      "routePath": "/admin/emission/lci-classification",
+      "fingerprint": "d803bb31a7e456e72d1a14ea18e67afadf49aafc013c1eec732c0b525e6eefb1",
+      "changed": true,
+      "contractIds": [
+        26274
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "LCA_PRACTITIONER"
+      ],
+      "processCodes": [
+        "LCA_EXECUTION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26274,
+          "processCode": "LCA_EXECUTION",
+          "stepCode": "LCA_EXECUTION_01_PLAN",
+          "actorCode": "LCA_PRACTITIONER",
+          "audience": "ADMIN",
+          "screenName": "LCI 분류",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "ef67e0eb4c100ed6",
+      "routePath": "/admin/emission/management",
+      "fingerprint": "dc8b71a7f219d34989b51824ee11b2c11e7c2ef779da5306509793e473b6a4cf",
+      "changed": true,
+      "contractIds": [
+        26275
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26275,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "배출 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "c24b5992fc55f6a8",
+      "routePath": "/admin/emission/report-template",
+      "fingerprint": "ff486274b5543f11ffde10cc4c95ebb2486b7e6f210d290bb5866e46de77e5a8",
+      "changed": true,
+      "contractIds": [
+        26276
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26276,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "보고서 템플릿",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "63d80973b3ee1b10",
+      "routePath": "/admin/emission/survey-admin",
+      "fingerprint": "9fd81e5fe85a403b545848596a2a4a4d16ccb7f84189b506ec82287a1ec795b6",
+      "changed": true,
+      "contractIds": [
+        26277
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "LCA_PRACTITIONER"
+      ],
+      "processCodes": [
+        "LCA_EXECUTION"
+      ],
+      "contracts": [
+        {
+          "contractId": 26277,
+          "processCode": "LCA_EXECUTION",
+          "stepCode": "LCA_EXECUTION_01_PLAN",
+          "actorCode": "LCA_PRACTITIONER",
+          "audience": "ADMIN",
+          "screenName": "조사 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "317001a0c92b9ca9",
+      "routePath": "/admin/emission/system-link",
+      "fingerprint": "181e045bc42b0a91747ed995db586e4d7176af0e4a1bd9010f2f9d4f179cb641",
+      "changed": true,
+      "contractIds": [
+        26278
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26278,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "시스템 연동",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "18494f732000c2ba",
+      "routePath": "/admin/emission/validation-rule",
+      "fingerprint": "b2d3cfafe4bfa367ffec67fb833db8ec0bfb9c093bd7001b29e753dc471379be",
+      "changed": true,
+      "contractIds": [
+        26279
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26279,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "검증 규칙",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "0e5aa98d096d500d",
+      "routePath": "/admin/external/connection_list",
+      "fingerprint": "1fc9e5a88784c0dc4d517604dce56b8dd91781db73a49af2c56548593cac2a3b",
+      "changed": true,
+      "contractIds": [
+        26280
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26280,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "연결 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "3ea24cafe738ed56",
+      "routePath": "/admin/external/keys",
+      "fingerprint": "9124ce698152988c8f7ba98486df0bc2616ef1cef8a096ea921b39c7c62b60f5",
+      "changed": true,
+      "contractIds": [
+        26281
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26281,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "API 키 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "f8b484cbfc38b371",
+      "routePath": "/admin/external/logs",
+      "fingerprint": "8e59bfa209a27637f4ec1586098b386cfeb3ebfedbcc81bdd22a9a5d5303045c",
+      "changed": true,
+      "contractIds": [
+        26282
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26282,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "외부 로그",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "e978796d109081c6",
+      "routePath": "/admin/external/maintenance",
+      "fingerprint": "3be0ce209b3b7157fed97ef23599322f2a62a241a8596028c5d0d9a0ebe51813",
+      "changed": true,
+      "contractIds": [
+        26283
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26283,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "유지보수",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "d137c70b03ac1385",
+      "routePath": "/admin/external/monitoring",
+      "fingerprint": "e68f80f52dff845d4123e4f8646e611e038392ae0f91fd527848015c9b2aae46",
+      "changed": true,
+      "contractIds": [
+        26284
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26284,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "모니터링",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "ec98956accbbb9d1",
+      "routePath": "/admin/external/retry",
+      "fingerprint": "87c11ad3a61d0535282babc916016173dd5faecf558fc5af33bb795571838e14",
+      "changed": true,
+      "contractIds": [
+        26285
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26285,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "재시도 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "a581af6114bc6933",
+      "routePath": "/admin/external/schema",
+      "fingerprint": "27e6b413b579c85dbb179b042c6745e061af207c8390c704491f48e7e5e93ef9",
+      "changed": true,
+      "contractIds": [
+        26286
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26286,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "스키마 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "a67affe04dbd37fb",
+      "routePath": "/admin/external/sync",
+      "fingerprint": "fd550c1b6fdde776e7505fe223c0660fcc670d681bbb11a4aaa7ca54799c421e",
+      "changed": true,
+      "contractIds": [
+        26287
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26287,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "동기화 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "c34c9329913857a6",
+      "routePath": "/admin/external/usage",
+      "fingerprint": "a21d2bae10a3d0dbb6f8ff67fa95465781cba3b66cd75092c4a1499defccad59",
+      "changed": true,
+      "contractIds": [
+        26288
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26288,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "사용량",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "c0660001d4fb9e60",
+      "routePath": "/admin/external/webhooks",
+      "fingerprint": "ff31ecbcd4eb9a005f7ed708d1bb15ae4e5eb5d336616a1c6ff6fdfe9d9936f9",
+      "changed": true,
+      "contractIds": [
+        26289
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26289,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "웹훅 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "0d2d364b3cea0d85",
+      "routePath": "/admin/member/admin_account",
+      "fingerprint": "cacbc44bc9e5da43d202d0e860bd4aadbfa589f331344f666a5afdffd0b89694",
+      "changed": true,
+      "contractIds": [
+        26290
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26290,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "관리자 계정",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "db0042002e228882",
+      "routePath": "/admin/member/admin_account/permissions",
+      "fingerprint": "112bfee66793df1f3120cb3fcacc5acfa7674b0616873b51a2c967e3ca529c65",
+      "changed": true,
+      "contractIds": [
+        26291
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26291,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "관리자 권한",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "2ce250e274d5a7e9",
+      "routePath": "/admin/member/admin_list",
+      "fingerprint": "e17d46c2c260763df252022ab7f381716e90a9e782780e139d516b3a0560071e",
+      "changed": true,
+      "contractIds": [
+        26292
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26292,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "관리자 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "a41bf0a1b6f7c507",
+      "routePath": "/admin/member/auth-change",
+      "fingerprint": "e3ab216645c9f8644231bccb2df03922b59fed5361edbd41d54b8aceed7e0c5c",
+      "changed": true,
+      "contractIds": [
+        26293
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26293,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "권한 변경 이력",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "376e4d8ee0ad03af",
+      "routePath": "/admin/member/company_account",
+      "fingerprint": "f527ccae3c694026f82515d1f0f864d37af20b0dc670d12ded1948410a344063",
+      "changed": true,
+      "contractIds": [
+        26294
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26294,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "기업 계정",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "3efff492bd1a2a16",
+      "routePath": "/admin/member/register",
+      "fingerprint": "590d7662e6dfb7a056863cdff8c40581c07e6db73096d15015f9658389375e39",
+      "changed": true,
+      "contractIds": [
+        26295
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "MEMBER_LIFECYCLE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26295,
+          "processCode": "MEMBER_LIFECYCLE",
+          "stepCode": "MEMBER_REGISTRATION",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "회원 등록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 01:07:43.933879"
+        }
+      ]
+    },
+    {
+      "id": "b0d95d606e550169",
+      "routePath": "/admin/member/stats",
+      "fingerprint": "2a99d3e8713abc094ef2913f3aa9a1009f30072515bf6f27952dba28f73b6d5b",
+      "changed": true,
+      "contractIds": [
+        26296
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "MEMBER_LIFECYCLE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26296,
+          "processCode": "MEMBER_LIFECYCLE",
+          "stepCode": "MEMBER_ANALYTICS",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "회원 통계",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 01:07:43.933879"
+        }
+      ]
+    },
+    {
+      "id": "53fc503fd4245968",
+      "routePath": "/admin/monitoring/center",
+      "fingerprint": "3d105c142fcdf39d7f6f0923c43d9b8d92c552a49ec1cf5474426858a7b205a6",
+      "changed": true,
+      "contractIds": [
+        26297
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26297,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "모니터링 센터",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "0bdd1bb966f7cc6f",
+      "routePath": "/admin/payment/refund_list",
+      "fingerprint": "648e263a78fa83d4587ab6de2399927acdfa29cbae5c26cd3a1436219b9dd88c",
+      "changed": true,
+      "contractIds": [
+        26298
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "PAYMENT_SETTLEMENT"
+      ],
+      "contracts": [
+        {
+          "contractId": 26298,
+          "processCode": "PAYMENT_SETTLEMENT",
+          "stepCode": "PAYMENT_SETTLEMENT_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "환불 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "ada5e014f5e1258a",
+      "routePath": "/admin/payment/refund_process",
+      "fingerprint": "a4f4a24c1916e3e794b751d0d6b2227f361142d7a7958ca816899d6f6a18a087",
+      "changed": true,
+      "contractIds": [
+        26299
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "PAYMENT_SETTLEMENT"
+      ],
+      "contracts": [
+        {
+          "contractId": 26299,
+          "processCode": "PAYMENT_SETTLEMENT",
+          "stepCode": "PAYMENT_SETTLEMENT_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "환불 처리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "ae03c4205dd1b0db",
+      "routePath": "/admin/payment/settlement",
+      "fingerprint": "e3d3c4a6d8435bac19b843d436b2bf27d551d244f9244819c38f6144f432c4c9",
+      "changed": true,
+      "contractIds": [
+        26300
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26300,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "정산 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "7fb1339764d54eaf",
+      "routePath": "/admin/payment/virtual_issue",
+      "fingerprint": "4a923395bd7102842979308bfca834b250ac7aeb9970192162a484ce3ddc47dc",
+      "changed": true,
+      "contractIds": [
+        26301
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "PAYMENT_SETTLEMENT"
+      ],
+      "contracts": [
+        {
+          "contractId": 26301,
+          "processCode": "PAYMENT_SETTLEMENT",
+          "stepCode": "PAYMENT_SETTLEMENT_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "가상계좌 발급",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "2a18f8b80b32d952",
+      "routePath": "/admin/system/access_history",
+      "fingerprint": "0fcb2b55989426255f0b89324a01eb9b3915b99dcfe296a2fe76fb387db1a6c0",
+      "changed": true,
+      "contractIds": [
+        26302
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26302,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "접근 이력",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "defdfaf243770392",
+      "routePath": "/admin/system/api-management",
+      "fingerprint": "81c67fa3df2dd2b5c9a307df12bfc16c54b03e6481e7b7c7e21c14d91235e160",
+      "changed": true,
+      "contractIds": [
+        26303
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26303,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "API 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "d5bdb09088c113da",
+      "routePath": "/admin/system/asset-gap",
+      "fingerprint": "8b95c4dc809464eb8a99f6166bc91d29273bda20d85c9155162895f27dcfe526",
+      "changed": true,
+      "contractIds": [
+        26304
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26304,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "자산 갭 분석",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "ad8e533c6a7ae9d9",
+      "routePath": "/admin/system/asset-inventory",
+      "fingerprint": "e4a0e858606e74380a8bd50a8b18b5f681bc7cdb7bad265068d69d75b6c656e8",
+      "changed": true,
+      "contractIds": [
+        26305
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26305,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "자산 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "e964c4fb88e1e7a4",
+      "routePath": "/admin/system/authority-management",
+      "fingerprint": "6419a5c2bba349c9eee09cfb3a71db584e3fd1f55be772237400670de1c6405a",
+      "changed": true,
+      "contractIds": [
+        26306
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26306,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "권한 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "760ca4321cafb602",
+      "routePath": "/admin/system/backup",
+      "fingerprint": "5aacbeb77f430a344ebbb5bbe727e7974e55b845681ee90b81c581493142414f",
+      "changed": true,
+      "contractIds": [
+        26307
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26307,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "백업 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "bb17d112a4cc3ced",
+      "routePath": "/admin/system/backup_config",
+      "fingerprint": "baec0edc5e7d549314d0c9249981ca41fff792db4e6b44f8b76ef7c32b25229d",
+      "changed": true,
+      "contractIds": [
+        26308
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26308,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "백업 설정",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "c05e692b45140847",
+      "routePath": "/admin/system/batch",
+      "fingerprint": "a379daec490be8c61d3611e41b02b44e5c216258cc936db80d4f28c8656fab6f",
+      "changed": true,
+      "contractIds": [
+        26309
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26309,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "배치 작업",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "8c35a74b8d798de4",
+      "routePath": "/admin/system/batch-monitoring",
+      "fingerprint": "438208a990c97644da70382ec116084555347c32b219f0f646d95de6d8089e1d",
+      "changed": true,
+      "contractIds": [
+        26310
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26310,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "배치 모니터링",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "1067189b1ff39fdd",
+      "routePath": "/admin/system/blocklist",
+      "fingerprint": "c9e5bd946e62542b0e11b193215c1dff1857dd34306acc82eb314cd3c9a45c9c",
+      "changed": true,
+      "contractIds": [
+        26311
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26311,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "차단 목록",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "e328025931abc811",
+      "routePath": "/admin/system/builder-studio",
+      "fingerprint": "952e9fe8f790fecfd8e85812454635260d7d8879793cedaa324bc829cb7e6d7d",
+      "changed": true,
+      "contractIds": [
+        26312
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26312,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "빌더 스튜디오",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "fe96ba5f547e3e55",
+      "routePath": "/admin/system/code",
+      "fingerprint": "d733b6937eaf847bd28cd28801cfd19ea3137ac2d7078a135dd8e2500083f86e",
+      "changed": true,
+      "contractIds": [
+        26313
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "COMPANY_MANAGER"
+      ],
+      "processCodes": [
+        "EMISSION_PROJECT"
+      ],
+      "contracts": [
+        {
+          "contractId": 26313,
+          "processCode": "EMISSION_PROJECT",
+          "stepCode": "EMISSION_PROJECT_01_PLAN",
+          "actorCode": "COMPANY_MANAGER",
+          "audience": "ADMIN",
+          "screenName": "코드 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 01:10:43.110867"
+        }
+      ]
+    },
+    {
+      "id": "eb5e6f1d70f045aa",
+      "routePath": "/admin/system/codex-provision",
+      "fingerprint": "489f6ff8e75a3dd2301fc5adf04334a9222529ccdb7c851ff4bd9efc4e3f44b1",
+      "changed": true,
+      "contractIds": [
+        26314
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26314,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "Codex Provision",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "aec71f2e327ea7f2",
+      "routePath": "/admin/system/column-management",
+      "fingerprint": "93e6c4158e3ecdc1117aabc50027fafb9a88a0366104da1001da756d9f8abdaa",
+      "changed": true,
+      "contractIds": [
+        26315
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26315,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "컬럼 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "9e93566d6a2883e4",
+      "routePath": "/admin/system/component-management",
+      "fingerprint": "88ec02eea9a020e5ec65a064af222d2acb12ee09316e975b3a80a4ef1cc8fa3a",
+      "changed": true,
+      "contractIds": [
+        26316
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26316,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "컴포넌트 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "6d3ed3ea5781a14e",
+      "routePath": "/admin/system/controller-management",
+      "fingerprint": "809b0a8cec6fb014064505fd5bd54fbb1419ba917a0eec9c20f641b1fb4ecf75",
+      "changed": true,
+      "contractIds": [
+        26317
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26317,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "컨트롤러 관리",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    },
+    {
+      "id": "f23164fffeffc252",
+      "routePath": "/admin/system/cron-monitoring",
+      "fingerprint": "82856dcfd525c6b0467ecb43d9bc0a11a86091289579fa189298411b76c2f8f8",
+      "changed": true,
+      "contractIds": [
+        26318
+      ],
+      "audiences": [
+        "ADMIN"
+      ],
+      "actorCodes": [
+        "PLATFORM_OPERATOR"
+      ],
+      "processCodes": [
+        "GOVERNANCE_CHANGE"
+      ],
+      "contracts": [
+        {
+          "contractId": 26318,
+          "processCode": "GOVERNANCE_CHANGE",
+          "stepCode": "GOV_REQUEST",
+          "actorCode": "PLATFORM_OPERATOR",
+          "audience": "ADMIN",
+          "screenName": "Cron 모니터링",
+          "contractStatus": "REVIEW_REQUIRED",
+          "updatedAt": "2026-07-23 10:03:58.70114"
+        }
+      ]
+    }
+  ],
+  "shards": [
+    {
+      "index": 0,
+      "routeIds": [
+        "75feeba76012e78c",
+        "d4f748d7b7c30396",
+        "79c1c1b4d596f666",
+        "fdab6a7d947410a2",
+        "5618776ad37fe55c",
+        "b71f09889f458327",
+        "0035fb511e4f2d9e",
+        "48fce1dd5906dfb5",
+        "6f9f817c285285db",
+        "7cf8c52eb5e76d80",
+        "5dcd274ace7c32b6",
+        "e718d1e01717f5e3",
+        "424a50ae0d8d9c2f",
+        "6e9ce9748bc16671",
+        "a78faba561e3bd08",
+        "89cd9ae026b347ad",
+        "e3db938b30275ec1",
+        "2ff5807e495d2383",
+        "3e67cd059f86b3de",
+        "6df63f41750515b8",
+        "7b03fbfbe749096a",
+        "b274dedcafaf3e1e",
+        "b74bc44ef37c3281",
+        "ceeb6e8543618607",
+        "4f27f4b5da9ee825",
+        "26eac743b1010e7c",
+        "a2cd7eafe27e1745",
+        "d2b6f38a681b7d1b",
+        "80eadfe8ee20c5b5",
+        "51082f2bab9d16c2",
+        "286d7955c3003228",
+        "ef67e0eb4c100ed6",
+        "c24b5992fc55f6a8",
+        "63d80973b3ee1b10",
+        "317001a0c92b9ca9",
+        "18494f732000c2ba",
+        "0e5aa98d096d500d",
+        "3ea24cafe738ed56",
+        "f8b484cbfc38b371",
+        "e978796d109081c6",
+        "d137c70b03ac1385",
+        "ec98956accbbb9d1",
+        "a581af6114bc6933",
+        "a67affe04dbd37fb",
+        "c34c9329913857a6",
+        "c0660001d4fb9e60",
+        "0d2d364b3cea0d85",
+        "db0042002e228882",
+        "2ce250e274d5a7e9",
+        "a41bf0a1b6f7c507",
+        "376e4d8ee0ad03af",
+        "3efff492bd1a2a16",
+        "b0d95d606e550169",
+        "53fc503fd4245968",
+        "0bdd1bb966f7cc6f",
+        "ada5e014f5e1258a",
+        "ae03c4205dd1b0db",
+        "7fb1339764d54eaf",
+        "2a18f8b80b32d952",
+        "defdfaf243770392",
+        "d5bdb09088c113da",
+        "ad8e533c6a7ae9d9",
+        "e964c4fb88e1e7a4",
+        "760ca4321cafb602",
+        "bb17d112a4cc3ced",
+        "c05e692b45140847",
+        "8c35a74b8d798de4",
+        "1067189b1ff39fdd",
+        "e328025931abc811",
+        "fe96ba5f547e3e55",
+        "eb5e6f1d70f045aa",
+        "aec71f2e327ea7f2",
+        "9e93566d6a2883e4",
+        "6d3ed3ea5781a14e",
+        "f23164fffeffc252"
+      ]
+    }
+  ]
+}

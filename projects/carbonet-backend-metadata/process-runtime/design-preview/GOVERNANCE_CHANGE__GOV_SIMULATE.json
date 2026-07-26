@@ -1,0 +1,465 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "GOVERNANCE_CHANGE",
+    "name": "기준·워크플로 변경",
+    "domain": "SYSTEM",
+    "workType": "SYSTEM",
+    "goal": "기준정보 변경을 검토·승인·배포하고 추적한다."
+  },
+  "step": {
+    "code": "GOV_SIMULATE",
+    "version": 1,
+    "actor": {
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "PLATFORM_OPERATOR",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "기준정보 변경을 검토·승인·배포하고 추적한다.",
+      "slaHours": 720,
+      "stepName": "정상·안전 시나리오 검증",
+      "riskLevel": "MEDIUM",
+      "domainCode": "SYSTEM",
+      "processName": "기준·워크플로 변경",
+      "requirement": "",
+      "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+    },
+    "transition": {
+      "toState": "APPROVAL_READY",
+      "stepType": "TASK",
+      "fromState": "SIMULATION_READY",
+      "stepOrder": 4,
+      "commandCode": "RUN_SIMULATION",
+      "auditRequired": true,
+      "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "GOV_SIMULATE",
+      "actorCode": "VERIFIER",
+      "fromState": "SIMULATION_READY",
+      "processCode": "GOVERNANCE_CHANGE"
+    },
+    "output": {
+      "toState": "APPROVAL_READY",
+      "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
+      "evidenceRequired": true
+    },
+    "guide": {
+      "title": "정상·안전 시나리오 검증",
+      "purpose": "",
+      "stepCode": "GOV_SIMULATE",
+      "userPath": "/admin/system/actor-process?process=GOVERNANCE_CHANGE",
+      "actorCode": "VERIFIER",
+      "adminPath": "/admin/system/verification-center",
+      "stepOrder": 4,
+      "processCode": "GOVERNANCE_CHANGE",
+      "nextStepCode": "GOV_APPROVE",
+      "workTypeCode": "SYSTEM",
+      "entryCondition": "SIMULATION_READY",
+      "completionCondition": "정상·예외·권한·격리·복구 테스트가 모두 승인됨"
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "pages": []
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "actor-process/runs"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "VERIFIER",
+        "entryState": "SIMULATION_READY",
+        "commandCode": "RUN_SIMULATION",
+        "resultState": "APPROVAL_READY",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "VERIFIER",
+      "ownerActorCode": "PLATFORM_OPERATOR",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "type": "STEP",
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "stepCode": "GOV_APPROVE",
+            "actorCode": "APPROVER",
+            "fromState": "APPROVAL_READY",
+            "processCode": "GOVERNANCE_CHANGE"
+          },
+          "fromOutput": {
+            "toState": "APPROVAL_READY",
+            "completionRule": "정상·예외·권한·격리·복구 테스트가 모두 승인됨",
+            "evidenceRequired": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "GOV_APPROVE",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "authorization": {
+          "toActor": "APPROVER",
+          "fromActor": "VERIFIER",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "GOVERNANCE_CHANGE"
+      }
+    ]
+  },
+  "database": {
+    "fieldMappings": [],
+    "transactional": true,
+    "historyRequired": true,
+    "indexesRequired": true,
+    "primaryEntities": [],
+    "migrationRequired": true,
+    "softDeleteDefault": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "비인가 변경·승인 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        "비인가 적용 시도",
+        "비인가 승인 시도",
+        "정상 승인"
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_AUTH",
+      "assertions": [
+        "비인가 403",
+        "직무분리",
+        "거부 시도 감사"
+      ],
+      "preconditions": "서로 다른 운영자·검증자·승인자 계정"
+    },
+    {
+      "name": "기준·워크플로 변경 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "GOVERNANCE_CHANGE"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "기준·워크플로 변경 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "GOVERNANCE_CHANGE"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "정상 변경 요청부터 무중단 적용",
+      "type": "HAPPY_PATH",
+      "steps": [
+        "요청",
+        "영향분석",
+        "설계",
+        "시뮬레이션",
+        "승인",
+        "적용"
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_HAPPY",
+      "assertions": [
+        "상태=COMPLETED",
+        "모든 산출물 VERIFIED",
+        "감사로그 존재"
+      ],
+      "preconditions": "변경 요청자·검증자·승인자와 테스트 환경이 존재"
+    },
+    {
+      "name": "기준·워크플로 변경 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "GOVERNANCE_CHANGE"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "기준·워크플로 변경 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "GOVERNANCE_CHANGE"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "기준·워크플로 변경 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "GOVERNANCE_CHANGE"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "GOVERNANCE_CHANGE_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "ADMIN 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_ADMIN",
+      "assertions": [
+        "CRUD 트랜잭션,중복 방지,권한,캐시 무효화,감사 로그"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "AUTH 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_AUTH",
+      "assertions": [
+        "실패 횟수,잠금,세션,2차 인증,개인정보 노출 방지"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "CONTENT 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_CONTENT",
+      "assertions": [
+        "게시 상태,예약 공개,모바일 가독성,첨부파일,검색 노출"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "DASHBOARD 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_DASHBOARD",
+      "assertions": [
+        "집계 정확성,기간 필터,빈 데이터,내보내기,비색상 상태 표현"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "DETAIL 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_DETAIL",
+      "assertions": [
+        "존재하지 않는 데이터,권한 차단,변경 이력,연관 업무 이동"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "FORM 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_FORM",
+      "assertions": [
+        "필수값,임시저장,중복 제출,오류 복구,모바일 입력"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "HOME 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_HOME",
+      "assertions": [
+        "반응형 GNB,핵심 업무 진입,인증 전 공개 범위,검색 접근성"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "LIST 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_LIST",
+      "assertions": [
+        "검색·초기화,페이지당 10건,정렬,빈 결과,권한별 데이터 격리"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "REPORT 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_REPORT",
+      "assertions": [
+        "언어 유지,PDF 생성,진위 검증,다운로드 이력,위변조 방지"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "SEARCH 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_SEARCH",
+      "assertions": [
+        "빈 검색,섹션 구분,더보기,상세 이동,권한 필터"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "UPLOAD 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_UPLOAD",
+      "assertions": [
+        "확장자·용량,양식 파싱,행 오류,전체 저장,재업로드 멱등성"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    },
+    {
+      "name": "WORKFLOW 화면 레퍼런스 기대값",
+      "type": "REFERENCE",
+      "steps": [],
+      "status": "DRAFT",
+      "caseCode": "GOVERNANCE_CHANGE_REFERENCE_WORKFLOW",
+      "assertions": [
+        "상태 전이,반려·재제출,중복 승인,승인 권한,감사 이력"
+      ],
+      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
+    }
+  ],
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "bc4bc1d18e1b6d09f50cef4fee5307d6",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "READY",
+  "packageHash": "915b78e09d7296457016a9586d6338f5dd1982b239cacd3ba3204390a0bc2335"
+}

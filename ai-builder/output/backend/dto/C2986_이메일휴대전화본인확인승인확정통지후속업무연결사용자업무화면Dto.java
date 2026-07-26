@@ -1,0 +1,9 @@
+package com.carbonet.api.dto;
+
+import lombok.Data;
+
+@Data
+public class C2986_이메일휴대전화본인확인승인확정통지후속업무연결사용자업무화면Dto {
+    private Long id;
+    private String data;
+}

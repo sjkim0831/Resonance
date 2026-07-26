@@ -1,0 +1,5336 @@
+{
+  "extracted_at": "2026-07-25T10:33:01.020726",
+  "total": 1066,
+  "contracts": [
+    {
+      "id": 1,
+      "route": "/emission/project/create",
+      "screen": "프로젝트 기본정보 및 책임 확정 사용자 업무 화면"
+    },
+    {
+      "id": 2,
+      "route": "/admin/emission/project-operations",
+      "screen": "배출량 프로젝트 운영"
+    },
+    {
+      "id": 3,
+      "route": "/emission/validate?tab=approval",
+      "screen": "검토·승인·확정 사용자 업무 화면"
+    },
+    {
+      "id": 4,
+      "route": "/admin/emission/approval-workflow",
+      "screen": "검토·승인·확정 관리자 업무 화면"
+    },
+    {
+      "id": 5,
+      "route": "/emission/activity-data",
+      "screen": "활동자료·증빙 수집 사용자 업무 화면"
+    },
+    {
+      "id": 6,
+      "route": "/admin/emission/survey-admin-data",
+      "screen": "활동자료·증빙 수집 관리자 업무 화면"
+    },
+    {
+      "id": 7,
+      "route": "/emission/calculation",
+      "screen": "배출계수 매핑·배출량 산정"
+    },
+    {
+      "id": 8,
+      "route": "/admin/emission/calculation-rule",
+      "screen": "배출계수 매핑·배출량 산정 관리자 업무 화면"
+    },
+    {
+      "id": 9,
+      "route": "/emission/validate",
+      "screen": "데이터·산정 결과 검증 사용자 업무 화면"
+    },
+    {
+      "id": 10,
+      "route": "/admin/emission/validate",
+      "screen": "데이터·산정 결과 검증 관리자 업무 화면"
+    },
+    {
+      "id": 11,
+      "route": "/emission/report_submit",
+      "screen": "보고서 생성·제출·진위 확인 사용자 업무 화면"
+    },
+    {
+      "id": 12,
+      "route": "/admin/emission/survey-report",
+      "screen": "보고서 생성·제출·진위 확인 관리자 업무 화면"
+    },
+    {
+      "id": 13,
+      "route": "/emission/data_input?mode=correction",
+      "screen": "보완·재산정 사용자 업무 화면"
+    },
+    {
+      "id": 14,
+      "route": "/admin/emission/validate",
+      "screen": "보완·재산정 관리자 업무 화면"
+    },
+    {
+      "id": 65,
+      "route": "/admin/emission/approval-workflow",
+      "screen": "검토·승인·확정 관리자 업무 화면"
+    },
+    {
+      "id": 66,
+      "route": "/emission/project/detail",
+      "screen": "프로젝트 기본정보 및 책임 확정 사용자 업무 화면"
+    },
+    {
+      "id": 67,
+      "route": "/admin/emission/project-operations",
+      "screen": "배출량 프로젝트 운영"
+    },
+    {
+      "id": 68,
+      "route": "/emission/activity-data",
+      "screen": "활동자료·증빙 수집 관리자 업무 화면"
+    },
+    {
+      "id": 69,
+      "route": "/emission/activity-data",
+      "screen": "활동자료·증빙 수집 사용자 업무 화면"
+    },
+    {
+      "id": 70,
+      "route": "/admin/emission/validate",
+      "screen": "데이터·산정 결과 검증 관리자 업무 화면"
+    },
+    {
+      "id": 71,
+      "route": "/emission/validate?tab=approval",
+      "screen": "검토·승인·확정 사용자 업무 화면"
+    },
+    {
+      "id": 72,
+      "route": "/emission/validate",
+      "screen": "데이터·산정 결과 검증 사용자 업무 화면"
+    },
+    {
+      "id": 121,
+      "route": "/emission/project/detail",
+      "screen": "산정 계획·범위 확인"
+    },
+    {
+      "id": 122,
+      "route": "/admin/emission/project-operations",
+      "screen": "배출량 프로젝트 운영"
+    },
+    {
+      "id": 123,
+      "route": "/admin/emission/calculation-rule",
+      "screen": "배출계수 매핑·배출량 산정"
+    },
+    {
+      "id": 124,
+      "route": "/emission/calculation",
+      "screen": "배출계수 매핑·배출량 산정"
+    },
+    {
+      "id": 125,
+      "route": "/admin/emission/validate",
+      "screen": "산정 결과 검증·보완"
+    },
+    {
+      "id": 126,
+      "route": "/emission/validate",
+      "screen": "산정 결과 검증·보완"
+    },
+    {
+      "id": 127,
+      "route": "/admin/emission/result_list",
+      "screen": "산정 결과 승인·확정"
+    },
+    {
+      "id": 128,
+      "route": "/emission/calculation-results",
+      "screen": "산정 결과 승인·확정"
+    },
+    {
+      "id": 129,
+      "route": "/emission/report_submit",
+      "screen": "보고서 작성 계획·원천 결과 확인"
+    },
+    {
+      "id": 130,
+      "route": "/emission/report_submit",
+      "screen": "보고서 작성·확정"
+    },
+    {
+      "id": 131,
+      "route": "/home/certificate-verify",
+      "screen": "데이터셋·OCR·시각지문 진위 확인"
+    },
+    {
+      "id": 132,
+      "route": "/emission/report-download",
+      "screen": "인증서 발급·다운로드·감사"
+    },
+    {
+      "id": 133,
+      "route": "/admin/emission/report-certificates",
+      "screen": "보고서 작성 계획·원천 결과 확인"
+    },
+    {
+      "id": 134,
+      "route": "/admin/emission/survey-report",
+      "screen": "보고서 작성·확정"
+    },
+    {
+      "id": 135,
+      "route": "/admin/emission/survey-report-verify",
+      "screen": "데이터셋·OCR·시각지문 진위 확인"
+    },
+    {
+      "id": 136,
+      "route": "/admin/emission/report-certificates",
+      "screen": "인증서 발급·다운로드·감사"
+    },
+    {
+      "id": 235,
+      "route": "/admin/emission/validate",
+      "screen": "산정 결과 검증·보완"
+    },
+    {
+      "id": 236,
+      "route": "/emission/validate",
+      "screen": "산정 결과 검증·보완"
+    },
+    {
+      "id": 237,
+      "route": "/admin/emission/approval-workflow",
+      "screen": "검토·승인"
+    },
+    {
+      "id": 238,
+      "route": "/emission/validate",
+      "screen": "검토·승인"
+    },
+    {
+      "id": 239,
+      "route": "/emission/my-tasks",
+      "screen": "내 업무·프로젝트 선택"
+    },
+    {
+      "id": 240,
+      "route": "/admin/emission/project-operations",
+      "screen": "배출량 프로젝트 운영"
+    },
+    {
+      "id": 241,
+      "route": "/emission/activity-data",
+      "screen": "활동자료 수집·제출"
+    },
+    {
+      "id": 242,
+      "route": "/admin/emission/survey-admin-data",
+      "screen": "활동자료 수집·제출"
+    },
+    {
+      "id": 243,
+      "route": "/admin/emission/calculation-rule",
+      "screen": "배출계수 매핑·배출량 산정"
+    },
+    {
+      "id": 244,
+      "route": "/emission/calculation",
+      "screen": "배출계수 매핑·배출량 산정"
+    },
+    {
+      "id": 245,
+      "route": "/emission/report_submit",
+      "screen": "보고서·인증서 발급"
+    },
+    {
+      "id": 246,
+      "route": "/admin/emission/report-certificates",
+      "screen": "보고서·인증서 발급"
+    },
+    {
+      "id": 247,
+      "route": "/home/certificate-verify",
+      "screen": "공개 진위 확인·완료"
+    },
+    {
+      "id": 248,
+      "route": "/admin/emission/survey-report-verify",
+      "screen": "공개 진위 확인·완료"
+    },
+    {
+      "id": 251,
+      "route": "/emission/simulate",
+      "screen": "감축 전략 시나리오"
+    },
+    {
+      "id": 260,
+      "route": "/emission/report-submission",
+      "screen": "제출 범위·기한 확인"
+    },
+    {
+      "id": 262,
+      "route": "/emission/report-submission",
+      "screen": "제출 범위·기한 확인"
+    },
+    {
+      "id": 264,
+      "route": "/emission/report-submission",
+      "screen": "제출 범위·기한 확인"
+    },
+    {
+      "id": 266,
+      "route": "/emission/report-submission",
+      "screen": "제출 범위·기한 확인"
+    },
+    {
+      "id": 304,
+      "route": "/ccus/facility/facility-asset-registry?step=far_register",
+      "screen": "설비·태그·위치 등록 사용자 업무 화면"
+    },
+    {
+      "id": 305,
+      "route": "/admin/ccus/facility/facility-asset-registry?step=far_register",
+      "screen": "설비·태그·위치 등록 관리자 업무 화면"
+    },
+    {
+      "id": 306,
+      "route": "/ccus/facility/facility-asset-registry?step=far_assign",
+      "screen": "책임·허가·정비기준 연결 사용자 업무 화면"
+    },
+    {
+      "id": 307,
+      "route": "/admin/ccus/facility/facility-asset-registry?step=far_assign",
+      "screen": "책임·허가·정비기준 연결 관리자 업무 화면"
+    },
+    {
+      "id": 308,
+      "route": "/ccus/facility/facility-asset-registry?step=far_approve",
+      "screen": "설비 기준정보 승인 사용자 업무 화면"
+    },
+    {
+      "id": 309,
+      "route": "/admin/ccus/facility/facility-asset-registry?step=far_approve",
+      "screen": "설비 기준정보 승인 관리자 업무 화면"
+    },
+    {
+      "id": 310,
+      "route": "/ccus/facility/facility-operation-monitoring?step=fom_plan",
+      "screen": "운전계획·허용범위 설정 사용자 업무 화면"
+    },
+    {
+      "id": 311,
+      "route": "/admin/ccus/facility/facility-operation-monitoring?step=fom_plan",
+      "screen": "운전계획·허용범위 설정 관리자 업무 화면"
+    },
+    {
+      "id": 312,
+      "route": "/ccus/facility/facility-operation-monitoring?step=fom_operate",
+      "screen": "운전·알람·조치 기록 사용자 업무 화면"
+    },
+    {
+      "id": 313,
+      "route": "/admin/ccus/facility/facility-operation-monitoring?step=fom_operate",
+      "screen": "운전·알람·조치 기록 관리자 업무 화면"
+    },
+    {
+      "id": 314,
+      "route": "/ccus/facility/facility-operation-monitoring?step=fom_handover",
+      "screen": "교대 검토·인계 사용자 업무 화면"
+    },
+    {
+      "id": 315,
+      "route": "/admin/ccus/facility/facility-operation-monitoring?step=fom_handover",
+      "screen": "교대 검토·인계 관리자 업무 화면"
+    },
+    {
+      "id": 316,
+      "route": "/ccus/facility/meter-calibration-management?step=mcm_register",
+      "screen": "계측기·측정지점 등록 사용자 업무 화면"
+    },
+    {
+      "id": 317,
+      "route": "/admin/ccus/facility/meter-calibration-management?step=mcm_register",
+      "screen": "계측기·측정지점 등록 관리자 업무 화면"
+    },
+    {
+      "id": 318,
+      "route": "/ccus/facility/meter-calibration-management?step=mcm_calibrate",
+      "screen": "교정·오차·보정 관리 사용자 업무 화면"
+    },
+    {
+      "id": 319,
+      "route": "/admin/ccus/facility/meter-calibration-management?step=mcm_calibrate",
+      "screen": "교정·오차·보정 관리 관리자 업무 화면"
+    },
+    {
+      "id": 320,
+      "route": "/ccus/facility/meter-calibration-management?step=mcm_approve",
+      "screen": "유효성·불확도 승인 사용자 업무 화면"
+    },
+    {
+      "id": 321,
+      "route": "/admin/ccus/facility/meter-calibration-management?step=mcm_approve",
+      "screen": "유효성·불확도 승인 관리자 업무 화면"
+    },
+    {
+      "id": 322,
+      "route": "/ccus/facility/preventive-maintenance?step=pm_plan",
+      "screen": "위험기반 정비계획 사용자 업무 화면"
+    },
+    {
+      "id": 323,
+      "route": "/admin/ccus/facility/preventive-maintenance?step=pm_plan",
+      "screen": "위험기반 정비계획 관리자 업무 화면"
+    },
+    {
+      "id": 324,
+      "route": "/ccus/facility/preventive-maintenance?step=pm_execute",
+      "screen": "작업허가·정비 수행 사용자 업무 화면"
+    },
+    {
+      "id": 325,
+      "route": "/admin/ccus/facility/preventive-maintenance?step=pm_execute",
+      "screen": "작업허가·정비 수행 관리자 업무 화면"
+    },
+    {
+      "id": 326,
+      "route": "/ccus/facility/preventive-maintenance?step=pm_return_service",
+      "screen": "기능시험·재가동 승인 사용자 업무 화면"
+    },
+    {
+      "id": 327,
+      "route": "/admin/ccus/facility/preventive-maintenance?step=pm_return_service",
+      "screen": "기능시험·재가동 승인 관리자 업무 화면"
+    },
+    {
+      "id": 328,
+      "route": "/ccus/facility/co2-injection-storage-operation?step=ciso_plan",
+      "screen": "주입계획·허용한계 설정 사용자 업무 화면"
+    },
+    {
+      "id": 329,
+      "route": "/admin/ccus/facility/co2-injection-storage-operation?step=ciso_plan",
+      "screen": "주입계획·허용한계 설정 관리자 업무 화면"
+    },
+    {
+      "id": 330,
+      "route": "/ccus/facility/co2-injection-storage-operation?step=ciso_operate",
+      "screen": "주입 실적·저장거동 기록 사용자 업무 화면"
+    },
+    {
+      "id": 331,
+      "route": "/admin/ccus/facility/co2-injection-storage-operation?step=ciso_operate",
+      "screen": "주입 실적·저장거동 기록 관리자 업무 화면"
+    },
+    {
+      "id": 332,
+      "route": "/ccus/facility/co2-injection-storage-operation?step=ciso_review",
+      "screen": "건전성 검토·MRV 인계 사용자 업무 화면"
+    },
+    {
+      "id": 333,
+      "route": "/admin/ccus/facility/co2-injection-storage-operation?step=ciso_review",
+      "screen": "건전성 검토·MRV 인계 관리자 업무 화면"
+    },
+    {
+      "id": 334,
+      "route": "/ccus/facility/facility-emergency-response?step=fer_declare",
+      "screen": "사고 탐지·비상 선언 사용자 업무 화면"
+    },
+    {
+      "id": 335,
+      "route": "/admin/ccus/facility/facility-emergency-response?step=fer_declare",
+      "screen": "사고 탐지·비상 선언 관리자 업무 화면"
+    },
+    {
+      "id": 336,
+      "route": "/ccus/facility/facility-emergency-response?step=fer_control",
+      "screen": "통제·대피·법정보고 사용자 업무 화면"
+    },
+    {
+      "id": 337,
+      "route": "/admin/ccus/facility/facility-emergency-response?step=fer_control",
+      "screen": "통제·대피·법정보고 관리자 업무 화면"
+    },
+    {
+      "id": 338,
+      "route": "/ccus/facility/facility-emergency-response?step=fer_recover",
+      "screen": "원인분석·복구·재발방지 사용자 업무 화면"
+    },
+    {
+      "id": 339,
+      "route": "/admin/ccus/facility/facility-emergency-response?step=fer_recover",
+      "screen": "원인분석·복구·재발방지 관리자 업무 화면"
+    },
+    {
+      "id": 448,
+      "route": "/work/co2-lot-tag-management?step=clt_create",
+      "screen": "로트 생성·원본 태그 확정 사용자 업무 화면"
+    },
+    {
+      "id": 449,
+      "route": "/admin/work/co2-lot-tag-management?step=clt_create",
+      "screen": "로트 생성·원본 태그 확정 관리자 업무 화면"
+    },
+    {
+      "id": 454,
+      "route": "/work/co2-quality-analysis?step=cqa_plan",
+      "screen": "성분예측·시료·시험계획 사용자 업무 화면"
+    },
+    {
+      "id": 455,
+      "route": "/admin/work/co2-quality-analysis?step=cqa_plan",
+      "screen": "성분예측·시료·시험계획 관리자 업무 화면"
+    },
+    {
+      "id": 460,
+      "route": "/work/certification-eligibility-check?step=cec_validate_company",
+      "screen": "법인·회원사·신청 유효성 검증 사용자 업무 화면"
+    },
+    {
+      "id": 461,
+      "route": "/admin/work/certification-eligibility-check?step=cec_validate_company",
+      "screen": "법인·회원사·신청 유효성 검증 관리자 업무 화면"
+    },
+    {
+      "id": 466,
+      "route": "/work/certificate-fee-tax-refund?step=cftr_bill",
+      "screen": "수수료·가상계좌·청구 생성 사용자 업무 화면"
+    },
+    {
+      "id": 467,
+      "route": "/admin/work/certificate-fee-tax-refund?step=cftr_bill",
+      "screen": "수수료·가상계좌·청구 생성 관리자 업무 화면"
+    },
+    {
+      "id": 472,
+      "route": "/work/company-manager-delegation?step=cmd_request",
+      "screen": "위임·승계 요청과 후보 검증 사용자 업무 화면"
+    },
+    {
+      "id": 473,
+      "route": "/admin/work/company-manager-delegation?step=cmd_request",
+      "screen": "위임·승계 요청과 후보 검증 관리자 업무 화면"
+    },
+    {
+      "id": 478,
+      "route": "/work/privacy-retention-destruction?step=prd_access",
+      "screen": "추가인증·마스킹 해제 통제 사용자 업무 화면"
+    },
+    {
+      "id": 479,
+      "route": "/admin/work/privacy-retention-destruction?step=prd_access",
+      "screen": "추가인증·마스킹 해제 통제 관리자 업무 화면"
+    },
+    {
+      "id": 484,
+      "route": "/work/scheduled-statistics-reporting?step=ssr_define",
+      "screen": "지표·주기·기준시점 확정 사용자 업무 화면"
+    },
+    {
+      "id": 485,
+      "route": "/admin/work/scheduled-statistics-reporting?step=ssr_define",
+      "screen": "지표·주기·기준시점 확정 관리자 업무 화면"
+    },
+    {
+      "id": 490,
+      "route": "/work/calculation-engine-parity?step=cep_baseline",
+      "screen": "VBA 기준 사례·버전 잠금 사용자 업무 화면"
+    },
+    {
+      "id": 491,
+      "route": "/admin/work/calculation-engine-parity?step=cep_baseline",
+      "screen": "VBA 기준 사례·버전 잠금 관리자 업무 화면"
+    },
+    {
+      "id": 496,
+      "route": "/work/legal-notification-delivery?step=lnd_compose",
+      "screen": "통지 사건·템플릿·대상 확정 사용자 업무 화면"
+    },
+    {
+      "id": 497,
+      "route": "/admin/work/legal-notification-delivery?step=lnd_compose",
+      "screen": "통지 사건·템플릿·대상 확정 관리자 업무 화면"
+    },
+    {
+      "id": 510,
+      "route": "/admin/emission/organizational-boundary",
+      "screen": "법인·사업장·소유구조 수집 관리자 업무 화면"
+    },
+    {
+      "id": 511,
+      "route": "/emission/organizational-boundary",
+      "screen": "법인·사업장·소유구조 수집 사용자 업무 화면"
+    },
+    {
+      "id": 512,
+      "route": "/admin/emission/organizational-boundary",
+      "screen": "경계 기준·포함 여부 판정 관리자 업무 화면"
+    },
+    {
+      "id": 513,
+      "route": "/emission/organizational-boundary",
+      "screen": "경계 기준·포함 여부 판정 사용자 업무 화면"
+    },
+    {
+      "id": 514,
+      "route": "/admin/emission/organizational-boundary",
+      "screen": "내부거래 제거·통합 계산 관리자 업무 화면"
+    },
+    {
+      "id": 515,
+      "route": "/emission/organizational-boundary",
+      "screen": "내부거래 제거·통합 계산 사용자 업무 화면"
+    },
+    {
+      "id": 516,
+      "route": "/admin/emission/organizational-boundary",
+      "screen": "경계 승인·버전 확정 관리자 업무 화면"
+    },
+    {
+      "id": 517,
+      "route": "/emission/organizational-boundary",
+      "screen": "경계 승인·버전 확정 사용자 업무 화면"
+    },
+    {
+      "id": 518,
+      "route": "/admin/system/process-workspace?process=CONTENT_OPERATION&step=CONTENT_OPERATION_02_WORK",
+      "screen": "콘텐츠·교육·지원 운영 - 자료 입력·업무 수행"
+    },
+    {
+      "id": 519,
+      "route": "/admin/system/process-workspace?process=CONTENT_OPERATION&step=CONTENT_OPERATION_03_VERIFY",
+      "screen": "콘텐츠·교육·지원 운영 - 검증·보완"
+    },
+    {
+      "id": 520,
+      "route": "/admin/system/process-workspace?process=CONTENT_OPERATION&step=CONTENT_OPERATION_04_APPROVE",
+      "screen": "콘텐츠·교육·지원 운영 - 승인·확정"
+    },
+    {
+      "id": 521,
+      "route": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_02_WORK",
+      "screen": "수집 실행·원본 보존 관리자 업무 화면"
+    },
+    {
+      "id": 522,
+      "route": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_03_VERIFY",
+      "screen": "품질 검증·보완 관리자 업무 화면"
+    },
+    {
+      "id": 523,
+      "route": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_04_APPROVE",
+      "screen": "승인·운영 적용 관리자 업무 화면"
+    },
+    {
+      "id": 524,
+      "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_APPROVE",
+      "screen": "기준·워크플로 변경관리 - 변경 승인·버전 잠금"
+    },
+    {
+      "id": 525,
+      "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_DESIGN",
+      "screen": "기준·워크플로 변경관리 - 기준·워크플로 설계"
+    },
+    {
+      "id": 526,
+      "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_IMPACT",
+      "screen": "기준·워크플로 변경관리 - 메뉴·화면·API·DB 영향 분석"
+    },
+    {
+      "id": 527,
+      "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_PUBLISH",
+      "screen": "기준·워크플로 변경관리 - 적용·캐시 무효화·운영 확인"
+    },
+    {
+      "id": 528,
+      "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_SIMULATE",
+      "screen": "기준·워크플로 변경관리 - 정상·안전 시나리오 검증"
+    },
+    {
+      "id": 529,
+      "route": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_02_WORK",
+      "screen": "인벤토리 수집·매핑·산정 관리자 업무 화면"
+    },
+    {
+      "id": 530,
+      "route": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_03_VERIFY",
+      "screen": "LCIA 검증·기여도·불확도 분석 관리자 업무 화면"
+    },
+    {
+      "id": 531,
+      "route": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_04_APPROVE",
+      "screen": "검토·확정·보고 승인 관리자 업무 화면"
+    },
+    {
+      "id": 532,
+      "route": "/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_02_WORK",
+      "screen": "회원·기업 생애주기 - 자료 입력·업무 수행"
+    },
+    {
+      "id": 533,
+      "route": "/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_03_VERIFY",
+      "screen": "회원·기업 생애주기 - 검증·보완"
+    },
+    {
+      "id": 534,
+      "route": "/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_04_APPROVE",
+      "screen": "회원·기업 생애주기 - 승인·확정"
+    },
+    {
+      "id": 535,
+      "route": "/admin/system/process-workspace?process=MONITORING_ANALYSIS&step=MONITORING_EXPORT",
+      "screen": "모니터링·분석 - 분석 결과 내보내기"
+    },
+    {
+      "id": 536,
+      "route": "/admin/system/process-workspace?process=MONITORING_ANALYSIS&step=MONITORING_REVIEW",
+      "screen": "모니터링·분석 - 지표·품질·이상치 분석"
+    },
+    {
+      "id": 537,
+      "route": "/admin/system/process-workspace?process=MONITORING_ANALYSIS&step=MONITORING_SHARE",
+      "screen": "모니터링·분석 - 이해관계자 공유"
+    },
+    {
+      "id": 538,
+      "route": "/admin/system/process-workspace?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_02_WORK",
+      "screen": "수수료·결제·정산 - 자료 입력·업무 수행"
+    },
+    {
+      "id": 539,
+      "route": "/admin/system/process-workspace?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_03_VERIFY",
+      "screen": "수수료·결제·정산 - 검증·보완"
+    },
+    {
+      "id": 540,
+      "route": "/admin/system/process-workspace?process=PAYMENT_SETTLEMENT&step=PAYMENT_SETTLEMENT_04_APPROVE",
+      "screen": "수수료·결제·정산 - 승인·확정"
+    },
+    {
+      "id": 541,
+      "route": "/admin/system/process-workspace?process=PLATFORM_OPERATION&step=PLATFORM_AUDIT",
+      "screen": "플랫폼 운영 - 운영·감사·복구 확인"
+    },
+    {
+      "id": 542,
+      "route": "/admin/system/process-workspace?process=PLATFORM_OPERATION&step=PLATFORM_DEPLOY",
+      "screen": "플랫폼 운영 - 무중단 배포"
+    },
+    {
+      "id": 543,
+      "route": "/admin/system/process-workspace?process=PLATFORM_OPERATION&step=PLATFORM_VALIDATE",
+      "screen": "플랫폼 운영 - 코드·계약·고객 여정 검증"
+    },
+    {
+      "id": 544,
+      "route": "/admin/system/process-workspace?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_02_WORK",
+      "screen": "감축 과제 수행 - 자료 입력·업무 수행"
+    },
+    {
+      "id": 545,
+      "route": "/admin/system/process-workspace?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_03_VERIFY",
+      "screen": "감축 과제 수행 - 검증·보완"
+    },
+    {
+      "id": 546,
+      "route": "/admin/system/process-workspace?process=REDUCTION_EXECUTION&step=REDUCTION_EXECUTION_04_APPROVE",
+      "screen": "감축 과제 수행 - 승인·확정"
+    },
+    {
+      "id": 547,
+      "route": "/admin/system/process-workspace?process=TRADE_EXECUTION&step=TRADE_EXECUTION_02_WORK",
+      "screen": "탄소·자원 거래 - 자료 입력·업무 수행"
+    },
+    {
+      "id": 548,
+      "route": "/admin/system/process-workspace?process=TRADE_EXECUTION&step=TRADE_EXECUTION_03_VERIFY",
+      "screen": "탄소·자원 거래 - 검증·보완"
+    },
+    {
+      "id": 549,
+      "route": "/admin/system/process-workspace?process=TRADE_EXECUTION&step=TRADE_EXECUTION_04_APPROVE",
+      "screen": "탄소·자원 거래 - 승인·확정"
+    },
+    {
+      "id": 550,
+      "route": "/admin/system/process-workspace?process=MEMBER_REGISTRATION&step=MEMBER_REGISTRATION_S5",
+      "screen": "회원가입 신청 - 가입 신청 완료·접수번호 확인"
+    },
+    {
+      "id": 553,
+      "route": "/join/en/step1",
+      "screen": "Registration Step 1 - Membership Type"
+    },
+    {
+      "id": 554,
+      "route": "/join/step1",
+      "screen": "회원가입 1단계 - 회원 유형 선택"
+    },
+    {
+      "id": 585,
+      "route": "/admin/emission/survey-report-print",
+      "screen": "인증서·PDF 발급 관리"
+    },
+    {
+      "id": 670,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 671,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 672,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 673,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 674,
+      "route": "/admin/system/process-workspace",
+      "screen": "외부 데이터 연계 - 연계 계획·계약 확정"
+    },
+    {
+      "id": 675,
+      "route": "/admin/system/process-workspace",
+      "screen": "외부 데이터 연계 - 수집 실행·원본 보존"
+    },
+    {
+      "id": 676,
+      "route": "/admin/system/process-workspace",
+      "screen": "외부 데이터 연계 - 품질 검증·보완"
+    },
+    {
+      "id": 677,
+      "route": "/admin/system/process-workspace",
+      "screen": "외부 데이터 연계 - 승인·운영 적용"
+    },
+    {
+      "id": 678,
+      "route": "/admin/system/process-workspace",
+      "screen": "기준·워크플로 변경관리 - 변경 승인·버전 잠금"
+    },
+    {
+      "id": 679,
+      "route": "/admin/system/process-workspace",
+      "screen": "기준·워크플로 변경관리 - 기준·워크플로 설계"
+    },
+    {
+      "id": 680,
+      "route": "/admin/system/process-workspace",
+      "screen": "기준·워크플로 변경관리 - 메뉴·화면·API·DB 영향 분석"
+    },
+    {
+      "id": 681,
+      "route": "/admin/system/process-workspace",
+      "screen": "기준·워크플로 변경관리 - 적용·캐시 무효화·운영 확인"
+    },
+    {
+      "id": 682,
+      "route": "/admin/system/process-workspace",
+      "screen": "기준·워크플로 변경관리 - 변경 요청·근거 등록"
+    },
+    {
+      "id": 683,
+      "route": "/admin/system/process-workspace",
+      "screen": "기준·워크플로 변경관리 - 정상·안전 시나리오 검증"
+    },
+    {
+      "id": 684,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 685,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 686,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 687,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 688,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 689,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 690,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 691,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 692,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 693,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 694,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 695,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 696,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 697,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 698,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 699,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 700,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 701,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 702,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 703,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 704,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 705,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 706,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 707,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 708,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 709,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 710,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 711,
+      "route": "/admin/system/process-workspace",
+      "screen": "콘텐츠·교육·지원 운영 통합 작업공간"
+    },
+    {
+      "id": 734,
+      "route": "/admin/emission/project-operations",
+      "screen": "배출량 프로젝트 운영"
+    },
+    {
+      "id": 738,
+      "route": "/admin/emission/project-operations",
+      "screen": "배출량 프로젝트 운영"
+    },
+    {
+      "id": 739,
+      "route": "/emission/project_list",
+      "screen": "배출량 프로젝트"
+    },
+    {
+      "id": 742,
+      "route": "/admin/system/process-step-workspace",
+      "screen": "프로세스 단계 실행 작업공간"
+    },
+    {
+      "id": 744,
+      "route": "/work/execution",
+      "screen": "전문 업무 실행"
+    },
+    {
+      "id": 2779,
+      "route": "/join/companyRegister",
+      "screen": "기업 등록 신청 사용자 업무 화면"
+    },
+    {
+      "id": 2780,
+      "route": "/admin/member/company-approve",
+      "screen": "기업 등록 신청 관리자 업무 화면"
+    },
+    {
+      "id": 2781,
+      "route": "/generated/disclosure-correction/disclosure-correction-s4",
+      "screen": "정정공시·이해관계자 통지 사용자 업무 화면"
+    },
+    {
+      "id": 2782,
+      "route": "/admin/generated/disclosure-correction/disclosure-correction-s4",
+      "screen": "정정공시·이해관계자 통지 관리자 업무 화면"
+    },
+    {
+      "id": 2783,
+      "route": "/join/companyJoinStatusDetail",
+      "screen": "기업 심사·승인 사용자 업무 화면"
+    },
+    {
+      "id": 2784,
+      "route": "/admin/member/company-approve",
+      "screen": "기업 심사·승인 관리자 업무 화면"
+    },
+    {
+      "id": 2785,
+      "route": "/mypage/company",
+      "screen": "조직·사업장 등록 사용자 업무 화면"
+    },
+    {
+      "id": 2786,
+      "route": "/admin/emission/site-management",
+      "screen": "조직·사업장 등록 관리자 업무 화면"
+    },
+    {
+      "id": 2787,
+      "route": "/mypage/staff",
+      "screen": "담당 액터·업무분리 배정 사용자 업무 화면"
+    },
+    {
+      "id": 2788,
+      "route": "/admin/system/actor-process",
+      "screen": "담당 액터·업무분리 배정 관리자 업무 화면"
+    },
+    {
+      "id": 2789,
+      "route": "/emission/project/create",
+      "screen": "프로젝트 착수 준비 진단 사용자 업무 화면"
+    },
+    {
+      "id": 2791,
+      "route": "/emission/report_submit",
+      "screen": "인증서·PDF 발급 사용자 업무 화면"
+    },
+    {
+      "id": 2793,
+      "route": "/generated/external-verification-engagement/external-verification-engagement-s1",
+      "screen": "검증 범위·후보 선정 사용자 업무 화면"
+    },
+    {
+      "id": 2794,
+      "route": "/admin/generated/external-verification-engagement/external-verification-engagement-s1",
+      "screen": "검증 범위·후보 선정 관리자 업무 화면"
+    },
+    {
+      "id": 2813,
+      "route": "/emission/report_submit",
+      "screen": "보고서 확정·발급 준비 사용자 업무 화면"
+    },
+    {
+      "id": 2814,
+      "route": "/admin/emission/survey-report",
+      "screen": "보고서 확정·발급 준비 관리자 업무 화면"
+    },
+    {
+      "id": 2823,
+      "route": "/home/certificate-verify",
+      "screen": "공개 진위·OCR·시각지문 검증 사용자 업무 화면"
+    },
+    {
+      "id": 2824,
+      "route": "/admin/emission/survey-report-verify",
+      "screen": "공개 진위·OCR·시각지문 검증 관리자 업무 화면"
+    },
+    {
+      "id": 2825,
+      "route": "/emission/report_submit",
+      "screen": "폐기·재발급·감사 확정 사용자 업무 화면"
+    },
+    {
+      "id": 2826,
+      "route": "/admin/emission/certificates",
+      "screen": "폐기·재발급·감사 확정 관리자 업무 화면"
+    },
+    {
+      "id": 2834,
+      "route": "/admin/emission/survey-admin-data",
+      "screen": "자료 입력·업무 수행 관리자 업무 화면"
+    },
+    {
+      "id": 2863,
+      "route": "/generated/faq-management/faq-management-s3",
+      "screen": "FAQ 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 2864,
+      "route": "/admin/generated/faq-management/faq-management-s3",
+      "screen": "FAQ 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 2865,
+      "route": "/generated/role-authority-management/role-authority-management-s1",
+      "screen": "역할·권한 그룹 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2866,
+      "route": "/admin/generated/role-authority-management/role-authority-management-s1",
+      "screen": "역할·권한 그룹 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2964,
+      "route": "/join/step2",
+      "screen": "약관·개인정보·GWP 고지 동의 사용자 업무 화면"
+    },
+    {
+      "id": 2965,
+      "route": "/admin/generated/member-registration/member-registration-s2",
+      "screen": "약관·개인정보·GWP 고지 동의 관리자 업무 화면"
+    },
+    {
+      "id": 2966,
+      "route": "/join/step3",
+      "screen": "본인 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2967,
+      "route": "/admin/generated/member-registration/member-registration-s3",
+      "screen": "본인 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2968,
+      "route": "/join/step4",
+      "screen": "회원·소속 정보 입력 및 제출 사용자 업무 화면"
+    },
+    {
+      "id": 2969,
+      "route": "/admin/generated/member-registration/member-registration-s4",
+      "screen": "회원·소속 정보 입력 및 제출 관리자 업무 화면"
+    },
+    {
+      "id": 2970,
+      "route": "/join/step1",
+      "screen": "약관·개인정보·GWP 고지 동의 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2971,
+      "route": "/admin/system/consent-history",
+      "screen": "약관·개인정보·GWP 고지 동의 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2972,
+      "route": "/join/step2",
+      "screen": "약관·개인정보·GWP 고지 동의 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 2973,
+      "route": "/admin/system/consent-history",
+      "screen": "약관·개인정보·GWP 고지 동의 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 2974,
+      "route": "/join/step2",
+      "screen": "약관·개인정보·GWP 고지 동의 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 2975,
+      "route": "/admin/system/consent-history",
+      "screen": "약관·개인정보·GWP 고지 동의 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 2976,
+      "route": "/join/step3",
+      "screen": "약관·개인정보·GWP 고지 동의 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 2977,
+      "route": "/admin/system/consent-history",
+      "screen": "약관·개인정보·GWP 고지 동의 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 2978,
+      "route": "/mypage/password",
+      "screen": "다중인증 등록·복구 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2979,
+      "route": "/admin/member/reset_password",
+      "screen": "다중인증 등록·복구 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2980,
+      "route": "/signin/authChoice",
+      "screen": "이메일·휴대전화·본인 확인 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2981,
+      "route": "/admin/member/list",
+      "screen": "이메일·휴대전화·본인 확인 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2982,
+      "route": "/join/step4",
+      "screen": "이메일·휴대전화·본인 확인 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 2983,
+      "route": "/admin/member/list",
+      "screen": "이메일·휴대전화·본인 확인 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 2984,
+      "route": "/signin/findId",
+      "screen": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 2985,
+      "route": "/admin/member/approve",
+      "screen": "이메일·휴대전화·본인 확인 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 2986,
+      "route": "/signin/loginView",
+      "screen": "이메일·휴대전화·본인 확인 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 2987,
+      "route": "/admin/member/approve",
+      "screen": "이메일·휴대전화·본인 확인 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 2988,
+      "route": "/join/companyJoinStatusSearch",
+      "screen": "가입 검토·승인·반려 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2989,
+      "route": "/admin/member/approve",
+      "screen": "가입 검토·승인·반려 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2990,
+      "route": "/join/companyJoinStatusDetail",
+      "screen": "가입 검토·승인·반려 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 2991,
+      "route": "/admin/member/approve",
+      "screen": "가입 검토·승인·반려 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 2992,
+      "route": "/join/companyJoinStatusDetail",
+      "screen": "가입 검토·승인·반려 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 2993,
+      "route": "/admin/member/approve",
+      "screen": "가입 검토·승인·반려 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 2994,
+      "route": "/signin/loginView",
+      "screen": "가입 검토·승인·반려 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 2995,
+      "route": "/admin/member/list",
+      "screen": "가입 검토·승인·반려 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 2996,
+      "route": "/signin/loginView",
+      "screen": "로그인·세션·로그아웃 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 2997,
+      "route": "/admin/member/login_history",
+      "screen": "로그인·세션·로그아웃 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 2998,
+      "route": "/signin/authChoice",
+      "screen": "로그인·세션·로그아웃 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 2999,
+      "route": "/admin/member/login_history",
+      "screen": "로그인·세션·로그아웃 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3000,
+      "route": "/mypage/password",
+      "screen": "로그인·세션·로그아웃 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3001,
+      "route": "/admin/member/login_history",
+      "screen": "로그인·세션·로그아웃 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3002,
+      "route": "/mypage/index",
+      "screen": "로그인·세션·로그아웃 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3003,
+      "route": "/admin/member/login_history",
+      "screen": "로그인·세션·로그아웃 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3004,
+      "route": "/mypage/password",
+      "screen": "다중인증 등록·복구 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3005,
+      "route": "/admin/member/reset_password",
+      "screen": "다중인증 등록·복구 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3006,
+      "route": "/mypage/password",
+      "screen": "다중인증 등록·복구 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3007,
+      "route": "/admin/member/login_history",
+      "screen": "다중인증 등록·복구 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3008,
+      "route": "/mypage/password",
+      "screen": "다중인증 등록·복구 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3009,
+      "route": "/admin/member/login_history",
+      "screen": "다중인증 등록·복구 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3010,
+      "route": "/signin/findPassword",
+      "screen": "비밀번호 재설정 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3011,
+      "route": "/admin/member/reset_password",
+      "screen": "비밀번호 재설정 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3012,
+      "route": "/signin/findPassword",
+      "screen": "비밀번호 재설정 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3013,
+      "route": "/admin/member/reset_password",
+      "screen": "비밀번호 재설정 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3014,
+      "route": "/signin/findPassword/result",
+      "screen": "비밀번호 재설정 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3015,
+      "route": "/admin/member/login_history",
+      "screen": "비밀번호 재설정 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3016,
+      "route": "/signin/loginView",
+      "screen": "비밀번호 재설정 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3017,
+      "route": "/admin/member/login_history",
+      "screen": "비밀번호 재설정 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3018,
+      "route": "/signin/loginForbidden",
+      "screen": "복구 요청 접수·범위 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3019,
+      "route": "/admin/member/activate",
+      "screen": "복구 요청 접수·범위 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3020,
+      "route": "/signin/findPassword",
+      "screen": "서버 신원검증·복구 증명 발급 사용자 업무 화면"
+    },
+    {
+      "id": 3021,
+      "route": "/admin/member/activate",
+      "screen": "서버 신원검증·복구 증명 발급 관리자 업무 화면"
+    },
+    {
+      "id": 3022,
+      "route": "/signin/findPassword/result",
+      "screen": "잠금 원인·위험 독립 검토 사용자 업무 화면"
+    },
+    {
+      "id": 3023,
+      "route": "/admin/member/activate",
+      "screen": "잠금 원인·위험 독립 검토 관리자 업무 화면"
+    },
+    {
+      "id": 3024,
+      "route": "/signin/loginView",
+      "screen": "복구 승인·원자적 적용·통지 사용자 업무 화면"
+    },
+    {
+      "id": 3025,
+      "route": "/admin/member/login_history",
+      "screen": "복구 승인·원자적 적용·통지 관리자 업무 화면"
+    },
+    {
+      "id": 3026,
+      "route": "/mypage/profile",
+      "screen": "내 정보·알림·보안 설정 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3027,
+      "route": "/admin/member/list",
+      "screen": "내 정보·알림·보안 설정 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3028,
+      "route": "/mypage/notification",
+      "screen": "내 정보·알림·보안 설정 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3029,
+      "route": "/admin/member/list",
+      "screen": "내 정보·알림·보안 설정 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3030,
+      "route": "/mypage/marketing",
+      "screen": "내 정보·알림·보안 설정 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3031,
+      "route": "/admin/member/login_history",
+      "screen": "내 정보·알림·보안 설정 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3032,
+      "route": "/mypage/password",
+      "screen": "내 정보·알림·보안 설정 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3033,
+      "route": "/admin/member/login_history",
+      "screen": "내 정보·알림·보안 설정 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3034,
+      "route": "/mypage/profile",
+      "screen": "회원 탈퇴·보유정보 처리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3035,
+      "route": "/admin/member/list",
+      "screen": "회원 탈퇴·보유정보 처리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3036,
+      "route": "/mypage/profile",
+      "screen": "회원 탈퇴·보유정보 처리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3037,
+      "route": "/admin/member/withdrawn",
+      "screen": "회원 탈퇴·보유정보 처리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3038,
+      "route": "/mypage/profile",
+      "screen": "회원 탈퇴·보유정보 처리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3039,
+      "route": "/admin/member/withdrawn",
+      "screen": "회원 탈퇴·보유정보 처리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3040,
+      "route": "/signin/loginView",
+      "screen": "회원 탈퇴·보유정보 처리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3041,
+      "route": "/admin/member/withdrawn",
+      "screen": "회원 탈퇴·보유정보 처리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3042,
+      "route": "/mypage/profile",
+      "screen": "회원 상태·이력 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3043,
+      "route": "/admin/member/list",
+      "screen": "회원 상태·이력 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3044,
+      "route": "/mypage/profile",
+      "screen": "회원 상태·이력 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3045,
+      "route": "/admin/member/approve",
+      "screen": "회원 상태·이력 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3046,
+      "route": "/mypage/profile",
+      "screen": "회원 상태·이력 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3047,
+      "route": "/admin/member/activate",
+      "screen": "회원 상태·이력 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3048,
+      "route": "/mypage/profile",
+      "screen": "회원 상태·이력 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3049,
+      "route": "/admin/member/login_history",
+      "screen": "회원 상태·이력 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3050,
+      "route": "/join/companyRegister",
+      "screen": "기업 등록·승인 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3051,
+      "route": "/admin/member/company_list",
+      "screen": "기업 등록·승인 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3052,
+      "route": "/join/companyRegisterComplete",
+      "screen": "기업 등록·승인 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3053,
+      "route": "/admin/member/company-approve",
+      "screen": "기업 등록·승인 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3054,
+      "route": "/join/companyJoinStatusDetail",
+      "screen": "기업 등록·승인 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3055,
+      "route": "/admin/member/company-approve",
+      "screen": "기업 등록·승인 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3056,
+      "route": "/mypage/company",
+      "screen": "기업 등록·승인 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3057,
+      "route": "/admin/member/company_list",
+      "screen": "기업 등록·승인 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3058,
+      "route": "/mypage/company",
+      "screen": "조직·부서 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3059,
+      "route": "/admin/member/dept-role-mapping",
+      "screen": "조직·부서 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3060,
+      "route": "/mypage/staff",
+      "screen": "조직·부서 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3061,
+      "route": "/admin/member/dept-role-mapping",
+      "screen": "조직·부서 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3062,
+      "route": "/mypage/staff",
+      "screen": "조직·부서 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3063,
+      "route": "/admin/member/dept-role-mapping",
+      "screen": "조직·부서 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3064,
+      "route": "/mypage/company",
+      "screen": "조직·부서 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3065,
+      "route": "/admin/member/dept-role-mapping",
+      "screen": "조직·부서 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3066,
+      "route": "/mypage/company",
+      "screen": "사업장 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3067,
+      "route": "/admin/emission/site-management",
+      "screen": "사업장 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3068,
+      "route": "/mypage/company",
+      "screen": "사업장 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3069,
+      "route": "/admin/emission/site-management",
+      "screen": "사업장 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3070,
+      "route": "/emission/project_list",
+      "screen": "사업장 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3071,
+      "route": "/admin/emission/site-management",
+      "screen": "사업장 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3072,
+      "route": "/mypage/company",
+      "screen": "사업장 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3073,
+      "route": "/admin/emission/site-management",
+      "screen": "사업장 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3076,
+      "route": "/generated/external-verification-engagement/external-verification-engagement-s3",
+      "screen": "검증 수행·발견사항 조치 사용자 업무 화면"
+    },
+    {
+      "id": 3077,
+      "route": "/admin/generated/external-verification-engagement/external-verification-engagement-s3",
+      "screen": "검증 수행·발견사항 조치 관리자 업무 화면"
+    },
+    {
+      "id": 3078,
+      "route": "/generated/external-verification-engagement/external-verification-engagement-s4",
+      "screen": "의견서 승인·발급 사용자 업무 화면"
+    },
+    {
+      "id": 3079,
+      "route": "/admin/generated/external-verification-engagement/external-verification-engagement-s4",
+      "screen": "의견서 승인·발급 관리자 업무 화면"
+    },
+    {
+      "id": 3080,
+      "route": "/generated/background-db-version-impact/background-db-version-impact-s4",
+      "screen": "마이그레이션 결정·감사기록 사용자 업무 화면"
+    },
+    {
+      "id": 3081,
+      "route": "/admin/generated/background-db-version-impact/background-db-version-impact-s4",
+      "screen": "마이그레이션 결정·감사기록 관리자 업무 화면"
+    },
+    {
+      "id": 3082,
+      "route": "/generated/comparative-assertion-review/comparative-assertion-review-s1",
+      "screen": "비교 목적·동등 조건 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3083,
+      "route": "/admin/generated/comparative-assertion-review/comparative-assertion-review-s1",
+      "screen": "비교 목적·동등 조건 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3084,
+      "route": "/generated/external-service-status/external-service-status-s4",
+      "screen": "외부 서비스 상태 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3085,
+      "route": "/admin/generated/external-service-status/external-service-status-s4",
+      "screen": "외부 서비스 상태 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3086,
+      "route": "/generated/notification-center-operation/notification-center-operation-s1",
+      "screen": "알림센터 운영 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3087,
+      "route": "/admin/generated/notification-center-operation/notification-center-operation-s1",
+      "screen": "알림센터 운영 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3088,
+      "route": "/generated/trade-settlement/trade-settlement-s3",
+      "screen": "거래 정산 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3089,
+      "route": "/admin/generated/trade-settlement/trade-settlement-s3",
+      "screen": "거래 정산 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3090,
+      "route": "/generated/faq-management/faq-management-s2",
+      "screen": "FAQ 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3091,
+      "route": "/admin/generated/faq-management/faq-management-s2",
+      "screen": "FAQ 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3092,
+      "route": "/generated/menu-access-control/menu-access-control-s3",
+      "screen": "메뉴 접근 권한 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3093,
+      "route": "/admin/generated/menu-access-control/menu-access-control-s3",
+      "screen": "메뉴 접근 권한 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3094,
+      "route": "/generated/reduction-reporting/reduction-reporting-s3",
+      "screen": "감축 성과 보고 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3095,
+      "route": "/admin/generated/reduction-reporting/reduction-reporting-s3",
+      "screen": "감축 성과 보고 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3096,
+      "route": "/generated/trade-contract/trade-contract-s3",
+      "screen": "거래 계약·승인 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3097,
+      "route": "/admin/generated/trade-contract/trade-contract-s3",
+      "screen": "거래 계약·승인 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3098,
+      "route": "/generated/faq-management/faq-management-s1",
+      "screen": "FAQ 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3099,
+      "route": "/admin/generated/faq-management/faq-management-s1",
+      "screen": "FAQ 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3100,
+      "route": "/generated/menu-access-control/menu-access-control-s4",
+      "screen": "메뉴 접근 권한 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3101,
+      "route": "/admin/generated/menu-access-control/menu-access-control-s4",
+      "screen": "메뉴 접근 권한 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3102,
+      "route": "/generated/reduction-roadmap/reduction-roadmap-s2",
+      "screen": "감축 로드맵 수립 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3103,
+      "route": "/admin/generated/reduction-roadmap/reduction-roadmap-s2",
+      "screen": "감축 로드맵 수립 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3104,
+      "route": "/generated/menu-access-control/menu-access-control-s2",
+      "screen": "메뉴 접근 권한 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3105,
+      "route": "/admin/generated/menu-access-control/menu-access-control-s2",
+      "screen": "메뉴 접근 권한 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3106,
+      "route": "/generated/reduction-roadmap/reduction-roadmap-s3",
+      "screen": "감축 로드맵 수립 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3107,
+      "route": "/admin/generated/reduction-roadmap/reduction-roadmap-s3",
+      "screen": "감축 로드맵 수립 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3108,
+      "route": "/generated/reduction-roadmap/reduction-roadmap-s4",
+      "screen": "감축 로드맵 수립 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3109,
+      "route": "/admin/generated/reduction-roadmap/reduction-roadmap-s4",
+      "screen": "감축 로드맵 수립 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3110,
+      "route": "/generated/comparative-assertion-review/comparative-assertion-review-s2",
+      "screen": "데이터 품질·방법론 동등성 검토 사용자 업무 화면"
+    },
+    {
+      "id": 3111,
+      "route": "/admin/generated/comparative-assertion-review/comparative-assertion-review-s2",
+      "screen": "데이터 품질·방법론 동등성 검토 관리자 업무 화면"
+    },
+    {
+      "id": 3112,
+      "route": "/generated/comparative-assertion-review/comparative-assertion-review-s3",
+      "screen": "비판적 검토·패널 의견 조치 사용자 업무 화면"
+    },
+    {
+      "id": 3113,
+      "route": "/admin/generated/comparative-assertion-review/comparative-assertion-review-s3",
+      "screen": "비판적 검토·패널 의견 조치 관리자 업무 화면"
+    },
+    {
+      "id": 3114,
+      "route": "/generated/comparative-assertion-review/comparative-assertion-review-s4",
+      "screen": "제한사항 포함 공개 승인 사용자 업무 화면"
+    },
+    {
+      "id": 3115,
+      "route": "/admin/generated/comparative-assertion-review/comparative-assertion-review-s4",
+      "screen": "제한사항 포함 공개 승인 관리자 업무 화면"
+    },
+    {
+      "id": 3116,
+      "route": "/generated/role-authority-management/role-authority-management-s2",
+      "screen": "역할·권한 그룹 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3117,
+      "route": "/admin/generated/role-authority-management/role-authority-management-s2",
+      "screen": "역할·권한 그룹 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3118,
+      "route": "/generated/reduction-scenario/reduction-scenario-s3",
+      "screen": "감축 시나리오 비교 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3119,
+      "route": "/admin/generated/reduction-scenario/reduction-scenario-s3",
+      "screen": "감축 시나리오 비교 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3120,
+      "route": "/generated/role-authority-management/role-authority-management-s3",
+      "screen": "역할·권한 그룹 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3121,
+      "route": "/admin/generated/role-authority-management/role-authority-management-s3",
+      "screen": "역할·권한 그룹 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3122,
+      "route": "/generated/role-authority-management/role-authority-management-s4",
+      "screen": "역할·권한 그룹 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3123,
+      "route": "/admin/generated/role-authority-management/role-authority-management-s4",
+      "screen": "역할·권한 그룹 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3124,
+      "route": "/generated/user-authority-assignment/user-authority-assignment-s1",
+      "screen": "사용자별 권한 배정 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3125,
+      "route": "/admin/generated/user-authority-assignment/user-authority-assignment-s1",
+      "screen": "사용자별 권한 배정 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3126,
+      "route": "/generated/user-authority-assignment/user-authority-assignment-s2",
+      "screen": "사용자별 권한 배정 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3127,
+      "route": "/admin/generated/user-authority-assignment/user-authority-assignment-s2",
+      "screen": "사용자별 권한 배정 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3128,
+      "route": "/generated/user-authority-assignment/user-authority-assignment-s3",
+      "screen": "사용자별 권한 배정 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3129,
+      "route": "/admin/generated/user-authority-assignment/user-authority-assignment-s3",
+      "screen": "사용자별 권한 배정 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3130,
+      "route": "/generated/user-authority-assignment/user-authority-assignment-s4",
+      "screen": "사용자별 권한 배정 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3131,
+      "route": "/admin/generated/user-authority-assignment/user-authority-assignment-s4",
+      "screen": "사용자별 권한 배정 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3132,
+      "route": "/generated/menu-access-control/menu-access-control-s1",
+      "screen": "메뉴 접근 권한 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3133,
+      "route": "/admin/generated/menu-access-control/menu-access-control-s1",
+      "screen": "메뉴 접근 권한 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3134,
+      "route": "/generated/data-scope-authority/data-scope-authority-s1",
+      "screen": "데이터 범위 권한 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3135,
+      "route": "/admin/generated/data-scope-authority/data-scope-authority-s1",
+      "screen": "데이터 범위 권한 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3136,
+      "route": "/generated/data-scope-authority/data-scope-authority-s2",
+      "screen": "데이터 범위 권한 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3137,
+      "route": "/admin/generated/data-scope-authority/data-scope-authority-s2",
+      "screen": "데이터 범위 권한 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3138,
+      "route": "/generated/data-scope-authority/data-scope-authority-s3",
+      "screen": "데이터 범위 권한 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3139,
+      "route": "/admin/generated/data-scope-authority/data-scope-authority-s3",
+      "screen": "데이터 범위 권한 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3140,
+      "route": "/generated/trade-proposal/trade-proposal-s2",
+      "screen": "거래 제안·협상 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3141,
+      "route": "/admin/generated/trade-proposal/trade-proposal-s2",
+      "screen": "거래 제안·협상 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3142,
+      "route": "/generated/data-scope-authority/data-scope-authority-s4",
+      "screen": "데이터 범위 권한 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3143,
+      "route": "/admin/generated/data-scope-authority/data-scope-authority-s4",
+      "screen": "데이터 범위 권한 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3144,
+      "route": "/generated/approval-authority/approval-authority-s1",
+      "screen": "승인 권한·한도 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3145,
+      "route": "/admin/generated/approval-authority/approval-authority-s1",
+      "screen": "승인 권한·한도 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3146,
+      "route": "/generated/approval-authority/approval-authority-s2",
+      "screen": "승인 권한·한도 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3147,
+      "route": "/admin/generated/approval-authority/approval-authority-s2",
+      "screen": "승인 권한·한도 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3148,
+      "route": "/generated/approval-authority/approval-authority-s3",
+      "screen": "승인 권한·한도 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3149,
+      "route": "/admin/generated/approval-authority/approval-authority-s3",
+      "screen": "승인 권한·한도 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3150,
+      "route": "/generated/approval-authority/approval-authority-s4",
+      "screen": "승인 권한·한도 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3151,
+      "route": "/admin/generated/approval-authority/approval-authority-s4",
+      "screen": "승인 권한·한도 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3152,
+      "route": "/generated/reduction-target-planning/reduction-target-planning-s1",
+      "screen": "감축 목표·기준연도 설정 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3153,
+      "route": "/admin/generated/reduction-target-planning/reduction-target-planning-s1",
+      "screen": "감축 목표·기준연도 설정 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3154,
+      "route": "/generated/reduction-target-planning/reduction-target-planning-s2",
+      "screen": "감축 목표·기준연도 설정 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3155,
+      "route": "/admin/generated/reduction-target-planning/reduction-target-planning-s2",
+      "screen": "감축 목표·기준연도 설정 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3156,
+      "route": "/generated/reduction-target-planning/reduction-target-planning-s3",
+      "screen": "감축 목표·기준연도 설정 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3157,
+      "route": "/admin/generated/reduction-target-planning/reduction-target-planning-s3",
+      "screen": "감축 목표·기준연도 설정 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3158,
+      "route": "/generated/reduction-target-planning/reduction-target-planning-s4",
+      "screen": "감축 목표·기준연도 설정 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3159,
+      "route": "/admin/generated/reduction-target-planning/reduction-target-planning-s4",
+      "screen": "감축 목표·기준연도 설정 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3160,
+      "route": "/generated/reduction-roadmap/reduction-roadmap-s1",
+      "screen": "감축 로드맵 수립 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3161,
+      "route": "/admin/generated/reduction-roadmap/reduction-roadmap-s1",
+      "screen": "감축 로드맵 수립 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3162,
+      "route": "/generated/reduction-project-registration/reduction-project-registration-s1",
+      "screen": "감축 과제 등록 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3163,
+      "route": "/admin/generated/reduction-project-registration/reduction-project-registration-s1",
+      "screen": "감축 과제 등록 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3164,
+      "route": "/generated/reduction-project-registration/reduction-project-registration-s2",
+      "screen": "감축 과제 등록 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3165,
+      "route": "/admin/generated/reduction-project-registration/reduction-project-registration-s2",
+      "screen": "감축 과제 등록 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3166,
+      "route": "/generated/reduction-project-registration/reduction-project-registration-s3",
+      "screen": "감축 과제 등록 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3167,
+      "route": "/admin/generated/reduction-project-registration/reduction-project-registration-s3",
+      "screen": "감축 과제 등록 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3168,
+      "route": "/generated/reduction-project-registration/reduction-project-registration-s4",
+      "screen": "감축 과제 등록 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3169,
+      "route": "/admin/generated/reduction-project-registration/reduction-project-registration-s4",
+      "screen": "감축 과제 등록 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3170,
+      "route": "/generated/reduction-project-approval/reduction-project-approval-s1",
+      "screen": "감축 과제 검토·승인 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3171,
+      "route": "/admin/generated/reduction-project-approval/reduction-project-approval-s1",
+      "screen": "감축 과제 검토·승인 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3172,
+      "route": "/generated/reduction-project-approval/reduction-project-approval-s2",
+      "screen": "감축 과제 검토·승인 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3173,
+      "route": "/admin/generated/reduction-project-approval/reduction-project-approval-s2",
+      "screen": "감축 과제 검토·승인 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3174,
+      "route": "/generated/reduction-project-approval/reduction-project-approval-s3",
+      "screen": "감축 과제 검토·승인 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3175,
+      "route": "/admin/generated/reduction-project-approval/reduction-project-approval-s3",
+      "screen": "감축 과제 검토·승인 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3176,
+      "route": "/generated/reduction-project-approval/reduction-project-approval-s4",
+      "screen": "감축 과제 검토·승인 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3177,
+      "route": "/admin/generated/reduction-project-approval/reduction-project-approval-s4",
+      "screen": "감축 과제 검토·승인 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3178,
+      "route": "/generated/reduction-performance/reduction-performance-s1",
+      "screen": "감축 실적·효과 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3179,
+      "route": "/admin/generated/reduction-performance/reduction-performance-s1",
+      "screen": "감축 실적·효과 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3180,
+      "route": "/generated/reduction-performance/reduction-performance-s2",
+      "screen": "감축 실적·효과 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3181,
+      "route": "/admin/generated/reduction-performance/reduction-performance-s2",
+      "screen": "감축 실적·효과 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3182,
+      "route": "/generated/reduction-performance/reduction-performance-s3",
+      "screen": "감축 실적·효과 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3183,
+      "route": "/admin/generated/reduction-performance/reduction-performance-s3",
+      "screen": "감축 실적·효과 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3184,
+      "route": "/generated/reduction-performance/reduction-performance-s4",
+      "screen": "감축 실적·효과 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3185,
+      "route": "/admin/generated/reduction-performance/reduction-performance-s4",
+      "screen": "감축 실적·효과 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3186,
+      "route": "/generated/reduction-scenario/reduction-scenario-s1",
+      "screen": "감축 시나리오 비교 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3187,
+      "route": "/admin/generated/reduction-scenario/reduction-scenario-s1",
+      "screen": "감축 시나리오 비교 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3188,
+      "route": "/generated/reduction-scenario/reduction-scenario-s2",
+      "screen": "감축 시나리오 비교 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3189,
+      "route": "/admin/generated/reduction-scenario/reduction-scenario-s2",
+      "screen": "감축 시나리오 비교 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3190,
+      "route": "/generated/reduction-scenario/reduction-scenario-s4",
+      "screen": "감축 시나리오 비교 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3191,
+      "route": "/admin/generated/reduction-scenario/reduction-scenario-s4",
+      "screen": "감축 시나리오 비교 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3192,
+      "route": "/generated/macc-portfolio/macc-portfolio-s1",
+      "screen": "한계감축비용·포트폴리오 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3193,
+      "route": "/admin/generated/macc-portfolio/macc-portfolio-s1",
+      "screen": "한계감축비용·포트폴리오 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3194,
+      "route": "/generated/macc-portfolio/macc-portfolio-s2",
+      "screen": "한계감축비용·포트폴리오 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3195,
+      "route": "/admin/generated/macc-portfolio/macc-portfolio-s2",
+      "screen": "한계감축비용·포트폴리오 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3196,
+      "route": "/generated/macc-portfolio/macc-portfolio-s3",
+      "screen": "한계감축비용·포트폴리오 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3197,
+      "route": "/admin/generated/macc-portfolio/macc-portfolio-s3",
+      "screen": "한계감축비용·포트폴리오 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3198,
+      "route": "/generated/macc-portfolio/macc-portfolio-s4",
+      "screen": "한계감축비용·포트폴리오 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3199,
+      "route": "/admin/generated/macc-portfolio/macc-portfolio-s4",
+      "screen": "한계감축비용·포트폴리오 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3200,
+      "route": "/generated/reduction-reporting/reduction-reporting-s1",
+      "screen": "감축 성과 보고 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3201,
+      "route": "/admin/generated/reduction-reporting/reduction-reporting-s1",
+      "screen": "감축 성과 보고 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3202,
+      "route": "/generated/reduction-reporting/reduction-reporting-s2",
+      "screen": "감축 성과 보고 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3203,
+      "route": "/admin/generated/reduction-reporting/reduction-reporting-s2",
+      "screen": "감축 성과 보고 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3204,
+      "route": "/generated/reduction-reporting/reduction-reporting-s4",
+      "screen": "감축 성과 보고 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3205,
+      "route": "/admin/generated/reduction-reporting/reduction-reporting-s4",
+      "screen": "감축 성과 보고 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3206,
+      "route": "/generated/integrated-monitoring/integrated-monitoring-s1",
+      "screen": "통합 탄소 현황 모니터링 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3207,
+      "route": "/admin/generated/integrated-monitoring/integrated-monitoring-s1",
+      "screen": "통합 탄소 현황 모니터링 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3208,
+      "route": "/generated/integrated-monitoring/integrated-monitoring-s2",
+      "screen": "통합 탄소 현황 모니터링 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3209,
+      "route": "/admin/generated/integrated-monitoring/integrated-monitoring-s2",
+      "screen": "통합 탄소 현황 모니터링 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3210,
+      "route": "/generated/integrated-monitoring/integrated-monitoring-s3",
+      "screen": "통합 탄소 현황 모니터링 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3211,
+      "route": "/admin/generated/integrated-monitoring/integrated-monitoring-s3",
+      "screen": "통합 탄소 현황 모니터링 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3212,
+      "route": "/generated/integrated-monitoring/integrated-monitoring-s4",
+      "screen": "통합 탄소 현황 모니터링 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3213,
+      "route": "/admin/generated/integrated-monitoring/integrated-monitoring-s4",
+      "screen": "통합 탄소 현황 모니터링 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3214,
+      "route": "/generated/data-quality-monitoring/data-quality-monitoring-s1",
+      "screen": "데이터 품질 모니터링 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3215,
+      "route": "/admin/generated/data-quality-monitoring/data-quality-monitoring-s1",
+      "screen": "데이터 품질 모니터링 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3216,
+      "route": "/generated/data-quality-monitoring/data-quality-monitoring-s2",
+      "screen": "데이터 품질 모니터링 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3217,
+      "route": "/admin/generated/data-quality-monitoring/data-quality-monitoring-s2",
+      "screen": "데이터 품질 모니터링 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3218,
+      "route": "/generated/data-quality-monitoring/data-quality-monitoring-s3",
+      "screen": "데이터 품질 모니터링 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3219,
+      "route": "/admin/generated/data-quality-monitoring/data-quality-monitoring-s3",
+      "screen": "데이터 품질 모니터링 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3220,
+      "route": "/generated/data-quality-monitoring/data-quality-monitoring-s4",
+      "screen": "데이터 품질 모니터링 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3221,
+      "route": "/admin/generated/data-quality-monitoring/data-quality-monitoring-s4",
+      "screen": "데이터 품질 모니터링 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3222,
+      "route": "/generated/anomaly-alert-management/anomaly-alert-management-s1",
+      "screen": "이상치·경보 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3223,
+      "route": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s1",
+      "screen": "이상치·경보 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3224,
+      "route": "/generated/anomaly-alert-management/anomaly-alert-management-s2",
+      "screen": "이상치·경보 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3225,
+      "route": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s2",
+      "screen": "이상치·경보 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3226,
+      "route": "/generated/anomaly-alert-management/anomaly-alert-management-s3",
+      "screen": "이상치·경보 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3227,
+      "route": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s3",
+      "screen": "이상치·경보 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3228,
+      "route": "/generated/anomaly-alert-management/anomaly-alert-management-s4",
+      "screen": "이상치·경보 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3229,
+      "route": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s4",
+      "screen": "이상치·경보 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3230,
+      "route": "/generated/analysis-export/analysis-export-s4",
+      "screen": "분석 데이터 내보내기 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3231,
+      "route": "/admin/generated/analysis-export/analysis-export-s4",
+      "screen": "분석 데이터 내보내기 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3232,
+      "route": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s1",
+      "screen": "규제 대응 현황 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3233,
+      "route": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s1",
+      "screen": "규제 대응 현황 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3234,
+      "route": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s2",
+      "screen": "규제 대응 현황 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3235,
+      "route": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s2",
+      "screen": "규제 대응 현황 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3236,
+      "route": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s3",
+      "screen": "규제 대응 현황 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3237,
+      "route": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s3",
+      "screen": "규제 대응 현황 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3238,
+      "route": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+      "screen": "규제 대응 현황 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3239,
+      "route": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+      "screen": "규제 대응 현황 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3240,
+      "route": "/generated/analysis-export/analysis-export-s1",
+      "screen": "분석 데이터 내보내기 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3241,
+      "route": "/admin/generated/analysis-export/analysis-export-s1",
+      "screen": "분석 데이터 내보내기 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3242,
+      "route": "/generated/analysis-export/analysis-export-s2",
+      "screen": "분석 데이터 내보내기 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3243,
+      "route": "/admin/generated/analysis-export/analysis-export-s2",
+      "screen": "분석 데이터 내보내기 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3244,
+      "route": "/generated/analysis-export/analysis-export-s3",
+      "screen": "분석 데이터 내보내기 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3245,
+      "route": "/admin/generated/analysis-export/analysis-export-s3",
+      "screen": "분석 데이터 내보내기 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3246,
+      "route": "/generated/stakeholder-sharing/stakeholder-sharing-s1",
+      "screen": "이해관계자 공유 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3247,
+      "route": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s1",
+      "screen": "이해관계자 공유 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3248,
+      "route": "/generated/stakeholder-sharing/stakeholder-sharing-s2",
+      "screen": "이해관계자 공유 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3249,
+      "route": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s2",
+      "screen": "이해관계자 공유 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3250,
+      "route": "/generated/stakeholder-sharing/stakeholder-sharing-s3",
+      "screen": "이해관계자 공유 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3251,
+      "route": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s3",
+      "screen": "이해관계자 공유 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3252,
+      "route": "/generated/stakeholder-sharing/stakeholder-sharing-s4",
+      "screen": "이해관계자 공유 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3253,
+      "route": "/admin/generated/stakeholder-sharing/stakeholder-sharing-s4",
+      "screen": "이해관계자 공유 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3254,
+      "route": "/generated/co2-supply-registration/co2-supply-registration-s1",
+      "screen": "CO2 공급 정보 등록 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3255,
+      "route": "/admin/generated/co2-supply-registration/co2-supply-registration-s1",
+      "screen": "CO2 공급 정보 등록 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3256,
+      "route": "/generated/co2-supply-registration/co2-supply-registration-s2",
+      "screen": "CO2 공급 정보 등록 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3257,
+      "route": "/admin/generated/co2-supply-registration/co2-supply-registration-s2",
+      "screen": "CO2 공급 정보 등록 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3258,
+      "route": "/generated/co2-supply-registration/co2-supply-registration-s3",
+      "screen": "CO2 공급 정보 등록 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3259,
+      "route": "/admin/generated/co2-supply-registration/co2-supply-registration-s3",
+      "screen": "CO2 공급 정보 등록 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3260,
+      "route": "/generated/co2-supply-registration/co2-supply-registration-s4",
+      "screen": "CO2 공급 정보 등록 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3261,
+      "route": "/admin/generated/co2-supply-registration/co2-supply-registration-s4",
+      "screen": "CO2 공급 정보 등록 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3262,
+      "route": "/generated/co2-demand-registration/co2-demand-registration-s1",
+      "screen": "CO2 수요 정보 등록 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3263,
+      "route": "/admin/generated/co2-demand-registration/co2-demand-registration-s1",
+      "screen": "CO2 수요 정보 등록 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3264,
+      "route": "/generated/trade-proposal/trade-proposal-s3",
+      "screen": "거래 제안·협상 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3265,
+      "route": "/admin/generated/trade-proposal/trade-proposal-s3",
+      "screen": "거래 제안·협상 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3266,
+      "route": "/generated/co2-demand-registration/co2-demand-registration-s2",
+      "screen": "CO2 수요 정보 등록 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3267,
+      "route": "/admin/generated/co2-demand-registration/co2-demand-registration-s2",
+      "screen": "CO2 수요 정보 등록 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3268,
+      "route": "/generated/co2-demand-registration/co2-demand-registration-s3",
+      "screen": "CO2 수요 정보 등록 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3269,
+      "route": "/admin/generated/co2-demand-registration/co2-demand-registration-s3",
+      "screen": "CO2 수요 정보 등록 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3270,
+      "route": "/generated/co2-demand-registration/co2-demand-registration-s4",
+      "screen": "CO2 수요 정보 등록 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3271,
+      "route": "/admin/generated/co2-demand-registration/co2-demand-registration-s4",
+      "screen": "CO2 수요 정보 등록 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3272,
+      "route": "/generated/supply-demand-matching/supply-demand-matching-s1",
+      "screen": "공급·수요 매칭 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3273,
+      "route": "/admin/generated/supply-demand-matching/supply-demand-matching-s1",
+      "screen": "공급·수요 매칭 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3274,
+      "route": "/generated/supply-demand-matching/supply-demand-matching-s2",
+      "screen": "공급·수요 매칭 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3275,
+      "route": "/admin/generated/supply-demand-matching/supply-demand-matching-s2",
+      "screen": "공급·수요 매칭 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3276,
+      "route": "/generated/supply-demand-matching/supply-demand-matching-s3",
+      "screen": "공급·수요 매칭 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3277,
+      "route": "/admin/generated/supply-demand-matching/supply-demand-matching-s3",
+      "screen": "공급·수요 매칭 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3278,
+      "route": "/generated/supply-demand-matching/supply-demand-matching-s4",
+      "screen": "공급·수요 매칭 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3279,
+      "route": "/admin/generated/supply-demand-matching/supply-demand-matching-s4",
+      "screen": "공급·수요 매칭 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3280,
+      "route": "/generated/trade-proposal/trade-proposal-s1",
+      "screen": "거래 제안·협상 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3281,
+      "route": "/admin/generated/trade-proposal/trade-proposal-s1",
+      "screen": "거래 제안·협상 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3282,
+      "route": "/generated/trade-proposal/trade-proposal-s4",
+      "screen": "거래 제안·협상 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3283,
+      "route": "/admin/generated/trade-proposal/trade-proposal-s4",
+      "screen": "거래 제안·협상 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3284,
+      "route": "/generated/trade-contract/trade-contract-s1",
+      "screen": "거래 계약·승인 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3285,
+      "route": "/admin/generated/trade-contract/trade-contract-s1",
+      "screen": "거래 계약·승인 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3286,
+      "route": "/generated/trade-contract/trade-contract-s2",
+      "screen": "거래 계약·승인 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3287,
+      "route": "/admin/generated/trade-contract/trade-contract-s2",
+      "screen": "거래 계약·승인 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3288,
+      "route": "/generated/trade-contract/trade-contract-s4",
+      "screen": "거래 계약·승인 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3289,
+      "route": "/admin/generated/trade-contract/trade-contract-s4",
+      "screen": "거래 계약·승인 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3290,
+      "route": "/generated/trade-execution-tracking/trade-execution-tracking-s1",
+      "screen": "거래 이행·인수인계 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3291,
+      "route": "/admin/generated/trade-execution-tracking/trade-execution-tracking-s1",
+      "screen": "거래 이행·인수인계 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3292,
+      "route": "/generated/trade-execution-tracking/trade-execution-tracking-s2",
+      "screen": "거래 이행·인수인계 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3293,
+      "route": "/admin/generated/trade-execution-tracking/trade-execution-tracking-s2",
+      "screen": "거래 이행·인수인계 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3294,
+      "route": "/generated/trade-execution-tracking/trade-execution-tracking-s3",
+      "screen": "거래 이행·인수인계 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3295,
+      "route": "/admin/generated/trade-execution-tracking/trade-execution-tracking-s3",
+      "screen": "거래 이행·인수인계 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3296,
+      "route": "/generated/trade-execution-tracking/trade-execution-tracking-s4",
+      "screen": "거래 이행·인수인계 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3297,
+      "route": "/admin/generated/trade-execution-tracking/trade-execution-tracking-s4",
+      "screen": "거래 이행·인수인계 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3298,
+      "route": "/generated/trade-settlement/trade-settlement-s1",
+      "screen": "거래 정산 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3299,
+      "route": "/admin/generated/trade-settlement/trade-settlement-s1",
+      "screen": "거래 정산 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3300,
+      "route": "/generated/trade-settlement/trade-settlement-s2",
+      "screen": "거래 정산 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3301,
+      "route": "/admin/generated/trade-settlement/trade-settlement-s2",
+      "screen": "거래 정산 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3302,
+      "route": "/generated/trade-settlement/trade-settlement-s4",
+      "screen": "거래 정산 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3303,
+      "route": "/admin/generated/trade-settlement/trade-settlement-s4",
+      "screen": "거래 정산 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3304,
+      "route": "/generated/refund-management/refund-management-s1",
+      "screen": "환불 요청·처리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3305,
+      "route": "/admin/generated/refund-management/refund-management-s1",
+      "screen": "환불 요청·처리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3306,
+      "route": "/generated/refund-management/refund-management-s2",
+      "screen": "환불 요청·처리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3307,
+      "route": "/admin/generated/refund-management/refund-management-s2",
+      "screen": "환불 요청·처리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3308,
+      "route": "/generated/refund-management/refund-management-s3",
+      "screen": "환불 요청·처리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3309,
+      "route": "/admin/generated/refund-management/refund-management-s3",
+      "screen": "환불 요청·처리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3310,
+      "route": "/generated/refund-management/refund-management-s4",
+      "screen": "환불 요청·처리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3311,
+      "route": "/admin/generated/refund-management/refund-management-s4",
+      "screen": "환불 요청·처리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3312,
+      "route": "/generated/mrv-traceability/mrv-traceability-s1",
+      "screen": "MRV 출처·이동 추적 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3313,
+      "route": "/admin/generated/mrv-traceability/mrv-traceability-s1",
+      "screen": "MRV 출처·이동 추적 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3314,
+      "route": "/generated/mrv-traceability/mrv-traceability-s2",
+      "screen": "MRV 출처·이동 추적 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3315,
+      "route": "/admin/generated/mrv-traceability/mrv-traceability-s2",
+      "screen": "MRV 출처·이동 추적 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3316,
+      "route": "/generated/mrv-traceability/mrv-traceability-s3",
+      "screen": "MRV 출처·이동 추적 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3317,
+      "route": "/admin/generated/mrv-traceability/mrv-traceability-s3",
+      "screen": "MRV 출처·이동 추적 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3318,
+      "route": "/generated/mrv-traceability/mrv-traceability-s4",
+      "screen": "MRV 출처·이동 추적 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3319,
+      "route": "/admin/generated/mrv-traceability/mrv-traceability-s4",
+      "screen": "MRV 출처·이동 추적 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3320,
+      "route": "/generated/double-use-prevention/double-use-prevention-s1",
+      "screen": "중복 사용·이중계상 방지 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3321,
+      "route": "/admin/generated/double-use-prevention/double-use-prevention-s1",
+      "screen": "중복 사용·이중계상 방지 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3322,
+      "route": "/generated/double-use-prevention/double-use-prevention-s2",
+      "screen": "중복 사용·이중계상 방지 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3323,
+      "route": "/admin/generated/double-use-prevention/double-use-prevention-s2",
+      "screen": "중복 사용·이중계상 방지 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3324,
+      "route": "/generated/double-use-prevention/double-use-prevention-s3",
+      "screen": "중복 사용·이중계상 방지 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3325,
+      "route": "/admin/generated/double-use-prevention/double-use-prevention-s3",
+      "screen": "중복 사용·이중계상 방지 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3326,
+      "route": "/generated/double-use-prevention/double-use-prevention-s4",
+      "screen": "중복 사용·이중계상 방지 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3327,
+      "route": "/admin/generated/double-use-prevention/double-use-prevention-s4",
+      "screen": "중복 사용·이중계상 방지 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3328,
+      "route": "/generated/carbon-credit-management/carbon-credit-management-s1",
+      "screen": "탄소크레딧 발급·보유·소각 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3329,
+      "route": "/admin/generated/carbon-credit-management/carbon-credit-management-s1",
+      "screen": "탄소크레딧 발급·보유·소각 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3330,
+      "route": "/generated/carbon-credit-management/carbon-credit-management-s2",
+      "screen": "탄소크레딧 발급·보유·소각 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3331,
+      "route": "/admin/generated/carbon-credit-management/carbon-credit-management-s2",
+      "screen": "탄소크레딧 발급·보유·소각 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3332,
+      "route": "/generated/carbon-credit-management/carbon-credit-management-s3",
+      "screen": "탄소크레딧 발급·보유·소각 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3333,
+      "route": "/admin/generated/carbon-credit-management/carbon-credit-management-s3",
+      "screen": "탄소크레딧 발급·보유·소각 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3334,
+      "route": "/generated/carbon-credit-management/carbon-credit-management-s4",
+      "screen": "탄소크레딧 발급·보유·소각 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3335,
+      "route": "/admin/generated/carbon-credit-management/carbon-credit-management-s4",
+      "screen": "탄소크레딧 발급·보유·소각 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3336,
+      "route": "/generated/course-management/course-management-s1",
+      "screen": "교육 과정 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3337,
+      "route": "/admin/generated/course-management/course-management-s1",
+      "screen": "교육 과정 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3338,
+      "route": "/generated/course-management/course-management-s2",
+      "screen": "교육 과정 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3339,
+      "route": "/admin/generated/course-management/course-management-s2",
+      "screen": "교육 과정 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3340,
+      "route": "/generated/course-management/course-management-s3",
+      "screen": "교육 과정 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3341,
+      "route": "/admin/generated/course-management/course-management-s3",
+      "screen": "교육 과정 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3342,
+      "route": "/generated/course-management/course-management-s4",
+      "screen": "교육 과정 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3343,
+      "route": "/admin/generated/course-management/course-management-s4",
+      "screen": "교육 과정 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3344,
+      "route": "/generated/education-schedule/education-schedule-s1",
+      "screen": "교육 일정·강사 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3345,
+      "route": "/admin/generated/education-schedule/education-schedule-s1",
+      "screen": "교육 일정·강사 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3346,
+      "route": "/generated/education-schedule/education-schedule-s2",
+      "screen": "교육 일정·강사 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3347,
+      "route": "/admin/generated/education-schedule/education-schedule-s2",
+      "screen": "교육 일정·강사 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3348,
+      "route": "/generated/education-schedule/education-schedule-s3",
+      "screen": "교육 일정·강사 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3349,
+      "route": "/admin/generated/education-schedule/education-schedule-s3",
+      "screen": "교육 일정·강사 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3350,
+      "route": "/generated/education-schedule/education-schedule-s4",
+      "screen": "교육 일정·강사 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3351,
+      "route": "/admin/generated/education-schedule/education-schedule-s4",
+      "screen": "교육 일정·강사 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3352,
+      "route": "/generated/education-application/education-application-s1",
+      "screen": "교육 신청·승인 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3353,
+      "route": "/admin/generated/education-application/education-application-s1",
+      "screen": "교육 신청·승인 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3354,
+      "route": "/generated/education-application/education-application-s2",
+      "screen": "교육 신청·승인 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3355,
+      "route": "/admin/generated/education-application/education-application-s2",
+      "screen": "교육 신청·승인 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3356,
+      "route": "/generated/education-application/education-application-s3",
+      "screen": "교육 신청·승인 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3357,
+      "route": "/admin/generated/education-application/education-application-s3",
+      "screen": "교육 신청·승인 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3358,
+      "route": "/generated/education-application/education-application-s4",
+      "screen": "교육 신청·승인 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3359,
+      "route": "/admin/generated/education-application/education-application-s4",
+      "screen": "교육 신청·승인 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3360,
+      "route": "/generated/attendance-progress/attendance-progress-s1",
+      "screen": "출석·진도 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3361,
+      "route": "/admin/generated/attendance-progress/attendance-progress-s1",
+      "screen": "출석·진도 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3362,
+      "route": "/generated/attendance-progress/attendance-progress-s2",
+      "screen": "출석·진도 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3363,
+      "route": "/admin/generated/attendance-progress/attendance-progress-s2",
+      "screen": "출석·진도 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3364,
+      "route": "/generated/attendance-progress/attendance-progress-s3",
+      "screen": "출석·진도 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3365,
+      "route": "/admin/generated/attendance-progress/attendance-progress-s3",
+      "screen": "출석·진도 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3366,
+      "route": "/generated/attendance-progress/attendance-progress-s4",
+      "screen": "출석·진도 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3367,
+      "route": "/admin/generated/attendance-progress/attendance-progress-s4",
+      "screen": "출석·진도 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3368,
+      "route": "/generated/education-assessment/education-assessment-s1",
+      "screen": "교육 평가 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3369,
+      "route": "/admin/generated/education-assessment/education-assessment-s1",
+      "screen": "교육 평가 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3370,
+      "route": "/generated/education-assessment/education-assessment-s2",
+      "screen": "교육 평가 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3371,
+      "route": "/admin/generated/education-assessment/education-assessment-s2",
+      "screen": "교육 평가 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3372,
+      "route": "/generated/education-assessment/education-assessment-s3",
+      "screen": "교육 평가 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3373,
+      "route": "/admin/generated/education-assessment/education-assessment-s3",
+      "screen": "교육 평가 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3374,
+      "route": "/generated/education-assessment/education-assessment-s4",
+      "screen": "교육 평가 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3375,
+      "route": "/admin/generated/education-assessment/education-assessment-s4",
+      "screen": "교육 평가 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3376,
+      "route": "/generated/training-certificate/training-certificate-s1",
+      "screen": "교육 수료·수료증 발급 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3377,
+      "route": "/admin/generated/training-certificate/training-certificate-s1",
+      "screen": "교육 수료·수료증 발급 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3378,
+      "route": "/generated/training-certificate/training-certificate-s2",
+      "screen": "교육 수료·수료증 발급 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3379,
+      "route": "/admin/generated/training-certificate/training-certificate-s2",
+      "screen": "교육 수료·수료증 발급 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3380,
+      "route": "/generated/training-certificate/training-certificate-s3",
+      "screen": "교육 수료·수료증 발급 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3381,
+      "route": "/admin/generated/training-certificate/training-certificate-s3",
+      "screen": "교육 수료·수료증 발급 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3382,
+      "route": "/generated/training-certificate/training-certificate-s4",
+      "screen": "교육 수료·수료증 발급 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3383,
+      "route": "/admin/generated/training-certificate/training-certificate-s4",
+      "screen": "교육 수료·수료증 발급 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3384,
+      "route": "/generated/notice-publication/notice-publication-s1",
+      "screen": "공지사항 게시 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3385,
+      "route": "/admin/generated/notice-publication/notice-publication-s1",
+      "screen": "공지사항 게시 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3386,
+      "route": "/generated/notice-publication/notice-publication-s2",
+      "screen": "공지사항 게시 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3387,
+      "route": "/admin/generated/notice-publication/notice-publication-s2",
+      "screen": "공지사항 게시 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3388,
+      "route": "/generated/notice-publication/notice-publication-s3",
+      "screen": "공지사항 게시 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3389,
+      "route": "/admin/generated/notice-publication/notice-publication-s3",
+      "screen": "공지사항 게시 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3390,
+      "route": "/generated/notice-publication/notice-publication-s4",
+      "screen": "공지사항 게시 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3391,
+      "route": "/admin/generated/notice-publication/notice-publication-s4",
+      "screen": "공지사항 게시 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3392,
+      "route": "/generated/resource-publication/resource-publication-s1",
+      "screen": "자료실·기술자료 게시 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3393,
+      "route": "/admin/generated/resource-publication/resource-publication-s1",
+      "screen": "자료실·기술자료 게시 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3394,
+      "route": "/generated/resource-publication/resource-publication-s2",
+      "screen": "자료실·기술자료 게시 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3395,
+      "route": "/admin/generated/resource-publication/resource-publication-s2",
+      "screen": "자료실·기술자료 게시 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3396,
+      "route": "/generated/resource-publication/resource-publication-s3",
+      "screen": "자료실·기술자료 게시 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3397,
+      "route": "/admin/generated/resource-publication/resource-publication-s3",
+      "screen": "자료실·기술자료 게시 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3398,
+      "route": "/generated/resource-publication/resource-publication-s4",
+      "screen": "자료실·기술자료 게시 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3399,
+      "route": "/admin/generated/resource-publication/resource-publication-s4",
+      "screen": "자료실·기술자료 게시 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3400,
+      "route": "/generated/faq-management/faq-management-s4",
+      "screen": "FAQ 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3401,
+      "route": "/admin/generated/faq-management/faq-management-s4",
+      "screen": "FAQ 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3402,
+      "route": "/generated/customer-inquiry/customer-inquiry-s1",
+      "screen": "문의 접수·답변 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3403,
+      "route": "/admin/generated/customer-inquiry/customer-inquiry-s1",
+      "screen": "문의 접수·답변 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3404,
+      "route": "/generated/customer-inquiry/customer-inquiry-s2",
+      "screen": "문의 접수·답변 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3405,
+      "route": "/admin/generated/customer-inquiry/customer-inquiry-s2",
+      "screen": "문의 접수·답변 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3406,
+      "route": "/generated/customer-inquiry/customer-inquiry-s3",
+      "screen": "문의 접수·답변 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3407,
+      "route": "/admin/generated/customer-inquiry/customer-inquiry-s3",
+      "screen": "문의 접수·답변 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3408,
+      "route": "/generated/customer-inquiry/customer-inquiry-s4",
+      "screen": "문의 접수·답변 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3409,
+      "route": "/admin/generated/customer-inquiry/customer-inquiry-s4",
+      "screen": "문의 접수·답변 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3410,
+      "route": "/generated/incident-improvement-request/incident-improvement-request-s1",
+      "screen": "장애·개선 요청 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3411,
+      "route": "/admin/generated/incident-improvement-request/incident-improvement-request-s1",
+      "screen": "장애·개선 요청 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3412,
+      "route": "/generated/incident-improvement-request/incident-improvement-request-s2",
+      "screen": "장애·개선 요청 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3413,
+      "route": "/admin/generated/incident-improvement-request/incident-improvement-request-s2",
+      "screen": "장애·개선 요청 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3414,
+      "route": "/generated/incident-improvement-request/incident-improvement-request-s3",
+      "screen": "장애·개선 요청 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3415,
+      "route": "/admin/generated/incident-improvement-request/incident-improvement-request-s3",
+      "screen": "장애·개선 요청 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3416,
+      "route": "/generated/incident-improvement-request/incident-improvement-request-s4",
+      "screen": "장애·개선 요청 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3417,
+      "route": "/admin/generated/incident-improvement-request/incident-improvement-request-s4",
+      "screen": "장애·개선 요청 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3418,
+      "route": "/generated/newsletter-operation/newsletter-operation-s1",
+      "screen": "뉴스레터 구독·발송 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3419,
+      "route": "/admin/generated/newsletter-operation/newsletter-operation-s1",
+      "screen": "뉴스레터 구독·발송 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3420,
+      "route": "/generated/newsletter-operation/newsletter-operation-s2",
+      "screen": "뉴스레터 구독·발송 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3421,
+      "route": "/admin/generated/newsletter-operation/newsletter-operation-s2",
+      "screen": "뉴스레터 구독·발송 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3422,
+      "route": "/generated/newsletter-operation/newsletter-operation-s3",
+      "screen": "뉴스레터 구독·발송 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3423,
+      "route": "/admin/generated/newsletter-operation/newsletter-operation-s3",
+      "screen": "뉴스레터 구독·발송 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3424,
+      "route": "/generated/newsletter-operation/newsletter-operation-s4",
+      "screen": "뉴스레터 구독·발송 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3425,
+      "route": "/admin/generated/newsletter-operation/newsletter-operation-s4",
+      "screen": "뉴스레터 구독·발송 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3426,
+      "route": "/generated/report-template-management/report-template-management-s1",
+      "screen": "보고서 양식 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3427,
+      "route": "/admin/generated/report-template-management/report-template-management-s1",
+      "screen": "보고서 양식 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3428,
+      "route": "/generated/report-template-management/report-template-management-s2",
+      "screen": "보고서 양식 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3429,
+      "route": "/admin/generated/report-template-management/report-template-management-s2",
+      "screen": "보고서 양식 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3430,
+      "route": "/generated/report-template-management/report-template-management-s3",
+      "screen": "보고서 양식 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3431,
+      "route": "/admin/generated/report-template-management/report-template-management-s3",
+      "screen": "보고서 양식 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3432,
+      "route": "/generated/report-template-management/report-template-management-s4",
+      "screen": "보고서 양식 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3433,
+      "route": "/admin/generated/report-template-management/report-template-management-s4",
+      "screen": "보고서 양식 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3434,
+      "route": "/generated/report-generation/report-generation-s1",
+      "screen": "보고서 생성·미리보기 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3435,
+      "route": "/admin/generated/report-generation/report-generation-s1",
+      "screen": "보고서 생성·미리보기 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3436,
+      "route": "/generated/report-generation/report-generation-s2",
+      "screen": "보고서 생성·미리보기 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3437,
+      "route": "/admin/generated/report-generation/report-generation-s2",
+      "screen": "보고서 생성·미리보기 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3438,
+      "route": "/generated/report-generation/report-generation-s3",
+      "screen": "보고서 생성·미리보기 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3439,
+      "route": "/admin/generated/report-generation/report-generation-s3",
+      "screen": "보고서 생성·미리보기 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3440,
+      "route": "/generated/report-generation/report-generation-s4",
+      "screen": "보고서 생성·미리보기 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3441,
+      "route": "/admin/generated/report-generation/report-generation-s4",
+      "screen": "보고서 생성·미리보기 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3442,
+      "route": "/generated/report-submission/report-submission-s1",
+      "screen": "보고서 제출·접수 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3443,
+      "route": "/admin/generated/report-submission/report-submission-s1",
+      "screen": "보고서 제출·접수 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3444,
+      "route": "/generated/report-submission/report-submission-s2",
+      "screen": "보고서 제출·접수 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3445,
+      "route": "/admin/generated/report-submission/report-submission-s2",
+      "screen": "보고서 제출·접수 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3446,
+      "route": "/generated/report-submission/report-submission-s3",
+      "screen": "보고서 제출·접수 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3447,
+      "route": "/admin/generated/report-submission/report-submission-s3",
+      "screen": "보고서 제출·접수 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3448,
+      "route": "/generated/report-submission/report-submission-s4",
+      "screen": "보고서 제출·접수 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3449,
+      "route": "/admin/generated/report-submission/report-submission-s4",
+      "screen": "보고서 제출·접수 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3450,
+      "route": "/generated/certificate-review-issuance/certificate-review-issuance-s1",
+      "screen": "인증서 검토·발급 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3451,
+      "route": "/admin/generated/certificate-review-issuance/certificate-review-issuance-s1",
+      "screen": "인증서 검토·발급 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3452,
+      "route": "/generated/certificate-review-issuance/certificate-review-issuance-s2",
+      "screen": "인증서 검토·발급 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3453,
+      "route": "/admin/generated/certificate-review-issuance/certificate-review-issuance-s2",
+      "screen": "인증서 검토·발급 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3454,
+      "route": "/generated/certificate-review-issuance/certificate-review-issuance-s3",
+      "screen": "인증서 검토·발급 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3455,
+      "route": "/admin/generated/certificate-review-issuance/certificate-review-issuance-s3",
+      "screen": "인증서 검토·발급 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3456,
+      "route": "/generated/certificate-review-issuance/certificate-review-issuance-s4",
+      "screen": "인증서 검토·발급 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3457,
+      "route": "/admin/generated/certificate-review-issuance/certificate-review-issuance-s4",
+      "screen": "인증서 검토·발급 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3458,
+      "route": "/generated/certificate-verification/certificate-verification-s1",
+      "screen": "인증서 진위 확인 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3459,
+      "route": "/admin/generated/certificate-verification/certificate-verification-s1",
+      "screen": "인증서 진위 확인 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3460,
+      "route": "/generated/certificate-verification/certificate-verification-s2",
+      "screen": "인증서 진위 확인 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3461,
+      "route": "/admin/generated/certificate-verification/certificate-verification-s2",
+      "screen": "인증서 진위 확인 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3462,
+      "route": "/generated/certificate-verification/certificate-verification-s3",
+      "screen": "인증서 진위 확인 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3463,
+      "route": "/admin/generated/certificate-verification/certificate-verification-s3",
+      "screen": "인증서 진위 확인 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3464,
+      "route": "/generated/certificate-verification/certificate-verification-s4",
+      "screen": "인증서 진위 확인 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3465,
+      "route": "/admin/generated/certificate-verification/certificate-verification-s4",
+      "screen": "인증서 진위 확인 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3466,
+      "route": "/generated/certificate-objection/certificate-objection-s1",
+      "screen": "인증서 이의신청·감사 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3467,
+      "route": "/admin/generated/certificate-objection/certificate-objection-s1",
+      "screen": "인증서 이의신청·감사 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3468,
+      "route": "/generated/certificate-objection/certificate-objection-s2",
+      "screen": "인증서 이의신청·감사 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3469,
+      "route": "/admin/generated/certificate-objection/certificate-objection-s2",
+      "screen": "인증서 이의신청·감사 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3470,
+      "route": "/generated/certificate-objection/certificate-objection-s3",
+      "screen": "인증서 이의신청·감사 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3471,
+      "route": "/admin/generated/certificate-objection/certificate-objection-s3",
+      "screen": "인증서 이의신청·감사 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3472,
+      "route": "/generated/certificate-objection/certificate-objection-s4",
+      "screen": "인증서 이의신청·감사 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3473,
+      "route": "/admin/generated/certificate-objection/certificate-objection-s4",
+      "screen": "인증서 이의신청·감사 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3474,
+      "route": "/generated/external-system-registry/external-system-registry-s1",
+      "screen": "외부 연계 시스템 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3475,
+      "route": "/admin/generated/external-system-registry/external-system-registry-s1",
+      "screen": "외부 연계 시스템 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3476,
+      "route": "/generated/external-system-registry/external-system-registry-s2",
+      "screen": "외부 연계 시스템 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3477,
+      "route": "/admin/generated/external-system-registry/external-system-registry-s2",
+      "screen": "외부 연계 시스템 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3478,
+      "route": "/generated/external-system-registry/external-system-registry-s3",
+      "screen": "외부 연계 시스템 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3479,
+      "route": "/admin/generated/external-system-registry/external-system-registry-s3",
+      "screen": "외부 연계 시스템 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3480,
+      "route": "/generated/external-system-registry/external-system-registry-s4",
+      "screen": "외부 연계 시스템 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3481,
+      "route": "/admin/generated/external-system-registry/external-system-registry-s4",
+      "screen": "외부 연계 시스템 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3482,
+      "route": "/generated/api-connection-management/api-connection-management-s1",
+      "screen": "API 연결 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3483,
+      "route": "/admin/generated/api-connection-management/api-connection-management-s1",
+      "screen": "API 연결 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3484,
+      "route": "/generated/api-connection-management/api-connection-management-s2",
+      "screen": "API 연결 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3485,
+      "route": "/admin/generated/api-connection-management/api-connection-management-s2",
+      "screen": "API 연결 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3486,
+      "route": "/generated/api-connection-management/api-connection-management-s3",
+      "screen": "API 연결 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3487,
+      "route": "/admin/generated/api-connection-management/api-connection-management-s3",
+      "screen": "API 연결 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3488,
+      "route": "/generated/api-connection-management/api-connection-management-s4",
+      "screen": "API 연결 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3489,
+      "route": "/admin/generated/api-connection-management/api-connection-management-s4",
+      "screen": "API 연결 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3490,
+      "route": "/generated/api-key-lifecycle/api-key-lifecycle-s1",
+      "screen": "API 키 수명주기 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3491,
+      "route": "/admin/generated/api-key-lifecycle/api-key-lifecycle-s1",
+      "screen": "API 키 수명주기 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3492,
+      "route": "/generated/api-key-lifecycle/api-key-lifecycle-s2",
+      "screen": "API 키 수명주기 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3493,
+      "route": "/admin/generated/api-key-lifecycle/api-key-lifecycle-s2",
+      "screen": "API 키 수명주기 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3494,
+      "route": "/generated/api-key-lifecycle/api-key-lifecycle-s3",
+      "screen": "API 키 수명주기 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3495,
+      "route": "/admin/generated/api-key-lifecycle/api-key-lifecycle-s3",
+      "screen": "API 키 수명주기 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3496,
+      "route": "/generated/api-key-lifecycle/api-key-lifecycle-s4",
+      "screen": "API 키 수명주기 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3497,
+      "route": "/admin/generated/api-key-lifecycle/api-key-lifecycle-s4",
+      "screen": "API 키 수명주기 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3498,
+      "route": "/generated/data-schema-contract/data-schema-contract-s1",
+      "screen": "데이터 스키마·계약 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3499,
+      "route": "/admin/generated/data-schema-contract/data-schema-contract-s1",
+      "screen": "데이터 스키마·계약 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3500,
+      "route": "/generated/data-schema-contract/data-schema-contract-s2",
+      "screen": "데이터 스키마·계약 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3501,
+      "route": "/admin/generated/data-schema-contract/data-schema-contract-s2",
+      "screen": "데이터 스키마·계약 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3502,
+      "route": "/generated/sync-execution/sync-execution-s3",
+      "screen": "동기화 실행·스케줄 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3503,
+      "route": "/admin/generated/sync-execution/sync-execution-s3",
+      "screen": "동기화 실행·스케줄 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3504,
+      "route": "/generated/data-schema-contract/data-schema-contract-s3",
+      "screen": "데이터 스키마·계약 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3505,
+      "route": "/admin/generated/data-schema-contract/data-schema-contract-s3",
+      "screen": "데이터 스키마·계약 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3506,
+      "route": "/generated/data-schema-contract/data-schema-contract-s4",
+      "screen": "데이터 스키마·계약 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3507,
+      "route": "/admin/generated/data-schema-contract/data-schema-contract-s4",
+      "screen": "데이터 스키마·계약 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3508,
+      "route": "/generated/webhook-management/webhook-management-s1",
+      "screen": "웹훅 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3509,
+      "route": "/admin/generated/webhook-management/webhook-management-s1",
+      "screen": "웹훅 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3510,
+      "route": "/generated/webhook-management/webhook-management-s2",
+      "screen": "웹훅 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3511,
+      "route": "/admin/generated/webhook-management/webhook-management-s2",
+      "screen": "웹훅 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3512,
+      "route": "/generated/webhook-management/webhook-management-s3",
+      "screen": "웹훅 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3513,
+      "route": "/admin/generated/webhook-management/webhook-management-s3",
+      "screen": "웹훅 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3514,
+      "route": "/generated/webhook-management/webhook-management-s4",
+      "screen": "웹훅 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3515,
+      "route": "/admin/generated/webhook-management/webhook-management-s4",
+      "screen": "웹훅 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3516,
+      "route": "/generated/sync-execution/sync-execution-s1",
+      "screen": "동기화 실행·스케줄 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3517,
+      "route": "/admin/generated/sync-execution/sync-execution-s1",
+      "screen": "동기화 실행·스케줄 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3518,
+      "route": "/generated/sync-execution/sync-execution-s2",
+      "screen": "동기화 실행·스케줄 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3519,
+      "route": "/admin/generated/sync-execution/sync-execution-s2",
+      "screen": "동기화 실행·스케줄 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3520,
+      "route": "/generated/sync-execution/sync-execution-s4",
+      "screen": "동기화 실행·스케줄 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3521,
+      "route": "/admin/generated/sync-execution/sync-execution-s4",
+      "screen": "동기화 실행·스케줄 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3522,
+      "route": "/generated/integration-failure-retry/integration-failure-retry-s1",
+      "screen": "연계 실패·재시도 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3523,
+      "route": "/admin/generated/integration-failure-retry/integration-failure-retry-s1",
+      "screen": "연계 실패·재시도 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3524,
+      "route": "/generated/integration-failure-retry/integration-failure-retry-s2",
+      "screen": "연계 실패·재시도 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3525,
+      "route": "/admin/generated/integration-failure-retry/integration-failure-retry-s2",
+      "screen": "연계 실패·재시도 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3526,
+      "route": "/generated/integration-failure-retry/integration-failure-retry-s3",
+      "screen": "연계 실패·재시도 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3527,
+      "route": "/admin/generated/integration-failure-retry/integration-failure-retry-s3",
+      "screen": "연계 실패·재시도 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3528,
+      "route": "/generated/integration-failure-retry/integration-failure-retry-s4",
+      "screen": "연계 실패·재시도 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3529,
+      "route": "/admin/generated/integration-failure-retry/integration-failure-retry-s4",
+      "screen": "연계 실패·재시도 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3530,
+      "route": "/generated/api-usage-monitoring/api-usage-monitoring-s1",
+      "screen": "API 사용량·제한 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3531,
+      "route": "/admin/generated/api-usage-monitoring/api-usage-monitoring-s1",
+      "screen": "API 사용량·제한 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3532,
+      "route": "/generated/api-usage-monitoring/api-usage-monitoring-s2",
+      "screen": "API 사용량·제한 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3533,
+      "route": "/admin/generated/api-usage-monitoring/api-usage-monitoring-s2",
+      "screen": "API 사용량·제한 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3534,
+      "route": "/generated/api-usage-monitoring/api-usage-monitoring-s3",
+      "screen": "API 사용량·제한 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3535,
+      "route": "/admin/generated/api-usage-monitoring/api-usage-monitoring-s3",
+      "screen": "API 사용량·제한 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3536,
+      "route": "/generated/api-usage-monitoring/api-usage-monitoring-s4",
+      "screen": "API 사용량·제한 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3537,
+      "route": "/admin/generated/api-usage-monitoring/api-usage-monitoring-s4",
+      "screen": "API 사용량·제한 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3538,
+      "route": "/generated/integration-log-audit/integration-log-audit-s1",
+      "screen": "연계 로그·감사 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3539,
+      "route": "/admin/generated/integration-log-audit/integration-log-audit-s1",
+      "screen": "연계 로그·감사 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3540,
+      "route": "/generated/integration-log-audit/integration-log-audit-s2",
+      "screen": "연계 로그·감사 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3541,
+      "route": "/admin/generated/integration-log-audit/integration-log-audit-s2",
+      "screen": "연계 로그·감사 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3542,
+      "route": "/generated/integration-log-audit/integration-log-audit-s3",
+      "screen": "연계 로그·감사 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3543,
+      "route": "/admin/generated/integration-log-audit/integration-log-audit-s3",
+      "screen": "연계 로그·감사 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3544,
+      "route": "/generated/integration-log-audit/integration-log-audit-s4",
+      "screen": "연계 로그·감사 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3545,
+      "route": "/admin/generated/integration-log-audit/integration-log-audit-s4",
+      "screen": "연계 로그·감사 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3546,
+      "route": "/generated/validation-rule-management/validation-rule-management-s1",
+      "screen": "검증 규칙 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3547,
+      "route": "/admin/generated/validation-rule-management/validation-rule-management-s1",
+      "screen": "검증 규칙 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3548,
+      "route": "/generated/validation-rule-management/validation-rule-management-s2",
+      "screen": "검증 규칙 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3549,
+      "route": "/admin/generated/validation-rule-management/validation-rule-management-s2",
+      "screen": "검증 규칙 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3550,
+      "route": "/generated/validation-rule-management/validation-rule-management-s3",
+      "screen": "검증 규칙 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3551,
+      "route": "/admin/generated/validation-rule-management/validation-rule-management-s3",
+      "screen": "검증 규칙 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3552,
+      "route": "/generated/validation-rule-management/validation-rule-management-s4",
+      "screen": "검증 규칙 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3553,
+      "route": "/admin/generated/validation-rule-management/validation-rule-management-s4",
+      "screen": "검증 규칙 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3554,
+      "route": "/generated/outlier-rule-management/outlier-rule-management-s1",
+      "screen": "이상치 규칙 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3555,
+      "route": "/admin/generated/outlier-rule-management/outlier-rule-management-s1",
+      "screen": "이상치 규칙 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3556,
+      "route": "/generated/outlier-rule-management/outlier-rule-management-s2",
+      "screen": "이상치 규칙 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3557,
+      "route": "/admin/generated/outlier-rule-management/outlier-rule-management-s2",
+      "screen": "이상치 규칙 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3558,
+      "route": "/generated/outlier-rule-management/outlier-rule-management-s3",
+      "screen": "이상치 규칙 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3559,
+      "route": "/admin/generated/outlier-rule-management/outlier-rule-management-s3",
+      "screen": "이상치 규칙 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3560,
+      "route": "/generated/outlier-rule-management/outlier-rule-management-s4",
+      "screen": "이상치 규칙 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3561,
+      "route": "/admin/generated/outlier-rule-management/outlier-rule-management-s4",
+      "screen": "이상치 규칙 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3562,
+      "route": "/generated/quality-scoring-policy/quality-scoring-policy-s1",
+      "screen": "품질 점수 기준 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3563,
+      "route": "/admin/generated/quality-scoring-policy/quality-scoring-policy-s1",
+      "screen": "품질 점수 기준 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3564,
+      "route": "/generated/quality-scoring-policy/quality-scoring-policy-s2",
+      "screen": "품질 점수 기준 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3565,
+      "route": "/admin/generated/quality-scoring-policy/quality-scoring-policy-s2",
+      "screen": "품질 점수 기준 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3566,
+      "route": "/generated/quality-scoring-policy/quality-scoring-policy-s3",
+      "screen": "품질 점수 기준 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3567,
+      "route": "/admin/generated/quality-scoring-policy/quality-scoring-policy-s3",
+      "screen": "품질 점수 기준 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3568,
+      "route": "/generated/quality-scoring-policy/quality-scoring-policy-s4",
+      "screen": "품질 점수 기준 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3569,
+      "route": "/admin/generated/quality-scoring-policy/quality-scoring-policy-s4",
+      "screen": "품질 점수 기준 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3570,
+      "route": "/generated/approval-line-management/approval-line-management-s1",
+      "screen": "승인선 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3571,
+      "route": "/admin/generated/approval-line-management/approval-line-management-s1",
+      "screen": "승인선 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3572,
+      "route": "/generated/approval-line-management/approval-line-management-s2",
+      "screen": "승인선 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3573,
+      "route": "/admin/generated/approval-line-management/approval-line-management-s2",
+      "screen": "승인선 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3574,
+      "route": "/generated/approval-line-management/approval-line-management-s3",
+      "screen": "승인선 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3575,
+      "route": "/admin/generated/approval-line-management/approval-line-management-s3",
+      "screen": "승인선 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3576,
+      "route": "/generated/approval-line-management/approval-line-management-s4",
+      "screen": "승인선 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3577,
+      "route": "/admin/generated/approval-line-management/approval-line-management-s4",
+      "screen": "승인선 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3578,
+      "route": "/generated/approval-workflow-management/approval-workflow-management-s1",
+      "screen": "승인 워크플로 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3579,
+      "route": "/admin/generated/approval-workflow-management/approval-workflow-management-s1",
+      "screen": "승인 워크플로 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3580,
+      "route": "/generated/approval-workflow-management/approval-workflow-management-s2",
+      "screen": "승인 워크플로 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3581,
+      "route": "/admin/generated/approval-workflow-management/approval-workflow-management-s2",
+      "screen": "승인 워크플로 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3582,
+      "route": "/generated/approval-workflow-management/approval-workflow-management-s3",
+      "screen": "승인 워크플로 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3583,
+      "route": "/admin/generated/approval-workflow-management/approval-workflow-management-s3",
+      "screen": "승인 워크플로 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3584,
+      "route": "/generated/approval-workflow-management/approval-workflow-management-s4",
+      "screen": "승인 워크플로 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3585,
+      "route": "/admin/generated/approval-workflow-management/approval-workflow-management-s4",
+      "screen": "승인 워크플로 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3586,
+      "route": "/generated/task-template-management/task-template-management-s1",
+      "screen": "Task 템플릿 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3587,
+      "route": "/admin/generated/task-template-management/task-template-management-s1",
+      "screen": "Task 템플릿 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3588,
+      "route": "/generated/task-template-management/task-template-management-s2",
+      "screen": "Task 템플릿 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3589,
+      "route": "/admin/generated/task-template-management/task-template-management-s2",
+      "screen": "Task 템플릿 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3590,
+      "route": "/generated/task-template-management/task-template-management-s3",
+      "screen": "Task 템플릿 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3591,
+      "route": "/admin/generated/task-template-management/task-template-management-s3",
+      "screen": "Task 템플릿 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3592,
+      "route": "/generated/task-template-management/task-template-management-s4",
+      "screen": "Task 템플릿 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3593,
+      "route": "/admin/generated/task-template-management/task-template-management-s4",
+      "screen": "Task 템플릿 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3594,
+      "route": "/generated/process-completion-policy/process-completion-policy-s1",
+      "screen": "단계별 완료조건·진행률 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3595,
+      "route": "/admin/generated/process-completion-policy/process-completion-policy-s1",
+      "screen": "단계별 완료조건·진행률 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3596,
+      "route": "/generated/process-completion-policy/process-completion-policy-s2",
+      "screen": "단계별 완료조건·진행률 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3597,
+      "route": "/admin/generated/process-completion-policy/process-completion-policy-s2",
+      "screen": "단계별 완료조건·진행률 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3598,
+      "route": "/generated/process-completion-policy/process-completion-policy-s3",
+      "screen": "단계별 완료조건·진행률 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3599,
+      "route": "/admin/generated/process-completion-policy/process-completion-policy-s3",
+      "screen": "단계별 완료조건·진행률 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3600,
+      "route": "/generated/process-completion-policy/process-completion-policy-s4",
+      "screen": "단계별 완료조건·진행률 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3601,
+      "route": "/admin/generated/process-completion-policy/process-completion-policy-s4",
+      "screen": "단계별 완료조건·진행률 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3602,
+      "route": "/generated/deadline-notification-policy/deadline-notification-policy-s1",
+      "screen": "마감·알림 정책 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3603,
+      "route": "/admin/generated/deadline-notification-policy/deadline-notification-policy-s1",
+      "screen": "마감·알림 정책 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3604,
+      "route": "/generated/deadline-notification-policy/deadline-notification-policy-s2",
+      "screen": "마감·알림 정책 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3605,
+      "route": "/admin/generated/deadline-notification-policy/deadline-notification-policy-s2",
+      "screen": "마감·알림 정책 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3606,
+      "route": "/generated/deadline-notification-policy/deadline-notification-policy-s3",
+      "screen": "마감·알림 정책 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3607,
+      "route": "/admin/generated/deadline-notification-policy/deadline-notification-policy-s3",
+      "screen": "마감·알림 정책 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3608,
+      "route": "/generated/deadline-notification-policy/deadline-notification-policy-s4",
+      "screen": "마감·알림 정책 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3609,
+      "route": "/admin/generated/deadline-notification-policy/deadline-notification-policy-s4",
+      "screen": "마감·알림 정책 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3610,
+      "route": "/generated/automation-rule-management/automation-rule-management-s1",
+      "screen": "자동 처리 규칙 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3611,
+      "route": "/admin/generated/automation-rule-management/automation-rule-management-s1",
+      "screen": "자동 처리 규칙 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3612,
+      "route": "/generated/automation-rule-management/automation-rule-management-s2",
+      "screen": "자동 처리 규칙 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3613,
+      "route": "/admin/generated/automation-rule-management/automation-rule-management-s2",
+      "screen": "자동 처리 규칙 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3614,
+      "route": "/generated/automation-rule-management/automation-rule-management-s3",
+      "screen": "자동 처리 규칙 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3615,
+      "route": "/admin/generated/automation-rule-management/automation-rule-management-s3",
+      "screen": "자동 처리 규칙 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3616,
+      "route": "/generated/automation-rule-management/automation-rule-management-s4",
+      "screen": "자동 처리 규칙 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3617,
+      "route": "/admin/generated/automation-rule-management/automation-rule-management-s4",
+      "screen": "자동 처리 규칙 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3618,
+      "route": "/generated/menu-screen-governance/menu-screen-governance-s1",
+      "screen": "메뉴·페이지·화면 연결 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3619,
+      "route": "/admin/generated/menu-screen-governance/menu-screen-governance-s1",
+      "screen": "메뉴·페이지·화면 연결 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3620,
+      "route": "/generated/menu-screen-governance/menu-screen-governance-s2",
+      "screen": "메뉴·페이지·화면 연결 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3621,
+      "route": "/admin/generated/menu-screen-governance/menu-screen-governance-s2",
+      "screen": "메뉴·페이지·화면 연결 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3622,
+      "route": "/generated/menu-screen-governance/menu-screen-governance-s3",
+      "screen": "메뉴·페이지·화면 연결 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3623,
+      "route": "/admin/generated/menu-screen-governance/menu-screen-governance-s3",
+      "screen": "메뉴·페이지·화면 연결 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3624,
+      "route": "/generated/menu-screen-governance/menu-screen-governance-s4",
+      "screen": "메뉴·페이지·화면 연결 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3625,
+      "route": "/admin/generated/menu-screen-governance/menu-screen-governance-s4",
+      "screen": "메뉴·페이지·화면 연결 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3626,
+      "route": "/generated/design-asset-governance/design-asset-governance-s1",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3627,
+      "route": "/admin/generated/design-asset-governance/design-asset-governance-s1",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3628,
+      "route": "/generated/design-asset-governance/design-asset-governance-s2",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3629,
+      "route": "/admin/generated/design-asset-governance/design-asset-governance-s2",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3630,
+      "route": "/generated/design-asset-governance/design-asset-governance-s3",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3631,
+      "route": "/admin/generated/design-asset-governance/design-asset-governance-s3",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3632,
+      "route": "/generated/design-asset-governance/design-asset-governance-s4",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3633,
+      "route": "/admin/generated/design-asset-governance/design-asset-governance-s4",
+      "screen": "테마·섹션·컴포넌트·CSS 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3634,
+      "route": "/generated/builder-generator-operation/builder-generator-operation-s1",
+      "screen": "빌더·제너레이터 운영 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3635,
+      "route": "/admin/generated/builder-generator-operation/builder-generator-operation-s1",
+      "screen": "빌더·제너레이터 운영 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3636,
+      "route": "/generated/builder-generator-operation/builder-generator-operation-s2",
+      "screen": "빌더·제너레이터 운영 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3637,
+      "route": "/admin/generated/builder-generator-operation/builder-generator-operation-s2",
+      "screen": "빌더·제너레이터 운영 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3638,
+      "route": "/generated/builder-generator-operation/builder-generator-operation-s3",
+      "screen": "빌더·제너레이터 운영 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3639,
+      "route": "/admin/generated/builder-generator-operation/builder-generator-operation-s3",
+      "screen": "빌더·제너레이터 운영 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3640,
+      "route": "/generated/builder-generator-operation/builder-generator-operation-s4",
+      "screen": "빌더·제너레이터 운영 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3641,
+      "route": "/admin/generated/builder-generator-operation/builder-generator-operation-s4",
+      "screen": "빌더·제너레이터 운영 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3642,
+      "route": "/generated/feature-api-governance/feature-api-governance-s1",
+      "screen": "기능·API·함수·모듈 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3643,
+      "route": "/admin/generated/feature-api-governance/feature-api-governance-s1",
+      "screen": "기능·API·함수·모듈 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3644,
+      "route": "/generated/feature-api-governance/feature-api-governance-s2",
+      "screen": "기능·API·함수·모듈 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3645,
+      "route": "/admin/generated/feature-api-governance/feature-api-governance-s2",
+      "screen": "기능·API·함수·모듈 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3646,
+      "route": "/generated/feature-api-governance/feature-api-governance-s3",
+      "screen": "기능·API·함수·모듈 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3647,
+      "route": "/admin/generated/feature-api-governance/feature-api-governance-s3",
+      "screen": "기능·API·함수·모듈 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3648,
+      "route": "/generated/feature-api-governance/feature-api-governance-s4",
+      "screen": "기능·API·함수·모듈 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3649,
+      "route": "/admin/generated/feature-api-governance/feature-api-governance-s4",
+      "screen": "기능·API·함수·모듈 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3650,
+      "route": "/generated/security-policy-operation/security-policy-operation-s1",
+      "screen": "보안 정책·접근 통제 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3651,
+      "route": "/admin/generated/security-policy-operation/security-policy-operation-s1",
+      "screen": "보안 정책·접근 통제 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3652,
+      "route": "/generated/security-policy-operation/security-policy-operation-s2",
+      "screen": "보안 정책·접근 통제 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3653,
+      "route": "/admin/generated/security-policy-operation/security-policy-operation-s2",
+      "screen": "보안 정책·접근 통제 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3654,
+      "route": "/generated/security-policy-operation/security-policy-operation-s3",
+      "screen": "보안 정책·접근 통제 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3655,
+      "route": "/admin/generated/security-policy-operation/security-policy-operation-s3",
+      "screen": "보안 정책·접근 통제 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3656,
+      "route": "/generated/security-policy-operation/security-policy-operation-s4",
+      "screen": "보안 정책·접근 통제 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3657,
+      "route": "/admin/generated/security-policy-operation/security-policy-operation-s4",
+      "screen": "보안 정책·접근 통제 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3658,
+      "route": "/generated/audit-log-operation/audit-log-operation-s1",
+      "screen": "접속·감사·오류 로그 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3659,
+      "route": "/admin/generated/audit-log-operation/audit-log-operation-s1",
+      "screen": "접속·감사·오류 로그 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3660,
+      "route": "/generated/audit-log-operation/audit-log-operation-s2",
+      "screen": "접속·감사·오류 로그 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3661,
+      "route": "/admin/generated/audit-log-operation/audit-log-operation-s2",
+      "screen": "접속·감사·오류 로그 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3662,
+      "route": "/generated/audit-log-operation/audit-log-operation-s3",
+      "screen": "접속·감사·오류 로그 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3663,
+      "route": "/admin/generated/audit-log-operation/audit-log-operation-s3",
+      "screen": "접속·감사·오류 로그 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3664,
+      "route": "/generated/audit-log-operation/audit-log-operation-s4",
+      "screen": "접속·감사·오류 로그 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3665,
+      "route": "/admin/generated/audit-log-operation/audit-log-operation-s4",
+      "screen": "접속·감사·오류 로그 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3666,
+      "route": "/generated/system-monitoring-recovery/system-monitoring-recovery-s1",
+      "screen": "시스템·DB 모니터링·자가복구 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3667,
+      "route": "/admin/generated/system-monitoring-recovery/system-monitoring-recovery-s1",
+      "screen": "시스템·DB 모니터링·자가복구 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3668,
+      "route": "/generated/system-monitoring-recovery/system-monitoring-recovery-s2",
+      "screen": "시스템·DB 모니터링·자가복구 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3669,
+      "route": "/admin/generated/system-monitoring-recovery/system-monitoring-recovery-s2",
+      "screen": "시스템·DB 모니터링·자가복구 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3670,
+      "route": "/generated/system-monitoring-recovery/system-monitoring-recovery-s3",
+      "screen": "시스템·DB 모니터링·자가복구 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3671,
+      "route": "/admin/generated/system-monitoring-recovery/system-monitoring-recovery-s3",
+      "screen": "시스템·DB 모니터링·자가복구 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3672,
+      "route": "/generated/system-monitoring-recovery/system-monitoring-recovery-s4",
+      "screen": "시스템·DB 모니터링·자가복구 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3673,
+      "route": "/admin/generated/system-monitoring-recovery/system-monitoring-recovery-s4",
+      "screen": "시스템·DB 모니터링·자가복구 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3674,
+      "route": "/generated/batch-schedule-operation/batch-schedule-operation-s1",
+      "screen": "배치·스케줄 운영 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3675,
+      "route": "/admin/generated/batch-schedule-operation/batch-schedule-operation-s1",
+      "screen": "배치·스케줄 운영 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3676,
+      "route": "/generated/batch-schedule-operation/batch-schedule-operation-s2",
+      "screen": "배치·스케줄 운영 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3677,
+      "route": "/admin/generated/batch-schedule-operation/batch-schedule-operation-s2",
+      "screen": "배치·스케줄 운영 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3678,
+      "route": "/generated/batch-schedule-operation/batch-schedule-operation-s3",
+      "screen": "배치·스케줄 운영 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3679,
+      "route": "/admin/generated/batch-schedule-operation/batch-schedule-operation-s3",
+      "screen": "배치·스케줄 운영 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3680,
+      "route": "/generated/batch-schedule-operation/batch-schedule-operation-s4",
+      "screen": "배치·스케줄 운영 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3681,
+      "route": "/admin/generated/batch-schedule-operation/batch-schedule-operation-s4",
+      "screen": "배치·스케줄 운영 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3682,
+      "route": "/generated/git-build-deployment/git-build-deployment-s1",
+      "screen": "Git·증분 빌드·무중단 배포 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3683,
+      "route": "/admin/generated/git-build-deployment/git-build-deployment-s1",
+      "screen": "Git·증분 빌드·무중단 배포 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3684,
+      "route": "/generated/git-build-deployment/git-build-deployment-s2",
+      "screen": "Git·증분 빌드·무중단 배포 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3685,
+      "route": "/admin/generated/git-build-deployment/git-build-deployment-s2",
+      "screen": "Git·증분 빌드·무중단 배포 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3686,
+      "route": "/generated/git-build-deployment/git-build-deployment-s3",
+      "screen": "Git·증분 빌드·무중단 배포 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3687,
+      "route": "/admin/generated/git-build-deployment/git-build-deployment-s3",
+      "screen": "Git·증분 빌드·무중단 배포 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3688,
+      "route": "/generated/git-build-deployment/git-build-deployment-s4",
+      "screen": "Git·증분 빌드·무중단 배포 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3689,
+      "route": "/admin/generated/git-build-deployment/git-build-deployment-s4",
+      "screen": "Git·증분 빌드·무중단 배포 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3690,
+      "route": "/generated/version-backup-recovery/version-backup-recovery-s1",
+      "screen": "버전·백업·복구 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3691,
+      "route": "/admin/generated/version-backup-recovery/version-backup-recovery-s1",
+      "screen": "버전·백업·복구 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3692,
+      "route": "/generated/version-backup-recovery/version-backup-recovery-s2",
+      "screen": "버전·백업·복구 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3693,
+      "route": "/admin/generated/version-backup-recovery/version-backup-recovery-s2",
+      "screen": "버전·백업·복구 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3694,
+      "route": "/generated/version-backup-recovery/version-backup-recovery-s3",
+      "screen": "버전·백업·복구 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3695,
+      "route": "/admin/generated/version-backup-recovery/version-backup-recovery-s3",
+      "screen": "버전·백업·복구 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3696,
+      "route": "/generated/version-backup-recovery/version-backup-recovery-s4",
+      "screen": "버전·백업·복구 관리 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3697,
+      "route": "/admin/generated/version-backup-recovery/version-backup-recovery-s4",
+      "screen": "버전·백업·복구 관리 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3698,
+      "route": "/generated/external-service-status/external-service-status-s1",
+      "screen": "외부 서비스 상태 관리 - 요청·범위·필수정보 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3699,
+      "route": "/admin/generated/external-service-status/external-service-status-s1",
+      "screen": "외부 서비스 상태 관리 - 요청·범위·필수정보 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3700,
+      "route": "/generated/external-service-status/external-service-status-s2",
+      "screen": "외부 서비스 상태 관리 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3701,
+      "route": "/admin/generated/external-service-status/external-service-status-s2",
+      "screen": "외부 서비스 상태 관리 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3702,
+      "route": "/generated/external-service-status/external-service-status-s3",
+      "screen": "외부 서비스 상태 관리 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3703,
+      "route": "/admin/generated/external-service-status/external-service-status-s3",
+      "screen": "외부 서비스 상태 관리 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3704,
+      "route": "/generated/notification-center-operation/notification-center-operation-s2",
+      "screen": "알림센터 운영 - 업무 실행·중간 결과 저장 사용자 업무 화면"
+    },
+    {
+      "id": 3705,
+      "route": "/admin/generated/notification-center-operation/notification-center-operation-s2",
+      "screen": "알림센터 운영 - 업무 실행·중간 결과 저장 관리자 업무 화면"
+    },
+    {
+      "id": 3706,
+      "route": "/generated/notification-center-operation/notification-center-operation-s3",
+      "screen": "알림센터 운영 - 독립 검토·보완·권한 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3707,
+      "route": "/admin/generated/notification-center-operation/notification-center-operation-s3",
+      "screen": "알림센터 운영 - 독립 검토·보완·권한 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3708,
+      "route": "/generated/notification-center-operation/notification-center-operation-s4",
+      "screen": "알림센터 운영 - 승인·확정·통지·후속업무 연결 사용자 업무 화면"
+    },
+    {
+      "id": 3709,
+      "route": "/admin/generated/notification-center-operation/notification-center-operation-s4",
+      "screen": "알림센터 운영 - 승인·확정·통지·후속업무 연결 관리자 업무 화면"
+    },
+    {
+      "id": 3710,
+      "route": "/generated/appeal-dispute-audit/appeal-dispute-audit-s1",
+      "screen": "이의·감사 요청 적격성 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3711,
+      "route": "/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s1",
+      "screen": "이의·감사 요청 적격성 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3712,
+      "route": "/generated/appeal-dispute-audit/appeal-dispute-audit-s2",
+      "screen": "원본 증적 동결·독립 배정 사용자 업무 화면"
+    },
+    {
+      "id": 3713,
+      "route": "/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s2",
+      "screen": "원본 증적 동결·독립 배정 관리자 업무 화면"
+    },
+    {
+      "id": 3714,
+      "route": "/generated/appeal-dispute-audit/appeal-dispute-audit-s3",
+      "screen": "쟁점 검토·소명·재현 사용자 업무 화면"
+    },
+    {
+      "id": 3715,
+      "route": "/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s3",
+      "screen": "쟁점 검토·소명·재현 관리자 업무 화면"
+    },
+    {
+      "id": 3716,
+      "route": "/generated/appeal-dispute-audit/appeal-dispute-audit-s4",
+      "screen": "결정 통지·시정·종결 사용자 업무 화면"
+    },
+    {
+      "id": 3717,
+      "route": "/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s4",
+      "screen": "결정 통지·시정·종결 관리자 업무 화면"
+    },
+    {
+      "id": 3718,
+      "route": "/generated/background-db-version-impact/background-db-version-impact-s1",
+      "screen": "데이터셋·버전·라이선스 수집 사용자 업무 화면"
+    },
+    {
+      "id": 3719,
+      "route": "/admin/generated/background-db-version-impact/background-db-version-impact-s1",
+      "screen": "데이터셋·버전·라이선스 수집 관리자 업무 화면"
+    },
+    {
+      "id": 3720,
+      "route": "/generated/background-db-version-impact/background-db-version-impact-s2",
+      "screen": "버전 잠금·재현성 스냅샷 사용자 업무 화면"
+    },
+    {
+      "id": 3721,
+      "route": "/admin/generated/background-db-version-impact/background-db-version-impact-s2",
+      "screen": "버전 잠금·재현성 스냅샷 관리자 업무 화면"
+    },
+    {
+      "id": 3722,
+      "route": "/generated/background-db-version-impact/background-db-version-impact-s3",
+      "screen": "버전 변경 영향 재계산 사용자 업무 화면"
+    },
+    {
+      "id": 3723,
+      "route": "/admin/generated/background-db-version-impact/background-db-version-impact-s3",
+      "screen": "버전 변경 영향 재계산 관리자 업무 화면"
+    },
+    {
+      "id": 3724,
+      "route": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s1",
+      "screen": "시설경계·기준선 확정 사용자 업무 화면"
+    },
+    {
+      "id": 3725,
+      "route": "/admin/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s1",
+      "screen": "시설경계·기준선 확정 관리자 업무 화면"
+    },
+    {
+      "id": 3726,
+      "route": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s2",
+      "screen": "포집·수송·저장 데이터 통합 사용자 업무 화면"
+    },
+    {
+      "id": 3727,
+      "route": "/admin/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s2",
+      "screen": "포집·수송·저장 데이터 통합 관리자 업무 화면"
+    },
+    {
+      "id": 3728,
+      "route": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s3",
+      "screen": "물질수지·순감축량 계산 사용자 업무 화면"
+    },
+    {
+      "id": 3729,
+      "route": "/admin/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s3",
+      "screen": "물질수지·순감축량 계산 관리자 업무 화면"
+    },
+    {
+      "id": 3730,
+      "route": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+      "screen": "독립 검증·MRV 확정 사용자 업무 화면"
+    },
+    {
+      "id": 3731,
+      "route": "/admin/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+      "screen": "독립 검증·MRV 확정 관리자 업무 화면"
+    },
+    {
+      "id": 3732,
+      "route": "/generated/chain-of-custody/chain-of-custody-s1",
+      "screen": "출처·거점·당사자 등록 사용자 업무 화면"
+    },
+    {
+      "id": 3733,
+      "route": "/admin/generated/chain-of-custody/chain-of-custody-s1",
+      "screen": "출처·거점·당사자 등록 관리자 업무 화면"
+    },
+    {
+      "id": 3734,
+      "route": "/generated/chain-of-custody/chain-of-custody-s2",
+      "screen": "출고·운송·인수 계량 연계 사용자 업무 화면"
+    },
+    {
+      "id": 3735,
+      "route": "/admin/generated/chain-of-custody/chain-of-custody-s2",
+      "screen": "출고·운송·인수 계량 연계 관리자 업무 화면"
+    },
+    {
+      "id": 3736,
+      "route": "/generated/chain-of-custody/chain-of-custody-s3",
+      "screen": "양측 인계확인·차이 조정 사용자 업무 화면"
+    },
+    {
+      "id": 3737,
+      "route": "/admin/generated/chain-of-custody/chain-of-custody-s3",
+      "screen": "양측 인계확인·차이 조정 관리자 업무 화면"
+    },
+    {
+      "id": 3738,
+      "route": "/generated/chain-of-custody/chain-of-custody-s4",
+      "screen": "연속성·중복사용 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3739,
+      "route": "/admin/generated/chain-of-custody/chain-of-custody-s4",
+      "screen": "연속성·중복사용 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3740,
+      "route": "/generated/disclosure-correction/disclosure-correction-s1",
+      "screen": "변경 접수·영향평가 사용자 업무 화면"
+    },
+    {
+      "id": 3741,
+      "route": "/admin/generated/disclosure-correction/disclosure-correction-s1",
+      "screen": "변경 접수·영향평가 관리자 업무 화면"
+    },
+    {
+      "id": 3742,
+      "route": "/generated/disclosure-correction/disclosure-correction-s2",
+      "screen": "버전 복제·재산정 사용자 업무 화면"
+    },
+    {
+      "id": 3743,
+      "route": "/admin/generated/disclosure-correction/disclosure-correction-s2",
+      "screen": "버전 복제·재산정 관리자 업무 화면"
+    },
+    {
+      "id": 3744,
+      "route": "/generated/disclosure-correction/disclosure-correction-s3",
+      "screen": "독립 재검증·재승인 사용자 업무 화면"
+    },
+    {
+      "id": 3745,
+      "route": "/admin/generated/disclosure-correction/disclosure-correction-s3",
+      "screen": "독립 재검증·재승인 관리자 업무 화면"
+    },
+    {
+      "id": 3746,
+      "route": "/generated/external-verification-engagement/external-verification-engagement-s2",
+      "screen": "독립성·역량 심사 사용자 업무 화면"
+    },
+    {
+      "id": 3747,
+      "route": "/admin/generated/external-verification-engagement/external-verification-engagement-s2",
+      "screen": "독립성·역량 심사 관리자 업무 화면"
+    },
+    {
+      "id": 3748,
+      "route": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s1",
+      "screen": "다중 산출물·관계자료 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3749,
+      "route": "/admin/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s1",
+      "screen": "다중 산출물·관계자료 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3750,
+      "route": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s2",
+      "screen": "할당 회피·규칙 선택 사용자 업무 화면"
+    },
+    {
+      "id": 3751,
+      "route": "/admin/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s2",
+      "screen": "할당 회피·규칙 선택 관리자 업무 화면"
+    },
+    {
+      "id": 3752,
+      "route": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s3",
+      "screen": "대안별 재계산·민감도 비교 사용자 업무 화면"
+    },
+    {
+      "id": 3753,
+      "route": "/admin/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s3",
+      "screen": "대안별 재계산·민감도 비교 관리자 업무 화면"
+    },
+    {
+      "id": 3754,
+      "route": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s4",
+      "screen": "규칙 정당성·결론 승인 사용자 업무 화면"
+    },
+    {
+      "id": 3755,
+      "route": "/admin/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s4",
+      "screen": "규칙 정당성·결론 승인 관리자 업무 화면"
+    },
+    {
+      "id": 3756,
+      "route": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+      "screen": "품질 메타데이터 수집 사용자 업무 화면"
+    },
+    {
+      "id": 3757,
+      "route": "/admin/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+      "screen": "품질 메타데이터 수집 관리자 업무 화면"
+    },
+    {
+      "id": 3758,
+      "route": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s2",
+      "screen": "대표성·완전성 점수화 사용자 업무 화면"
+    },
+    {
+      "id": 3759,
+      "route": "/admin/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s2",
+      "screen": "대표성·완전성 점수화 관리자 업무 화면"
+    },
+    {
+      "id": 3760,
+      "route": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s3",
+      "screen": "불확도·민감도 계산 사용자 업무 화면"
+    },
+    {
+      "id": 3761,
+      "route": "/admin/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s3",
+      "screen": "불확도·민감도 계산 관리자 업무 화면"
+    },
+    {
+      "id": 3762,
+      "route": "/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s4",
+      "screen": "개선 우선순위·한계 승인 사용자 업무 화면"
+    },
+    {
+      "id": 3763,
+      "route": "/admin/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s4",
+      "screen": "개선 우선순위·한계 승인 관리자 업무 화면"
+    },
+    {
+      "id": 3764,
+      "route": "/generated/leakage-incident-response/leakage-incident-response-s1",
+      "screen": "경보 수신·상황 등급화 사용자 업무 화면"
+    },
+    {
+      "id": 3765,
+      "route": "/admin/generated/leakage-incident-response/leakage-incident-response-s1",
+      "screen": "경보 수신·상황 등급화 관리자 업무 화면"
+    },
+    {
+      "id": 3766,
+      "route": "/generated/leakage-incident-response/leakage-incident-response-s2",
+      "screen": "비상정지·인명환경 보호 사용자 업무 화면"
+    },
+    {
+      "id": 3767,
+      "route": "/admin/generated/leakage-incident-response/leakage-incident-response-s2",
+      "screen": "비상정지·인명환경 보호 관리자 업무 화면"
+    },
+    {
+      "id": 3768,
+      "route": "/generated/leakage-incident-response/leakage-incident-response-s3",
+      "screen": "법정보고·누출량 산정 사용자 업무 화면"
+    },
+    {
+      "id": 3769,
+      "route": "/admin/generated/leakage-incident-response/leakage-incident-response-s3",
+      "screen": "법정보고·누출량 산정 관리자 업무 화면"
+    },
+    {
+      "id": 3770,
+      "route": "/generated/leakage-incident-response/leakage-incident-response-s4",
+      "screen": "원인분석·시정·재가동 승인 사용자 업무 화면"
+    },
+    {
+      "id": 3771,
+      "route": "/admin/generated/leakage-incident-response/leakage-incident-response-s4",
+      "screen": "원인분석·시정·재가동 승인 관리자 업무 화면"
+    },
+    {
+      "id": 3772,
+      "route": "/generated/measurement-data-quality/measurement-data-quality-s1",
+      "screen": "측정 지점·기기 등록 사용자 업무 화면"
+    },
+    {
+      "id": 3773,
+      "route": "/admin/generated/measurement-data-quality/measurement-data-quality-s1",
+      "screen": "측정 지점·기기 등록 관리자 업무 화면"
+    },
+    {
+      "id": 3774,
+      "route": "/generated/measurement-data-quality/measurement-data-quality-s2",
+      "screen": "교정·가동상태 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3775,
+      "route": "/admin/generated/measurement-data-quality/measurement-data-quality-s2",
+      "screen": "교정·가동상태 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3776,
+      "route": "/generated/measurement-data-quality/measurement-data-quality-s3",
+      "screen": "결측·이상치 판정·대체 사용자 업무 화면"
+    },
+    {
+      "id": 3777,
+      "route": "/admin/generated/measurement-data-quality/measurement-data-quality-s3",
+      "screen": "결측·이상치 판정·대체 관리자 업무 화면"
+    },
+    {
+      "id": 3778,
+      "route": "/generated/measurement-data-quality/measurement-data-quality-s4",
+      "screen": "품질등급 승인·개선조치 사용자 업무 화면"
+    },
+    {
+      "id": 3779,
+      "route": "/admin/generated/measurement-data-quality/measurement-data-quality-s4",
+      "screen": "품질등급 승인·개선조치 관리자 업무 화면"
+    },
+    {
+      "id": 3780,
+      "route": "/generated/pcr-epd-verification/pcr-epd-verification-s1",
+      "screen": "제품 분류·PCR 탐색 사용자 업무 화면"
+    },
+    {
+      "id": 3781,
+      "route": "/admin/generated/pcr-epd-verification/pcr-epd-verification-s1",
+      "screen": "제품 분류·PCR 탐색 관리자 업무 화면"
+    },
+    {
+      "id": 3782,
+      "route": "/generated/pcr-epd-verification/pcr-epd-verification-s2",
+      "screen": "PCR 적합성·유효기간 판정 사용자 업무 화면"
+    },
+    {
+      "id": 3783,
+      "route": "/admin/generated/pcr-epd-verification/pcr-epd-verification-s2",
+      "screen": "PCR 적합성·유효기간 판정 관리자 업무 화면"
+    },
+    {
+      "id": 3784,
+      "route": "/generated/pcr-epd-verification/pcr-epd-verification-s3",
+      "screen": "EPD·PCF 필수항목 검증 사용자 업무 화면"
+    },
+    {
+      "id": 3785,
+      "route": "/admin/generated/pcr-epd-verification/pcr-epd-verification-s3",
+      "screen": "EPD·PCF 필수항목 검증 관리자 업무 화면"
+    },
+    {
+      "id": 3786,
+      "route": "/generated/pcr-epd-verification/pcr-epd-verification-s4",
+      "screen": "독립 검증·공개본 승인 사용자 업무 화면"
+    },
+    {
+      "id": 3787,
+      "route": "/admin/generated/pcr-epd-verification/pcr-epd-verification-s4",
+      "screen": "독립 검증·공개본 승인 관리자 업무 화면"
+    },
+    {
+      "id": 3788,
+      "route": "/generated/project-lifecycle-control/project-lifecycle-control-s1",
+      "screen": "전환 요청·미결업무 확인 사용자 업무 화면"
+    },
+    {
+      "id": 3789,
+      "route": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s1",
+      "screen": "전환 요청·미결업무 확인 관리자 업무 화면"
+    },
+    {
+      "id": 3790,
+      "route": "/generated/project-lifecycle-control/project-lifecycle-control-s2",
+      "screen": "보존·잠금·영향평가 사용자 업무 화면"
+    },
+    {
+      "id": 3791,
+      "route": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s2",
+      "screen": "보존·잠금·영향평가 관리자 업무 화면"
+    },
+    {
+      "id": 3792,
+      "route": "/generated/project-lifecycle-control/project-lifecycle-control-s3",
+      "screen": "권한분리 승인 사용자 업무 화면"
+    },
+    {
+      "id": 3793,
+      "route": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s3",
+      "screen": "권한분리 승인 관리자 업무 화면"
+    },
+    {
+      "id": 3794,
+      "route": "/generated/project-lifecycle-control/project-lifecycle-control-s4",
+      "screen": "종료·보관·재개·취소 실행 사용자 업무 화면"
+    },
+    {
+      "id": 3795,
+      "route": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s4",
+      "screen": "종료·보관·재개·취소 실행 관리자 업무 화면"
+    },
+    {
+      "id": 24180,
+      "route": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_REQUEST",
+      "screen": "변경 요청·근거 등록 관리자 업무 화면"
+    },
+    {
+      "id": 25165,
+      "route": "/admin/system/actor-process",
+      "screen": "변경 요청·근거 등록 지원 화면"
+    },
+    {
+      "id": 25166,
+      "route": "/admin/system/design-governance",
+      "screen": "메뉴·화면·API·DB 영향 분석 지원 화면"
+    },
+    {
+      "id": 25167,
+      "route": "/admin/system/actor-process",
+      "screen": "기준·워크플로 설계 지원 화면"
+    },
+    {
+      "id": 25168,
+      "route": "/admin/system/actor-process",
+      "screen": "정상·안전 시나리오 검증 지원 화면"
+    },
+    {
+      "id": 25169,
+      "route": "/admin/system/actor-process",
+      "screen": "변경 승인·버전 잠금 지원 화면"
+    },
+    {
+      "id": 25170,
+      "route": "/admin/system/build-studio",
+      "screen": "적용·캐시 무효화·운영 확인 지원 화면"
+    },
+    {
+      "id": 25175,
+      "route": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_01_PLAN",
+      "screen": "연계 계획·계약 확정 관리자 업무 화면"
+    },
+    {
+      "id": 25187,
+      "route": "/admin/system/process-workspace?process=LCA_EXECUTION&step=LCA_EXECUTION_01_PLAN",
+      "screen": "목표·범위·기능단위 확정 관리자 업무 화면"
+    }
+  ]
+}

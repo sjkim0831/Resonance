@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-07-25T06:45:29.149172",
+  "total_contracts": 1066,
+  "total_files": 4264,
+  "by_type": {
+    "controller": 0,
+    "service": 0,
+    "repository": 0,
+    "dto": 0
+  },
+  "type": "backend"
+}

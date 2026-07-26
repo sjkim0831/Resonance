@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "completedAt": "2026-07-23T13:13:04.457Z",
+  "summary": {
+    "routeCount": 1,
+    "averageScore": 99,
+    "readyCount": 1,
+    "priorityCounts": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "duplicateContractCandidateCount": 0,
+    "unusedScreenCandidateCount": 2,
+    "plannedScreenBacklogCount": 117,
+    "selfHealCandidateCount": 0
+  },
+  "queue": []
+}

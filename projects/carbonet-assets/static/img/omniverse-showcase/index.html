@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b2545">
+  <meta name="description" content="Resonance 프레임워크에서 Omniverse CCUS 디지털 트윈 3D 영역을 확인하는 통합 화면">
+  <title>Omniverse CCUS 디지털 트윈 | Resonance</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #0b2545;
+      --blue: #1d5fa7;
+      --cyan: #0e7490;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d8e0ea;
+      --surface: #ffffff;
+      --soft: #f3f6fa;
+      --success: #18794e;
+      --shadow: 0 18px 50px rgba(11, 37, 69, .12);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--soft);
+      color: var(--ink);
+      font-family: "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+      line-height: 1.55;
+    }
+    a { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    .skip {
+      position: fixed;
+      left: 16px;
+      top: -80px;
+      z-index: 100;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--navy);
+      padding: 12px 16px;
+      font-weight: 800;
+      box-shadow: var(--shadow);
+    }
+    .skip:focus { top: 16px; }
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(216, 224, 234, .86);
+      background: rgba(255, 255, 255, .94);
+      backdrop-filter: blur(16px);
+    }
+    .header-inner {
+      width: min(1440px, calc(100% - 40px));
+      min-height: 72px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-weight: 900;
+      letter-spacing: -.02em;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      background: linear-gradient(145deg, var(--navy), var(--blue));
+      color: #fff;
+      box-shadow: 0 7px 20px rgba(29, 95, 167, .26);
+    }
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #344054;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .nav a {
+      border-radius: 8px;
+      padding: 9px 12px;
+      text-decoration: none;
+    }
+    .nav a[aria-current="page"] { background: #eaf2fb; color: var(--blue); }
+    .nav a:hover, .nav a:focus-visible { background: #edf2f7; outline: none; }
+    main {
+      width: min(1440px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 30px 0 56px;
+    }
+    .breadcrumb {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .breadcrumb span { margin: 0 8px; color: #98a2b3; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 32px;
+      align-items: end;
+      margin-bottom: 24px;
+      border-radius: 20px;
+      background: linear-gradient(120deg, var(--navy), #163f70 58%, #0d718b);
+      color: #fff;
+      padding: 34px 38px;
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      right: -120px;
+      top: -210px;
+      border: 70px solid rgba(255, 255, 255, .07);
+      border-radius: 50%;
+    }
+    .eyebrow {
+      margin: 0 0 6px;
+      color: #94d8e8;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 3.2vw, 43px);
+      line-height: 1.24;
+      letter-spacing: -.035em;
+    }
+    .hero-copy {
+      max-width: 800px;
+      margin: 13px 0 0;
+      color: #dbe9f7;
+      font-size: 15px;
+    }
+    .hero-status {
+      position: relative;
+      z-index: 1;
+      min-width: 210px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 14px;
+      background: rgba(6, 22, 41, .34);
+      padding: 15px 17px;
+    }
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #47d18c;
+      box-shadow: 0 0 0 5px rgba(71, 209, 140, .14);
+    }
+    .hero-status small {
+      display: block;
+      margin-top: 7px;
+      color: #b7cae0;
+      font-size: 11px;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 24px;
+      align-items: start;
+    }
+    .viewer-card, .panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 10px 30px rgba(11, 37, 69, .07);
+    }
+    .viewer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .viewer-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .viewer-icon {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: #e7f6f8;
+      color: var(--cyan);
+      font-size: 18px;
+    }
+    h2, h3 { margin: 0; letter-spacing: -.02em; }
+    h2 { color: var(--navy); font-size: 18px; }
+    .viewer-title p {
+      overflow: hidden;
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .action {
+      flex: 0 0 auto;
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid #adc3db;
+      border-radius: 9px;
+      background: #fff;
+      color: var(--navy);
+      padding: 0 13px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .action:hover, .action:focus-visible {
+      border-color: var(--blue);
+      background: #edf5fd;
+      outline: 2px solid rgba(29, 95, 167, .18);
+      outline-offset: 2px;
+    }
+    .viewer-actions {
+      position: relative;
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .export-menu { position: relative; }
+    .export-menu summary { list-style: none; cursor: pointer; }
+    .export-menu summary::-webkit-details-marker { display: none; }
+    .export-options {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 12;
+      width: 220px;
+      display: grid;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      padding: 8px;
+      box-shadow: var(--shadow);
+    }
+    .export-option {
+      width: 100%;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 0;
+      border-radius: 8px;
+      background: #f3f6fa;
+      color: var(--navy);
+      padding: 0 11px;
+      text-decoration: none;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .export-option:hover, .export-option:focus-visible {
+      background: #e7f6f8;
+      outline: 2px solid rgba(14, 116, 144, .22);
+    }
+    .export-option small { color: var(--muted); font-size: 10px; }
+    .export-option:disabled { cursor: wait; opacity: .66; }
+    .export-option[hidden] { display: none !important; }
+    .viewer-shell {
+      position: relative;
+      min-height: 560px;
+      height: min(70vh, 820px);
+      overflow: hidden;
+      border-radius: 0 0 17px 17px;
+      background: #050b14;
+    }
+    .viewer-shell iframe {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 0;
+      background: #050b14;
+    }
+    .load-badge {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 999px;
+      background: rgba(5, 11, 20, .72);
+      color: #dbeafe;
+      padding: 7px 11px;
+      font-size: 11px;
+      font-weight: 800;
+      backdrop-filter: blur(8px);
+      transition: opacity .25s ease;
+    }
+    .load-badge.ready { opacity: 0; pointer-events: none; }
+    .side { display: grid; gap: 16px; }
+    .panel { padding: 20px; }
+    .panel h3 { color: var(--navy); font-size: 16px; }
+    .panel-intro { margin: 7px 0 18px; color: var(--muted); font-size: 13px; }
+    .facts { display: grid; gap: 12px; margin: 0; }
+    .fact {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 12px;
+    }
+    .fact:last-child { padding-bottom: 0; border: 0; }
+    .fact dt { color: var(--muted); }
+    .fact dd { margin: 0; color: #344054; font-weight: 800; }
+    .steps { margin: 16px 0 0; padding: 0; list-style: none; counter-reset: step; }
+    .steps li {
+      position: relative;
+      min-height: 32px;
+      margin-top: 12px;
+      padding-left: 39px;
+      color: #475467;
+      font-size: 12px;
+    }
+    .steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: -3px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #eaf2fb;
+      color: var(--blue);
+      font-weight: 900;
+    }
+    .note {
+      border-color: #c6dcec;
+      background: linear-gradient(150deg, #f7fbff, #eef6fc);
+    }
+    .note strong { color: var(--blue); }
+    .note p { margin: 8px 0 0; color: #526477; font-size: 12px; }
+    footer {
+      border-top: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+    }
+    .footer-inner {
+      width: min(1440px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 24px 0;
+      font-size: 12px;
+    }
+    @media (max-width: 980px) {
+      .content-grid { grid-template-columns: 1fr; }
+      .side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .viewer-shell { height: 62vh; min-height: 480px; }
+    }
+    @media (max-width: 720px) {
+      .header-inner, main, .footer-inner { width: min(100% - 24px, 1440px); }
+      .header-inner { min-height: 62px; }
+      .nav a:not([aria-current="page"]) { display: none; }
+      main { padding-top: 18px; }
+      .hero { grid-template-columns: 1fr; padding: 26px 22px; }
+      .hero-status { min-width: 0; width: 100%; }
+      .viewer-head { align-items: flex-start; }
+      .viewer-title p { white-space: normal; }
+      .action span { display: none; }
+      .viewer-shell { min-height: 420px; height: 62vh; }
+      .side { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">본문 바로가기</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="Resonance 홈페이지">
+        <span class="brand-mark" aria-hidden="true">R</span>
+        <span>Resonance<small>CARBONET FRAMEWORK</small></span>
+      </a>
+      <nav class="nav" aria-label="주요 메뉴">
+        <a href="/">홈</a>
+        <a href="#viewer">CCUS 디지털 트윈</a>
+        <a href="#viewer" aria-current="page">Omniverse 3D</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <p class="breadcrumb"><a href="/">홈</a><span>/</span>디지털 트윈<span>/</span>Omniverse 3D</p>
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Digital Twin Experience</p>
+        <h1 id="page-title">Omniverse CCUS 디지털 트윈 3D</h1>
+        <p class="hero-copy">Carbonet 프레임워크 화면 안에서 탄소 포집·저감·MRV 설비의 디지털 트윈 영역을 확인합니다. 기존 3D 스트림은 그대로 유지하고 일반 홈페이지의 정보 구조와 접근성을 적용했습니다.</p>
+      </div>
+      <div class="hero-status" aria-label="3D 서비스 연결 상태">
+        <div class="status-line"><span class="dot" aria-hidden="true"></span><span id="service-status">3D 서비스 연결 중</span></div>
+        <small>carbon_emissions_facility.usda · 실시간 뷰포트</small>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <section class="viewer-card" id="viewer" aria-labelledby="viewer-title">
+        <div class="viewer-head">
+          <div class="viewer-title">
+            <span class="viewer-icon" aria-hidden="true">◈</span>
+            <div>
+              <h2 id="viewer-title">CCUS 디지털 트윈 3D 영역</h2>
+              <p>Omniverse 원본 화면에서 3D 뷰포트만 프레임워크 영역에 표시합니다.</p>
+            </div>
+          </div>
+          <div class="viewer-actions">
+            <a class="action" href="../omniverse-3d-viewer/index.html?v=ccus-lease-v8-20260723" target="_blank" rel="noopener">
+              <span>전체 화면</span><b aria-hidden="true">↗</b>
+            </a>
+            <details class="export-menu" id="export-menu">
+              <summary class="action"><span id="export-label">내보내기</span><b aria-hidden="true">↓</b></summary>
+              <div class="export-options">
+                <a class="export-option" href="/admin/system/omniverse/exports/carbonet-ccus-facility.usda" download>
+                  <span>USDA 원본</span><small>애니메이션 포함</small>
+                </a>
+                <a class="export-option" href="/admin/system/omniverse/exports/carbonet-ccus-facility.glb" download>
+                  <span>GLB 모델</span><small>범용 3D</small>
+                </a>
+                <a class="export-option" href="/admin/system/omniverse/exports/carbonet-ccus-facility.png" download>
+                  <span>PNG 이미지</span><small>현재 장면</small>
+                </a>
+                <button class="export-option" id="export-mp4" type="button">
+                  <span>MP4 영상</span><small>30초 녹화</small>
+                </button>
+                <a class="export-option" id="export-mp4-ready" href="#" download hidden>
+                  <span>MP4 다운로드</span><small>30초 준비 완료</small>
+                </a>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="viewer-shell">
+          <div class="load-badge" id="load-badge" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span>3D 화면 준비 중</div>
+          <iframe
+            id="omniverse-frame"
+            src="../omniverse-3d-viewer/index.html?v=ccus-lease-v8-20260723"
+            title="Omniverse CCUS 디지털 트윈 3D 영역 뷰어"
+            allow="autoplay; fullscreen; picture-in-picture"
+            referrerpolicy="same-origin"
+            loading="eager"></iframe>
+        </div>
+      </section>
+
+      <aside class="side" aria-label="3D 화면 안내">
+        <section class="panel">
+          <h3>장면 정보</h3>
+          <p class="panel-intro">설계·운영 검토에 필요한 3D 자산과 연결 정보를 함께 제공합니다.</p>
+          <dl class="facts">
+            <div class="fact"><dt>장면</dt><dd>탄소 포집·저감·MRV 설비</dd></div>
+            <div class="fact"><dt>자산</dt><dd>carbon_emissions_facility.usda</dd></div>
+            <div class="fact"><dt>표시 방식</dt><dd>동일 출처 영역 뷰어</dd></div>
+            <div class="fact"><dt>화면 유형</dt><dd>Public · No-Build</dd></div>
+          </dl>
+        </section>
+        <section class="panel">
+          <h3>이용 방법</h3>
+          <ol class="steps">
+            <li>3D 장면 연결이 완료될 때까지 잠시 기다립니다.</li>
+            <li>좌클릭 드래그로 평행이동하고 우클릭 드래그로 회전합니다.</li>
+            <li>휠로 확대·축소하고 별도 창은 상단 전체 화면 링크를 사용합니다.</li>
+          </ol>
+        </section>
+        <section class="panel note">
+          <strong>프레임워크 통합 화면</strong>
+          <p>뷰어 자체는 독립적으로 유지되므로 3D 스트림 변경과 홈페이지 UI 변경을 서로 영향 없이 배포할 수 있습니다.</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">Resonance / Carbonet · Omniverse Digital Twin Viewer</div>
+  </footer>
+
+  <script>
+    (() => {
+      const frame = document.getElementById("omniverse-frame");
+      const status = document.getElementById("service-status");
+      const badge = document.getElementById("load-badge");
+      const exportMenu = document.getElementById("export-menu");
+      const exportLabel = document.getElementById("export-label");
+      const exportMp4 = document.getElementById("export-mp4");
+      const exportMp4Ready = document.getElementById("export-mp4-ready");
+      const timeout = window.setTimeout(() => {
+        status.textContent = "3D 서비스 확인 필요";
+        badge.textContent = "3D 연결이 지연되고 있습니다";
+      }, 90000);
+
+      frame.addEventListener("load", () => {
+        status.textContent = "3D 영상 확인 중";
+        badge.textContent = "최신 활성 화면 확인 중";
+      });
+
+      window.addEventListener("message", (event) => {
+        const message = event.data;
+        if (
+          event.origin !== window.location.origin ||
+          event.source !== frame.contentWindow ||
+          message?.type !== "carbonet:viewer-state"
+        ) return;
+        if (message.state === "ready") {
+          window.clearTimeout(timeout);
+          status.textContent = "3D 서비스 연결됨";
+          badge.textContent = "최신 화면에서 3D 영상 연결 완료";
+          window.setTimeout(() => badge.classList.add("ready"), 900);
+          return;
+        }
+        badge.classList.remove("ready");
+        if (message.state === "inactive") {
+          status.textContent = "다른 최신 화면이 활성 상태";
+          badge.textContent = "이 화면의 3D 스트림은 자동 비활성화됨";
+          return;
+        }
+        if (message.state === "error" || message.state === "delayed") {
+          status.textContent = "3D 서비스 확인 필요";
+          badge.textContent = message.text || "3D 연결이 지연되고 있습니다";
+          return;
+        }
+        status.textContent = "3D 서비스 연결 중";
+        badge.textContent = message.text || "최신 활성 화면 연결 중";
+      });
+
+      function requestThirtySecondMp4(onProgress) {
+        return new Promise((resolve, reject) => {
+          const requestId = `mp4-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          const timeoutId = window.setTimeout(() => {
+            cleanup();
+            reject(new Error("MP4 녹화 응답 시간이 초과되었습니다."));
+          }, 180000);
+          const cleanup = () => {
+            window.clearTimeout(timeoutId);
+            window.removeEventListener("message", onMessage);
+          };
+          const onMessage = (event) => {
+            const message = event.data;
+            if (
+              event.origin !== window.location.origin ||
+              event.source !== frame.contentWindow ||
+              message?.type !== "carbonet:export-mp4-30-status" ||
+              message.requestId !== requestId
+            ) return;
+            if (message.progress) onProgress(message.progress);
+            if (message.error) {
+              cleanup();
+              reject(new Error(message.error));
+            } else if (message.result) {
+              cleanup();
+              resolve(message.result);
+            }
+          };
+          window.addEventListener("message", onMessage);
+          frame.contentWindow?.postMessage({
+            type: "carbonet:export-mp4-30",
+            requestId,
+          }, window.location.origin);
+        });
+      }
+
+      exportMp4.addEventListener("click", async () => {
+        exportMp4.disabled = true;
+        exportMp4Ready.hidden = true;
+        try {
+          const result = await requestThirtySecondMp4((progress) => {
+            if (progress.phase === "waiting") exportLabel.textContent = "3D 연결 대기";
+            if (progress.phase === "recording") exportLabel.textContent = `MP4 ${progress.remaining}초`;
+            if (progress.phase === "converting") exportLabel.textContent = "MP4 변환 중";
+            if (progress.phase === "uploading") exportLabel.textContent = `MP4 업로드 ${progress.part}/${progress.total}`;
+          });
+          exportLabel.textContent = "MP4 준비 완료";
+          const link = document.createElement("a");
+          link.href = result.downloadUrl;
+          link.download = result.name || "carbonet-ccus-30s.mp4";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          exportMp4Ready.href = result.downloadUrl;
+          exportMp4Ready.download = result.name || "carbonet-ccus-30s.mp4";
+          exportMp4Ready.hidden = false;
+          exportMenu.open = true;
+        } catch (error) {
+          exportLabel.textContent = "MP4 내보내기 실패";
+          console.error(error);
+        } finally {
+          exportMp4.disabled = false;
+          window.setTimeout(() => { exportLabel.textContent = "내보내기"; }, 3000);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

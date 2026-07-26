@@ -1150,7 +1150,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 88,
+    "lineCount": 703,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1604,7 +1604,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 4,
     "status": "implemented",
-    "lineCount": 42,
+    "lineCount": 67,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -1880,11 +1880,11 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 1,
     "status": "implemented",
-    "lineCount": 34,
+    "lineCount": 69,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
-    "hasForm": false,
-    "hasTable": false,
+    "hasForm": true,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -3182,7 +3182,7 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 3,
     "status": "implemented",
-    "lineCount": 392,
+    "lineCount": 404,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -3819,7 +3819,49 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     ],
     "routeCount": 2,
     "status": "implemented",
-    "lineCount": 34,
+    "lineCount": 42,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/page-development-master/PageDesignStudioPage.tsx",
+    "effectiveSourcePath": "features/page-development-master/PageDesignStudioPage.tsx",
+    "effectiveSourcePaths": [
+      "features/page-development-master/PageDesignStudioPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "PageDesignStudioPage"
+    ],
+    "routeIds": [
+      "page-design-studio"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 85,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/page-development-master/PageDevelopmentMasterPage.tsx",
+    "effectiveSourcePath": "features/page-development-master/PageDevelopmentMasterPage.tsx",
+    "effectiveSourcePaths": [
+      "features/page-development-master/PageDevelopmentMasterPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "PageDevelopmentMasterPage"
+    ],
+    "routeIds": [
+      "page-development-master"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 134,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,
@@ -4118,6 +4160,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "hasAsyncData": true,
     "hasForm": false,
     "hasTable": false,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/process-step-workspace/ProcessStepWorkspacePage.tsx",
+    "effectiveSourcePath": "features/process-step-workspace/ProcessStepWorkspacePage.tsx",
+    "effectiveSourcePaths": [
+      "features/process-step-workspace/ProcessStepWorkspacePage.tsx"
+    ],
+    "effectiveExportNames": [
+      "ProcessStepWorkspacePage"
+    ],
+    "routeIds": [
+      "process-step-workspace"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 202,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
     "hasBuilderLink": false
   },
   {
@@ -4982,6 +5045,27 @@ export const PAGE_COMPLETENESS_INVENTORY: PageCompletenessInventoryRow[] = [
     "routeCount": 1,
     "status": "implemented",
     "lineCount": 571,
+    "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
+    "hasAsyncData": true,
+    "hasForm": true,
+    "hasTable": true,
+    "hasBuilderLink": false
+  },
+  {
+    "sourcePath": "features/work-execution/WorkExecutionPage.tsx",
+    "effectiveSourcePath": "features/work-execution/WorkExecutionPage.tsx",
+    "effectiveSourcePaths": [
+      "features/work-execution/WorkExecutionPage.tsx"
+    ],
+    "effectiveExportNames": [
+      "WorkExecutionPage"
+    ],
+    "routeIds": [
+      "work-execution"
+    ],
+    "routeCount": 1,
+    "status": "implemented",
+    "lineCount": 164,
     "reason": "데이터와 UI/동작 신호가 있는 라우트 화면입니다.",
     "hasAsyncData": true,
     "hasForm": true,

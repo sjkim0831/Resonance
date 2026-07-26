@@ -1,0 +1,3696 @@
+{
+  "shard": 4,
+  "complete": true,
+  "results": [
+    {
+      "routeId": "aa77a172a6be4000",
+      "routePath": "/admin/ccus/facility/co2-injection-storage-operation?step=ciso_review",
+      "contractIds": [
+        333
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/ccus/facility/co2-injection-storage-operation?step=ciso_review",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fccus%2Ffacility%2Fco2-injection-storage-operation",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fccus%2Ffacility%2Fco2-injection-storage-operation%3Fstep%3Dciso_review",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2696
+    },
+    {
+      "routeId": "b6b2f72b0bb82d41",
+      "routePath": "/admin/ccus/facility/facility-operation-monitoring?step=fom_operate",
+      "contractIds": [
+        313
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/ccus/facility/facility-operation-monitoring?step=fom_operate",
+      "status": 200,
+      "bodyTextLength": 893,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 396
+    },
+    {
+      "routeId": "79c1c1b4d596f666",
+      "routePath": "/admin/certificate/approve",
+      "contractIds": [
+        26245
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/certificate/approve",
+      "status": 200,
+      "bodyTextLength": 2045,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 2,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 1336
+    },
+    {
+      "routeId": "5dcd274ace7c32b6",
+      "routePath": "/admin/content/banner_list",
+      "contractIds": [
+        26254
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/content/banner_list",
+      "status": 200,
+      "bodyTextLength": 1631,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fcontent%2Fbanner_list",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fcontent%2Fbanner_list"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2065
+    },
+    {
+      "routeId": "3e67cd059f86b3de",
+      "routePath": "/admin/content/post_list",
+      "contractIds": [
+        26262
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/content/post_list?selectedPostId=POST_001",
+      "status": 200,
+      "bodyTextLength": 2670,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fcontent%2Fpost_list",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fcontent%2Fpost_list"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 2838
+    },
+    {
+      "routeId": "ceeb6e8543618607",
+      "routePath": "/admin/emission/data_history",
+      "contractIds": [
+        26267
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/emission/data_history",
+      "status": 200,
+      "bodyTextLength": 981,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 874
+    },
+    {
+      "routeId": "ef67e0eb4c100ed6",
+      "routePath": "/admin/emission/management",
+      "contractIds": [
+        26275
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/emission/management",
+      "status": 200,
+      "bodyTextLength": 1063,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Femission%2Fmanagement"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 2355
+    },
+    {
+      "routeId": "63d80973b3ee1b10",
+      "routePath": "/admin/emission/survey-admin",
+      "contractIds": [
+        26277
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/emission/survey-admin",
+      "status": 200,
+      "bodyTextLength": 974,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 639
+    },
+    {
+      "routeId": "0e5aa98d096d500d",
+      "routePath": "/admin/external/connection_list",
+      "contractIds": [
+        26280
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/external/connection_list",
+      "status": 200,
+      "bodyTextLength": 86,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 0,
+      "headingCount": 0,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fexternal%2Fconnection_list"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "BLANK_SCREEN"
+      ],
+      "durationMs": 3498
+    },
+    {
+      "routeId": "c34c9329913857a6",
+      "routePath": "/admin/external/usage",
+      "contractIds": [
+        26288
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/external/usage",
+      "status": 200,
+      "bodyTextLength": 1127,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fexternal%2Fusage",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fexternal%2Fusage"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 3450
+    },
+    {
+      "routeId": "12c54888e1ccb033",
+      "routePath": "/admin/generated/anomaly-alert-management/anomaly-alert-management-s3",
+      "contractIds": [
+        3227
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/anomaly-alert-management/anomaly-alert-management-s3",
+      "status": 200,
+      "bodyTextLength": 1341,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 1364
+    },
+    {
+      "routeId": "662fbdb30edf8479",
+      "routePath": "/admin/generated/api-key-lifecycle/api-key-lifecycle-s3",
+      "contractIds": [
+        3495
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/api-key-lifecycle/api-key-lifecycle-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fapi-key-lifecycle%2Fapi-key-lifecycle-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 2642
+    },
+    {
+      "routeId": "892fb613d47521eb",
+      "routePath": "/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s3",
+      "contractIds": [
+        3715
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fappeal-dispute-audit%2Fappeal-dispute-audit-s3",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fappeal-dispute-audit%2Fappeal-dispute-audit-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 3996
+    },
+    {
+      "routeId": "d423592b4da83b06",
+      "routePath": "/admin/generated/approval-line-management/approval-line-management-s3",
+      "contractIds": [
+        3575
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/approval-line-management/approval-line-management-s3",
+      "status": 200,
+      "bodyTextLength": 893,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 357
+    },
+    {
+      "routeId": "c4aee8f2d6bedae6",
+      "routePath": "/admin/generated/attendance-progress/attendance-progress-s3",
+      "contractIds": [
+        3365
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/attendance-progress/attendance-progress-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fapproval-line-management%2Fapproval-line-management-s3",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fattendance-progress%2Fattendance-progress-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1205
+    },
+    {
+      "routeId": "5fad89a01d69d2e2",
+      "routePath": "/admin/generated/automation-rule-management/automation-rule-management-s3",
+      "contractIds": [
+        3615
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/automation-rule-management/automation-rule-management-s3",
+      "status": 200,
+      "bodyTextLength": 915,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 243
+    },
+    {
+      "routeId": "794aa2c8fce6ee67",
+      "routePath": "/admin/generated/batch-schedule-operation/batch-schedule-operation-s3",
+      "contractIds": [
+        3679
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/batch-schedule-operation/batch-schedule-operation-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fbatch-schedule-operation%2Fbatch-schedule-operation-s3",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fbatch-schedule-operation%2Fbatch-schedule-operation-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1930
+    },
+    {
+      "routeId": "82a7318955d613a7",
+      "routePath": "/admin/generated/carbon-credit-management/carbon-credit-management-s3",
+      "contractIds": [
+        3333
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/carbon-credit-management/carbon-credit-management-s3",
+      "status": 200,
+      "bodyTextLength": 893,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 378
+    },
+    {
+      "routeId": "77f59c9027cf8cc2",
+      "routePath": "/admin/generated/certificate-objection/certificate-objection-s3",
+      "contractIds": [
+        3471
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/certificate-objection/certificate-objection-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fcertificate-objection%2Fcertificate-objection-s3",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fcertificate-objection%2Fcertificate-objection-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1860
+    },
+    {
+      "routeId": "6b97f950a4b58025",
+      "routePath": "/admin/generated/certificate-verification/certificate-verification-s3",
+      "contractIds": [
+        3463
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/certificate-verification/certificate-verification-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fcertificate-verification%2Fcertificate-verification-s3",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fcertificate-verification%2Fcertificate-verification-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1119
+    },
+    {
+      "routeId": "973710486364a973",
+      "routePath": "/admin/generated/co2-demand-registration/co2-demand-registration-s3",
+      "contractIds": [
+        3269
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/co2-demand-registration/co2-demand-registration-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fco2-demand-registration%2Fco2-demand-registration-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 899
+    },
+    {
+      "routeId": "f778427d96b1d326",
+      "routePath": "/admin/generated/comparative-assertion-review/comparative-assertion-review-s3",
+      "contractIds": [
+        3113
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/comparative-assertion-review/comparative-assertion-review-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fcomparative-assertion-review%2Fcomparative-assertion-review-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1199
+    },
+    {
+      "routeId": "a125ef45a6010754",
+      "routePath": "/admin/generated/customer-inquiry/customer-inquiry-s3",
+      "contractIds": [
+        3407
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/customer-inquiry/customer-inquiry-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 4,
+      "pageErrorCount": 0,
+      "apiFailureCount": 4,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fcustomer-inquiry%2Fcustomer-inquiry-s3",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fcustomer-inquiry%2Fcustomer-inquiry-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2374
+    },
+    {
+      "routeId": "646de2e2b3baead2",
+      "routePath": "/admin/generated/data-schema-contract/data-schema-contract-s3",
+      "contractIds": [
+        3505
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/data-schema-contract/data-schema-contract-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fdata-schema-contract%2Fdata-schema-contract-s3",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fdata-schema-contract%2Fdata-schema-contract-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2404
+    },
+    {
+      "routeId": "34d4100691d6b4bf",
+      "routePath": "/admin/generated/deadline-notification-policy/deadline-notification-policy-s3",
+      "contractIds": [
+        3607
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/deadline-notification-policy/deadline-notification-policy-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fdeadline-notification-policy%2Fdeadline-notification-policy-s3",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fdeadline-notification-policy%2Fdeadline-notification-policy-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2069
+    },
+    {
+      "routeId": "9a854ebd21f62e8a",
+      "routePath": "/admin/generated/disclosure-correction/disclosure-correction-s3",
+      "contractIds": [
+        3745
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/disclosure-correction/disclosure-correction-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fdisclosure-correction%2Fdisclosure-correction-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1880
+    },
+    {
+      "routeId": "d8f221bf32bf9645",
+      "routePath": "/admin/generated/education-application/education-application-s3",
+      "contractIds": [
+        3357
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/education-application/education-application-s3",
+      "status": 200,
+      "bodyTextLength": 1319,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Feducation-application%2Feducation-application-s3",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Feducation-application%2Feducation-application-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1799
+    },
+    {
+      "routeId": "fc5cfe699c3a0494",
+      "routePath": "/admin/generated/education-schedule/education-schedule-s3",
+      "contractIds": [
+        3349
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/education-schedule/education-schedule-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Feducation-schedule%2Feducation-schedule-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2065
+    },
+    {
+      "routeId": "732eeb2ff22cfc93",
+      "routePath": "/admin/generated/external-system-registry/external-system-registry-s3",
+      "contractIds": [
+        3479
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/external-system-registry/external-system-registry-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fexternal-system-registry%2Fexternal-system-registry-s3",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fexternal-system-registry%2Fexternal-system-registry-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1589
+    },
+    {
+      "routeId": "14a53970bade953d",
+      "routePath": "/admin/generated/faq-management/faq-management-s3",
+      "contractIds": [
+        2864
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/faq-management/faq-management-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Ffaq-management%2Ffaq-management-s3",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Ffaq-management%2Ffaq-management-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1371
+    },
+    {
+      "routeId": "e485c2b766689283",
+      "routePath": "/admin/generated/git-build-deployment/git-build-deployment-s3",
+      "contractIds": [
+        3687
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/git-build-deployment/git-build-deployment-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fgit-build-deployment%2Fgit-build-deployment-s3"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 901
+    },
+    {
+      "routeId": "b7d3d65dec2a1501",
+      "routePath": "/admin/generated/integrated-monitoring/integrated-monitoring-s3",
+      "contractIds": [
+        3211
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/integrated-monitoring/integrated-monitoring-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fintegrated-monitoring%2Fintegrated-monitoring-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1770
+    },
+    {
+      "routeId": "0cffac654aca9810",
+      "routePath": "/admin/generated/integration-log-audit/integration-log-audit-s3",
+      "contractIds": [
+        3543
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/integration-log-audit/integration-log-audit-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fintegration-log-audit%2Fintegration-log-audit-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1735
+    },
+    {
+      "routeId": "97878c3f944e4d31",
+      "routePath": "/admin/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s3",
+      "contractIds": [
+        3761
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 4,
+      "pageErrorCount": 0,
+      "apiFailureCount": 4,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Flca-data-quality-uncertainty%2Flca-data-quality-uncertainty-s3",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Flca-data-quality-uncertainty%2Flca-data-quality-uncertainty-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1352
+    },
+    {
+      "routeId": "ef9364cd1e91e7bd",
+      "routePath": "/admin/generated/macc-portfolio/macc-portfolio-s3",
+      "contractIds": [
+        3197
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/macc-portfolio/macc-portfolio-s3",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fmacc-portfolio%2Fmacc-portfolio-s3",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 709
+    },
+    {
+      "routeId": "5410fa717810abc8",
+      "routePath": "/admin/generated/member-registration/member-registration-s4",
+      "contractIds": [
+        2969
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/member-registration/member-registration-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fmember-registration%2Fmember-registration-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fmember-registration%2Fmember-registration-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1258
+    },
+    {
+      "routeId": "bea16bacf54c3813",
+      "routePath": "/admin/generated/menu-screen-governance/menu-screen-governance-s4",
+      "contractIds": [
+        3625
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/menu-screen-governance/menu-screen-governance-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fmenu-screen-governance%2Fmenu-screen-governance-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 716
+    },
+    {
+      "routeId": "d417fd27f4f24de1",
+      "routePath": "/admin/generated/newsletter-operation/newsletter-operation-s4",
+      "contractIds": [
+        3425
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/newsletter-operation/newsletter-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fnewsletter-operation%2Fnewsletter-operation-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fnewsletter-operation%2Fnewsletter-operation-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1667
+    },
+    {
+      "routeId": "cc8b6cafdc1d354b",
+      "routePath": "/admin/generated/notification-center-operation/notification-center-operation-s4",
+      "contractIds": [
+        3709
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/notification-center-operation/notification-center-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fnotification-center-operation%2Fnotification-center-operation-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1337
+    },
+    {
+      "routeId": "30c8bdadc6414c80",
+      "routePath": "/admin/generated/pcr-epd-verification/pcr-epd-verification-s4",
+      "contractIds": [
+        3787
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/pcr-epd-verification/pcr-epd-verification-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fpcr-epd-verification%2Fpcr-epd-verification-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fpcr-epd-verification%2Fpcr-epd-verification-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1412
+    },
+    {
+      "routeId": "8461903d69f078da",
+      "routePath": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s4",
+      "contractIds": [
+        3795
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/project-lifecycle-control/project-lifecycle-control-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fproject-lifecycle-control%2Fproject-lifecycle-control-s4",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fproject-lifecycle-control%2Fproject-lifecycle-control-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2414
+    },
+    {
+      "routeId": "7e1b85fcb91696b8",
+      "routePath": "/admin/generated/reduction-performance/reduction-performance-s4",
+      "contractIds": [
+        3185
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/reduction-performance/reduction-performance-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Freduction-performance%2Freduction-performance-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 881
+    },
+    {
+      "routeId": "114e1a28037855d8",
+      "routePath": "/admin/generated/reduction-project-registration/reduction-project-registration-s4",
+      "contractIds": [
+        3169
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/reduction-project-registration/reduction-project-registration-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Freduction-project-registration%2Freduction-project-registration-s4",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Freduction-project-registration%2Freduction-project-registration-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1495
+    },
+    {
+      "routeId": "3d347abf9b86dfbc",
+      "routePath": "/admin/generated/reduction-roadmap/reduction-roadmap-s4",
+      "contractIds": [
+        3109
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/reduction-roadmap/reduction-roadmap-s4",
+      "status": 200,
+      "bodyTextLength": 915,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 651
+    },
+    {
+      "routeId": "a48049d101274636",
+      "routePath": "/admin/generated/reduction-target-planning/reduction-target-planning-s4",
+      "contractIds": [
+        3159
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/reduction-target-planning/reduction-target-planning-s4",
+      "status": 200,
+      "bodyTextLength": 1519,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Freduction-roadmap%2Freduction-roadmap-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Freduction-target-planning%2Freduction-target-planning-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1083
+    },
+    {
+      "routeId": "2233886e27fcad6d",
+      "routePath": "/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+      "contractIds": [
+        3239
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+      "status": 200,
+      "bodyTextLength": 915,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 346
+    },
+    {
+      "routeId": "2c1e302d4bc712a0",
+      "routePath": "/admin/generated/report-submission/report-submission-s4",
+      "contractIds": [
+        3449
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/report-submission/report-submission-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Freport-submission%2Freport-submission-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1875
+    },
+    {
+      "routeId": "69f5c5c8567069cc",
+      "routePath": "/admin/generated/resource-publication/resource-publication-s4",
+      "contractIds": [
+        3399
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/resource-publication/resource-publication-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fresource-publication%2Fresource-publication-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1694
+    },
+    {
+      "routeId": "7d64b1e44273c887",
+      "routePath": "/admin/generated/security-policy-operation/security-policy-operation-s4",
+      "contractIds": [
+        3657
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/security-policy-operation/security-policy-operation-s4",
+      "status": 200,
+      "bodyTextLength": 893,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 150
+    },
+    {
+      "routeId": "35e9d80f4cda58e1",
+      "routePath": "/admin/generated/supply-demand-matching/supply-demand-matching-s4",
+      "contractIds": [
+        3279
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/supply-demand-matching/supply-demand-matching-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fsupply-demand-matching%2Fsupply-demand-matching-s4",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fsupply-demand-matching%2Fsupply-demand-matching-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 556
+    },
+    {
+      "routeId": "c82e80d37bfa78f3",
+      "routePath": "/admin/generated/system-monitoring-recovery/system-monitoring-recovery-s4",
+      "contractIds": [
+        3673
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/generated/system-monitoring-recovery/system-monitoring-recovery-s4",
+      "status": 200,
+      "bodyTextLength": 915,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 573
+    },
+    {
+      "routeId": "c75c7ea50e176777",
+      "routePath": "/admin/generated/trade-contract/trade-contract-s4",
+      "contractIds": [
+        3289
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/trade-contract/trade-contract-s4",
+      "status": 200,
+      "bodyTextLength": 1319,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Ftrade-contract%2Ftrade-contract-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Ftrade-contract%2Ftrade-contract-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 524
+    },
+    {
+      "routeId": "3dfe2e1216fac5e7",
+      "routePath": "/admin/generated/trade-proposal/trade-proposal-s4",
+      "contractIds": [
+        3283
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/trade-proposal/trade-proposal-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Ftrade-proposal%2Ftrade-proposal-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1283
+    },
+    {
+      "routeId": "03631c3c8c6bf1b7",
+      "routePath": "/admin/generated/training-certificate/training-certificate-s4",
+      "contractIds": [
+        3383
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/training-certificate/training-certificate-s4",
+      "status": 200,
+      "bodyTextLength": 1519,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Ftraining-certificate%2Ftraining-certificate-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1384
+    },
+    {
+      "routeId": "5cd452503a4cf0e2",
+      "routePath": "/admin/generated/validation-rule-management/validation-rule-management-s4",
+      "contractIds": [
+        3553
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/validation-rule-management/validation-rule-management-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fgenerated%2Fvalidation-rule-management%2Fvalidation-rule-management-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fvalidation-rule-management%2Fvalidation-rule-management-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2265
+    },
+    {
+      "routeId": "da2abfd1a9fbd9a9",
+      "routePath": "/admin/generated/webhook-management/webhook-management-s4",
+      "contractIds": [
+        3515
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/generated/webhook-management/webhook-management-s4",
+      "status": 200,
+      "bodyTextLength": 1497,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fgenerated%2Fwebhook-management%2Fwebhook-management-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1196
+    },
+    {
+      "routeId": "1d5c658e6fc0a667",
+      "routePath": "/admin/member/company_list",
+      "contractIds": [
+        3051,
+        3057
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/member/company_list",
+      "status": 200,
+      "bodyTextLength": 976,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fmember%2Fcompany_list"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 1043
+    },
+    {
+      "routeId": "1beba5c713b3985f",
+      "routePath": "/admin/member/withdrawn",
+      "contractIds": [
+        3037,
+        3039,
+        3041
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/member/withdrawn",
+      "status": 200,
+      "bodyTextLength": 2012,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fmember%2Fwithdrawn"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 880
+    },
+    {
+      "routeId": "defdfaf243770392",
+      "routePath": "/admin/system/api-management",
+      "contractIds": [
+        26303
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/api-management",
+      "status": 200,
+      "bodyTextLength": 3115,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 2,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fsystem%2Fapi-management",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fsystem%2Fapi-management"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 932
+    },
+    {
+      "routeId": "1067189b1ff39fdd",
+      "routePath": "/admin/system/blocklist",
+      "contractIds": [
+        26311
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/blocklist",
+      "status": 200,
+      "bodyTextLength": 2938,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 14,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fsystem%2Fblocklist",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fsystem%2Fblocklist"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1627
+    },
+    {
+      "routeId": "6d3ed3ea5781a14e",
+      "routePath": "/admin/system/controller-management",
+      "contractIds": [
+        26317
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/system/controller-management",
+      "status": 200,
+      "bodyTextLength": 3140,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 2,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 508
+    },
+    {
+      "routeId": "35eb94f7e0a00857",
+      "routePath": "/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_01_PLAN",
+      "contractIds": [
+        25175
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/process-workspace?process=DATA_INTEGRATION&step=DATA_INTEGRATION_01_PLAN",
+      "status": 200,
+      "bodyTextLength": 945,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 3,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 5,
+      "pageErrorCount": 0,
+      "apiFailureCount": 5,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fsystem%2Fcontroller-management",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DDATA_INTEGRATION%26step%3DDATA_INTEGRATION_01_PLAN",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/actor-process"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 2184
+    },
+    {
+      "routeId": "a2fa9f3861268ecc",
+      "routePath": "/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_REQUEST",
+      "contractIds": [
+        24180
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/process-workspace?process=GOVERNANCE_CHANGE&step=GOV_REQUEST",
+      "status": 200,
+      "bodyTextLength": 948,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 3,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DGOVERNANCE_CHANGE%26step%3DGOV_REQUEST"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 969
+    },
+    {
+      "routeId": "e685d51768dcd704",
+      "routePath": "/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_04_APPROVE",
+      "contractIds": [
+        534
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_04_APPROVE",
+      "status": 200,
+      "bodyTextLength": 945,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 3,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 4,
+      "pageErrorCount": 0,
+      "apiFailureCount": 4,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/actor-process",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DMEMBER_LIFECYCLE%26step%3DMEMBER_LIFECYCLE_04_APPROVE",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 507
+    },
+    {
+      "routeId": "8c4bed1b4a31991a",
+      "routePath": "/admin/system/process-workspace?process=PLATFORM_OPERATION&step=PLATFORM_AUDIT",
+      "contractIds": [
+        541
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/process-workspace?process=PLATFORM_OPERATION&step=PLATFORM_AUDIT",
+      "status": 200,
+      "bodyTextLength": 951,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 3,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 3,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/actor-process",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 729
+    },
+    {
+      "routeId": "51a643580dc8cb24",
+      "routePath": "/admin/system/process-workspace?process=TRADE_EXECUTION&step=TRADE_EXECUTION_04_APPROVE",
+      "contractIds": [
+        549
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/system/process-workspace?process=TRADE_EXECUTION&step=TRADE_EXECUTION_04_APPROVE",
+      "status": 200,
+      "bodyTextLength": 942,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 3,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 4,
+      "pageErrorCount": 0,
+      "apiFailureCount": 4,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/actor-process",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace%3Fprocess%3DTRADE_EXECUTION%26step%3DTRADE_EXECUTION_04_APPROVE",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fsystem%2Fprocess-workspace"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 794
+    },
+    {
+      "routeId": "6d3d2a3f83042dd1",
+      "routePath": "/admin/work/certification-eligibility-check?step=cec_validate_company",
+      "contractIds": [
+        461
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/work/certification-eligibility-check?step=cec_validate_company",
+      "status": 200,
+      "bodyTextLength": 1519,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 851
+    },
+    {
+      "routeId": "1fe5e2fca31c18b2",
+      "routePath": "/admin/work/company-manager-delegation?step=cmd_approve",
+      "contractIds": [
+        475
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/admin/work/company-manager-delegation?step=cmd_approve",
+      "status": 200,
+      "bodyTextLength": 2624,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 3,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 6,
+      "pageErrorCount": 0,
+      "apiFailureCount": 6,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fadmin%2Fwork%2Fcompany-manager-delegation",
+        "404 http://172.16.1.232/admin/api/system/actor-process",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fadmin%2Fwork%2Fcompany-manager-delegation%3Fstep%3Dcmd_approve",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/actor-process/design-assets"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 816
+    },
+    {
+      "routeId": "b8f80ae1f015c7d1",
+      "routePath": "/admin/work/privacy-retention-destruction?step=prd_destroy",
+      "contractIds": [
+        483
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/work/privacy-retention-destruction?step=prd_destroy",
+      "status": 200,
+      "bodyTextLength": 1519,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 276
+    },
+    {
+      "routeId": "a483f04b201a0b8f",
+      "routePath": "/ccus/facility/facility-asset-registry?step=far_assign",
+      "contractIds": [
+        306
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/ccus/facility/facility-asset-registry?step=far_assign",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fccus%2Ffacility%2Ffacility-asset-registry%3Fstep%3Dfar_assign",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 295
+    },
+    {
+      "routeId": "d64b64049a22d188",
+      "routePath": "/ccus/facility/meter-calibration-management?step=mcm_approve",
+      "contractIds": [
+        320
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/ccus/facility/meter-calibration-management?step=mcm_approve",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 384
+    },
+    {
+      "routeId": "b8da45163653e688",
+      "routePath": "/emission/calculation-results",
+      "contractIds": [
+        128
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/emission/calculation-results",
+      "status": 200,
+      "bodyTextLength": 73,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 0,
+      "headingCount": 0,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 133
+    },
+    {
+      "routeId": "67007627243d1c07",
+      "routePath": "/emission/report-download",
+      "contractIds": [
+        132
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/emission/report-download",
+      "status": 200,
+      "bodyTextLength": 109,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 1,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2415,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Femission%2Fcalculation-results",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Femission%2Freport-download"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 1005
+    },
+    {
+      "routeId": "5a5941912d6ea8e2",
+      "routePath": "/generated/analysis-export/analysis-export-s4",
+      "contractIds": [
+        3230
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/analysis-export/analysis-export-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Femission%2Freport-download"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 286
+    },
+    {
+      "routeId": "9692a62b0f5330c9",
+      "routePath": "/generated/api-connection-management/api-connection-management-s4",
+      "contractIds": [
+        3488
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/api-connection-management/api-connection-management-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 457
+    },
+    {
+      "routeId": "b702c5af863b93cd",
+      "routePath": "/generated/api-usage-monitoring/api-usage-monitoring-s4",
+      "contractIds": [
+        3536
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/api-usage-monitoring/api-usage-monitoring-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 748
+    },
+    {
+      "routeId": "04bb2e97e93c623b",
+      "routePath": "/generated/approval-authority/approval-authority-s4",
+      "contractIds": [
+        3150
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/approval-authority/approval-authority-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 754
+    },
+    {
+      "routeId": "204b899a0fb147d4",
+      "routePath": "/generated/approval-workflow-management/approval-workflow-management-s4",
+      "contractIds": [
+        3584
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/approval-workflow-management/approval-workflow-management-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 1075
+    },
+    {
+      "routeId": "260b1849dca5a582",
+      "routePath": "/generated/audit-log-operation/audit-log-operation-s4",
+      "contractIds": [
+        3664
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/audit-log-operation/audit-log-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 573
+    },
+    {
+      "routeId": "d93d48f760ba2dac",
+      "routePath": "/generated/background-db-version-impact/background-db-version-impact-s4",
+      "contractIds": [
+        3080
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/background-db-version-impact/background-db-version-impact-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fbackground-db-version-impact%2Fbackground-db-version-impact-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 479
+    },
+    {
+      "routeId": "fe17e4eb633208f3",
+      "routePath": "/generated/builder-generator-operation/builder-generator-operation-s4",
+      "contractIds": [
+        3640
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/builder-generator-operation/builder-generator-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 196,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fbuilder-generator-operation%2Fbuilder-generator-operation-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 374
+    },
+    {
+      "routeId": "8475b1a878d01df5",
+      "routePath": "/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+      "contractIds": [
+        3730
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 85,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 328
+    },
+    {
+      "routeId": "f888551531e901f3",
+      "routePath": "/generated/certificate-review-issuance/certificate-review-issuance-s4",
+      "contractIds": [
+        3456
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/generated/certificate-review-issuance/certificate-review-issuance-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 96
+    },
+    {
+      "routeId": "5c50f4877a7bea63",
+      "routePath": "/generated/chain-of-custody/chain-of-custody-s4",
+      "contractIds": [
+        3738
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/chain-of-custody/chain-of-custody-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 744,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 442
+    },
+    {
+      "routeId": "29bc21a40db3cf99",
+      "routePath": "/generated/co2-supply-registration/co2-supply-registration-s4",
+      "contractIds": [
+        3260
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/generated/co2-supply-registration/co2-supply-registration-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 85
+    },
+    {
+      "routeId": "a7b78740a30835a0",
+      "routePath": "/generated/course-management/course-management-s4",
+      "contractIds": [
+        3342
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/generated/course-management/course-management-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 106
+    },
+    {
+      "routeId": "034e08ed19e6af2f",
+      "routePath": "/generated/data-quality-monitoring/data-quality-monitoring-s4",
+      "contractIds": [
+        3220
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/data-quality-monitoring/data-quality-monitoring-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2808,
+      "pageErrorCount": 0,
+      "apiFailureCount": 4,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/composition?variant=PUBLIC",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fdata-quality-monitoring%2Fdata-quality-monitoring-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fcourse-management%2Fcourse-management-s4"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 601
+    },
+    {
+      "routeId": "ae0538198d351d16",
+      "routePath": "/generated/data-scope-authority/data-scope-authority-s4",
+      "contractIds": [
+        3142
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/data-scope-authority/data-scope-authority-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 48,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Fdata-scope-authority%2Fdata-scope-authority-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fdata-scope-authority%2Fdata-scope-authority-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 356
+    },
+    {
+      "routeId": "6399bc9e0cdf2f24",
+      "routePath": "/generated/design-asset-governance/design-asset-governance-s4",
+      "contractIds": [
+        3632
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/design-asset-governance/design-asset-governance-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 235,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 413
+    },
+    {
+      "routeId": "6ec4f9929abd8d07",
+      "routePath": "/generated/double-use-prevention/double-use-prevention-s4",
+      "contractIds": [
+        3326
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/double-use-prevention/double-use-prevention-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Fdouble-use-prevention%2Fdouble-use-prevention-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 395
+    },
+    {
+      "routeId": "e943a13fd416d42c",
+      "routePath": "/generated/education-assessment/education-assessment-s4",
+      "contractIds": [
+        3374
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/education-assessment/education-assessment-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 212,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 371
+    },
+    {
+      "routeId": "5bf761a2e5f70d8b",
+      "routePath": "/generated/external-service-status/external-service-status-s4",
+      "contractIds": [
+        3084
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/external-service-status/external-service-status-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fexternal-service-status%2Fexternal-service-status-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 407
+    },
+    {
+      "routeId": "bb882373d74a28ae",
+      "routePath": "/generated/external-verification-engagement/external-verification-engagement-s4",
+      "contractIds": [
+        3078
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/external-verification-engagement/external-verification-engagement-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/composition?variant=PUBLIC"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 342
+    },
+    {
+      "routeId": "3d8f9e35f0d3c5e7",
+      "routePath": "/generated/feature-api-governance/feature-api-governance-s4",
+      "contractIds": [
+        3648
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/feature-api-governance/feature-api-governance-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 469,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Ffeature-api-governance%2Ffeature-api-governance-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Ffeature-api-governance%2Ffeature-api-governance-s4"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 509
+    },
+    {
+      "routeId": "0f7f904f2189ea60",
+      "routePath": "/generated/incident-improvement-request/incident-improvement-request-s4",
+      "contractIds": [
+        3416
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/incident-improvement-request/incident-improvement-request-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 297
+    },
+    {
+      "routeId": "067675d0421855a4",
+      "routePath": "/generated/integration-failure-retry/integration-failure-retry-s4",
+      "contractIds": [
+        3528
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/integration-failure-retry/integration-failure-retry-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 189
+    },
+    {
+      "routeId": "57d6b3ff7e75236b",
+      "routePath": "/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s4",
+      "contractIds": [
+        3754
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/lca-allocation-sensitivity/lca-allocation-sensitivity-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 491
+    },
+    {
+      "routeId": "5082832daa7b58c4",
+      "routePath": "/generated/leakage-incident-response/leakage-incident-response-s4",
+      "contractIds": [
+        3770
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/leakage-incident-response/leakage-incident-response-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 614,
+      "pageErrorCount": 0,
+      "apiFailureCount": 4,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/composition?variant=PUBLIC",
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Flca-allocation-sensitivity%2Flca-allocation-sensitivity-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fleakage-incident-response%2Fleakage-incident-response-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 420
+    },
+    {
+      "routeId": "e94ad59e6cd2f7dd",
+      "routePath": "/generated/measurement-data-quality/measurement-data-quality-s4",
+      "contractIds": [
+        3778
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/measurement-data-quality/measurement-data-quality-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 21,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/composition?variant=PUBLIC"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 353
+    },
+    {
+      "routeId": "858a2fc08a4f9e13",
+      "routePath": "/generated/menu-screen-governance/menu-screen-governance-s4",
+      "contractIds": [
+        3624
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/menu-screen-governance/menu-screen-governance-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 367,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Fmenu-screen-governance%2Fmenu-screen-governance-s4",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fmenu-screen-governance%2Fmenu-screen-governance-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 361
+    },
+    {
+      "routeId": "99a80a8d4a396c6f",
+      "routePath": "/generated/newsletter-operation/newsletter-operation-s4",
+      "contractIds": [
+        3424
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/newsletter-operation/newsletter-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 76,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fnewsletter-operation%2Fnewsletter-operation-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 386
+    },
+    {
+      "routeId": "2964c38a501c20c3",
+      "routePath": "/generated/notification-center-operation/notification-center-operation-s4",
+      "contractIds": [
+        3708
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/notification-center-operation/notification-center-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 272,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/composition?variant=PUBLIC"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 351
+    },
+    {
+      "routeId": "522727f1d2a1fa9a",
+      "routePath": "/generated/pcr-epd-verification/pcr-epd-verification-s4",
+      "contractIds": [
+        3786
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/pcr-epd-verification/pcr-epd-verification-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 138,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fpcr-epd-verification%2Fpcr-epd-verification-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 409
+    },
+    {
+      "routeId": "b4ff7cb2ff47256c",
+      "routePath": "/generated/project-lifecycle-control/project-lifecycle-control-s4",
+      "contractIds": [
+        3794
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/project-lifecycle-control/project-lifecycle-control-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 64,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fproject-lifecycle-control%2Fproject-lifecycle-control-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 346
+    },
+    {
+      "routeId": "851c7964060ff3bb",
+      "routePath": "/generated/reduction-performance/reduction-performance-s4",
+      "contractIds": [
+        3184
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/reduction-performance/reduction-performance-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 173
+    },
+    {
+      "routeId": "6e667c332250fa14",
+      "routePath": "/generated/reduction-project-registration/reduction-project-registration-s4",
+      "contractIds": [
+        3168
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/reduction-project-registration/reduction-project-registration-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 44,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Freduction-project-registration%2Freduction-project-registration-s4",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Freduction-project-registration%2Freduction-project-registration-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 379
+    },
+    {
+      "routeId": "8401f52912e06bb3",
+      "routePath": "/generated/reduction-roadmap/reduction-roadmap-s4",
+      "contractIds": [
+        3108
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/reduction-roadmap/reduction-roadmap-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 75,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 333
+    },
+    {
+      "routeId": "a7dbd7690a82c321",
+      "routePath": "/generated/reduction-target-planning/reduction-target-planning-s4",
+      "contractIds": [
+        3158
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/reduction-target-planning/reduction-target-planning-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 309,
+      "pageErrorCount": 0,
+      "apiFailureCount": 3,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Freduction-target-planning%2Freduction-target-planning-s4",
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Freduction-target-planning%2Freduction-target-planning-s4"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 380
+    },
+    {
+      "routeId": "949824dee375fe1e",
+      "routePath": "/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+      "contractIds": [
+        3238
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/regulatory-status-monitoring/regulatory-status-monitoring-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 86,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fregulatory-status-monitoring%2Fregulatory-status-monitoring-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 399
+    },
+    {
+      "routeId": "53d7ce473f0b6e72",
+      "routePath": "/generated/report-submission/report-submission-s4",
+      "contractIds": [
+        3448
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/report-submission/report-submission-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 87,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Freport-submission%2Freport-submission-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 344
+    },
+    {
+      "routeId": "e6ed34fd122a2bd0",
+      "routePath": "/generated/resource-publication/resource-publication-s4",
+      "contractIds": [
+        3398
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/resource-publication/resource-publication-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 71,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES"
+      ],
+      "durationMs": 329
+    },
+    {
+      "routeId": "268e14aa5432dc92",
+      "routePath": "/generated/security-policy-operation/security-policy-operation-s4",
+      "contractIds": [
+        3656
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/security-policy-operation/security-policy-operation-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 278
+    },
+    {
+      "routeId": "8234b0b3b2d46848",
+      "routePath": "/generated/supply-demand-matching/supply-demand-matching-s4",
+      "contractIds": [
+        3278
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/supply-demand-matching/supply-demand-matching-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 446
+    },
+    {
+      "routeId": "eb9e9163153db010",
+      "routePath": "/generated/system-monitoring-recovery/system-monitoring-recovery-s4",
+      "contractIds": [
+        3672
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/system-monitoring-recovery/system-monitoring-recovery-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 293,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fsystem-monitoring-recovery%2Fsystem-monitoring-recovery-s4"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 478
+    },
+    {
+      "routeId": "fc1804aa81829e2c",
+      "routePath": "/generated/trade-contract/trade-contract-s4",
+      "contractIds": [
+        3288
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/trade-contract/trade-contract-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 166,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Ftrade-contract%2Ftrade-contract-s4"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 366
+    },
+    {
+      "routeId": "14b5960da29e00f0",
+      "routePath": "/generated/trade-proposal/trade-proposal-s4",
+      "contractIds": [
+        3282
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/trade-proposal/trade-proposal-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 74,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Ftrade-proposal%2Ftrade-proposal-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 559
+    },
+    {
+      "routeId": "e69cc25307f3f260",
+      "routePath": "/generated/training-certificate/training-certificate-s4",
+      "contractIds": [
+        3382
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/training-certificate/training-certificate-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "500 http://172.16.1.232/api/runtime/project-info",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Ftraining-certificate%2Ftraining-certificate-s4"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 382
+    },
+    {
+      "routeId": "6db67d1cccfccdb9",
+      "routePath": "/generated/validation-rule-management/validation-rule-management-s4",
+      "contractIds": [
+        3552
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/validation-rule-management/validation-rule-management-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 154,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fvalidation-rule-management%2Fvalidation-rule-management-s4"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 446
+    },
+    {
+      "routeId": "d3dcd1eb3f1946e8",
+      "routePath": "/generated/webhook-management/webhook-management-s4",
+      "contractIds": [
+        3514
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/generated/webhook-management/webhook-management-s4",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 429,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fgenerated%2Fwebhook-management%2Fwebhook-management-s4",
+        "500 http://172.16.1.232/api/runtime/project-info"
+      ],
+      "errors": [
+        "Failed to load resource: net::ERR_INSUFFICIENT_RESOURCES",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 500 ()"
+      ],
+      "durationMs": 438
+    },
+    {
+      "routeId": "8b5867a9cc46bdcd",
+      "routePath": "/join/step2",
+      "contractIds": [
+        2964,
+        2972,
+        2974
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/join/step1",
+      "status": 200,
+      "bodyTextLength": 777,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/process-executions/screen-contract?routePath=%2Fjoin%2Fstep2",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fjoin%2Fstep1%3Fexpired%3D1"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 567
+    },
+    {
+      "routeId": "f11f6382c9b6e8d2",
+      "routePath": "/mypage/profile",
+      "contractIds": [
+        3026,
+        3034,
+        3036,
+        3038,
+        3042,
+        3044,
+        3046,
+        3048
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "chrome-error://chromewebdata/",
+      "status": 0,
+      "bodyTextLength": 0,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 0,
+      "headingCount": 0,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [
+        "page.goto: net::ERR_TOO_MANY_REDIRECTS at http://172.16.1.232/mypage/profile\nCall log:\n\u001b[2m  - navigating to \"http://172.16.1.232/mypage/profile\", waiting until \"domcontentloaded\"\u001b[22m\n",
+        "BLANK_SCREEN"
+      ],
+      "durationMs": 2086
+    },
+    {
+      "routeId": "ac58570dec2c4606",
+      "routePath": "/work/calculation-engine-parity?step=cep_baseline",
+      "contractIds": [
+        490
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/work/calculation-engine-parity?step=cep_baseline",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 1,
+      "pageErrorCount": 0,
+      "apiFailureCount": 1,
+      "apiFailures": [
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fwork%2Fcalculation-engine-parity%3Fstep%3Dcep_baseline"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 381
+    },
+    {
+      "routeId": "241e2319a6b6b7ae",
+      "routePath": "/work/certification-eligibility-check?step=cec_verify_external",
+      "contractIds": [
+        462
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/work/certification-eligibility-check?step=cec_verify_external",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 173
+    },
+    {
+      "routeId": "9293add7b8ae1355",
+      "routePath": "/work/company-manager-delegation?step=cmd_handover",
+      "contractIds": [
+        476
+      ],
+      "ok": true,
+      "recovered": true,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/work/company-manager-delegation?step=cmd_handover",
+      "status": 200,
+      "bodyTextLength": 1360,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 2,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 152
+    },
+    {
+      "routeId": "fa33544e9c840861",
+      "routePath": "/work/privacy-retention-destruction?step=prd_destroy",
+      "contractIds": [
+        482
+      ],
+      "ok": false,
+      "recovered": false,
+      "attempts": 2,
+      "finalUrl": "http://172.16.1.232/work/privacy-retention-destruction?step=prd_destroy",
+      "status": 200,
+      "bodyTextLength": 1991,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 9,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 2,
+      "pageErrorCount": 0,
+      "apiFailureCount": 2,
+      "apiFailures": [
+        "404 http://172.16.1.232/home/api/composition?variant=PUBLIC",
+        "404 http://172.16.1.232/admin/api/system/screen-development-note?routePath=%2Fwork%2Fprivacy-retention-destruction%3Fstep%3Dprd_destroy"
+      ],
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "durationMs": 426
+    }
+  ]
+}

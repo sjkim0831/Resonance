@@ -1,0 +1,34 @@
+{
+  "shard": 0,
+  "complete": true,
+  "results": [
+    {
+      "routeId": "37ab5a2c9fbe29c9",
+      "routePath": "/admin/system/consent-history",
+      "contractIds": [
+        2971,
+        2973,
+        2975,
+        2977
+      ],
+      "ok": true,
+      "recovered": false,
+      "attempts": 1,
+      "finalUrl": "http://172.16.1.232/admin/system/consent-history",
+      "status": 200,
+      "bodyTextLength": 1783,
+      "overflowX": false,
+      "loginRedirect": false,
+      "mainLandmarkCount": 1,
+      "headingCount": 2,
+      "unlabeledFormControlCount": 0,
+      "imageMissingAltCount": 0,
+      "consoleErrorCount": 0,
+      "pageErrorCount": 0,
+      "apiFailureCount": 0,
+      "apiFailures": [],
+      "errors": [],
+      "durationMs": 163
+    }
+  ]
+}

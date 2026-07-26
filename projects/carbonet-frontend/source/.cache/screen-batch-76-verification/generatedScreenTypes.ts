@@ -1,0 +1,2 @@
+export type DesignCompleteness={score:number;complete:boolean;checks:Record<string,boolean>};
+export type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; specification:Record<string,any>; traceability:Record<string,any>; designCompleteness:DesignCompleteness; };

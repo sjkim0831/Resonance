@@ -1,0 +1,115 @@
+{
+  "supervisor": {
+    "name": "agent-supervisor",
+    "version": "1.0.0",
+    "description": "AI Agent Orchestrator Supervisor with Codex Approval Enforcement"
+  },
+  "approval": {
+    "token_ttl_seconds": 3600,
+    "required_actions": ["COMMIT", "DB_WRITE", "DEPLOY"],
+    "dry_run_default": true,
+    "enforce_on_dangerous_operations": true,
+    "token_dir": "/var/tmp/agent-approvals/tokens",
+    "log_dir": "/var/tmp/agent-approvals/logs",
+    "evidence_dir": "/var/tmp/agent-approvals/evidence"
+  },
+  "deploy": {
+    "zero_downtime_only": true,
+    "generate_commands_only": true,
+    "no_actual_deploy": true,
+    "target_env": "production",
+    "rollback_enabled": true,
+    "pre_deploy_checks": [
+      "verify_patroni_quorum",
+      "verify_replicas_ready",
+      "verify_health_endpoint"
+    ],
+    "strategy": "rolling-update"
+  },
+  "queue": {
+    "dir": "/var/tmp/agent-queue",
+    "lock_dir": "/var/tmp/agent-queue/.locks",
+    "heartbeat_interval_seconds": 30,
+    "lease_expiry_seconds": 300,
+    "max_retries": 3,
+    "concurrency_mode": "exclusive"
+  },
+  "worker": {
+    "base_dir": "/var/tmp/agent-workers",
+    "lock_dir": "/var/tmp/agent-workers/.locks",
+    "log_dir": "/var/tmp/agent-workers/logs",
+    "run_dir": "/var/tmp/agent-workers/runs",
+    "heartbeat_interval_seconds": 30,
+    "sse_timeout_seconds": 300,
+    "max_sse_retries": 2,
+    "exponential_backoff_base": 2,
+    "exponential_backoff_max_seconds": 60,
+    "slot_count": 4
+  },
+  "search": {
+    "max_results": 200,
+    "exclude_patterns": [
+      "!.git/*",
+      "!node_modules/*",
+      "!vendor/*",
+      "!target/*",
+      "!build/*",
+      "!dist/*"
+    ]
+  },
+  "inventory": {
+    "version": "1.0",
+    "max_items": 200,
+    "scan_base": ".",
+    "include_react_routes": true,
+    "include_java_controllers": true,
+    "include_admin_menu": true,
+    "include_page_manifests": true,
+    "include_sdui_bindings": true
+  },
+  "worktree": {
+    "lease_expiry_seconds": 300,
+    "stale_threshold_seconds": 600,
+    "auto_cleanup_enabled": true,
+    "max_concurrent_worktrees": 10
+  },
+  "concurrency": {
+    "lock_dir": "/var/tmp/agent-approvals/.locks",
+    "default_worker_id": "system",
+    "resource_types": [
+      "worktree",
+      "database",
+      "deployment",
+      "git"
+    ]
+  },
+  "safety": {
+    "enabled": true,
+    "block_commit_without_approval": true,
+    "block_db_write_without_approval": true,
+    "block_deploy_without_approval": true,
+    "verify_git_clean_before_commit": true,
+    "protected_branches": ["main", "master"]
+  },
+  "logging": {
+    "level": "INFO",
+    "dir": "/var/tmp/agent-approvals/logs",
+    "rotation_enabled": true,
+    "max_age_days": 7
+  },
+  "api": {
+    "health_endpoint": "/actuator/health",
+    "status_endpoint": "/api/supervisor/status",
+    "approval_endpoint": "/api/supervisor/approval",
+    "queue_endpoint": "/api/supervisor/queue"
+  },
+  "builder_ui": {
+    "status_json_enabled": true,
+    "show_approval_status": true,
+    "show_queue_status": true,
+    "show_worker_status": true,
+    "show_inventory": true,
+    "show_concurrency_locks": true,
+    "show_failure_evidence": true
+  }
+}

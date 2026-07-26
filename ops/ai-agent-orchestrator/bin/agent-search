@@ -1,0 +1,14 @@
+#!/bin/bash
+# agent-search - CLI wrapper for search lib
+
+set -euo pipefail
+LIB="${0%/*}/../lib/search.sh"
+source "$LIB" 2>/dev/null || { echo "ERR: search.sh not found" >&2; exit 1; }
+
+if [[ "${1:-}" =~ ^(--help|-h)$ ]]; then
+  search_exec "" "." --help; exit 0
+elif [[ "${1:-}" == "--clear-cache" ]]; then
+  rm -f "${SEARCH_CACHE_DIR:-/tmp/agent-search-cache}"/*; echo "Cache cleared"
+else
+  search_exec "$@"
+fi

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050b14">
+  <title>Omniverse 실시간 뷰어</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #050b14; }
+    body { color: #e5eefb; font-family: "Noto Sans KR", system-ui, sans-serif; }
+    #viewer { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #050b14; opacity: 0; transition: opacity .35s ease; }
+    #viewer.ready { opacity: 1; }
+    #loading { position: fixed; inset: 0; z-index: 2; display: grid; place-items: center; background: radial-gradient(circle at 50% 42%, #17243a 0, #08111f 42%, #050b14 72%); }
+    #loading.hidden { opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s ease; }
+    .loading-card { display: grid; justify-items: center; gap: 14px; text-align: center; padding: 24px; }
+    .spinner { width: 42px; height: 42px; border: 4px solid rgba(148, 180, 220, .25); border-top-color: #60a5fa; border-radius: 50%; animation: spin .9s linear infinite; }
+    .title { font-size: 16px; font-weight: 800; letter-spacing: -.01em; }
+    .detail { max-width: 420px; margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.7; }
+    #retry { display: none; min-height: 42px; border: 1px solid #476487; border-radius: 8px; background: #10213a; color: white; padding: 0 18px; font-weight: 800; cursor: pointer; }
+    #fullscreen { position: fixed; right: 14px; bottom: 14px; z-index: 4; width: 44px; height: 44px; border: 1px solid rgba(255,255,255,.22); border-radius: 10px; background: rgba(5, 11, 20, .72); color: white; backdrop-filter: blur(8px); cursor: pointer; font-size: 20px; }
+    #fullscreen:hover, #fullscreen:focus-visible { background: rgba(18, 42, 74, .92); outline: 2px solid #60a5fa; outline-offset: 2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { #viewer { transition: none; } .spinner { animation-duration: 1.8s; } }
+  </style>
+</head>
+<body>
+  <div id="loading" role="status" aria-live="polite">
+    <div class="loading-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <strong class="title">Omniverse 수정본을 불러오는 중입니다</strong>
+      <p class="detail" id="detail">현재 woosu_factory_v2.usda 장면의 RTX 스트림을 준비하고 있습니다.</p>
+      <button id="retry" type="button">다시 연결</button>
+    </div>
+  </div>
+  <iframe id="viewer" allow="autoplay; fullscreen; clipboard-read; clipboard-write" referrerpolicy="same-origin" title="우수 스마트 팩토리 Omniverse 실시간 화면"></iframe>
+  <button id="fullscreen" type="button" aria-label="전체 화면으로 보기" title="전체 화면">⛶</button>
+  <script>
+    (() => {
+      const viewer = document.getElementById("viewer");
+      const loading = document.getElementById("loading");
+      const detail = document.getElementById("detail");
+      const retry = document.getElementById("retry");
+      const fullscreen = document.getElementById("fullscreen");
+      let timeoutId;
+
+      function showError(message) {
+        clearTimeout(timeoutId);
+        detail.textContent = message;
+        retry.style.display = "inline-flex";
+        loading.classList.remove("hidden");
+      }
+
+      function fitStreamToViewport() {
+        try {
+          const frameDocument = viewer.contentDocument;
+          if (!frameDocument || frameDocument.getElementById("carbonet-image-only-viewer")) return;
+          const style = frameDocument.createElement("style");
+          style.id = "carbonet-image-only-viewer";
+          style.textContent = `
+            html, body, #root { width: 100% !important; height: 100% !important; margin: 0 !important; overflow: hidden !important; background: #050b14 !important; }
+            #streamonly-wrapper { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; background: #050b14 !important; }
+            #main-div { position: absolute !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; background: #050b14 !important; }
+            #remote-video { position: absolute !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; object-fit: contain !important; background: #050b14 !important; }
+          `;
+          frameDocument.head.appendChild(style);
+        } catch (_) {
+          // The same-origin viewer normally permits fitting. Keep its native layout as a safe fallback.
+        }
+      }
+
+      async function connect() {
+        retry.style.display = "none";
+        detail.textContent = "현재 woosu_factory_v2.usda 장면의 RTX 스트림을 준비하고 있습니다.";
+        loading.classList.remove("hidden");
+        viewer.classList.remove("ready");
+        viewer.removeAttribute("src");
+        try {
+          const response = await fetch("/admin/system/omniverse/api/reset", { method: "POST", cache: "no-store" });
+          if (!response.ok) throw new Error(`스트림 준비 실패 (HTTP ${response.status})`);
+          viewer.src = `/admin/system/omniverse/?embed=1&v=${Date.now()}`;
+          timeoutId = window.setTimeout(() => showError("뷰어 연결 시간이 길어지고 있습니다. 다시 연결해 주세요."), 45000);
+        } catch (error) {
+          showError(error instanceof Error ? error.message : "Omniverse 스트림을 연결할 수 없습니다.");
+        }
+      }
+
+      viewer.addEventListener("load", () => {
+        clearTimeout(timeoutId);
+        fitStreamToViewport();
+        viewer.classList.add("ready");
+        loading.classList.add("hidden");
+      });
+      retry.addEventListener("click", connect);
+      fullscreen.addEventListener("click", async () => {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      });
+      connect();
+    })();
+  </script>
+</body>
+</html>

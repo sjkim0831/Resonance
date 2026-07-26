@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050b14">
+  <title>Omniverse CCUS 3D 뷰어</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #050b14; }
+    body { color: #e5eefb; font-family: "Noto Sans KR", system-ui, sans-serif; }
+    #stream {
+      position: fixed;
+      left: -3.604%;
+      top: -11.808%;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #050b14;
+      pointer-events: auto;
+      transform: scale(1.5015, 1.845);
+      transform-origin: left top;
+    }
+    #status {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 38px;
+      max-width: calc(100% - 28px);
+      padding: 8px 13px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      background: rgba(5,11,20,.84);
+      color: #dbeafe;
+      transform: translateX(-50%);
+      opacity: 1;
+      pointer-events: none;
+      backdrop-filter: blur(9px);
+      font-size: 12px;
+      font-weight: 800;
+      transition: opacity .25s ease;
+    }
+    #status.hidden { opacity: 0; }
+    .dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #60a5fa; box-shadow: 0 0 12px #60a5fa; }
+    #toolbar {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 4;
+      display: flex;
+      gap: 8px;
+    }
+    .tool {
+      min-height: 44px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 10px;
+      background: rgba(5,11,20,.78);
+      color: white;
+      padding: 0 13px;
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .tool:hover, .tool:focus-visible { background: rgba(18,42,74,.94); outline: 2px solid #60a5fa; outline-offset: 2px; }
+    #help {
+      position: fixed;
+      left: 14px;
+      bottom: 14px;
+      z-index: 4;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px;
+      background: rgba(5,11,20,.76);
+      color: #dbeafe;
+      padding: 0 13px;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      font-size: 11px;
+      font-weight: 750;
+    }
+    @media (max-width: 680px) {
+      #help { max-width: calc(100% - 170px); font-size: 10px; }
+      .tool span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    원본 WebRTC 플레이어를 직접 노출한다.
+    중간 canvas나 합성 이벤트를 사용하지 않아 브라우저의 실제 마우스 입력이
+    Omniverse 스트리밍 클라이언트로 그대로 전달된다.
+  -->
+  <iframe
+    id="stream"
+    title="Omniverse CCUS 원본 스트림"
+    allow="autoplay; fullscreen; clipboard-read; clipboard-write"
+    referrerpolicy="same-origin"></iframe>
+
+  <div id="status" role="status" aria-live="polite">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="statusText">원본 Omniverse 스트림 연결 중</span>
+  </div>
+
+  <div id="help" aria-hidden="true">좌 드래그 평행이동 · 우 드래그 회전 · 휠 확대/축소</div>
+  <div id="toolbar">
+    <button class="tool" id="reconnect" type="button" title="스트림 다시 연결">↻ <span>다시 연결</span></button>
+    <button class="tool" id="fullscreen" type="button" title="전체 화면">⛶ <span>전체 화면</span></button>
+  </div>
+
+  <script>
+    (() => {
+      const stream = document.getElementById("stream");
+      const status = document.getElementById("status");
+      const statusText = document.getElementById("statusText");
+      const reconnect = document.getElementById("reconnect");
+      const fullscreen = document.getElementById("fullscreen");
+      let hideTimer;
+      let mp4ExportPromise = null;
+      let connectionGeneration = 0;
+      let automaticRecoveryUsed = false;
+      const viewerClientId = window.crypto?.randomUUID?.() || `viewer-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const viewerChannel = "BroadcastChannel" in window
+        ? new BroadcastChannel("carbonet-omniverse-active-viewer")
+        : null;
+      let viewerLeaseGeneration = 0;
+      let viewerActive = false;
+      let viewerHeartbeatTimer = null;
+
+      function publishViewerState(state, text) {
+        if (window.parent === window) return;
+        window.parent.postMessage({
+          type: "carbonet:viewer-state",
+          state,
+          text,
+          clientId: viewerClientId,
+          generation: viewerLeaseGeneration,
+        }, window.location.origin);
+      }
+
+      function deactivateViewer(reason = "새로 연 화면에서 3D 스트림이 활성화되었습니다") {
+        if (!viewerActive && stream.src === "about:blank") return;
+        viewerActive = false;
+        connectionGeneration += 1;
+        window.clearTimeout(hideTimer);
+        stream.src = "about:blank";
+        reconnect.disabled = true;
+        status.classList.remove("hidden");
+        statusText.textContent = reason;
+        publishViewerState("inactive", reason);
+      }
+
+      async function verifyViewerLease() {
+        if (!viewerActive) return false;
+        try {
+          const response = await fetch("/admin/system/omniverse/api/viewer/heartbeat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({
+              clientId: viewerClientId,
+              generation: viewerLeaseGeneration,
+            }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.active) {
+            deactivateViewer();
+            return false;
+          }
+          return true;
+        } catch {
+          status.classList.remove("hidden");
+          statusText.textContent = "활성 화면 확인이 지연되고 있습니다";
+          publishViewerState("checking", statusText.textContent);
+          return viewerActive;
+        }
+      }
+
+      async function activateViewer() {
+        status.classList.remove("hidden");
+        statusText.textContent = "이 화면을 최신 3D 화면으로 활성화 중";
+        publishViewerState("activating", statusText.textContent);
+        try {
+          const response = await fetch("/admin/system/omniverse/api/viewer/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({ clientId: viewerClientId }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.active) throw new Error(result.message || `HTTP ${response.status}`);
+          viewerLeaseGeneration = result.generation;
+          viewerActive = true;
+          reconnect.disabled = false;
+          viewerChannel?.postMessage({
+            type: "activate",
+            clientId: viewerClientId,
+            generation: viewerLeaseGeneration,
+          });
+          window.clearInterval(viewerHeartbeatTimer);
+          viewerHeartbeatTimer = window.setInterval(verifyViewerLease, 3000);
+          if (result.replaced) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1200));
+            if (!await verifyViewerLease()) return;
+          }
+          await connect({ force: Boolean(result.replaced) });
+        } catch (error) {
+          viewerActive = false;
+          reconnect.disabled = true;
+          statusText.textContent = "최신 화면 활성화 실패 · 새로고침해주세요";
+          publishViewerState("error", statusText.textContent);
+          console.error(error);
+        }
+      }
+
+      viewerChannel?.addEventListener("message", (event) => {
+        if (event.data?.type === "activate" && event.data.clientId !== viewerClientId) {
+          deactivateViewer();
+        }
+      });
+
+      function installSimpleCameraControls() {
+        const frameWindow = stream.contentWindow;
+        const frameDocument = stream.contentDocument;
+        if (!frameWindow || !frameDocument) {
+          window.setTimeout(installSimpleCameraControls, 250);
+          return;
+        }
+        const root = frameDocument.documentElement;
+        if (root.getAttribute("data-carbonet-simple-camera") === "document-v2") return;
+        root.setAttribute("data-carbonet-simple-camera", "document-v2");
+
+        const relayedEvents = new WeakSet();
+        let activeMode = null;
+        let lastX = 0;
+        let lastY = 0;
+
+        function currentVideo() {
+          const video = frameDocument.getElementById("remote-video");
+          if (video) video.setAttribute("data-carbonet-simple-camera-target", "1");
+          return video;
+        }
+
+        function isStreamTarget(event) {
+          const video = currentVideo();
+          const container = video?.closest("#main-div");
+          return Boolean(video && (
+            event.target === video ||
+            video.contains(event.target) ||
+            container?.contains(event.target)
+          ));
+        }
+
+        function modeForButton(button) {
+          // 좌클릭만 중간 버튼 입력으로 바꿔 선택 대신 평행이동시킨다.
+          // 우클릭은 변환하지 않고 Omniverse 기본 회전 입력으로 통과시킨다.
+          if (button === 0) return { button: 1, buttons: 4 };
+          return null;
+        }
+
+        function relay(event, type, mode) {
+          const video = currentVideo();
+          if (!video) return;
+          const movementX = event.clientX - lastX;
+          const movementY = event.clientY - lastY;
+          const translated = new frameWindow.PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            pointerId: event.pointerId,
+            pointerType: event.pointerType || "mouse",
+            isPrimary: event.isPrimary,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            screenX: event.screenX,
+            screenY: event.screenY,
+            button: mode.button,
+            buttons: type === "pointerup" ? 0 : mode.buttons,
+            altKey: event.altKey,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            metaKey: event.metaKey,
+            pressure: event.pressure,
+            width: event.width,
+            height: event.height
+          });
+          try {
+            Object.defineProperties(translated, {
+              movementX: { value: movementX },
+              movementY: { value: movementY }
+            });
+          } catch (_) {}
+          relayedEvents.add(translated);
+          video.dispatchEvent(translated);
+          lastX = event.clientX;
+          lastY = event.clientY;
+        }
+
+        frameDocument.addEventListener("pointerdown", (event) => {
+          if (relayedEvents.has(event) || event.altKey) return;
+          if (!isStreamTarget(event)) return;
+          const mode = modeForButton(event.button);
+          if (!mode) return;
+          activeMode = mode;
+          lastX = event.clientX;
+          lastY = event.clientY;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          relay(event, "pointerdown", mode);
+        }, true);
+
+        frameDocument.addEventListener("pointermove", (event) => {
+          if (relayedEvents.has(event) || !activeMode) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          relay(event, "pointermove", activeMode);
+        }, true);
+
+        const finish = (event) => {
+          if (relayedEvents.has(event) || !activeMode) return;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          relay(event, "pointerup", activeMode);
+          activeMode = null;
+        };
+        frameDocument.addEventListener("pointerup", finish, true);
+        frameDocument.addEventListener("pointercancel", finish, true);
+        frameDocument.addEventListener("contextmenu", (event) => {
+          if (isStreamTarget(event)) event.preventDefault();
+        }, true);
+
+        currentVideo();
+      }
+
+      function remoteVideoReady() {
+        const video = stream.contentDocument?.getElementById("remote-video");
+        return Boolean(
+          video &&
+          video.readyState >= 2 &&
+          video.videoWidth > 0 &&
+          video.videoHeight > 0
+        );
+      }
+
+      async function waitForRemoteVideo(generation) {
+        const deadline = Date.now() + 40000;
+        while (
+          viewerActive &&
+          Date.now() < deadline &&
+          generation === connectionGeneration
+        ) {
+          if (remoteVideoReady()) {
+            statusText.textContent = "3D 영상 연결 완료 · 화면에서 직접 조작하세요";
+            publishViewerState("ready", statusText.textContent);
+            hideTimer = window.setTimeout(() => status.classList.add("hidden"), 2600);
+            return;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 500));
+        }
+        if (!viewerActive || generation !== connectionGeneration) return;
+        if (!automaticRecoveryUsed) {
+          automaticRecoveryUsed = true;
+          statusText.textContent = "흰 화면을 감지해 3D 스트림 자동 복구 중";
+          publishViewerState("recovering", statusText.textContent);
+          await connect({ force: true });
+          return;
+        }
+        statusText.textContent = "3D 영상 연결 지연 · 다시 연결을 눌러주세요";
+        publishViewerState("delayed", statusText.textContent);
+      }
+
+      async function connect({ force = false } = {}) {
+        if (!viewerActive) return;
+        const generation = ++connectionGeneration;
+        window.clearTimeout(hideTimer);
+        status.classList.remove("hidden");
+        reconnect.disabled = true;
+        statusText.textContent = force
+          ? "3D 스트림 점유 해제 및 복구 중"
+          : "원본 Omniverse 스트림 연결 중";
+        publishViewerState(force ? "recovering" : "connecting", statusText.textContent);
+        if (force) {
+          try {
+            const response = await fetch("/admin/system/omniverse/api/reset?force=1", {
+              method: "POST",
+              cache: "no-store",
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          } catch (error) {
+            statusText.textContent = "3D 스트림 복구 요청 실패 · 잠시 후 다시 시도해주세요";
+            reconnect.disabled = false;
+            return;
+          }
+        }
+        if (generation !== connectionGeneration) return;
+        stream.src = `/admin/system/omniverse/?embed=1&directInput=1&v=${Date.now()}`;
+        reconnect.disabled = false;
+      }
+
+      function exportThirtySecondMp4(onProgress = () => {}) {
+        if (!viewerActive) {
+          return Promise.reject(new Error("최신 활성 화면에서만 MP4를 녹화할 수 있습니다."));
+        }
+        if (mp4ExportPromise) return mp4ExportPromise;
+        mp4ExportPromise = (async () => {
+          const readyDeadline = Date.now() + 45000;
+          let video = null;
+          while (Date.now() < readyDeadline) {
+            const candidate = stream.contentDocument?.getElementById("remote-video");
+            if (
+              candidate &&
+              candidate.readyState >= 2 &&
+              candidate.videoWidth > 0 &&
+              candidate.videoHeight > 0
+            ) {
+              video = candidate;
+              break;
+            }
+            onProgress({ phase: "waiting", elapsed: 0, remaining: 30 });
+            await new Promise((resolve) => window.setTimeout(resolve, 500));
+          }
+          if (!video) {
+            throw new Error("3D 스트림 연결이 완료되지 않아 MP4 녹화를 시작하지 못했습니다.");
+          }
+          if (!window.MediaRecorder) throw new Error("이 브라우저는 MP4 녹화를 지원하지 않습니다.");
+
+          const canvas = document.createElement("canvas");
+          canvas.width = 1280;
+          canvas.height = 720;
+          const context = canvas.getContext("2d", { alpha: false });
+          const crop = { x: 0.024, y: 0.064, width: 0.666, height: 0.542 };
+          const sourceX = video.videoWidth * crop.x;
+          const sourceY = video.videoHeight * crop.y;
+          const sourceWidth = video.videoWidth * crop.width;
+          const sourceHeight = video.videoHeight * crop.height;
+          const targetAspect = canvas.width / canvas.height;
+          const sourceAspect = sourceWidth / sourceHeight;
+          const drawWidth = sourceAspect > targetAspect ? sourceHeight * targetAspect : sourceWidth;
+          const drawHeight = sourceAspect > targetAspect ? sourceHeight : sourceWidth / targetAspect;
+          const drawX = sourceX + (sourceWidth - drawWidth) / 2;
+          const drawY = sourceY + (sourceHeight - drawHeight) / 2;
+          const drawFrame = () => {
+            context.drawImage(
+              video,
+              drawX, drawY, drawWidth, drawHeight,
+              0, 0, canvas.width, canvas.height,
+            );
+          };
+          drawFrame();
+          const drawTimer = window.setInterval(drawFrame, 1000 / 30);
+          const capture = canvas.captureStream(30);
+          const mimeType = [
+            "video/webm;codecs=vp9",
+            "video/webm;codecs=vp8",
+            "video/webm",
+          ].find((type) => MediaRecorder.isTypeSupported(type)) || "";
+          const recorder = new MediaRecorder(
+            capture,
+            mimeType ? { mimeType, videoBitsPerSecond: 8_000_000 } : undefined,
+          );
+          const chunks = [];
+          recorder.ondataavailable = (event) => {
+            if (event.data.size) chunks.push(event.data);
+          };
+          const stopped = new Promise((resolve, reject) => {
+            recorder.onerror = () => reject(new Error("30초 영상 녹화 중 오류가 발생했습니다."));
+            recorder.onstop = resolve;
+          });
+          recorder.start(250);
+          const startedAt = Date.now();
+          const progressTimer = window.setInterval(() => {
+            const elapsed = Math.min(30, Math.floor((Date.now() - startedAt) / 1000));
+            onProgress({ phase: "recording", elapsed, remaining: 30 - elapsed });
+          }, 250);
+          onProgress({ phase: "recording", elapsed: 0, remaining: 30 });
+          await new Promise((resolve) => window.setTimeout(resolve, 30_000));
+          recorder.stop();
+          await stopped;
+          window.clearInterval(drawTimer);
+          window.clearInterval(progressTimer);
+          capture.getTracks().forEach((track) => track.stop());
+
+          onProgress({ phase: "converting", elapsed: 30, remaining: 0 });
+          const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+          const uploadId = `ccus-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          const chunkBytes = 512 * 1024;
+          const total = Math.ceil(blob.size / chunkBytes);
+          let result = null;
+          for (let part = 0; part < total; part += 1) {
+            const chunk = blob.slice(part * chunkBytes, Math.min(blob.size, (part + 1) * chunkBytes));
+            const response = await fetch(
+              `/admin/system/omniverse/api/recording-chunks?uploadId=${encodeURIComponent(uploadId)}&part=${part}&total=${total}&duration=30`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/octet-stream" },
+                body: chunk,
+              },
+            );
+            const responseText = await response.text();
+            try {
+              result = JSON.parse(responseText);
+            } catch (_) {
+              throw new Error(`MP4 업로드 실패: HTTP ${response.status}`);
+            }
+            if (!response.ok) throw new Error(result.message || `MP4 업로드 실패: HTTP ${response.status}`);
+            onProgress({ phase: "uploading", elapsed: 30, remaining: 0, part: part + 1, total });
+          }
+          if (result?.status !== "READY") throw new Error("MP4 변환 결과를 받지 못했습니다.");
+          const relative = String(result.downloadUrl || "").replace(/^\/+/, "");
+          const downloadUrl = `/admin/system/omniverse/${relative}`;
+          onProgress({ phase: "ready", elapsed: 30, remaining: 0, downloadUrl });
+          return { ...result, downloadUrl };
+        })().finally(() => {
+          mp4ExportPromise = null;
+        });
+        return mp4ExportPromise;
+      }
+
+      window.omniverseExport30s = exportThirtySecondMp4;
+      window.addEventListener("message", (event) => {
+        const request = event.data;
+        if (
+          event.origin !== window.location.origin ||
+          request?.type !== "carbonet:export-mp4-30" ||
+          typeof request.requestId !== "string"
+        ) return;
+        const reply = (payload) => {
+          event.source?.postMessage({
+            type: "carbonet:export-mp4-30-status",
+            requestId: request.requestId,
+            ...payload,
+          }, event.origin);
+        };
+        exportThirtySecondMp4((progress) => reply({ progress }))
+          .then((result) => reply({ result }))
+          .catch((error) => reply({ error: String(error?.message || error) }));
+      });
+
+      stream.addEventListener("load", () => {
+        statusText.textContent = "원본 플레이어 연결됨 · 3D 영상 트랙 확인 중";
+        installSimpleCameraControls();
+        waitForRemoteVideo(connectionGeneration);
+      });
+
+      reconnect.addEventListener("click", () => {
+        if (!viewerActive) return;
+        automaticRecoveryUsed = false;
+        connect({ force: true });
+      });
+      fullscreen.addEventListener("click", async () => {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      });
+
+      window.addEventListener("pagehide", () => {
+        window.clearInterval(viewerHeartbeatTimer);
+        viewerChannel?.close();
+        if (!viewerLeaseGeneration) return;
+        navigator.sendBeacon(
+          "/admin/system/omniverse/api/viewer/release",
+          JSON.stringify({
+            clientId: viewerClientId,
+            generation: viewerLeaseGeneration,
+          }),
+        );
+      });
+
+      activateViewer();
+    })();
+  </script>
+</body>
+</html>

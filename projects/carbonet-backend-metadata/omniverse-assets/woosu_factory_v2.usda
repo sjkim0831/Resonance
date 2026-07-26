@@ -1,0 +1,808 @@
+#usda 1.0
+(
+    customLayerData = {
+        string animation = "0-240 frames, 24 fps, 10 sec loop"
+        string process = "Melting-Holding-Ladler-Buhler-Cooling-Vacuum-Turntable-Trimming"
+        string sourceBasis = "2026-07-21 KakaoTalk received files"
+        string title = "Woosu Smart Factory V2"
+    }
+    defaultPrim = "SmartFactory"
+    endTimeCode = 240
+    framesPerSecond = 24
+    metersPerUnit = 0.001
+    startTimeCode = 0
+    timeCodesPerSecond = 24
+    upAxis = "Z"
+)
+
+def Xform "SmartFactory"
+{
+    def "Looks"
+    {
+        def Material "Steel"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/Steel/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.16, 0.21, 0.27)
+                float inputs:metallic = 0.8
+                float inputs:roughness = 0.24
+                token outputs:surface
+            }
+        }
+
+        def Material "BuhlerBlue"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/BuhlerBlue/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.02, 0.22, 0.62)
+                float inputs:metallic = 0.55
+                float inputs:roughness = 0.25
+                token outputs:surface
+            }
+        }
+
+        def Material "HotZone"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/HotZone/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (1, 0.18, 0.01)
+                float inputs:metallic = 0.25
+                float inputs:roughness = 0.3
+                token outputs:surface
+            }
+        }
+
+        def Material "SafetyYellow"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/SafetyYellow/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (1, 0.65, 0.01)
+                float inputs:metallic = 0.15
+                float inputs:roughness = 0.42
+                token outputs:surface
+            }
+        }
+
+        def Material "RunningGreen"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/RunningGreen/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.01, 0.5, 0.16)
+                color3f inputs:emissiveColor = (0.01, 2, 0.08)
+                float inputs:metallic = 0.2
+                float inputs:roughness = 0.25
+                token outputs:surface
+            }
+        }
+
+        def Material "Floor"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/Floor/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.055, 0.065, 0.08)
+                float inputs:metallic = 0.1
+                float inputs:roughness = 0.72
+                token outputs:surface
+            }
+        }
+
+        def Material "Panel"
+        {
+            token outputs:surface.connect = </SmartFactory/Looks/Panel/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.68, 0.73, 0.78)
+                float inputs:metallic = 0.5
+                float inputs:roughness = 0.3
+                token outputs:surface
+            }
+        }
+    }
+
+    def Xform "ExistingWoosuLayout" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+        prepend references = @./woosu_layout.usd@
+    )
+    {
+        rel material:binding = </SmartFactory/Looks/Steel>
+        float3 xformOp:scale = (1, 1, 0.18)
+        double3 xformOp:translate = (0, 0, -500)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def "Building"
+    {
+        def Cube "Floor" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </SmartFactory/Looks/Floor>
+            double size = 1
+            float3 xformOp:scale = (52000, 26000, 350)
+            double3 xformOp:translate = (18000, 7000, -7400)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SafetyLane_0" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </SmartFactory/Looks/SafetyYellow>
+            double size = 1
+            float3 xformOp:scale = (51000, 170, 30)
+            double3 xformOp:translate = (18000, -4500, -7190)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SafetyLane_1" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </SmartFactory/Looks/SafetyYellow>
+            double size = 1
+            float3 xformOp:scale = (51000, 170, 30)
+            double3 xformOp:translate = (18000, 500, -7190)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SafetyLane_2" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </SmartFactory/Looks/SafetyYellow>
+            double size = 1
+            float3 xformOp:scale = (51000, 170, 30)
+            double3 xformOp:translate = (18000, 6500, -7190)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SafetyLane_3" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </SmartFactory/Looks/SafetyYellow>
+            double size = 1
+            float3 xformOp:scale = (51000, 170, 30)
+            double3 xformOp:translate = (18000, 12500, -7190)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Cube "SafetyLane_4" (
+            prepend apiSchemas = ["MaterialBindingAPI"]
+        )
+        {
+            rel material:binding = </SmartFactory/Looks/SafetyYellow>
+            double size = 1
+            float3 xformOp:scale = (51000, 170, 30)
+            double3 xformOp:translate = (18000, 18000, -7190)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+    }
+
+    def "Process"
+    {
+        def "MeltingFurnace"
+        {
+            def Cube "Body" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double size = 1
+                float3 xformOp:scale = (5200, 4200, 4800)
+                double3 xformOp:translate = (1000, -2500, -4800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Panel" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (900, 1600, 3000)
+                double3 xformOp:translate = (3700, -2500, -5100)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "TowerLamp_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/RunningGreen>
+                double radius = 180
+                double3 xformOp:translate = (4000, -2500, -2600)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 180
+                double3 xformOp:translate = (4000, -2500, -2000)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 180
+                double3 xformOp:translate = (4000, -2500, -1400)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def "HoldingFurnace"
+        {
+            def Cube "Body" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double size = 1
+                float3 xformOp:scale = (5200, 4200, 4800)
+                double3 xformOp:translate = (8500, -2500, -4800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Panel" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (900, 1600, 3000)
+                double3 xformOp:translate = (11200, -2500, -5100)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "TowerLamp_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/RunningGreen>
+                double radius = 180
+                double3 xformOp:translate = (11500, -2500, -2600)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 180
+                double3 xformOp:translate = (11500, -2500, -2000)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 180
+                double3 xformOp:translate = (11500, -2500, -1400)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def "BuhlerDieCasting"
+        {
+            def Cube "Body" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/BuhlerBlue>
+                double size = 1
+                float3 xformOp:scale = (5200, 4200, 4800)
+                double3 xformOp:translate = (17500, 2500, -4800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Panel" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (900, 1600, 3000)
+                double3 xformOp:translate = (20200, 2500, -5100)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "TowerLamp_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/RunningGreen>
+                double radius = 180
+                double3 xformOp:translate = (20500, 2500, -2600)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 180
+                double3 xformOp:translate = (20500, 2500, -2000)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 180
+                double3 xformOp:translate = (20500, 2500, -1400)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def "HighPressureCooling"
+        {
+            def Cube "Body" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/BuhlerBlue>
+                double size = 1
+                float3 xformOp:scale = (5200, 4200, 4800)
+                double3 xformOp:translate = (27500, 2500, -4800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Panel" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (900, 1600, 3000)
+                double3 xformOp:translate = (30200, 2500, -5100)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "TowerLamp_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/RunningGreen>
+                double radius = 180
+                double3 xformOp:translate = (30500, 2500, -2600)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 180
+                double3 xformOp:translate = (30500, 2500, -2000)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 180
+                double3 xformOp:translate = (30500, 2500, -1400)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def "VacuumUnit"
+        {
+            def Cube "Body" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (5200, 4200, 4800)
+                double3 xformOp:translate = (36500, 2500, -4800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Panel" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (900, 1600, 3000)
+                double3 xformOp:translate = (39200, 2500, -5100)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "TowerLamp_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/RunningGreen>
+                double radius = 180
+                double3 xformOp:translate = (39500, 2500, -2600)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 180
+                double3 xformOp:translate = (39500, 2500, -2000)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 180
+                double3 xformOp:translate = (39500, 2500, -1400)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def "TrimmingPress"
+        {
+            def Cube "Body" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double size = 1
+                float3 xformOp:scale = (5200, 4200, 4800)
+                double3 xformOp:translate = (36500, 12500, -4800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Panel" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/Panel>
+                double size = 1
+                float3 xformOp:scale = (900, 1600, 3000)
+                double3 xformOp:translate = (39200, 12500, -5100)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "TowerLamp_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/RunningGreen>
+                double radius = 180
+                double3 xformOp:translate = (39500, 12500, -2600)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 180
+                double3 xformOp:translate = (39500, 12500, -2000)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cylinder "TowerLamp_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 420
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 180
+                double3 xformOp:translate = (39500, 12500, -1400)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+    }
+
+    def "Animation"
+    {
+        def Xform "LadlerCarrier"
+        {
+            double3 xformOp:translate.timeSamples = {
+                0: (4000, 7000, -5300),
+                60: (12000, 7000, -5300),
+                120: (22000, 7000, -5300),
+                180: (32000, 7000, -5300),
+                240: (4000, 7000, -5300),
+            }
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Base" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double size = 1
+                float3 xformOp:scale = (2500, 1600, 500)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cylinder "Ladle" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 2200
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double radius = 900
+                double3 xformOp:translate = (0, 0, 1500)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def Xform "TT1800"
+        {
+            float xformOp:rotateZ.timeSamples = {
+                0: 0,
+                60: 180,
+                120: 360,
+                180: 540,
+                240: 720,
+            }
+            double3 xformOp:translate = (27500, 12500, -6900)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+            def Cylinder "Table" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 600
+                rel material:binding = </SmartFactory/Looks/BuhlerBlue>
+                double radius = 3600
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cube "Fixture_0" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double size = 1
+                float3 xformOp:scale = (900, 900, 1000)
+                double3 xformOp:translate = (-1800, -1800, 800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Fixture_1" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double size = 1
+                float3 xformOp:scale = (900, 900, 1000)
+                double3 xformOp:translate = (1800, -1800, 800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Fixture_2" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double size = 1
+                float3 xformOp:scale = (900, 900, 1000)
+                double3 xformOp:translate = (-1800, 1800, 800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+
+            def Cube "Fixture_3" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double size = 1
+                float3 xformOp:scale = (900, 900, 1000)
+                double3 xformOp:translate = (1800, 1800, 800)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+
+        def Xform "TrimmingRam"
+        {
+            double3 xformOp:translate.timeSamples = {
+                0: (36500, 12500, -900),
+                30: (36500, 12500, -3900),
+                60: (36500, 12500, -900),
+                120: (36500, 12500, -900),
+                150: (36500, 12500, -3900),
+                180: (36500, 12500, -900),
+                240: (36500, 12500, -900),
+            }
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Cube "Head" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double size = 1
+                float3 xformOp:scale = (3200, 2800, 1200)
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+
+        def Xform "SprayRobot"
+        {
+            float xformOp:rotateZ.timeSamples = {
+                0: -70,
+                60: 70,
+                120: -70,
+                180: 70,
+                240: -70,
+            }
+            double3 xformOp:translate = (17500, 11000, -6900)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]
+
+            def Cylinder "Base" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                uniform token axis = "Z"
+                double height = 1000
+                rel material:binding = </SmartFactory/Looks/SafetyYellow>
+                double radius = 900
+                double3 xformOp:translate = (0, 0, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Cube "Arm" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                rel material:binding = </SmartFactory/Looks/HotZone>
+                double size = 1
+                float3 xformOp:scale = (700, 700, 6500)
+                double3 xformOp:translate = (0, 0, 3500)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+    }
+
+    def "Lighting"
+    {
+        def DomeLight "Sky"
+        {
+            color3f inputs:color = (0.55, 0.68, 1)
+            float inputs:intensity = 700
+        }
+
+        def RectLight "Ceiling_0"
+        {
+            float inputs:height = 5000
+            float inputs:intensity = 3200
+            float inputs:width = 9000
+            float xformOp:rotateX = 180
+            double3 xformOp:translate = (0, 0, 18000)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+        }
+
+        def RectLight "Ceiling_1"
+        {
+            float inputs:height = 5000
+            float inputs:intensity = 3200
+            float inputs:width = 9000
+            float xformOp:rotateX = 180
+            double3 xformOp:translate = (18000, 0, 18000)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+        }
+
+        def RectLight "Ceiling_2"
+        {
+            float inputs:height = 5000
+            float inputs:intensity = 3200
+            float inputs:width = 9000
+            float xformOp:rotateX = 180
+            double3 xformOp:translate = (38000, 0, 18000)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+        }
+
+        def RectLight "Ceiling_3"
+        {
+            float inputs:height = 5000
+            float inputs:intensity = 3200
+            float inputs:width = 9000
+            float xformOp:rotateX = 180
+            double3 xformOp:translate = (0, 15000, 18000)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+        }
+
+        def RectLight "Ceiling_4"
+        {
+            float inputs:height = 5000
+            float inputs:intensity = 3200
+            float inputs:width = 9000
+            float xformOp:rotateX = 180
+            double3 xformOp:translate = (18000, 15000, 18000)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+        }
+
+        def RectLight "Ceiling_5"
+        {
+            float inputs:height = 5000
+            float inputs:intensity = 3200
+            float inputs:width = 9000
+            float xformOp:rotateX = 180
+            double3 xformOp:translate = (38000, 15000, 18000)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+        }
+    }
+}
+

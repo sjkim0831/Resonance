@@ -1,0 +1,107 @@
+/**
+ * Screen: 제출 범위·기한 확인
+ * Contract: #264 | Route: /emission/report-submission
+ * Generated: 2026-07-25T09:34:04.556560
+ */
+
+import React, { useState, useEffect } from "react";
+import { Card, CardHeader, CardContent, TextField, Button, Grid, Box, Typography, Alert, CircularProgress, Tabs, Tab, Paper } from "@mui/material";
+import { Save, Cancel, Refresh } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+
+// GET /home/api/emission-projects/{projectId}/regulatory-submissions
+// POST /home/api/emission-projects/{projectId}/regulatory-submissions
+// POST /home/api/emission-projects/{projectId}/regulatory-submissions/{submissionId}/transition
+
+export const C264_제출 범위기한 확인Screen = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [screenState, setScreenState] = useState("LOADING, EMPTY, PACKAGED, SUBMITTED, RECEIVED");
+  const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => { setScreenState("READY"); }, []);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      // TODO: Implement submit logic
+      setScreenState("SAVED");
+    } catch (err) {
+      setError(err.message);
+      setScreenState("ERROR");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h5">제출 범위·기한 확인</Typography>
+        <Button startIcon=<Refresh /> onClick={() => window.location.reload()}>Refresh</Button>
+      </Box>
+
+      {screenState === "LOADING" && <Box display="flex" justifyContent="center"><CircularProgress /></Box>}
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {screenState !== "LOADING" && (
+        <Box>
+          <Paper sx={{ mb: 2 }}>
+            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+              <Tab key=0 label="Section 1" />
+              <Tab key=1 label="Section 2" />
+              <Tab key=2 label="Section 3" />
+              <Tab key=3 label="Section 4" />
+              <Tab key=4 label="Section 5" />
+            </Tabs>
+          </Paper>
+          <Card>
+            <CardHeader title="{screen}" />
+            <CardContent>
+              <Grid container spacing={2}>
+                <Grid item xs=12 md=6 key="projectId">
+                  <TextField label="프로젝트 ID" type="string" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="projectName">
+                  <TextField label="프로젝트명" type="string" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="siteName">
+                  <TextField label="사업장명" type="string" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="projectPeriod">
+                  <TextField label="산정 기간" type="string" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="reportId">
+                  <TextField label="확정 보고서 ID" type="long" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="reportVersion">
+                  <TextField label="보고서 버전" type="integer" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="reportTitle">
+                  <TextField label="보고서 제목" type="string" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="reportStatus">
+                  <TextField label="보고서 상태" type="code" fullWidth required=true />
+                </Grid>
+                <Grid item xs=12 md=6 key="certificateId">
+                  <TextField label="인증서 ID" type="string" fullWidth required=false />
+                </Grid>
+                <Grid item xs=12 md=6 key="integrityHash">
+                  <TextField label="보고서 무결성 해시" type="string" fullWidth required=false />
+                </Grid>
+              </Grid>
+            </CardContent>
+            <Box p={2} display="flex" gap={1} justifyContent="flex-end">
+              <Button variant="outlined" onClick={() => navigate(-1)}>Cancel</Button>
+              <Button variant="contained" startIcon=<Save /> onClick={handleSubmit} disabled={loading}>Save</Button>
+            </Box>
+          </Card>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+export default C264_제출 범위기한 확인Screen;
