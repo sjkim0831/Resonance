@@ -207,7 +207,7 @@ export function VerificationCenterMigrationPage() {
   const inventory = {
     ...verificationCenterInventory,
     ...(verificationCenterQuery.value || {})
-  } as VerificationCenterInventory;
+  } as unknown as VerificationCenterInventory;
 
   const baselinePacks = useMemo<BaselinePack[]>(() => [
     {

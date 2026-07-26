@@ -50,6 +50,7 @@ if (!process.argv.includes("--build")) {
 
 if (process.argv.includes("--build")) {
   run(process.execPath, ["scripts/dedupe-generated-route-family.mjs"]);
+  run(process.execPath, ["scripts/check-generated-prototype-isolation.mjs"]);
   run(npm, ["run", "audit:route-registry"]);
   if (skipBuildTypecheck) {
     console.log("[frontend-pipeline] project-reference typecheck skipped; external noEmit evidence required");

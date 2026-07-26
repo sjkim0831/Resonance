@@ -39,7 +39,12 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
 
   return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="gov-text-label font-black text-[#246beb]">{screen.processCode} · {screen.stepCode}</p><h1 className="gov-text-heading-lg mt-2 font-black text-[#052b57]">{screen.pageName}</h1><p className="gov-text-body mt-2 max-w-3xl text-slate-600">{text(spec.businessPurpose) || `${screen.actorCode} · ${screen.screenType}`}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={en ? "/en/emission/my-tasks" : "/emission/my-tasks"}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></header>
-    <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[[en ? "Actor" : "담당 액터", screen.actorCode],[en ? "Entry state" : "진입 상태", text(spec.fromState) || text(spec.entryCondition)],[en ? "Target state" : "완료 상태", text(spec.toState) || text(spec.exitCondition)],[en ? "Template" : "화면 템플릿", screen.templateCode]].map(([label,value])=><article className="krds-component rounded-xl border bg-white" key={label}><span className="gov-text-label font-bold text-slate-500">{label}</span><strong className="gov-text-heading-sm mt-2 block break-words text-[#052b57]">{value || "-"}</strong></article>)}</section>
+    <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{([
+      [en ? "Actor" : "담당 액터", screen.actorCode],
+      [en ? "Entry state" : "진입 상태", text(spec.fromState) || text(spec.entryCondition)],
+      [en ? "Target state" : "완료 상태", text(spec.toState) || text(spec.exitCondition)],
+      [en ? "Template" : "화면 템플릿", screen.templateCode]
+    ] as Array<[string, string]>).map(([label,value])=><article className="krds-component rounded-xl border bg-white" key={label}><span className="gov-text-label font-bold text-slate-500">{label}</span><strong className="gov-text-heading-sm mt-2 block break-words text-[#052b57]">{value || "-"}</strong></article>)}</section>
     {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"><div className="space-y-6">
       {kpis.length > 0 && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item=><article className="krds-component rounded-xl border bg-white" key={item.code}><span className="gov-text-label font-bold text-slate-500">{item.label}</span><strong className="gov-text-heading-md mt-2 block text-[#052b57]">-</strong></article>)}</section>}
@@ -53,10 +58,59 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
   </main>;
 }
 
+function parseGeneratedRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== "string") return (value || {}) as Record<string, unknown>;
+  try {
+    return JSON.parse(value) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function toGeneratedScreen(row: Record<string, unknown>): GeneratedScreenDefinition {
+  return {
+    id: String(row.pageId || row.blueprintCode).toLowerCase(),
+    blueprintCode: String(row.blueprintCode),
+    processCode: String(row.processCode),
+    stepCode: String(row.stepCode),
+    actorCode: String(row.actorCode),
+    audience: String(row.audience) === "ADMIN" ? "ADMIN" : "USER",
+    pageId: String(row.pageId),
+    pageName: String(row.pageName),
+    routePath: String(row.routePath),
+    screenType: String(row.screenType),
+    templateCode: String(row.templateCode),
+    specification: parseGeneratedRecord(row.specificationJson),
+    traceability: parseGeneratedRecord(row.traceabilityJson),
+    designCompleteness: {
+      score: Number(row.designScore || 0),
+      complete: Boolean(row.designComplete),
+      checks: {}
+    }
+  } as GeneratedScreenDefinition;
+}
+
 export function GeneratedScreenPage() {
-  const en = isEnglish(), staticScreen = findGeneratedScreen(location.pathname);
+  const en = isEnglish();
+  const staticScreen: GeneratedScreenDefinition | undefined =
+    findGeneratedScreen(location.pathname) as GeneratedScreenDefinition | undefined;
   const [screen,setScreen]=useState<GeneratedScreenDefinition|undefined>(staticScreen),[loading,setLoading]=useState(!staticScreen);
-  useEffect(()=>{let cancelled=false;setLoading(!staticScreen);fetch(`${en?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`,{credentials:"include"}).then(async response=>{const row=await response.json();if(!response.ok||!row.enabled)return;if(cancelled)return;const parse=(value:unknown)=>{if(typeof value!=="string")return (value||{}) as Record<string,unknown>;try{return JSON.parse(value) as Record<string,unknown>}catch{return {}}};setScreen({id:String(row.pageId||row.blueprintCode).toLowerCase(),blueprintCode:String(row.blueprintCode),processCode:String(row.processCode),stepCode:String(row.stepCode),actorCode:String(row.actorCode),audience:String(row.audience)==="ADMIN"?"ADMIN":"USER",pageId:String(row.pageId),pageName:String(row.pageName),routePath:String(row.routePath),screenType:String(row.screenType),templateCode:String(row.templateCode),specification:parse(row.specificationJson),traceability:parse(row.traceabilityJson),designCompleteness:{score:Number(row.designScore||0),complete:Boolean(row.designComplete),checks:{}}} as GeneratedScreenDefinition);}).finally(()=>{if(!cancelled)setLoading(false)});return()=>{cancelled=true}},[en,staticScreen]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(!staticScreen);
+    fetch(`${en ? "/en" : ""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`, {
+      credentials: "include"
+    }).then(async (response) => {
+      const row = await response.json() as Record<string, unknown>;
+      if (!response.ok || !row.enabled || cancelled) return;
+      setScreen(toGeneratedScreen(row));
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [en, staticScreen]);
   if(loading) return <main className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><p className="gov-text-body font-bold">{en?"Loading the latest design...":"최신 화면 설계를 불러오는 중입니다."}</p></main>;
   if (!screen) return <main className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><h1 className="gov-text-heading-lg font-black">{en ? "Screen contract not found" : "화면 설계 계약을 찾을 수 없습니다."}</h1></main>;
   if (screen.audience === "ADMIN") return <AdminPageShell breadcrumbs={[{label:en ? "System" : "시스템 관리",href:en?"/en/admin":"/admin"},{label:en ? "Generated screen" : "자동 생성 화면"}]} title={screen.pageName}><GeneratedContent screen={screen}/></AdminPageShell>;

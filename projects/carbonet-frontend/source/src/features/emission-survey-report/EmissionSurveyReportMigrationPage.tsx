@@ -4247,7 +4247,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
         throw new Error("LCA summary element is not ready.");
       }
       const module = await import("html2pdf.js");
-      const html2pdf = module.default || module;
+      const html2pdf = (module.default || module) as unknown as () => any;
       const qrDataUrl = await createReportQrDataUrl(record);
       const pdfOptions: Record<string, unknown> = {
         filename: buildLcaSummaryPdfFileName(report, lcaDocumentTitle),
