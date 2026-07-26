@@ -22,8 +22,8 @@ page.on("console", message => {
 });
 
 try {
-  const response = await page.goto(`${baseUrl}${targetPath}`, { waitUntil: "networkidle", timeout: 30000 });
-  await page.waitForTimeout(1500);
+  const response = await page.goto(`${baseUrl}${targetPath}`, { waitUntil: "domcontentloaded", timeout: 15000 });
+  await page.waitForFunction(() => Boolean(document.querySelector("#root")?.innerHTML.trim()), null, { timeout: 10000 }).catch(() => undefined);
   const rootLength = await page.locator("#root").innerHTML().then(value => value.length).catch(() => 0);
   if (!response || response.status() >= 400) failures.push(`http: ${response?.status() ?? "no-response"}`);
   if (rootLength === 0) failures.push("mount: #root is empty");
