@@ -10,7 +10,25 @@ const input = JSON.parse(await readFile(resolve(args.input), "utf8"));
 if (!["1.0.0","2.0.0"].includes(input.schemaVersion) || !Array.isArray(input.blueprints)) throw new Error("Unsupported or invalid blueprint export.");
 const limit = Math.min(1000, Math.max(1, Number(args.limit || 1000)));
 const strict = args.strict === "true";
-const blueprints = input.blueprints.filter((item) => item.validationStatus === "VALID").slice(0, limit);
+async function collectReservedRoutes(directory, routes = new Set()) {
+  try {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name);
+      if (entry.isDirectory() && entry.name !== "generated") await collectReservedRoutes(path, routes);
+      else if (/Family\.ts$/.test(entry.name)) {
+        const source = await readFile(path, "utf8");
+        for (const match of source.matchAll(/\b(?:koPath|enPath)\s*:\s*["'`]([^"'`]+)["'`]/g)) routes.add(match[1]);
+      }
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  return routes;
+}
+const reservedRoutes = await collectReservedRoutes(resolve("src"));
+const validBlueprints = input.blueprints.filter((item) => item.validationStatus === "VALID");
+const skippedReservedRoutes = validBlueprints.filter((item) => reservedRoutes.has(String(item.routePath || ""))).map((item) => String(item.routePath));
+const blueprints = validBlueprints.filter((item) => !reservedRoutes.has(String(item.routePath || ""))).slice(0, limit);
 const seenIds = new Set(), seenRoutes = new Set();
 const json = (value) => JSON.stringify(value,null,2);
 const parse = (value, code) => { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { throw new Error(`Invalid JSON contract: ${code}`); } };
@@ -109,6 +127,6 @@ const staleDefinitions=(await readdir(definitionsDir)).filter(file=>file.endsWit
 await mapConcurrent(staleDefinitions,file=>rm(resolve(definitionsDir,file),{force:true}));
 const contractHash=createHash("sha256").update(json(normalized)).digest("hex");
 const contractFileCount=normalized.length+4;
-const report={schemaVersion:"2.0.0",batch:input.batch,screenCount:normalized.length,userScreens:normalized.filter(x=>x.audience==="USER").length,adminScreens:normalized.filter(x=>x.audience==="ADMIN").length,completeDesigns:normalized.filter(x=>x.designCompleteness.complete).length,incompleteDesigns:normalized.filter(x=>!x.designCompleteness.complete).length,contractHash,durationMs:Math.round(performance.now()-startedAt),concurrency,contractFileCount,contractFilesChanged,contractFilesUnchanged:contractFileCount-contractFilesChanged,staleFilesRemoved:staleDefinitions.length,filesGenerated:contractFileCount+1};
+const report={schemaVersion:"2.0.0",batch:input.batch,screenCount:normalized.length,userScreens:normalized.filter(x=>x.audience==="USER").length,adminScreens:normalized.filter(x=>x.audience==="ADMIN").length,completeDesigns:normalized.filter(x=>x.designCompleteness.complete).length,incompleteDesigns:normalized.filter(x=>!x.designCompleteness.complete).length,reservedRoutesSkipped:skippedReservedRoutes.length,reservedRouteExamples:skippedReservedRoutes.slice(0,20),contractHash,durationMs:Math.round(performance.now()-startedAt),concurrency,contractFileCount,contractFilesChanged,contractFilesUnchanged:contractFileCount-contractFilesChanged,staleFilesRemoved:staleDefinitions.length,filesGenerated:contractFileCount+1};
 await atomicWriteIfChanged(resolve(outDir,"generation-report.json"),json(report));
 console.log(JSON.stringify({success:true,outDir,...report},null,2));
