@@ -26,6 +26,12 @@ async function collectReservedRoutes(directory, routes = new Set()) {
   return routes;
 }
 const reservedRoutes = await collectReservedRoutes(resolve("src"));
+try {
+  const runtimeRoutes = await readFile(resolve("src/app/routes/runtime.ts"), "utf8");
+  for (const match of runtimeRoutes.matchAll(/\[\s*["'`]([^"'`]+)["'`]\s*,/g)) reservedRoutes.add(match[1]);
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
 const validBlueprints = input.blueprints.filter((item) => item.validationStatus === "VALID");
 const skippedReservedRoutes = validBlueprints.filter((item) => reservedRoutes.has(String(item.routePath || ""))).map((item) => String(item.routePath));
 const blueprints = validBlueprints.filter((item) => !reservedRoutes.has(String(item.routePath || ""))).slice(0, limit);

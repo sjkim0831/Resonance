@@ -154,6 +154,20 @@ backup_overlay() {
   echo "[guard] backup=$out"
 }
 
+restore_latest_backup() {
+  local archive staging
+  archive="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name 'react-app-overlay-*.tar.gz' -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)"
+  [[ -n "$archive" && -f "$archive" ]] || { echo "[guard] no overlay backup available" >&2; exit 16; }
+  staging="$(mktemp -d "$ROOT_DIR/var/run/react-overlay-restore.XXXXXX")"
+  tar -C "$staging" -xzf "$archive"
+  test -f "$staging/index.html" || { rm -rf "$staging"; echo "[guard] invalid backup: $archive" >&2; exit 17; }
+  rsync -a --delete --exclude='/index.html' "$staging/" "$OVERLAY_DIR/"
+  cp "$staging/index.html" "$OVERLAY_DIR/.index.html.restore"
+  mv -f "$OVERLAY_DIR/.index.html.restore" "$OVERLAY_DIR/index.html"
+  rm -rf "$staging"
+  echo "[guard] restored=$archive"
+}
+
 verify_local() {
   test -d "$OVERLAY_DIR" || { echo "[guard] missing overlay dir: $OVERLAY_DIR" >&2; exit 10; }
   test -f "$OVERLAY_DIR/index.html" || { echo "[guard] missing index.html" >&2; exit 11; }
@@ -223,6 +237,7 @@ verify_http() {
 cmd="${1:-}"
 case "$cmd" in
   backup) backup_overlay ;;
+  restore-latest) restore_latest_backup ;;
   verify-local) verify_local ;;
   verify-http) verify_http ;;
   write-marker) write_marker ;;

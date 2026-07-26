@@ -130,6 +130,13 @@ bash "$GUARD_SCRIPT" write-marker
 
 echo "[screen-overlay-apply] verify overlay/http/source"
 BASE_URL="$BASE_URL" bash "$GUARD_SCRIPT" verify-all
+echo "[screen-overlay-apply] verify React runtime mount"
+if ! (cd "$SOURCE_DIR" && BASE_URL="$BASE_URL" node "$ROOT_DIR/ops/scripts/verify-react-mount.mjs"); then
+  echo "[screen-overlay-apply] React mount failed; restore latest known overlay backup" >&2
+  bash "$GUARD_SCRIPT" restore-latest
+  BASE_URL="$BASE_URL" bash "$GUARD_SCRIPT" verify-all
+  exit 18
+fi
 
 if [[ "$UPDATE_GIT_METADATA" == "true" && -x "$ROOT_DIR/ops/scripts/resonance-write-git-build-metadata.sh" ]]; then
   echo "[screen-overlay-apply] refresh git/build metadata"
