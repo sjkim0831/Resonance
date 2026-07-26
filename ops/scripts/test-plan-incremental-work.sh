@@ -10,7 +10,7 @@ cd "$TMP_DIR"
 git init -q
 git config user.name planner-test
 git config user.email planner-test@example.invalid
-mkdir -p docs projects/carbonet-frontend/source/src apps/carbonet-api/src/main/java/example \
+mkdir -p docs tests projects/carbonet-frontend/source/src apps/carbonet-api/src/main/java/example \
   apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated
 printf 'base\n' > README.md
 git add . && git commit -qm base
@@ -62,5 +62,13 @@ metadata="$(git rev-parse HEAD)"
 eval "$(bash "$PLANNER" "$policy" "$metadata" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_CATALOG_ONLY" == true ]]
+
+printf 'print(\"ok\")\n' > tests/test_ai_builder_contract_generator.py
+git add . && git commit -qm builder-test
+builder_test="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$metadata" "$builder_test" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_CATALOG_ONLY" == true ]]
+[[ "$PLAN_TESTS" == *"builder:unit-test"* ]]
 
 echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build"

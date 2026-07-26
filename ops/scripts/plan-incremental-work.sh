@@ -85,6 +85,12 @@ while IFS= read -r path; do
       add_test "catalog:sync"
       add_reason "catalog-only"
       ;;
+    tests/test_ai_builder_*.py)
+      # Builder/governance unit tests validate offline generation only.
+      # They do not alter the Java or React runtime.
+      add_test "builder:unit-test"
+      add_reason "builder-test"
+      ;;
     *)
       # Unknown files are treated conservatively so a new runtime source root
       # cannot silently bypass a required build.
