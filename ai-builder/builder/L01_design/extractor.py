@@ -68,11 +68,32 @@ class DesignExtractor(LayerBase):
         
         sql = """SELECT row_to_json(c) FROM (
             SELECT c.contract_id, c.route_path, c.screen_name, c.process_code,
-                   c.step_code, c.actor_code,
+                   c.step_code, c.actor_code, c.audience,
                    c.business_purpose, c.entry_condition, c.exit_condition,
                    c.api_contract, c.state_contract, c.field_contract,
-                   c.section_contract, c.updated_at
+                   c.section_contract, c.command_contract, c.data_contract,
+                   c.evidence_contract, c.responsive_contract,
+                   c.accessibility_contract, c.security_contract,
+                   ss.input_schema, ss.output_schema, ss.persistence_schema,
+                   ss.handoff_schema, ss.context_keys,
+                   jsonb_build_array(jsonb_build_object(
+                       'actorCode', coalesce(nullif(c.actor_code, ''), 'USER'),
+                       'scope', c.route_path,
+                       'actions', coalesce(to_jsonb(c.command_contract), '[]'::jsonb)
+                   )) AS permissions,
+                   coalesce((
+                       SELECT jsonb_agg(jsonb_build_object(
+                           'caseCode', sc.case_code, 'name', sc.case_name,
+                           'type', sc.case_type, 'preconditions', sc.preconditions,
+                           'steps', sc.steps_json, 'assertions', sc.assertions_json,
+                           'status', sc.case_status) ORDER BY sc.case_code)
+                       FROM framework_simulation_case sc
+                       WHERE sc.process_code = c.process_code
+                   ), '[]'::jsonb) AS tests,
+                   c.updated_at
             FROM framework_professional_screen_contract c
+            LEFT JOIN framework_step_schema_set ss
+              ON ss.process_code = c.process_code AND ss.step_code = c.step_code
             WHERE c.contract_status IN ('VERIFIED', 'DESIGN_COMPLETE')
             ORDER BY c.contract_id
         ) c"""
@@ -139,11 +160,42 @@ class DesignExtractor(LayerBase):
             screen_name=screen_name,
             process_code=data.get('process_code', 'UNKNOWN'),
             actor_code=data.get('actor_code', 'USER'),
+            step_code=data.get('step_code') or '',
+            audience=data.get('audience') or '',
+            business_purpose=data.get('business_purpose') or '',
+            entry_condition=data.get('entry_condition') or '',
+            exit_condition=data.get('exit_condition') or '',
+            command_contract=self._json_value(data.get('command_contract'), []),
+            data_contract=self._json_value(data.get('data_contract'), {}),
+            evidence_contract=self._json_value(data.get('evidence_contract'), {}),
+            responsive_contract=self._json_value(data.get('responsive_contract'), {}),
+            accessibility_contract=self._json_value(data.get('accessibility_contract'), {}),
+            security_contract=self._json_value(data.get('security_contract'), {}),
+            input_schema=self._json_value(data.get('input_schema'), {}),
+            output_schema=self._json_value(data.get('output_schema'), {}),
+            persistence_schema=self._json_value(data.get('persistence_schema'), {}),
+            handoff_schema=self._json_value(data.get('handoff_schema'), {}),
+            context_keys=self._json_value(data.get('context_keys'), []),
+            permissions=self._json_value(data.get('permissions'), []),
+            tests=self._json_value(data.get('tests'), []),
             api_contract=api_contracts,
             state_contract=state_contracts,
             field_contract=field_contracts,
             section_contract=section_contracts
         )
+
+    def _json_value(self, value, default):
+        """Normalize PostgreSQL json/jsonb and legacy JSON text."""
+        if value is None or value == '':
+            return default
+        if isinstance(value, (dict, list)):
+            return value
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (TypeError, json.JSONDecodeError):
+                return default
+        return default
     
     def _parse_api_contract(self, text) -> List[ApiContract]:
         """Parse API contract - handles both string and dict formats"""

@@ -41,8 +41,9 @@ class ContractValidator(LayerBase):
                 warning_count += 1
                 self.log_warning(contract.contract_id, warn)
             
-            # Always include contract in output (data quality is logged but not blocking)
-            valid.append(contract)
+            # Invalid contracts must not reach code generation in strict mode.
+            if is_valid or not self.strict:
+                valid.append(contract)
         
         # Save validation report
         report_path = Path("/tmp/builder_output/03_validate/validation_report.json")
@@ -74,7 +75,7 @@ class ContractValidator(LayerBase):
         )
         
         self.log("Validated: " + str(len(valid)) + " contracts, " + str(error_count) + " errors, " + str(warning_count) + " warnings")
-        return True, valid, result
+        return success, valid, result
     
     def _validate_contract(self, contract: ScreenContract) -> Tuple[bool, List[Dict], List[str]]:
         """Validate a single contract"""
@@ -113,7 +114,7 @@ class ContractValidator(LayerBase):
                 warnings.append('Duplicate field code: ' + field.field_code)
             field_codes.add(field.field_code)
         
-        return True, errors, warnings  # Always return True for is_valid - we don't block on data issues
+        return len(errors) == 0, errors, warnings
     
     def _validate_api(self, api) -> List[Dict]:
         """Validate API definition"""

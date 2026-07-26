@@ -59,9 +59,6 @@ class ScreenComposer(LayerBase):
         # Generate imports
         imports = self._generate_imports(contract)
         
-        # Generate state
-        state = self._generate_state(contract)
-        
         # Generate form fields
         form_fields = self._generate_form_fields(contract)
         
@@ -69,7 +66,7 @@ class ScreenComposer(LayerBase):
         render = self._generate_render(contract)
         
         # Combine
-        screen = imports + "\n" + state + "\n" + form_fields + "\n" + render
+        screen = imports + "\n" + form_fields + "\n" + render
         
         return screen
     
@@ -91,15 +88,15 @@ class ScreenComposer(LayerBase):
         return "\n".join(lines)
     
     def _generate_state(self, contract: ScreenContract) -> str:
-        """Generate state management"""
+        """Generate state management inside the React component."""
         lines = [
-            "const { state, setLoading, setReady, setSaving, setError, setSubmitted } = useScreenState('READY');",
-            "const { values, handleChange, errors, touched, dirty, resetForm, validateAll } = useFormState({});",
-            "const { loading, error, request } = useApi();",
+            "  const { state, setSaving, setReady, setError } = useScreenState('READY');",
+            "  const { values, handleChange, errors, dirty, resetForm, validateAll } = useFormState({});",
+            "  const { error, request } = useApi();",
             "",
-            "// Initialize form values from contract",
-            "useEffect(() => {",
-            "  const initial = {};",
+            "  // Initialize form values from contract",
+            "  useEffect(() => {",
+            "    const initial = {};",
         ]
         
         # Add field initial values
@@ -107,15 +104,33 @@ class ScreenComposer(LayerBase):
             if field.default_value is not None:
                 val = field.default_value
                 if isinstance(val, str):
-                    lines.append("  initial['" + field.field_code + "'] = '" + val + "';")
+                    lines.append("    initial['" + field.field_code + "'] = " + json.dumps(val, ensure_ascii=False) + ";")
                 else:
-                    lines.append("  initial['" + field.field_code + "'] = " + str(val) + ";")
+                    lines.append("    initial['" + field.field_code + "'] = " + json.dumps(val) + ";")
         
         lines.extend([
-            "  resetForm(initial);",
-            "}, []);",
+            "    resetForm(initial);",
+            "  }, [resetForm]);",
             "",
         ])
+
+        save_api = next((a for a in contract.api_contract if a.method in ('POST', 'PUT', 'PATCH')), None)
+        if save_api:
+            lines.extend([
+                "  const handleSave = useCallback(async () => {",
+                "    if (!validateAll()) return;",
+                "    setSaving();",
+                "    try {",
+                "      await request(() => api.request({ method: " + json.dumps(save_api.method) + ", url: " + json.dumps(save_api.path) + ", data: values }));",
+                "      setReady();",
+                "    } catch (saveError) {",
+                "      setError(handleApiError(saveError));",
+                "    }",
+                "  }, [request, setError, setReady, setSaving, validateAll, values]);",
+                "",
+            ])
+        else:
+            lines.append("  const handleSave = undefined;")
         
         return "\n".join(lines)
     
@@ -152,6 +167,7 @@ class ScreenComposer(LayerBase):
         lines = [
             "",
             "const Screen" + str(contract.contract_id) + ": React.FC = () => {",
+            self._generate_state(contract),
             "  // Screen component",
             "  return (",
             "    <Container maxWidth=\"lg\" sx={{ py: 3 }}>",
@@ -190,7 +206,7 @@ class ScreenComposer(LayerBase):
             "",
             "      <Box display=\"flex\" gap={1} justifyContent=\"flex-end\" mt={3}>",
             "        <Button onClick={() => resetForm()}>Cancel</Button>",
-            "        <Button variant=\"contained\" disabled={dirty}>Save</Button>",
+            "        <Button variant=\"contained\" onClick={handleSave} disabled={!dirty || state === 'SAVING' || !handleSave}>Save</Button>",
             "      </Box>",
             "    </Container>",
             "  );",

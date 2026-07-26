@@ -53,6 +53,24 @@ class ScreenContract:
     screen_name: str
     process_code: str = "UNKNOWN"
     actor_code: str = "USER"
+    step_code: str = ""
+    audience: str = ""
+    business_purpose: str = ""
+    entry_condition: str = ""
+    exit_condition: str = ""
+    command_contract: Any = field(default_factory=list)
+    data_contract: Any = field(default_factory=dict)
+    evidence_contract: Any = field(default_factory=dict)
+    responsive_contract: Any = field(default_factory=dict)
+    accessibility_contract: Any = field(default_factory=dict)
+    security_contract: Any = field(default_factory=dict)
+    input_schema: Any = field(default_factory=dict)
+    output_schema: Any = field(default_factory=dict)
+    persistence_schema: Any = field(default_factory=dict)
+    handoff_schema: Any = field(default_factory=dict)
+    context_keys: List[str] = field(default_factory=list)
+    permissions: List[Dict[str, Any]] = field(default_factory=list)
+    tests: List[Dict[str, Any]] = field(default_factory=list)
     api_contract: List[ApiContract] = field(default_factory=list)
     state_contract: List[str] = field(default_factory=list)
     field_contract: List[FieldContract] = field(default_factory=list)

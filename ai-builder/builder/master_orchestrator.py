@@ -76,7 +76,7 @@ class MasterOrchestrator:
         self.layers = [
             DesignExtractor(),
             ContractParser(),
-            ContractValidator(strict=False),
+            ContractValidator(strict=True),
             TemplateGenerator(output_dir=self.output_dir / "04_template"),
             ScreenComposer(),
             ScreenGenerator(output_dir=self.output_dir / "06_generate/screens"),

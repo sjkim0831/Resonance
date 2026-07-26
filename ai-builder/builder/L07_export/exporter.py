@@ -96,6 +96,31 @@ class ScreenExporter(LayerBase):
                 'screen_name': c.screen_name,
                 'process_code': getattr(c, 'process_code', 'UNKNOWN'),
                 'actor_code': getattr(c, 'actor_code', 'USER'),
+                'step_code': getattr(c, 'step_code', ''),
+                'audience': getattr(c, 'audience', ''),
+                'business_purpose': getattr(c, 'business_purpose', ''),
+                'entry_condition': getattr(c, 'entry_condition', ''),
+                'exit_condition': getattr(c, 'exit_condition', ''),
+                'states': getattr(c, 'state_contract', []),
+                'sections': [
+                    {
+                        'code': s.section_code,
+                        'name': s.section_name,
+                        'order': s.order,
+                        'layout': s.layout,
+                        'collapsible': s.collapsible
+                    }
+                    for s in getattr(c, 'section_contract', [])
+                ],
+                'input_schema': getattr(c, 'input_schema', {}),
+                'output_schema': getattr(c, 'output_schema', {}),
+                'persistence_schema': getattr(c, 'persistence_schema', {}),
+                'handoff_schema': getattr(c, 'handoff_schema', {}),
+                'context_keys': getattr(c, 'context_keys', []),
+                'permissions': getattr(c, 'permissions', []),
+                'tests': getattr(c, 'tests', []),
+                'data_contract': getattr(c, 'data_contract', {}),
+                'evidence_contract': getattr(c, 'evidence_contract', {}),
                 'field_count': c.get_field_count(),
                 'section_count': c.get_section_count(),
                 'api_count': c.get_api_count(),
@@ -109,7 +134,14 @@ class ScreenExporter(LayerBase):
                         'name': f.field_name,
                         'type': f.data_type,
                         'required': f.required,
-                        'section': f.section_code
+                        'section': f.section_code,
+                        'options': f.options,
+                        'validation': f.validation,
+                        'defaultValue': f.default_value,
+                        'placeholder': f.placeholder,
+                        'helpText': f.help_text,
+                        'readOnly': f.read_only,
+                        'visible': f.visible
                     }
                     for f in getattr(c, 'field_contract', [])
                 ]
