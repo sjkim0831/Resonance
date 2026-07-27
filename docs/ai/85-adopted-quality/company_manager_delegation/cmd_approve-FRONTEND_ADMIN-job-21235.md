@@ -2,7 +2,7 @@
 
 - Job: 21235
 - Job type: FRONTEND_ADMIN
-- Source commit: c23b1d99ff9a5131f0056864ad76a11660b862ff
+- Source commit: 50daa6a6b48891f70b1f8094d278d9bb1ac20cce
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"COMPANY_MANAGER_DELEGATION","stepCode":"CMD_APPROVE","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-21235/projects/carbonet-backend-metadata/process-runtime/generated/COMPANY_MANAGER_DELEGATION/COMPANY_MANAGER_DELEGATION__CMD_APPROVE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21235/var/test-evidence/process-package-tests/COMPANY_MANAGER_DELEGATION__CMD_APPROVE.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
