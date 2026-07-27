@@ -125,7 +125,7 @@ WITH route_count AS (
   LEFT JOIN framework_process_step ps
     ON ps.process_code=pd.process_code AND ps.step_code=pd.step_code
   LEFT JOIN fields f USING(page_design_id)
-  LEFT JOIN tests t USING(process_code)
+  LEFT JOIN tests t ON t.process_code=pd.process_code
   LEFT JOIN handoffs h
     ON h.process_code=pd.process_code AND h.step_code=pd.step_code
   LEFT JOIN contracts c
