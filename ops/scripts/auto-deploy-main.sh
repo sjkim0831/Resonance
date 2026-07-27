@@ -34,6 +34,20 @@ flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
 
+# Image/Gradle packaging can leave generated frontend trees owned by root.
+# Normalize only when a foreign-owned entry is detected so the next Git
+# fast-forward/restore cannot fail before the deployment plan is evaluated.
+for generated_tree in \
+  apps/carbonet-api/src/main/resources/static/react-app \
+  projects/carbonet-assets/static/react-app \
+  projects/carbonet-frontend/src/main/resources/static/react-app; do
+  [[ -e "$generated_tree" ]] || continue
+  if find "$generated_tree" ! -user "$(id -u)" -print -quit 2>/dev/null | grep -q .; then
+    echo "[auto-deploy] repairing generated asset ownership: $generated_tree"
+    sudo -n chown -R "$(id -u):$(id -g)" "$generated_tree"
+  fi
+done
+
 postgres_data_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
   -o jsonpath='{.spec.template.spec.volumes[?(@.name=="patroni-data-root")].hostPath.path}' 2>/dev/null || true)"
 postgres_wal_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
