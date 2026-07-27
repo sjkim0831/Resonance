@@ -1,6 +1,6 @@
-process=CCUS_LIFECYCLE_MRV
-step=CCUS_LIFECYCLE_MRV_S2
+process=PCR_EPD_VERIFICATION
+step=PCR_EPD_VERIFICATION_S2
 type=FULL_STACK
-target=contract://CCUS_LIFECYCLE_MRV/CCUS_LIFECYCLE_MRV_S2
+target=contract://PCR_EPD_VERIFICATION/PCR_EPD_VERIFICATION_S2
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.

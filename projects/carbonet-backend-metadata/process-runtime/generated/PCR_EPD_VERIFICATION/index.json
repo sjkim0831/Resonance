@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "PCR_EPD_VERIFICATION",
+      "stepCode": "PCR_EPD_VERIFICATION_S1",
+      "package": "PCR_EPD_VERIFICATION__PCR_EPD_VERIFICATION_S1.json",
+      "packageHash": "b4dc8467c70270fe1a32fd44988f7badbca627e55c1a62fb86d8356c85936031",
+      "pages": 2
+    },
+    {
+      "processCode": "PCR_EPD_VERIFICATION",
+      "stepCode": "PCR_EPD_VERIFICATION_S2",
+      "package": "PCR_EPD_VERIFICATION__PCR_EPD_VERIFICATION_S2.json",
+      "packageHash": "4c80fa230e59f1c336dece504d9050e183cedfda91e60d225c02df96876e7b84",
+      "pages": 2
+    },
+    {
+      "processCode": "PCR_EPD_VERIFICATION",
+      "stepCode": "PCR_EPD_VERIFICATION_S3",
+      "package": "PCR_EPD_VERIFICATION__PCR_EPD_VERIFICATION_S3.json",
+      "packageHash": "04199044e0f65a5e37cac200251a8f18187e348ad3d7d3b3070ade5cd4cc142e",
+      "pages": 2
+    },
+    {
+      "processCode": "PCR_EPD_VERIFICATION",
+      "stepCode": "PCR_EPD_VERIFICATION_S4",
+      "package": "PCR_EPD_VERIFICATION__PCR_EPD_VERIFICATION_S4.json",
+      "packageHash": "b8d8040ded32899e7003c8638a186c792c4a21639a7a0e6d3346157a40009b54",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "9d5e7b75e77c1a4765fd20c23c699767dd404c4ee0110633932c6bd159102bfb"
+}
