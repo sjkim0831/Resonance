@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+      "package": "LCA_DATA_QUALITY_UNCERTAINTY__LCA_DATA_QUALITY_UNCERTAINTY_S1.json",
+      "packageHash": "c47d6df27830d38c74f7532d85da335f46618a0c7803ea7750dfb35b0d540602",
+      "pages": 2
+    },
+    {
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+      "package": "LCA_DATA_QUALITY_UNCERTAINTY__LCA_DATA_QUALITY_UNCERTAINTY_S2.json",
+      "packageHash": "597d6dbd5343fa153c00e22b02620ec60dbc320f7458701980a1348d5be592ed",
+      "pages": 2
+    },
+    {
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+      "package": "LCA_DATA_QUALITY_UNCERTAINTY__LCA_DATA_QUALITY_UNCERTAINTY_S3.json",
+      "packageHash": "d932b6c996053a96a0532175e217b06837651d92b983a9be4eaaebc14df2994d",
+      "pages": 2
+    },
+    {
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+      "package": "LCA_DATA_QUALITY_UNCERTAINTY__LCA_DATA_QUALITY_UNCERTAINTY_S4.json",
+      "packageHash": "b3f346bf5d179dd667d9348674fddafd7475f3cd886d47382e86b1e073e3dfdb",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "a6b875aa2c63a50c0b2bac32c069d0eafa202841506c81510d0336bb33e591fe"
+}

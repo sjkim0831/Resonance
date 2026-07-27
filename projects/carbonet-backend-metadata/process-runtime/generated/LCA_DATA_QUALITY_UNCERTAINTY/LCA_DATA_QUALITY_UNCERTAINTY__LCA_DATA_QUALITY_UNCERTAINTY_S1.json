@@ -1,0 +1,2034 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "LCA_DATA_QUALITY_UNCERTAINTY",
+    "name": "LCA 데이터 품질·불확도",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "시간·지역·기술 대표성과 완전성 및 불확도를 정량 평가한다."
+  },
+  "step": {
+    "code": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+    "version": 2,
+    "actor": {
+      "actorCode": "LCA_PRACTITIONER",
+      "ownerActorCode": "LCA_PRACTITIONER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "시간·지역·기술 대표성과 완전성 및 불확도를 정량 평가한다.",
+      "slaHours": 72,
+      "stepName": "품질 메타데이터 수집",
+      "riskLevel": "HIGH",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "LCA 데이터 품질·불확도",
+      "requirement": "품질 메타데이터 수집 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "completionRule": "품질 메타데이터 수집의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "regulationRefs": "ISO 14040, ISO 14044"
+    },
+    "transition": {
+      "toState": "STEP_1_COMPLETED",
+      "stepType": "TASK",
+      "fromState": "READY",
+      "stepOrder": 1,
+      "commandCode": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+      "auditRequired": true,
+      "completionRule": "품질 메타데이터 수집의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "tenantId": "required",
+      "actorCode": "LCA_PRACTITIONER",
+      "projectId": "required",
+      "stepOrder": 1,
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "idempotencyKey": "required"
+    },
+    "output": {
+      "state": "STEP_1_COMPLETED",
+      "evidence": "required",
+      "auditEvent": "required",
+      "nextTaskCreated": true
+    },
+    "guide": {
+      "title": "품질 메타데이터 수집",
+      "purpose": "품질 메타데이터 수집 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+      "userPath": null,
+      "actorCode": "LCA_PRACTITIONER",
+      "adminPath": null,
+      "stepOrder": 1,
+      "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+      "nextStepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+      "workTypeCode": "DATA_GOVERNANCE",
+      "entryCondition": "READY",
+      "completionCondition": "품질 메타데이터 수집의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+        "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "ADMIN",
+        "screenType": "DATA_COLLECTION",
+        "title": "품질 메타데이터 수집 관리",
+        "purpose": "품질 메타데이터 수집 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {},
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {},
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {},
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {},
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {},
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {},
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "lcaProjectId",
+            "fieldName": "LCA 프로젝트",
+            "fieldGroup": "LCA",
+            "fieldOrder": 200,
+            "validation": {},
+            "apiProperty": "lcaProjectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "productId",
+            "fieldName": "제품",
+            "fieldGroup": "LCA",
+            "fieldOrder": 210,
+            "validation": {},
+            "apiProperty": "productId",
+            "controlType": "PRODUCT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "processId",
+            "fieldName": "공정",
+            "fieldGroup": "LCA",
+            "fieldOrder": 220,
+            "validation": {},
+            "apiProperty": "processId",
+            "controlType": "PROCESS_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "flowType",
+            "fieldName": "흐름 구분",
+            "fieldGroup": "LCA",
+            "fieldOrder": 230,
+            "validation": {},
+            "apiProperty": "flowType",
+            "controlType": "FLOW_TYPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "substanceId",
+            "fieldName": "물질",
+            "fieldGroup": "LCA",
+            "fieldOrder": 240,
+            "validation": {},
+            "apiProperty": "substanceId",
+            "controlType": "SUBSTANCE_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "quantity",
+            "fieldName": "수량",
+            "fieldGroup": "LCA",
+            "fieldOrder": 250,
+            "validation": {},
+            "apiProperty": "quantity",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "LCA",
+            "fieldOrder": 260,
+            "validation": {},
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "allocationRatio",
+            "fieldName": "할당 비율",
+            "fieldGroup": "LCA",
+            "fieldOrder": 270,
+            "validation": {},
+            "apiProperty": "allocationRatio",
+            "controlType": "PERCENT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "impactCategory",
+            "fieldName": "영향범주",
+            "fieldGroup": "LCA",
+            "fieldOrder": 280,
+            "validation": {},
+            "apiProperty": "impactCategory",
+            "controlType": "IMPACT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "impactResult",
+            "fieldName": "영향평가 결과",
+            "fieldGroup": "LCA",
+            "fieldOrder": 290,
+            "validation": {},
+            "apiProperty": "impactResult",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "sourceType",
+            "fieldName": "자료 출처",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {},
+            "apiProperty": "sourceType",
+            "controlType": "SOURCE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": true,
+            "fieldCode": "sourceReference",
+            "fieldName": "원본 참조",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {},
+            "apiProperty": "sourceReference",
+            "controlType": "SOURCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "ARRAY",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "attachmentIds",
+            "fieldName": "첨부 증빙",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {},
+            "apiProperty": "attachmentIds",
+            "controlType": "FILE_UPLOAD",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": true
+          },
+          {
+            "route": "/admin/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+            "required": false,
+            "fieldCode": "submittedAt",
+            "fieldName": "제출 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {},
+            "apiProperty": "submittedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:ADMIN",
+            "evidenceRequired": false
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "LCA_PRACTITIONER",
+            "entryState": "READY",
+            "commandCode": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+            "resultState": "STEP_1_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      },
+      {
+        "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+        "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "USER",
+        "screenType": "DATA_COLLECTION",
+        "title": "품질 메타데이터 수집",
+        "purpose": "품질 메타데이터 수집 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {},
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {},
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {},
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {},
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {},
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {},
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "lcaProjectId",
+            "fieldName": "LCA 프로젝트",
+            "fieldGroup": "LCA",
+            "fieldOrder": 200,
+            "validation": {},
+            "apiProperty": "lcaProjectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "productId",
+            "fieldName": "제품",
+            "fieldGroup": "LCA",
+            "fieldOrder": 210,
+            "validation": {},
+            "apiProperty": "productId",
+            "controlType": "PRODUCT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "processId",
+            "fieldName": "공정",
+            "fieldGroup": "LCA",
+            "fieldOrder": 220,
+            "validation": {},
+            "apiProperty": "processId",
+            "controlType": "PROCESS_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "flowType",
+            "fieldName": "흐름 구분",
+            "fieldGroup": "LCA",
+            "fieldOrder": 230,
+            "validation": {},
+            "apiProperty": "flowType",
+            "controlType": "FLOW_TYPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "substanceId",
+            "fieldName": "물질",
+            "fieldGroup": "LCA",
+            "fieldOrder": 240,
+            "validation": {},
+            "apiProperty": "substanceId",
+            "controlType": "SUBSTANCE_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "quantity",
+            "fieldName": "수량",
+            "fieldGroup": "LCA",
+            "fieldOrder": 250,
+            "validation": {},
+            "apiProperty": "quantity",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "LCA",
+            "fieldOrder": 260,
+            "validation": {},
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "allocationRatio",
+            "fieldName": "할당 비율",
+            "fieldGroup": "LCA",
+            "fieldOrder": 270,
+            "validation": {},
+            "apiProperty": "allocationRatio",
+            "controlType": "PERCENT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "impactCategory",
+            "fieldName": "영향범주",
+            "fieldGroup": "LCA",
+            "fieldOrder": 280,
+            "validation": {},
+            "apiProperty": "impactCategory",
+            "controlType": "IMPACT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "impactResult",
+            "fieldName": "영향평가 결과",
+            "fieldGroup": "LCA",
+            "fieldOrder": 290,
+            "validation": {},
+            "apiProperty": "impactResult",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "sourceType",
+            "fieldName": "자료 출처",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {},
+            "apiProperty": "sourceType",
+            "controlType": "SOURCE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": true,
+            "fieldCode": "sourceReference",
+            "fieldName": "원본 참조",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {},
+            "apiProperty": "sourceReference",
+            "controlType": "SOURCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "ARRAY",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "attachmentIds",
+            "fieldName": "첨부 증빙",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {},
+            "apiProperty": "attachmentIds",
+            "controlType": "FILE_UPLOAD",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": true
+          },
+          {
+            "route": "/planned/lca/lca-data-quality-uncertainty/lca-data-quality-uncertainty-s1",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+            "required": false,
+            "fieldCode": "submittedAt",
+            "fieldName": "제출 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {},
+            "apiProperty": "submittedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "LCA_PRACTITIONER:USER",
+            "evidenceRequired": false
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "LCA_PRACTITIONER",
+            "entryState": "READY",
+            "commandCode": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+            "resultState": "STEP_1_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1",
+        "method": "CONTRACT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "LCA_PRACTITIONER",
+        "entryState": "READY",
+        "commandCode": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+        "resultState": "STEP_1_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "LCA_PRACTITIONER",
+      "ownerActorCode": "LCA_PRACTITIONER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "VALIDATION_ERROR",
+          "onMissing": "DEPENDENCY_BLOCKED",
+          "onConflict": "RELOAD_AND_REVIEW",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "LCA_PRACTITIONER",
+            "projectId": "required",
+            "stepOrder": 2,
+            "processCode": "LCA_DATA_QUALITY_UNCERTAINTY",
+            "idempotencyKey": "required"
+          },
+          "fromOutput": {
+            "state": "STEP_1_COMPLETED",
+            "evidence": "required",
+            "auditEvent": "required",
+            "nextTaskCreated": true
+          },
+          "requiredContext": [
+            "tenantId",
+            "projectId",
+            "recordId",
+            "statusCode",
+            "rowVersion"
+          ]
+        },
+        "integrity": {
+          "optimisticLock": true,
+          "immutableSnapshot": true,
+          "hashWhenEvidenceOrCalculation": true
+        },
+        "toStepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "recordId",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "toActor": "LCA_PRACTITIONER",
+          "fromActor": "LCA_PRACTITIONER",
+          "tenantIsolation": true,
+          "projectIsolation": true,
+          "segregationChecked": true
+        },
+        "toProcessCode": "LCA_DATA_QUALITY_UNCERTAINTY"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "lcaProjectId",
+            "apiProperty": "lcaProjectId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "productId",
+            "apiProperty": "productId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "processId",
+            "apiProperty": "processId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "flowType",
+            "apiProperty": "flowType",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "substanceId",
+            "apiProperty": "substanceId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "quantity",
+            "apiProperty": "quantity",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "allocationRatio",
+            "apiProperty": "allocationRatio",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "impactCategory",
+            "apiProperty": "impactCategory",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "impactResult",
+            "apiProperty": "impactResult",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "sourceType",
+            "apiProperty": "sourceType",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "sourceReference",
+            "apiProperty": "sourceReference",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "attachmentIds",
+            "apiProperty": "attachmentIds",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "submittedAt",
+            "apiProperty": "submittedAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_ADMIN",
+        "primaryEntity": "lca_process_inventory"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "lcaProjectId",
+            "apiProperty": "lcaProjectId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "productId",
+            "apiProperty": "productId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "processId",
+            "apiProperty": "processId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "flowType",
+            "apiProperty": "flowType",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "substanceId",
+            "apiProperty": "substanceId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "quantity",
+            "apiProperty": "quantity",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "allocationRatio",
+            "apiProperty": "allocationRatio",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "impactCategory",
+            "apiProperty": "impactCategory",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "impactResult",
+            "apiProperty": "impactResult",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "sourceType",
+            "apiProperty": "sourceType",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "sourceReference",
+            "apiProperty": "sourceReference",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "attachmentIds",
+            "apiProperty": "attachmentIds",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "submittedAt",
+            "apiProperty": "submittedAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "LCA_DATA_QUALITY_UNCERTAINTY_LCA_DATA_QUALITY_UNCERTAINTY_S1_USER",
+        "primaryEntity": "lca_process_inventory"
+      }
+    ],
+    "transactional": true,
+    "schemaSetVersion": 1,
+    "migrationRequired": true,
+    "primaryEntities": [
+      "lca_process_inventory"
+    ],
+    "historyRequired": true
+  },
+  "tests": [
+    {
+      "name": "LCA 데이터 품질·불확도 - 권한분리 위반",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 2,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_2",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 3,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_3",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_4",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_DATA_QUALITY_UNCERTAINTY_AUTH",
+      "assertions": [
+        "비인가 액션 403",
+        "요청자와 승인자 분리",
+        "거부 시도 감사 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "LCA 데이터 품질·불확도 - 필수값·업무예외",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 2,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_2",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 3,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_3",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_4",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_DATA_QUALITY_UNCERTAINTY_EXCEPTION",
+      "assertions": [
+        "잘못된 입력 거부",
+        "상태 불변",
+        "보완 태스크 생성",
+        "원인과 필드 오류 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "LCA 데이터 품질·불확도 - 정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 2,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_2",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 3,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_3",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_4",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_DATA_QUALITY_UNCERTAINTY_HAPPY",
+      "assertions": [
+        "최종 상태 도달",
+        "모든 단계 증적 존재",
+        "다음 태스크 연결",
+        "감사 로그 완전"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "LCA 데이터 품질·불확도 - 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 2,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_2",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 3,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_3",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_4",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_DATA_QUALITY_UNCERTAINTY_ISOLATION",
+      "assertions": [
+        "타 테넌트·프로젝트 자료 0건",
+        "직접 식별자 접근 403 또는 404",
+        "검색·파일·내보내기 격리"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "LCA 데이터 품질·불확도 - 중단·중복요청 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_1",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S1",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 2,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_2",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S2",
+          "actorCode": "LCA_PRACTITIONER"
+        },
+        {
+          "order": 3,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_3",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "LCA_DATA_QUALITY_UNCERTAINTY_EXECUTE_4",
+          "stepCode": "LCA_DATA_QUALITY_UNCERTAINTY_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "LCA_DATA_QUALITY_UNCERTAINTY_RECOVERY",
+      "assertions": [
+        "멱등키 중복 생성 없음",
+        "중단 단계부터 안전 재개",
+        "롤백 후 원본 보존",
+        "재시도 횟수와 결과 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "0f24564bc0f34cba183dd9f3954d44ae",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "READY",
+  "packageHash": "c47d6df27830d38c74f7532d85da335f46618a0c7803ea7750dfb35b0d540602"
+}
