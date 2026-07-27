@@ -52,11 +52,11 @@ WITH route_count AS (
   SELECT process_code,step_code,
          count(*) handoff_count,
          bool_and(
-           nullif(btrim(context_keys),'') IS NOT NULL
-           AND nullif(btrim(payload_contract),'') IS NOT NULL
-           AND nullif(btrim(integrity_contract),'') IS NOT NULL
-           AND nullif(btrim(authorization_contract),'') IS NOT NULL
-           AND nullif(btrim(failure_contract),'') IS NOT NULL
+           context_keys NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)
+           AND payload_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)
+           AND integrity_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)
+           AND authorization_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)
+           AND failure_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)
          ) handoff_complete
   FROM handoff_endpoint
   GROUP BY process_code,step_code
