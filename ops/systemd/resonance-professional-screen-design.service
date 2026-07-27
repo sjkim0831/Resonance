@@ -1,0 +1,19 @@
+[Unit]
+Description=Update and validate all professional Resonance screen designs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+WorkingDirectory=/opt/Resonance
+EnvironmentFile=-/etc/resonance/process-development-worker.env
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/run-professional-screen-design-update.sh
+TimeoutStartSec=3600
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target
