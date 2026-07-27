@@ -48,7 +48,10 @@ export -f request
 export base_url key work
 seq 1 "$workers" | xargs -P "$workers" -I{} bash -c 'request "$1"' _ {}
 
-failures="$(grep -l '^FAIL$' "$work"/*.ms 2>/dev/null | wc -l)"
+failures="$(
+  { grep -l '^FAIL$' "$work"/*.ms 2>/dev/null || true; } |
+    wc -l
+)"
 if (( failures != 0 )); then
   for error in "$work"/*.err; do
     [[ -s "$error" ]] && sed 's/^/[e4b-concurrency] request: /' "$error" >&2
