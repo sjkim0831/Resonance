@@ -27,8 +27,7 @@ WITH route_count AS (
          count(*) FILTER (WHERE required) required_field_count,
          bool_and(nullif(btrim(api_property),'') IS NOT NULL) api_mapped,
          bool_and(nullif(btrim(permission_code),'') IS NOT NULL) permission_mapped,
-         bool_and(validation_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb))
-           FILTER (WHERE required AND editable) validation_mapped
+         bool_and(validation_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)) validation_mapped
   FROM framework_page_field_definition
   GROUP BY page_design_id
 ), tests AS (
@@ -109,7 +108,7 @@ WITH route_count AS (
            AND length(btrim(pd.exit_condition))>=10) business_passed,
          (coalesce(f.field_count,0)>=8 AND coalesce(f.required_field_count,0)>0
            AND coalesce(f.api_mapped,false) AND coalesce(f.permission_mapped,false)
-           AND coalesce(f.validation_mapped,true)) field_contract_passed,
+           AND coalesce(f.validation_mapped,false)) field_contract_passed,
          (nullif(btrim(ps.from_state),'') IS NOT NULL
            AND nullif(btrim(ps.to_state),'') IS NOT NULL
            AND nullif(btrim(ps.command_code),'') IS NOT NULL

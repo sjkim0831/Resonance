@@ -482,6 +482,10 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 git merge --ff-only "$target_commit"
 restore_live_frontend_overlay
 bash ops/scripts/validate-deterministic-development-policy.sh
+# Applied Flyway files are immutable. Detect a checksum drift before spending
+# time on Java/image builds and before Kubernetes starts a doomed rollout.
+POSTGRES_POD="$POSTGRES_POD" \
+  bash ops/scripts/verify-flyway-migration-immutability.sh "$ROOT_DIR"
 
 # Capture the last known-good runtime, web proxy and frontend overlay before
 # any deployable artifact changes. The post-deploy screen gate restores this
