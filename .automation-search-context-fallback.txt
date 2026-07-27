@@ -1,6 +1,6 @@
 process=CHAIN_OF_CUSTODY
-step=CHAIN_OF_CUSTODY_S2
+step=CHAIN_OF_CUSTODY_S3
 type=FRONTEND_ADMIN
-target=schema-set/chain_of_custody/chain_of_custody_s2/frontend_admin
+target=schema-set/chain_of_custody/chain_of_custody_s3/frontend_admin
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
