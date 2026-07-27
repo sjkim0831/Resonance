@@ -27,7 +27,7 @@ WITH route_count AS (
          count(*) FILTER (WHERE required) required_field_count,
          bool_and(nullif(btrim(api_property),'') IS NOT NULL) api_mapped,
          bool_and(nullif(btrim(permission_code),'') IS NOT NULL) permission_mapped,
-         bool_and(nullif(btrim(validation_contract),'') IS NOT NULL) validation_mapped
+         bool_and(validation_contract NOT IN ('{}'::jsonb,'[]'::jsonb,'null'::jsonb)) validation_mapped
   FROM framework_page_field_definition
   GROUP BY page_design_id
 ), tests AS (
