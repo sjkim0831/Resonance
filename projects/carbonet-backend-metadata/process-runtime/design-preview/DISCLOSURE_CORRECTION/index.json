@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "DISCLOSURE_CORRECTION",
+      "stepCode": "DISCLOSURE_CORRECTION_S1",
+      "package": "DISCLOSURE_CORRECTION__DISCLOSURE_CORRECTION_S1.json",
+      "packageHash": "8ec9b2d3df67d8693f1589fc1a371c8811dde511a6e5e0aa2c35a49e3f0f1ac2",
+      "pages": 2
+    },
+    {
+      "processCode": "DISCLOSURE_CORRECTION",
+      "stepCode": "DISCLOSURE_CORRECTION_S2",
+      "package": "DISCLOSURE_CORRECTION__DISCLOSURE_CORRECTION_S2.json",
+      "packageHash": "19551f70621e56a9414d3d6aeb6cd3f54d0c19f3c637b8e266147f733fc0ba3b",
+      "pages": 2
+    },
+    {
+      "processCode": "DISCLOSURE_CORRECTION",
+      "stepCode": "DISCLOSURE_CORRECTION_S3",
+      "package": "DISCLOSURE_CORRECTION__DISCLOSURE_CORRECTION_S3.json",
+      "packageHash": "c30ea56d803e05fb9fb1de5a6cdd5ca5ba58b35a682b32d762ff61bd804962f3",
+      "pages": 2
+    },
+    {
+      "processCode": "DISCLOSURE_CORRECTION",
+      "stepCode": "DISCLOSURE_CORRECTION_S4",
+      "package": "DISCLOSURE_CORRECTION__DISCLOSURE_CORRECTION_S4.json",
+      "packageHash": "9a0c9fd9f1c7b1eedf7c24ae45208a53af3f1759555f7e14cf98a848f3a25b68",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "1ac761cd7d43d7d92c5e3b88c43171c1c352f0957bf45c1889f120bdf33cf3e0"
+}
