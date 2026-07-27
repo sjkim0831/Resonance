@@ -220,6 +220,67 @@ DO UPDATE SET
 ALTER TABLE framework_process_data_handoff
   ENABLE TRIGGER trg_handoff_schema_propagation;
 
+INSERT INTO framework_professional_screen_contract(
+  process_code,step_code,audience,route_path,screen_name,actor_code,
+  business_purpose,entry_condition,exit_condition,kpi_contract,
+  section_contract,field_contract,command_contract,state_contract,
+  api_contract,data_contract,evidence_contract,responsive_contract,
+  accessibility_contract,security_contract,contract_status,updated_by
+)
+SELECT page.process_code,page.step_code,page.audience,
+       lower(split_part(coalesce(page.actual_route_path,page.planned_route_path),'?',1)),
+       page.page_title,page.actor_code,page.page_purpose,
+       page.entry_condition,page.exit_condition,
+       '[{"code":"COMPLETION_RATE","unit":"PERCENT"},{"code":"BLOCKING_ERROR","unit":"COUNT"},{"code":"SLA_REMAINING","unit":"MINUTE"}]',
+       '[{"code":"TASK_CONTEXT"},{"code":"SEARCH_FILTER"},{"code":"WORKSPACE"},{"code":"EVIDENCE_HISTORY"},{"code":"NEXT_TASK"}]',
+       fields.field_contract::text,
+       jsonb_build_array(
+         jsonb_build_object('code',step.command_code,'transactional',true,'idempotencyRequired',true),
+         jsonb_build_object('code','SAVE_DRAFT','transactional',true),
+         jsonb_build_object('code','ATTACH_EVIDENCE','auditRequired',true),
+         jsonb_build_object('code',step.rollback_command_code,'recovery',true)
+       )::text,
+       jsonb_build_array(
+         step.from_state,'LOADING','EMPTY','READY','SAVING','ERROR',
+         'FORBIDDEN','CONFLICT','RECOVERY',step.to_state
+       )::text,
+       '[{"method":"GET","path":"/home/api/process-executions"},{"method":"GET","path":"/home/api/process-executions/screen-contract"},{"method":"POST","path":"/home/api/process-executions/{executionId}/commands"},{"method":"GET","path":"/home/api/process-executions/draft"},{"method":"PUT","path":"/home/api/process-executions/draft"}]',
+       jsonb_build_array(
+         jsonb_build_object('entity','PROCESS_EXECUTION','keys',jsonb_build_array('tenantId','projectId','processCode'),'versioned',true,'tenantScoped',true),
+         jsonb_build_object('entity',page.primary_entity,'keys',jsonb_build_array('tenantId','projectId'),'versioned',true),
+         jsonb_build_object('entity','AUDIT_EVENT','appendOnly',true)
+       )::text,
+       '[{"scenarioType":"HAPPY_PATH","required":true},{"scenarioType":"EXCEPTION","required":true},{"scenarioType":"AUTHORITY","required":true},{"scenarioType":"ISOLATION","required":true},{"scenarioType":"RECOVERY","required":true}]',
+       page.responsive_contract::text,page.accessibility_contract::text,
+       page.security_contract::text,'DESIGN_COMPLETE',
+       'MASS_PROFESSIONAL_DESIGN_V1'
+FROM framework_page_design page
+JOIN framework_process_step step
+  ON step.process_code=page.process_code AND step.step_code=page.step_code
+JOIN LATERAL (
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'code',field.field_code,'name',field.field_name,
+      'dataType',field.data_type,'controlType',field.control_type,
+      'required',field.required,'editable',field.editable,
+      'apiProperty',field.api_property,'permissionCode',field.permission_code,
+      'validation',field.validation_contract
+    ) ORDER BY field.field_order
+  ) field_contract
+  FROM framework_page_field_definition field
+  WHERE field.page_design_id=page.page_design_id
+) fields ON fields.field_contract IS NOT NULL
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM framework_professional_screen_contract contract
+  WHERE contract.process_code=page.process_code
+    AND contract.step_code=page.step_code
+    AND contract.audience=page.audience
+    AND lower(split_part(contract.route_path,'?',1))=
+        lower(split_part(coalesce(page.actual_route_path,page.planned_route_path),'?',1))
+)
+ON CONFLICT(process_code,step_code,audience,route_path) DO NOTHING;
+
 CREATE OR REPLACE VIEW framework_professional_screen_design_update_gate AS
 WITH classified AS (
   SELECT gate.*,
@@ -257,6 +318,20 @@ WITH classified AS (
               AND framework_try_jsonb(contract.data_contract)<>'[]'::jsonb
               AND framework_try_jsonb(contract.evidence_contract)<>'[]'::jsonb
           )
+        )
+        AND NOT (
+          blocker='FIVE_SAFETY_TEST_TYPES_INCOMPLETE'
+          AND (
+            SELECT count(DISTINCT simulation.case_type)
+            FROM framework_simulation_case simulation
+            WHERE simulation.process_code=gate.process_code
+              AND simulation.case_type IN (
+                'HAPPY_PATH','EXCEPTION','AUTHORITY','ISOLATION','RECOVERY'
+              )
+              AND simulation.case_status IN (
+                'VERIFIED','APPROVED','ACTIVE','AUTOMATED','READY'
+              )
+          )=5
         )
       ORDER BY blocker
     ) design_blocker_codes,
