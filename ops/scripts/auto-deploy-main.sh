@@ -163,6 +163,7 @@ bash ops/scripts/ensure-protected-runtime-images.sh
 # Containerd and PostgreSQL backups share /opt; allowing unlimited dump history
 # can taint the only Kubernetes node with DiskPressure and stall every rollout.
 bash ops/scripts/prune-predeploy-backups.sh
+bash ops/scripts/deduplicate-verified-postgres-backups.sh
 
 opt_usage="$(df -P /opt | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 opt_available_kb="$(df -Pk /opt | awk 'NR==2 {print $4}')"
