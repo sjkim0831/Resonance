@@ -24,6 +24,8 @@ ALTER TABLE framework_page_field_definition
 
 ALTER TABLE framework_process_step
   DISABLE TRIGGER trg_process_step_schema_propagation;
+ALTER TABLE framework_process_step
+  DISABLE TRIGGER trg_guard_locked_process_step;
 
 WITH target AS (
   SELECT f.page_field_id,f.page_design_id,f.data_type,f.control_type,
@@ -175,6 +177,8 @@ WHERE step.process_code=target.process_code
 
 ALTER TABLE framework_process_step
   ENABLE TRIGGER trg_process_step_schema_propagation;
+ALTER TABLE framework_process_step
+  ENABLE TRIGGER trg_guard_locked_process_step;
 
 ALTER TABLE framework_process_data_handoff
   DISABLE TRIGGER trg_handoff_schema_propagation;
