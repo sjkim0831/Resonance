@@ -672,7 +672,17 @@ build_image() {
   local import_err="/opt/Resonance/var/run/ctr-import-$$.log"
   local tmp_tar="/opt/Resonance/var/run/docker-save-$$.tar"
 
+  # The registry is local to this node. Pulling it directly lets containerd
+  # reuse existing layers and avoids serializing the whole image to a tarball.
+  # Preserve docker-save/import as a self-healing fallback for registry faults.
+  if sudo ctr -n k8s.io images pull --plain-http "$IMAGE_NAME" \
+      >"$import_err" 2>&1; then
+    import_success=true
+    log_success "Image pulled directly into containerd"
+  fi
+
   for ((i=1; i<=3; i++)); do
+    [[ "$import_success" == true ]] && break
     rm -f "$import_err" "$tmp_tar" 2>/dev/null || true
     if sudo docker save "$IMAGE_NAME" > "$tmp_tar" 2>/dev/null && \
        sudo ctr -n k8s.io images import "$tmp_tar" > "$import_err" 2>&1; then
@@ -754,10 +764,10 @@ rollout_image() {
     >/dev/null || rollback_and_fail "REFERENCE_MOUNT_FAILED" "Failed to mount /opt/reference read-only" "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
 
   # Preserve the cluster's zero-unavailable admission policy while starting
-  # two replacement pods in parallel. The previous surge of one serialized
-  # every ~60s Spring startup and made a rollout take three startup cycles.
+  # all replacement pods in parallel. maxUnavailable=0 keeps the previous
+  # revision serving until every replacement passes its probes.
   kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='merge' \
-    -p='{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":2,"maxUnavailable":0}}}}' \
+    -p='{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":3,"maxUnavailable":0}}}}' \
     >/dev/null || rollback_and_fail "ROLLOUT_STRATEGY_FAILED" "Failed to apply bounded parallel rollout strategy" "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
 
   log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"

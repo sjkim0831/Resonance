@@ -508,7 +508,9 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
     exit 17
   fi
   bash ops/scripts/validate-common-design-assets.sh
-  FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+  # Contract fingerprints select only screens whose design contract changed.
+  # The scheduled full sweep remains the global regression safety net.
+  FULL_SCREEN_SMOKE_CHANGED_ONLY=true \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   bash ops/scripts/sync-unified-asset-catalog.sh
   bash ops/scripts/validate-e4b-selectable-assets.sh

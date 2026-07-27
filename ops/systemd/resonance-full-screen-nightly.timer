@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the full screen regression sweep outside the development loop
+
+[Timer]
+OnCalendar=*-*-* 03:40:00
+Persistent=true
+RandomizedDelaySec=10m
+Unit=resonance-full-screen-nightly.service
+
+[Install]
+WantedBy=timers.target
