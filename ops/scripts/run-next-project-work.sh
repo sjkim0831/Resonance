@@ -87,7 +87,18 @@ with latest_run as (
            approval_status,coalesce(target_path,'') target_path,
            coalesce(last_error,'') last_error
     from framework_development_job
-    where job_status in ('FAILED','RETRY')
+    where job_status='FAILED'
+    order by updated_at desc,job_id desc
+    limit 20
+  ) item
+), pending_retries as (
+  select coalesce(jsonb_agg(to_jsonb(item)),'[]'::jsonb) value
+  from (
+    select job_id,process_code,step_code,job_type,job_status,
+           approval_status,coalesce(target_path,'') target_path,
+           coalesce(last_error,'') last_error
+    from framework_development_job
+    where job_status='RETRY'
     order by updated_at desc,job_id desc
     limit 20
   ) item
@@ -120,6 +131,7 @@ select jsonb_build_object(
   'createdWorkCount',(select count(*) from framework_development_job where job_id > $before_job_id),
   'nextCandidate',coalesce((select to_jsonb(next_candidate) from next_candidate),'{}'::jsonb),
   'blockers',coalesce((select value from blockers),'[]'::jsonb),
+  'pendingRetries',coalesce((select value from pending_retries),'[]'::jsonb),
   'jobCounts',coalesce((select value from counts),'{}'::jsonb)
 )::text;")"
 
