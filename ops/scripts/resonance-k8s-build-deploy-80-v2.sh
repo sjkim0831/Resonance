@@ -571,8 +571,13 @@ prepare_immutable_frontend() {
   # remain incremental.
   if [[ "${BUILD_TOOL:-}" == "gradle" ]]; then
     root_cmd rm -rf "$MAVEN_DIR/build/resources/main/static/react-app"
+    # Flyway validates resources embedded in the executable JAR, not the
+    # source tree. A reverted migration can otherwise leave a newer stale copy
+    # in build/resources/main and produce a rollout that fails at startup.
+    # Invalidate only migration resources; compiled classes stay incremental.
+    root_cmd rm -rf "$MAVEN_DIR/build/resources/main/db/migration"
     root_cmd find "$MAVEN_DIR/build/libs" -maxdepth 1 -type f -name '*.jar' -delete 2>/dev/null || true
-    log "Invalidated immutable React resources and JAR only (compiled classes preserved)"
+    log "Invalidated React/Flyway resources and JAR only (compiled classes preserved)"
   fi
 }
 
