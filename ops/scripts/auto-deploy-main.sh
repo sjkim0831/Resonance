@@ -154,6 +154,11 @@ eval "$(bash ops/scripts/plan-incremental-work.sh "$deployed_commit" "$target_co
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
+# Database availability is a hard prerequisite for Flyway and every runtime
+# health gate. Keep the Patroni image independently recoverable even when
+# Docker/containerd or registry retention removes unused application layers.
+bash ops/scripts/ensure-protected-runtime-images.sh
+
 # Keep pre-deploy restore points bounded before build and backup I/O begins.
 # Containerd and PostgreSQL backups share /opt; allowing unlimited dump history
 # can taint the only Kubernetes node with DiskPressure and stall every rollout.
