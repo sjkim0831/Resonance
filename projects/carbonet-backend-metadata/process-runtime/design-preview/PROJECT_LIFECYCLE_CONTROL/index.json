@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S1",
+      "package": "PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S1.json",
+      "packageHash": "9b99af955b9227db371698754ca0144054e05099bfa51a2c13509ab31c74799b",
+      "pages": 2
+    },
+    {
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S2",
+      "package": "PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S2.json",
+      "packageHash": "e1357b245ad90df7f1d6b161fc6f31d6ba23671aacad4e915b116ec97f1b7245",
+      "pages": 2
+    },
+    {
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S3",
+      "package": "PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S3.json",
+      "packageHash": "966974ac08096b3a03581774f9caf754c6a4b71c63d3d81bb29dc9ed60624d90",
+      "pages": 2
+    },
+    {
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S4",
+      "package": "PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S4.json",
+      "packageHash": "6f5c3ee539f7267f77d05c71774d94f87585e60b57b1643a4d4b48960a0ccc5c",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "811fb0fec673ab35a6a73629ac205868d47fe9a035f2a7827b6d40fb1aa1ff2c"
+}
