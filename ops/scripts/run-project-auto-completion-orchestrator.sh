@@ -880,7 +880,7 @@ with candidate as (
     )
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='GROUPED_FIELD_AUDIENCE_V1_RETRY'
+      where e.job_id=j.job_id and e.event_type='FIELD_AUDIENCE_V1_RETRY'
     )
 ), released as (
   update framework_development_job j
@@ -892,7 +892,7 @@ with candidate as (
   insert into framework_development_job_event(
     job_id,event_type,from_status,to_status,worker_id,detail_json
   )
-  select job_id,'GROUPED_FIELD_AUDIENCE_V1_RETRY',job_status,'RETRY',
+  select job_id,'FIELD_AUDIENCE_V1_RETRY',job_status,'RETRY',
          'project-auto-completion',
          jsonb_build_object(
            'reason','generator now partitions legacy grouped fields by nested audience'
