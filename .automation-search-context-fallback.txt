@@ -1,6 +1,6 @@
-process=ACTIVITY_DATA
-step=ACTIVITY_DATA_02_WORK
+process=APPEAL_DISPUTE_AUDIT
+step=APPEAL_DISPUTE_AUDIT_S2
 type=FRONTEND_ADMIN
-target=schema-set/activity_data/activity_data_02_work/frontend_admin
+target=schema-set/appeal_dispute_audit/appeal_dispute_audit_s2/frontend_admin
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
