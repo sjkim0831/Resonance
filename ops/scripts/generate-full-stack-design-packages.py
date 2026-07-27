@@ -59,9 +59,12 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
 
     Structured professional contracts store one field per array item and apply
     that list to every screen unless a field declares an audience. Older
-    contracts wrap fields in ``{"audience": ..., "fields": [...]}``. Keeping
-    both forms deterministic lets immutable, already-applied contracts and new
-    contracts share the same generator.
+    contracts wrap fields in ``{"audience": ..., "fields": [...]}``. Some
+    catalog contracts group fields before audience partitioning, so the wrapper
+    has no audience while every nested field does. Split that shape by the
+    nested audience instead of rejecting otherwise complete governed designs.
+    Keeping all three forms deterministic lets immutable, already-applied
+    contracts and new contracts share the same generator.
     """
     grouped: dict[str, list[dict[str, Any]]] = {}
     shared: list[dict[str, Any]] = []
@@ -71,9 +74,16 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
         nested_fields = item.get("fields")
         if isinstance(nested_fields, list):
             audience = item.get("audience")
-            if not isinstance(audience, str) or not audience:
-                fail("grouped field_contract entries require audience")
-            grouped.setdefault(audience, []).extend(nested_fields)
+            if isinstance(audience, str) and audience:
+                grouped.setdefault(audience, []).extend(nested_fields)
+                continue
+            for nested_field in nested_fields:
+                if not isinstance(nested_field, dict):
+                    fail("grouped field_contract fields must be objects")
+                nested_audience = nested_field.get("audience")
+                if not isinstance(nested_audience, str) or not nested_audience:
+                    fail("grouped field_contract entries require audience")
+                grouped.setdefault(nested_audience, []).append(nested_field)
             continue
         if "fieldCode" not in item:
             fail("flat field_contract entries require fieldCode")
