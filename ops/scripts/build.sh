@@ -38,7 +38,10 @@ init_build_tool() {
             mkdir -p "$GRADLE_PROJECT_CACHE_DIR" "$GRADLE_USER_HOME"
             # Gradle 8.10 rejects --watch-fs together with an external project
             # cache. A one-shot/CI deploy does not benefit from VFS watching.
-            GRADLE_BIN=("bash" "${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR" "--no-watch-fs")
+            # Invoke the wrapper main class directly. This works even when a
+            # Windows checkout has temporarily supplied a CRLF gradlew script
+            # or omitted its executable bit.
+            GRADLE_BIN=("java" "-classpath" "${ROOT_DIR}/gradle/wrapper/gradle-wrapper.jar" "org.gradle.wrapper.GradleWrapperMain" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR" "--no-watch-fs")
             export GRADLE_BIN BUILD_TOOL GRADLE_CACHE_ROOT GRADLE_PROJECT_CACHE_DIR GRADLE_USER_HOME
             ;;
         maven)
