@@ -35,7 +35,9 @@ kubectl -n "$namespace" exec "$pod" -c patroni -- \
   psql -h 127.0.0.1 -U "$user" -d "$database" -X -q -At \
   -F $'\t' \
   -c "select script,checksum from ${history_table}
-      where success and version is not null order by installed_rank" >"$work"
+      where success and version is not null
+        and type='SQL' and checksum is not null
+      order by installed_rank" >"$work"
 
 python3 - "$migration_dir" "$work" <<'PY'
 import pathlib
