@@ -33,8 +33,12 @@ def main() -> int:
         reference_id = item.get("referenceId", item.get("reference_id", ""))
         sections = item.get("sections") or []
         badges = "".join(
-            f'<span class="badge">{html.escape(section["sectionName"])} '
+            f'<div class="section-row"><span class="badge">{html.escape(section["sectionName"])} '
             f'<b>{float(section["confidence"]):.0%}</b></span>'
+            f'<button data-review="APPROVE" data-ref="{html.escape(reference_id)}" '
+            f'data-section="{html.escape(section["sectionId"])}">승인</button>'
+            f'<button data-review="REJECT" data-ref="{html.escape(reference_id)}" '
+            f'data-section="{html.escape(section["sectionId"])}">반려</button></div>'
             for section in sections
         )
         cards.append(
@@ -53,6 +57,7 @@ def main() -> int:
                 <a href="{html.escape(route)}">{html.escape(current_name)} · {html.escape(route)}</a>
               </div>
               <div class="badges">{badges}</div>
+              <label>검토 사유<input class="reason" placeholder="승인·반려 사유를 입력하세요"></label>
               <div class="actions">
                 <button data-copy="{html.escape(reference_id)}">참조 ID 복사</button>
                 <span>승인 시 설계 연결만 생성 · 실제 화면 적용 안 함</span>
@@ -80,6 +85,7 @@ input{{flex:1;min-width:220px}} main{{max-width:1440px;margin:auto;padding:24px 
 .metric,.card{{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}}
 .metric b{{display:block;font-size:26px;color:#123b72}} .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}}
 .meta,.badges,.actions{{display:flex;gap:8px;flex-wrap:wrap;align-items:center}} .meta span,.badge{{background:#edf3ff;border-radius:999px;padding:5px 9px;font-size:13px}}
+.badges{{display:grid}} .section-row{{display:flex;gap:8px;align-items:center;flex-wrap:wrap}} label{{display:grid;gap:4px;margin-top:12px}}
 .card h2{{font-size:20px;margin:14px 0 4px}} .path{{font-size:13px;color:var(--muted);overflow-wrap:anywhere}}
 .target{{display:grid;gap:4px;border-left:4px solid var(--krds-primary);padding:10px 12px;margin:14px 0;background:#f7faff}}
 a{{color:#174ea6;overflow-wrap:anywhere}} .actions{{margin-top:16px;justify-content:space-between}} .actions span{{font-size:13px;color:var(--muted)}}
@@ -105,6 +111,9 @@ const cards=[...document.querySelectorAll('.card')],q=document.querySelector('#q
 function filter(){{const s=q.value.toLowerCase();cards.forEach(x=>x.hidden=!((!f.value||x.dataset.family===f.value)&&x.textContent.toLowerCase().includes(s)))}}
 q.addEventListener('input',filter);f.addEventListener('change',filter);
 document.addEventListener('click',async e=>{{const v=e.target.dataset.copy;if(!v)return;await navigator.clipboard.writeText(v);e.target.textContent='복사됨';}});
+document.addEventListener('click',async e=>{{if(!e.target.dataset.review)return;const card=e.target.closest('.card'),reason=card.querySelector('.reason').value.trim();
+if(reason.length<5){{alert('검토 사유를 5자 이상 입력하세요.');return}}e.target.disabled=true;
+try{{const r=await fetch(`/api/admin/legacy-section-review/${{encodeURIComponent(e.target.dataset.ref)}}/${{encodeURIComponent(e.target.dataset.section)}}`,{{method:'POST',credentials:'same-origin',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{action:e.target.dataset.review,reason}})}});const j=await r.json();if(!r.ok)throw new Error(j.message||'처리 실패');e.target.parentElement.dataset.status=j.resultingStatus;e.target.textContent=j.resultingStatus;}}catch(err){{alert(err.message);e.target.disabled=false}}}});
 </script></body></html>"""
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
