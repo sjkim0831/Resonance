@@ -11,7 +11,8 @@ had_target=false
 
 [[ -f "$source_dropin" ]]
 binary="/opt/util/ai/vLLM/llama.cpp-tq3/build/bin/llama-server"
-"$binary" --help 2>&1 | grep -q -- '--api-key-file'
+binary_help="$("$binary" --help 2>&1 || true)"
+grep -q -- '--api-key-file' <<<"$binary_help"
 [[ -s /etc/resonance/secrets/e4b-api-key ]]
 [[ "$(stat -c '%a' /etc/resonance/secrets/e4b-api-key)" == "600" ]]
 
