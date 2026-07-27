@@ -168,8 +168,7 @@ WITH target AS (
   RETURNING process_code
 )
 UPDATE framework_process_step step
-SET rollback_command_code=target.next_rollback_command,
-    updated_at=current_timestamp
+SET rollback_command_code=target.next_rollback_command
 FROM target
 WHERE step.process_code=target.process_code
   AND step.step_code=target.step_code;
