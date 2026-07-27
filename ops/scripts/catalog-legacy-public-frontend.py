@@ -169,7 +169,13 @@ def extract(path: Path, root: Path) -> dict[str, object]:
     folder_name = path.parent.name if path.name.lower() == "code.html" else path.stem
     title = next((x for x in parser.title_parts if x), folder_name)
     name = clean(title) or clean(folder_name)
-    lang = "en" if re.search(r"(^|[-_ ])en($|[-_ ])", str(rel), re.I) else "ko"
+    rel_text = str(rel)
+    english_path = bool(re.search(r"(^|[-_ ])en($|[-_ /\\\\])", rel_text, re.I))
+    english_title = (
+        len(re.findall(r"[A-Za-z]", name)) >= 8
+        and not re.search(r"[가-힣]", name)
+    )
+    lang = "en" if english_path or english_title else "ko"
     responsive = bool(
         re.search(r'name=["\']viewport["\']', text, re.I)
         or re.search(r"@media\s*\(", text, re.I)
