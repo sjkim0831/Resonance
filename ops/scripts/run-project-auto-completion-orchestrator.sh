@@ -3,7 +3,15 @@ set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"; DB="${PGDATABASE:-carbonet}"; DB_USER="${PGUSER:-postgres}"; MAX_PARALLEL_WORKERS="${MAX_PARALLEL_WORKERS:-3}"
 PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
-exec 9>"$LOCK_FILE"; flock -n 9 || exit 0
+exec 9>"$LOCK_FILE"
+if [[ "${PROJECT_AUTO_COMPLETION_WAIT_FOR_LOCK:-false}" == "true" ]]; then
+  flock -w "${PROJECT_AUTO_COMPLETION_LOCK_WAIT_SECONDS:-14400}" 9 || {
+    echo "[project-auto-completion] lock wait timed out: $LOCK_FILE" >&2
+    exit 75
+  }
+else
+  flock -n 9 || exit 0
+fi
 # framework_development_job_event.event_type is varchar(30). Fail before any
 # mutation if a newly added static recovery event exceeds that DB contract.
 while IFS= read -r event_code; do
