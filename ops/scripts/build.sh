@@ -13,7 +13,10 @@
 set -euo pipefail
 
 BUILD_TOOL_DETECT() {
-    if [[ -x "${ROOT_DIR:-.}/gradlew" ]] && [[ -f "${ROOT_DIR:-.}/settings.gradle.kts" ]]; then
+    # Git worktrees on Windows-backed repositories can legitimately check out
+    # gradlew without the executable bit. Its presence, not that platform bit,
+    # determines whether this Gradle-first repository can be built.
+    if [[ -f "${ROOT_DIR:-.}/gradlew" ]] && [[ -f "${ROOT_DIR:-.}/settings.gradle.kts" ]]; then
         echo "gradle"
     else
         echo "maven"
@@ -35,7 +38,7 @@ init_build_tool() {
             mkdir -p "$GRADLE_PROJECT_CACHE_DIR" "$GRADLE_USER_HOME"
             # Gradle 8.10 rejects --watch-fs together with an external project
             # cache. A one-shot/CI deploy does not benefit from VFS watching.
-            GRADLE_BIN=("${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR" "--no-watch-fs")
+            GRADLE_BIN=("bash" "${ROOT_DIR}/gradlew" "-p" "${ROOT_DIR}" "--project-cache-dir" "$GRADLE_PROJECT_CACHE_DIR" "--no-watch-fs")
             export GRADLE_BIN BUILD_TOOL GRADLE_CACHE_ROOT GRADLE_PROJECT_CACHE_DIR GRADLE_USER_HOME
             ;;
         maven)
