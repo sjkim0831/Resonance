@@ -20,7 +20,7 @@
     "uniqueRouteCount": 13,
     "functionCount": 59,
     "uniqueFunctionCount": 45,
-    "frontendE2eCount": 8,
+    "frontendE2eCount": 9,
     "backendTestCount": 0,
     "highRiskPageCount": 26,
     "highRiskApiCount": 1,
@@ -2787,6 +2787,7 @@
       "source/e2e/emission-result-detail.spec.ts",
       "source/e2e/emission-result-list.spec.ts",
       "source/e2e/emission-validate.spec.ts",
+      "source/e2e/full-screen-smoke.spec.ts",
       "source/e2e/member-list.spec.ts",
       "source/e2e/menu-management-route.spec.ts",
       "source/e2e/runtime-pages.spec.ts"
