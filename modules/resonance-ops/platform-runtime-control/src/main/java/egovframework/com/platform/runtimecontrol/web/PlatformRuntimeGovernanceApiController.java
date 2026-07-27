@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,15 +28,29 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PlatformRuntimeGovernanceApiController {
 
-    private String MANIFEST_PATH = "data/version-control/project-runtime-manifest.json";
+    private static final Path PERSISTENT_MANIFEST_PATH =
+            Paths.get("/app/backend-metadata/runtime-data/version-control/project-runtime-manifest.json");
+    private static final Path LEGACY_MANIFEST_PATH =
+            Paths.get("data/version-control/project-runtime-manifest.json");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OperationsConsoleGateSupport operationsConsoleGateSupport;
 
+    private Path manifestPath() {
+        String configured = System.getenv("CARBONET_RUNTIME_MANIFEST_PATH");
+        if (configured != null && !configured.isBlank()) {
+            return Paths.get(configured).toAbsolutePath().normalize();
+        }
+        if (Files.exists(PERSISTENT_MANIFEST_PATH) || Files.exists(PERSISTENT_MANIFEST_PATH.getParent())) {
+            return PERSISTENT_MANIFEST_PATH;
+        }
+        return LEGACY_MANIFEST_PATH.toAbsolutePath().normalize();
+    }
+
     @GetMapping("/projects")
     public ResponseEntity<?> listProjects() {
         try {
-            byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+            byte[] jsonData = Files.readAllBytes(manifestPath());
             Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
             return ResponseEntity.ok(manifest.get("projects"));
         } catch (Exception e) {
@@ -46,7 +61,7 @@ public class PlatformRuntimeGovernanceApiController {
     @GetMapping("/projects/registry")
     public ResponseEntity<?> listProjectRegistry() {
         try {
-            byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+            byte[] jsonData = Files.readAllBytes(manifestPath());
             Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
             Map<String, Object> projects = (Map<String, Object>) manifest.get("projects");
             Map<String, Object> response = new LinkedHashMap<>();
@@ -131,7 +146,7 @@ public class PlatformRuntimeGovernanceApiController {
     @GetMapping("/projects/{projectId}")
     public ResponseEntity<?> getProjectDetail(@PathVariable String projectId) {
         try {
-            byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+            byte[] jsonData = Files.readAllBytes(manifestPath());
             Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
             Map<String, Object> projects = (Map<String, Object>) manifest.get("projects");
             
@@ -149,7 +164,7 @@ public class PlatformRuntimeGovernanceApiController {
     public ResponseEntity<?> saveProject(@PathVariable String projectId, @org.springframework.web.bind.annotation.RequestBody Map<String, Object> projectConfig) {
         try {
             synchronized (this) {
-                byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+                byte[] jsonData = Files.readAllBytes(manifestPath());
                 Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
                 Map<String, Object> projects = (Map<String, Object>) manifest.get("projects");
                 if (projects == null) {
@@ -159,7 +174,9 @@ public class PlatformRuntimeGovernanceApiController {
                 
                 projects.put(projectId, projectConfig);
                 
-                objectMapper.writerWithDefaultPrettyPrinter().writeValue(new java.io.File(MANIFEST_PATH), manifest);
+                Path path = manifestPath();
+                Files.createDirectories(path.getParent());
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), manifest);
             }
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
@@ -174,13 +191,15 @@ public class PlatformRuntimeGovernanceApiController {
     public ResponseEntity<?> deleteProject(@PathVariable String projectId) {
         try {
             synchronized (this) {
-                byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+                byte[] jsonData = Files.readAllBytes(manifestPath());
                 Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
                 Map<String, Object> projects = (Map<String, Object>) manifest.get("projects");
                 
                 if (projects != null && projects.containsKey(projectId)) {
                     projects.remove(projectId);
-                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(new java.io.File(MANIFEST_PATH), manifest);
+                    Path path = manifestPath();
+                    Files.createDirectories(path.getParent());
+                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), manifest);
                 }
             }
             Map<String, Object> response = new LinkedHashMap<>();
@@ -196,7 +215,7 @@ public class PlatformRuntimeGovernanceApiController {
     public ResponseEntity<?> applyRouting(@PathVariable String projectId) {
         try {
             // Find project config to get port
-            byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+            byte[] jsonData = Files.readAllBytes(manifestPath());
             Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
             Map<String, Object> projects = (Map<String, Object>) manifest.get("projects");
             
@@ -297,7 +316,7 @@ public class PlatformRuntimeGovernanceApiController {
     public ResponseEntity<?> checkHealth(@PathVariable String projectId) {
         try {
             // 1. Find project config to get info (port, etc)
-            byte[] jsonData = Files.readAllBytes(Paths.get(MANIFEST_PATH));
+            byte[] jsonData = Files.readAllBytes(manifestPath());
             Map<String, Object> manifest = objectMapper.readValue(jsonData, Map.class);
             Map<String, Object> projects = (Map<String, Object>) manifest.get("projects");
             
@@ -336,7 +355,9 @@ public class PlatformRuntimeGovernanceApiController {
                 runtime.put("lastHealthCheck", java.time.OffsetDateTime.now().toString());
                 
                 synchronized (this) {
-                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(new java.io.File(MANIFEST_PATH), manifest);
+                    Path path = manifestPath();
+                    Files.createDirectories(path.getParent());
+                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(path.toFile(), manifest);
                 }
             }
             
