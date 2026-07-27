@@ -1,6 +1,6 @@
-process=PCR_EPD_VERIFICATION
-step=PCR_EPD_VERIFICATION_S2
-type=FULL_STACK
-target=contract://PCR_EPD_VERIFICATION/PCR_EPD_VERIFICATION_S2
+process=ACTIVITY_DATA
+step=ACTIVITY_DATA_02_WORK
+type=FRONTEND_ADMIN
+target=schema-set/activity_data/activity_data_02_work/frontend_admin
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
