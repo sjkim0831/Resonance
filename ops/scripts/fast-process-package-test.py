@@ -14,6 +14,7 @@ from typing import Any
 REQUIRED_SCENARIOS = {"HAPPY_PATH", "EXCEPTION", "AUTHORITY", "ISOLATION", "RECOVERY"}
 SERVER_CONTEXT_FIELDS = {
     "tenantId", "projectId", "processCode", "stepCode", "actorCode", "fromState",
+    "stepOrder", "idempotencyKey",
 }
 
 

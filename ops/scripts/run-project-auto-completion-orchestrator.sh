@@ -124,6 +124,46 @@ with candidate as (
   from completed returning 1
 )
 select count(*) from completed;")"
+# Safety scenarios are stored independently so their approval can be audited
+# without mutating an execution spec. Synchronize only exact case codes already
+# approved by the deterministic scenario validator; no DRAFT case is promoted
+# here.
+embedded_tests_synced="$(psqlq -c "
+with normalized as (
+  select e.process_code,e.step_code,
+    jsonb_agg(
+      case when c.case_status='APPROVED'
+        then jsonb_set(test_case,'{status}','\"APPROVED\"'::jsonb,true)
+        else test_case end
+      order by ordinality
+    ) as test_contract
+  from framework_step_execution_spec e
+  cross join lateral jsonb_array_elements(e.test_contract)
+    with ordinality test_items(test_case,ordinality)
+  left join framework_simulation_case c
+    on c.process_code=e.process_code
+   and c.case_code=test_case->>'caseCode'
+  group by e.process_code,e.step_code
+), changed as (
+  update framework_step_execution_spec e
+  set test_contract=n.test_contract,spec_version=e.spec_version+1,
+      source_hash=md5(
+        e.actor_contract::text||e.business_contract::text||
+        e.transition_contract::text||e.input_contract::text||
+        e.output_contract::text||e.screen_contract::text||
+        e.field_contract::text||e.command_contract::text||
+        e.api_contract::text||e.persistence_contract::text||
+        e.handoff_contract::text||n.test_contract::text||
+        e.guide_contract::text||e.nonfunctional_contract::text
+      ),
+      updated_at=current_timestamp
+  from normalized n
+  where e.process_code=n.process_code and e.step_code=n.step_code
+    and e.test_contract<>n.test_contract
+  returning e.process_code,e.step_code
+)
+select count(*) from changed;")"
+
 # A structurally complete design used to remain REVIEW_REQUIRED forever unless
 # the process definition was imported as locked. That left every downstream
 # test job PENDING even though the graph and schema-set validators had already
@@ -168,6 +208,18 @@ with candidate as (
     and e.persistence_contract<>'{}'::jsonb
     and jsonb_array_length(e.handoff_contract)>0
     and jsonb_array_length(e.test_contract)>0
+    and (
+      select count(distinct test_case->>'type')
+      from jsonb_array_elements(e.test_contract) test_case
+      where test_case->>'status' in ('APPROVED','VERIFIED')
+        and jsonb_typeof(test_case->'steps')='array'
+        and jsonb_array_length(test_case->'steps')>0
+        and jsonb_typeof(test_case->'assertions')='array'
+        and jsonb_array_length(test_case->'assertions')>0
+        and test_case->>'type' in (
+          'HAPPY_PATH','EXCEPTION','AUTHORITY','ISOLATION','RECOVERY'
+        )
+    )=5
     and e.guide_contract<>'{}'::jsonb
     and e.nonfunctional_contract<>'{}'::jsonb
 ), approved as (
@@ -901,6 +953,51 @@ with candidate as (
 )
 select count(*) from released;")"
 
+package_contract_generator_retried="$(psqlq -c "
+with candidate as (
+  select j.job_id,j.job_status
+  from framework_development_job j
+  join framework_step_execution_spec s
+    on s.process_code=j.process_code and s.step_code=j.step_code
+  where j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+    and j.job_status='FAILED'
+    and j.last_error='deterministic generator failed with code 1'
+    and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+    and (
+      select count(distinct test_case->>'type')
+      from jsonb_array_elements(s.test_contract) test_case
+      where test_case->>'status' in ('APPROVED','VERIFIED')
+        and jsonb_typeof(test_case->'steps')='array'
+        and jsonb_array_length(test_case->'steps')>0
+        and jsonb_typeof(test_case->'assertions')='array'
+        and jsonb_array_length(test_case->'assertions')>0
+        and test_case->>'type' in (
+          'HAPPY_PATH','EXCEPTION','AUTHORITY','ISOLATION','RECOVERY'
+        )
+    )=5
+    and not exists (
+      select 1 from framework_development_job_event e
+      where e.job_id=j.job_id and e.event_type='PACKAGE_CONTRACT_V1_RETRY'
+    )
+), released as (
+  update framework_development_job j
+  set job_status='RETRY',approval_status='APPROVED',
+      attempt_count=greatest(0,j.max_attempts-1),worker_id=null,
+      lease_token=null,lease_until=null,last_error=null,updated_at=current_timestamp
+  from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
+), logged as (
+  insert into framework_development_job_event(
+    job_id,event_type,from_status,to_status,worker_id,detail_json
+  )
+  select job_id,'PACKAGE_CONTRACT_V1_RETRY',job_status,'RETRY',
+         'project-auto-completion',
+         jsonb_build_object(
+           'reason','approved scenarios and common persistence package normalization applied'
+         )
+  from released returning 1
+)
+select count(*) from released;")"
+
 generated_dimension_retried="$(psqlq -c "
 with candidate as (
   select j.job_id,j.job_status
@@ -929,7 +1026,7 @@ with candidate as (
 )
 select count(*) from released;")"
 
-retried="$((retried+spec_approval_waiting+approved_generator_retried+grouped_field_generator_retried+generated_dimension_retried))"
+retried="$((retried+spec_approval_waiting+approved_generator_retried+grouped_field_generator_retried+package_contract_generator_retried+generated_dimension_retried))"
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
 where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status='RETRY' and (j.lease_until is null or j.lease_until<current_timestamp))) and j.attempt_count<j.max_attempts
@@ -971,4 +1068,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried generatedDimensionRetried=$generated_dimension_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"

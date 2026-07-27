@@ -144,6 +144,19 @@ def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
     COMMON_PROCESS_COMMAND_RUNTIME storage boundary.
     """
     persistence = copy.deepcopy(step["persistence_contract"])
+    mappings = persistence.get("mappings")
+    if isinstance(mappings, list) and not persistence.get("primaryEntities"):
+        primary_entities = sorted({
+            mapping.get("primaryEntity")
+            for mapping in mappings
+            if isinstance(mapping, dict)
+            and isinstance(mapping.get("primaryEntity"), str)
+            and mapping["primaryEntity"]
+        })
+        if primary_entities:
+            persistence["primaryEntities"] = primary_entities
+    if persistence.get("transactional") is True and step["command_contract"]:
+        persistence.setdefault("historyRequired", True)
     if (
         not step["screen_contract"]
         and not step["field_contract"]

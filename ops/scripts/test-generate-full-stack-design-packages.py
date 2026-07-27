@@ -43,6 +43,31 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                 [{"fields": [{"fieldCode": "unscoped"}]}]
             )
 
+    def test_normalizes_grouped_persistence_for_common_runtime(self) -> None:
+        step = {
+            "screen_contract": [{"audience": "USER"}],
+            "field_contract": [{"fieldCode": "projectId"}],
+            "command_contract": [{"commandCode": "SAVE"}],
+            "api_contract": [{"declaredContract": "COMMON"}],
+            "persistence_contract": {
+                "transactional": True,
+                "migrationRequired": True,
+                "mappings": [
+                    {"audience": "USER", "primaryEntity": "emission_record"},
+                    {"audience": "ADMIN", "primaryEntity": "emission_record"},
+                    {"audience": "ADMIN", "primaryEntity": "emission_event"},
+                ],
+            },
+        }
+
+        persistence = GENERATOR.persistence_for_step(step)
+
+        self.assertEqual(
+            persistence["primaryEntities"],
+            ["emission_event", "emission_record"],
+        )
+        self.assertTrue(persistence["historyRequired"])
+
 
 if __name__ == "__main__":
     unittest.main()
