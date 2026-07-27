@@ -160,23 +160,62 @@ type AppFieldBaseProps = {
   className?: string;
 };
 
+function resolveAccessibleName(
+  props: {
+    "aria-label"?: string;
+    "aria-labelledby"?: string;
+    id?: string;
+    name?: string;
+    placeholder?: string;
+    title?: string;
+    type?: string;
+  },
+  fallback: string
+) {
+  if (props["aria-label"] || props["aria-labelledby"] || props.id) {
+    return props["aria-label"];
+  }
+  return props.title || props.placeholder || props.name || (props.type === "date" ? "날짜 입력" : fallback);
+}
+
 export function getAppFieldClassName(className = "") {
   return `w-full h-12 px-4 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] bg-white text-sm focus:ring-[var(--kr-gov-focus)] focus:border-[var(--kr-gov-focus)] ${className}`.trim();
 }
 
 export function AppInput(props: InputHTMLAttributes<HTMLInputElement> & AppFieldBaseProps) {
   const { className = "", ...rest } = props;
-  return <input {...rest} className={getAppFieldClassName(`app-field app-field--input ${className}`.trim())} />;
+  return (
+    <input
+      {...rest}
+      aria-label={resolveAccessibleName(rest, "입력 항목")}
+      className={getAppFieldClassName(`app-field app-field--input ${className}`.trim())}
+    />
+  );
 }
 
 export function AppSelect(props: SelectHTMLAttributes<HTMLSelectElement> & AppFieldBaseProps) {
   const { className = "", children, ...rest } = props;
-  return <select {...rest} className={getAppFieldClassName(`app-field app-field--select ${className}`.trim())}>{children}</select>;
+  return (
+    <select
+      {...rest}
+      aria-label={resolveAccessibleName(rest, "선택 항목")}
+      className={getAppFieldClassName(`app-field app-field--select ${className}`.trim())}
+    >
+      {children}
+    </select>
+  );
 }
 
 export function AppTextarea(props: TextareaHTMLAttributes<HTMLTextAreaElement> & AppFieldBaseProps) {
   const { className = "", rows = 4, ...rest } = props;
-  return <textarea {...rest} className={`app-field app-field--textarea w-full px-4 py-3 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] bg-white text-sm focus:ring-[var(--kr-gov-focus)] focus:border-[var(--kr-gov-focus)] ${className}`.trim()} rows={rows} />;
+  return (
+    <textarea
+      {...rest}
+      aria-label={resolveAccessibleName(rest, "여러 줄 입력 항목")}
+      className={`app-field app-field--textarea w-full px-4 py-3 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] bg-white text-sm focus:ring-[var(--kr-gov-focus)] focus:border-[var(--kr-gov-focus)] ${className}`.trim()}
+      rows={rows}
+    />
+  );
 }
 
 export function AppTable({

@@ -1661,17 +1661,18 @@ export function BuilderStudioPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <main className="flex items-center justify-center h-screen" aria-busy="true">
         <div className="text-center">
+          <h1 className="sr-only">빌더 스튜디오</h1>
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">로딩 중...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <main className="h-screen flex flex-col bg-gray-100">
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold">빌더 스튜디오</h1>
@@ -3046,7 +3047,7 @@ export function BuilderStudioPage() {
           {builderToast}
         </div>
       ) : null}
-    </div>
+    </main>
   );
 }
 

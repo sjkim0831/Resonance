@@ -756,6 +756,7 @@ export function BlocklistMigrationPage() {
           <div className="flex items-center justify-end gap-2 text-xs">
             <span className="text-[var(--kr-gov-text-secondary)]">{en ? "Go to page" : "페이지 이동"}</span>
             <input
+              aria-label={en ? "Blocklist page number" : "차단 목록 페이지 번호"}
               className="h-9 w-20 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-2 text-sm"
               value={blocklistPageInput}
               onChange={(event) => setBlocklistPageInput(event.target.value.replace(/[^0-9]/g, ""))}
@@ -833,6 +834,7 @@ export function BlocklistMigrationPage() {
             <div className="flex items-center justify-end gap-2 text-xs">
               <span className="text-[var(--kr-gov-text-secondary)]">{en ? "Go to page" : "페이지 이동"}</span>
               <input
+                aria-label={en ? "Release queue page number" : "해제 대기열 페이지 번호"}
                 className="h-9 w-20 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-2 text-sm"
                 value={releaseQueuePageInput}
                 onChange={(event) => setReleaseQueuePageInput(event.target.value.replace(/[^0-9]/g, ""))}
@@ -884,6 +886,7 @@ export function BlocklistMigrationPage() {
             <div className="flex items-center justify-end gap-2 text-xs">
               <span className="text-[var(--kr-gov-text-secondary)]">{en ? "Go to page" : "페이지 이동"}</span>
               <input
+                aria-label={en ? "Release history page number" : "해제 이력 페이지 번호"}
                 className="h-9 w-20 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-2 text-sm"
                 value={releaseHistoryPageInput}
                 onChange={(event) => setReleaseHistoryPageInput(event.target.value.replace(/[^0-9]/g, ""))}
@@ -956,6 +959,7 @@ export function BlocklistMigrationPage() {
           <div className="flex items-center justify-end gap-2 text-xs">
             <span className="text-[var(--kr-gov-text-secondary)]">{en ? "Go to page" : "페이지 이동"}</span>
             <input
+              aria-label={en ? "Status history page number" : "상태 이력 페이지 번호"}
               className="h-9 w-20 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] px-2 text-sm"
               value={statusHistoryPageInput}
               onChange={(event) => setStatusHistoryPageInput(event.target.value.replace(/[^0-9]/g, ""))}

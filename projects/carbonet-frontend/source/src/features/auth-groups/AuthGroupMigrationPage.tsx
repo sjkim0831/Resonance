@@ -1420,6 +1420,7 @@ export function AuthGroupMigrationPage() {
               {text(page, "기준 권한 그룹", "Reference group")}
             </label>
             <select
+              aria-label={text(page, "기준 권한 그룹", "Reference group")}
               className="max-w-sm w-full border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] h-10 px-3 text-sm"
               value={authorCode}
               onChange={(event) => setAuthorCode(event.target.value)}
@@ -1769,6 +1770,7 @@ export function AuthGroupMigrationPage() {
                                     <td className="px-4 py-3 text-center font-semibold">{feature.useAt || "-"}</td>
                                     <td className="px-4 py-3 text-center">
                                       <input
+                                        aria-label={text(page, `${feature.featureNm || feature.featureCode} 기능 할당`, `Assign ${feature.featureNm || feature.featureCode}`)}
                                         checked={selectedFeatures.includes(feature.featureCode)}
                                         className="h-4 w-4"
                                         disabled={
