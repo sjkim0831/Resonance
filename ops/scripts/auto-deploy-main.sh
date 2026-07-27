@@ -1,12 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Agent policy is deterministic and must pass before any model-generated change can deploy.
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/ops/scripts/verify-kilo-m3-policy.sh"
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/ops/scripts/verify-hermes-nvidia-two-tier.sh"
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/ops/scripts/verify-hermes-project-work-policy.sh"
+if [[ "${CARBONET_DEPLOY_SNAPSHOT_ACTIVE:-false}" != "true" ]]; then
+  original_script="$(readlink -f "${BASH_SOURCE[0]}")"
+  original_root="$(cd "$(dirname "$original_script")/../.." && pwd)"
+  snapshot_script="$(mktemp /tmp/carbonet-auto-deploy-main.XXXXXX.sh)"
+  cp "$original_script" "$snapshot_script"
+  chmod 700 "$snapshot_script"
+  export CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true
+  export CARBONET_DEPLOY_ORIGINAL_ROOT="$original_root"
+  export CARBONET_DEPLOY_SNAPSHOT_PATH="$snapshot_script"
+  exec bash "$snapshot_script" "$@"
+fi
 
-ROOT_DIR="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
+POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+
+# Agent policy is deterministic and must pass before any model-generated change can deploy.
+bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
+bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
+bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
+
+ROOT_DIR="${CARBONET_DEPLOY_ROOT:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-/opt/Resonance}}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
@@ -116,7 +130,13 @@ cleanup_remote_backup() {
     -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name=:'app_name' and pid<>pg_backend_pid()" \
     >/dev/null 2>&1 || true
 }
-trap cleanup_remote_backup EXIT INT TERM
+cleanup_deploy() {
+  cleanup_remote_backup
+  if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
+    rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
+  fi
+}
+trap cleanup_deploy EXIT INT TERM
 git fetch --prune "$REMOTE" "$BRANCH"
 target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
