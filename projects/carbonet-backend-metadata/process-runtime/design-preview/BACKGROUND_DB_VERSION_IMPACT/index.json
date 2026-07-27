@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S1",
+      "package": "BACKGROUND_DB_VERSION_IMPACT__BACKGROUND_DB_VERSION_IMPACT_S1.json",
+      "packageHash": "e5150f3872e0816d96b48094613bba5cb26f87ccafb4c2a34fea8a8a4bff7408",
+      "pages": 2
+    },
+    {
+      "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S2",
+      "package": "BACKGROUND_DB_VERSION_IMPACT__BACKGROUND_DB_VERSION_IMPACT_S2.json",
+      "packageHash": "f5906435717e9d08063e63e46ac27616637985c4743b95fb56c32b377432d2b1",
+      "pages": 2
+    },
+    {
+      "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S3",
+      "package": "BACKGROUND_DB_VERSION_IMPACT__BACKGROUND_DB_VERSION_IMPACT_S3.json",
+      "packageHash": "dc293b26591635435c60d9f68b727a91ea55bc483d3463b593174828493e8e34",
+      "pages": 2
+    },
+    {
+      "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+      "stepCode": "BACKGROUND_DB_VERSION_IMPACT_S4",
+      "package": "BACKGROUND_DB_VERSION_IMPACT__BACKGROUND_DB_VERSION_IMPACT_S4.json",
+      "packageHash": "e4305327308c35a256894ed45536f2baed91651e46cb24114c165fc3f604f046",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "e40aecccc69fc32532662c2e07cb6a2e0f12a9efd782d4a59713401ddf4a3f30"
+}
