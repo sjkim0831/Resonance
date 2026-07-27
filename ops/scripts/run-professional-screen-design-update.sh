@@ -51,7 +51,7 @@ start_epoch="$(date +%s)"
 # A reviewed contract is immutable during mass preparation. The transaction is
 # rolled back if any VERIFIED row changes, so bulk design can never silently
 # degrade a screen that already has implementation evidence.
-preparation_json="$(psqlq <<SQL
+preparation_sql="$(cat <<SQL
 begin;
 create temporary table verified_contract_before on commit drop as
 select contract_id,
@@ -83,6 +83,7 @@ select result::text from mass_design_result;
 commit;
 SQL
 )"
+preparation_json="$(psqlq -c "$preparation_sql")"
 
 compilation_json="$(bash "$ROOT_DIR/ops/scripts/compile-cross-screen-contracts.sh" "$ROOT_DIR")"
 audit_json="$(psqlq -c \
@@ -105,13 +106,13 @@ fi
 
 quality_json="$(psqlq -c "
 with status_counts as (
-  select executable_status,count(*) total
-  from framework_executable_screen_design_gate
-  group by executable_status
+  select professional_status,count(*) total
+  from framework_professional_screen_design_update_gate
+  group by professional_status
 ), blocker_counts as (
   select blocker,count(*) total
-  from framework_executable_screen_design_gate gate,
-       unnest(gate.blocker_codes) blocker
+  from framework_professional_screen_design_update_gate gate,
+       unnest(gate.design_blocker_codes) blocker
   group by blocker
 ), coverage as (
   select
@@ -127,7 +128,7 @@ with status_counts as (
 select jsonb_build_object(
   'coverage',(select to_jsonb(coverage) from coverage),
   'statusCounts',coalesce((
-    select jsonb_object_agg(executable_status,total) from status_counts
+    select jsonb_object_agg(professional_status,total) from status_counts
   ),'{}'::jsonb),
   'blockerCounts',coalesce((
     select jsonb_object_agg(blocker,total) from blocker_counts
@@ -138,6 +139,18 @@ select jsonb_build_object(
       group by route_key having count(*)>1
     ) duplicate
   ),
+  'invalidRouteIdentities',(
+    select count(*) from framework_professional_screen_design_update_gate
+    where not route_identity_valid
+  ),
+  'designBlockedCount',(
+    select count(*) from framework_professional_screen_design_update_gate
+    where professional_status='DESIGN_BLOCKED'
+  ),
+  'designReadyCount',(
+    select count(*) from framework_professional_screen_design_update_gate
+    where professional_design_ready
+  ),
   'verifiedContracts',(
     select count(*) from framework_professional_screen_contract
     where contract_status='VERIFIED'
@@ -146,10 +159,10 @@ select jsonb_build_object(
 
 finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 elapsed_seconds="$(( $(date +%s) - start_epoch ))"
-blocked_count="$(jq -r '.blocked_count // .blockedCount // 0' <<<"$audit_json")"
+design_blocked_count="$(jq -r '.designBlockedCount // 0' <<<"$quality_json")"
 generation_status="$(jq -r '.status // "GENERATED"' <<<"$generation_json")"
 outcome="READY"
-[[ "$blocked_count" != "0" ]] && outcome="DESIGN_BLOCKED"
+[[ "$design_blocked_count" != "0" ]] && outcome="DESIGN_BLOCKED"
 [[ "$generation_status" == "FAILED" ]] && outcome="GENERATION_FAILED"
 
 report_json="$(jq -cn \
