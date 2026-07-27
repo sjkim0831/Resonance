@@ -1,6 +1,6 @@
-process=APPEAL_DISPUTE_AUDIT
-step=APPEAL_DISPUTE_AUDIT_S2
+process=CHAIN_OF_CUSTODY
+step=CHAIN_OF_CUSTODY_S2
 type=FRONTEND_ADMIN
-target=schema-set/appeal_dispute_audit/appeal_dispute_audit_s2/frontend_admin
+target=schema-set/chain_of_custody/chain_of_custody_s2/frontend_admin
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
