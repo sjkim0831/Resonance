@@ -30,7 +30,7 @@ key="$(<"$key_file")"
 
 request() {
   local id="$1" started ended
-  started="$(date +%s%3N)"
+  started="$(date +%s%N)"
   if curl -fsS --max-time 90 \
       -H "Authorization: Bearer $key" \
       -H 'Content-Type: application/json' \
@@ -38,8 +38,8 @@ request() {
       "$base_url/v1/chat/completions" >"$work/$id.json" 2>"$work/$id.err" &&
       jq -e '.choices[0].message.content|type == "string" and length>0' \
         "$work/$id.json" >/dev/null 2>>"$work/$id.err"; then
-    ended="$(date +%s%3N)"
-    echo "$((ended-started))" >"$work/$id.ms"
+    ended="$(date +%s%N)"
+    echo "$(((ended-started)/1000000))" >"$work/$id.ms"
   else
     echo FAIL >"$work/$id.ms"
   fi
