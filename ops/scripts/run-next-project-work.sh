@@ -56,7 +56,7 @@ summary_json="$(psqlq -c "
 with latest_run as (
   select run_id,run_status,selected_process_count,executable_job_count,
          retried_job_count,completed_process_count,blocked_process_count,
-         coalesce(result_json,'{}'::jsonb) result_json
+         coalesce(framework_try_jsonb(result_json),'{}'::jsonb) result_json
   from framework_project_completion_run
   order by started_at desc limit 1
 ), selected_job as (
