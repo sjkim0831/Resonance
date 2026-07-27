@@ -34,9 +34,7 @@ psqlq() {
 }
 
 before_job_id="$(psqlq -c "
-  select coalesce(max(job_id),0)
-  from framework_development_job
-  where job_status in ('RUNNING','VERIFIED','COMPLETED','FAILED','RETRY');")"
+  select coalesce(max(job_id),0) from framework_development_job;")"
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 start_epoch="$(date +%s)"
 
@@ -59,16 +57,40 @@ with latest_run as (
          coalesce(framework_try_jsonb(result_json),'{}'::jsonb) result_json
   from framework_project_completion_run
   order by started_at desc limit 1
-), selected_job as (
+), executed_work as (
   select job_id,process_code,step_code,job_type,job_status,quality_status,
          approval_status,coalesce(target_path,'') target_path,
          coalesce(evidence_ref,'') evidence_ref,
          coalesce(last_error,'') last_error
   from framework_development_job
-  where job_id > $before_job_id
-     or started_at >= '$started_at'::timestamptz
+  where started_at >= '$started_at'::timestamptz
      or completed_at >= '$started_at'::timestamptz
   order by updated_at desc,job_id desc limit 1
+), next_candidate as (
+  select job_id,process_code,step_code,job_type,job_status,quality_status,
+         approval_status,coalesce(target_path,'') target_path,
+         coalesce(last_error,'') last_error
+  from framework_development_job
+  where job_status in ('RETRY','FAILED','PLANNED','PENDING')
+  order by
+    case job_status
+      when 'RETRY' then 0 when 'FAILED' then 1
+      when 'PLANNED' then 2 else 3
+    end,
+    case approval_status when 'APPROVED' then 0 else 1 end,
+    updated_at desc,job_id desc
+  limit 1
+), blockers as (
+  select coalesce(jsonb_agg(to_jsonb(item)),'[]'::jsonb) value
+  from (
+    select job_id,process_code,step_code,job_type,job_status,
+           approval_status,coalesce(target_path,'') target_path,
+           coalesce(last_error,'') last_error
+    from framework_development_job
+    where job_status in ('FAILED','RETRY')
+    order by updated_at desc,job_id desc
+    limit 20
+  ) item
 ), counts as (
   select jsonb_object_agg(job_status,total) value
   from (
@@ -77,14 +99,27 @@ with latest_run as (
   ) grouped
 )
 select jsonb_build_object(
-  'schemaVersion',1,
+  'schemaVersion',2,
   'command','next-work',
+  'outcome',case
+    when $orchestrator_rc <> 0 then 'FAILED'
+    when exists(select 1 from executed_work) then 'EXECUTED'
+    when coalesce((select blocked_process_count from latest_run),0) > 0
+      then 'ATTENTION_REQUIRED'
+    when coalesce((select completed_process_count from latest_run),0) =
+         coalesce((select selected_process_count from latest_run),0)
+      then 'COMPLETE'
+    else 'NO_EXECUTABLE_WORK'
+  end,
   'startedAt','$started_at',
   'finishedAt','$finished_at',
   'elapsedSeconds',$elapsed_seconds,
   'orchestratorExitCode',$orchestrator_rc,
   'run',coalesce((select to_jsonb(latest_run) from latest_run),'{}'::jsonb),
-  'work',coalesce((select to_jsonb(selected_job) from selected_job),'{}'::jsonb),
+  'executedWork',coalesce((select to_jsonb(executed_work) from executed_work),'{}'::jsonb),
+  'createdWorkCount',(select count(*) from framework_development_job where job_id > $before_job_id),
+  'nextCandidate',coalesce((select to_jsonb(next_candidate) from next_candidate),'{}'::jsonb),
+  'blockers',coalesce((select value from blockers),'[]'::jsonb),
   'jobCounts',coalesce((select value from counts),'{}'::jsonb)
 )::text;")"
 
