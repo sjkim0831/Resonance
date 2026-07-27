@@ -1,0 +1,2025 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "CCUS_LIFECYCLE_MRV",
+    "name": "CCUS 전과정 MRV",
+    "domain": "MRV",
+    "workType": "MRV",
+    "goal": "포집·압축·수송·주입·저장 전 단계의 물질수지와 배출·감축량을 산정한다."
+  },
+  "step": {
+    "code": "CCUS_LIFECYCLE_MRV_S4",
+    "version": 2,
+    "actor": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "CALCULATOR",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "포집·압축·수송·주입·저장 전 단계의 물질수지와 배출·감축량을 산정한다.",
+      "slaHours": 72,
+      "stepName": "독립 검증·MRV 확정",
+      "riskLevel": "CRITICAL",
+      "domainCode": "MRV",
+      "processName": "CCUS 전과정 MRV",
+      "requirement": "독립 검증·MRV 확정 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "completionRule": "독립 검증·MRV 확정의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "regulationRefs": "ISO 27914, ISO 27916, 국가 CCUS MRV 지침"
+    },
+    "transition": {
+      "toState": "STEP_4_COMPLETED",
+      "stepType": "DECISION",
+      "fromState": "STEP_3_COMPLETED",
+      "stepOrder": 4,
+      "commandCode": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+      "auditRequired": true,
+      "completionRule": "독립 검증·MRV 확정의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "tenantId": "required",
+      "actorCode": "APPROVER",
+      "projectId": "required",
+      "stepOrder": 4,
+      "processCode": "CCUS_LIFECYCLE_MRV",
+      "idempotencyKey": "required"
+    },
+    "output": {
+      "state": "STEP_4_COMPLETED",
+      "evidence": "required",
+      "auditEvent": "required",
+      "nextTaskCreated": false
+    },
+    "guide": {
+      "title": "독립 검증·MRV 확정",
+      "purpose": "독립 검증·MRV 확정 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+      "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+      "userPath": null,
+      "actorCode": "APPROVER",
+      "adminPath": null,
+      "stepOrder": 4,
+      "processCode": "CCUS_LIFECYCLE_MRV",
+      "nextStepCode": null,
+      "workTypeCode": "MRV",
+      "entryCondition": "STEP_3_COMPLETED",
+      "completionCondition": "독립 검증·MRV 확정의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+        "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "ADMIN",
+        "screenType": "REVIEW_DECISION",
+        "title": "독립 검증·MRV 확정 관리",
+        "purpose": "독립 검증·MRV 확정 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {},
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {},
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {},
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {},
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {},
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {},
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {},
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {},
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {},
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {},
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {},
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {},
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {},
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {},
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {},
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {},
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "decisionCode",
+            "fieldName": "판정",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {},
+            "apiProperty": "decisionCode",
+            "controlType": "DECISION_RADIO",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": true,
+            "fieldCode": "reviewComment",
+            "fieldName": "검토 의견",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {},
+            "apiProperty": "reviewComment",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "rejectionReasonCode",
+            "fieldName": "반려 사유",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {},
+            "apiProperty": "rejectionReasonCode",
+            "controlType": "REASON_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/admin/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+            "required": false,
+            "fieldCode": "decidedAt",
+            "fieldName": "판정 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {},
+            "apiProperty": "decidedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:ADMIN",
+            "evidenceRequired": false
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "APPROVER",
+            "entryState": "STEP_3_COMPLETED",
+            "commandCode": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+            "resultState": "STEP_4_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      },
+      {
+        "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+        "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "USER",
+        "screenType": "REVIEW_DECISION",
+        "title": "독립 검증·MRV 확정",
+        "purpose": "독립 검증·MRV 확정 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {},
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {},
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {},
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {},
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {},
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {},
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {},
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {},
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {},
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {},
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {},
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {},
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {},
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {},
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {},
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {},
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "decisionCode",
+            "fieldName": "판정",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {},
+            "apiProperty": "decisionCode",
+            "controlType": "DECISION_RADIO",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "TEXT",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": true,
+            "fieldCode": "reviewComment",
+            "fieldName": "검토 의견",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {},
+            "apiProperty": "reviewComment",
+            "controlType": "TEXTAREA",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "rejectionReasonCode",
+            "fieldName": "반려 사유",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {},
+            "apiProperty": "rejectionReasonCode",
+            "controlType": "REASON_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          },
+          {
+            "route": "/planned/emission/ccus-lifecycle-mrv/ccus-lifecycle-mrv-s4",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": true,
+            "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+            "required": false,
+            "fieldCode": "decidedAt",
+            "fieldName": "판정 일시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {},
+            "apiProperty": "decidedAt",
+            "controlType": "DATETIME",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "APPROVER:USER",
+            "evidenceRequired": false
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "APPROVER",
+            "entryState": "STEP_3_COMPLETED",
+            "commandCode": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+            "resultState": "STEP_4_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1",
+        "method": "CONTRACT"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "APPROVER",
+        "entryState": "STEP_3_COMPLETED",
+        "commandCode": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+        "resultState": "STEP_4_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "APPROVER",
+      "ownerActorCode": "CALCULATOR",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "DESIGN_REVIEW_REQUIRED",
+          "onInapplicable": "SKIP_WITH_AUDIT",
+          "onMissingNextProcess": "WORKFLOW_COMPLETE"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "required",
+            "projectId": "contextual",
+            "idempotencyKey": "required",
+            "businessPayload": "required"
+          },
+          "fromOutput": {
+            "state": "STEP_4_COMPLETED",
+            "evidence": "required",
+            "auditEvent": "required",
+            "nextTaskCreated": false
+          },
+          "completionCondition": "단계별 물질수지와 순감축량이 검증되고 MRV 보고서가 확정된다."
+        },
+        "integrity": {
+          "handoffAudit": true,
+          "immutableOutputVersion": true,
+          "completedProcessRequired": true
+        },
+        "toStepCode": "MRV_TRACEABILITY_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "recordId",
+          "completedProcessCode",
+          "outputVersion"
+        ],
+        "handoffType": "PROCESS",
+        "authorization": {
+          "toActor": "SYSTEM_INTEGRATOR",
+          "fromActor": "APPROVER",
+          "segregationChecked": true,
+          "projectApplicabilityRequired": true
+        },
+        "toProcessCode": "MRV_TRACEABILITY"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "decisionCode",
+            "apiProperty": "decisionCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reviewComment",
+            "apiProperty": "reviewComment",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "rejectionReasonCode",
+            "apiProperty": "rejectionReasonCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "decidedAt",
+            "apiProperty": "decidedAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_ADMIN",
+        "primaryEntity": "emission_project_registry"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "decisionCode",
+            "apiProperty": "decisionCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reviewComment",
+            "apiProperty": "reviewComment",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "rejectionReasonCode",
+            "apiProperty": "rejectionReasonCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "decidedAt",
+            "apiProperty": "decidedAt",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "CCUS_LIFECYCLE_MRV_CCUS_LIFECYCLE_MRV_S4_USER",
+        "primaryEntity": "emission_project_registry"
+      }
+    ],
+    "transactional": true,
+    "schemaSetVersion": 1,
+    "migrationRequired": true,
+    "primaryEntities": [
+      "emission_project_registry"
+    ],
+    "historyRequired": true
+  },
+  "tests": [
+    {
+      "name": "CCUS 전과정 MRV - 권한분리 위반",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_1",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_2",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_3",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CCUS_LIFECYCLE_MRV_AUTH",
+      "assertions": [
+        "비인가 액션 403",
+        "요청자와 승인자 분리",
+        "거부 시도 감사 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "CCUS 전과정 MRV - 필수값·업무예외",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_1",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_2",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_3",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CCUS_LIFECYCLE_MRV_EXCEPTION",
+      "assertions": [
+        "잘못된 입력 거부",
+        "상태 불변",
+        "보완 태스크 생성",
+        "원인과 필드 오류 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "CCUS 전과정 MRV - 정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_1",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_2",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_3",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CCUS_LIFECYCLE_MRV_HAPPY",
+      "assertions": [
+        "최종 상태 도달",
+        "모든 단계 증적 존재",
+        "다음 태스크 연결",
+        "감사 로그 완전"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "CCUS 전과정 MRV - 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_1",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_2",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_3",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CCUS_LIFECYCLE_MRV_ISOLATION",
+      "assertions": [
+        "타 테넌트·프로젝트 자료 0건",
+        "직접 식별자 접근 403 또는 404",
+        "검색·파일·내보내기 격리"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    },
+    {
+      "name": "CCUS 전과정 MRV - 중단·중복요청 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_1",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S1",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 2,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_2",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S2",
+          "actorCode": "CALCULATOR"
+        },
+        {
+          "order": 3,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_3",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S3",
+          "actorCode": "VERIFIER"
+        },
+        {
+          "order": 4,
+          "command": "CCUS_LIFECYCLE_MRV_EXECUTE_4",
+          "stepCode": "CCUS_LIFECYCLE_MRV_S4",
+          "actorCode": "APPROVER"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "CCUS_LIFECYCLE_MRV_RECOVERY",
+      "assertions": [
+        "멱등키 중복 생성 없음",
+        "중단 단계부터 안전 재개",
+        "롤백 후 원본 보존",
+        "재시도 횟수와 결과 기록"
+      ],
+      "preconditions": "서로 다른 액터 계정, 두 개 이상의 테넌트와 프로젝트, 정상·오류 입력 및 감사 수집기가 준비되어 있다."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "5232bb383df67a5c50a4856f827fe883",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "c08a642a58934858f6a5826b885b58a522d4d82be197f1a4949c24e4cc5c355c"
+}
