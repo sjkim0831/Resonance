@@ -2,7 +2,7 @@
 
 - Job: 19054
 - Job type: FRONTEND_ADMIN
-- Source commit: e38af445a0f49548f312de32fbafe946f07d44f9
+- Source commit: 3c7865030cb85571e69ffbde5420e30aa5388897
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"DATA_INTEGRATION","stepCode":"DATA_INTEGRATION_04_APPROVE","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-19054/projects/carbonet-backend-metadata/process-runtime/generated/DATA_INTEGRATION/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19054/var/test-evidence/process-package-tests/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
