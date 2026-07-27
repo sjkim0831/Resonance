@@ -22,7 +22,13 @@ const failures = [];
 page.on("pageerror", error => failures.push(`pageerror: ${error.message}`));
 page.on("requestfailed", request => {
   const url = request.url();
-  if (url.includes("/assets/react/")) failures.push(`asset: ${url} ${request.failure()?.errorText || ""}`);
+  const errorText = request.failure()?.errorText || "";
+  // Chromium aborts still-pending font/image requests when this probe navigates
+  // from login to authenticated routes. The asset is not missing in that case;
+  // real transport, HTTP, JavaScript, and empty-root failures remain fatal.
+  if (url.includes("/assets/react/") && errorText !== "net::ERR_ABORTED") {
+    failures.push(`asset: ${url} ${errorText}`);
+  }
 });
 page.on("console", message => {
   if (message.type() === "error" && /runtime error|conflict|not mount|uncaught/i.test(message.text())) failures.push(`console: ${message.text()}`);
