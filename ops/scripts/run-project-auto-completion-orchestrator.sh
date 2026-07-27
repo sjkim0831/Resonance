@@ -738,7 +738,12 @@ with candidate as (
     and (
       j.attempt_count<j.max_attempts
       or (
-        j.last_error in ('unexpected worker error at line 111','Kilo exited with code 124','AI completed without a source or metadata change')
+        j.last_error in (
+          'unexpected worker error at line 111',
+          'Kilo exited with code 124',
+          'AI completed without a source or metadata change',
+          'parallel publish rebase conflict'
+        )
         and not exists (
           select 1 from framework_development_job_event e
           where e.job_id=j.job_id and e.event_type='INFRA_RETRY_GRANTED'

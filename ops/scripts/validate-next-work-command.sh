@@ -19,6 +19,8 @@ grep -Fq "'executedWork'" "$RUNNER"
 grep -Fq "'nextCandidate'" "$RUNNER"
 grep -Fq "'blockers'" "$RUNNER"
 grep -Fq "'createdWorkCount'" "$RUNNER"
+grep -Fq "'parallel publish rebase conflict'" "$ORCHESTRATOR"
+grep -Fq "'INFRA_RETRY_GRANTED'" "$ORCHESTRATOR"
 grep -Fq 'EnvironmentFile=/etc/resonance/process-development-worker.env' "$UNIT"
 grep -Fq 'run-next-project-work.sh' "$UNIT"
 
