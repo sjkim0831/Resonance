@@ -12,6 +12,8 @@ if [[ "${PROJECT_AUTO_COMPLETION_WAIT_FOR_LOCK:-false}" == "true" ]]; then
 else
   flock -n 9 || exit 0
 fi
+exec 8>"${DESIGN_METADATA_LOCK:-/tmp/resonance-design-metadata.lock}"
+flock -n 8 || exit 0
 # framework_development_job_event.event_type is varchar(30). Fail before any
 # mutation if a newly added static recovery event exceeds that DB contract.
 while IFS= read -r event_code; do

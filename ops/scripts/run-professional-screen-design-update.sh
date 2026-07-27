@@ -23,6 +23,11 @@ flock -w "${PROFESSIONAL_SCREEN_DESIGN_LOCK_WAIT_SECONDS:-3600}" 9 || {
   echo "[professional-screen-design] lock wait timed out" >&2
   exit 75
 }
+exec 8>"${DESIGN_METADATA_LOCK:-/tmp/resonance-design-metadata.lock}"
+flock -w "${PROFESSIONAL_SCREEN_DESIGN_LOCK_WAIT_SECONDS:-3600}" 8 || {
+  echo "[professional-screen-design] shared design lock wait timed out" >&2
+  exit 75
+}
 
 leader=""
 while IFS= read -r pod; do
@@ -93,6 +98,7 @@ set +e
 generation_output="$(
   ROOT_DIR="$ROOT_DIR" PGDATABASE="$DB" PGUSER="$DB_USER" \
   POSTGRES_POD="$leader" K8S_NAMESPACE="$NAMESPACE" \
+  DESIGN_METADATA_LOCK_HELD=true \
   bash "$ROOT_DIR/ops/scripts/generate-incremental-screen-runtime.sh" "$ROOT_DIR" 2>&1
 )"
 generation_rc=$?

@@ -23,6 +23,10 @@ LOCK_FILE="${SCREEN_GENERATION_LOCK:-/tmp/resonance-incremental-screen-generatio
 
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo '{"success":true,"status":"ALREADY_RUNNING"}'; exit 0; }
+if [[ "${DESIGN_METADATA_LOCK_HELD:-false}" != "true" ]]; then
+  exec 8>"${DESIGN_METADATA_LOCK:-/tmp/resonance-design-metadata.lock}"
+  flock -n 8 || { echo '{"success":true,"status":"DESIGN_UPDATE_RUNNING"}'; exit 0; }
+fi
 
 snapshot="$(mktemp)"; result="$(mktemp)"; inventory="$(mktemp)"
 trap 'rm -f "$snapshot" "$result" "$inventory"' EXIT

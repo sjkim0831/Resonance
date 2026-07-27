@@ -2,6 +2,8 @@
 set -Eeuo pipefail
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 LIMIT="${2:-1000}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
+exec 8>"${DESIGN_METADATA_LOCK:-/tmp/resonance-design-metadata.lock}"
+flock -n 8 || { echo '{"success":true,"status":"DESIGN_UPDATE_RUNNING"}'; exit 0; }
 work="$(mktemp -d)"; trap 'rm -rf "$work"' EXIT
 leader=""
 while IFS= read -r pod; do

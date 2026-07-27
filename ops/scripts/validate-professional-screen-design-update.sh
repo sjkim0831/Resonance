@@ -15,5 +15,9 @@ grep -Fq 'framework_professional_screen_design_update_gate' "$RUNNER"
 grep -Fq 'framework_vertical_screen_design_map' "$RUNNER"
 grep -Fq 'IMMUTABLE_FAIL_CLOSED' "$RUNNER"
 grep -Fq 'professional-screen-design-update' "$RUNNER"
+grep -Fq 'resonance-design-metadata.lock' "$RUNNER"
+grep -Fq 'resonance-design-metadata.lock' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'resonance-design-metadata.lock' "$ROOT/ops/scripts/generate-incremental-screen-runtime.sh"
+grep -Fq 'resonance-design-metadata.lock' "$ROOT/ops/scripts/generate-ai-contract-designs.sh"
 
 echo '[professional-screen-design-update] PASS governed mass design contract'

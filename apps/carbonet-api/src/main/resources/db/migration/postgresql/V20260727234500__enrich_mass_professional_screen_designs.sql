@@ -15,6 +15,13 @@ CREATE TABLE IF NOT EXISTS framework_screen_design_enrichment_audit (
 CREATE INDEX IF NOT EXISTS idx_screen_design_enrichment_page
   ON framework_screen_design_enrichment_audit(page_design_id,enriched_at DESC);
 
+-- The row trigger recompiles the complete step schema after every field
+-- mutation. That is correct for interactive edits but quadratic for a catalog
+-- enrichment. Disable it only for this set operation; the changed blueprints
+-- are marked DIRTY once below.
+ALTER TABLE framework_page_field_definition
+  DISABLE TRIGGER trg_page_field_schema_propagation;
+
 WITH target AS (
   SELECT f.page_field_id,f.page_design_id,f.data_type,f.control_type,
          f.required,f.editable,f.validation_contract,
@@ -66,6 +73,25 @@ SET validation_contract=t.next_validation,
     updated_at=current_timestamp
 FROM target t
 WHERE f.page_field_id=t.page_field_id;
+
+ALTER TABLE framework_page_field_definition
+  ENABLE TRIGGER trg_page_field_schema_propagation;
+
+UPDATE framework_screen_generation_state state
+SET sync_status=CASE
+      WHEN state.ownership_mode='MANUAL' THEN 'MANUAL'
+      ELSE 'DIRTY'
+    END,
+    last_error=NULL,
+    updated_at=current_timestamp
+FROM framework_screen_blueprint blueprint
+WHERE state.blueprint_id=blueprint.blueprint_id
+  AND EXISTS (
+    SELECT 1
+    FROM framework_page_design page
+    WHERE page.process_code=blueprint.process_code
+      AND page.step_code=blueprint.step_code
+  );
 
 CREATE OR REPLACE VIEW framework_professional_screen_design_update_gate AS
 WITH classified AS (
