@@ -124,6 +124,69 @@ with candidate as (
   from completed returning 1
 )
 select count(*) from completed;")"
+# A structurally complete design used to remain REVIEW_REQUIRED forever unless
+# the process definition was imported as locked. That left every downstream
+# test job PENDING even though the graph and schema-set validators had already
+# proven the exact contract safe to generate. Approve only the intersection of
+# both deterministic readiness views. This is design approval, not
+# implementation verification: generated code and runtime tests must still
+# pass their own jobs before any process can become VERIFIED.
+deterministic_specs_approved="$(psqlq -c "
+with candidate as (
+  select e.process_code,e.step_code
+  from framework_step_execution_spec e
+  join framework_professional_design_graph_quality graph
+    on graph.process_code=e.process_code and graph.step_code=e.step_code
+  join framework_step_schema_set_readiness schema_set
+    on schema_set.process_code=e.process_code and schema_set.step_code=e.step_code
+  where e.design_status='DESIGN_COMPLETE'
+    and e.approval_status='REVIEW_REQUIRED'
+    and e.blocker_codes='[]'::jsonb
+    and graph.design_status='READY'
+    and cardinality(graph.blocker_codes)=0
+    and schema_set.completeness_status='COMPLETE'
+    and schema_set.generation_status='SYNCED'
+    and schema_set.blocker_codes='[]'::jsonb
+    and e.actor_contract<>'{}'::jsonb
+    and e.business_contract<>'{}'::jsonb
+    and e.transition_contract<>'{}'::jsonb
+    and e.input_contract<>'{}'::jsonb
+    and e.output_contract<>'{}'::jsonb
+    and jsonb_array_length(e.screen_contract)>0
+    and jsonb_array_length(e.field_contract)>0
+    and jsonb_array_length(e.command_contract)>0
+    and jsonb_array_length(e.api_contract)>0
+    and e.persistence_contract<>'{}'::jsonb
+    and jsonb_array_length(e.handoff_contract)>0
+    and jsonb_array_length(e.test_contract)>0
+    and e.guide_contract<>'{}'::jsonb
+    and e.nonfunctional_contract<>'{}'::jsonb
+), approved as (
+  update framework_step_execution_spec e
+  set approval_status='APPROVED',generation_status='READY',
+      approved_by='DETERMINISTIC_DESIGN_GATE',
+      approved_at=current_timestamp,updated_at=current_timestamp
+  from candidate c
+  where e.process_code=c.process_code and e.step_code=c.step_code
+  returning e.process_code,e.step_code
+), logged as (
+  insert into framework_development_job_event(
+    job_id,event_type,from_status,to_status,worker_id,detail_json
+  )
+  select j.job_id,'DETERMINISTIC_SPEC_APPROVED','REVIEW_REQUIRED','APPROVED',
+         'project-auto-completion',
+         jsonb_build_object(
+           'processCode',a.process_code,'stepCode',a.step_code,
+           'reason','design graph READY and schema set COMPLETE/SYNCED'
+         )
+  from approved a
+  join framework_development_job j
+    on j.process_code=a.process_code and j.step_code=a.step_code
+   and j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+  returning 1
+)
+select count(*) from approved;")"
+
 contract_jobs_approved="$(psqlq -c "
 with candidate as (
   select j.job_id,full_stack.job_id source_job_id
@@ -857,4 +920,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried generatedDimensionRetried=$generated_dimension_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried generatedDimensionRetried=$generated_dimension_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
