@@ -4,6 +4,7 @@ import concurrent.futures
 import json
 import os
 import stat
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -76,8 +77,17 @@ def select_batch(batch):
             },
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=120) as response:
-            content = json.loads(response.read())["choices"][0]["message"]["content"]
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                content = json.loads(response.read())["choices"][0]["message"]["content"]
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+        ):
+            continue
         left, right = content.find("{"), content.rfind("}")
         try:
             result = json.loads(content[left : right + 1])
