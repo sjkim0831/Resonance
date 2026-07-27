@@ -106,6 +106,14 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
       const text = (document.body?.innerText || "").trim();
       return !/관리자 화면을 준비하고 있습니다|Bootstrap loaded\. Waiting for React app mount|Loading admin shell|화면 준비 중/.test(text);
     }, undefined, { polling: 100, timeout: 2_500 }).catch(() => undefined);
+    // A route without a known loading phrase can still be between history
+    // navigation and React commit. Do not sample metrics until real content is
+    // mounted; this prevents load-dependent false BLANK_SCREEN failures.
+    await page.waitForFunction(() => {
+      const text = (document.body?.innerText || "").trim();
+      const root = document.querySelector("#root");
+      return text.length >= 20 && (root?.children.length || 0) > 0;
+    }, undefined, { polling: 100, timeout: 2_500 }).catch(() => undefined);
   } catch (error) {
     navigationError = error instanceof Error ? error.message : String(error);
   }
