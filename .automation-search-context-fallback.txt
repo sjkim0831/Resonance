@@ -1,6 +1,6 @@
-process=DATA_INTEGRATION
-step=DATA_INTEGRATION_03_VERIFY
-type=FRONTEND_ADMIN
-target=design://process/data_integration/data_integration_03_verify/frontend_admin
+process=CCUS_LIFECYCLE_MRV
+step=CCUS_LIFECYCLE_MRV_S2
+type=FULL_STACK
+target=contract://CCUS_LIFECYCLE_MRV/CCUS_LIFECYCLE_MRV_S2
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
