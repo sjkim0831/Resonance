@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 ROOT=/opt/Resonance
 BASE_DIR="$ROOT/var/postgres-basebackups"
-WAL_DIR="$ROOT/var/postgres-patroni-wal-archive"
+WAL_DIR=/opt/resonance-data/postgresql/wal-archive
 DRILL_ROOT="$ROOT/var/restore-drills"
 REPORT_DIR="$DRILL_ROOT/reports"
 IMAGE=127.0.0.1:5000/spilo-16-uid1000:3.2-p3

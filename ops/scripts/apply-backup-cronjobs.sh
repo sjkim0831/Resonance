@@ -13,7 +13,7 @@ prepare_backup_directory() {
     /opt/Resonance/var/postgres-backups-ha|\
     /opt/Resonance/var/postgres-basebackups|\
     /opt/Resonance/var/postgres-basebackups-ha|\
-    /opt/Resonance/var/postgres-patroni-wal-archive) ;;
+    /opt/resonance-data/postgresql/wal-archive) ;;
     *) echo "Refusing unexpected backup path: $resolved" >&2; return 2 ;;
   esac
   if [[ "$(id -u)" -eq 0 ]]; then
@@ -28,7 +28,7 @@ for backup_directory in \
   /opt/Resonance/var/postgres-backups-ha \
   /opt/Resonance/var/postgres-basebackups \
   /opt/Resonance/var/postgres-basebackups-ha \
-  /opt/Resonance/var/postgres-patroni-wal-archive; do
+  /opt/resonance-data/postgresql/wal-archive; do
   prepare_backup_directory "$backup_directory"
 done
 
@@ -257,7 +257,10 @@ spec:
             - |
               set -eu
               before=$(find /wal-archive -maxdepth 1 -type f | wc -l)
-              find /wal-archive -maxdepth 1 -type f -mtime +14 -delete
+              # Timeline history is tiny and remains necessary when recovery
+              # crosses a Patroni promotion. Retain it independently of WAL age.
+              find /wal-archive -maxdepth 1 -type f -mtime +14 \
+                ! -name '*.history' -delete
               after=$(find /wal-archive -maxdepth 1 -type f | wc -l)
               echo "WAL retention complete: before=$before after=$after retention_days=14"
             securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, allowPrivilegeEscalation: false, capabilities: {drop: ["ALL"]}}
@@ -265,5 +268,14 @@ spec:
             - {name: wal-archive, mountPath: /wal-archive}
           volumes:
           - name: wal-archive
-            hostPath: {path: /opt/Resonance/var/postgres-patroni-wal-archive, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/postgresql/wal-archive, type: Directory}
 YAML
+
+retention_path="$(
+  kubectl -n carbonet-prod get cronjob postgres-carbonet-wal-retention \
+    -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}'
+)"
+[[ "$retention_path" == /opt/resonance-data/postgresql/wal-archive ]] || {
+  echo "WAL retention is not connected to the active Patroni archive: $retention_path" >&2
+  exit 3
+}
