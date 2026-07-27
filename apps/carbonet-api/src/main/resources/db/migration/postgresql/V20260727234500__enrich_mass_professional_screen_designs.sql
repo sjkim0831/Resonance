@@ -22,6 +22,9 @@ CREATE INDEX IF NOT EXISTS idx_screen_design_enrichment_page
 ALTER TABLE framework_page_field_definition
   DISABLE TRIGGER trg_page_field_schema_propagation;
 
+ALTER TABLE framework_process_step
+  DISABLE TRIGGER trg_process_step_schema_propagation;
+
 WITH target AS (
   SELECT f.page_field_id,f.page_design_id,f.data_type,f.control_type,
          f.required,f.editable,f.validation_contract,
@@ -143,6 +146,77 @@ SET page_purpose=target.next_purpose,
 FROM target
 WHERE page.page_design_id=target.page_design_id;
 
+WITH target AS (
+  SELECT process_code,step_code,rollback_command_code,
+         'REOPEN_'||step_code next_rollback_command
+  FROM framework_process_step
+  WHERE nullif(btrim(rollback_command_code),'') IS NULL
+), audited AS (
+  INSERT INTO framework_deterministic_design_repair_audit(
+    process_code,repair_type,before_value,after_value,repaired_by
+  )
+  SELECT process_code,'RECOVERY_COMMAND',
+         jsonb_build_object(
+           'stepCode',step_code,'rollbackCommand',rollback_command_code
+         ),
+         jsonb_build_object(
+           'stepCode',step_code,'rollbackCommand',next_rollback_command,
+           'semantics','Reopen the current step with the previous version and audit evidence preserved.'
+         ),
+         'MASS_PROFESSIONAL_DESIGN_V1'
+  FROM target
+  RETURNING process_code
+)
+UPDATE framework_process_step step
+SET rollback_command_code=target.next_rollback_command,
+    updated_at=current_timestamp
+FROM target
+WHERE step.process_code=target.process_code
+  AND step.step_code=target.step_code;
+
+ALTER TABLE framework_process_step
+  ENABLE TRIGGER trg_process_step_schema_propagation;
+
+ALTER TABLE framework_process_data_handoff
+  DISABLE TRIGGER trg_handoff_schema_propagation;
+
+INSERT INTO framework_process_data_handoff(
+  process_code,from_step_code,to_process_code,to_step_code,handoff_type,
+  context_keys,payload_contract,integrity_contract,authorization_contract,
+  failure_contract,design_status
+)
+SELECT
+  'EMISSION_PROJECT_PORTFOLIO','EMISSION_PROJECT_PORTFOLIO_LIST',
+  'EMISSION_PROJECT','EMISSION_PROJECT_SETUP','PROCESS',
+  '["tenantId","projectId","actorCode","processInstanceId"]'::jsonb,
+  '{"selectedProjectId":"projectId","portfolioStatus":"projectStatus","nextTaskCode":"taskCode"}'::jsonb,
+  '{"projectExists":true,"tenantMatches":true,"versionRequired":true}'::jsonb,
+  '{"actorAssignmentRequired":true,"projectScopeRequired":true}'::jsonb,
+  '{"onMissingProject":"RETURN_TO_PORTFOLIO","onForbidden":"SHOW_FORBIDDEN","onConflict":"RELOAD_PORTFOLIO"}'::jsonb,
+  'DESIGN_COMPLETE'
+WHERE EXISTS (
+  SELECT 1 FROM framework_process_step
+  WHERE process_code='EMISSION_PROJECT_PORTFOLIO'
+    AND step_code='EMISSION_PROJECT_PORTFOLIO_LIST'
+)
+  AND EXISTS (
+    SELECT 1 FROM framework_process_step
+    WHERE process_code='EMISSION_PROJECT'
+      AND step_code='EMISSION_PROJECT_SETUP'
+  )
+ON CONFLICT(process_code,from_step_code,to_process_code,to_step_code,handoff_type)
+DO UPDATE SET
+  context_keys=excluded.context_keys,
+  payload_contract=excluded.payload_contract,
+  integrity_contract=excluded.integrity_contract,
+  authorization_contract=excluded.authorization_contract,
+  failure_contract=excluded.failure_contract,
+  design_status='DESIGN_COMPLETE',
+  updated_at=current_timestamp;
+
+ALTER TABLE framework_process_data_handoff
+  ENABLE TRIGGER trg_handoff_schema_propagation;
+
 CREATE OR REPLACE VIEW framework_professional_screen_design_update_gate AS
 WITH classified AS (
   SELECT gate.*,
@@ -160,6 +234,25 @@ WITH classified AS (
             SELECT 1
             FROM framework_screen_resource resource
             WHERE resource.route_key=gate.route_key
+          )
+        )
+        AND NOT (
+          blocker='PROFESSIONAL_SCREEN_CONTRACT_INCOMPLETE'
+          AND EXISTS (
+            SELECT 1
+            FROM framework_professional_screen_contract contract
+            WHERE contract.process_code=gate.process_code
+              AND contract.step_code=gate.step_code
+              AND contract.audience=gate.audience
+              AND length(btrim(contract.business_purpose))>=20
+              AND length(btrim(contract.entry_condition))>=10
+              AND length(btrim(contract.exit_condition))>=20
+              AND framework_try_jsonb(contract.section_contract)<>'[]'::jsonb
+              AND framework_try_jsonb(contract.field_contract)<>'[]'::jsonb
+              AND framework_try_jsonb(contract.command_contract)<>'[]'::jsonb
+              AND framework_try_jsonb(contract.api_contract)<>'[]'::jsonb
+              AND framework_try_jsonb(contract.data_contract)<>'[]'::jsonb
+              AND framework_try_jsonb(contract.evidence_contract)<>'[]'::jsonb
           )
         )
       ORDER BY blocker
