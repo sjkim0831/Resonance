@@ -2,7 +2,7 @@
 
 - Job: 18970
 - Job type: FRONTEND_ADMIN
-- Source commit: 4820f85f8d51e4ccfdabf0c97df4844b176fc4ce
+- Source commit: 6214a39388246ed5c8a6ad0faaf6c24ff4efbab7
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"BACKGROUND_DB_VERSION_IMPACT","stepCode":"BACKGROUND_DB_VERSION_IMPACT_S2","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-18970/projects/carbonet-backend-metadata/process-runtime/generated/BACKGROUND_DB_VERSION_IMPACT/BACKGROUND_DB_VERSION_IMPACT__BACKGROUND_DB_VERSION_IMPACT_S2.json","evidence":"/opt/Resonance/var/ai-worktrees/job-18970/var/test-evidence/process-package-tests/BACKGROUND_DB_VERSION_IMPACT__BACKGROUND_DB_VERSION_IMPACT_S2.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
