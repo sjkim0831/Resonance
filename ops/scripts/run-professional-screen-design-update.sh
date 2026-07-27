@@ -91,6 +91,24 @@ SQL
 preparation_json="$(psqlq -c "$preparation_sql")"
 
 compilation_json="$(bash "$ROOT_DIR/ops/scripts/compile-cross-screen-contracts.sh" "$ROOT_DIR")"
+safety_test_blocked="$(psqlq -c "
+select count(*) from framework_professional_screen_design_update_gate
+where 'FIVE_SAFETY_TEST_TYPES_INCOMPLETE'=any(design_blocker_codes);")"
+if (( safety_test_blocked > 0 )); then
+  test_verification_json="$(psqlq -c "
+with executed as (
+  select * from run_framework_backend_contract_tests(
+    'professional-screen-design-update'
+  )
+)
+select jsonb_build_object(
+  'executed',count(*),
+  'passed',count(*) filter(where test_status='PASSED'),
+  'failed',count(*) filter(where test_status='FAILED')
+)::text from executed;")"
+else
+  test_verification_json='{"executed":0,"passed":0,"failed":0,"status":"UNCHANGED"}'
+fi
 audit_json="$(psqlq -c \
   "select framework_audit_executable_screen_designs('PROFESSIONAL_SCREEN_DESIGN_UPDATE')::text;")"
 
@@ -179,6 +197,7 @@ report_json="$(jq -cn \
   --argjson limit "$DESIGN_LIMIT" \
   --argjson preparation "$preparation_json" \
   --argjson compilation "$compilation_json" \
+  --argjson testVerification "$test_verification_json" \
   --argjson audit "$audit_json" \
   --argjson generation "$generation_json" \
   --argjson quality "$quality_json" \
@@ -193,6 +212,7 @@ report_json="$(jq -cn \
     verifiedContractPolicy:"IMMUTABLE_FAIL_CLOSED",
     preparation:$preparation,
     crossScreenCompilation:$compilation,
+    safetyTestVerification:$testVerification,
     executableDesignAudit:$audit,
     incrementalGeneration:$generation,
     quality:$quality

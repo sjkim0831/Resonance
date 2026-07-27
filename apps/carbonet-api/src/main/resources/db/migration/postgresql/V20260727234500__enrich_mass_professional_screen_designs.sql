@@ -93,6 +93,56 @@ WHERE state.blueprint_id=blueprint.blueprint_id
       AND page.step_code=blueprint.step_code
   );
 
+WITH target AS (
+  SELECT page.page_design_id,page.page_purpose,page.entry_condition,page.exit_condition,
+         CASE WHEN length(btrim(page.page_purpose))>=20 THEN page.page_purpose
+              ELSE process.process_name||' 업무에서 '||step.step_name||
+                   ' 단계를 수행하여 다음 단계가 검증할 수 있는 결과와 증적을 생성한다.'
+          END next_purpose,
+         CASE WHEN length(btrim(page.entry_condition))>=10 THEN page.entry_condition
+              ELSE coalesce(nullif(btrim(step.from_state),''),'READY')||
+                   ' 상태이며 '||step.actor_code||
+                   ' 액터의 테넌트·프로젝트 범위 권한과 선행 단계 완료 여부가 확인되어야 한다.'
+          END next_entry,
+         CASE WHEN length(btrim(page.exit_condition))>=10 THEN page.exit_condition
+              ELSE coalesce(nullif(btrim(step.completion_rule),''),
+                   step.command_code||' 명령의 필수 입력·권한·증적 검증을 통과해야 한다.')||
+                   ' 결과와 감사 이력을 저장하고 '||
+                   coalesce(nullif(btrim(step.to_state),''),'COMPLETED')||
+                   ' 상태로 전이해야 한다.'
+          END next_exit
+  FROM framework_page_design page
+  JOIN framework_process_definition process USING(process_code)
+  JOIN framework_process_step step
+    ON step.process_code=page.process_code AND step.step_code=page.step_code
+  WHERE length(btrim(page.page_purpose))<20
+     OR length(btrim(page.entry_condition))<10
+     OR length(btrim(page.exit_condition))<10
+), audited AS (
+  INSERT INTO framework_screen_design_enrichment_audit(
+    page_design_id,enrichment_type,before_value,after_value,enriched_by
+  )
+  SELECT page_design_id,'BUSINESS_ENTRY_EXIT',
+         jsonb_build_object(
+           'purpose',page_purpose,'entry',entry_condition,'exit',exit_condition
+         ),
+         jsonb_build_object(
+           'purpose',next_purpose,'entry',next_entry,'exit',next_exit
+         ),
+         'MASS_PROFESSIONAL_DESIGN_V1'
+  FROM target
+  RETURNING page_design_id
+)
+UPDATE framework_page_design page
+SET page_purpose=target.next_purpose,
+    entry_condition=target.next_entry,
+    exit_condition=target.next_exit,
+    design_version=page.design_version+1,
+    updated_by='MASS_PROFESSIONAL_DESIGN_V1',
+    updated_at=current_timestamp
+FROM target
+WHERE page.page_design_id=target.page_design_id;
+
 CREATE OR REPLACE VIEW framework_professional_screen_design_update_gate AS
 WITH classified AS (
   SELECT gate.*,
