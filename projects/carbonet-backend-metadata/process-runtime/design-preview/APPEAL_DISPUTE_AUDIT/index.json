@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 4,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S1",
+      "package": "APPEAL_DISPUTE_AUDIT__APPEAL_DISPUTE_AUDIT_S1.json",
+      "packageHash": "debba327389907e379a09ee6989aff7a34d7a8e18e8d8ff389629af63e039ceb",
+      "pages": 2
+    },
+    {
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S2",
+      "package": "APPEAL_DISPUTE_AUDIT__APPEAL_DISPUTE_AUDIT_S2.json",
+      "packageHash": "6868aae44cca1faccf08bd5ac4acbdd81bdf360b08b7ecbce7bb8891e72a3bad",
+      "pages": 2
+    },
+    {
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S3",
+      "package": "APPEAL_DISPUTE_AUDIT__APPEAL_DISPUTE_AUDIT_S3.json",
+      "packageHash": "d88081ae3eb4c7a311784626afc7633c408bef47b5150aa12279275a6386d28f",
+      "pages": 2
+    },
+    {
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S4",
+      "package": "APPEAL_DISPUTE_AUDIT__APPEAL_DISPUTE_AUDIT_S4.json",
+      "packageHash": "be359c85fba859880d7f99e589ef2dc263937584cb8300dc101c3aa791ed9783",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "0b30b893b1086ad45062820b401a5550599c60e31bce8b068d36563ea48cfa4d"
+}
