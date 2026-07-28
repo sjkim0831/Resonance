@@ -40,19 +40,26 @@ case "$mode" in
     ;;
   deploy)
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
-    tag="$(git -C "$ROOT" rev-parse --short=12 HEAD)"
+    # Tag by the Backstage source tree rather than the repository commit.
+    # Documentation, deployment-script, or Carbonet changes then reuse the
+    # already verified image without rebuilding an identical application.
+    tag="$(git -C "$ROOT" rev-parse HEAD:platform/control-plane/backstage | cut -c1-12)"
     image="$IMAGE_REPOSITORY:$tag"
 
     # The dependency and Docker caches make subsequent control-plane builds
     # incremental. Carbonet's Java/Vite runtime is never rebuilt here.
-    (
-      cd "$APP"
-      corepack yarn install --immutable
-      corepack yarn tsc
-      corepack yarn build:backend
-    )
-    DOCKER_BUILDKIT=1 docker build -t "$image" -f "$APP/packages/backend/Dockerfile" "$APP"
-    docker push "$image"
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      (
+        cd "$APP"
+        corepack yarn install --immutable
+        corepack yarn tsc
+        corepack yarn build:backend
+      )
+      DOCKER_BUILDKIT=1 docker build -t "$image" -f "$APP/packages/backend/Dockerfile" "$APP"
+      docker push "$image"
+    else
+      echo "[backstage] reusing unchanged application image: $image"
+    fi
 
     leader=""
     while IFS= read -r pod; do
