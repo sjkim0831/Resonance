@@ -86,11 +86,11 @@ case "$mode" in
     if [[ "$role_exists" != "1" ]]; then
       kubectl -n carbonet-prod exec "$leader" -c patroni -- \
         psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
-        -c "create role backstage login password '$password'"
+        -c "create role backstage login createdb password '$password'"
     else
       kubectl -n carbonet-prod exec "$leader" -c patroni -- \
         psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
-        -c "alter role backstage password '$password'"
+        -c "alter role backstage createdb password '$password'"
     fi
     database_exists="$(kubectl -n carbonet-prod exec "$leader" -c patroni -- \
       psql -h 127.0.0.1 -U postgres -d postgres -Atqc \
@@ -105,15 +105,26 @@ case "$mode" in
       --from-literal=POSTGRES_USER=backstage \
       --from-literal=POSTGRES_PASSWORD="$password" \
       --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n "$NAMESPACE" create configmap resonance-backstage-catalog \
+      --from-file="$ROOT/platform/control-plane/catalog/organization.yaml" \
+      --from-file="$ROOT/platform/control-plane/catalog/systems.yaml" \
+      --from-file="$ROOT/platform/control-plane/catalog/components.yaml" \
+      --from-file="$ROOT/platform/control-plane/catalog/apis.yaml" \
+      --from-file="$ROOT/platform/control-plane/catalog/resources.yaml" \
+      --from-file="$ROOT/platform/control-plane/catalog/environments.yaml" \
+      --dry-run=client -o yaml | kubectl apply -f -
     kubectl apply -f "$MANIFEST"
     kubectl -n "$NAMESPACE" set image deployment/resonance-backstage backstage="$image"
+    # A ConfigMap update preserves the image but must create a new pod so the
+    # catalog snapshot and database-backed catalog converge immediately.
+    kubectl -n "$NAMESPACE" rollout restart deployment/resonance-backstage
     kubectl -n "$NAMESPACE" rollout status deployment/resonance-backstage --timeout=600s
-    curl -fsS --max-time 10 http://172.16.1.232:30707/healthcheck >/dev/null
+    curl -fsS --max-time 10 http://172.16.1.232:30707/.backstage/health/v1/readiness >/dev/null
     echo "[backstage] PASS deployed $image at http://172.16.1.232:30707"
     ;;
   status)
     kubectl -n "$NAMESPACE" get deployment,pod,service -l app.kubernetes.io/name=resonance-backstage -o wide
-    curl -fsS --max-time 10 http://172.16.1.232:30707/healthcheck
+    curl -fsS --max-time 10 http://172.16.1.232:30707/.backstage/health/v1/readiness
     ;;
   *)
     echo "usage: $0 {validate|deploy|status}" >&2

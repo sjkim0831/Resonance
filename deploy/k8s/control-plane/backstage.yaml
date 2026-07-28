@@ -38,6 +38,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -52,9 +54,13 @@ spec:
                 name: resonance-backstage-config
             - secretRef:
                 name: resonance-backstage-database
+          volumeMounts:
+            - name: resonance-catalog
+              mountPath: /catalog
+              readOnly: true
           readinessProbe:
             httpGet:
-              path: /healthcheck
+              path: /.backstage/health/v1/readiness
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -62,7 +68,7 @@ spec:
             failureThreshold: 12
           livenessProbe:
             httpGet:
-              path: /healthcheck
+              path: /.backstage/health/v1/liveness
               port: http
             initialDelaySeconds: 45
             periodSeconds: 20
@@ -75,9 +81,16 @@ spec:
               cpu: "2"
               memory: 2Gi
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+      volumes:
+        - name: resonance-catalog
+          configMap:
+            name: resonance-backstage-catalog
 ---
 apiVersion: v1
 kind: Service
