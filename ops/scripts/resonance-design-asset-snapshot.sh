@@ -22,7 +22,7 @@ DATABASE="$(
   '
 )"
 
-kubectl -n "$NAMESPACE" exec "$POD" -- sh -lc \
+kubectl -n "$NAMESPACE" exec -i "$POD" -- sh -lc \
   "psql -h 127.0.0.1 -U postgres -d '$DATABASE' -At -v ON_ERROR_STOP=1" \
   >"$RAW" <<'SQL'
 select jsonb_build_object(
