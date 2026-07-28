@@ -16,6 +16,7 @@ SKIP_FRONTEND_BUILD="${SKIP_FRONTEND_BUILD:-false}"
 FRONTEND_TYPECHECK_MODE="${FRONTEND_TYPECHECK_MODE:-project}"
 UPDATE_GIT_METADATA="${UPDATE_GIT_METADATA:-true}"
 SHARED_FRONTEND_NODE_MODULES="${SHARED_FRONTEND_NODE_MODULES:-/opt/Resonance/projects/carbonet-frontend/source/node_modules}"
+SHARED_GENERATED_SCREEN_DIR="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
 
 usage() {
   cat <<'USAGE'
@@ -108,6 +109,29 @@ ensure_frontend_dependencies() {
   }
 }
 
+ensure_generated_screen_assets() {
+  local generated_dir="$SOURCE_DIR/src/generated/screen-generation"
+  local definitions_dir="$generated_dir/definitions"
+  local types_file="$generated_dir/generatedScreenTypes.ts"
+
+  mkdir -p "$generated_dir"
+  if [[ ! -d "$definitions_dir" \
+     && -d "$SHARED_GENERATED_SCREEN_DIR/definitions" ]]; then
+    ln -s "$SHARED_GENERATED_SCREEN_DIR/definitions" "$definitions_dir"
+    echo "[screen-overlay-apply] linked shared generated screen definitions"
+  fi
+  if [[ ! -f "$types_file" \
+     && -f "$SHARED_GENERATED_SCREEN_DIR/generatedScreenTypes.ts" ]]; then
+    ln -s "$SHARED_GENERATED_SCREEN_DIR/generatedScreenTypes.ts" "$types_file"
+    echo "[screen-overlay-apply] linked shared generated screen types"
+  fi
+
+  [[ -d "$definitions_dir" && -f "$types_file" ]] || {
+    echo "[screen-overlay-apply] generated screen assets are incomplete" >&2
+    exit 1
+  }
+}
+
 echo "[screen-overlay-apply] mode=all-screens-no-redeploy started=$started_iso"
 echo "[screen-overlay-apply] source=$SOURCE_DIR"
 echo "[screen-overlay-apply] overlay=$OVERLAY_DIR"
@@ -126,6 +150,7 @@ bash "$GUARD_SCRIPT" backup >/dev/null
 
 if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   ensure_frontend_dependencies
+  ensure_generated_screen_assets
   echo "[screen-overlay-apply] isolated npm build only; no gradle, no image, no rollout"
   staging_dir="$(mktemp -d "$STATUS_DIR/react-overlay-build.XXXXXX")"
   skip_build_typecheck=false
