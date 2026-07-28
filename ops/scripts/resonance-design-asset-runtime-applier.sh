@@ -22,6 +22,26 @@ done
 install -d -m 0750 \
   "$QUEUE_ROOT" "$STATE_ROOT/backups" "$STATE_ROOT/receipts" "$STATE_ROOT/failures"
 
+WRITE_POD="$(
+  for candidate in $(
+    kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
+      -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+  ); do
+    if [[ "$(
+      kubectl -n "$NAMESPACE" exec "$candidate" -- \
+        psql -h 127.0.0.1 -U postgres -d postgres -Atq \
+        -c 'select pg_is_in_recovery()' 2>/dev/null
+    )" == "f" ]]; then
+      printf '%s' "$candidate"
+      break
+    fi
+  done
+)"
+if [[ -z "$WRITE_POD" ]]; then
+  echo "[design-asset-runtime] Patroni writable leader not found" >&2
+  exit 1
+fi
+
 QUEUE_FILE="$(
   find "$QUEUE_ROOT" -maxdepth 1 -type f -name '*.json' -print |
     sort |
@@ -72,7 +92,7 @@ DATABASE="$(
 )"
 
 carbonet_sql() {
-  kubectl -n "$NAMESPACE" exec -i "$POD" -- \
+  kubectl -n "$NAMESPACE" exec -i "$WRITE_POD" -- \
     psql -h 127.0.0.1 -U postgres -d "$DATABASE" \
     -v ON_ERROR_STOP=1 -Atq
 }
