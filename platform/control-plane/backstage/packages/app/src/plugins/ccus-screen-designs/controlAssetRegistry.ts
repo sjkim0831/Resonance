@@ -64,7 +64,9 @@ const ownershipFor = (
   }
   if (
     controlPrefixes.some(prefix => record.routePath.startsWith(prefix)) ||
-    (capabilities.length > 1 && backstageNativePattern.test(searchable))
+    (record.routePath.includes('/generated/') &&
+      capabilities.length > 1 &&
+      backstageNativePattern.test(searchable))
   ) {
     return {
       ownershipLane: 'BACKSTAGE_NATIVE',

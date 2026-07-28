@@ -172,6 +172,17 @@ export default createBackendPlugin({
           );
         }
         if (
+          !(await knex.schema.hasColumn(
+            'resonance_projects__control_asset_migration',
+            'verification_evidence',
+          ))
+        ) {
+          await knex.schema.alterTable(
+            'resonance_projects__control_asset_migration',
+            table => table.jsonb('verification_evidence').nullable(),
+          );
+        }
+        if (
           !(await knex.schema.hasTable(
             'resonance_projects__control_asset_migration',
           ))
@@ -262,6 +273,7 @@ export default createBackendPlugin({
                 targetPlugin: row.target_plugin,
                 capabilities: row.capabilities,
                 dependencyContracts: row.dependency_contracts,
+                verificationEvidence: row.verification_evidence,
                 updatedAt: row.updated_at,
               })),
             });
@@ -341,7 +353,6 @@ export default createBackendPlugin({
                     route_path: asset.route_path,
                     screen_name: asset.screen_name,
                     ownership_lane: asset.ownership_lane,
-                    migration_status: asset.migration_status,
                     target_plugin: asset.target_plugin,
                     capabilities: asset.capabilities,
                     dependency_contracts: asset.dependency_contracts,
@@ -368,6 +379,85 @@ export default createBackendPlugin({
                 migrationStatus: row.migration_status,
                 count: Number(row.count),
               })),
+            });
+          },
+        );
+        router.post(
+          '/control-assets/:projectId/transition',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const assetId = String(request.body?.assetId ?? '').trim();
+            const nextStatus = String(request.body?.nextStatus ?? '').trim();
+            const evidence =
+              request.body?.evidence &&
+              typeof request.body.evidence === 'object'
+                ? request.body.evidence
+                : {};
+            const asset = await knex(
+              'resonance_projects__control_asset_migration',
+            )
+              .where({ project_id: projectId, asset_id: assetId })
+              .first();
+            if (!asset) {
+              response.status(404).json({ message: 'control asset not found' });
+              return;
+            }
+            if (asset.ownership_lane !== 'BACKSTAGE_NATIVE') {
+              response.status(409).json({
+                message: 'only Backstage native assets can be transitioned',
+              });
+              return;
+            }
+            const transitions: Record<string, string[]> = {
+              CLASSIFIED: ['NATIVE_READY'],
+              NATIVE_READY: ['MIGRATED'],
+              MIGRATED: ['VERIFIED'],
+              VERIFIED: ['RETIRED_SOURCE'],
+              RETIRED_SOURCE: [],
+            };
+            if (!(transitions[asset.migration_status] ?? []).includes(nextStatus)) {
+              response.status(409).json({
+                message: `invalid transition: ${asset.migration_status} -> ${nextStatus}`,
+              });
+              return;
+            }
+            const targetUrl = String(evidence.targetUrl ?? '');
+            const testStatus = String(evidence.testStatus ?? '');
+            const verifiedBy = String(evidence.verifiedBy ?? '');
+            if (
+              ['MIGRATED', 'VERIFIED', 'RETIRED_SOURCE'].includes(nextStatus) &&
+              (!targetUrl.startsWith('/resonance-') &&
+                !targetUrl.startsWith('/actor-process-control'))
+            ) {
+              response.status(400).json({
+                message: 'a Backstage targetUrl is required',
+              });
+              return;
+            }
+            if (
+              ['VERIFIED', 'RETIRED_SOURCE'].includes(nextStatus) &&
+              (testStatus !== 'PASS' || !verifiedBy)
+            ) {
+              response.status(400).json({
+                message: 'PASS evidence and verifiedBy are required',
+              });
+              return;
+            }
+            const now = new Date();
+            await knex('resonance_projects__control_asset_migration')
+              .where({ project_id: projectId, asset_id: assetId })
+              .update({
+                migration_status: nextStatus,
+                verification_evidence: JSON.stringify(evidence),
+                updated_at: now,
+              });
+            response.json({
+              projectId,
+              assetId,
+              previousStatus: asset.migration_status,
+              migrationStatus: nextStatus,
+              verificationEvidence: evidence,
+              updatedAt: now,
             });
           },
         );

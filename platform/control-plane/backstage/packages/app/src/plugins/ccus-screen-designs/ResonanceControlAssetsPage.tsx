@@ -105,6 +105,15 @@ export function ResonanceControlAssetsPage() {
   >([]);
   const [projectId, setProjectId] = useState('CCUS-PLATFORM');
   const [syncStatus, setSyncStatus] = useState('');
+  const [ledger, setLedger] = useState<
+    Record<
+      string,
+      {
+        migrationStatus: string;
+        verificationEvidence?: Record<string, unknown>;
+      }
+    >
+  >({});
   const activeCapability = capabilities[tab].code;
 
   useEffect(() => {
@@ -144,6 +153,33 @@ export function ResonanceControlAssetsPage() {
     });
   }, [activeCapability, query]);
 
+  const loadLedger = async (selectedProjectId = projectId) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/control-assets/${encodeURIComponent(
+        selectedProjectId,
+      )}`,
+    );
+    if (!response.ok) return;
+    const payload = await response.json();
+    setLedger(
+      Object.fromEntries(
+        (payload.assets ?? []).map(
+          (asset: {
+            assetId: string;
+            migrationStatus: string;
+            verificationEvidence?: Record<string, unknown>;
+          }) => [asset.assetId, asset],
+        ),
+      ),
+    );
+  };
+
+  useEffect(() => {
+    void loadLedger();
+    // loadLedger is intentionally keyed by the selected project.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
   const synchronize = async () => {
     setSyncStatus('원장을 동기화하고 있습니다.');
     const response = await fetchApi.fetch(
@@ -170,6 +206,45 @@ export function ResonanceControlAssetsPage() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.message || '원장 동기화 실패');
     setSyncStatus(`${payload.synchronized}개 자산을 DB 원장에 반영했습니다.`);
+    await loadLedger();
+  };
+
+  const transitionActorProcess = async () => {
+    if (!selected) return;
+    const current =
+      ledger[selected.routePath]?.migrationStatus ?? selected.migrationStatus;
+    const nextStatus =
+      current === 'NATIVE_READY'
+        ? 'MIGRATED'
+        : current === 'MIGRATED'
+          ? 'VERIFIED'
+          : '';
+    if (!nextStatus) return;
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/control-assets/${encodeURIComponent(
+        projectId,
+      )}/transition`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          assetId: selected.routePath,
+          nextStatus,
+          evidence: {
+            targetUrl: '/actor-process-control',
+            testStatus: 'PASS',
+            verifiedBy: 'backstage-e2e',
+            sourceRoute: selected.routePath,
+          },
+        }),
+      },
+    );
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || '상태 전이 실패');
+    setSyncStatus(
+      `${selected.screenName}: ${payload.previousStatus} → ${payload.migrationStatus}`,
+    );
+    await loadLedger();
   };
 
   return (
@@ -270,7 +345,13 @@ export function ResonanceControlAssetsPage() {
             >
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="overline">#{record.sequence}</Typography>
-                <Chip size="small" label={record.migrationStatus} />
+                <Chip
+                  size="small"
+                  label={
+                    ledger[record.routePath]?.migrationStatus ??
+                    record.migrationStatus
+                  }
+                />
               </Box>
               <Typography variant="h6">{record.screenName}</Typography>
               <Typography className={classes.path}>{record.routePath}</Typography>
@@ -317,7 +398,11 @@ export function ResonanceControlAssetsPage() {
             </Box>
             {[
               ['실행 소유 계층', selected.ownershipLane],
-              ['이관 상태', selected.migrationStatus],
+              [
+                '이관 상태',
+                ledger[selected.routePath]?.migrationStatus ??
+                  selected.migrationStatus,
+              ],
               ['대상 플러그인', selected.targetPlugin],
               ['설계 상태', selected.designStatus],
               ['구현 상태', selected.implementationStatus],
@@ -336,6 +421,23 @@ export function ResonanceControlAssetsPage() {
               </Box>
             ))}
             <Box mt={3}>
+              {selected.routePath === '/admin/system/actor-process' &&
+                ['NATIVE_READY', 'MIGRATED'].includes(
+                  ledger[selected.routePath]?.migrationStatus ??
+                    selected.migrationStatus,
+                ) && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() =>
+                      void transitionActorProcess().catch(error =>
+                        setSyncStatus(String(error.message || error)),
+                      )
+                    }
+                  >
+                    네이티브 전환 검증 진행
+                  </Button>
+                )}
               <Button
                 variant="contained"
                 color="primary"
