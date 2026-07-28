@@ -272,10 +272,16 @@ migrate_users() {
           --fields id --format csv --noquotes | head -n1)
         if [ -z "$uid" ]; then
           "$K" create users -r "$REALM" -s username="$USERNAME" \
-            -s enabled=true -s emailVerified=true >/dev/null
+            -s enabled=true -s email="$USERNAME@resonance.local" \
+            -s firstName=Resonance -s lastName="$GROUP" \
+            -s emailVerified=true >/dev/null
           uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
             --fields id --format csv --noquotes | head -n1)
         fi
+        "$K" update "users/$uid" -r "$REALM" \
+          -s enabled=true -s email="$USERNAME@resonance.local" \
+          -s firstName=Resonance -s lastName="$GROUP" \
+          -s emailVerified=true -s "requiredActions=[]" >/dev/null
         "$K" set-password -r "$REALM" --username "$USERNAME" \
           --new-password "$TEST_PASSWORD" --temporary=false >/dev/null
         gid=$("$K" get groups -r "$REALM" -q exact=true -q search="$GROUP" \
