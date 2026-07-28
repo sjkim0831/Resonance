@@ -165,7 +165,8 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: resonance-keycloak
+            app.kubernetes.io/name: resonance-keycloak-backup
+            app.kubernetes.io/part-of: resonance-control-plane
             app.kubernetes.io/component: backup
         spec:
           restartPolicy: Never
