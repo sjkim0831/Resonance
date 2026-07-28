@@ -150,8 +150,8 @@ bootstrap_realm() {
           grep -q "\"name\" : \"$group\"" ||
           "$K" create groups -r "$REALM" -s name="$group" >/dev/null
       done
-      cid=$("$K" get clients -r "$REALM" -q clientId="$CLIENT_ID" --fields id |
-        sed -n "s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+      cid=$("$K" get clients -r "$REALM" -q clientId="$CLIENT_ID" \
+        --fields id --format csv --noquotes | head -n1)
       if [ -z "$cid" ]; then
         "$K" create clients -r "$REALM" \
           -s clientId="$CLIENT_ID" -s enabled=true -s publicClient=false \
@@ -159,8 +159,8 @@ bootstrap_realm() {
           -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\"]" \
           -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\"]" \
           -s secret="$CLIENT_SECRET" >/dev/null
-        cid=$("$K" get clients -r "$REALM" -q clientId="$CLIENT_ID" --fields id |
-          sed -n "s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+        cid=$("$K" get clients -r "$REALM" -q clientId="$CLIENT_ID" \
+          --fields id --format csv --noquotes | head -n1)
       else
         "$K" update "clients/$cid" -r "$REALM" \
           -s enabled=true -s publicClient=false -s standardFlowEnabled=true \
@@ -234,18 +234,17 @@ migrate_users() {
           K=/opt/keycloak/bin/kcadm.sh
           "$K" config credentials --server http://localhost:8080 \
             --realm master --user resonance-admin --password "$ADMIN_PASSWORD" >/dev/null
-          uid=$("$K" get users -r "$REALM" -q username="$USERNAME" --fields id |
-            sed -n "s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+          uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
+            --fields id --format csv --noquotes | head -n1)
           if [ -z "$uid" ]; then
             "$K" create users -r "$REALM" -s username="$USERNAME" \
               -s enabled=true -s email="$EMAIL" -s emailVerified=false \
               -s firstName="$DISPLAY_NAME" -s "requiredActions=[\"UPDATE_PASSWORD\"]" >/dev/null
-            uid=$("$K" get users -r "$REALM" -q username="$USERNAME" --fields id |
-              sed -n "s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+            uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
+              --fields id --format csv --noquotes | head -n1)
           fi
-          gid=$("$K" get groups -r "$REALM" -q search="$GROUP" --fields id,name |
-            sed -n "/\"name\" : \"$GROUP\"/{x;p;x}; h; s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" |
-            tail -n1)
+          gid=$("$K" get groups -r "$REALM" -q exact=true -q search="$GROUP" \
+            --fields id --format csv --noquotes | head -n1)
           [ -n "$uid" ] && [ -n "$gid" ] &&
             "$K" update "users/$uid/groups/$gid" -r "$REALM" -n >/dev/null
         '
@@ -263,19 +262,18 @@ migrate_users() {
         K=/opt/keycloak/bin/kcadm.sh
         "$K" config credentials --server http://localhost:8080 \
           --realm master --user resonance-admin --password "$ADMIN_PASSWORD" >/dev/null
-        uid=$("$K" get users -r "$REALM" -q username="$USERNAME" --fields id |
-          sed -n "s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+        uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
+          --fields id --format csv --noquotes | head -n1)
         if [ -z "$uid" ]; then
           "$K" create users -r "$REALM" -s username="$USERNAME" \
             -s enabled=true -s emailVerified=true >/dev/null
-          uid=$("$K" get users -r "$REALM" -q username="$USERNAME" --fields id |
-            sed -n "s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" | head -n1)
+          uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
+            --fields id --format csv --noquotes | head -n1)
         fi
         "$K" set-password -r "$REALM" --username "$USERNAME" \
           --new-password "$TEST_PASSWORD" --temporary=false >/dev/null
-        gid=$("$K" get groups -r "$REALM" -q search="$GROUP" --fields id,name |
-          sed -n "/\"name\" : \"$GROUP\"/{x;p;x}; h; s/.*\"id\" : \"\\([^\"]*\\)\".*/\\1/p" |
-          tail -n1)
+        gid=$("$K" get groups -r "$REALM" -q exact=true -q search="$GROUP" \
+          --fields id --format csv --noquotes | head -n1)
         "$K" update "users/$uid/groups/$gid" -r "$REALM" -n >/dev/null
       '
   done
