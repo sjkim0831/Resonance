@@ -13,7 +13,7 @@ backend:
   listen: ':7007'
   reading:
     allow:
-      - host: 127.0.0.1:8081
+      - host: resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081
 
   # config options: https://node-postgres.com/apis/client
   database:
@@ -43,16 +43,16 @@ catalog:
   # on how to get entities into the catalog.
   locations:
     - type: url
-      target: http://127.0.0.1:8081/organization.yaml
+      target: http://resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081/organization.yaml
       rules:
         - allow: [Group, User]
     - type: url
-      target: http://127.0.0.1:8081/systems.yaml
+      target: http://resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081/systems.yaml
     - type: url
-      target: http://127.0.0.1:8081/components.yaml
+      target: http://resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081/components.yaml
     - type: url
-      target: http://127.0.0.1:8081/apis.yaml
+      target: http://resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081/apis.yaml
     - type: url
-      target: http://127.0.0.1:8081/resources.yaml
+      target: http://resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081/resources.yaml
     - type: url
-      target: http://127.0.0.1:8081/environments.yaml
+      target: http://resonance-backstage-catalog.resonance-ops.svc.cluster.local:8081/environments.yaml
