@@ -628,7 +628,12 @@ bash ops/scripts/validate-project-auto-completion.sh
 bash ops/scripts/validate-contract-completion-algorithm.sh
 bash ops/scripts/validate-unified-work-design-runtime.sh
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true" || "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+  # A normal deployment must finish inside the operational feedback window.
+  # Domain/API/schema validators above already cover the changed backend and
+  # Flyway contracts. Exercise a bounded cross-domain browser canary here;
+  # the scheduled full-screen sweep remains responsible for all 1,844 routes.
   FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+  FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
 else
   # Backend-only commits already pass the domain runtime/API gates above. A
