@@ -6,6 +6,7 @@ import { DeliveryControlPanel } from "./DeliveryControlPanel";
 import { ProcessDesignMap } from "./ProcessDesignMap";
 import { ProfessionalDesignCanvas } from "./ProfessionalDesignCanvas";
 import { VerticalScreenProcessMap } from "./VerticalScreenProcessMap";
+import { ScreenFlowCanvas } from "./ScreenFlowCanvas";
 import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
 import { IntegratedWorkOperationsMap } from "./IntegratedWorkOperationsMap";
 
@@ -26,7 +27,7 @@ const WORKSPACES:WorkspaceDefinition[] = [
     {id:"account-readiness",label:"액터 계정 검증"},{id:"processes",label:"프로세스"},{id:"steps",label:"단계"}
   ]},
   { id:"design", label:"설계", description:"프로세스·화면·필드·메뉴·공통 기능 계약을 하나의 설계 원본으로 관리하고 생성 결과를 확인합니다.", tabs:[
-    {id:"vertical-screen-map",label:"전체 화면 세로 지도"},{id:"design-canvas",label:"전체 화면 캔버스"},{id:"professional",label:"전문가 준비도"},{id:"page-fields",label:"페이지·컬럼 설계"},
+    {id:"vertical-screen-map",label:"전체 화면 세로 지도"},{id:"screen-flow-canvas",label:"전체 화면 순서도"},{id:"design-canvas",label:"전체 화면 캔버스"},{id:"professional",label:"전문가 준비도"},{id:"page-fields",label:"페이지·컬럼 설계"},
     {id:"screen-contracts",label:"화면 완성 계약"},{id:"registration-coverage",label:"프로젝트 등록 요건"},{id:"common-features",label:"공통 특수기능"},
     {id:"menu-bindings",label:"액터·프로세스 메뉴"},{id:"screen-space",label:"가상 화면 공간"},{id:"references",label:"레퍼런스 자동설계"},{id:"generation",label:"대량 화면 생성"}
   ]},
@@ -166,6 +167,7 @@ export function ActorProcessGovernancePage() {
       </>}
       {tab === "design-canvas" && <ProfessionalDesignCanvas base={base} en={en}/>}
       {tab === "vertical-screen-map" && <VerticalScreenProcessMap actors={data.actors} blueprints={data.screenBlueprints ?? []} processes={data.processes} steps={data.steps}/>}
+      {tab === "screen-flow-canvas" && <ScreenFlowCanvas actors={data.actors} bindings={data.screenFeatureBindings ?? []} blueprints={data.screenBlueprints ?? []} processes={data.processes} steps={data.steps}/>}
       {tab === "process-map" && <ProcessDesignMap actors={data.actors} artifacts={data.artifacts} busy={busy} cases={data.cases} jobs={data.developmentJobs} onDirectDevelop={code=>void post("development/direct",{processCode:code})} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
       {tab === "professional" && <>
         <Form onSubmit={event=>void submit(event,"professional-factory/execute")} cols="lg:grid-cols-3">
