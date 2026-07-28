@@ -48,7 +48,14 @@ MANIFEST_LOG="$ROOT_DIR/var/ai-runtime/k8s-release-manifest.jsonl"
 LOCK_FILE="$RUN_DIR/resonance-k8s-build-deploy-80.lock"
 DIAGNOSTIC_LOG="$RUN_DIR/diagnostic-$(date +%Y%m%d-%H%M%S).log"
 
-OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
+if [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]]; then
+  # An isolated deployment worktree must package the closure it just built.
+  # Writing to the legacy live hostPath here makes the subsequent immutable
+  # image validation inspect stale assets from a different checkout.
+  OVERLAY_HOST_PATH="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+else
+  OVERLAY_HOST_PATH="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"
+fi
 FRONTEND_DIR="$ROOT_DIR/projects/carbonet-frontend/source"
 FRONTEND_GUARD_SCRIPT="$ROOT_DIR/ops/scripts/resonance-frontend-overlay-guard.sh"
 MAVEN_DIR="$ROOT_DIR/apps/carbonet-api"
