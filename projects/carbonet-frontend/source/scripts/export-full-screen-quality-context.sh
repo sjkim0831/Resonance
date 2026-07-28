@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root_dir="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+root_dir="${FRONTEND_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 namespace="${CARBONET_NAMESPACE:-carbonet-prod}"
 database="${CARBONET_DATABASE:-carbonet}"
 output="${FULL_SCREEN_QUALITY_CONTEXT:-$root_dir/.cache/full-screen-smoke/quality-context.jsonl}"
