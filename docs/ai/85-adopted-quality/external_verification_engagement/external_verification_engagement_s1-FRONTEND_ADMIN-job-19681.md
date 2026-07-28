@@ -2,7 +2,7 @@
 
 - Job: 19681
 - Job type: FRONTEND_ADMIN
-- Source commit: 448d67de83ea063d153ebe8b97dde3d46a5f4897
+- Source commit: 41ed1ff592c9a14e0f268d098964582a7d77b40a
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"EXTERNAL_VERIFICATION_ENGAGEMENT","stepCode":"EXTERNAL_VERIFICATION_ENGAGEMENT_S1","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-19681/projects/carbonet-backend-metadata/process-runtime/generated/EXTERNAL_VERIFICATION_ENGAGEMENT/EXTERNAL_VERIFICATION_ENGAGEMENT__EXTERNAL_VERIFICATION_ENGAGEMENT_S1.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19681/var/test-evidence/process-package-tests/EXTERNAL_VERIFICATION_ENGAGEMENT__EXTERNAL_VERIFICATION_ENGAGEMENT_S1.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
