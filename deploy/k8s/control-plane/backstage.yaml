@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: resonance-backstage
     app.kubernetes.io/part-of: resonance-control-plane
 data:
-  BACKSTAGE_BASE_URL: http://backstage.172.16.1.232.nip.io
+  BACKSTAGE_BASE_URL: https://backstage.172.16.1.232.nip.io
   POSTGRES_HOST: postgres-haproxy.carbonet-prod.svc.cluster.local
   POSTGRES_PORT: "5432"
   POSTGRES_DATABASE: backstage
@@ -155,6 +155,31 @@ spec:
     - name: catalog
       port: 8081
       targetPort: catalog
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: resonance-backstage
+  namespace: resonance-ops
+  labels:
+    app.kubernetes.io/name: resonance-backstage
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - backstage.172.16.1.232.nip.io
+      secretName: resonance-backstage-tls
+  rules:
+    - host: backstage.172.16.1.232.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: resonance-backstage
+                port:
+                  name: http
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

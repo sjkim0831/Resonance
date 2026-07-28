@@ -27,13 +27,64 @@ docker buildx version >/dev/null 2>&1 || {
   exit 2
 }
 
-BACKSTAGE_URL="${BACKSTAGE_URL:-http://backstage.172.16.1.232.nip.io}"
+BACKSTAGE_HOST="${BACKSTAGE_HOST:-backstage.172.16.1.232.nip.io}"
+BACKSTAGE_URL="${BACKSTAGE_URL:-https://$BACKSTAGE_HOST}"
 BACKSTAGE_MIN_CATALOG_ENTITIES="${BACKSTAGE_MIN_CATALOG_ENTITIES:-22}"
+BACKSTAGE_TLS_DIR="${BACKSTAGE_TLS_DIR:-$HOME/.config/resonance/backstage-tls}"
+CURL_TLS_ARGS=()
+
+ensure_tls() {
+  mkdir -p "$BACKSTAGE_TLS_DIR"
+  chmod 700 "$BACKSTAGE_TLS_DIR"
+  if [[ ! -s "$BACKSTAGE_TLS_DIR/ca.crt" ||
+        ! -s "$BACKSTAGE_TLS_DIR/tls.crt" ||
+        ! -s "$BACKSTAGE_TLS_DIR/tls.key" ]]; then
+    openssl req -x509 -newkey rsa:3072 -sha256 -nodes \
+      -keyout "$BACKSTAGE_TLS_DIR/ca.key" \
+      -out "$BACKSTAGE_TLS_DIR/ca.crt" \
+      -days 3650 -subj '/CN=Resonance Internal Root CA'
+    openssl req -newkey rsa:3072 -sha256 -nodes \
+      -keyout "$BACKSTAGE_TLS_DIR/tls.key" \
+      -out "$BACKSTAGE_TLS_DIR/tls.csr" \
+      -subj "/CN=$BACKSTAGE_HOST" \
+      -addext "subjectAltName=DNS:$BACKSTAGE_HOST"
+    openssl x509 -req -sha256 \
+      -in "$BACKSTAGE_TLS_DIR/tls.csr" \
+      -CA "$BACKSTAGE_TLS_DIR/ca.crt" \
+      -CAkey "$BACKSTAGE_TLS_DIR/ca.key" \
+      -CAcreateserial \
+      -out "$BACKSTAGE_TLS_DIR/tls.crt" \
+      -days 825 -copy_extensions copy
+    chmod 600 "$BACKSTAGE_TLS_DIR/ca.key" "$BACKSTAGE_TLS_DIR/tls.key"
+  fi
+  kubectl -n "$NAMESPACE" create secret tls resonance-backstage-tls \
+    --cert="$BACKSTAGE_TLS_DIR/tls.crt" \
+    --key="$BACKSTAGE_TLS_DIR/tls.key" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  CURL_TLS_ARGS=(--cacert "$BACKSTAGE_TLS_DIR/ca.crt")
+}
+
+ensure_ingress_https_port() {
+  local index current
+  index="$(kubectl -n ingress-nginx get service ingress-nginx-controller -o json |
+    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const v=JSON.parse(s);process.stdout.write(String(v.spec.ports.findIndex(p=>p.name==="https")))})')"
+  [[ "$index" =~ ^[0-9]+$ ]] || {
+    echo "[backstage] ingress HTTPS service port was not found" >&2
+    return 1
+  }
+  current="$(kubectl -n ingress-nginx get service ingress-nginx-controller \
+    -o "jsonpath={.spec.ports[$index].nodePort}")"
+  if [[ "$current" != "443" ]]; then
+    kubectl -n ingress-nginx patch service ingress-nginx-controller \
+      --type=json \
+      -p="[{\"op\":\"replace\",\"path\":\"/spec/ports/$index/nodePort\",\"value\":443}]"
+  fi
+}
 
 wait_for_runtime() {
   local attempt
   for attempt in $(seq 1 30); do
-    if curl -fsS --max-time 10 \
+    if curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 \
       "$BACKSTAGE_URL/.backstage/health/v1/readiness" >/dev/null; then
       return 0
     fi
@@ -46,13 +97,13 @@ wait_for_runtime() {
 wait_for_catalog() {
   local attempt identity token count
   for attempt in $(seq 1 30); do
-    identity="$(curl -fsS --max-time 10 -X POST \
+    identity="$(curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 -X POST \
       -H 'content-type: application/json' -d '{}' \
       "$BACKSTAGE_URL/api/auth/guest/refresh" 2>/dev/null || true)"
     token="$(IDENTITY_JSON="$identity" node -e \
       'try { process.stdout.write(JSON.parse(process.env.IDENTITY_JSON).backstageIdentity.token || "") } catch {}')"
     if [[ -n "$token" ]]; then
-      count="$(curl -fsS --max-time 10 \
+      count="$(curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 \
         -H "authorization: Bearer $token" \
         "$BACKSTAGE_URL/api/catalog/entities" 2>/dev/null |
         node -e \
@@ -83,6 +134,8 @@ case "$mode" in
     ;;
   deploy)
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
+    ensure_tls
+    ensure_ingress_https_port
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
     # already verified image without rebuilding an identical application.
@@ -167,8 +220,9 @@ case "$mode" in
     echo "[backstage] PASS deployed $image at $BACKSTAGE_URL"
     ;;
   status)
+    ensure_tls
     kubectl -n "$NAMESPACE" get deployment,pod,service -l app.kubernetes.io/name=resonance-backstage -o wide
-    curl -fsS --max-time 10 "$BACKSTAGE_URL/.backstage/health/v1/readiness"
+    curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 "$BACKSTAGE_URL/.backstage/health/v1/readiness"
     echo
     wait_for_catalog
     ;;
