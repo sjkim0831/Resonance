@@ -1,12 +1,16 @@
 import { PointerEvent, WheelEvent, useMemo, useRef, useState } from "react";
 
 type Row = Record<string, unknown>;
-type Props = { actors: Row[]; bindings: Row[]; blueprints: Row[]; processes: Row[]; steps: Row[] };
+type Props = {
+  actors: Row[]; bindings: Row[]; blueprints: Row[]; components: Row[]; pageDesigns: Row[];
+  processes: Row[]; sections: Row[]; steps: Row[]; themes: Row[]; onOpen: (tab: string) => void;
+};
 type FlowNode = {
   id: string; processCode: string; processName: string; stepCode: string; stepName: string;
   stepOrder: number; actorCode: string; actorName: string; pageName: string; routePath: string;
   screenType: string; validationStatus: string; popup: boolean; shared: boolean; sharedCount: number;
   commonFeatures: string[]; x: number; y: number;
+  primaryEntity: string; fieldSummary: string; fieldCount: number; requiredFieldCount: number;
 };
 type FlowEdge = { id: string; from: string; to: string; kind: "NEXT" | "REUSE" | "POPUP" };
 
@@ -27,7 +31,7 @@ const isPopup = (row: Row, step: Row | undefined) => /POPUP|MODAL|DIALOG|DRAWER|
 ].join(" "));
 const edgeColor = (kind: FlowEdge["kind"]) => kind === "POPUP" ? "#7c3aed" : kind === "REUSE" ? "#d97706" : "#64748b";
 
-export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, steps }: Props) {
+export function ScreenFlowCanvas({ actors, bindings, blueprints, components, onOpen, pageDesigns, processes, sections, steps, themes }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const [query, setQuery] = useState("");
@@ -37,6 +41,9 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
   const [zoom, setZoom] = useState(0.34);
   const [pan, setPan] = useState({ x: 24, y: 24 });
   const [selectedId, setSelectedId] = useState("");
+  const [detailTab, setDetailTab] = useState<"schema" | "design" | "preview">("schema");
+  const [preview, setPreview] = useState(false);
+  const [showSchemaLinks, setShowSchemaLinks] = useState(true);
 
   const model = useMemo(() => {
     const actorMap = new Map(actors.map(row => [value(row, "actorCode"), row]));
@@ -44,6 +51,7 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
     const stepMap = new Map(steps.map(row => [`${value(row, "processCode")}::${value(row, "stepCode")}`, row]));
     const routeCounts = new Map<string, number>();
     const routeFeatures = new Map<string, Set<string>>();
+    const designByRoute = new Map(pageDesigns.map(row => [normalizeRoute(value(row, "actualRoutePath") || value(row, "plannedRoutePath") || value(row, "routePath")), row]));
     blueprints.forEach(row => {
       const route = normalizeRoute(value(row, "routePath"));
       if (route !== "/") routeCounts.set(route, (routeCounts.get(route) ?? 0) + 1);
@@ -90,6 +98,7 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
         const actorCode = value(row, "actorCode") || value(step, "actorCode");
         const routePath = value(row, "routePath") || value(step, "userPath") || value(step, "adminPath");
         const normalizedRoute = normalizeRoute(routePath);
+        const pageDesign = designByRoute.get(normalizedRoute);
         const popup = isPopup(row, step);
         const id = value(row, "blueprintCode") || `${processCode}-${stepCode}-${originalIndex}`;
         const node: FlowNode = {
@@ -102,6 +111,10 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
           shared: normalizedRoute !== "/" && (routeCounts.get(normalizedRoute) ?? 0) > 1,
           sharedCount: normalizedRoute === "/" ? 1 : routeCounts.get(normalizedRoute) ?? 1,
           commonFeatures: [...(routeFeatures.get(normalizedRoute) ?? [])],
+          primaryEntity: value(pageDesign, "primaryEntity"),
+          fieldSummary: value(pageDesign, "fieldSummary"),
+          fieldCount: numeric(pageDesign, "fieldCount"),
+          requiredFieldCount: numeric(pageDesign, "requiredFieldCount"),
           x: x + 24 + (popup ? 18 : 0), y: y + HEADER_HEIGHT + nodeIndex * (NODE_HEIGHT + NODE_GAP),
         };
         nodes.push(node);
@@ -120,7 +133,7 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
       width: CANVAS_PADDING * 2 + COLUMN_COUNT * LANE_WIDTH + (COLUMN_COUNT - 1) * LANE_GAP,
       height: Math.max(...columnY, 800),
     };
-  }, [actors, bindings, blueprints, processes, steps]);
+  }, [actors, bindings, blueprints, pageDesigns, processes, steps]);
 
   const visibleNodeIds = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("ko-KR");
@@ -135,6 +148,8 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
     visibleNodeIds.has(edge.from) && visibleNodeIds.has(edge.to) && (showReuse || edge.kind !== "REUSE")
   ), [model.edges, showReuse, visibleNodeIds]);
   const selected = nodeMap.get(selectedId);
+  const schemaPeers = useMemo(() => selected?.primaryEntity ? model.nodes.filter(node => node.id !== selected.id && node.primaryEntity === selected.primaryEntity) : [], [model.nodes, selected]);
+  const schemaPeerIds = useMemo(() => new Set(schemaPeers.map(node => node.id)), [schemaPeers]);
   const popupCount = model.nodes.filter(node => node.popup).length;
   const sharedCount = model.nodes.filter(node => node.shared).length;
   const fit = () => {
@@ -181,9 +196,9 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(15rem,1fr)_minmax(14rem,.7fr)_auto]">
         <label className="text-xs font-bold text-slate-600">화면·경로·액터·공통 기능 검색<input className="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm" onChange={event => setQuery(event.target.value)} value={query}/></label>
         <label className="text-xs font-bold text-slate-600">프로세스<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" onChange={event => setProcessFilter(event.target.value)} value={processFilter}><option value="ALL">전체 프로세스</option>{processes.map(row => <option key={value(row, "processCode")} value={value(row, "processCode")}>{value(row, "processName")} ({value(row, "processCode")})</option>)}</select></label>
-        <div className="flex flex-wrap items-end gap-2"><button className={`min-h-11 rounded-lg border px-3 text-sm font-bold ${showReuse ? "border-amber-400 bg-amber-50 text-amber-800" : "border-slate-300"}`} onClick={() => setShowReuse(current => !current)} type="button">재호출 화살표</button><button className={`min-h-11 rounded-lg border px-3 text-sm font-bold ${showPopups ? "border-violet-400 bg-violet-50 text-violet-800" : "border-slate-300"}`} onClick={() => setShowPopups(current => !current)} type="button">팝업 표시</button><button className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold" onClick={fit} type="button">전체 맞춤</button></div>
+        <div className="flex flex-wrap items-end gap-2"><button className={`min-h-11 rounded-lg border px-3 text-sm font-bold ${showReuse ? "border-amber-400 bg-amber-50 text-amber-800" : "border-slate-300"}`} onClick={() => setShowReuse(current => !current)} type="button">재호출 화살표</button><button className={`min-h-11 rounded-lg border px-3 text-sm font-bold ${showPopups ? "border-violet-400 bg-violet-50 text-violet-800" : "border-slate-300"}`} onClick={() => setShowPopups(current => !current)} type="button">팝업 표시</button><button className={`min-h-11 rounded-lg border px-3 text-sm font-bold ${showSchemaLinks ? "border-emerald-400 bg-emerald-50 text-emerald-800" : "border-slate-300"}`} onClick={() => setShowSchemaLinks(current => !current)} type="button">공통 스키마</button><button className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold" onClick={fit} type="button">전체 맞춤</button></div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600"><span><i className="mr-2 inline-block h-0.5 w-8 bg-slate-500"/>다음 화면</span><span><i className="mr-2 inline-block w-8 border-t-2 border-dashed border-amber-500"/>동일 화면 재호출</span><span><i className="mr-2 inline-block w-8 border-t-2 border-dotted border-violet-600"/>팝업 분기</span><span><i className="mr-2 inline-block h-4 w-8 rounded border-4 border-double border-blue-500"/>공통 사용 화면</span><span className="ml-auto">{Math.round(zoom * 100)}% · 표시 {visibleNodeIds.size}/{model.nodes.length}</span></div>
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-bold text-slate-600"><span><i className="mr-2 inline-block h-0.5 w-8 bg-slate-500"/>다음 화면</span><span><i className="mr-2 inline-block w-8 border-t-2 border-dashed border-amber-500"/>동일 화면 재호출</span><span><i className="mr-2 inline-block w-8 border-t-2 border-dotted border-violet-600"/>팝업 분기</span><span><i className="mr-2 inline-block w-8 border-t-2 border-dashed border-emerald-600"/>공통 스키마</span><span><i className="mr-2 inline-block h-4 w-8 rounded border-4 border-double border-blue-500"/>공통 사용 화면</span><span className="ml-auto">{Math.round(zoom * 100)}% · 표시 {visibleNodeIds.size}/{model.nodes.length}</span></div>
     </section>
     <section className="relative overflow-hidden rounded-2xl border border-slate-300 bg-slate-100">
       <div aria-label={`전체 화면 ${model.nodes.length}개의 순서도 캔버스`} className="relative h-[72vh] min-h-[620px] cursor-grab touch-none overflow-hidden active:cursor-grabbing" onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={() => { dragRef.current = null; }} onPointerCancel={() => { dragRef.current = null; }} onWheel={handleWheel} ref={viewportRef} role="region">
@@ -199,12 +214,41 @@ export function ScreenFlowCanvas({ actors, bindings, blueprints, processes, step
               const path = sameLane ? `M ${x1} ${y1} C ${x1} ${y1 + 18}, ${x2} ${y2 - 18}, ${x2} ${y2}` : `M ${from.x + NODE_WIDTH} ${from.y + NODE_HEIGHT / 2} C ${from.x + NODE_WIDTH + 40} ${from.y + NODE_HEIGHT / 2}, ${to.x - 40} ${to.y + NODE_HEIGHT / 2}, ${to.x} ${to.y + NODE_HEIGHT / 2}`;
               return <path d={path} fill="none" key={edge.id} markerEnd="url(#screen-flow-arrow)" opacity={edge.kind === "REUSE" ? 0.42 : 0.82} stroke={edgeColor(edge.kind)} strokeDasharray={edge.kind === "REUSE" ? "9 7" : edge.kind === "POPUP" ? "3 5" : undefined} strokeWidth={edge.kind === "NEXT" ? 2 : 2.5}/>;
             })}
+            {showSchemaLinks && selected && schemaPeers.filter(node => visibleNodeIds.has(node.id)).map(node => <path
+              d={`M ${selected.x + NODE_WIDTH / 2} ${selected.y + NODE_HEIGHT / 2} C ${selected.x + NODE_WIDTH + 48} ${selected.y + NODE_HEIGHT / 2}, ${node.x - 48} ${node.y + NODE_HEIGHT / 2}, ${node.x + NODE_WIDTH / 2} ${node.y + NODE_HEIGHT / 2}`}
+              fill="none"
+              key={`schema-${selected.id}-${node.id}`}
+              markerEnd="url(#screen-flow-arrow)"
+              opacity="0.7"
+              stroke="#059669"
+              strokeDasharray="5 5"
+              strokeWidth="3"
+            />)}
           </svg>
-          {model.nodes.map(node => !visibleNodeIds.has(node.id) ? null : <button aria-label={`${node.pageName}, ${node.processName} ${node.stepOrder}단계`} className={`absolute overflow-hidden rounded-xl bg-white p-3 text-left shadow-sm transition ${node.shared ? "border-4 border-double border-blue-500" : node.popup ? "border-2 border-violet-500" : "border border-slate-300"} ${selectedId === node.id ? "ring-4 ring-blue-300" : "hover:border-blue-500"}`} key={node.id} onClick={() => setSelectedId(node.id)} onDoubleClick={() => focusNode(node)} style={{ height: NODE_HEIGHT, left: node.x, top: node.y, width: NODE_WIDTH }} type="button"><span className="flex items-center gap-1 text-[10px] font-black text-slate-500"><b>{node.stepOrder}</b><span className="truncate">{node.actorName || node.actorCode || "액터 미지정"}</span>{node.popup && <em className="ml-auto not-italic text-violet-700">POPUP</em>}</span><strong className="mt-1 block truncate text-sm text-[#052b57]">{node.pageName}</strong><span className="mt-1 block truncate font-mono text-[10px] text-blue-700">{node.routePath || "경로 설계 필요"}</span><span className="mt-1 flex gap-1 text-[9px] font-bold text-slate-500">{node.shared && <b>공통 {node.sharedCount}</b>}{node.commonFeatures.length > 0 && <b>기능 {node.commonFeatures.length}</b>}<b className="ml-auto">{node.validationStatus}</b></span></button>)}
+          {model.nodes.map(node => !visibleNodeIds.has(node.id) ? null : <button aria-label={`${node.pageName}, ${node.processName} ${node.stepOrder}단계`} className={`absolute overflow-hidden rounded-xl bg-white p-3 text-left shadow-sm transition ${node.shared ? "border-4 border-double border-blue-500" : node.popup ? "border-2 border-violet-500" : "border border-slate-300"} ${selectedId === node.id ? "ring-4 ring-blue-300" : schemaPeerIds.has(node.id) && showSchemaLinks ? "ring-4 ring-emerald-300" : "hover:border-blue-500"}`} key={node.id} onClick={() => setSelectedId(node.id)} onDoubleClick={() => focusNode(node)} style={{ height: NODE_HEIGHT, left: node.x, top: node.y, width: NODE_WIDTH }} type="button"><span className="flex items-center gap-1 text-[10px] font-black text-slate-500"><b>{node.stepOrder}</b><span className="truncate">{node.actorName || node.actorCode || "액터 미지정"}</span>{node.popup && <em className="ml-auto not-italic text-violet-700">POPUP</em>}</span><strong className="mt-1 block truncate text-sm text-[#052b57]">{node.pageName}</strong><span className="mt-1 block truncate font-mono text-[10px] text-blue-700">{node.routePath || "경로 설계 필요"}</span><span className="mt-1 flex gap-1 text-[9px] font-bold text-slate-500">{node.shared && <b>공통 {node.sharedCount}</b>}{node.primaryEntity && <b>{node.primaryEntity}</b>}<b className="ml-auto">{node.validationStatus}</b></span></button>)}
         </div>
         <div className="absolute bottom-4 left-4 flex overflow-hidden rounded-lg border border-slate-300 bg-white shadow"><button aria-label="축소" className="h-11 w-11 font-black" onClick={() => setZoom(current => Math.max(0.12, current - 0.1))} type="button">−</button><button className="h-11 min-w-16 border-x px-2 text-xs font-black" onClick={fit} type="button">{Math.round(zoom * 100)}%</button><button aria-label="확대" className="h-11 w-11 font-black" onClick={() => setZoom(current => Math.min(1.8, current + 0.1))} type="button">+</button></div>
       </div>
     </section>
-    {selected && <section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-black text-blue-700">{selected.processName} · {selected.stepOrder}단계</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{selected.pageName}</h3><p className="mt-1 font-mono text-xs text-slate-500">{selected.routePath || "경로 설계 필요"}</p></div><div className="flex flex-wrap gap-2">{selected.popup && <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">팝업 호출</span>}{selected.shared && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">{selected.sharedCount}개 단계 공통 사용</span>}<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black">{selected.validationStatus}</span></div></div><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><div><dt className="font-bold text-slate-500">프로세스·단계</dt><dd className="mt-1 font-bold">{selected.processCode} · {selected.stepCode}</dd></div><div><dt className="font-bold text-slate-500">담당 액터</dt><dd className="mt-1 font-bold">{selected.actorName || selected.actorCode || "-"}</dd></div><div><dt className="font-bold text-slate-500">화면 유형</dt><dd className="mt-1 font-bold">{selected.screenType}</dd></div><div><dt className="font-bold text-slate-500">공통 기능</dt><dd className="mt-1 font-bold">{selected.commonFeatures.join(", ") || "-"}</dd></div></dl>{selected.routePath.startsWith("/") && <a className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[#246beb] px-4 font-bold text-white" href={selected.routePath}>실제 화면 열기</a>}</section>}
+    {selected && <section className="rounded-2xl border border-blue-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-slate-200 p-5 lg:flex-row lg:items-start lg:justify-between">
+        <div><p className="text-xs font-black text-blue-700">{selected.processName} · {selected.stepOrder}단계</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{selected.pageName}</h3><p className="mt-1 font-mono text-xs text-slate-500">{selected.routePath || "경로 설계 필요"}</p></div>
+        <div className="flex flex-wrap gap-2">{selected.popup && <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">팝업 호출</span>}{selected.shared && <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">{selected.sharedCount}개 단계 공통 사용</span>}{selected.primaryEntity && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800">{selected.primaryEntity} 재사용 {schemaPeers.length + 1}개</span>}</div>
+      </div>
+      <nav className="flex flex-wrap gap-2 border-b border-slate-200 p-4" aria-label="선택 화면 상세">
+        {([["schema","설계·공통 스키마"],["preview","화면 미리보기"],["design","디자인 관리"]] as const).map(([id,label]) => <button className={`min-h-11 rounded-lg px-4 text-sm font-bold ${detailTab === id ? "bg-[#246beb] text-white" : "border border-slate-300"}`} key={id} onClick={() => setDetailTab(id)} type="button">{label}</button>)}
+      </nav>
+      {detailTab === "schema" && <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,.7fr)]">
+        <div><dl className="grid gap-3 text-sm sm:grid-cols-2"><div><dt className="font-bold text-slate-500">프로세스·단계</dt><dd className="mt-1 font-bold">{selected.processCode} · {selected.stepCode}</dd></div><div><dt className="font-bold text-slate-500">담당 액터</dt><dd className="mt-1 font-bold">{selected.actorName || selected.actorCode || "-"}</dd></div><div><dt className="font-bold text-slate-500">주 데이터 스키마</dt><dd className="mt-1 font-bold">{selected.primaryEntity || "스키마 연결 필요"}</dd></div><div><dt className="font-bold text-slate-500">필드 계약</dt><dd className="mt-1 font-bold">{selected.fieldCount || 0}개 · 필수 {selected.requiredFieldCount || 0}개</dd></div></dl><div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">{selected.fieldSummary || "등록된 컬럼 계약이 없습니다. 페이지·컬럼 설계에서 보강할 수 있습니다."}</div></div>
+        <div><h4 className="font-black text-[#052b57]">같은 스키마를 사용하는 화면</h4><div className="mt-3 max-h-64 space-y-2 overflow-y-auto">{schemaPeers.length ? schemaPeers.map(node => <button className="flex w-full items-center justify-between rounded-lg border border-emerald-200 px-3 py-2 text-left text-sm hover:bg-emerald-50" key={node.id} onClick={() => focusNode(node)} type="button"><span><b className="block">{node.pageName}</b><small className="text-slate-500">{node.processName}</small></span><span className="text-emerald-700">캔버스 이동 →</span></button>) : <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">현재 스키마를 재사용하는 다른 화면이 없습니다.</p>}</div><button className="mt-3 min-h-11 w-full rounded-lg border border-blue-300 font-bold text-blue-700" onClick={() => onOpen("page-fields")} type="button">페이지·컬럼 설계 수정</button></div>
+      </div>}
+      {detailTab === "preview" && <div className="p-5"><div className="flex flex-wrap gap-2">{selected.routePath.startsWith("/") && <><button className="min-h-11 rounded-lg bg-[#246beb] px-4 font-bold text-white" onClick={() => setPreview(true)} type="button">미리보기 팝업</button><a className="inline-flex min-h-11 items-center rounded-lg border border-blue-300 px-4 font-bold text-blue-700" href={selected.routePath}>실제 화면 열기</a></>}<button className="min-h-11 rounded-lg border border-slate-300 px-4 font-bold" onClick={() => onOpen("screen-contracts")} type="button">화면 완성 계약</button></div></div>}
+      {detailTab === "design" && <div className="grid gap-4 p-5 md:grid-cols-3"><DesignAssetList label="테마" rows={themes} nameKey="themeName"/><DesignAssetList label="섹션" rows={sections} nameKey="sectionName"/><DesignAssetList label="컴포넌트" rows={components} nameKey="componentName"/><button className="min-h-11 rounded-lg bg-[#052b57] px-4 font-bold text-white md:col-span-3" onClick={() => onOpen("design")} type="button">선택 화면의 디자인 자산 수정</button></div>}
+    </section>}
+    {selected && preview && <div aria-modal="true" className="fixed inset-0 z-[1600] flex items-center justify-center bg-slate-950/70 p-3 sm:p-6" onMouseDown={event => { if (event.target === event.currentTarget) setPreview(false); }} role="dialog"><div className="flex h-[88vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><header className="flex items-center justify-between gap-3 border-b p-4"><div className="min-w-0"><strong className="block truncate text-[#052b57]">{selected.pageName}</strong><span className="block truncate font-mono text-xs text-slate-500">{selected.routePath}</span></div><button className="min-h-11 rounded-lg border px-4 font-bold" onClick={() => setPreview(false)} type="button">닫기</button></header><iframe className="min-h-0 flex-1 bg-white" src={`${selected.routePath}${selected.routePath.includes("?") ? "&" : "?"}canvasPreview=1`} title={`${selected.pageName} 미리보기`}/></div></div>}
   </div>;
+}
+
+function DesignAssetList({ label, nameKey, rows }: { label: string; nameKey: string; rows: Row[] }) {
+  return <div className="rounded-xl border border-slate-200 p-4"><h4 className="font-black text-[#052b57]">{label} <span className="text-blue-700">{rows.length}</span></h4><div className="mt-3 max-h-52 space-y-2 overflow-y-auto">{rows.slice(0, 80).map((row, index) => <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 hover:bg-blue-50" key={`${value(row, nameKey)}-${index}`}><input name={`design-${label}`} type="radio"/><span className="truncate text-sm font-bold">{value(row, nameKey) || value(row, "name") || `${label} ${index + 1}`}</span></label>)}</div></div>;
 }
