@@ -172,16 +172,18 @@ bootstrap_realm() {
           -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\"]" \
           -s secret="$CLIENT_SECRET" >/dev/null
       fi
-      sid=$("$K" get client-scopes -r "$REALM" -q name=groups \
-        --fields id --format csv --noquotes | head -n1)
+      sid=$("$K" get client-scopes -r "$REALM" \
+        --fields id,name --format csv --noquotes |
+        awk -F, "\$2 == \"groups\" { print \$1; exit }")
       if [ -z "$sid" ]; then
         "$K" create client-scopes -r "$REALM" \
           -s name=groups -s protocol=openid-connect >/dev/null
-        sid=$("$K" get client-scopes -r "$REALM" -q name=groups \
-          --fields id --format csv --noquotes | head -n1)
+        sid=$("$K" get client-scopes -r "$REALM" \
+          --fields id,name --format csv --noquotes |
+          awk -F, "\$2 == \"groups\" { print \$1; exit }")
       fi
       "$K" update "clients/$cid/optional-client-scopes/$sid" \
-        -r "$REALM" -n >/dev/null 2>&1 || true
+        -r "$REALM" -n >/dev/null
       mapper=$("$K" get "clients/$cid/protocol-mappers/models" -r "$REALM" |
         grep -c "\"name\" : \"groups\"" || true)
       if [ "$mapper" = 0 ]; then
