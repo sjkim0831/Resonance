@@ -22,6 +22,7 @@ const screenDesignsPage = PageBlueprint.make({
 });
 
 const screenSpacePage = PageBlueprint.make({
+  name: 'screen-space',
   params: {
     routeRef: screenSpaceRouteRef,
     path: '/ccus-screen-space',
