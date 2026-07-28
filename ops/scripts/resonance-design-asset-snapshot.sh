@@ -2,7 +2,9 @@
 set -euo pipefail
 
 PROJECT_ID="${1:-CCUS-PLATFORM}"
+ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BACKSTAGE_URL="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
+CA_CERT="${RESONANCE_INTERNAL_CA:-$HOME/.config/resonance/backstage-tls/ca.crt}"
 NAMESPACE="${CARBONET_NAMESPACE:-carbonet-prod}"
 POD="${CARBONET_POSTGRES_POD:-postgres-patroni-0}"
 WORK_DIR="${RESONANCE_DESIGN_SYNC_DIR:-/opt/resonance-data/control-plane/design-asset-sync}"
@@ -61,11 +63,10 @@ SQL
 
 jq -s '{assets: .}' "$RAW" >"$PAYLOAD"
 TOKEN="$(
-  curl -kfsS -X POST "$BACKSTAGE_URL/api/auth/guest/refresh" |
-    jq -er '.backstageIdentity.token'
+  "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" resonance-requester
 )"
 RESULT="$(
-  curl -kfsS \
+  curl --cacert "$CA_CERT" -fsS \
     -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     --data-binary "@$PAYLOAD" \
