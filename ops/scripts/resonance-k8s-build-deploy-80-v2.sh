@@ -384,6 +384,26 @@ build_frontend() {
   local staging_dir
   staging_dir="$(mktemp -d "$ROOT_DIR/var/run/react-build.XXXXXX")"
 
+  # Generated screen definitions are runtime materialization assets and are
+  # intentionally not committed one-by-one. A clean deployment worktree must
+  # restore them before TypeScript resolves generatedScreenCatalog imports.
+  local generated_dir="$FRONTEND_DIR/src/generated/screen-generation"
+  local shared_generated_dir="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
+  mkdir -p "$generated_dir"
+  if [[ ! -d "$generated_dir/definitions" && -d "$shared_generated_dir/definitions" ]]; then
+    ln -s "$shared_generated_dir/definitions" "$generated_dir/definitions"
+    log "Linked shared generated screen definitions into clean worktree"
+  fi
+  if [[ ! -f "$generated_dir/generatedScreenTypes.ts" && -f "$shared_generated_dir/generatedScreenTypes.ts" ]]; then
+    ln -s "$shared_generated_dir/generatedScreenTypes.ts" "$generated_dir/generatedScreenTypes.ts"
+    log "Linked shared generated screen types into clean worktree"
+  fi
+  if [[ ! -d "$generated_dir/definitions" || ! -f "$generated_dir/generatedScreenTypes.ts" ]]; then
+    rollback_and_fail "GENERATED_SCREEN_ASSETS_MISSING" \
+      "Generated screen definitions/types are unavailable before frontend build" \
+      "verify shared generated assets or run generate-screen-blueprints.mjs"
+  fi
+
   # Never let Vite empty or partially rewrite the live hostPath overlay. Build
   # into an isolated directory, verify its complete hashed-asset closure, copy
   # assets first, and switch index.html last. Existing hashed files are kept so
