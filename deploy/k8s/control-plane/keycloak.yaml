@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resonance-keycloak
+  namespace: resonance-ops
+  labels:
+    app.kubernetes.io/name: resonance-keycloak
+    app.kubernetes.io/part-of: resonance-control-plane
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: resonance-keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: resonance-keycloak
+        app.kubernetes.io/part-of: resonance-control-plane
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.6.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - start
+            - --http-enabled=true
+            - --hostname=https://identity.172.16.1.232.nip.io
+            - --proxy-headers=xforwarded
+            - --health-enabled=true
+            - --metrics-enabled=true
+            - --db=postgres
+          env:
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/keycloak
+            - name: JAVA_OPTS_KC_HEAP
+              value: -Xms128m -Xmx384m
+          envFrom:
+            - secretRef:
+                name: resonance-keycloak
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+            initialDelaySeconds: 90
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 320Mi
+            limits:
+              cpu: "1"
+              memory: 640Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resonance-keycloak
+  namespace: resonance-ops
+  labels:
+    app.kubernetes.io/name: resonance-keycloak
+spec:
+  selector:
+    app.kubernetes.io/name: resonance-keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    - name: management
+      port: 9000
+      targetPort: management
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: resonance-keycloak
+  namespace: resonance-ops
+  labels:
+    app.kubernetes.io/name: resonance-keycloak
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 128k
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - identity.172.16.1.232.nip.io
+      secretName: resonance-keycloak-tls
+  rules:
+    - host: identity.172.16.1.232.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: resonance-keycloak
+                port:
+                  name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: resonance-keycloak-ingress
+  namespace: resonance-ops
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: resonance-keycloak
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 172.16.0.0/16
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 9000

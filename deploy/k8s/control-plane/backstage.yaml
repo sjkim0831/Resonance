@@ -57,9 +57,15 @@ spec:
             - secretRef:
                 name: resonance-backstage-auth
                 optional: true
+          env:
+            - name: NODE_EXTRA_CA_CERTS
+              value: /app/internal-ca/ca.crt
           volumeMounts:
             - name: resonance-catalog
               mountPath: /app/catalog
+              readOnly: true
+            - name: resonance-internal-ca
+              mountPath: /app/internal-ca
               readOnly: true
           readinessProbe:
             httpGet:
@@ -125,6 +131,10 @@ spec:
         - name: resonance-catalog
           configMap:
             name: resonance-backstage-catalog
+        - name: resonance-internal-ca
+          configMap:
+            name: resonance-internal-ca
+            optional: true
 ---
 apiVersion: v1
 kind: Service

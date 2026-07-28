@@ -71,6 +71,16 @@ ensure_auth_secret() {
     client_secret=""
     display_name="Resonance 계정"
   fi
+  if kubectl -n "$NAMESPACE" get secret resonance-backstage-oidc-client >/dev/null 2>&1; then
+    metadata_url="$(kubectl -n "$NAMESPACE" get secret resonance-backstage-oidc-client \
+      -o jsonpath='{.data.AUTH_OIDC_METADATA_URL}' | base64 -d)"
+    client_id="$(kubectl -n "$NAMESPACE" get secret resonance-backstage-oidc-client \
+      -o jsonpath='{.data.AUTH_OIDC_CLIENT_ID}' | base64 -d)"
+    client_secret="$(kubectl -n "$NAMESPACE" get secret resonance-backstage-oidc-client \
+      -o jsonpath='{.data.AUTH_OIDC_CLIENT_SECRET}' | base64 -d)"
+    display_name="$(kubectl -n "$NAMESPACE" get secret resonance-backstage-oidc-client \
+      -o jsonpath='{.data.AUTH_OIDC_DISPLAY_NAME}' | base64 -d)"
+  fi
   [[ -n "$session_secret" ]] || session_secret="$(openssl rand -hex 32)"
   kubectl -n "$NAMESPACE" create secret generic resonance-backstage-auth \
     --from-literal=AUTH_SESSION_SECRET="$session_secret" \
@@ -84,7 +94,8 @@ ensure_auth_secret() {
       echo "[backstage] OIDC metadata URL must use HTTPS; guarded guest bootstrap remains enabled" >&2
       return 0
     }
-    metadata="$(curl -fsS --max-time 10 "$metadata_url" 2>/dev/null || true)"
+    metadata="$(curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 \
+      "$metadata_url" 2>/dev/null || true)"
     if OIDC_METADATA="$metadata" node -e '
       const value = JSON.parse(process.env.OIDC_METADATA || "{}");
       for (const key of ["issuer", "authorization_endpoint", "token_endpoint", "jwks_uri"]) {
