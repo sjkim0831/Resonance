@@ -143,8 +143,11 @@ bootstrap_realm() {
         --realm master --user resonance-admin --password "$ADMIN_PASSWORD" >/dev/null
       "$K" get "realms/$REALM" >/dev/null 2>&1 ||
         "$K" create realms -s realm="$REALM" -s enabled=true \
-          -s loginWithEmailAllowed=true -s duplicateEmailsAllowed=false \
+          -s loginWithEmailAllowed=false -s duplicateEmailsAllowed=true \
           -s resetPasswordAllowed=true >/dev/null
+      "$K" update "realms/$REALM" -s enabled=true \
+        -s loginWithEmailAllowed=false -s duplicateEmailsAllowed=true \
+        -s resetPasswordAllowed=true >/dev/null
       for group in platform-engineering carbon-operations verification-governance; do
         "$K" get groups -r "$REALM" -q search="$group" |
           grep -q "\"name\" : \"$group\"" ||
@@ -223,7 +226,15 @@ migrate_users() {
       group by u.user_id,u.user_nm,u.user_email
       order by trim(u.user_id)" |
     while IFS='|' read -r user_hex name_hex email_hex group_hex; do
-      username="$(printf '%s' "$user_hex" | xxd -r -p)"
+      legacy_username="$(printf '%s' "$user_hex" | xxd -r -p)"
+      username="$(RAW_USERNAME="$legacy_username" node -e '
+        const value = String(process.env.RAW_USERNAME || "")
+          .trim().toLocaleLowerCase("en-US")
+          .replace(/[^a-z0-9_.-]+/g, "-")
+          .replace(/^-+|-+$/g, "").slice(0, 63);
+        if (!value) process.exit(2);
+        process.stdout.write(value);
+      ')"
       email="$(printf '%s' "$email_hex" | xxd -r -p)"
       group="$(printf '%s' "$group_hex" | xxd -r -p)"
       kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
