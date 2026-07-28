@@ -1,0 +1,16 @@
+[Unit]
+Description=Synchronize Resonance design assets into Backstage
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/resonance-data/control-plane/source
+ExecStart=/usr/bin/bash ops/scripts/resonance-design-asset-snapshot.sh CCUS-PLATFORM
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target
