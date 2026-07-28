@@ -31,6 +31,19 @@ type DesignAsset = {
   fingerprint: string;
   syncedAt: string;
 };
+type DesignDraft = {
+  draftId: string;
+  assetType: AssetType;
+  assetId: string;
+  baseFingerprint: string;
+  patch: Record<string, unknown>;
+  status: string;
+  validationReport?: Record<string, unknown>;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  promotedAt?: string;
+};
 
 const types: { code: AssetType; label: string }[] = [
   { code: 'THEME', label: '테마' },
@@ -110,18 +123,35 @@ export function DesignAssetControlPage() {
   const [draftPayload, setDraftPayload] = useState('');
   const [draftId, setDraftId] = useState('');
   const [draftStatus, setDraftStatus] = useState('');
+  const [drafts, setDrafts] = useState<DesignDraft[]>([]);
   const activeType = types[tab].code;
 
   const load = useCallback(async () => {
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/design-assets/${encodeURIComponent(
-        projectId,
-      )}?assetType=${activeType}&limit=500`,
-    );
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.message || '자산 조회 실패');
-    setAssets(payload.assets ?? []);
-    setCounts(payload.counts ?? {});
+    const [assetResponse, draftResponse] = await Promise.all([
+      fetchApi.fetch(
+        `/api/resonance-projects/design-assets/${encodeURIComponent(
+          projectId,
+        )}?assetType=${activeType}&limit=500`,
+      ),
+      fetchApi.fetch(
+        `/api/resonance-projects/design-assets/${encodeURIComponent(
+          projectId,
+        )}/drafts`,
+      ),
+    ]);
+    const [assetPayload, draftPayloadResult] = await Promise.all([
+      assetResponse.json(),
+      draftResponse.json(),
+    ]);
+    if (!assetResponse.ok) {
+      throw new Error(assetPayload.message || '자산 조회 실패');
+    }
+    if (!draftResponse.ok) {
+      throw new Error(draftPayloadResult.message || '변경 이력 조회 실패');
+    }
+    setAssets(assetPayload.assets ?? []);
+    setCounts(assetPayload.counts ?? {});
+    setDrafts(draftPayloadResult.drafts ?? []);
   }, [activeType, fetchApi, projectId]);
 
   useEffect(() => {
@@ -218,6 +248,22 @@ export function DesignAssetControlPage() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.message || '승격 실패');
     setDraftStatus(`PROMOTED · TASK ${payload.taskId}`);
+    await load();
+  };
+
+  const requestRollback = async (target: DesignDraft) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/design-assets/${encodeURIComponent(
+        projectId,
+      )}/drafts/${target.draftId}/rollback`,
+      { method: 'POST' },
+    );
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.message || '롤백 요청 실패');
+    }
+    setDraftStatus(`ROLLBACK_QUEUED · TASK ${payload.taskId}`);
+    await load();
   };
 
   return (
@@ -312,6 +358,86 @@ export function DesignAssetControlPage() {
               )}
             </Paper>
           ))}
+        </Box>
+        <Box mt={4}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Box>
+              <Typography variant="h6">적용·롤백 이력</Typography>
+              <Typography variant="body2" color="textSecondary">
+                원본 지문, 검증 결과, 런타임 백업과 최종 상태를 함께
+                보관합니다.
+              </Typography>
+            </Box>
+            <Button variant="outlined" onClick={() => void load()}>
+              새로고침
+            </Button>
+          </Box>
+          <Box mt={2} display="grid" gridGap={12}>
+            {drafts.slice(0, 20).map(draft => {
+              const report = draft.validationReport ?? {};
+              const failures = Array.isArray(report.failures)
+                ? report.failures.join(', ')
+                : '';
+              return (
+                <Paper key={draft.draftId} variant="outlined">
+                  <Box p={2}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      gridGap={12}
+                    >
+                      <Box minWidth={0}>
+                        <Typography variant="subtitle2">
+                          #{draft.draftId} · {draft.assetType} · {draft.assetId}
+                        </Typography>
+                        <Typography variant="caption" className={classes.mono}>
+                          {draft.baseFingerprint}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gridGap={8}>
+                        <Chip
+                          size="small"
+                          color={
+                            draft.status === 'APPLIED' ? 'primary' : 'default'
+                          }
+                          label={draft.status}
+                        />
+                        {draft.status === 'APPLIED' && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() =>
+                              void requestRollback(draft).catch(reason =>
+                                setError(String(reason.message || reason)),
+                              )
+                            }
+                          >
+                            이 버전으로 롤백
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box mt={1}>
+                      <Typography variant="body2">
+                        검증:{' '}
+                        {String(report.validation ?? report.status ?? '-')}
+                      </Typography>
+                      <Typography variant="body2">
+                        백업: {String(report.backup ?? '-')}
+                      </Typography>
+                      {failures && (
+                        <Typography variant="body2" color="error">
+                          실패 원인: {failures}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Box>
         </Box>
       </Content>
       <Drawer

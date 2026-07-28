@@ -850,6 +850,69 @@ export default createBackendPlugin({
           },
         );
         router.post(
+          '/design-assets/:projectId/drafts/:draftId/rollback',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const draftId = Number(request.params.draftId);
+            const now = new Date();
+            const result = await knex.transaction(async transaction => {
+              const draft = await transaction(
+                'resonance_projects__design_asset_draft',
+              )
+                .where({ project_id: projectId, draft_id: draftId })
+                .forUpdate()
+                .first();
+              if (!draft) throw new Error('draft not found');
+              if (draft.draft_status !== 'APPLIED') {
+                throw new Error('only applied drafts can be rolled back');
+              }
+              const report = (draft.validation_report ?? {}) as Record<
+                string,
+                unknown
+              >;
+              const backup = String(report.backup ?? '');
+              const appliedFingerprint = String(
+                report.afterFingerprint ?? '',
+              );
+              if (!backup || !/^[0-9a-f]{64}$/.test(appliedFingerprint)) {
+                throw new Error('verified runtime backup is missing');
+              }
+              await transaction('resonance_projects__design_asset_draft')
+                .where({ project_id: projectId, draft_id: draftId })
+                .update({
+                  draft_status: 'ROLLBACK_QUEUED',
+                  updated_at: now,
+                });
+              const [task] = await transaction(
+                'resonance_projects__task',
+              )
+                .insert({
+                  project_id: projectId,
+                  task_type: 'DESIGN_ASSET_ROLLBACK',
+                  status: 'PLANNED',
+                  payload: JSON.stringify({
+                    draftId,
+                    assetType: draft.asset_type,
+                    assetId: draft.asset_id,
+                    appliedFingerprint,
+                    backup,
+                  }),
+                  created_at: now,
+                  updated_at: now,
+                })
+                .returning('*');
+              return task;
+            });
+            response.json({
+              projectId,
+              draftId: String(draftId),
+              status: 'ROLLBACK_QUEUED',
+              taskId: String(result.task_id),
+              taskStatus: result.status,
+            });
+          },
+        );
+        router.post(
           '/control-assets/:projectId/transition',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);

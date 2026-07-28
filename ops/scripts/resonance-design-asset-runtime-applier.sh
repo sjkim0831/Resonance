@@ -63,7 +63,8 @@ jq -e '
   .schemaVersion==1
   and .sourceOfTruth=="BACKSTAGE"
   and .status=="READY"
-  and .action=="APPLY_VERIFIED_DESIGN_ASSET_PATCH"
+  and (.action=="APPLY_VERIFIED_DESIGN_ASSET_PATCH"
+       or .action=="ROLLBACK_VERIFIED_DESIGN_ASSET_PATCH")
   and (.projectId|type=="string")
   and (.draftId|type=="number")
   and (.assetType|IN("THEME","CSS","SECTION","COMPONENT","SCREEN","MENU"))
@@ -77,6 +78,7 @@ DRAFT_ID="$(jq -r '.draftId' "$QUEUE_FILE")"
 ASSET_TYPE="$(jq -r '.assetType' "$QUEUE_FILE")"
 ASSET_ID="$(jq -r '.assetId' "$QUEUE_FILE")"
 BASE_FINGERPRINT="$(jq -r '.baseFingerprint' "$QUEUE_FILE")"
+ACTION="$(jq -r '.action' "$QUEUE_FILE")"
 [[ "$PROJECT_ID" =~ ^[A-Z][A-Z0-9_-]{2,63}$ && "$DRAFT_ID" =~ ^[0-9]+$ ]]
 
 DATABASE="$(
@@ -111,7 +113,21 @@ backstage_sql() {
 }
 
 id_b64="$(printf '%s' "$ASSET_ID" | base64 -w0)"
-patch_b64="$(jq -c '.patch' "$QUEUE_FILE" | base64 -w0)"
+if [[ "$ACTION" == "ROLLBACK_VERIFIED_DESIGN_ASSET_PATCH" ]]; then
+  RESTORE_BACKUP="$(jq -r '.backup // ""' "$QUEUE_FILE")"
+  case "$RESTORE_BACKUP" in
+    "$STATE_ROOT"/backups/*.json) ;;
+    *)
+      echo "[design-asset-runtime] blocked: backup path is outside managed storage" >&2
+      exit 1
+      ;;
+  esac
+  [[ -s "$RESTORE_BACKUP" ]]
+  patch_b64="$(base64 -w0 "$RESTORE_BACKUP")"
+else
+  RESTORE_BACKUP=""
+  patch_b64="$(jq -c '.patch' "$QUEUE_FILE" | base64 -w0)"
+fi
 
 asset_select_sql() {
   case "$ASSET_TYPE" in
@@ -206,7 +222,11 @@ if [[ "$LIVE_FINGERPRINT" != "$BASE_FINGERPRINT" ]]; then
   exit 1
 fi
 
-BACKUP_FILE="$STATE_ROOT/backups/${PROJECT_ID}-${DRAFT_ID}-${ASSET_TYPE}-${ASSET_ID}.json"
+if [[ "$ACTION" == "ROLLBACK_VERIFIED_DESIGN_ASSET_PATCH" ]]; then
+  BACKUP_FILE="$STATE_ROOT/backups/${PROJECT_ID}-${DRAFT_ID}-${ASSET_TYPE}-${ASSET_ID}-before-rollback.json"
+else
+  BACKUP_FILE="$STATE_ROOT/backups/${PROJECT_ID}-${DRAFT_ID}-${ASSET_TYPE}-${ASSET_ID}.json"
+fi
 printf '%s\n' "$LIVE_CANONICAL" >"$BACKUP_FILE.tmp"
 mv -f "$BACKUP_FILE.tmp" "$BACKUP_FILE"
 
@@ -314,21 +334,25 @@ SQL
 }
 
 apply_sql "$patch_b64" | carbonet_sql >/dev/null
-EXPECTED_CANONICAL="$(
-  jq -nc --argjson live "$LIVE_CANONICAL" --argjson patch "$(jq -c '.patch' "$QUEUE_FILE")" \
-    '$live + $patch | {
-      assetType,assetId,assetName,
-      routePath:(.routePath // ""),version:(.version // "v1"),
-      active:(.active != false),payload:(.payload // {})
-    }'
-)"
+if [[ "$ACTION" == "ROLLBACK_VERIFIED_DESIGN_ASSET_PATCH" ]]; then
+  EXPECTED_CANONICAL="$(normalize_asset <"$RESTORE_BACKUP")"
+else
+  EXPECTED_CANONICAL="$(
+    jq -nc --argjson live "$LIVE_CANONICAL" --argjson patch "$(jq -c '.patch' "$QUEUE_FILE")" \
+      '$live + $patch | {
+        assetType,assetId,assetName,
+        routePath:(.routePath // ""),version:(.version // "v1"),
+        active:(.active != false),payload:(.payload // {})
+      }'
+  )"
+fi
 EXPECTED_FINGERPRINT="$(printf '%s' "$EXPECTED_CANONICAL" | sha256sum | awk '{print $1}')"
 AFTER_JSON="$(asset_select_sql | carbonet_sql)"
 AFTER_CANONICAL="$(printf '%s' "$AFTER_JSON" | normalize_asset)"
 AFTER_FINGERPRINT="$(printf '%s' "$AFTER_CANONICAL" | sha256sum | awk '{print $1}')"
 
 if [[ "$AFTER_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
-  rollback_b64="$(cat "$BACKUP_FILE" | base64 -w0)"
+  rollback_b64="$(base64 -w0 "$BACKUP_FILE")"
   apply_sql "$rollback_b64" | carbonet_sql >/dev/null
   jq -n \
     --arg projectId "$PROJECT_ID" --argjson draftId "$DRAFT_ID" \
@@ -342,24 +366,31 @@ fi
 
 bash "$ROOT/ops/scripts/resonance-design-asset-snapshot.sh" "$PROJECT_ID" >/dev/null
 receipt_file="$STATE_ROOT/receipts/$(basename "$QUEUE_FILE").receipt.json"
+FINAL_STATUS="APPLIED"
+FINAL_DRAFT_STATUS="APPLIED"
+if [[ "$ACTION" == "ROLLBACK_VERIFIED_DESIGN_ASSET_PATCH" ]]; then
+  FINAL_STATUS="ROLLED_BACK"
+  FINAL_DRAFT_STATUS="ROLLED_BACK"
+fi
 jq -n \
   --arg projectId "$PROJECT_ID" --argjson draftId "$DRAFT_ID" \
   --arg assetType "$ASSET_TYPE" --arg assetId "$ASSET_ID" \
   --arg before "$LIVE_FINGERPRINT" --arg after "$AFTER_FINGERPRINT" \
-  --arg backup "$BACKUP_FILE" --arg appliedAt "$(date -u +%FT%TZ)" \
-  '{status:"APPLIED",validation:"PASS",projectId:$projectId,draftId:$draftId,assetType:$assetType,assetId:$assetId,beforeFingerprint:$before,afterFingerprint:$after,backup:$backup,appliedAt:$appliedAt}' \
+  --arg backup "$BACKUP_FILE" --arg status "$FINAL_STATUS" \
+  --arg completedAt "$(date -u +%FT%TZ)" \
+  '{status:$status,validation:"PASS",projectId:$projectId,draftId:$draftId,assetType:$assetType,assetId:$assetId,beforeFingerprint:$before,afterFingerprint:$after,backup:$backup,completedAt:$completedAt}' \
   >"$receipt_file.tmp"
 mv -f "$receipt_file.tmp" "$receipt_file"
 
 receipt_b64="$(jq -c . "$receipt_file" | base64 -w0)"
 backstage_sql <<SQL
 update resonance_projects__design_asset_draft
-   set draft_status='APPLIED',
+   set draft_status='$FINAL_DRAFT_STATUS',
        validation_report=coalesce(validation_report,'{}'::jsonb) ||
          convert_from(decode('$receipt_b64','base64'),'UTF8')::jsonb,
        updated_at=now()
  where project_id='$PROJECT_ID' and draft_id=$DRAFT_ID
-   and draft_status='PROMOTED';
+   and draft_status in ('PROMOTED','ROLLBACK_QUEUED');
 SQL
 
-echo "[design-asset-runtime] PASS project=$PROJECT_ID draft=$DRAFT_ID asset=$ASSET_TYPE:$ASSET_ID"
+echo "[design-asset-runtime] PASS status=$FINAL_STATUS project=$PROJECT_ID draft=$DRAFT_ID asset=$ASSET_TYPE:$ASSET_ID"
