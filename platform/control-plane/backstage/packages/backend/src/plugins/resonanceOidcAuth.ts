@@ -53,9 +53,15 @@ export const resonanceOidcAuth = createBackendModule({
               >;
               const email =
                 typeof claims.email === 'string' ? claims.email : undefined;
+              const preferredUsername =
+                typeof claims.preferred_username === 'string'
+                  ? claims.preferred_username
+                  : undefined;
               const subject = String(claims.sub ?? '');
               const localPart = email?.split('@')[0];
-              const name = normalizeName(localPart || subject);
+              const name = normalizeName(
+                preferredUsername || localPart || subject,
+              );
               if (!name) {
                 throw new Error('OIDC identity is missing a usable sub or email');
               }
