@@ -176,6 +176,22 @@ spec:
             fsGroup: 999
             seccompProfile:
               type: RuntimeDefault
+          initContainers:
+            - name: prepare-backup-directory
+              image: busybox:1.36
+              command: ["/bin/sh", "-ceu"]
+              args:
+                - chown 999:999 /backups && chmod 0700 /backups
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+              securityContext:
+                runAsNonRoot: false
+                runAsUser: 0
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                  add: ["CHOWN", "FOWNER"]
           containers:
             - name: pg-dump
               image: postgres:16
