@@ -593,6 +593,9 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash -n ops/scripts/plan-incremental-work.sh
   bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
   bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
+  if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
+    bash ops/scripts/resonance-control-plane.sh validate
+  fi
   health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
   if [[ "$health_status" != *'"status":"UP"'* ]]; then
     echo "[auto-deploy] refusing automation-only success marker: health check is not UP" >&2

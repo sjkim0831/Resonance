@@ -66,6 +66,14 @@ while IFS= read -r path; do
       add_test "backend:related-test"
       add_reason "backend-test"
       ;;
+    platform/control-plane/*|deploy/k8s/control-plane/*)
+      # Backstage catalog and control-plane boundary declarations describe
+      # environments outside the Carbonet application runtime. Validate them,
+      # but never rebuild or roll the customer-facing Java/React workload.
+      infrastructure_required=true
+      add_test "control-plane:validate"
+      add_reason "control-plane-only"
+      ;;
     ops/docker/*|deploy/*|manifests/*)
       runtime_required=true; backend_required=true; infrastructure_required=true; catalog_only=false
       add_test "deployment:preflight"

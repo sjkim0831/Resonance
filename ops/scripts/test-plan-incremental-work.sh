@@ -11,7 +11,8 @@ git init -q
 git config user.name planner-test
 git config user.email planner-test@example.invalid
 mkdir -p docs tests projects/carbonet-frontend/source/src apps/carbonet-api/src/main/java/example \
-  apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated
+  apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated \
+  platform/control-plane/catalog deploy/k8s/control-plane
 printf 'base\n' > README.md
 git add . && git commit -qm base
 base="$(git rev-parse HEAD)"
@@ -70,5 +71,19 @@ eval "$(bash "$PLANNER" "$metadata" "$builder_test" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_CATALOG_ONLY" == true ]]
 [[ "$PLAN_TESTS" == *"builder:unit-test"* ]]
+
+printf 'apiVersion: backstage.io/v1alpha1\nkind: Component\n' > platform/control-plane/catalog/catalog-info.yaml
+printf 'apiVersion: v1\nkind: Namespace\n' > deploy/k8s/control-plane/environment-foundation.yaml
+git add . && git commit -qm control-plane
+control_plane="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$builder_test" "$control_plane" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_CATALOG_ONLY" == true ]]
+[[ "$PLAN_TESTS" == *"control-plane:validate"* ]]
+[[ "$PLAN_REASONS" == *"control-plane-only"* ]]
 
 echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build"
