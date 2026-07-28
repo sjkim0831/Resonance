@@ -44,7 +44,7 @@ export function ProcessArchetypeCatalog({ archetypes, bindings, blueprints, busy
     return map;
   },[bindings]);
   const primaryCount=new Set(bindings.filter(row=>text(row,"bindingRole")==="PRIMARY").map(row=>routeKey(text(row,"routePath")))).size;
-  const mappedCount=new Set(bindings.map(row=>routeKey(text(row,"routePath"))).size;
+  const mappedCount=new Set(bindings.map(row=>routeKey(text(row,"routePath")))).size;
 
   return <div className="space-y-4">
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
