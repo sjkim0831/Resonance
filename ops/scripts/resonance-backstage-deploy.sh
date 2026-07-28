@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 APP="$ROOT/platform/control-plane/backstage"
-BUILD_TMP_ROOT="${BACKSTAGE_BUILD_TMP_ROOT:-/opt/resonance-data/build-tmp/backstage}"
+BUILD_TMP_ROOT="${BACKSTAGE_BUILD_TMP_ROOT:-/opt/resonance-data/control-plane/build-tmp/backstage}"
 mkdir -p "$BUILD_TMP_ROOT"
 TMPDIR="$(mktemp -d "$BUILD_TMP_ROOT/run.XXXXXXXX")"
 case "$(readlink -f "$TMPDIR")" in
