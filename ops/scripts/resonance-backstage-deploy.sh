@@ -18,6 +18,10 @@ require() {
 }
 
 for command in git node corepack docker kubectl openssl; do require "$command"; done
+docker buildx version >/dev/null 2>&1 || {
+  echo "[backstage] Docker buildx is required (Ubuntu package: docker-buildx)" >&2
+  exit 1
+}
 [[ -f "$APP/yarn.lock" && -f "$MANIFEST" ]] || {
   echo "[backstage] application or manifest is missing" >&2
   exit 2
@@ -86,7 +90,8 @@ case "$mode" in
       "select 1 from pg_database where datname='backstage'")"
     if [[ "$database_exists" != "1" ]]; then
       kubectl -n carbonet-prod exec "$leader" -c patroni -- \
-        createdb -h 127.0.0.1 -U postgres -O backstage backstage
+        psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+        -c "create database backstage owner backstage"
     fi
 
     kubectl -n "$NAMESPACE" create secret generic resonance-backstage-database \
