@@ -12,8 +12,8 @@ PAYLOAD="$WORK_DIR/${PROJECT_ID}.json"
 
 DATABASE="$(
   kubectl -n "$NAMESPACE" exec "$POD" -- sh -lc '
-    for db in $(psql -U "$POSTGRES_USER" -d postgres -Atc "select datname from pg_database where datallowconn and not datistemplate"); do
-      if [ "$(psql -U "$POSTGRES_USER" -d "$db" -Atc "select to_regclass('\''public.ui_component_registry'\'') is not null")" = "t" ]; then
+    for db in $(psql -h 127.0.0.1 -U postgres -d postgres -Atc "select datname from pg_database where datallowconn and not datistemplate"); do
+      if [ "$(psql -h 127.0.0.1 -U postgres -d "$db" -Atc "select to_regclass('\''public.ui_component_registry'\'') is not null")" = "t" ]; then
         printf "%s" "$db"
         exit 0
       fi
@@ -23,7 +23,7 @@ DATABASE="$(
 )"
 
 kubectl -n "$NAMESPACE" exec "$POD" -- sh -lc \
-  "psql -U \"\$POSTGRES_USER\" -d '$DATABASE' -At -v ON_ERROR_STOP=1" \
+  "psql -h 127.0.0.1 -U postgres -d '$DATABASE' -At -v ON_ERROR_STOP=1" \
   >"$RAW" <<'SQL'
 select jsonb_build_object(
   'assetType','THEME','assetId',theme_id,'assetName',theme_nm,
