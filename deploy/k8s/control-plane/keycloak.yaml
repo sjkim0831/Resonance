@@ -212,6 +212,12 @@ spec:
               envFrom:
                 - secretRef:
                     name: resonance-keycloak
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: resonance-keycloak
+                      key: KC_DB_PASSWORD
               volumeMounts:
                 - name: backups
                   mountPath: /backups
