@@ -138,6 +138,7 @@ case "$mode" in
     ensure_ingress_https_port
     (
       cd "$APP"
+      corepack yarn validate:page-extensions
       corepack yarn generate:ccus-screen-designs
     )
     # Tag by the Backstage source tree rather than the repository commit.
