@@ -282,6 +282,7 @@ fi
 # fast-forward can replace a freshly verified bundle graph with the stale
 # repository copy after the screen gate has already passed.
 live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+mkdir -p "$ROOT_DIR/var/run"
 merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
 merge_overlay_backup_valid=false
 if [[ -f "$live_frontend_overlay/index.html" ]]; then
