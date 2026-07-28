@@ -17,7 +17,7 @@ require() {
   }
 }
 
-for command in git node corepack docker kubectl openssl; do require "$command"; done
+for command in git node corepack docker kubectl openssl curl; do require "$command"; done
 docker buildx version >/dev/null 2>&1 || {
   echo "[backstage] Docker buildx is required (Ubuntu package: docker-buildx)" >&2
   exit 1
@@ -25,6 +25,49 @@ docker buildx version >/dev/null 2>&1 || {
 [[ -f "$APP/yarn.lock" && -f "$MANIFEST" ]] || {
   echo "[backstage] application or manifest is missing" >&2
   exit 2
+}
+
+BACKSTAGE_URL="${BACKSTAGE_URL:-http://172.16.1.232:30707}"
+BACKSTAGE_MIN_CATALOG_ENTITIES="${BACKSTAGE_MIN_CATALOG_ENTITIES:-22}"
+
+wait_for_runtime() {
+  local attempt
+  for attempt in $(seq 1 30); do
+    if curl -fsS --max-time 10 \
+      "$BACKSTAGE_URL/.backstage/health/v1/readiness" >/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "[backstage] readiness did not converge at $BACKSTAGE_URL" >&2
+  return 1
+}
+
+wait_for_catalog() {
+  local attempt identity token count
+  for attempt in $(seq 1 30); do
+    identity="$(curl -fsS --max-time 10 -X POST \
+      -H 'content-type: application/json' -d '{}' \
+      "$BACKSTAGE_URL/api/auth/guest/refresh" 2>/dev/null || true)"
+    token="$(IDENTITY_JSON="$identity" node -e \
+      'try { process.stdout.write(JSON.parse(process.env.IDENTITY_JSON).backstageIdentity.token || "") } catch {}')"
+    if [[ -n "$token" ]]; then
+      count="$(curl -fsS --max-time 10 \
+        -H "authorization: Bearer $token" \
+        "$BACKSTAGE_URL/api/catalog/entities" 2>/dev/null |
+        node -e \
+          'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const v=JSON.parse(s);process.stdout.write(String(Array.isArray(v)?v.length:0))}catch{process.stdout.write("0")}})' ||
+        true)"
+      if [[ "$count" =~ ^[0-9]+$ ]] &&
+        (( count >= BACKSTAGE_MIN_CATALOG_ENTITIES )); then
+        echo "[backstage] catalog ready: $count entities"
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  echo "[backstage] catalog did not reach $BACKSTAGE_MIN_CATALOG_ENTITIES entities" >&2
+  return 1
 }
 
 mode="${1:-deploy}"
@@ -119,12 +162,15 @@ case "$mode" in
     # catalog snapshot and database-backed catalog converge immediately.
     kubectl -n "$NAMESPACE" rollout restart deployment/resonance-backstage
     kubectl -n "$NAMESPACE" rollout status deployment/resonance-backstage --timeout=600s
-    curl -fsS --max-time 10 http://172.16.1.232:30707/.backstage/health/v1/readiness >/dev/null
-    echo "[backstage] PASS deployed $image at http://172.16.1.232:30707"
+    wait_for_runtime
+    wait_for_catalog
+    echo "[backstage] PASS deployed $image at $BACKSTAGE_URL"
     ;;
   status)
     kubectl -n "$NAMESPACE" get deployment,pod,service -l app.kubernetes.io/name=resonance-backstage -o wide
-    curl -fsS --max-time 10 http://172.16.1.232:30707/.backstage/health/v1/readiness
+    curl -fsS --max-time 10 "$BACKSTAGE_URL/.backstage/health/v1/readiness"
+    echo
+    wait_for_catalog
     ;;
   *)
     echo "usage: $0 {validate|deploy|status}" >&2
