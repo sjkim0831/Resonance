@@ -15,12 +15,21 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import LaunchIcon from '@material-ui/icons/Launch';
+import SaveIcon from '@material-ui/icons/Save';
+import PublishIcon from '@material-ui/icons/Publish';
 import {
   ACTOR_PROCESS_TAB_COUNT,
   ACTOR_PROCESS_WORKSPACES,
   ActorProcessTab,
 } from './actorProcessWorkspaces';
 import { RESONANCE_PROJECT_REGISTRY } from './generatedProjectRegistry';
+
+type ProjectOption = (typeof RESONANCE_PROJECT_REGISTRY)[number];
+type DesignRelease = {
+  designVersion: number;
+  status: string;
+  contractSha256: string;
+};
 
 const useStyles = makeStyles(theme => ({
   context: {
@@ -65,10 +74,15 @@ const useStyles = makeStyles(theme => ({
 export function ActorProcessControlPage() {
   const classes = useStyles();
   const fetchApi = useApi(fetchApiRef);
-  const [projects, setProjects] = useState(RESONANCE_PROJECT_REGISTRY);
+  const [projects, setProjects] = useState<ProjectOption[]>(
+    RESONANCE_PROJECT_REGISTRY,
+  );
   const [projectId, setProjectId] = useState(
     RESONANCE_PROJECT_REGISTRY[0]?.projectId ?? 'CCUS-PLATFORM',
   );
+  const [designVersion, setDesignVersion] = useState(1);
+  const [release, setRelease] = useState<DesignRelease | null>(null);
+  const [message, setMessage] = useState('');
   const [workspaceId, setWorkspaceId] = useState('operate');
   const [tabId, setTabId] = useState('work-dashboard');
   const workspace =
@@ -83,37 +97,130 @@ export function ActorProcessControlPage() {
     projects.find(item => item.projectId === projectId) ?? projects[0];
   const sourceUrl = `http://172.16.1.232/admin/system/actor-process?projectId=${encodeURIComponent(
     projectId,
-  )}&tenantId=DEFAULT&designVersion=1&tab=${encodeURIComponent(selectedTab.id)}`;
+  )}&tenantId=DEFAULT&designVersion=${designVersion}&tab=${encodeURIComponent(
+    selectedTab.id,
+  )}`;
+  const developmentContractUrl = `/api/resonance-projects/${encodeURIComponent(
+    projectId,
+  )}/development-contract`;
+
+  const loadReleases = async (targetProjectId: string) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/${encodeURIComponent(
+        targetProjectId,
+      )}/design-releases`,
+    );
+    if (!response.ok) return;
+    const payload = (await response.json()) as {
+      releases?: DesignRelease[];
+    };
+    const latest = payload.releases?.[0] ?? null;
+    setRelease(latest);
+    if (latest) setDesignVersion(latest.designVersion);
+  };
 
   useEffect(() => {
     void fetchApi
       .fetch('/api/resonance-projects')
       .then(response => (response.ok ? response.json() : Promise.reject(response)))
-      .then((payload: { projects?: { projectId: string; projectName: string }[] }) => {
-        const dynamic = (payload.projects ?? []).map(project => ({
-          ...RESONANCE_PROJECT_REGISTRY[0],
-          projectId: project.projectId,
-          projectName: project.projectName,
-        }));
-        setProjects([
-          ...new Map(
-            [...RESONANCE_PROJECT_REGISTRY, ...dynamic].map(project => [
-              project.projectId,
-              project,
-            ]),
-          ).values(),
-        ]);
-      })
+      .then(
+        (payload: {
+          projects?: {
+            projectId: string;
+            projectName: string;
+            designVersion?: number;
+          }[];
+        }) => {
+          const dynamic = (payload.projects ?? []).map(project => ({
+            ...RESONANCE_PROJECT_REGISTRY[0],
+            projectId: project.projectId,
+            projectName: project.projectName,
+          }));
+          setProjects([
+            ...new Map(
+              [...RESONANCE_PROJECT_REGISTRY, ...dynamic].map(project => [
+                project.projectId,
+                project,
+              ]),
+            ).values(),
+          ]);
+          const current = payload.projects?.find(
+            project => project.projectId === projectId,
+          );
+          if (current?.designVersion) setDesignVersion(current.designVersion);
+        },
+      )
       .catch(() => {
-        // Static registry remains available when the dynamic API is unavailable.
+        // 정적 레지스트리는 동적 API 장애 시에도 탐색을 가능하게 합니다.
       });
-  }, [fetchApi]);
+    void loadReleases(projectId);
+  }, [fetchApi, projectId]);
+
+  const saveDesignRelease = async () => {
+    setMessage('설계 계약을 검증하고 저장하는 중입니다.');
+    const contract = {
+      schemaVersion: 1,
+      projectId,
+      tenantId: 'DEFAULT',
+      designVersion,
+      source: 'BACKSTAGE_ACTOR_PROCESS_CONTROL',
+      contextFields: ['projectId', 'tenantId', 'designVersion'],
+      workspaces: ACTOR_PROCESS_WORKSPACES,
+      runtimeBinding: {
+        route: '/admin/system/actor-process',
+        api: '/admin/api/system/actor-process',
+        generator:
+          '/admin/api/system/actor-process/generation/compile-and-queue',
+      },
+    };
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/${encodeURIComponent(
+        projectId,
+      )}/design-releases`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ designVersion, contract }),
+      },
+    );
+    const payload = (await response.json()) as {
+      message?: string;
+      validation?: { failures?: string[] };
+    };
+    if (!response.ok) {
+      setMessage(
+        payload.validation?.failures?.join(', ') ??
+          payload.message ??
+          '설계 저장에 실패했습니다.',
+      );
+      return;
+    }
+    setMessage('설계 계약이 검증되어 Backstage 원장에 저장되었습니다.');
+    await loadReleases(projectId);
+  };
+
+  const promoteDesignRelease = async () => {
+    setMessage('검증된 설계를 개발 기준으로 승격하는 중입니다.');
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/${encodeURIComponent(
+        projectId,
+      )}/design-releases/${designVersion}/promote`,
+      { method: 'POST' },
+    );
+    const payload = (await response.json()) as { message?: string };
+    if (!response.ok) {
+      setMessage(payload.message ?? '설계 승격에 실패했습니다.');
+      return;
+    }
+    setMessage('승격 완료: Resonance 생성기가 이 계약을 사용할 수 있습니다.');
+    await loadReleases(projectId);
+  };
 
   return (
     <Page themeId="tool">
       <Header
         title="Actor·Process 프로젝트 제어"
-        subtitle="프로젝트 문맥을 유지하며 업무 운영·설계·검증·개발·배포 기능을 실행합니다."
+        subtitle="프로젝트 문맥을 유지하며 업무 운영·설계·검증·개발·배포 기능을 관리합니다."
       />
       <Content>
         <Paper className={classes.context} elevation={0}>
@@ -124,7 +231,10 @@ export function ActorProcessControlPage() {
                 <Select
                   value={projectId}
                   label="프로젝트"
-                  onChange={event => setProjectId(String(event.target.value))}
+                  onChange={event => {
+                    setProjectId(String(event.target.value));
+                    setMessage('');
+                  }}
                 >
                   {projects.map(project => (
                     <MenuItem key={project.projectId} value={project.projectId}>
@@ -139,10 +249,56 @@ export function ActorProcessControlPage() {
                 {selectedProject?.projectName ?? projectId}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                projectId={projectId} · tenantId=DEFAULT · designVersion=1
+                projectId={projectId} · tenantId=DEFAULT · designVersion=
+                {designVersion}
               </Typography>
+              <Box mt={1} display="flex" gridGap={8} flexWrap="wrap">
+                <Chip
+                  size="small"
+                  label={`설계 릴리스: ${release?.status ?? '미등록'}`}
+                  color={release?.status === 'PROMOTED' ? 'primary' : 'default'}
+                />
+                {release?.contractSha256 && (
+                  <Chip
+                    size="small"
+                    label={`SHA-256 ${release.contractSha256.slice(0, 12)}`}
+                  />
+                )}
+              </Box>
             </Grid>
           </Grid>
+          <Box mt={2} display="flex" gridGap={8} flexWrap="wrap">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<SaveIcon />}
+              onClick={saveDesignRelease}
+            >
+              Backstage 설계 원장 저장
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PublishIcon />}
+              disabled={release?.status !== 'VALIDATED'}
+              onClick={promoteDesignRelease}
+            >
+              Resonance 개발 기준으로 승격
+            </Button>
+            <Button
+              variant="outlined"
+              href={developmentContractUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              개발 계약 JSON
+            </Button>
+          </Box>
+          {message && (
+            <Typography variant="body2" style={{ marginTop: 12 }}>
+              {message}
+            </Typography>
+          )}
         </Paper>
 
         <Grid container spacing={2}>
@@ -173,7 +329,7 @@ export function ActorProcessControlPage() {
         <Box className={classes.layout} mt={2}>
           <Paper className={classes.detail} elevation={0}>
             <Typography variant="overline">
-              전체 {ACTOR_PROCESS_TAB_COUNT}개 탭
+              전체 {ACTOR_PROCESS_TAB_COUNT}개 기능
             </Typography>
             <Typography variant="h6">{workspace.label}</Typography>
             <Box mt={2}>
@@ -208,9 +364,9 @@ export function ActorProcessControlPage() {
             <Box mt={3}>
               <Typography variant="subtitle2">실행 문맥</Typography>
               <Typography variant="body2">
-                프로젝트, 테넌트, 설계 버전을 유지한 상태로 기존 기능을
-                실행합니다. 네이티브 전환이 완료될 때까지 데이터 정본은
-                Carbonet API와 PostgreSQL입니다.
+                Backstage의 승격된 설계 계약을 기준으로 프로젝트·테넌트·설계
+                버전을 유지합니다. 실제 업무 데이터와 상태 전이는 Resonance
+                API와 PostgreSQL에서 처리합니다.
               </Typography>
             </Box>
             <Box mt={3}>

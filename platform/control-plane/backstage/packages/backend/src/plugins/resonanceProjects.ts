@@ -3,6 +3,7 @@ import {
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
 import { Router, json } from 'express';
+import { createHash } from 'node:crypto';
 
 type ProjectInput = {
   projectId?: string;
@@ -14,10 +15,68 @@ type ProjectInput = {
   runtimeMode?: string;
 };
 
+type DesignContractInput = {
+  designVersion?: number;
+  contract?: Record<string, unknown>;
+  createdBy?: string;
+};
+
 const normalizeProjectId = (value: unknown) =>
   String(value ?? '')
     .trim()
     .toUpperCase();
+
+const validateDesignContract = (
+  projectId: string,
+  contract: Record<string, unknown>,
+) => {
+  const failures: string[] = [];
+  if (contract.projectId !== projectId) {
+    failures.push('contract.projectId must match the selected project');
+  }
+  if (contract.tenantId !== 'DEFAULT') {
+    failures.push('contract.tenantId must be DEFAULT');
+  }
+  const workspaces = Array.isArray(contract.workspaces)
+    ? contract.workspaces
+    : [];
+  if (workspaces.length !== 4) {
+    failures.push('exactly 4 actor-process workspaces are required');
+  }
+  const tabs = workspaces.flatMap(workspace => {
+    if (!workspace || typeof workspace !== 'object') return [];
+    const candidate = (workspace as { tabs?: unknown }).tabs;
+    return Array.isArray(candidate) ? candidate : [];
+  });
+  if (tabs.length !== 33) {
+    failures.push('exactly 33 actor-process functions are required');
+  }
+  const tabIds = tabs
+    .map(tab =>
+      tab && typeof tab === 'object'
+        ? String((tab as { id?: unknown }).id ?? '')
+        : '',
+    )
+    .filter(Boolean);
+  if (new Set(tabIds).size !== tabIds.length) {
+    failures.push('actor-process function ids must be unique');
+  }
+  const requiredContext = ['projectId', 'tenantId', 'designVersion'];
+  const contextFields = Array.isArray(contract.contextFields)
+    ? contract.contextFields.map(String)
+    : [];
+  for (const field of requiredContext) {
+    if (!contextFields.includes(field)) {
+      failures.push(`missing project context field: ${field}`);
+    }
+  }
+  return {
+    status: failures.length === 0 ? 'VERIFIED' : 'BLOCKED',
+    failures,
+    workspaceCount: workspaces.length,
+    functionCount: tabs.length,
+  };
+};
 
 export default createBackendPlugin({
   pluginId: 'resonance-projects',
@@ -67,6 +126,39 @@ export default createBackendPlugin({
               'resonance_projects__task_project_status_idx',
             );
           });
+        }
+        if (
+          !(await knex.schema.hasTable('resonance_projects__design_release'))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__design_release',
+            table => {
+              table.bigIncrements('release_id').primary();
+              table
+                .string('project_id', 64)
+                .notNullable()
+                .references('project_id')
+                .inTable('resonance_projects__project')
+                .onDelete('CASCADE');
+              table.integer('design_version').notNullable();
+              table.string('release_status', 32).notNullable();
+              table.jsonb('contract_payload').notNullable();
+              table.string('contract_sha256', 64).notNullable();
+              table.jsonb('validation_report').notNullable();
+              table.string('created_by', 120).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.timestamp('promoted_at', { useTz: true }).nullable();
+              table.unique(
+                ['project_id', 'design_version'],
+                'resonance_projects__design_release_project_version_uq',
+              );
+              table.index(
+                ['project_id', 'release_status'],
+                'resonance_projects__design_release_status_idx',
+              );
+            },
+          );
         }
         const taskColumns = [
           ['result', (table: any) => table.jsonb('result').nullable()],
@@ -154,6 +246,208 @@ export default createBackendPlugin({
             .orderBy('task_id', 'asc');
           response.json({ project, tasks });
         });
+        router.get('/:projectId/design-releases', async (request, response) => {
+          const projectId = normalizeProjectId(request.params.projectId);
+          const releases = await knex('resonance_projects__design_release')
+            .where({ project_id: projectId })
+            .select(
+              'release_id',
+              'design_version',
+              'release_status',
+              'contract_sha256',
+              'validation_report',
+              'created_by',
+              'created_at',
+              'updated_at',
+              'promoted_at',
+            )
+            .orderBy('design_version', 'desc');
+          response.json({
+            projectId,
+            releases: releases.map(release => ({
+              releaseId: String(release.release_id),
+              designVersion: release.design_version,
+              status: release.release_status,
+              contractSha256: release.contract_sha256,
+              validationReport: release.validation_report,
+              createdBy: release.created_by,
+              createdAt: release.created_at,
+              updatedAt: release.updated_at,
+              promotedAt: release.promoted_at,
+            })),
+          });
+        });
+        router.post('/:projectId/design-releases', async (request, response) => {
+          const projectId = normalizeProjectId(request.params.projectId);
+          const input = (request.body ?? {}) as DesignContractInput;
+          const project = await knex('resonance_projects__project')
+            .where({ project_id: projectId })
+            .first();
+          if (!project) {
+            response.status(404).json({ message: 'Project not found' });
+            return;
+          }
+          const designVersion = Number(
+            input.designVersion ?? project.design_version,
+          );
+          const contract =
+            input.contract && typeof input.contract === 'object'
+              ? input.contract
+              : {};
+          if (!Number.isInteger(designVersion) || designVersion < 1) {
+            response.status(400).json({ message: 'Invalid designVersion' });
+            return;
+          }
+          const validation = validateDesignContract(projectId, contract);
+          const canonical = JSON.stringify(contract);
+          const checksum = createHash('sha256')
+            .update(canonical)
+            .digest('hex');
+          const now = new Date();
+          const releaseStatus =
+            validation.status === 'VERIFIED' ? 'VALIDATED' : 'DRAFT';
+          await knex('resonance_projects__design_release')
+            .insert({
+              project_id: projectId,
+              design_version: designVersion,
+              release_status: releaseStatus,
+              contract_payload: JSON.stringify(contract),
+              contract_sha256: checksum,
+              validation_report: JSON.stringify(validation),
+              created_by: String(input.createdBy ?? 'backstage-user'),
+              created_at: now,
+              updated_at: now,
+            })
+            .onConflict(['project_id', 'design_version'])
+            .merge({
+              release_status: releaseStatus,
+              contract_payload: JSON.stringify(contract),
+              contract_sha256: checksum,
+              validation_report: JSON.stringify(validation),
+              created_by: String(input.createdBy ?? 'backstage-user'),
+              updated_at: now,
+              promoted_at: null,
+            });
+          response.status(validation.status === 'VERIFIED' ? 201 : 422).json({
+            success: validation.status === 'VERIFIED',
+            projectId,
+            designVersion,
+            status: releaseStatus,
+            contractSha256: checksum,
+            validation,
+          });
+        });
+        router.post(
+          '/:projectId/design-releases/:designVersion/promote',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const designVersion = Number(request.params.designVersion);
+            const release = await knex('resonance_projects__design_release')
+              .where({
+                project_id: projectId,
+                design_version: designVersion,
+              })
+              .first();
+            if (!release) {
+              response.status(404).json({ message: 'Design release not found' });
+              return;
+            }
+            const report =
+              typeof release.validation_report === 'string'
+                ? JSON.parse(release.validation_report)
+                : release.validation_report;
+            if (report?.status !== 'VERIFIED') {
+              response.status(409).json({
+                message: 'Only a verified design release can be promoted',
+              });
+              return;
+            }
+            const now = new Date();
+            await knex.transaction(async transaction => {
+              await transaction('resonance_projects__design_release')
+                .where({ project_id: projectId })
+                .whereNot({ design_version: designVersion })
+                .where({ release_status: 'PROMOTED' })
+                .update({ release_status: 'SUPERSEDED', updated_at: now });
+              await transaction('resonance_projects__design_release')
+                .where({
+                  project_id: projectId,
+                  design_version: designVersion,
+                })
+                .update({
+                  release_status: 'PROMOTED',
+                  promoted_at: now,
+                  updated_at: now,
+                });
+              await transaction('resonance_projects__project')
+                .where({ project_id: projectId })
+                .update({
+                  design_version: designVersion,
+                  status: 'DESIGN_PROMOTED',
+                  updated_at: now,
+                });
+              await transaction('resonance_projects__task').insert({
+                project_id: projectId,
+                task_type: 'DESIGN_PROMOTION',
+                status: 'PLANNED',
+                payload: JSON.stringify({
+                  designVersion,
+                  contractSha256: release.contract_sha256,
+                  target: 'RESONANCE_GENERATOR',
+                }),
+                created_at: now,
+                updated_at: now,
+              });
+            });
+            response.json({
+              success: true,
+              projectId,
+              designVersion,
+              status: 'PROMOTED',
+              contractSha256: release.contract_sha256,
+            });
+          },
+        );
+        router.get(
+          '/:projectId/development-contract',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const preview = request.query.mode === 'preview';
+            const query = knex('resonance_projects__design_release')
+              .where({ project_id: projectId });
+            if (!preview) query.andWhere({ release_status: 'PROMOTED' });
+            const release = await query
+              .orderBy('design_version', 'desc')
+              .first();
+            if (!release) {
+              response.status(404).json({
+                message: preview
+                  ? 'No design release exists'
+                  : 'No promoted design release exists',
+              });
+              return;
+            }
+            const contract =
+              typeof release.contract_payload === 'string'
+                ? JSON.parse(release.contract_payload)
+                : release.contract_payload;
+            response.json({
+              schemaVersion: 1,
+              projectId,
+              tenantId: contract.tenantId,
+              designVersion: release.design_version,
+              releaseStatus: release.release_status,
+              contractSha256: release.contract_sha256,
+              sourceOfTruth: 'BACKSTAGE',
+              generator: {
+                strategy: 'METADATA_FIRST',
+                resonanceEndpoint:
+                  '/admin/api/system/actor-process/generation/compile-and-queue',
+              },
+              contract,
+            });
+          },
+        );
         router.post('/', async (request, response) => {
           const input = (request.body ?? {}) as ProjectInput;
           const projectId = normalizeProjectId(input.projectId);

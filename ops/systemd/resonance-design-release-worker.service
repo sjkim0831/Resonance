@@ -1,0 +1,9 @@
+[Unit]
+Description=Promote Backstage design releases into Resonance generator contracts
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/resonance-data/control-plane/source
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/source/ops/scripts/resonance-design-release-worker.sh

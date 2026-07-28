@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll Backstage for promoted Resonance design releases
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30s
+AccuracySec=5s
+Persistent=true
+Unit=resonance-design-release-worker.service
+
+[Install]
+WantedBy=timers.target
