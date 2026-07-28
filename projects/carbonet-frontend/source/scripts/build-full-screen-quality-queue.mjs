@@ -2,7 +2,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const root = path.resolve(process.env.ROOT_DIR || ".");
+const root = path.resolve(process.env.FRONTEND_ROOT_DIR || ".");
 const cache = path.resolve(process.env.FULL_SCREEN_SMOKE_CACHE_DIR || path.join(root, ".cache/full-screen-smoke"));
 const manifestPath = path.resolve(process.env.FULL_SCREEN_SMOKE_MANIFEST || path.join(cache, "manifest.json"));
 const resultDir = path.resolve(process.env.FULL_SCREEN_SMOKE_RESULT_DIR || path.join(cache, "results"));
