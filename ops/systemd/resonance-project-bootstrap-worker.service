@@ -1,0 +1,19 @@
+[Unit]
+Description=Resonance transactional project bootstrap worker
+After=network-online.target containerd.service kubelet.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+WorkingDirectory=/opt/resonance-data/control-plane/source
+Environment=HOME=/home/sjkim
+Environment=KUBECONFIG=/home/sjkim/.kube/config
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/source/ops/scripts/resonance-project-bootstrap-worker.sh
+Nice=10
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target

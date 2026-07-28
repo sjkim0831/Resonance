@@ -68,6 +68,27 @@ export default createBackendPlugin({
             );
           });
         }
+        const taskColumns = [
+          ['result', (table: any) => table.jsonb('result').nullable()],
+          [
+            'attempt_count',
+            (table: any) => table.integer('attempt_count').notNullable().defaultTo(0),
+          ],
+          ['worker_id', (table: any) => table.string('worker_id', 160).nullable()],
+          [
+            'started_at',
+            (table: any) => table.timestamp('started_at', { useTz: true }).nullable(),
+          ],
+          [
+            'finished_at',
+            (table: any) => table.timestamp('finished_at', { useTz: true }).nullable(),
+          ],
+        ] as const;
+        for (const [column, addColumn] of taskColumns) {
+          if (!(await knex.schema.hasColumn('resonance_projects__task', column))) {
+            await knex.schema.alterTable('resonance_projects__task', addColumn);
+          }
+        }
 
         const router = Router();
         router.use(json({ limit: '256kb' }));
@@ -111,6 +132,10 @@ export default createBackendPlugin({
                   taskType: task.task_type,
                   status: task.status,
                   errorMessage: task.error_message,
+                  result: task.result,
+                  attemptCount: task.attempt_count,
+                  startedAt: task.started_at,
+                  finishedAt: task.finished_at,
                 })),
             })),
           });
