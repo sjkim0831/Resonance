@@ -42,7 +42,22 @@ type ApiProject = {
   runtimeMode: string;
   status: string;
   designVersion: number;
-  tasks: { taskId: string; taskType: string; status: string }[];
+  tasks: {
+    taskId: string;
+    taskType: string;
+    status: string;
+    errorMessage?: string;
+    result?: {
+      validation?: string;
+      workspacePath?: string;
+      manifestPath?: string;
+      checksumSha256?: string;
+      generatedArtifacts?: number;
+    };
+    attemptCount?: number;
+    startedAt?: string;
+    finishedAt?: string;
+  }[];
 };
 
 const emptyForm = {
@@ -147,6 +162,9 @@ export function ResonanceProjectControlPage() {
   const classes = useStyles();
   const fetchApi = useApi(fetchApiRef);
   const [projects, setProjects] = useState(RESONANCE_PROJECT_REGISTRY);
+  const [projectTasks, setProjectTasks] = useState<
+    Record<string, ApiProject['tasks']>
+  >({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -160,6 +178,11 @@ export function ResonanceProjectControlPage() {
       const response = await fetchApi.fetch('/api/resonance-projects');
       if (!response.ok) throw new Error(`API ${response.status}`);
       const payload = (await response.json()) as { projects: ApiProject[] };
+      setProjectTasks(
+        Object.fromEntries(
+          payload.projects.map(project => [project.projectId, project.tasks]),
+        ),
+      );
       const dynamic: ResonanceProjectRecord[] = payload.projects.map(item => ({
         projectId: item.projectId,
         projectName: item.projectName,
@@ -199,6 +222,10 @@ export function ResonanceProjectControlPage() {
   }, [fetchApi]);
   useEffect(() => {
     void refreshProjects();
+    const refreshTimer = window.setInterval(() => {
+      void refreshProjects();
+    }, 15_000);
+    return () => window.clearInterval(refreshTimer);
   }, [refreshProjects]);
   const selected = useMemo(
     () =>
@@ -208,6 +235,8 @@ export function ResonanceProjectControlPage() {
   const connected = projects.filter(
     item => item.integrationStatus === 'CONNECTED',
   ).length;
+  const selectedTasks = projectTasks[selected?.projectId] ?? [];
+  const latestTask = selectedTasks[0];
   const registerProject = async () => {
     setSaving(true);
     setApiMessage('');
@@ -341,6 +370,52 @@ export function ResonanceProjectControlPage() {
                   ['결합 상태', selected.integrationStatus],
                   ['Manifest', selected.metadataPath],
                 ]} />
+                <Box mt={3}>
+                  <Typography variant="h6">자동화 작업</Typography>
+                  {latestTask ? (
+                    <>
+                      <Box
+                        mt={1}
+                        display="flex"
+                        alignItems="center"
+                        style={{ gap: 8 }}
+                      >
+                        <Chip
+                          size="small"
+                          label={latestTask.status}
+                          color={
+                            latestTask.status === 'COMPLETED'
+                              ? 'primary'
+                              : 'default'
+                          }
+                        />
+                        <Typography variant="body2">
+                          {latestTask.taskType}
+                        </Typography>
+                      </Box>
+                      <DetailRows
+                        items={[
+                          ['검증', latestTask.result?.validation ?? '대기 중'],
+                          [
+                            '생성 산출물',
+                            String(latestTask.result?.generatedArtifacts ?? 0),
+                          ],
+                          [
+                            '작업공간',
+                            latestTask.result?.workspacePath ??
+                              '아직 생성되지 않음',
+                          ],
+                          ['시도 횟수', String(latestTask.attemptCount ?? 0)],
+                          ['오류', latestTask.errorMessage ?? '없음'],
+                        ]}
+                      />
+                    </>
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">
+                      등록된 자동화 작업이 없습니다.
+                    </Typography>
+                  )}
+                </Box>
               </Paper>
             )}
             {tab === 1 && (
