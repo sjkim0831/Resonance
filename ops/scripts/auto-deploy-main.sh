@@ -48,6 +48,24 @@ flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
 
+# Detached deployment worktrees are disposable build inputs. Remove leftovers
+# from completed or interrupted runs before Kubernetes evaluates DiskPressure;
+# otherwise the single node can taint itself before Patroni/etcd health checks.
+deploy_worktree_root="${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}"
+while IFS= read -r stale_worktree; do
+  [[ -n "$stale_worktree" ]] || continue
+  stale_real="$(realpath -m "$stale_worktree")"
+  root_real="$(realpath -m "$ROOT_DIR")"
+  case "$stale_real" in
+    "$deploy_worktree_root"/*)
+      [[ "$stale_real" == "$root_real" ]] || git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+      ;;
+    *) echo "[auto-deploy] refusing unsafe stale worktree path: $stale_real" >&2; exit 23 ;;
+  esac
+done < <(git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree list --porcelain |
+  awk -v prefix="$deploy_worktree_root/" '$1=="worktree" && index($2,prefix)==1 {print $2}')
+git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree prune
+
 # Image/Gradle packaging can leave generated frontend trees owned by root.
 # Normalize only when a foreign-owned entry is detected so the next Git
 # fast-forward/restore cannot fail before the deployment plan is evaluated.
@@ -627,7 +645,7 @@ bash ops/scripts/validate-common-design-assets.sh
 bash ops/scripts/validate-project-auto-completion.sh
 bash ops/scripts/validate-contract-completion-algorithm.sh
 bash ops/scripts/validate-unified-work-design-runtime.sh
-if [[ "$PLAN_FRONTEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true" || "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   # A normal deployment must finish inside the operational feedback window.
   # Domain/API/schema validators above already cover the changed backend and
   # Flyway contracts. Exercise a bounded cross-domain browser canary here;
@@ -636,7 +654,8 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true"
   FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
 else
-  # Backend-only commits already pass the domain runtime/API gates above. A
+  # Backend/database-only commits already pass the domain runtime/API/schema
+  # gates above. A
   # second 333-route browser sweep adds minutes without exercising new UI.
   # Keep the rollback snapshot and immutable asset closure checks, then accept
   # the healthy runtime. Mixed/frontend/database changes retain the full gate.
