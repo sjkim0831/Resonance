@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+FOUNDATION="$ROOT/deploy/k8s/control-plane/environment-foundation.yaml"
+CATALOG="$ROOT/platform/control-plane/catalog/catalog-info.yaml"
+MODE="${1:-validate}"
+
+require() { command -v "$1" >/dev/null 2>&1 || { echo "[control-plane] missing command: $1" >&2; exit 1; }; }
+
+validate() {
+  require kubectl
+  test -f "$CATALOG"
+  test -f "$FOUNDATION"
+  kubectl apply --dry-run=client -f "$FOUNDATION" >/dev/null
+  if command -v ruby >/dev/null 2>&1; then
+    find "$ROOT/platform/control-plane/catalog" -name '*.yaml' -print0 |
+      xargs -0 -n1 ruby -e 'require "yaml"; YAML.load_stream(File.read(ARGV[0]), aliases: true)' 
+  fi
+  echo "[control-plane] PASS catalog and Kubernetes foundation are valid"
+}
+
+status() {
+  require kubectl
+  kubectl get namespace resonance-ops resonance-design carbonet-dev carbonet-staging carbonet-prod
+  kubectl get pods -A -l 'resonance.io/environment' -o wide
+}
+
+apply_foundation() {
+  validate
+  kubectl apply -f "$FOUNDATION"
+  echo "[control-plane] foundation applied; Argo CD declarations remain unapplied until Argo CD and SSO are approved"
+}
+
+case "$MODE" in
+  validate) validate ;;
+  status) status ;;
+  apply-foundation) apply_foundation ;;
+  *) echo "usage: $0 {validate|status|apply-foundation}" >&2; exit 2 ;;
+esac

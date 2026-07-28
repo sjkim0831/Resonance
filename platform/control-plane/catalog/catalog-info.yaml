@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: resonance-platform-catalog
+  description: Resonance 설계·개발·검수·운영 제어면 카탈로그
+spec:
+  type: file
+  targets:
+    - ./organization.yaml
+    - ./systems.yaml
+    - ./components.yaml
+    - ./apis.yaml
+    - ./resources.yaml
+    - ./environments.yaml

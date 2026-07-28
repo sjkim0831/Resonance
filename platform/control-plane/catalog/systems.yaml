@@ -1,0 +1,37 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: carbon-platform
+  description: 탄소배출·LCA·감축·거래·인증 업무 도메인
+spec:
+  owner: carbon-operations
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: resonance-design-control
+  description: 액터·프로세스·원형·화면·필드·API·테스트 설계 제어 시스템
+  tags: [design-control, generator, governance]
+spec:
+  owner: platform-engineering
+  domain: carbon-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: carbonet-runtime
+  description: 고객 업무 실행과 서비스 운영 시스템
+  tags: [runtime, carbon, lca]
+spec:
+  owner: carbon-operations
+  domain: carbon-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: resonance-observability
+  description: 서버·클러스터·서비스·프로세스 통합 관측 시스템
+  tags: [operations, telemetry, recovery]
+spec:
+  owner: platform-engineering
+  domain: carbon-platform

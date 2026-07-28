@@ -1,0 +1,71 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: resonance-design-console
+  description: 설계 지도·원형 60·제너레이터·검증 게이트
+  annotations:
+    backstage.io/source-location: url:https://github.com/sjkim0831/Resonance/tree/main/projects/carbonet-frontend
+  links:
+    - url: http://172.16.1.232/admin/system/actor-process
+      title: 설계 제어센터
+spec:
+  type: website
+  lifecycle: production
+  owner: platform-engineering
+  system: resonance-design-control
+  consumesApis: [resonance-design-api]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: carbonet-web
+  description: Carbonet 사용자·관리자 웹앱
+  annotations:
+    backstage.io/source-location: url:https://github.com/sjkim0831/Resonance/tree/main/projects/carbonet-frontend
+spec:
+  type: website
+  lifecycle: production
+  owner: carbon-operations
+  system: carbonet-runtime
+  consumesApis: [carbonet-runtime-api]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: carbonet-api
+  description: 고객 업무·설계·운영 공통 실행 API
+  annotations:
+    backstage.io/source-location: url:https://github.com/sjkim0831/Resonance/tree/main/apps/carbonet-api
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: carbonet-runtime
+  providesApis: [carbonet-runtime-api, resonance-design-api]
+  dependsOn:
+    - resource:carbonet-postgresql
+    - resource:carbonet-redis
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: resonance-generator
+  description: 승인된 설계 계약을 화면·API·DB·테스트 산출물로 구체화
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-engineering
+  system: resonance-design-control
+  consumesApis: [resonance-design-api]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: resonance-operations-console
+  description: 다중 환경 배포·헬스·복구·감사 통합 운영 콘솔
+spec:
+  type: website
+  lifecycle: experimental
+  owner: platform-engineering
+  system: resonance-observability
+  consumesApis: [carbonet-runtime-api]

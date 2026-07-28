@@ -1,0 +1,48 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: resonance-design-api
+  description: 설계·원형·화면·자산·생성·검증 계약 API
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-engineering
+  system: resonance-design-control
+  definition: |
+    openapi: 3.0.3
+    info:
+      title: Resonance Design Control API
+      version: 1.0.0
+    paths:
+      /admin/api/system/actor-process:
+        get:
+          responses:
+            '200':
+              description: 설계 제어 현황
+      /admin/api/system/actor-process/process-archetypes/bind-screen:
+        post:
+          responses:
+            '200':
+              description: 화면 프로세스 원형 매핑 완료
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: carbonet-runtime-api
+  description: Carbonet 고객 업무 실행 API
+spec:
+  type: openapi
+  lifecycle: production
+  owner: carbon-operations
+  system: carbonet-runtime
+  definition: |
+    openapi: 3.0.3
+    info:
+      title: Carbonet Runtime API
+      version: 1.0.0
+    paths:
+      /actuator/health:
+        get:
+          responses:
+            '200':
+              description: 런타임 헬스

@@ -1,0 +1,39 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: resonance-design
+  tags: [design, internal]
+spec:
+  type: environment
+  owner: platform-engineering
+  system: resonance-design-control
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: carbonet-development
+  tags: [development, ephemeral]
+spec:
+  type: environment
+  owner: platform-engineering
+  system: carbonet-runtime
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: carbonet-staging
+  tags: [staging, verification]
+spec:
+  type: environment
+  owner: verification-governance
+  system: carbonet-runtime
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: carbonet-production
+  tags: [production, customer]
+spec:
+  type: environment
+  owner: carbon-operations
+  system: carbonet-runtime

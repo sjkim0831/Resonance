@@ -1,0 +1,39 @@
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: carbonet-postgresql
+  description: 외부 영구 데이터 경로와 Patroni HA를 사용하는 PostgreSQL
+spec:
+  type: database
+  owner: platform-engineering
+  system: carbonet-runtime
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: carbonet-redis
+  description: 세션·캐시·분산 조정용 Redis
+spec:
+  type: cache
+  owner: platform-engineering
+  system: carbonet-runtime
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: resonance-design-registry
+  description: 버전이 고정된 설계 계약·공통 자산·생성 증적 저장소
+spec:
+  type: database
+  owner: platform-engineering
+  system: resonance-design-control
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: resonance-kubernetes
+  description: 개발·검수·운영 워크로드 실행 클러스터
+spec:
+  type: kubernetes-cluster
+  owner: platform-engineering
+  system: resonance-observability

@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: resonance-design
+  namespace: argocd
+spec:
+  description: Resonance 설계 제어 시스템
+  sourceRepos: ["https://github.com/sjkim0831/Resonance.git"]
+  destinations:
+    - namespace: resonance-design
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: carbonet-nonproduction
+  namespace: argocd
+spec:
+  description: Carbonet 개발·검수 환경
+  sourceRepos: ["https://github.com/sjkim0831/Resonance.git"]
+  destinations:
+    - namespace: carbonet-dev
+      server: https://kubernetes.default.svc
+    - namespace: carbonet-staging
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: carbonet-production
+  namespace: argocd
+spec:
+  description: 승인된 불변 이미지만 배포하는 Carbonet 운영 환경
+  sourceRepos: ["https://github.com/sjkim0831/Resonance.git"]
+  destinations:
+    - namespace: carbonet-prod
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

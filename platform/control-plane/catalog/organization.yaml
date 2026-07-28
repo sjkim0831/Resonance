@@ -1,0 +1,26 @@
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-engineering
+  description: Resonance 플랫폼 설계·개발·배포 자동화 담당
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: carbon-operations
+  description: Carbonet 고객 업무와 운영 품질 담당
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: verification-governance
+  description: 산정·검증·승인·감사 계약 담당
+spec:
+  type: team
+  children: []
