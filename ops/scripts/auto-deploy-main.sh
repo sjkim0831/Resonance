@@ -540,6 +540,8 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
    && "$PLAN_BACKEND_REQUIRED" != "true" \
    && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
   BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}" \
+  OVERLAY_DIR="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}" \
+  STATUS_DIR="${CARBONET_LIVE_STATUS_DIR:-/opt/Resonance/var/run}" \
     bash ops/scripts/resonance-screen-overlay-apply.sh
   health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
   if [[ "$health_status" != *'"status":"UP"'* ]]; then
