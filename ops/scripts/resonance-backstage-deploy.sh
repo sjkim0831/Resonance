@@ -51,6 +51,23 @@ CURL_TLS_ARGS=()
 OIDC_READY=false
 leader=""
 
+find_patroni_leader() {
+  local pod
+  leader=""
+  while IFS= read -r pod; do
+    if [[ "$(kubectl -n carbonet-prod exec "$pod" -c patroni -- \
+      psql -h 127.0.0.1 -U postgres -d postgres -Atqc \
+      'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+      leader="$pod"
+      break
+    fi
+  done < <(kubectl -n carbonet-prod get pods -l app=postgres-patroni -o name | sed 's#pod/##')
+  [[ -n "$leader" ]] || {
+    echo "[backstage] writable PostgreSQL leader not found" >&2
+    return 1
+  }
+}
+
 ensure_auth_secret() {
   local session_secret metadata_url client_id client_secret display_name metadata
   if kubectl -n "$NAMESPACE" get secret resonance-backstage-auth >/dev/null 2>&1; then
@@ -217,7 +234,7 @@ wait_for_catalog_database() {
   local attempt count
   for attempt in $(seq 1 30); do
     count="$(kubectl -n carbonet-prod exec "$leader" -c patroni -- \
-      psql -h 127.0.0.1 -U postgres -d backstage -Atqc \
+      psql -h 127.0.0.1 -U postgres -d backstage_plugin_catalog -Atqc \
       'select count(*) from final_entities' 2>/dev/null || true)"
     if [[ "$count" =~ ^[0-9]+$ ]] &&
       (( count >= BACKSTAGE_MIN_CATALOG_ENTITIES )); then
@@ -299,17 +316,7 @@ corepack yarn validate:design-release-bridge
       echo "[backstage] reusing unchanged application image: $image"
     fi
 
-    while IFS= read -r pod; do
-      if [[ "$(kubectl -n carbonet-prod exec "$pod" -c patroni -- \
-        psql -h 127.0.0.1 -U postgres -d postgres -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
-        leader="$pod"
-        break
-      fi
-    done < <(kubectl -n carbonet-prod get pods -l app=postgres-patroni -o name | sed 's#pod/##')
-    [[ -n "$leader" ]] || {
-      echo "[backstage] writable PostgreSQL leader not found" >&2
-      exit 3
-    }
+    find_patroni_leader
 
     if kubectl -n "$NAMESPACE" get secret resonance-backstage-database >/dev/null 2>&1; then
       password="$(kubectl -n "$NAMESPACE" get secret resonance-backstage-database \
@@ -372,8 +379,7 @@ corepack yarn validate:design-release-bridge
     curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 "$BACKSTAGE_URL/.backstage/health/v1/readiness"
     echo
     if [[ "$OIDC_READY" == "true" ]]; then
-      leader="$(kubectl -n carbonet-prod get pods -l app=postgres-patroni -o name |
-        sed 's#pod/##' | head -n1)"
+      find_patroni_leader
       wait_for_catalog_database
     else
       wait_for_catalog

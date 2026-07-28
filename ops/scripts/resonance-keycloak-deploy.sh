@@ -238,12 +238,10 @@ migrate_users() {
       email="$(printf '%s' "$email_hex" | xxd -r -p)"
       group="$(printf '%s' "$group_hex" | xxd -r -p)"
       kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
-        ADMIN_PASSWORD="$admin_password" USERNAME="$username" \
+        USERNAME="$username" \
         EMAIL="$email" GROUP="$group" \
         REALM="$REALM" bash -ceu '
           K=/opt/keycloak/bin/kcadm.sh
-          "$K" config credentials --server http://localhost:8080 \
-            --realm master --user resonance-admin --password "$ADMIN_PASSWORD" >/dev/null
           uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
             --fields id --format csv --noquotes | head -n1)
           if [ -z "$uid" ]; then
@@ -267,11 +265,9 @@ migrate_users() {
     username="${spec%%:*}"
     group="${spec#*:}"
     kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
-      ADMIN_PASSWORD="$admin_password" TEST_PASSWORD="$test_password" \
+      TEST_PASSWORD="$test_password" \
       USERNAME="$username" GROUP="$group" REALM="$REALM" bash -ceu '
         K=/opt/keycloak/bin/kcadm.sh
-        "$K" config credentials --server http://localhost:8080 \
-          --realm master --user resonance-admin --password "$ADMIN_PASSWORD" >/dev/null
         uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
           --fields id --format csv --noquotes | head -n1)
         if [ -z "$uid" ]; then
