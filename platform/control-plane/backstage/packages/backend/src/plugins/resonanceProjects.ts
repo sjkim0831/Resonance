@@ -2,7 +2,7 @@ import {
   coreServices,
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
-import { Router } from 'express';
+import { Router, json } from 'express';
 
 type ProjectInput = {
   projectId?: string;
@@ -70,6 +70,7 @@ export default createBackendPlugin({
         }
 
         const router = Router();
+        router.use(json({ limit: '256kb' }));
         router.use((_, response, next) => {
           response.setHeader('content-type', 'application/json; charset=utf-8');
           next();
