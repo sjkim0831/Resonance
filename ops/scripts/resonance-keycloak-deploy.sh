@@ -224,12 +224,11 @@ migrate_users() {
       order by trim(u.user_id)" |
     while IFS='|' read -r user_hex name_hex email_hex group_hex; do
       username="$(printf '%s' "$user_hex" | xxd -r -p)"
-      display_name="$(printf '%s' "$name_hex" | xxd -r -p)"
       email="$(printf '%s' "$email_hex" | xxd -r -p)"
       group="$(printf '%s' "$group_hex" | xxd -r -p)"
       kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
         ADMIN_PASSWORD="$admin_password" USERNAME="$username" \
-        DISPLAY_NAME="$display_name" EMAIL="$email" GROUP="$group" \
+        EMAIL="$email" GROUP="$group" \
         REALM="$REALM" bash -ceu '
           K=/opt/keycloak/bin/kcadm.sh
           "$K" config credentials --server http://localhost:8080 \
@@ -239,7 +238,7 @@ migrate_users() {
           if [ -z "$uid" ]; then
             "$K" create users -r "$REALM" -s username="$USERNAME" \
               -s enabled=true -s email="$EMAIL" -s emailVerified=false \
-              -s firstName="$DISPLAY_NAME" -s "requiredActions=[\"UPDATE_PASSWORD\"]" >/dev/null
+              -s "requiredActions=[\"UPDATE_PASSWORD\"]" >/dev/null 2>&1
             uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
               --fields id --format csv --noquotes | head -n1)
           fi
