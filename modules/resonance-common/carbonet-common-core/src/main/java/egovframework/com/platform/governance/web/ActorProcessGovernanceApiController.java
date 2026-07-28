@@ -14,7 +14,11 @@ import java.util.UUID;
 @RequestMapping({"/admin/api/system/actor-process","/en/admin/api/system/actor-process"})
 public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
-    @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
+    @GetMapping public Map<String,Object> dashboard(
+        @RequestParam(defaultValue="") String projectId,
+        @RequestParam(defaultValue="") String tenantId,
+        @RequestParam(defaultValue="") String designVersion
+    ){return service.dashboard(projectId,tenantId,designVersion);}
     @GetMapping("/executable-screens") public Map<String,Object> executableScreens(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="100") int size){return service.executableScreens(status,page,size);}
     @GetMapping("/process-design") public ResponseEntity<?> processDesign(@RequestParam String processCode){try{return ResponseEntity.ok(service.processDesign(processCode));}catch(Exception e){return bad(e);}}
     @GetMapping("/cases") public ResponseEntity<?> cases(@RequestParam String processCode){try{return ResponseEntity.ok(service.simulationCases(processCode));}catch(Exception e){return bad(e);}}

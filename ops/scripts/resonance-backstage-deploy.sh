@@ -141,6 +141,7 @@ case "$mode" in
       corepack yarn validate:page-extensions
       corepack yarn generate:ccus-screen-designs
       corepack yarn validate:control-assets
+      corepack yarn validate:actor-process-control
       corepack yarn generate:project-registry
     )
     # Tag by the Backstage source tree rather than the repository commit.

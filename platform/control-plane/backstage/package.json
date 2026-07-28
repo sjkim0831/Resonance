@@ -10,6 +10,7 @@
     "generate:project-registry": "node scripts/generate-resonance-project-registry.mjs",
     "validate:page-extensions": "node scripts/validate-page-extension-ids.mjs",
     "validate:control-assets": "node scripts/validate-control-asset-registry.mjs",
+    "validate:actor-process-control": "node scripts/validate-actor-process-control.mjs",
     "start": "backstage-cli repo start",
     "build:backend": "yarn workspace backend build",
     "build:all": "backstage-cli repo build --all",

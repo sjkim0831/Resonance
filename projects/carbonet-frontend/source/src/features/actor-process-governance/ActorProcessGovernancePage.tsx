@@ -41,12 +41,18 @@ const WORKSPACES:WorkspaceDefinition[] = [
     {id:"delivery",label:"개발 실행 큐"},{id:"automation",label:"프로세스 자동개발"},{id:"artifacts",label:"개발 산출물"},{id:"overview",label:"전체 현황"}
   ]}
 ];
+const WORKSPACE_TAB_IDS=new Set(WORKSPACES.flatMap(workspace=>workspace.tabs.map(item=>item.id)));
 
 export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
+  const routeParams=new URLSearchParams(location.search);
+  const initialTab=routeParams.get("tab")||"work-dashboard";
+  const projectContext=routeParams.get("projectId")||"";
+  const tenantContext=routeParams.get("tenantId")||"DEFAULT";
+  const designVersionContext=routeParams.get("designVersion")||"1";
   const [data, setData] = useState<Payload & AssurancePayload>(empty);
-  const [tab, setTab] = useState("work-dashboard");
+  const [tab, setTab] = useState(WORKSPACE_TAB_IDS.has(initialTab)?initialTab:"work-dashboard");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
   const [preflightStep,setPreflightStep]=useState("");
@@ -62,13 +68,17 @@ export function ActorProcessGovernancePage() {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(base, { credentials: "include" });
+      const query=new URLSearchParams();
+      if(projectContext)query.set("projectId",projectContext);
+      query.set("tenantId",tenantContext);
+      query.set("designVersion",designVersionContext);
+      const response = await fetch(`${base}?${query}`, { credentials: "include" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "조회에 실패했습니다.");
       setData(body);
       setError("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "조회에 실패했습니다."); }
-  }, [base]);
+  }, [base,designVersionContext,projectContext,tenantContext]);
   useEffect(() => { void load(); }, [load]);
   useEffect(()=>{
     const process=preflightProcess||value(data.processes[0]||{},"processCode");
@@ -82,7 +92,13 @@ export function ActorProcessGovernancePage() {
   async function post(path: string, body: Record<string, unknown>) {
     setBusy(true); setError(""); setMessage("");
     try {
-      const response = await fetch(`${base}/${path}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const scopedBody={
+        ...body,
+        projectId:body.projectId||projectContext||undefined,
+        tenantId:body.tenantId||tenantContext,
+        designVersion:body.designVersion||designVersionContext
+      };
+      const response = await fetch(`${base}/${path}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(scopedBody) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "저장에 실패했습니다.");
       setMessage(path === "standard-pack"

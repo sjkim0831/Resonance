@@ -28,6 +28,13 @@ public class ActorProcessGovernanceService {
     private final CodexProvisioningService codexProvisioningService;
 
     public Map<String,Object> dashboard() {
+        return dashboard("","","");
+    }
+
+    public Map<String,Object> dashboard(String requestedProjectId,String requestedTenantId,String requestedDesignVersion) {
+        String projectId=requestedProjectId==null?"":requestedProjectId.trim();
+        String tenantId=requestedTenantId==null?"":requestedTenantId.trim();
+        String designVersion=requestedDesignVersion==null?"":requestedDesignVersion.trim();
         Map<String,Object> out=new LinkedHashMap<>();
         out.put("actors",jdbc.queryForList("select actor_code as \"actorCode\",actor_name as \"actorName\",actor_name_en as \"actorNameEn\",actor_type as \"actorType\",purpose,capability_codes as \"capabilityCodes\",responsibility_text as responsibility,accountability_text as accountability,competency_requirements as competency,conflict_actor_codes as \"conflictActorCodes\",max_concurrent_assignments as \"maxConcurrentAssignments\",review_cycle_days as \"reviewCycleDays\",delegation_allowed as \"delegationAllowed\",use_at as \"useAt\" from framework_actor_definition order by actor_type,actor_code"));
         out.put("workTypes",jdbc.queryForList("select w.work_type_code as \"workTypeCode\",w.work_type_name as \"workTypeName\",w.work_type_name_en as \"workTypeNameEn\",w.description,w.sort_order as \"sortOrder\",w.use_at as \"useAt\",count(p.process_code) as \"processCount\",count(p.process_code) filter(where p.process_status='DEVELOPMENT_READY') as \"readyCount\",count(p.process_code) filter(where p.process_status='IN_DEVELOPMENT') as \"inDevelopmentCount\",count(p.process_code) filter(where p.process_status='DRAFT') as \"draftCount\" from framework_business_work_type w left join framework_process_definition p on upper(p.domain_code)=w.work_type_code group by w.work_type_code,w.work_type_name,w.work_type_name_en,w.description,w.sort_order,w.use_at order by w.sort_order,w.work_type_code"));
@@ -97,7 +104,38 @@ public class ActorProcessGovernanceService {
         out.put("deliveryQueue",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",development_order as \"developmentOrder\",process_status as \"processStatus\",step_count as \"stepCount\",actor_bound_steps as \"actorBoundSteps\",test_count as \"testCount\",test_type_count as \"testTypeCount\",passed_tests as \"passedTests\",required_tasks as \"requiredTasks\",completed_tasks as \"completedTasks\",blocked_tasks as \"blockedTasks\",required_artifacts as \"requiredArtifacts\",verified_artifacts as \"verifiedArtifacts\",screen_contracts as \"screenContracts\",ready_screens as \"readyScreens\",completion_score as \"completionScore\",next_action as \"nextAction\",delivery_priority as priority from framework_process_delivery_priority_queue order by case delivery_priority when 'BLOCKER' then 0 when 'HIGH' then 1 when 'MEDIUM' then 2 when 'LOW' then 3 else 4 end,development_order,process_code"));
         out.put("deliverySummary",jdbc.queryForMap("select count(*) as \"totalProcesses\",count(*) filter(where next_action='COMPLETE') as \"completeProcesses\",count(*) filter(where delivery_priority='BLOCKER') as blockers,count(*) filter(where delivery_priority='HIGH') as \"highPriority\",coalesce(round(avg(completion_score),1),0) as \"averageScore\" from framework_process_delivery_priority_queue"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
+        if(!projectId.isEmpty()){
+            out.put("assignments",scopeRows(out.get("assignments"),tenantId,projectId,true));
+            out.put("actorAccountReadiness",scopeRows(out.get("actorAccountReadiness"),tenantId,projectId,true));
+            out.put("processExecutions",scopeRows(out.get("processExecutions"),tenantId,projectId,false));
+        }
+        out.put("projectContext",Map.of(
+            "projectId",projectId,
+            "tenantId",tenantId,
+            "designVersion",designVersion,
+            "scopeApplied",!projectId.isEmpty()
+        ));
         return out;
+    }
+
+    private List<Map<String,Object>> scopeRows(Object value,String tenantId,String projectId,boolean includeGlobal){
+        if(!(value instanceof List<?> raw))return List.of();
+        return raw.stream()
+            .filter(Map.class::isInstance)
+            .map(item->{
+                Map<?,?> source=(Map<?,?>)item;
+                Map<String,Object> row=new LinkedHashMap<>();
+                source.forEach((key,cell)->row.put(String.valueOf(key),cell));
+                return row;
+            })
+            .filter(row->{
+                String rowProject=String.valueOf(row.getOrDefault("projectId",""));
+                String rowTenant=String.valueOf(row.getOrDefault("tenantId",""));
+                boolean projectMatches=projectId.equals(rowProject)||(includeGlobal&&"*".equals(rowProject));
+                boolean tenantMatches=tenantId.isEmpty()||tenantId.equals(rowTenant)||(includeGlobal&&"*".equals(rowProject));
+                return projectMatches&&tenantMatches;
+            })
+            .toList();
     }
 
     @Transactional
