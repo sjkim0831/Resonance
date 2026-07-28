@@ -5,11 +5,12 @@ import {
 } from '@backstage/frontend-plugin-api';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 
-const rootRouteRef = createRouteRef();
+const catalogRouteRef = createRouteRef();
+const screenSpaceRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
-    routeRef: rootRouteRef,
+    routeRef: catalogRouteRef,
     path: '/ccus-screen-designs',
     title: 'CCUS 화면 설계',
     icon: <DashboardIcon />,
@@ -20,11 +21,23 @@ const screenDesignsPage = PageBlueprint.make({
   },
 });
 
+const screenSpacePage = PageBlueprint.make({
+  params: {
+    routeRef: screenSpaceRouteRef,
+    path: '/ccus-screen-space',
+    title: 'CCUS 화면 공간 엔진',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./ScreenSpaceEnginePage').then(module => (
+        <module.ScreenSpaceEnginePage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
   icon: <DashboardIcon />,
-  routes: { root: rootRouteRef },
-  extensions: [screenDesignsPage],
+  routes: { root: catalogRouteRef, screenSpace: screenSpaceRouteRef },
+  extensions: [screenDesignsPage, screenSpacePage],
 });
-
