@@ -466,6 +466,21 @@ export default createBackendPlugin({
               .json({ message: 'projectName and owner are required' });
             return;
           }
+          const databaseMode = input.databaseMode ?? 'PROJECT_DB';
+          const runtimeMode =
+            input.runtimeMode ?? 'DEDICATED_PROJECT_RUNTIME';
+          if (databaseMode !== 'PROJECT_DB') {
+            response.status(400).json({
+              message: 'databaseMode must be PROJECT_DB',
+            });
+            return;
+          }
+          if (runtimeMode !== 'DEDICATED_PROJECT_RUNTIME') {
+            response.status(400).json({
+              message: 'runtimeMode must be DEDICATED_PROJECT_RUNTIME',
+            });
+            return;
+          }
           const exists = await knex('resonance_projects__project')
             .where({ project_id: projectId })
             .first();
@@ -481,9 +496,8 @@ export default createBackendPlugin({
               description: String(input.description ?? '').trim(),
               owner,
               source_repository: String(input.sourceRepository ?? '').trim(),
-              database_mode: input.databaseMode ?? 'PROJECT_DB',
-              runtime_mode:
-                input.runtimeMode ?? 'DEDICATED_PROJECT_RUNTIME',
+              database_mode: databaseMode,
+              runtime_mode: runtimeMode,
               status: 'REGISTERED',
               design_version: 1,
               created_at: now,
