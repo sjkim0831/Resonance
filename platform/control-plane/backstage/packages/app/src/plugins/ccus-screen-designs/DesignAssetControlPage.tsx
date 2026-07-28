@@ -3,6 +3,7 @@ import { Content, Header, Page } from '@backstage/core-components';
 import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import {
   Box,
+  Button,
   Chip,
   Drawer,
   Grid,
@@ -105,6 +106,10 @@ export function DesignAssetControlPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<DesignAsset | null>(null);
   const [error, setError] = useState('');
+  const [draftName, setDraftName] = useState('');
+  const [draftPayload, setDraftPayload] = useState('');
+  const [draftId, setDraftId] = useState('');
+  const [draftStatus, setDraftStatus] = useState('');
   const activeType = types[tab].code;
 
   const load = useCallback(async () => {
@@ -143,6 +148,77 @@ export function DesignAssetControlPage() {
         .includes(needle),
     );
   }, [assets, query]);
+
+  const openAsset = (asset: DesignAsset) => {
+    setSelected(asset);
+    setDraftName(asset.assetName);
+    setDraftPayload(JSON.stringify(asset.payload, null, 2));
+    setDraftId('');
+    setDraftStatus('');
+  };
+
+  const saveAndValidateDraft = async () => {
+    if (!selected) return;
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(draftPayload);
+    } catch {
+      throw new Error('원본 계약 JSON 형식이 올바르지 않습니다.');
+    }
+    const createResponse = await fetchApi.fetch(
+      `/api/resonance-projects/design-assets/${encodeURIComponent(
+        projectId,
+      )}/drafts`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          assetType: selected.assetType,
+          assetId: selected.assetId,
+          baseFingerprint: selected.fingerprint,
+          createdBy: 'backstage-user',
+          patch: {
+            assetName: draftName,
+            routePath: selected.routePath,
+            version: selected.version,
+            active: selected.active,
+            payload,
+          },
+        }),
+      },
+    );
+    const created = await createResponse.json();
+    if (!createResponse.ok) {
+      throw new Error(created.message || '초안 저장 실패');
+    }
+    const validateResponse = await fetchApi.fetch(
+      `/api/resonance-projects/design-assets/${encodeURIComponent(
+        projectId,
+      )}/drafts/${created.draftId}/validate`,
+      { method: 'POST' },
+    );
+    const validated = await validateResponse.json();
+    if (!validateResponse.ok) {
+      throw new Error(
+        validated.failures?.join(', ') || validated.message || '검증 실패',
+      );
+    }
+    setDraftId(created.draftId);
+    setDraftStatus('VALIDATED');
+  };
+
+  const promoteDraft = async () => {
+    if (!draftId) return;
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/design-assets/${encodeURIComponent(
+        projectId,
+      )}/drafts/${draftId}/promote`,
+      { method: 'POST' },
+    );
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || '승격 실패');
+    setDraftStatus(`PROMOTED · TASK ${payload.taskId}`);
+  };
 
   return (
     <Page themeId="tool">
@@ -219,7 +295,7 @@ export function DesignAssetControlPage() {
               className={classes.card}
               elevation={0}
               key={`${asset.assetType}:${asset.assetId}`}
-              onClick={() => setSelected(asset)}
+              onClick={() => openAsset(asset)}
             >
               <Box display="flex" justifyContent="space-between">
                 <Chip size="small" label={asset.assetType} />
@@ -271,11 +347,55 @@ export function DesignAssetControlPage() {
             </Box>
             <Box mt={2}>
               <Typography variant="caption">원본 계약</Typography>
-              <Paper variant="outlined">
-                <Box p={2} component="pre" className={classes.mono}>
-                  {JSON.stringify(selected.payload, null, 2)}
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="자산명"
+                margin="dense"
+                value={draftName}
+                onChange={event => setDraftName(event.target.value)}
+              />
+              <TextField
+                fullWidth
+                multiline
+                minRows={12}
+                variant="outlined"
+                label="계약 JSON"
+                margin="dense"
+                value={draftPayload}
+                onChange={event => setDraftPayload(event.target.value)}
+              />
+              <Box display="flex" gridGap={12} mt={2}>
+                <Button
+                  color="primary"
+                  variant="contained"
+                  disabled={draftStatus.startsWith('PROMOTED')}
+                  onClick={() =>
+                    void saveAndValidateDraft().catch(reason =>
+                      setError(String(reason.message || reason)),
+                    )
+                  }
+                >
+                  초안 저장·계약 검증
+                </Button>
+                <Button
+                  color="primary"
+                  variant="outlined"
+                  disabled={draftStatus !== 'VALIDATED'}
+                  onClick={() =>
+                    void promoteDraft().catch(reason =>
+                      setError(String(reason.message || reason)),
+                    )
+                  }
+                >
+                  승인 작업 큐 등록
+                </Button>
+              </Box>
+              {draftStatus && (
+                <Box mt={2}>
+                  <Chip color="primary" label={draftStatus} />
                 </Box>
-              </Paper>
+              )}
             </Box>
           </Box>
         )}

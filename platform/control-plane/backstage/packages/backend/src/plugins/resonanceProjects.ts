@@ -183,6 +183,38 @@ export default createBackendPlugin({
         }
         if (
           !(await knex.schema.hasTable(
+            'resonance_projects__design_asset_draft',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__design_asset_draft',
+            table => {
+              table.bigIncrements('draft_id').primary();
+              table
+                .string('project_id', 64)
+                .notNullable()
+                .references('project_id')
+                .inTable('resonance_projects__project')
+                .onDelete('CASCADE');
+              table.string('asset_type', 32).notNullable();
+              table.string('asset_id', 200).notNullable();
+              table.string('base_sha256', 64).notNullable();
+              table.jsonb('patch_payload').notNullable();
+              table.string('draft_status', 32).notNullable();
+              table.jsonb('validation_report').nullable();
+              table.string('created_by', 120).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.timestamp('promoted_at', { useTz: true }).nullable();
+              table.index(
+                ['project_id', 'draft_status'],
+                'resonance_design_asset_draft_status_idx',
+              );
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasTable(
             'resonance_projects__design_asset_snapshot',
           ))
         ) {
@@ -585,6 +617,235 @@ export default createBackendPlugin({
                 )
                 .digest('hex'),
               syncedAt: now,
+            });
+          },
+        );
+        router.get(
+          '/design-assets/:projectId/drafts',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const drafts = await knex(
+              'resonance_projects__design_asset_draft',
+            )
+              .where({ project_id: projectId })
+              .orderBy('draft_id', 'desc')
+              .limit(100);
+            response.json({
+              projectId,
+              drafts: drafts.map(draft => ({
+                draftId: String(draft.draft_id),
+                assetType: draft.asset_type,
+                assetId: draft.asset_id,
+                baseFingerprint: draft.base_sha256,
+                patch: draft.patch_payload,
+                status: draft.draft_status,
+                validationReport: draft.validation_report,
+                createdBy: draft.created_by,
+                createdAt: draft.created_at,
+                updatedAt: draft.updated_at,
+                promotedAt: draft.promoted_at,
+              })),
+            });
+          },
+        );
+        router.post(
+          '/design-assets/:projectId/drafts',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const assetType = String(request.body?.assetType ?? '').toUpperCase();
+            const assetId = String(request.body?.assetId ?? '').trim();
+            const baseFingerprint = String(
+              request.body?.baseFingerprint ?? '',
+            ).trim();
+            const patch =
+              request.body?.patch && typeof request.body.patch === 'object'
+                ? request.body.patch
+                : {};
+            const createdBy = String(request.body?.createdBy ?? 'backstage');
+            const allowedPatchFields = new Set([
+              'assetName',
+              'routePath',
+              'version',
+              'active',
+              'payload',
+            ]);
+            const invalidFields = Object.keys(patch).filter(
+              field => !allowedPatchFields.has(field),
+            );
+            if (invalidFields.length) {
+              response.status(400).json({
+                message: `unsupported patch fields: ${invalidFields.join(', ')}`,
+              });
+              return;
+            }
+            const source = await knex(
+              'resonance_projects__design_asset_snapshot',
+            )
+              .where({
+                project_id: projectId,
+                asset_type: assetType,
+                asset_id: assetId,
+              })
+              .first();
+            if (!source) {
+              response.status(404).json({ message: 'design asset not found' });
+              return;
+            }
+            if (source.asset_sha256 !== baseFingerprint) {
+              response.status(409).json({
+                message: 'source fingerprint changed; refresh before editing',
+              });
+              return;
+            }
+            const [draft] = await knex(
+              'resonance_projects__design_asset_draft',
+            )
+              .insert({
+                project_id: projectId,
+                asset_type: assetType,
+                asset_id: assetId,
+                base_sha256: baseFingerprint,
+                patch_payload: JSON.stringify(patch),
+                draft_status: 'DRAFT',
+                created_by: createdBy,
+                created_at: new Date(),
+                updated_at: new Date(),
+              })
+              .returning('*');
+            response.status(201).json({
+              projectId,
+              draftId: String(draft.draft_id),
+              status: draft.draft_status,
+            });
+          },
+        );
+        router.post(
+          '/design-assets/:projectId/drafts/:draftId/validate',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const draftId = Number(request.params.draftId);
+            const draft = await knex(
+              'resonance_projects__design_asset_draft',
+            )
+              .where({ project_id: projectId, draft_id: draftId })
+              .first();
+            if (!draft) {
+              response.status(404).json({ message: 'draft not found' });
+              return;
+            }
+            if (draft.draft_status !== 'DRAFT') {
+              response.status(409).json({ message: 'draft is not editable' });
+              return;
+            }
+            const source = await knex(
+              'resonance_projects__design_asset_snapshot',
+            )
+              .where({
+                project_id: projectId,
+                asset_type: draft.asset_type,
+                asset_id: draft.asset_id,
+              })
+              .first();
+            const failures: string[] = [];
+            if (!source || source.asset_sha256 !== draft.base_sha256) {
+              failures.push('SOURCE_FINGERPRINT_CHANGED');
+            }
+            const patch = draft.patch_payload as Record<string, unknown>;
+            if (
+              Object.prototype.hasOwnProperty.call(patch, 'assetName') &&
+              !String(patch.assetName ?? '').trim()
+            ) {
+              failures.push('ASSET_NAME_REQUIRED');
+            }
+            if (
+              Object.prototype.hasOwnProperty.call(patch, 'routePath') &&
+              String(patch.routePath ?? '') &&
+              !String(patch.routePath).startsWith('/')
+            ) {
+              failures.push('ROUTE_PATH_INVALID');
+            }
+            const report = {
+              status: failures.length ? 'BLOCKED' : 'PASS',
+              failures,
+              baseFingerprint: draft.base_sha256,
+              validatedAt: new Date(),
+            };
+            await knex('resonance_projects__design_asset_draft')
+              .where({ project_id: projectId, draft_id: draftId })
+              .update({
+                draft_status: failures.length ? 'BLOCKED' : 'VALIDATED',
+                validation_report: JSON.stringify(report),
+                updated_at: new Date(),
+              });
+            response.status(failures.length ? 409 : 200).json({
+              projectId,
+              draftId: String(draftId),
+              ...report,
+            });
+          },
+        );
+        router.post(
+          '/design-assets/:projectId/drafts/:draftId/promote',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const draftId = Number(request.params.draftId);
+            const now = new Date();
+            const result = await knex.transaction(async transaction => {
+              const draft = await transaction(
+                'resonance_projects__design_asset_draft',
+              )
+                .where({ project_id: projectId, draft_id: draftId })
+                .forUpdate()
+                .first();
+              if (!draft) throw new Error('draft not found');
+              if (draft.draft_status !== 'VALIDATED') {
+                throw new Error('only validated drafts can be promoted');
+              }
+              const source = await transaction(
+                'resonance_projects__design_asset_snapshot',
+              )
+                .where({
+                  project_id: projectId,
+                  asset_type: draft.asset_type,
+                  asset_id: draft.asset_id,
+                })
+                .first();
+              if (!source || source.asset_sha256 !== draft.base_sha256) {
+                throw new Error('source fingerprint changed');
+              }
+              await transaction('resonance_projects__design_asset_draft')
+                .where({ project_id: projectId, draft_id: draftId })
+                .update({
+                  draft_status: 'PROMOTED',
+                  promoted_at: now,
+                  updated_at: now,
+                });
+              const [task] = await transaction(
+                'resonance_projects__task',
+              )
+                .insert({
+                  project_id: projectId,
+                  task_type: 'DESIGN_ASSET_PROMOTION',
+                  status: 'PLANNED',
+                  payload: JSON.stringify({
+                    draftId,
+                    assetType: draft.asset_type,
+                    assetId: draft.asset_id,
+                    baseFingerprint: draft.base_sha256,
+                    patch: draft.patch_payload,
+                  }),
+                  created_at: now,
+                  updated_at: now,
+                })
+                .returning('*');
+              return task;
+            });
+            response.json({
+              projectId,
+              draftId: String(draftId),
+              status: 'PROMOTED',
+              taskId: String(result.task_id),
+              taskStatus: result.status,
             });
           },
         );
