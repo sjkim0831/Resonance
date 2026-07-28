@@ -111,9 +111,8 @@ export function ActorProcessGovernancePage() {
     <GovernanceCompressionNav activeId="actor-process" en={en} />
     <div className="space-y-5">
       <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-sm">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+        <div>
           <div><p className="text-sm font-bold text-blue-200">PROCESS CONTROL PLANE</p><h2 className="mt-1 text-2xl font-black">액터에서 테스트까지, 개발 전 업무 설계를 한곳에서 관리합니다.</h2><p className="mt-2 max-w-3xl text-sm text-blue-50">계정과 프로젝트별 역할, 상태 전이, 완료 조건, 예외·권한·격리·복구 시나리오가 승인되어야 개발 준비 상태가 됩니다.</p></div>
-          <button disabled={busy} onClick={() => void post("standard-pack", {})} className="h-12 rounded-xl bg-white px-5 font-black text-[#174ea6] shadow disabled:opacity-50">{busy ? "반영 중..." : "표준 업무팩 일괄 등록"}</button>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[["액터", data.actors.length], ["계정 배정", data.assignments.length], ["프로세스", data.processes.length], ["시나리오", data.cases.length], ["개발 준비", `${readyCount}/${data.processes.length}`]].map(([label, number]) => <div key={String(label)} className="rounded-xl bg-white/10 p-4"><span className="text-sm text-blue-100">{label}</span><strong className="mt-1 block text-2xl">{number}</strong></div>)}</div>
       </section>
