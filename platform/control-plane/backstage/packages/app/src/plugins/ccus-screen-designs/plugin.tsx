@@ -10,6 +10,7 @@ const screenSpaceRouteRef = createRouteRef();
 const projectControlRouteRef = createRouteRef();
 const controlAssetsRouteRef = createRouteRef();
 const actorProcessControlRouteRef = createRouteRef();
+const designAssetControlRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -80,6 +81,20 @@ const actorProcessControlPage = PageBlueprint.make({
   },
 });
 
+const designAssetControlPage = PageBlueprint.make({
+  name: 'design-asset-control',
+  params: {
+    routeRef: designAssetControlRouteRef,
+    path: '/design-assets',
+    title: '공통 디자인 자산 관리',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./DesignAssetControlPage').then(module => (
+        <module.DesignAssetControlPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -90,6 +105,7 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     projectControl: projectControlRouteRef,
     controlAssets: controlAssetsRouteRef,
     actorProcessControl: actorProcessControlRouteRef,
+    designAssetControl: designAssetControlRouteRef,
   },
   extensions: [
     screenDesignsPage,
@@ -97,5 +113,6 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     projectControlPage,
     controlAssetsPage,
     actorProcessControlPage,
+    designAssetControlPage,
   ],
 });

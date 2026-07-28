@@ -32,6 +32,16 @@ type ControlAssetInput = {
   dependencyContracts?: string[];
 };
 
+type DesignAssetSnapshotInput = {
+  assetType?: string;
+  assetId?: string;
+  assetName?: string;
+  routePath?: string;
+  version?: string;
+  active?: boolean;
+  payload?: Record<string, unknown>;
+};
+
 const normalizeProjectId = (value: unknown) =>
   String(value ?? '')
     .trim()
@@ -172,6 +182,41 @@ export default createBackendPlugin({
           );
         }
         if (
+          !(await knex.schema.hasTable(
+            'resonance_projects__design_asset_snapshot',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__design_asset_snapshot',
+            table => {
+              table.bigIncrements('snapshot_id').primary();
+              table
+                .string('project_id', 64)
+                .notNullable()
+                .references('project_id')
+                .inTable('resonance_projects__project')
+                .onDelete('CASCADE');
+              table.string('asset_type', 32).notNullable();
+              table.string('asset_id', 200).notNullable();
+              table.string('asset_name', 300).notNullable();
+              table.string('route_path', 500).notNullable().defaultTo('');
+              table.string('asset_version', 80).notNullable().defaultTo('v1');
+              table.boolean('active').notNullable().defaultTo(true);
+              table.jsonb('asset_payload').notNullable();
+              table.string('asset_sha256', 64).notNullable();
+              table.timestamp('synced_at', { useTz: true }).notNullable();
+              table.unique(
+                ['project_id', 'asset_type', 'asset_id'],
+                'resonance_design_asset_project_type_id_uq',
+              );
+              table.index(
+                ['project_id', 'asset_type', 'active'],
+                'resonance_design_asset_lookup_idx',
+              );
+            },
+          );
+        }
+        if (
           !(await knex.schema.hasColumn(
             'resonance_projects__control_asset_migration',
             'verification_evidence',
@@ -241,7 +286,7 @@ export default createBackendPlugin({
         }
 
         const router = Router();
-        router.use(json({ limit: '256kb' }));
+        router.use(json({ limit: '10mb' }));
         router.use((_, response, next) => {
           response.setHeader('content-type', 'application/json; charset=utf-8');
           next();
@@ -379,6 +424,167 @@ export default createBackendPlugin({
                 migrationStatus: row.migration_status,
                 count: Number(row.count),
               })),
+            });
+          },
+        );
+        router.get(
+          '/design-assets/:projectId',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const assetType = String(request.query.assetType ?? '')
+              .trim()
+              .toUpperCase();
+            const search = String(request.query.search ?? '').trim();
+            const limit = Math.max(
+              1,
+              Math.min(Number(request.query.limit ?? 100), 500),
+            );
+            const query = knex('resonance_projects__design_asset_snapshot')
+              .select('*')
+              .where({ project_id: projectId });
+            if (assetType) query.andWhere({ asset_type: assetType });
+            if (search) {
+              query.andWhere(builder =>
+                builder
+                  .whereILike('asset_id', `%${search}%`)
+                  .orWhereILike('asset_name', `%${search}%`)
+                  .orWhereILike('route_path', `%${search}%`),
+              );
+            }
+            const assets = await query
+              .orderBy('asset_type', 'asc')
+              .orderBy('asset_name', 'asc')
+              .limit(limit);
+            const counts = (await knex(
+              'resonance_projects__design_asset_snapshot',
+            )
+              .select('asset_type')
+              .count({ count: '*' })
+              .where({ project_id: projectId, active: true })
+              .groupBy('asset_type')) as {
+              asset_type: string;
+              count: string | number;
+            }[];
+            response.json({
+              projectId,
+              counts: Object.fromEntries(
+                counts.map(row => [
+                  row.asset_type,
+                  Number(row.count),
+                ]),
+              ),
+              assets: assets.map(asset => ({
+                assetType: asset.asset_type,
+                assetId: asset.asset_id,
+                assetName: asset.asset_name,
+                routePath: asset.route_path,
+                version: asset.asset_version,
+                active: asset.active,
+                payload: asset.asset_payload,
+                fingerprint: asset.asset_sha256,
+                syncedAt: asset.synced_at,
+              })),
+            });
+          },
+        );
+        router.post(
+          '/design-assets/:projectId/sync',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const project = await knex('resonance_projects__project')
+              .where({ project_id: projectId })
+              .first();
+            if (!project) {
+              response.status(404).json({ message: 'project not found' });
+              return;
+            }
+            const assets = Array.isArray(request.body?.assets)
+              ? (request.body.assets as DesignAssetSnapshotInput[])
+              : [];
+            const allowedTypes = new Set([
+              'THEME',
+              'CSS',
+              'SECTION',
+              'COMPONENT',
+              'SCREEN',
+              'MENU',
+            ]);
+            if (assets.length > 10000) {
+              response.status(413).json({ message: 'too many design assets' });
+              return;
+            }
+            const now = new Date();
+            const rows = assets.map((asset, index) => {
+              const assetType = String(asset.assetType ?? '').toUpperCase();
+              const assetId = String(asset.assetId ?? '').trim();
+              const payload =
+                asset.payload && typeof asset.payload === 'object'
+                  ? asset.payload
+                  : {};
+              if (!allowedTypes.has(assetType) || !assetId) {
+                throw new Error(`invalid design asset at index ${index}`);
+              }
+              const canonical = JSON.stringify({
+                assetType,
+                assetId,
+                assetName: String(asset.assetName ?? assetId),
+                routePath: String(asset.routePath ?? ''),
+                version: String(asset.version ?? 'v1'),
+                active: asset.active !== false,
+                payload,
+              });
+              return {
+                project_id: projectId,
+                asset_type: assetType,
+                asset_id: assetId,
+                asset_name: String(asset.assetName ?? assetId),
+                route_path: String(asset.routePath ?? ''),
+                asset_version: String(asset.version ?? 'v1'),
+                active: asset.active !== false,
+                asset_payload: JSON.stringify(payload),
+                asset_sha256: createHash('sha256')
+                  .update(canonical)
+                  .digest('hex'),
+                synced_at: now,
+              };
+            });
+            if (
+              new Set(rows.map(row => `${row.asset_type}:${row.asset_id}`))
+                .size !== rows.length
+            ) {
+              response.status(400).json({ message: 'duplicate design assets' });
+              return;
+            }
+            await knex.transaction(async transaction => {
+              for (const row of rows) {
+                await transaction(
+                  'resonance_projects__design_asset_snapshot',
+                )
+                  .insert(row)
+                  .onConflict(['project_id', 'asset_type', 'asset_id'])
+                  .merge({
+                    asset_name: row.asset_name,
+                    route_path: row.route_path,
+                    asset_version: row.asset_version,
+                    active: row.active,
+                    asset_payload: row.asset_payload,
+                    asset_sha256: row.asset_sha256,
+                    synced_at: now,
+                  });
+              }
+            });
+            response.json({
+              projectId,
+              synchronized: rows.length,
+              fingerprint: createHash('sha256')
+                .update(
+                  rows
+                    .map(row => `${row.asset_type}:${row.asset_id}:${row.asset_sha256}`)
+                    .sort()
+                    .join('\n'),
+                )
+                .digest('hex'),
+              syncedAt: now,
             });
           },
         );
