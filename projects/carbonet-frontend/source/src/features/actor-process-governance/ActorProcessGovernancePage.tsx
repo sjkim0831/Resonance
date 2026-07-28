@@ -6,6 +6,7 @@ import { DeliveryControlPanel } from "./DeliveryControlPanel";
 import { ProcessDesignMap } from "./ProcessDesignMap";
 import { ProfessionalDesignCanvas } from "./ProfessionalDesignCanvas";
 import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
+import { IntegratedWorkOperationsMap } from "./IntegratedWorkOperationsMap";
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
@@ -19,7 +20,7 @@ type WorkspaceTab = { id:string; label:string };
 type WorkspaceDefinition = { id:WorkspaceId; label:string; description:string; tabs:WorkspaceTab[] };
 const WORKSPACES:WorkspaceDefinition[] = [
   { id:"operate", label:"업무 운영", description:"업무 종류와 액터를 선택하고 전체 흐름, 현재 단계, 업무 길잡이와 실제 실행 화면을 함께 관리합니다.", tabs:[
-    {id:"work-dashboard",label:"업무 운영 지도"},{id:"process-map",label:"전체 프로세스 설계도"},{id:"execution",label:"종단간 업무 실행"},
+    {id:"work-dashboard",label:"업무 운영 지도"},{id:"work-completion",label:"완료·개발 현황"},{id:"process-map",label:"전체 프로세스 설계도"},{id:"execution",label:"종단간 업무 실행"},
     {id:"work-types",label:"업무 종류"},{id:"actors",label:"액터"},{id:"assignments",label:"계정 배정"},
     {id:"account-readiness",label:"액터 계정 검증"},{id:"processes",label:"프로세스"},{id:"steps",label:"단계"}
   ]},
@@ -142,9 +143,8 @@ export function ActorProcessGovernancePage() {
         </div>
       </section>
 
-      {activeWorkspace.id==="operate"&&<UnifiedWorkContext actors={data.actors} cases={data.cases} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
-
-      {tab === "work-dashboard" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
+      {tab === "work-dashboard" && <IntegratedWorkOperationsMap actors={data.actors} artifacts={data.artifacts} cases={data.cases} executions={data.processExecutions} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} runs={data.runs} steps={data.steps} />}
+      {tab === "work-completion" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
       {tab === "design-assurance" && <>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[[en?"Processes":"전체 프로세스","processCount"],[en?"Verified":"구현 검증","verifiedCount"],[en?"Blocked":"설계 차단","blockedCount"],[en?"Pending":"구현 대기","pendingCount"],[en?"Average score":"평균 정확도","averageAccuracyScore"]].map(([label,key])=><div className="rounded-xl border bg-white p-4" key={key}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.designAssuranceSummary??{},key)}{key==="averageAccuracyScore"?"%":""}</strong></div>)}</section>
@@ -249,70 +249,6 @@ export function ActorProcessGovernancePage() {
       {tab === "simulation" && <><ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter} /><div className="grid gap-4 xl:grid-cols-2"><Form onSubmit={event => void submit(event, "cases")} cols="sm:grid-cols-2"><Field label="시나리오 코드"><input className={fieldClass} name="caseCode" required /></Field><Field label="프로세스"><select className={fieldClass} name="processCode">{data.processes.map(row => <option key={value(row, "processCode")}>{value(row, "processCode")}</option>)}</select></Field><Field label="시나리오명"><input className={fieldClass} name="caseName" required /></Field><Field label="유형"><select className={fieldClass} name="caseType"><option>HAPPY_PATH</option><option>EXCEPTION</option><option>AUTHORITY</option><option>ISOLATION</option><option>RECOVERY</option></select></Field><Field label="사전 조건"><textarea className={`${fieldClass} h-24 py-2`} name="preconditions" required /></Field><Field label="실행 단계 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="stepsJson" defaultValue="[]" required /></Field><div className="sm:col-span-2"><Field label="검증 조건 JSON"><textarea className={`${fieldClass} h-20 py-2`} name="assertionsJson" defaultValue="[]" required /></Field></div><SaveButton busy={busy} label="시나리오 저장" /></Form><Form onSubmit={event => void submit(event, "runs")} cols="sm:grid-cols-2"><Field label="시나리오"><select className={fieldClass} name="caseCode">{data.cases.map(row => <option key={value(row, "caseCode")}>{value(row, "caseCode")}</option>)}</select></Field><Field label="결과"><select className={fieldClass} name="result"><option>PASSED</option><option>FAILED</option><option>BLOCKED</option></select></Field><Field label="실패 사유"><textarea className={`${fieldClass} h-24 py-2`} name="failureReason" /></Field><Field label="증적 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="evidenceJson" defaultValue="{}" /></Field><SaveButton busy={busy} label="실행 결과 기록" /></Form></div><Table heads={["시나리오", "프로세스", "이름", "유형", "상태"]} rows={selectedCases.map(row => [value(row, "caseCode"), value(row, "processCode"), value(row, "caseName"), value(row, "caseType"), value(row, "status")])} /></>}
     </div>
   </AdminPageShell>;
-}
-
-function UnifiedWorkContext({actors,cases,jobs,onOpen,onProcessChange,processCode,processes,steps}:{actors:Row[];cases:Row[];jobs:Row[];onOpen:(tab:string)=>void;onProcessChange:(code:string)=>void;processCode:string;processes:Row[];steps:Row[]}) {
-  const selectedCode=processCode||value(processes[0]||{},"processCode");
-  const selectedProcess=processes.find(row=>value(row,"processCode")===selectedCode)||{};
-  const processSteps=steps.filter(row=>value(row,"processCode")===selectedCode);
-  const processCases=cases.filter(row=>value(row,"processCode")===selectedCode);
-  const processJobs=jobs.filter(row=>value(row,"processCode")===selectedCode);
-  const completedJobs=processJobs.filter(row=>["VERIFIED","COMPLETED"].includes(value(row,"jobStatus"))).length;
-  const currentStep=processSteps.find(row=>!["COMPLETED","VERIFIED"].includes(value(row,"automationStatus")))||processSteps[processSteps.length-1]||{};
-  const currentActor=actors.find(row=>value(row,"actorCode")===value(currentStep,"actorCode"))||{};
-  const route=value(currentStep,"userPath")||value(currentStep,"adminPath");
-  return <section className="grid gap-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-4 xl:grid-cols-[minmax(260px,0.9fr)_minmax(0,1.7fr)_minmax(260px,0.9fr)]">
-    <div className="rounded-xl border bg-white p-4">
-      <p className="text-xs font-black tracking-[0.08em] text-blue-700">업무 선택</p>
-      <label className="mt-3 block text-sm font-bold text-slate-700">프로세스
-        <select className={`${fieldClass} mt-2`} value={selectedCode} onChange={event=>onProcessChange(event.target.value)}>
-          {processes.map(row=><option key={value(row,"processCode")} value={value(row,"processCode")}>{value(row,"processName")} ({value(row,"processCode")})</option>)}
-        </select>
-      </label>
-      <dl className="mt-4 grid grid-cols-2 gap-2">
-        <ContextMetric label="단계" value={processSteps.length}/>
-        <ContextMetric label="테스트" value={processCases.length}/>
-        <ContextMetric label="개발 작업" value={processJobs.length}/>
-        <ContextMetric label="완료 작업" value={`${completedJobs}/${processJobs.length}`}/>
-      </dl>
-    </div>
-    <div className="rounded-xl border bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><p className="text-xs font-black tracking-[0.08em] text-blue-700">전체 업무 흐름</p><h3 className="mt-1 font-black text-[#052b57]">{value(selectedProcess,"processName")||"프로세스를 선택하십시오"}</h3></div>
-        <button type="button" onClick={()=>onOpen("process-map")} className="rounded-lg border border-blue-300 px-3 py-2 text-sm font-bold text-blue-700">전체 지도 열기</button>
-      </div>
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-        {processSteps.map((row,index)=>{
-          const current=value(row,"stepCode")===value(currentStep,"stepCode");
-          return <div key={`${value(row,"processCode")}-${value(row,"stepCode")}`} className="flex min-w-[170px] items-center gap-2">
-            <button type="button" onClick={()=>onOpen("steps")} className={`min-h-24 w-full rounded-xl border p-3 text-left ${current?"border-blue-500 bg-blue-50 ring-2 ring-blue-100":"bg-white hover:border-blue-300"}`}>
-              <span className="text-xs font-bold text-slate-500">{index+1}단계 · {value(row,"actorCode")}</span>
-              <strong className="mt-1 block text-sm text-slate-900">{value(row,"stepName")}</strong>
-              <span className="mt-2 inline-block rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{current?"현재 업무":value(row,"automationStatus")||"대기"}</span>
-            </button>
-            {index<processSteps.length-1&&<span className="shrink-0 text-xl text-slate-400" aria-hidden="true">→</span>}
-          </div>;
-        })}
-      </div>
-    </div>
-    <aside className="rounded-xl border bg-white p-4">
-      <p className="text-xs font-black tracking-[0.08em] text-blue-700">업무 길잡이</p>
-      <h3 className="mt-2 text-lg font-black text-[#052b57]">{value(currentStep,"stepName")||"진행할 단계가 없습니다"}</h3>
-      <div className="mt-3 space-y-2 text-sm">
-        <p><span className="font-bold text-slate-500">담당 액터</span><span className="ml-2 text-slate-900">{value(currentActor,"actorName")||value(currentStep,"actorCode")||"-"}</span></p>
-        <p><span className="font-bold text-slate-500">완료 조건</span><span className="mt-1 block leading-6 text-slate-700">{value(currentStep,"completionRule")||"완료 조건 설계가 필요합니다."}</span></p>
-        <p><span className="font-bold text-slate-500">입력 계약</span><span className="mt-1 block line-clamp-2 leading-6 text-slate-700">{value(currentStep,"inputContract")||"입력 데이터 계약이 필요합니다."}</span></p>
-      </div>
-      <div className="mt-4 grid gap-2">
-        {route.startsWith("/")?<a href={route} className="rounded-lg bg-[#246beb] px-4 py-3 text-center text-sm font-bold text-white">현재 업무 화면 열기</a>:<button type="button" onClick={()=>onOpen("page-fields")} className="rounded-lg bg-[#246beb] px-4 py-3 text-sm font-bold text-white">화면·필드 설계하기</button>}
-        <button type="button" onClick={()=>onOpen("simulation")} className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-bold text-slate-700">테스트 시나리오 확인</button>
-      </div>
-    </aside>
-  </section>;
-}
-
-function ContextMetric({label,value:metric}:{label:string;value:string|number}) {
-  return <div className="rounded-lg bg-slate-50 p-3"><dt className="text-xs font-bold text-slate-500">{label}</dt><dd className="mt-1 text-lg font-black text-[#052b57]">{metric}</dd></div>;
 }
 
 function CommonFeaturePackagePanel({bindings,busy,installations,onPost,packages,processCode,runs}:{bindings:Row[];busy:boolean;installations:Row[];onPost:(path:string,body:Record<string,unknown>)=>Promise<void>;packages:Row[];processCode:string;runs:Row[]}) {
