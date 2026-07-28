@@ -26,6 +26,8 @@ IMAGE_REPOSITORY="$REGISTRY/resonance-backstage"
 KUBECONFIG="${KUBECONFIG:-/home/sjkim/.kube/config}"
 export KUBECONFIG
 
+"$ROOT/ops/scripts/resonance-kubernetes-admission-preflight.sh"
+
 require() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "[backstage] missing command: $1" >&2

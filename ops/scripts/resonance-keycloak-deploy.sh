@@ -13,7 +13,9 @@ REALM="${KEYCLOAK_REALM:-resonance}"
 CLIENT_ID="${KEYCLOAK_CLIENT_ID:-resonance-backstage}"
 export KUBECONFIG
 
-for command in kubectl openssl curl node xxd; do
+"$ROOT/ops/scripts/resonance-kubernetes-admission-preflight.sh"
+
+for command in kubectl openssl curl; do
   command -v "$command" >/dev/null || {
     echo "[keycloak] missing command: $command" >&2
     exit 1
@@ -207,100 +209,107 @@ bootstrap_realm() {
 }
 
 migrate_users() {
-  local leader pod admin_password test_password
+  local leader pod test_password
   leader="$(find_leader)"
   pod="$(kubectl -n "$NAMESPACE" get pod \
     -l app.kubernetes.io/name=resonance-keycloak \
     -o jsonpath='{.items[0].metadata.name}')"
-  admin_password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak \
-    -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d)"
   test_password="$(openssl rand -base64 24 | tr -d '\n')"
   kubectl -n "$NAMESPACE" create secret generic resonance-keycloak-e2e-users \
     --from-literal=PASSWORD="$test_password" \
     --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-  kubectl -n carbonet-prod exec "$leader" -c patroni -- \
-    psql -h 127.0.0.1 -U postgres -d carbonet -AtF '|' -c "
-      select encode(convert_to(trim(u.user_id),'UTF8'),'hex'),
-             encode(convert_to(coalesce(nullif(trim(u.user_nm),''),trim(u.user_id)),'UTF8'),'hex'),
-             encode(convert_to(trim(u.user_email),'UTF8'),'hex'),
-             encode(convert_to(
-               case
-                 when bool_or(s.author_code='ROLE_SYSTEM_MASTER') then 'verification-governance'
-                 when bool_or(s.author_code='ROLE_OPERATION_ADMIN') then 'carbon-operations'
-                 else 'platform-engineering'
-               end,'UTF8'),'hex')
-      from comvnusermaster u
-      left join comtnemplyrscrtyestbs s
-        on trim(s.scrty_dtrmn_trget_id)=trim(u.esntl_id)
-      where nullif(trim(u.user_id),'') is not null
-        and nullif(trim(u.user_email),'') is not null
-      group by u.user_id,u.user_nm,u.user_email
-      order by trim(u.user_id)" |
-    while IFS='|' read -r user_hex name_hex email_hex group_hex; do
-      legacy_username="$(printf '%s' "$user_hex" | xxd -r -p)"
-      username="$(RAW_USERNAME="$legacy_username" node -e '
-        const value = String(process.env.RAW_USERNAME || "")
-          .trim().toLocaleLowerCase("en-US")
-          .replace(/[^a-z0-9_.-]+/g, "-")
-          .replace(/^-+|-+$/g, "").slice(0, 63);
-        if (!value) process.exit(2);
-        process.stdout.write(value);
-      ')"
-      email="$(printf '%s' "$email_hex" | xxd -r -p)"
-      group="$(printf '%s' "$group_hex" | xxd -r -p)"
-      kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
-        USERNAME="$username" \
-        EMAIL="$email" GROUP="$group" \
-        REALM="$REALM" bash -ceu '
-          K=/opt/keycloak/bin/kcadm.sh
-          uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
-            --fields id --format csv --noquotes | head -n1)
-          if [ -z "$uid" ]; then
-            "$K" create users -r "$REALM" -s username="$USERNAME" \
-              -s enabled=true -s email="$EMAIL" -s emailVerified=false \
-              -s "requiredActions=[\"UPDATE_PASSWORD\"]" >/dev/null 2>&1
-            uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
-              --fields id --format csv --noquotes | head -n1)
-          fi
-          gid=$("$K" get groups -r "$REALM" -q exact=true -q search="$GROUP" \
-            --fields id --format csv --noquotes | head -n1)
-          [ -n "$uid" ] && [ -n "$gid" ] &&
-            "$K" update "users/$uid/groups/$gid" -r "$REALM" -n >/dev/null
-        '
+  {
+    kubectl -n carbonet-prod exec "$leader" -c patroni -- \
+      psql -h 127.0.0.1 -U postgres -d carbonet -AtF '|' -c "
+        with users as (
+          select
+            left(trim(both '-' from regexp_replace(
+              lower(trim(u.user_id)), '[^a-z0-9_.-]+', '-', 'g'
+            )), 63) as username,
+            coalesce(nullif(trim(u.user_nm),''),trim(u.user_id)) as display_name,
+            trim(u.user_email) as email,
+            case
+              when bool_or(s.author_code='ROLE_SYSTEM_MASTER') then 'verification-governance'
+              when bool_or(s.author_code='ROLE_OPERATION_ADMIN') then 'carbon-operations'
+              else 'platform-engineering'
+            end as group_name
+          from comvnusermaster u
+          left join comtnemplyrscrtyestbs s
+            on trim(s.scrty_dtrmn_trget_id)=trim(u.esntl_id)
+          where nullif(trim(u.user_id),'') is not null
+            and nullif(trim(u.user_email),'') is not null
+          group by u.user_id,u.user_nm,u.user_email
+        )
+        select 'LEGACY',
+               replace(encode(convert_to(username,'UTF8'),'base64'),E'\n',''),
+               replace(encode(convert_to(display_name,'UTF8'),'base64'),E'\n',''),
+               replace(encode(convert_to(email,'UTF8'),'base64'),E'\n',''),
+               replace(encode(convert_to(group_name,'UTF8'),'base64'),E'\n','')
+        from users
+        where username <> ''
+        order by username"
+    for spec in \
+      "resonance-requester:platform-engineering" \
+      "resonance-reviewer:carbon-operations" \
+      "resonance-approver:verification-governance"; do
+      username="${spec%%:*}"
+      group="${spec#*:}"
+      printf 'TEST|%s|%s|%s|%s\n' \
+        "$(printf '%s' "$username" | base64 -w0)" \
+        "$(printf 'Resonance' | base64 -w0)" \
+        "$(printf '%s@resonance.local' "$username" | base64 -w0)" \
+        "$(printf '%s' "$group" | base64 -w0)"
     done
+  } | kubectl -n "$NAMESPACE" exec -i "$pod" -c keycloak -- env \
+    REALM="$REALM" TEST_PASSWORD="$test_password" bash -ceu '
+      K=/opt/keycloak/bin/kcadm.sh
+      groups=$("$K" get groups -r "$REALM" \
+        --fields id,name --format csv --noquotes)
+      platform_gid=$(printf "%s\n" "$groups" |
+        grep ",platform-engineering$" | head -n1 | cut -d, -f1)
+      operations_gid=$(printf "%s\n" "$groups" |
+        grep ",carbon-operations$" | head -n1 | cut -d, -f1)
+      governance_gid=$(printf "%s\n" "$groups" |
+        grep ",verification-governance$" | head -n1 | cut -d, -f1)
+      [ -n "$platform_gid" ] && [ -n "$operations_gid" ] &&
+        [ -n "$governance_gid" ]
 
-  for spec in \
-    "resonance-requester:platform-engineering" \
-    "resonance-reviewer:carbon-operations" \
-    "resonance-approver:verification-governance"; do
-    username="${spec%%:*}"
-    group="${spec#*:}"
-    kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
-      TEST_PASSWORD="$test_password" \
-      USERNAME="$username" GROUP="$group" REALM="$REALM" bash -ceu '
-        K=/opt/keycloak/bin/kcadm.sh
-        uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
+      while IFS="|" read -r kind username_b64 name_b64 email_b64 group_b64; do
+        [ -n "$kind" ] || continue
+        username=$(printf "%s" "$username_b64" | base64 -d)
+        display_name=$(printf "%s" "$name_b64" | base64 -d)
+        email=$(printf "%s" "$email_b64" | base64 -d)
+        group=$(printf "%s" "$group_b64" | base64 -d)
+        case "$group" in
+          platform-engineering) gid="$platform_gid" ;;
+          carbon-operations) gid="$operations_gid" ;;
+          verification-governance) gid="$governance_gid" ;;
+          *) echo "[keycloak] unknown group for $username" >&2; exit 1 ;;
+        esac
+        uid=$("$K" get users -r "$REALM" -q username="$username" \
           --fields id --format csv --noquotes | head -n1)
         if [ -z "$uid" ]; then
-          "$K" create users -r "$REALM" -s username="$USERNAME" \
-            -s enabled=true -s email="$USERNAME@resonance.local" \
-            -s firstName=Resonance -s lastName="$GROUP" \
-            -s emailVerified=true >/dev/null
-          uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
+          "$K" create users -r "$REALM" -s username="$username" \
+            -s enabled=true -s email="$email" \
+            -s firstName="$display_name" -s lastName=Member \
+            -s emailVerified=false \
+            -s "requiredActions=[\"UPDATE_PASSWORD\"]" >/dev/null 2>&1
+          uid=$("$K" get users -r "$REALM" -q username="$username" \
             --fields id --format csv --noquotes | head -n1)
         fi
-        "$K" update "users/$uid" -r "$REALM" \
-          -s enabled=true -s email="$USERNAME@resonance.local" \
-          -s firstName=Resonance -s lastName="$GROUP" \
-          -s emailVerified=true -s "requiredActions=[]" >/dev/null
-        "$K" set-password -r "$REALM" --username "$USERNAME" \
-          --new-password "$TEST_PASSWORD" --temporary=false >/dev/null
-        gid=$("$K" get groups -r "$REALM" -q exact=true -q search="$GROUP" \
-          --fields id --format csv --noquotes | head -n1)
+        [ -n "$uid" ] || exit 1
+        if [ "$kind" = TEST ]; then
+          "$K" update "users/$uid" -r "$REALM" \
+            -s enabled=true -s email="$email" \
+            -s firstName="$display_name" -s lastName="$group" \
+            -s emailVerified=true -s "requiredActions=[]" >/dev/null
+          "$K" set-password -r "$REALM" --username "$username" \
+            --new-password "$TEST_PASSWORD" --temporary=false >/dev/null
+        fi
         "$K" update "users/$uid/groups/$gid" -r "$REALM" -n >/dev/null
-      '
-  done
+      done
+    '
 }
 
 mode="${1:-deploy}"
