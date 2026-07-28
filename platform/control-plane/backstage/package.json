@@ -7,6 +7,7 @@
   },
   "scripts": {
     "generate:ccus-screen-designs": "node scripts/generate-ccus-screen-design-catalog.mjs",
+    "generate:project-registry": "node scripts/generate-resonance-project-registry.mjs",
     "validate:page-extensions": "node scripts/validate-page-extension-ids.mjs",
     "start": "backstage-cli repo start",
     "build:backend": "yarn workspace backend build",

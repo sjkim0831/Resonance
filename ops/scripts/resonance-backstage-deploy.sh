@@ -140,6 +140,7 @@ case "$mode" in
       cd "$APP"
       corepack yarn validate:page-extensions
       corepack yarn generate:ccus-screen-designs
+      corepack yarn generate:project-registry
     )
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
