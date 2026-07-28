@@ -174,13 +174,13 @@ bootstrap_realm() {
       fi
       sid=$("$K" get client-scopes -r "$REALM" \
         --fields id,name --format csv --noquotes |
-        awk -F, "\$2 == \"groups\" { print \$1; exit }")
+        grep ',groups$' | head -n1 | cut -d, -f1)
       if [ -z "$sid" ]; then
         "$K" create client-scopes -r "$REALM" \
           -s name=groups -s protocol=openid-connect >/dev/null
         sid=$("$K" get client-scopes -r "$REALM" \
           --fields id,name --format csv --noquotes |
-          awk -F, "\$2 == \"groups\" { print \$1; exit }")
+          grep ',groups$' | head -n1 | cut -d, -f1)
       fi
       "$K" update "clients/$cid/optional-client-scopes/$sid" \
         -r "$REALM" -n >/dev/null
