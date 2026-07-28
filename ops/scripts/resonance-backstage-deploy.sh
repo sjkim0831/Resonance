@@ -27,7 +27,7 @@ docker buildx version >/dev/null 2>&1 || {
   exit 2
 }
 
-BACKSTAGE_URL="${BACKSTAGE_URL:-http://172.16.1.232:30707}"
+BACKSTAGE_URL="${BACKSTAGE_URL:-http://backstage.172.16.1.232.nip.io}"
 BACKSTAGE_MIN_CATALOG_ENTITIES="${BACKSTAGE_MIN_CATALOG_ENTITIES:-22}"
 
 wait_for_runtime() {
