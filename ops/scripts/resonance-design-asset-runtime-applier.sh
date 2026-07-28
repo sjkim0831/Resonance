@@ -340,7 +340,7 @@ if [[ "$AFTER_FINGERPRINT" != "$EXPECTED_FINGERPRINT" ]]; then
   exit 1
 fi
 
-"$ROOT/ops/scripts/resonance-design-asset-snapshot.sh" "$PROJECT_ID" >/dev/null
+bash "$ROOT/ops/scripts/resonance-design-asset-snapshot.sh" "$PROJECT_ID" >/dev/null
 receipt_file="$STATE_ROOT/receipts/$(basename "$QUEUE_FILE").receipt.json"
 jq -n \
   --arg projectId "$PROJECT_ID" --argjson draftId "$DRAFT_ID" \
