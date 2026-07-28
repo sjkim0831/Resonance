@@ -1,5 +1,6 @@
 app:
   baseUrl: ${BACKSTAGE_BASE_URL}
+  resonanceOidcEnabled: false
 
 backend:
   # Note that the baseUrl should be the URL that the browser and other clients

@@ -54,6 +54,9 @@ spec:
                 name: resonance-backstage-config
             - secretRef:
                 name: resonance-backstage-database
+            - secretRef:
+                name: resonance-backstage-auth
+                optional: true
           volumeMounts:
             - name: resonance-catalog
               mountPath: /app/catalog

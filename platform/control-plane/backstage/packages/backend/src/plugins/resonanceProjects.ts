@@ -293,22 +293,38 @@ export default createBackendPlugin({
             },
           );
         }
-        for (const roleCode of [
-          'DESIGN_REQUESTER',
-          'DESIGN_REVIEWER',
-          'DESIGN_APPROVER',
-          'DESIGN_AUDITOR',
-        ]) {
+        const roleSeeds = [
+          ['group:default/platform-engineering', 'DESIGN_REQUESTER'],
+          ['group:default/carbon-operations', 'DESIGN_REVIEWER'],
+          ['group:default/verification-governance', 'DESIGN_APPROVER'],
+          ['group:default/verification-governance', 'DESIGN_AUDITOR'],
+        ];
+        if (process.env.RESONANCE_ALLOW_GUEST_DESIGN_RBAC === 'true') {
+          roleSeeds.push(
+            ['user:development/guest', 'DESIGN_REQUESTER'],
+            ['user:development/guest', 'DESIGN_REVIEWER'],
+            ['user:development/guest', 'DESIGN_APPROVER'],
+            ['user:development/guest', 'DESIGN_AUDITOR'],
+          );
+        } else {
+          await knex('resonance_projects__design_asset_role_assignment')
+            .where({
+              project_id: 'CCUS-PLATFORM',
+              principal_ref: 'user:development/guest',
+            })
+            .update({ active: false });
+        }
+        for (const [principalRef, roleCode] of roleSeeds) {
           await knex('resonance_projects__design_asset_role_assignment')
             .insert({
               project_id: 'CCUS-PLATFORM',
-              principal_ref: 'user:development/guest',
+              principal_ref: principalRef,
               role_code: roleCode,
               active: true,
               created_at: new Date(),
             })
             .onConflict(['project_id', 'principal_ref', 'role_code'])
-            .ignore();
+            .merge({ active: true });
         }
         if (
           !(await knex.schema.hasColumn(
