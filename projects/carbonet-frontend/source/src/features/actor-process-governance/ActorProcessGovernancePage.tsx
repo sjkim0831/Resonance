@@ -143,7 +143,7 @@ export function ActorProcessGovernancePage() {
         </div>
       </section>
 
-      {tab === "work-dashboard" && <IntegratedWorkOperationsMap actors={data.actors} artifacts={data.artifacts} cases={data.cases} executions={data.processExecutions} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} runs={data.runs} steps={data.steps} />}
+      {tab === "work-dashboard" && <IntegratedWorkOperationsMap actors={data.actors} artifacts={data.artifacts} base={base} cases={data.cases} executions={data.processExecutions} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} runs={data.runs} steps={data.steps} />}
       {tab === "work-completion" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
       {tab === "design-assurance" && <>
