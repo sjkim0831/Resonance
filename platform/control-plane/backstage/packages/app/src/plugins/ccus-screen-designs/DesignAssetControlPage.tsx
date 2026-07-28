@@ -44,6 +44,16 @@ type DesignDraft = {
   updatedAt: string;
   promotedAt?: string;
 };
+type DesignAccess = {
+  actorRef: string;
+  roles: string[];
+  permissions: {
+    canRequest: boolean;
+    canReview: boolean;
+    canApprove: boolean;
+    canAudit: boolean;
+  };
+};
 
 const types: { code: AssetType; label: string }[] = [
   { code: 'THEME', label: '테마' },
@@ -121,13 +131,13 @@ export function DesignAssetControlPage() {
   const [error, setError] = useState('');
   const [draftName, setDraftName] = useState('');
   const [draftPayload, setDraftPayload] = useState('');
-  const [draftId, setDraftId] = useState('');
   const [draftStatus, setDraftStatus] = useState('');
   const [drafts, setDrafts] = useState<DesignDraft[]>([]);
+  const [access, setAccess] = useState<DesignAccess | null>(null);
   const activeType = types[tab].code;
 
   const load = useCallback(async () => {
-    const [assetResponse, draftResponse] = await Promise.all([
+    const [assetResponse, draftResponse, accessResponse] = await Promise.all([
       fetchApi.fetch(
         `/api/resonance-projects/design-assets/${encodeURIComponent(
           projectId,
@@ -138,10 +148,16 @@ export function DesignAssetControlPage() {
           projectId,
         )}/drafts`,
       ),
+      fetchApi.fetch(
+        `/api/resonance-projects/design-assets/${encodeURIComponent(
+          projectId,
+        )}/access`,
+      ),
     ]);
-    const [assetPayload, draftPayloadResult] = await Promise.all([
+    const [assetPayload, draftPayloadResult, accessPayload] = await Promise.all([
       assetResponse.json(),
       draftResponse.json(),
+      accessResponse.json(),
     ]);
     if (!assetResponse.ok) {
       throw new Error(assetPayload.message || '자산 조회 실패');
@@ -149,9 +165,13 @@ export function DesignAssetControlPage() {
     if (!draftResponse.ok) {
       throw new Error(draftPayloadResult.message || '변경 이력 조회 실패');
     }
+    if (!accessResponse.ok) {
+      throw new Error(accessPayload.message || '권한 조회 실패');
+    }
     setAssets(assetPayload.assets ?? []);
     setCounts(assetPayload.counts ?? {});
     setDrafts(draftPayloadResult.drafts ?? []);
+    setAccess(accessPayload);
   }, [activeType, fetchApi, projectId]);
 
   useEffect(() => {
@@ -183,11 +203,10 @@ export function DesignAssetControlPage() {
     setSelected(asset);
     setDraftName(asset.assetName);
     setDraftPayload(JSON.stringify(asset.payload, null, 2));
-    setDraftId('');
     setDraftStatus('');
   };
 
-  const saveAndValidateDraft = async () => {
+  const saveDraft = async () => {
     if (!selected) return;
     let payload: Record<string, unknown>;
     try {
@@ -206,7 +225,6 @@ export function DesignAssetControlPage() {
           assetType: selected.assetType,
           assetId: selected.assetId,
           baseFingerprint: selected.fingerprint,
-          createdBy: 'backstage-user',
           patch: {
             assetName: draftName,
             routePath: selected.routePath,
@@ -221,28 +239,32 @@ export function DesignAssetControlPage() {
     if (!createResponse.ok) {
       throw new Error(created.message || '초안 저장 실패');
     }
-    const validateResponse = await fetchApi.fetch(
-      `/api/resonance-projects/design-assets/${encodeURIComponent(
-        projectId,
-      )}/drafts/${created.draftId}/validate`,
-      { method: 'POST' },
-    );
-    const validated = await validateResponse.json();
-    if (!validateResponse.ok) {
-      throw new Error(
-        validated.failures?.join(', ') || validated.message || '검증 실패',
-      );
-    }
-    setDraftId(created.draftId);
-    setDraftStatus('VALIDATED');
+    setDraftStatus('DRAFT · 검토자 확인 대기');
+    await load();
   };
 
-  const promoteDraft = async () => {
-    if (!draftId) return;
+  const reviewDraft = async (target: DesignDraft) => {
     const response = await fetchApi.fetch(
       `/api/resonance-projects/design-assets/${encodeURIComponent(
         projectId,
-      )}/drafts/${draftId}/promote`,
+      )}/drafts/${target.draftId}/validate`,
+      { method: 'POST' },
+    );
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(
+        payload.failures?.join(', ') || payload.message || '검토 실패',
+      );
+    }
+    setDraftStatus('VALIDATED');
+    await load();
+  };
+
+  const approveDraft = async (target: DesignDraft) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/design-assets/${encodeURIComponent(
+        projectId,
+      )}/drafts/${target.draftId}/promote`,
       { method: 'POST' },
     );
     const payload = await response.json();
@@ -279,6 +301,14 @@ export function DesignAssetControlPage() {
             Resonance 실행 DB의 검증된 자산을 읽기 전용 스냅샷으로 동기화하며,
             설계 승인 후에만 생성 계약으로 승격합니다.
           </Typography>
+          {access && (
+            <Box mt={2} display="flex" flexWrap="wrap" gridGap={8}>
+              <Chip size="small" label={access.actorRef} />
+              {access.roles.map(role => (
+                <Chip key={role} size="small" label={role} />
+              ))}
+            </Box>
+          )}
         </Box>
         <Grid container spacing={2}>
           {types.map(type => (
@@ -394,6 +424,9 @@ export function DesignAssetControlPage() {
                         <Typography variant="caption" className={classes.mono}>
                           {draft.baseFingerprint}
                         </Typography>
+                        <Typography variant="caption" display="block">
+                          요청자: {draft.createdBy}
+                        </Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gridGap={8}>
                         <Chip
@@ -403,7 +436,39 @@ export function DesignAssetControlPage() {
                           }
                           label={draft.status}
                         />
-                        {draft.status === 'APPLIED' && (
+                        {draft.status === 'DRAFT' &&
+                          access?.permissions.canReview &&
+                          draft.createdBy !== access.actorRef && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() =>
+                                void reviewDraft(draft).catch(reason =>
+                                  setError(String(reason.message || reason)),
+                                )
+                              }
+                            >
+                              계약 검토
+                            </Button>
+                          )}
+                        {draft.status === 'VALIDATED' &&
+                          access?.permissions.canApprove &&
+                          draft.createdBy !== access.actorRef && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              onClick={() =>
+                                void approveDraft(draft).catch(reason =>
+                                  setError(String(reason.message || reason)),
+                                )
+                              }
+                            >
+                              승인 큐 등록
+                            </Button>
+                          )}
+                        {draft.status === 'APPLIED' &&
+                          access?.permissions.canApprove && (
                           <Button
                             size="small"
                             variant="outlined"
@@ -416,7 +481,7 @@ export function DesignAssetControlPage() {
                           >
                             이 버전으로 롤백
                           </Button>
-                        )}
+                          )}
                       </Box>
                     </Box>
                     <Box mt={1}>
@@ -495,26 +560,17 @@ export function DesignAssetControlPage() {
                 <Button
                   color="primary"
                   variant="contained"
-                  disabled={draftStatus.startsWith('PROMOTED')}
+                  disabled={
+                    !access?.permissions.canRequest ||
+                    draftStatus.startsWith('DRAFT')
+                  }
                   onClick={() =>
-                    void saveAndValidateDraft().catch(reason =>
+                    void saveDraft().catch(reason =>
                       setError(String(reason.message || reason)),
                     )
                   }
                 >
-                  초안 저장·계약 검증
-                </Button>
-                <Button
-                  color="primary"
-                  variant="outlined"
-                  disabled={draftStatus !== 'VALIDATED'}
-                  onClick={() =>
-                    void promoteDraft().catch(reason =>
-                      setError(String(reason.message || reason)),
-                    )
-                  }
-                >
-                  승인 작업 큐 등록
+                  초안 저장
                 </Button>
               </Box>
               {draftStatus && (

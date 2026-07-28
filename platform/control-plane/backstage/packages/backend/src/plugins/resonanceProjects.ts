@@ -2,7 +2,7 @@ import {
   coreServices,
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
-import { Router, json } from 'express';
+import { Router, json, type Request } from 'express';
 import { createHash } from 'node:crypto';
 
 type ProjectInput = {
@@ -105,10 +105,12 @@ export default createBackendPlugin({
     env.registerInit({
       deps: {
         database: coreServices.database,
+        httpAuth: coreServices.httpAuth,
         httpRouter: coreServices.httpRouter,
         logger: coreServices.logger,
+        userInfo: coreServices.userInfo,
       },
-      async init({ database, httpRouter, logger }) {
+      async init({ database, httpAuth, httpRouter, logger, userInfo }) {
         const knex = await database.getClient();
         if (!(await knex.schema.hasTable('resonance_projects__project'))) {
           await knex.schema.createTable('resonance_projects__project', table => {
@@ -249,6 +251,66 @@ export default createBackendPlugin({
           );
         }
         if (
+          !(await knex.schema.hasTable(
+            'resonance_projects__design_asset_role_assignment',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__design_asset_role_assignment',
+            table => {
+              table.bigIncrements('assignment_id').primary();
+              table.string('project_id', 64).notNullable();
+              table.string('principal_ref', 300).notNullable();
+              table.string('role_code', 32).notNullable();
+              table.boolean('active').notNullable().defaultTo(true);
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.unique(
+                ['project_id', 'principal_ref', 'role_code'],
+                'resonance_design_asset_role_assignment_uq',
+              );
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_projects__design_asset_audit',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__design_asset_audit',
+            table => {
+              table.bigIncrements('audit_id').primary();
+              table.string('project_id', 64).notNullable();
+              table.bigInteger('draft_id').nullable();
+              table.string('action_code', 64).notNullable();
+              table.string('actor_ref', 300).notNullable();
+              table.jsonb('details').notNullable().defaultTo('{}');
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.index(
+                ['project_id', 'created_at'],
+                'resonance_design_asset_audit_lookup_idx',
+              );
+            },
+          );
+        }
+        for (const roleCode of [
+          'DESIGN_REQUESTER',
+          'DESIGN_REVIEWER',
+          'DESIGN_APPROVER',
+          'DESIGN_AUDITOR',
+        ]) {
+          await knex('resonance_projects__design_asset_role_assignment')
+            .insert({
+              project_id: 'CCUS-PLATFORM',
+              principal_ref: 'user:development/guest',
+              role_code: roleCode,
+              active: true,
+              created_at: new Date(),
+            })
+            .onConflict(['project_id', 'principal_ref', 'role_code'])
+            .ignore();
+        }
+        if (
           !(await knex.schema.hasColumn(
             'resonance_projects__control_asset_migration',
             'verification_evidence',
@@ -317,6 +379,76 @@ export default createBackendPlugin({
           }
         }
 
+        const resolveDesignAssetAccess = async (
+          request: Request,
+          projectId: string,
+        ) => {
+          const credentials = await httpAuth.credentials(request, {
+            allow: ['user'],
+          });
+          const user = await userInfo.getUserInfo(credentials);
+          const principals = [
+            user.userEntityRef,
+            ...user.ownershipEntityRefs,
+          ];
+          const assignments = await knex(
+            'resonance_projects__design_asset_role_assignment',
+          )
+            .where({ project_id: projectId, active: true })
+            .whereIn('principal_ref', principals)
+            .select('role_code');
+          return {
+            actorRef: user.userEntityRef,
+            principals,
+            roles: assignments.map(row => String(row.role_code)),
+          };
+        };
+        const requireDesignAssetRole = async (
+          request: Request,
+          projectId: string,
+          role: string,
+        ) => {
+          const access = await resolveDesignAssetAccess(request, projectId);
+          if (!access.roles.includes(role)) {
+            await knex('resonance_projects__design_asset_audit').insert({
+              project_id: projectId,
+              draft_id: null,
+              action_code: 'ACCESS_DENIED',
+              actor_ref: access.actorRef,
+              details: JSON.stringify({ requiredRole: role }),
+              created_at: new Date(),
+            });
+            const error = new Error(`missing required role: ${role}`) as Error & {
+              statusCode?: number;
+            };
+            error.statusCode = 403;
+            throw error;
+          }
+          return access;
+        };
+        const writeDesignAssetAudit = async ({
+          projectId,
+          draftId,
+          actionCode,
+          actorRef,
+          details = {},
+        }: {
+          projectId: string;
+          draftId?: number;
+          actionCode: string;
+          actorRef: string;
+          details?: Record<string, unknown>;
+        }) => {
+          await knex('resonance_projects__design_asset_audit').insert({
+            project_id: projectId,
+            draft_id: draftId ?? null,
+            action_code: actionCode,
+            actor_ref: actorRef,
+            details: JSON.stringify(details),
+            created_at: new Date(),
+          });
+        };
+
         const router = Router();
         router.use(json({ limit: '10mb' }));
         router.use((_, response, next) => {
@@ -329,6 +461,52 @@ export default createBackendPlugin({
           });
           response.json({ status: 'UP', projectCount: Number(count) });
         });
+        router.get(
+          '/design-assets/:projectId/access',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const access = await resolveDesignAssetAccess(request, projectId);
+            response.json({
+              projectId,
+              actorRef: access.actorRef,
+              roles: access.roles,
+              permissions: {
+                canRequest: access.roles.includes('DESIGN_REQUESTER'),
+                canReview: access.roles.includes('DESIGN_REVIEWER'),
+                canApprove: access.roles.includes('DESIGN_APPROVER'),
+                canAudit: access.roles.includes('DESIGN_AUDITOR'),
+              },
+            });
+          },
+        );
+        router.get(
+          '/design-assets/:projectId/audit',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_AUDITOR',
+            );
+            const rows = await knex(
+              'resonance_projects__design_asset_audit',
+            )
+              .where({ project_id: projectId })
+              .orderBy('audit_id', 'desc')
+              .limit(200);
+            response.json({
+              projectId,
+              audit: rows.map(row => ({
+                auditId: String(row.audit_id),
+                draftId: row.draft_id ? String(row.draft_id) : null,
+                actionCode: row.action_code,
+                actorRef: row.actor_ref,
+                details: row.details,
+                createdAt: row.created_at,
+              })),
+            });
+          },
+        );
         router.get(
           '/control-assets/:projectId',
           async (request, response) => {
@@ -652,6 +830,11 @@ export default createBackendPlugin({
           '/design-assets/:projectId/drafts',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_REQUESTER',
+            );
             const assetType = String(request.body?.assetType ?? '').toUpperCase();
             const assetId = String(request.body?.assetId ?? '').trim();
             const baseFingerprint = String(
@@ -661,7 +844,6 @@ export default createBackendPlugin({
               request.body?.patch && typeof request.body.patch === 'object'
                 ? request.body.patch
                 : {};
-            const createdBy = String(request.body?.createdBy ?? 'backstage');
             const allowedPatchFields = new Set([
               'assetName',
               'routePath',
@@ -707,11 +889,18 @@ export default createBackendPlugin({
                 base_sha256: baseFingerprint,
                 patch_payload: JSON.stringify(patch),
                 draft_status: 'DRAFT',
-                created_by: createdBy,
+                created_by: access.actorRef,
                 created_at: new Date(),
                 updated_at: new Date(),
               })
               .returning('*');
+            await writeDesignAssetAudit({
+              projectId,
+              draftId: Number(draft.draft_id),
+              actionCode: 'DRAFT_CREATED',
+              actorRef: access.actorRef,
+              details: { assetType, assetId, baseFingerprint },
+            });
             response.status(201).json({
               projectId,
               draftId: String(draft.draft_id),
@@ -723,6 +912,11 @@ export default createBackendPlugin({
           '/design-assets/:projectId/drafts/:draftId/validate',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_REVIEWER',
+            );
             const draftId = Number(request.params.draftId);
             const draft = await knex(
               'resonance_projects__design_asset_draft',
@@ -735,6 +929,18 @@ export default createBackendPlugin({
             }
             if (draft.draft_status !== 'DRAFT') {
               response.status(409).json({ message: 'draft is not editable' });
+              return;
+            }
+            if (draft.created_by === access.actorRef) {
+              await writeDesignAssetAudit({
+                projectId,
+                draftId,
+                actionCode: 'REVIEW_DENIED_SELF',
+                actorRef: access.actorRef,
+              });
+              response.status(409).json({
+                message: 'requester cannot review their own draft',
+              });
               return;
             }
             const source = await knex(
@@ -777,6 +983,15 @@ export default createBackendPlugin({
                 validation_report: JSON.stringify(report),
                 updated_at: new Date(),
               });
+            await writeDesignAssetAudit({
+              projectId,
+              draftId,
+              actionCode: failures.length
+                ? 'REVIEW_BLOCKED'
+                : 'REVIEW_PASSED',
+              actorRef: access.actorRef,
+              details: report,
+            });
             response.status(failures.length ? 409 : 200).json({
               projectId,
               draftId: String(draftId),
@@ -788,6 +1003,11 @@ export default createBackendPlugin({
           '/design-assets/:projectId/drafts/:draftId/promote',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
             const draftId = Number(request.params.draftId);
             const now = new Date();
             const result = await knex.transaction(async transaction => {
@@ -800,6 +1020,24 @@ export default createBackendPlugin({
               if (!draft) throw new Error('draft not found');
               if (draft.draft_status !== 'VALIDATED') {
                 throw new Error('only validated drafts can be promoted');
+              }
+              if (draft.created_by === access.actorRef) {
+                throw new Error('requester cannot approve their own draft');
+              }
+              const review = await transaction(
+                'resonance_projects__design_asset_audit',
+              )
+                .where({
+                  project_id: projectId,
+                  draft_id: draftId,
+                  action_code: 'REVIEW_PASSED',
+                })
+                .orderBy('audit_id', 'desc')
+                .first();
+              if (!review || review.actor_ref === access.actorRef) {
+                throw new Error(
+                  'approver must be different from the reviewer',
+                );
               }
               const source = await transaction(
                 'resonance_projects__design_asset_snapshot',
@@ -840,6 +1078,13 @@ export default createBackendPlugin({
                 .returning('*');
               return task;
             });
+            await writeDesignAssetAudit({
+              projectId,
+              draftId,
+              actionCode: 'APPROVAL_QUEUED',
+              actorRef: access.actorRef,
+              details: { taskId: String(result.task_id) },
+            });
             response.json({
               projectId,
               draftId: String(draftId),
@@ -853,6 +1098,11 @@ export default createBackendPlugin({
           '/design-assets/:projectId/drafts/:draftId/rollback',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
             const draftId = Number(request.params.draftId);
             const now = new Date();
             const result = await knex.transaction(async transaction => {
@@ -902,6 +1152,13 @@ export default createBackendPlugin({
                 })
                 .returning('*');
               return task;
+            });
+            await writeDesignAssetAudit({
+              projectId,
+              draftId,
+              actionCode: 'ROLLBACK_QUEUED',
+              actorRef: access.actorRef,
+              details: { taskId: String(result.task_id) },
             });
             response.json({
               projectId,
