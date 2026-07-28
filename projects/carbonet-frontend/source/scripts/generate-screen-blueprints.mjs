@@ -41,6 +41,24 @@ const parse = (value, code) => { try { return typeof value === "string" ? JSON.p
 const strings = (value) => Array.isArray(value) ? value.map(item=>typeof item === "string" ? item : item?.name || item?.code || item?.label).filter(Boolean) : [];
 const objects = (value, kind) => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? { code:`${kind}_${index+1}`, label:item } : item).filter(Boolean) : [];
 const requiredScenarioTypes = ["HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY"];
+const inferDomain = (item) => String(item.domainCode || item.projectCode || item.processCode || "COMMON").split(/[_:/.-]/)[0] || "COMMON";
+const inferView = (item) => String(item.viewCode || item.screenType || "DETAIL").toUpperCase();
+const coordinateOf = (item, specification) => ({
+  domain: inferDomain(item),
+  process: String(item.processCode),
+  step: String(item.stepCode),
+  state: String(specification.states[0] || specification.entryConditions[0] || "READY"),
+  actor: String(item.actorCode),
+  policy: String(item.policyCode || `${item.actorCode}:DEFAULT`),
+  view: inferView(item),
+  device: "ADAPTIVE",
+  locale: "MULTI",
+  variant: String(item.templateCode || "KRDS_DEFAULT")
+});
+const coordinateKey = (coordinate) => [
+  coordinate.domain, coordinate.process, coordinate.step, coordinate.state, coordinate.actor,
+  coordinate.policy, coordinate.view, coordinate.device, coordinate.locale, coordinate.variant
+].map(value=>encodeURIComponent(value)).join("::");
 const cpuCount=availableParallelism();
 const memoryPressure=freemem()/Math.max(1,totalmem())<0.12;
 const loadPressure=(loadavg()[0]/Math.max(1,cpuCount))>0.85;
@@ -98,9 +116,11 @@ const normalized = blueprints.map((item) => {
   traceability.requiredScenarioTypes=Array.from(new Set([...(traceability.requiredScenarioTypes||[])]));
   const specification=normalizeSpecification(parse(item.specificationJson,item.blueprintCode),item);
   const designCompleteness=completeness(specification,traceability);
+  const screenCoordinate=coordinateOf(item,specification);
   if(strict && !designCompleteness.complete) throw new Error(`Incomplete detailed design: ${item.blueprintCode} (${designCompleteness.score}%)`);
   return { id, blueprintCode:item.blueprintCode, processCode:item.processCode, stepCode:item.stepCode, actorCode:item.actorCode, audience:item.audience,
-    pageId:item.pageId, pageName:item.pageName, routePath, screenType:item.screenType, templateCode:item.templateCode, specification, traceability, designCompleteness };
+    pageId:item.pageId, pageName:item.pageName, routePath, screenType:item.screenType, templateCode:item.templateCode,
+    screenCoordinate, screenCoordinateKey:coordinateKey(screenCoordinate), specification, traceability, designCompleteness };
 });
 
 const outDir = resolve(args.outDir || "src/generated/screen-generation");
@@ -119,7 +139,7 @@ await mapConcurrent(normalized,async(screen) => {
 definitionImports.sort((left,right)=>left.file.localeCompare(right.file));
 const imports=definitionImports.map(x=>`import { ${x.symbol} } from ${JSON.stringify(x.file)};`).join("\n");
 const symbols=definitionImports.map(x=>x.symbol).join(",\n  ");
-if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),`export type DesignCompleteness={score:number;complete:boolean;checks:Record<string,boolean>};\nexport type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; specification:Record<string,any>; traceability:Record<string,any>; designCompleteness:DesignCompleteness; };\n`))contractFilesChanged++;
+if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),`export type DesignCompleteness={score:number;complete:boolean;checks:Record<string,boolean>};\nexport type ScreenCoordinate={domain:string;process:string;step:string;state:string;actor:string;policy:string;view:string;device:string;locale:string;variant:string};\nexport type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; screenCoordinate:ScreenCoordinate; screenCoordinateKey:string; specification:Record<string,any>; traceability:Record<string,any>; designCompleteness:DesignCompleteness; };\n`))contractFilesChanged++;
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG = [\n  ${symbols}\n] as const satisfies readonly GeneratedScreenDefinition[];\nexport function findGeneratedScreen(pathname:string){const normalized=pathname.replace(/^\\/en(?=\\/)/,"")||"/";return GENERATED_SCREEN_CATALOG.find(screen=>screen.routePath===normalized);}\n`))contractFilesChanged++;
 const routes=Array.from(new Map(normalized.map(x=>[x.routePath,
   {id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}])).values());
@@ -129,10 +149,21 @@ const family=familyTemplate.replace(/const GENERATED_SCREEN_ROUTES = [\s\S]*? as
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenFamily.ts"),family))contractFilesChanged++;
 const tests=normalized.map(x=>({pageId:x.pageId,actorCode:x.actorCode,routePath:x.routePath,requiredScenarios:x.traceability.requiredScenarioTypes,designScore:x.designCompleteness.score}));
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTests.ts"),`export type GeneratedScreenTestContract={pageId:string;actorCode:string;routePath:string;requiredScenarios:readonly string[];designScore:number};\nexport const GENERATED_SCREEN_TESTS=${json(tests)} as const satisfies readonly GeneratedScreenTestContract[];\n`))contractFilesChanged++;
+const coordinateIndex=normalized.map(x=>({key:x.screenCoordinateKey,pageId:x.pageId,routePath:x.routePath,coordinate:x.screenCoordinate}));
+if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenSpaceIndex.ts"),`import type { ScreenCoordinate } from "./generatedScreenTypes";\nexport type GeneratedScreenCoordinateIndex={key:string;pageId:string;routePath:string;coordinate:ScreenCoordinate};\nexport const GENERATED_SCREEN_SPACE_INDEX=${json(coordinateIndex)} as const satisfies readonly GeneratedScreenCoordinateIndex[];\nexport function findScreenByCoordinate(key:string){return GENERATED_SCREEN_SPACE_INDEX.find(item=>item.key===key);}\n`))contractFilesChanged++;
 const staleDefinitions=(await readdir(definitionsDir)).filter(file=>file.endsWith(".ts")&&!expectedDefinitionFiles.has(file));
 await mapConcurrent(staleDefinitions,file=>rm(resolve(definitionsDir,file),{force:true}));
 const contractHash=createHash("sha256").update(json(normalized)).digest("hex");
-const contractFileCount=normalized.length+4;
-const report={schemaVersion:"2.0.0",batch:input.batch,screenCount:normalized.length,userScreens:normalized.filter(x=>x.audience==="USER").length,adminScreens:normalized.filter(x=>x.audience==="ADMIN").length,completeDesigns:normalized.filter(x=>x.designCompleteness.complete).length,incompleteDesigns:normalized.filter(x=>!x.designCompleteness.complete).length,reservedRoutesSkipped:skippedReservedRoutes.length,reservedRouteExamples:skippedReservedRoutes.slice(0,20),contractHash,durationMs:Math.round(performance.now()-startedAt),concurrency,contractFileCount,contractFilesChanged,contractFilesUnchanged:contractFileCount-contractFilesChanged,staleFilesRemoved:staleDefinitions.length,filesGenerated:contractFileCount+1};
+const contractFileCount=normalized.length+5;
+const dimensionNames=["domain","process","step","state","actor","policy","view","device","locale","variant"];
+const discoveredDimensionCounts=Object.fromEntries(dimensionNames.map(key=>[key,new Set(normalized.map(x=>x.screenCoordinate[key])).size]));
+const declaredDimensionCounts=input.screenSpace?.dimensionCounts || {};
+const dimensionCounts=Object.fromEntries(dimensionNames.map(key=>{
+  const declared=Number(declaredDimensionCounts[key] || 0);
+  if(declared<0 || !Number.isSafeInteger(declared)) throw new Error(`Invalid screen-space dimension count: ${key}=${declaredDimensionCounts[key]}`);
+  return [key,Math.max(discoveredDimensionCounts[key],declared)];
+}));
+const declaredScreenSpace=Object.values(dimensionCounts).reduce((total,count)=>total*BigInt(Math.max(1,count)),1n).toString();
+const report={schemaVersion:"2.0.0",batch:input.batch,screenCount:normalized.length,userScreens:normalized.filter(x=>x.audience==="USER").length,adminScreens:normalized.filter(x=>x.audience==="ADMIN").length,completeDesigns:normalized.filter(x=>x.designCompleteness.complete).length,incompleteDesigns:normalized.filter(x=>!x.designCompleteness.complete).length,coordinateCount:coordinateIndex.length,dimensionCounts,declaredScreenSpace,reservedRoutesSkipped:skippedReservedRoutes.length,reservedRouteExamples:skippedReservedRoutes.slice(0,20),contractHash,durationMs:Math.round(performance.now()-startedAt),concurrency,contractFileCount,contractFilesChanged,contractFilesUnchanged:contractFileCount-contractFilesChanged,staleFilesRemoved:staleDefinitions.length,filesGenerated:contractFileCount+1};
 await atomicWriteIfChanged(resolve(outDir,"generation-report.json"),json(report));
 console.log(JSON.stringify({success:true,outDir,...report},null,2));

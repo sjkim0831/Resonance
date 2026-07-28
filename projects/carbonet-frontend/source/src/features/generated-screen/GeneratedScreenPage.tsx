@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { findGeneratedScreen, type GeneratedScreenDefinition } from "../../generated/screen-generation/generatedScreenCatalog";
 import { isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { materializeScreen, resolveScreenCoordinate } from "./screenSpaceRuntime";
 
 type ContractItem = { code: string; label: string; [key: string]: unknown };
 const list = (value: unknown) => Array.isArray(value) ? value.map(item=>typeof item === "string" ? item : String((item as Record<string,unknown>)?.label || (item as Record<string,unknown>)?.name || (item as Record<string,unknown>)?.code || "")).filter(Boolean) : [];
@@ -12,8 +13,12 @@ const inputClass = "krds-control h-11 w-full rounded-lg border border-slate-300 
 function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
   const en = isEnglish();
   const spec = screen.specification;
+  const materialized = useMemo(() => materializeScreen(screen, {
+    actorCode: screen.actorCode,
+    locale: en ? "EN" : "KO",
+  }), [en, screen]);
   const scenarios = list(screen.traceability.requiredScenarioTypes);
-  const kpis = items(spec.kpis,"KPI"), sections = items(spec.sections,"SECTION"), fields = items(spec.fields,"FIELD"), actions = items(spec.actions || spec.commands,"ACTION"), states = list(spec.states);
+  const kpis = items(spec.kpis,"KPI"), sections = materialized.sections as ContractItem[], fields = materialized.fields as ContractItem[], actions = materialized.actions as ContractItem[], states = list(spec.states);
   const commandCode = text(spec.commandCode) || actions[0]?.code || "COMPLETE";
   const [tenantId, setTenantId] = useState("DEFAULT"), [projectId, setProjectId] = useState(""), [executionId, setExecutionId] = useState("");
   const [values, setValues] = useState<Record<string, string>>({}), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
@@ -45,6 +50,12 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
       [en ? "Target state" : "완료 상태", text(spec.toState) || text(spec.exitCondition)],
       [en ? "Template" : "화면 템플릿", screen.templateCode]
     ] as Array<[string, string]>).map(([label,value])=><article className="krds-component rounded-xl border bg-white" key={label}><span className="gov-text-label font-bold text-slate-500">{label}</span><strong className="gov-text-heading-sm mt-2 block break-words text-[#052b57]">{value || "-"}</strong></article>)}</section>
+    <section className="krds-component mt-5 rounded-xl border border-blue-200 bg-blue-50">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div><p className="gov-text-label font-black text-blue-700">SCREEN COORDINATE</p><p className="gov-text-body-sm mt-1 break-all text-slate-700">{materialized.coordinateKey}</p></div>
+        <span className={`rounded-full px-3 py-2 text-sm font-black ${materialized.valid ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{materialized.valid ? (en ? "Contract valid" : "계약 정상") : (en ? "Contract incomplete" : "계약 보완 필요")}</span>
+      </div>
+    </section>
     {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"><div className="space-y-6">
       {kpis.length > 0 && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item=><article className="krds-component rounded-xl border bg-white" key={item.code}><span className="gov-text-label font-bold text-slate-500">{item.label}</span><strong className="gov-text-heading-md mt-2 block text-[#052b57]">-</strong></article>)}</section>}
@@ -54,6 +65,7 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Commands" : "업무 명령"}</h2><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).map((action,index)=><button className={`krds-control rounded-lg font-black ${index===0 ? "bg-[#246beb] text-white" : "border border-[#246beb] bg-white text-[#246beb]"}`} disabled={busy} key={action.code} onClick={()=>void execute(index===0 ? commandCode : action.code)} type="button">{action.label}</button>)}</div></section>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Required states and tests" : "필수 상태·테스트"}</h2><div className="mt-3 flex flex-wrap gap-2">{[...states,...scenarios].map(item=><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700" key={item}>{item}</span>)}</div></section>
+      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Contract validation" : "계약 자동 검증"}</h2>{materialized.issues.length ? <ul className="mt-3 space-y-2">{materialized.issues.map(issue=><li className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700" key={issue.code}>{issue.message}</li>)}</ul> : <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{en ? "Screen, data, policy and test contracts are connected." : "화면·데이터·권한·테스트 계약이 모두 연결되었습니다."}</p>}</section>
     </aside></section>
   </main>;
 }
@@ -68,6 +80,18 @@ function parseGeneratedRecord(value: unknown): Record<string, unknown> {
 }
 
 function toGeneratedScreen(row: Record<string, unknown>): GeneratedScreenDefinition {
+  const specification = parseGeneratedRecord(row.specificationJson);
+  const traceability = parseGeneratedRecord(row.traceabilityJson);
+  const coordinate = resolveScreenCoordinate({
+    pageId: String(row.pageId),
+    processCode: String(row.processCode),
+    stepCode: String(row.stepCode),
+    actorCode: String(row.actorCode),
+    screenType: String(row.screenType),
+    templateCode: String(row.templateCode),
+    specification,
+    traceability,
+  });
   return {
     id: String(row.pageId || row.blueprintCode).toLowerCase(),
     blueprintCode: String(row.blueprintCode),
@@ -80,8 +104,10 @@ function toGeneratedScreen(row: Record<string, unknown>): GeneratedScreenDefinit
     routePath: String(row.routePath),
     screenType: String(row.screenType),
     templateCode: String(row.templateCode),
-    specification: parseGeneratedRecord(row.specificationJson),
-    traceability: parseGeneratedRecord(row.traceabilityJson),
+    screenCoordinate: coordinate,
+    screenCoordinateKey: Object.values(coordinate).map(value => encodeURIComponent(value)).join("::"),
+    specification,
+    traceability,
     designCompleteness: {
       score: Number(row.designScore || 0),
       complete: Boolean(row.designComplete),

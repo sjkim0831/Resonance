@@ -11,6 +11,19 @@ export const screen_detailed_user_page = {
   "routePath": "/generated/emission-project/create",
   "screenType": "FORM",
   "templateCode": "KRDS_TASK_FORM",
+  "screenCoordinate": {
+    "domain": "EMISSION",
+    "process": "EMISSION_PROJECT",
+    "step": "EMISSION_PROJECT_SETUP",
+    "state": "DRAFT",
+    "actor": "COMPANY_MANAGER",
+    "policy": "COMPANY_MANAGER:DEFAULT",
+    "view": "FORM",
+    "device": "ADAPTIVE",
+    "locale": "MULTI",
+    "variant": "KRDS_TASK_FORM"
+  },
+  "screenCoordinateKey": "EMISSION::EMISSION_PROJECT::EMISSION_PROJECT_SETUP::DRAFT::COMPANY_MANAGER::COMPANY_MANAGER%3ADEFAULT::FORM::ADAPTIVE::MULTI::KRDS_TASK_FORM",
   "specification": {
     "schemaVersion": "2.0.0",
     "designSystem": "KRDS_GOV",

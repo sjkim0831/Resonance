@@ -27,7 +27,7 @@ const WORKSPACES:WorkspaceDefinition[] = [
   { id:"design", label:"설계", description:"프로세스·화면·필드·메뉴·공통 기능 계약을 하나의 설계 원본으로 관리하고 생성 결과를 확인합니다.", tabs:[
     {id:"design-canvas",label:"전체 화면 캔버스"},{id:"professional",label:"전문가 준비도"},{id:"page-fields",label:"페이지·컬럼 설계"},
     {id:"screen-contracts",label:"화면 완성 계약"},{id:"registration-coverage",label:"프로젝트 등록 요건"},{id:"common-features",label:"공통 특수기능"},
-    {id:"menu-bindings",label:"액터·프로세스 메뉴"},{id:"references",label:"레퍼런스 자동설계"},{id:"generation",label:"대량 화면 생성"}
+    {id:"menu-bindings",label:"액터·프로세스 메뉴"},{id:"screen-space",label:"가상 화면 공간"},{id:"references",label:"레퍼런스 자동설계"},{id:"generation",label:"대량 화면 생성"}
   ]},
   { id:"verify", label:"검증", description:"설계 정확성, 고객 여정, 디자인과 정상·예외·권한·격리·복구 시나리오를 검증합니다.", tabs:[
     {id:"design-assurance",label:"설계 정확성"},{id:"customer-journey",label:"고객 여정 자동검사"},{id:"design",label:"디자인 사전검사"},
@@ -106,6 +106,19 @@ export function ActorProcessGovernancePage() {
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
   const activeWorkspace=WORKSPACES.find(workspace=>workspace.tabs.some(item=>item.id===tab))??WORKSPACES[0];
+  const screenSpaceDimensions=useMemo(()=>({
+    업무종류:Math.max(1,data.workTypes?.length??0),
+    프로세스:Math.max(1,data.processes.length),
+    단계:Math.max(1,data.steps.length),
+    상태:Math.max(1,new Set(data.steps.flatMap(row=>[value(row,"fromState"),value(row,"toState")]).filter(Boolean)).size),
+    액터:Math.max(1,data.actors.length),
+    정책:Math.max(1,data.assignments.length),
+    화면문법:Math.max(1,data.screenTypes.length),
+    디바이스:4,
+    언어:2,
+    변형:Math.max(1,data.screenAssetAssemblies?.length??0)
+  }),[data]);
+  const screenSpaceSize=useMemo(()=>Object.values(screenSpaceDimensions).reduce((total,count)=>total*BigInt(count),1n).toLocaleString("ko-KR"),[screenSpaceDimensions]);
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
@@ -167,6 +180,19 @@ export function ActorProcessGovernancePage() {
       {tab === "registration-coverage" && <ProjectRegistrationCoveragePanel en={en} rows={data.projectRegistrationCoverage ?? []} summary={data.projectRegistrationSummary ?? {}} />}
       {tab === "customer-journey" && <CustomerJourneyGatePanel en={en} rows={data.customerJourneyGaps ?? []} summary={data.customerJourneySummary ?? {}} />}
       {tab === "menu-bindings" && <ActorProcessMenuPanel en={en} rows={data.actorProcessMenus ?? []} summary={data.actorProcessMenuSummary ?? {}} />}
+      {tab === "screen-space" && <>
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-6">
+          <p className="text-xs font-black tracking-[0.12em] text-blue-700">HYPERSCALE SCREEN-SPACE RUNTIME</p>
+          <h2 className="mt-2 text-2xl font-black text-[#052b57]">파일을 복제하지 않고 {screenSpaceSize}개 화면 조합을 표현합니다.</h2>
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">업무·프로세스·단계·상태·액터·정책·화면 문법·디바이스·언어·변형을 화면 좌표로 결합합니다. 최초 접근 시에만 계약을 구체화하고, 화면·데이터·권한·API·테스트 계약이 모두 연결된 경우에만 실행합니다.</p>
+        </section>
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{Object.entries(screenSpaceDimensions).map(([label,count])=><article className="rounded-xl border bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{count.toLocaleString("ko-KR")}</strong></article>)}</section>
+        <section className="grid gap-4 lg:grid-cols-3">
+          <RuleCard title="화면 좌표" items={["도메인·프로세스·단계·상태·액터를 고유 좌표로 결합","정책·화면 문법·디바이스·언어·변형을 실행 문맥으로 적용","화면 파일 대신 좌표 인덱스만 생성"]}/>
+          <RuleCard title="지연 구체화" items={["최초 접근한 조합만 런타임 명세로 조립","동일 좌표는 메모리 캐시에서 재사용","설계 변경 시 해당 좌표 캐시만 무효화"]}/>
+          <RuleCard title="실행 차단 검증" items={["필드·섹션·명령 코드 중복 검사","데이터·API·권한·검증 계약 필수 확인","정상·권한·격리·예외·복구 시나리오 누락 시 보완 표시"]}/>
+        </section>
+      </>}
 
       {tab === "references" && <><section className="grid gap-4 sm:grid-cols-4">{[["발견 자산","assetCount"],["분석 완료","analyzedCount"],["연결 프로세스","mappedProcesses"],["평균 신뢰도","averageConfidence"]].map(([label,key])=><div key={key} className="rounded-xl border bg-white p-4"><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.referenceSummary||{},key)}{key==="averageConfidence"?"%":""}</strong></div>)}</section><section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">근거 기반 자동설계</h3><p className="mt-1 text-sm text-slate-700">레퍼런스 파일명·형식과 기존 메뉴·페이지·API·DB를 화면 유형 및 업무 도메인으로 분류합니다. 액터·프로세스·정상/예외/권한/격리/복구 기대값을 멱등 등록하고, 구현 차이 분석 작업을 자동 승인 큐에 넣습니다.</p></section><Form onSubmit={event=>void submit(event,"references/scan")} cols="lg:grid-cols-4"><div className="lg:col-span-3"><Field label="레퍼런스 정본 경로"><input className={fieldClass} name="rootPath" defaultValue="/opt/reference" required/></Field></div><SaveButton busy={busy} label="전수조사·자동설계 시작"/></Form><Table heads={["화면 유형","필수 섹션","자동 테스트 기대값","개발 가중치"]} rows={data.screenTypes.map(row=>[`${value(row,"screenTypeName")} (${value(row,"screenType")})`,value(row,"requiredSections"),value(row,"testExpectations"),value(row,"developmentWeight")])}/><Table heads={["레퍼런스","형식","도메인","화면 유형","프로세스","상태","신뢰도"]} rows={data.referenceAssets.map(row=>[value(row,"sourceName"),value(row,"sourceType"),value(row,"domainCode"),value(row,"screenType"),value(row,"processCode"),value(row,"analysisStatus"),`${value(row,"confidence")}%`])}/></>}
 

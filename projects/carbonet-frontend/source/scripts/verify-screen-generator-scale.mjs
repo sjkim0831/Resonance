@@ -11,7 +11,13 @@ const blueprints=Array.from({length:1000},(_,index)=>({blueprintCode:`BP_SCALE_$
 
 await rm(root,{recursive:true,force:true});
 await mkdir(root,{recursive:true});
-await writeFile(inputPath,JSON.stringify({schemaVersion:"2.0.0",generator:"scale-verifier",batch:{batchId:1000,batchCode:"SCALE_1000",batchStatus:"COMPILED"},blueprints}));
+await writeFile(inputPath,JSON.stringify({
+  schemaVersion:"2.0.0",
+  generator:"scale-verifier",
+  batch:{batchId:1000,batchCode:"SCALE_1000",batchStatus:"COMPILED"},
+  screenSpace:{dimensionCounts:{domain:10000,process:1000,step:1,state:50,actor:20,policy:1,view:7,device:1,locale:1,variant:1}},
+  blueprints
+}));
 
 function generate(){
   const result=spawnSync(process.execPath,["scripts/generate-screen-blueprints.mjs","--input",inputPath,"--outDir",outDir,"--strict","true","--concurrency","auto"],{encoding:"utf8"});
@@ -24,7 +30,9 @@ const second=generate();
 const report=JSON.parse(await readFile(resolve(outDir,"generation-report.json"),"utf8"));
 if(first.screenCount!==1000||report.screenCount!==1000)throw new Error(`Expected 1000 screens, got ${report.screenCount}`);
 if(first.completeDesigns!==1000)throw new Error(`Expected 1000 complete designs, got ${first.completeDesigns}`);
+if(first.coordinateCount!==1000)throw new Error(`Expected 1000 screen coordinates, got ${first.coordinateCount}`);
+if(BigInt(first.declaredScreenSpace)<70000000000n)throw new Error(`Expected at least 70 billion virtual combinations, got ${first.declaredScreenSpace}`);
 if(second.contractFilesChanged!==0)throw new Error(`Incremental rerun rewrote ${second.contractFilesChanged} contract files`);
 if(first.durationMs>300000||second.durationMs>300000)throw new Error(`Five-minute target exceeded: ${first.durationMs}ms / ${second.durationMs}ms`);
-console.log(JSON.stringify({success:true,screenCount:report.screenCount,firstDurationMs:first.durationMs,incrementalDurationMs:second.durationMs,concurrency:report.concurrency,rewrittenOnIncrementalRun:second.contractFilesChanged,contractHash:report.contractHash},null,2));
+console.log(JSON.stringify({success:true,screenCount:report.screenCount,coordinateCount:report.coordinateCount,declaredScreenSpace:report.declaredScreenSpace,dimensionCounts:report.dimensionCounts,firstDurationMs:first.durationMs,incrementalDurationMs:second.durationMs,concurrency:report.concurrency,rewrittenOnIncrementalRun:second.contractFilesChanged,contractHash:report.contractHash},null,2));
 await rm(root,{recursive:true,force:true});
