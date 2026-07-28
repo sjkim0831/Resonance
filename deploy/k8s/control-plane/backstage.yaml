@@ -56,7 +56,7 @@ spec:
                 name: resonance-backstage-database
           volumeMounts:
             - name: resonance-catalog
-              mountPath: /catalog
+              mountPath: /app/catalog
               readOnly: true
           readinessProbe:
             httpGet:
