@@ -3,6 +3,22 @@ set -euo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 APP="$ROOT/platform/control-plane/backstage"
+BUILD_TMP_ROOT="${BACKSTAGE_BUILD_TMP_ROOT:-/opt/resonance-data/build-tmp/backstage}"
+mkdir -p "$BUILD_TMP_ROOT"
+TMPDIR="$(mktemp -d "$BUILD_TMP_ROOT/run.XXXXXXXX")"
+case "$(readlink -f "$TMPDIR")" in
+  "$(readlink -f "$BUILD_TMP_ROOT")"/*) ;;
+  *) echo "[backstage] unsafe build temp path: $TMPDIR" >&2; exit 2 ;;
+esac
+export TMPDIR
+cleanup_build_tmp() {
+  local resolved
+  resolved="$(readlink -f "$TMPDIR" 2>/dev/null || true)"
+  case "$resolved" in
+    "$(readlink -f "$BUILD_TMP_ROOT")"/*) rm -rf -- "$resolved" ;;
+  esac
+}
+trap cleanup_build_tmp EXIT
 MANIFEST="$ROOT/deploy/k8s/control-plane/backstage.yaml"
 NAMESPACE="${BACKSTAGE_NAMESPACE:-resonance-ops}"
 REGISTRY="${BACKSTAGE_REGISTRY:-localhost:5000}"
