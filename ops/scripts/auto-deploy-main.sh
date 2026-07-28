@@ -209,9 +209,48 @@ tracked_source_changes="$(git diff --name-only -- \
   ':(exclude)projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo' \
   ':(exclude)projects/carbonet-frontend/target/**')"
 if [[ -n "$tracked_source_changes" ]]; then
-  echo "[auto-deploy] refusing deployment: tracked server files are modified" >&2
-  printf '%s\n' "$tracked_source_changes" >&2
-  exit 2
+  if [[ "${CARBONET_CLEAN_WORKTREE_ACTIVE:-false}" == "true" ]]; then
+    echo "[auto-deploy] refusing deployment: dedicated deployment worktree is modified" >&2
+    printf '%s\n' "$tracked_source_changes" >&2
+    exit 2
+  fi
+
+  # Server-authored or operator-owned changes in /opt/Resonance must never be
+  # overwritten, but they also must not block unrelated commits forever. Build
+  # the exact remote commit in a detached, commit-addressed worktree and keep
+  # the live verified frontend closure as its immutable input.
+  source_root="$ROOT_DIR"
+  clean_worktree_base="${CARBONET_CLEAN_WORKTREE_BASE:-$source_root/var/deploy-worktrees}"
+  clean_worktree="$clean_worktree_base/${target_commit:0:16}"
+  mkdir -p "$clean_worktree_base"
+  if [[ ! -e "$clean_worktree/.git" ]]; then
+    echo "[auto-deploy] tracked operator changes detected; creating isolated deployment worktree"
+    git worktree add --detach "$clean_worktree" "$target_commit"
+  fi
+  if [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
+    echo "[auto-deploy] refusing deployment: isolated worktree commit mismatch" >&2
+    exit 21
+  fi
+  source_overlay="$source_root/projects/carbonet-frontend/src/main/resources/static/react-app"
+  clean_overlay="$clean_worktree/projects/carbonet-frontend/src/main/resources/static/react-app"
+  mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs" "$clean_overlay"
+  if [[ -f "$source_overlay/index.html" ]]; then
+    rsync -a --delete "$source_overlay/" "$clean_overlay/"
+    node "$clean_worktree/ops/scripts/verify-react-asset-closure.mjs" "$clean_overlay"
+  fi
+  ROOT_DIR="$clean_worktree"
+  export ROOT_DIR CARBONET_DEPLOY_ROOT="$clean_worktree" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+  cd "$ROOT_DIR"
+  current_commit="$target_commit"
+  tracked_source_changes="$(git diff --name-only -- \
+    . \
+    ':(exclude)projects/carbonet-frontend/src/main/resources/static/react-app/**')"
+  if [[ -n "$tracked_source_changes" ]]; then
+    echo "[auto-deploy] refusing deployment: isolated worktree is unexpectedly modified" >&2
+    printf '%s\n' "$tracked_source_changes" >&2
+    exit 22
+  fi
+  echo "[auto-deploy] isolated deployment worktree ready: $ROOT_DIR"
 fi
 
 if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
