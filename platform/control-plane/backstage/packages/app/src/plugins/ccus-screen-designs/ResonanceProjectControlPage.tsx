@@ -1,16 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Content, Header, Page } from '@backstage/core-components';
+import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Tab,
   Tabs,
+  TextField,
   Typography,
   makeStyles,
 } from '@material-ui/core';
+import AddIcon from '@material-ui/icons/Add';
 import AccountTreeIcon from '@material-ui/icons/AccountTree';
 import CodeIcon from '@material-ui/icons/Code';
 import DashboardIcon from '@material-ui/icons/Dashboard';
@@ -20,6 +31,29 @@ import {
   RESONANCE_PROJECT_REGISTRY,
   ResonanceProjectRecord,
 } from './generatedProjectRegistry';
+
+type ApiProject = {
+  projectId: string;
+  projectName: string;
+  description: string;
+  owner: string;
+  sourceRepository: string;
+  databaseMode: string;
+  runtimeMode: string;
+  status: string;
+  designVersion: number;
+  tasks: { taskId: string; taskType: string; status: string }[];
+};
+
+const emptyForm = {
+  projectId: '',
+  projectName: '',
+  description: '',
+  owner: 'project-team',
+  sourceRepository: '',
+  databaseMode: 'PROJECT_DB',
+  runtimeMode: 'DEDICATED_PROJECT_RUNTIME',
+};
 
 const useStyles = makeStyles(theme => ({
   hero: {
@@ -111,19 +145,93 @@ function DetailRows({ items }: { items: [string, string][] }) {
 
 export function ResonanceProjectControlPage() {
   const classes = useStyles();
+  const fetchApi = useApi(fetchApiRef);
+  const [projects, setProjects] = useState(RESONANCE_PROJECT_REGISTRY);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [apiMessage, setApiMessage] = useState('');
   const [selectedId, setSelectedId] = useState(
     RESONANCE_PROJECT_REGISTRY[0]?.projectId ?? '',
   );
   const [tab, setTab] = useState(0);
+  const refreshProjects = useCallback(async () => {
+    try {
+      const response = await fetchApi.fetch('/api/resonance-projects');
+      if (!response.ok) throw new Error(`API ${response.status}`);
+      const payload = (await response.json()) as { projects: ApiProject[] };
+      const dynamic: ResonanceProjectRecord[] = payload.projects.map(item => ({
+        projectId: item.projectId,
+        projectName: item.projectName,
+        description: item.description,
+        owner: item.owner,
+        lifecycle: 'registered',
+        compatibilityClass: 'METADATA_FIRST',
+        sourcePath:
+          item.sourceRepository || `projects/${item.projectId}`,
+        metadataPath: `projects/${item.projectId}/manifest.json`,
+        assetPath: `projects/${item.projectId}`,
+        databaseMode: item.databaseMode,
+        databaseSchema: 'public',
+        runtimeMode: item.runtimeMode,
+        runtimeStatus: item.status,
+        runtimeRoute: '',
+        designRoute: '/ccus-screen-designs',
+        screenSpaceRoute: '/ccus-screen-space',
+        integrationStatus:
+          item.status === 'RUNNING' ? 'CONNECTED' : 'SEPARATED',
+      }));
+      const merged = new Map(
+        [...RESONANCE_PROJECT_REGISTRY, ...dynamic].map(item => [
+          item.projectId,
+          item,
+        ]),
+      );
+      setProjects([...merged.values()]);
+      setApiMessage('');
+    } catch (error) {
+      setApiMessage(
+        `프로젝트 API 연결 확인 필요: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }, [fetchApi]);
+  useEffect(() => {
+    void refreshProjects();
+  }, [refreshProjects]);
   const selected = useMemo(
     () =>
-      RESONANCE_PROJECT_REGISTRY.find(item => item.projectId === selectedId) ??
-      RESONANCE_PROJECT_REGISTRY[0],
-    [selectedId],
+      projects.find(item => item.projectId === selectedId) ?? projects[0],
+    [projects, selectedId],
   ) as ResonanceProjectRecord;
-  const connected = RESONANCE_PROJECT_REGISTRY.filter(
+  const connected = projects.filter(
     item => item.integrationStatus === 'CONNECTED',
   ).length;
+  const registerProject = async () => {
+    setSaving(true);
+    setApiMessage('');
+    try {
+      const response = await fetchApi.fetch('/api/resonance-projects', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const payload = (await response.json()) as {
+        message?: string;
+        project?: { project_id?: string };
+      };
+      if (!response.ok) throw new Error(payload.message ?? `API ${response.status}`);
+      await refreshProjects();
+      setSelectedId(form.projectId.trim().toUpperCase());
+      setForm(emptyForm);
+      setDialogOpen(false);
+    } catch (error) {
+      setApiMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <Page themeId="tool">
@@ -141,9 +249,9 @@ export function ResonanceProjectControlPage() {
         </Box>
         <Grid container spacing={2}>
           {[
-            ['등록 프로젝트', RESONANCE_PROJECT_REGISTRY.length],
+            ['등록 프로젝트', projects.length],
             ['운영 연결', connected],
-            ['분리 개발', RESONANCE_PROJECT_REGISTRY.length - connected],
+            ['분리 개발', projects.length - connected],
             ['공통 프레임워크', 'resonance-core'],
           ].map(([label, value]) => (
             <Grid item xs={6} md={3} key={String(label)}>
@@ -157,12 +265,22 @@ export function ResonanceProjectControlPage() {
 
         <Box className={classes.layout} mt={2}>
           <Paper className={classes.panel} elevation={0}>
-            <Typography variant="h6">프로젝트 레지스트리</Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">프로젝트 레지스트리</Typography>
+              <Button
+                size="small"
+                color="primary"
+                startIcon={<AddIcon />}
+                onClick={() => setDialogOpen(true)}
+              >
+                등록
+              </Button>
+            </Box>
             <Typography variant="body2" color="textSecondary">
               프로젝트 manifest를 배포 시 자동 탐색합니다.
             </Typography>
             <Box mt={2}>
-              {RESONANCE_PROJECT_REGISTRY.map(project => (
+              {projects.map(project => (
                 <Box
                   className={`${classes.project} ${
                     project.projectId === selectedId ? classes.selected : ''
@@ -294,6 +412,103 @@ export function ResonanceProjectControlPage() {
             )}
           </Box>
         </Box>
+        {apiMessage && (
+          <Box mt={2}>
+            <Typography color="error">{apiMessage}</Typography>
+          </Box>
+        )}
+        <Dialog
+          open={dialogOpen}
+          onClose={() => !saving && setDialogOpen(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>신규 Resonance 프로젝트 등록</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2}>
+              {[
+                ['projectId', '프로젝트 ID', true],
+                ['projectName', '프로젝트명', true],
+                ['owner', '소유 팀', true],
+                ['sourceRepository', 'Git 저장소 또는 소스 경로', false],
+                ['description', '설명', false],
+              ].map(([key, label, required]) => (
+                <Grid item xs={12} key={key as string}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    required={required as boolean}
+                    label={label as string}
+                    value={form[key as keyof typeof form]}
+                    onChange={event =>
+                      setForm(value => ({
+                        ...value,
+                        [key as string]: event.target.value,
+                      }))
+                    }
+                  />
+                </Grid>
+              ))}
+              {[
+                [
+                  'databaseMode',
+                  'DB 바인딩',
+                  ['PROJECT_DB', 'PROJECT_SCHEMA', 'SHARED_HA_DATABASE'],
+                ],
+                [
+                  'runtimeMode',
+                  'Runtime 방식',
+                  [
+                    'DEDICATED_PROJECT_RUNTIME',
+                    'SHARED_RUNTIME',
+                    'KUBERNETES',
+                  ],
+                ],
+              ].map(([key, label, options]) => (
+                <Grid item xs={12} sm={6} key={key as string}>
+                  <FormControl fullWidth variant="outlined" size="small">
+                    <InputLabel>{label as string}</InputLabel>
+                    <Select
+                      label={label as string}
+                      value={form[key as keyof typeof form]}
+                      onChange={event =>
+                        setForm(value => ({
+                          ...value,
+                          [key as string]: event.target.value as string,
+                        }))
+                      }
+                    >
+                      {(options as string[]).map(option => (
+                        <MenuItem value={option} key={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              ))}
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button disabled={saving} onClick={() => setDialogOpen(false)}>
+              취소
+            </Button>
+            <Button
+              color="primary"
+              variant="contained"
+              disabled={
+                saving ||
+                !form.projectId.trim() ||
+                !form.projectName.trim() ||
+                !form.owner.trim()
+              }
+              onClick={registerProject}
+            >
+              {saving ? '저장 중' : '등록'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Content>
     </Page>
   );
