@@ -14,6 +14,28 @@ type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];du
 const empty: Payload = { workTypes:[], actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], jobDependencies:[], qualityGates:[], qualityGateResults:[], processDevelopmentProgress:[], screenTypes:[], referenceAssets:[], automationMetrics:[], screenDevelopmentGates:[], processExecutions:[], processExecutionEvents:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
 const fieldClass = "h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
+type WorkspaceId = "operate" | "design" | "verify" | "delivery";
+type WorkspaceTab = { id:string; label:string };
+type WorkspaceDefinition = { id:WorkspaceId; label:string; description:string; tabs:WorkspaceTab[] };
+const WORKSPACES:WorkspaceDefinition[] = [
+  { id:"operate", label:"업무 운영", description:"업무 종류와 액터를 선택하고 전체 흐름, 현재 단계, 업무 길잡이와 실제 실행 화면을 함께 관리합니다.", tabs:[
+    {id:"work-dashboard",label:"업무 운영 지도"},{id:"process-map",label:"전체 프로세스 설계도"},{id:"execution",label:"종단간 업무 실행"},
+    {id:"work-types",label:"업무 종류"},{id:"actors",label:"액터"},{id:"assignments",label:"계정 배정"},
+    {id:"account-readiness",label:"액터 계정 검증"},{id:"processes",label:"프로세스"},{id:"steps",label:"단계"}
+  ]},
+  { id:"design", label:"설계", description:"프로세스·화면·필드·메뉴·공통 기능 계약을 하나의 설계 원본으로 관리하고 생성 결과를 확인합니다.", tabs:[
+    {id:"design-canvas",label:"전체 화면 캔버스"},{id:"professional",label:"전문가 준비도"},{id:"page-fields",label:"페이지·컬럼 설계"},
+    {id:"screen-contracts",label:"화면 완성 계약"},{id:"registration-coverage",label:"프로젝트 등록 요건"},{id:"common-features",label:"공통 특수기능"},
+    {id:"menu-bindings",label:"액터·프로세스 메뉴"},{id:"references",label:"레퍼런스 자동설계"},{id:"generation",label:"대량 화면 생성"}
+  ]},
+  { id:"verify", label:"검증", description:"설계 정확성, 고객 여정, 디자인과 정상·예외·권한·격리·복구 시나리오를 검증합니다.", tabs:[
+    {id:"design-assurance",label:"설계 정확성"},{id:"customer-journey",label:"고객 여정 자동검사"},{id:"design",label:"디자인 사전검사"},
+    {id:"rules",label:"개발 규칙"},{id:"simulation",label:"시나리오·실행"}
+  ]},
+  { id:"delivery", label:"개발·배포", description:"설계에서 생성된 개발 작업의 의존성, 산출물, 품질 게이트, 재시도와 완료 상태를 추적합니다.", tabs:[
+    {id:"delivery",label:"개발 실행 큐"},{id:"automation",label:"프로세스 자동개발"},{id:"artifacts",label:"개발 산출물"},{id:"overview",label:"전체 현황"}
+  ]}
+];
 
 export function ActorProcessGovernancePage() {
   const en = isEnglish();
@@ -82,7 +104,7 @@ export function ActorProcessGovernancePage() {
   const readiness = Number(data.summary?.readinessPercent ?? 0);
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
-  const tabs = [["design-canvas", "전체 화면 캔버스"], ["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["account-readiness", "액터 계정 검증"], ["work-types", "업무 종류"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
+  const activeWorkspace=WORKSPACES.find(workspace=>workspace.tabs.some(item=>item.id===tab))??WORKSPACES[0];
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
@@ -96,10 +118,31 @@ export function ActorProcessGovernancePage() {
       </section>
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
-      <button onClick={() => setTab("work-dashboard")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "work-dashboard" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Customer Work Board" : "고객 업무 개발 현황판"}</button>
-      <button onClick={() => setTab("delivery")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "delivery" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Delivery Control" : "개발 실행 큐"}</button>
-      <button onClick={() => setTab("design-assurance")} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === "design-assurance" ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{en ? "Design Assurance" : "설계 정확성"}</button>
-      <nav className="flex flex-wrap gap-2">{[["professional", en ? "Professional Readiness" : "전문가 준비도"], ["page-fields", en ? "Page and Field Design" : "페이지·컬럼 설계"], ["common-features", en ? "Reusable Capabilities" : "공통 특수기능"], ["menu-bindings", en ? "Actor Process Menus" : "액터·프로세스 메뉴"], ["customer-journey", en ? "Customer Journey Gate" : "고객 여정 자동검사"], ["registration-coverage", en ? "Project Registration Requirements" : "프로젝트 등록 요건"], ["screen-contracts", en ? "Screen Completion Contracts" : "화면 완성 계약"], ...tabs].map(([id, name]) => <button key={id} onClick={() => setTab(id)} className={`rounded-lg px-4 py-3 text-sm font-bold ${tab === id ? "bg-[#246beb] text-white" : "border bg-white text-slate-700 hover:bg-slate-50"}`}>{name}</button>)}</nav>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="grid border-b border-slate-200 lg:grid-cols-4" aria-label="액터 프로세스 통합 작업공간">
+          {WORKSPACES.map((workspace,index)=><button
+            key={workspace.id}
+            type="button"
+            onClick={()=>setTab(workspace.tabs[0].id)}
+            className={`min-h-20 border-b px-5 py-4 text-left transition lg:border-b-0 lg:border-r last:border-r-0 ${activeWorkspace.id===workspace.id?"bg-[#052b57] text-white":"bg-white text-slate-700 hover:bg-blue-50"}`}
+          >
+            <span className="block text-xs font-bold tracking-[0.08em] opacity-70">WORKSPACE {index+1}</span>
+            <strong className="mt-1 block text-lg">{workspace.label}</strong>
+          </button>)}
+        </div>
+        <div className="grid gap-4 p-4 xl:grid-cols-[minmax(240px,0.8fr)_minmax(0,2.2fr)] xl:items-end">
+          <div>
+            <p className="text-xs font-black tracking-[0.08em] text-blue-700">CURRENT WORKSPACE</p>
+            <h3 className="mt-1 text-xl font-black text-[#052b57]">{activeWorkspace.label}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{activeWorkspace.description}</p>
+          </div>
+          <nav className="flex flex-wrap gap-2" aria-label={`${activeWorkspace.label} 세부 기능`}>
+            {activeWorkspace.tabs.map(item=><button key={item.id} type="button" onClick={()=>setTab(item.id)} className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${tab===item.id?"bg-[#246beb] text-white shadow-sm":"border border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50"}`}>{item.label}</button>)}
+          </nav>
+        </div>
+      </section>
+
+      {activeWorkspace.id==="operate"&&<UnifiedWorkContext actors={data.actors} cases={data.cases} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} steps={data.steps}/>}
 
       {tab === "work-dashboard" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
@@ -206,6 +249,70 @@ export function ActorProcessGovernancePage() {
       {tab === "simulation" && <><ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter} /><div className="grid gap-4 xl:grid-cols-2"><Form onSubmit={event => void submit(event, "cases")} cols="sm:grid-cols-2"><Field label="시나리오 코드"><input className={fieldClass} name="caseCode" required /></Field><Field label="프로세스"><select className={fieldClass} name="processCode">{data.processes.map(row => <option key={value(row, "processCode")}>{value(row, "processCode")}</option>)}</select></Field><Field label="시나리오명"><input className={fieldClass} name="caseName" required /></Field><Field label="유형"><select className={fieldClass} name="caseType"><option>HAPPY_PATH</option><option>EXCEPTION</option><option>AUTHORITY</option><option>ISOLATION</option><option>RECOVERY</option></select></Field><Field label="사전 조건"><textarea className={`${fieldClass} h-24 py-2`} name="preconditions" required /></Field><Field label="실행 단계 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="stepsJson" defaultValue="[]" required /></Field><div className="sm:col-span-2"><Field label="검증 조건 JSON"><textarea className={`${fieldClass} h-20 py-2`} name="assertionsJson" defaultValue="[]" required /></Field></div><SaveButton busy={busy} label="시나리오 저장" /></Form><Form onSubmit={event => void submit(event, "runs")} cols="sm:grid-cols-2"><Field label="시나리오"><select className={fieldClass} name="caseCode">{data.cases.map(row => <option key={value(row, "caseCode")}>{value(row, "caseCode")}</option>)}</select></Field><Field label="결과"><select className={fieldClass} name="result"><option>PASSED</option><option>FAILED</option><option>BLOCKED</option></select></Field><Field label="실패 사유"><textarea className={`${fieldClass} h-24 py-2`} name="failureReason" /></Field><Field label="증적 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="evidenceJson" defaultValue="{}" /></Field><SaveButton busy={busy} label="실행 결과 기록" /></Form></div><Table heads={["시나리오", "프로세스", "이름", "유형", "상태"]} rows={selectedCases.map(row => [value(row, "caseCode"), value(row, "processCode"), value(row, "caseName"), value(row, "caseType"), value(row, "status")])} /></>}
     </div>
   </AdminPageShell>;
+}
+
+function UnifiedWorkContext({actors,cases,jobs,onOpen,onProcessChange,processCode,processes,steps}:{actors:Row[];cases:Row[];jobs:Row[];onOpen:(tab:string)=>void;onProcessChange:(code:string)=>void;processCode:string;processes:Row[];steps:Row[]}) {
+  const selectedCode=processCode||value(processes[0]||{},"processCode");
+  const selectedProcess=processes.find(row=>value(row,"processCode")===selectedCode)||{};
+  const processSteps=steps.filter(row=>value(row,"processCode")===selectedCode);
+  const processCases=cases.filter(row=>value(row,"processCode")===selectedCode);
+  const processJobs=jobs.filter(row=>value(row,"processCode")===selectedCode);
+  const completedJobs=processJobs.filter(row=>["VERIFIED","COMPLETED"].includes(value(row,"jobStatus"))).length;
+  const currentStep=processSteps.find(row=>!["COMPLETED","VERIFIED"].includes(value(row,"automationStatus")))||processSteps[processSteps.length-1]||{};
+  const currentActor=actors.find(row=>value(row,"actorCode")===value(currentStep,"actorCode"))||{};
+  const route=value(currentStep,"userPath")||value(currentStep,"adminPath");
+  return <section className="grid gap-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-4 xl:grid-cols-[minmax(260px,0.9fr)_minmax(0,1.7fr)_minmax(260px,0.9fr)]">
+    <div className="rounded-xl border bg-white p-4">
+      <p className="text-xs font-black tracking-[0.08em] text-blue-700">업무 선택</p>
+      <label className="mt-3 block text-sm font-bold text-slate-700">프로세스
+        <select className={`${fieldClass} mt-2`} value={selectedCode} onChange={event=>onProcessChange(event.target.value)}>
+          {processes.map(row=><option key={value(row,"processCode")} value={value(row,"processCode")}>{value(row,"processName")} ({value(row,"processCode")})</option>)}
+        </select>
+      </label>
+      <dl className="mt-4 grid grid-cols-2 gap-2">
+        <ContextMetric label="단계" value={processSteps.length}/>
+        <ContextMetric label="테스트" value={processCases.length}/>
+        <ContextMetric label="개발 작업" value={processJobs.length}/>
+        <ContextMetric label="완료 작업" value={`${completedJobs}/${processJobs.length}`}/>
+      </dl>
+    </div>
+    <div className="rounded-xl border bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><p className="text-xs font-black tracking-[0.08em] text-blue-700">전체 업무 흐름</p><h3 className="mt-1 font-black text-[#052b57]">{value(selectedProcess,"processName")||"프로세스를 선택하십시오"}</h3></div>
+        <button type="button" onClick={()=>onOpen("process-map")} className="rounded-lg border border-blue-300 px-3 py-2 text-sm font-bold text-blue-700">전체 지도 열기</button>
+      </div>
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+        {processSteps.map((row,index)=>{
+          const current=value(row,"stepCode")===value(currentStep,"stepCode");
+          return <div key={`${value(row,"processCode")}-${value(row,"stepCode")}`} className="flex min-w-[170px] items-center gap-2">
+            <button type="button" onClick={()=>onOpen("steps")} className={`min-h-24 w-full rounded-xl border p-3 text-left ${current?"border-blue-500 bg-blue-50 ring-2 ring-blue-100":"bg-white hover:border-blue-300"}`}>
+              <span className="text-xs font-bold text-slate-500">{index+1}단계 · {value(row,"actorCode")}</span>
+              <strong className="mt-1 block text-sm text-slate-900">{value(row,"stepName")}</strong>
+              <span className="mt-2 inline-block rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{current?"현재 업무":value(row,"automationStatus")||"대기"}</span>
+            </button>
+            {index<processSteps.length-1&&<span className="shrink-0 text-xl text-slate-400" aria-hidden="true">→</span>}
+          </div>;
+        })}
+      </div>
+    </div>
+    <aside className="rounded-xl border bg-white p-4">
+      <p className="text-xs font-black tracking-[0.08em] text-blue-700">업무 길잡이</p>
+      <h3 className="mt-2 text-lg font-black text-[#052b57]">{value(currentStep,"stepName")||"진행할 단계가 없습니다"}</h3>
+      <div className="mt-3 space-y-2 text-sm">
+        <p><span className="font-bold text-slate-500">담당 액터</span><span className="ml-2 text-slate-900">{value(currentActor,"actorName")||value(currentStep,"actorCode")||"-"}</span></p>
+        <p><span className="font-bold text-slate-500">완료 조건</span><span className="mt-1 block leading-6 text-slate-700">{value(currentStep,"completionRule")||"완료 조건 설계가 필요합니다."}</span></p>
+        <p><span className="font-bold text-slate-500">입력 계약</span><span className="mt-1 block line-clamp-2 leading-6 text-slate-700">{value(currentStep,"inputContract")||"입력 데이터 계약이 필요합니다."}</span></p>
+      </div>
+      <div className="mt-4 grid gap-2">
+        {route.startsWith("/")?<a href={route} className="rounded-lg bg-[#246beb] px-4 py-3 text-center text-sm font-bold text-white">현재 업무 화면 열기</a>:<button type="button" onClick={()=>onOpen("page-fields")} className="rounded-lg bg-[#246beb] px-4 py-3 text-sm font-bold text-white">화면·필드 설계하기</button>}
+        <button type="button" onClick={()=>onOpen("simulation")} className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-bold text-slate-700">테스트 시나리오 확인</button>
+      </div>
+    </aside>
+  </section>;
+}
+
+function ContextMetric({label,value:metric}:{label:string;value:string|number}) {
+  return <div className="rounded-lg bg-slate-50 p-3"><dt className="text-xs font-bold text-slate-500">{label}</dt><dd className="mt-1 text-lg font-black text-[#052b57]">{metric}</dd></div>;
 }
 
 function CommonFeaturePackagePanel({bindings,busy,installations,onPost,packages,processCode,runs}:{bindings:Row[];busy:boolean;installations:Row[];onPost:(path:string,body:Record<string,unknown>)=>Promise<void>;packages:Row[];processCode:string;runs:Row[]}) {
