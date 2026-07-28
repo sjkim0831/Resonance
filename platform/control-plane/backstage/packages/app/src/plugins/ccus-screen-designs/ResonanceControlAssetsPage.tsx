@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Content, Header, Page } from '@backstage/core-components';
+import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import {
   Box,
   Button,
@@ -8,6 +9,7 @@ import {
   Grid,
   IconButton,
   LinearProgress,
+  MenuItem,
   Paper,
   Tab,
   Tabs,
@@ -51,9 +53,10 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     marginBottom: theme.spacing(2),
     display: 'grid',
-    gridTemplateColumns: 'minmax(0,1fr) auto',
+    gridTemplateColumns: 'minmax(250px,1fr) minmax(230px,1fr) 220px auto',
     gap: theme.spacing(2),
-    [theme.breakpoints.down('xs')]: { gridTemplateColumns: '1fr' },
+    alignItems: 'center',
+    [theme.breakpoints.down('sm')]: { gridTemplateColumns: '1fr' },
   },
   grid: {
     display: 'grid',
@@ -93,10 +96,36 @@ const useStyles = makeStyles(theme => ({
 
 export function ResonanceControlAssetsPage() {
   const classes = useStyles();
+  const fetchApi = useApi(fetchApiRef);
   const [tab, setTab] = useState(0);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ControlAssetRecord | null>(null);
+  const [projects, setProjects] = useState<
+    { projectId: string; projectName: string }[]
+  >([]);
+  const [projectId, setProjectId] = useState('CCUS-PLATFORM');
+  const [syncStatus, setSyncStatus] = useState('');
   const activeCapability = capabilities[tab].code;
+
+  useEffect(() => {
+    void fetchApi
+      .fetch('/api/resonance-projects')
+      .then(response => response.json())
+      .then(payload => {
+        const next = Array.isArray(payload.projects) ? payload.projects : [];
+        setProjects(next);
+        if (
+          next.length &&
+          !next.some(
+            (item: { projectId: string }) => item.projectId === projectId,
+          )
+        ) {
+          setProjectId(next[0].projectId);
+        }
+      })
+      .catch(() => setSyncStatus('프로젝트 목록을 불러오지 못했습니다.'));
+  }, [fetchApi, projectId]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return RESONANCE_CONTROL_ASSETS.filter(record => {
@@ -115,27 +144,55 @@ export function ResonanceControlAssetsPage() {
     });
   }, [activeCapability, query]);
 
+  const synchronize = async () => {
+    setSyncStatus('원장을 동기화하고 있습니다.');
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/control-assets/${encodeURIComponent(
+        projectId,
+      )}/sync`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          assets: RESONANCE_CONTROL_ASSETS.map(record => ({
+            assetId: record.routePath,
+            routePath: record.routePath,
+            screenName: record.screenName,
+            ownershipLane: record.ownershipLane,
+            migrationStatus: record.migrationStatus,
+            targetPlugin: record.targetPlugin,
+            capabilities: record.capabilities,
+            dependencyContracts: record.dependencyContracts,
+          })),
+        }),
+      },
+    );
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || '원장 동기화 실패');
+    setSyncStatus(`${payload.synchronized}개 자산을 DB 원장에 반영했습니다.`);
+  };
+
   return (
     <Page themeId="tool">
       <Header
         title="Resonance 운영·설계·개발 자산"
-        subtitle="프레임워크 제어 화면을 Backstage에서 분류·추적하고 원본 기능과 연결합니다."
+        subtitle="제어 화면의 실행 위치와 이관 상태를 프로젝트별 DB 원장으로 관리합니다."
       />
       <Content>
         <Box className={classes.hero}>
           <Typography variant="h5">Framework Control Plane</Typography>
           <Typography variant="body2">
-            원본 화면을 중복 복제하지 않고 하나의 자산 계약으로 관리합니다.
-            Backstage 네이티브 전환 전까지 기존 런타임 링크를 유지합니다.
+            관리 기능은 Backstage 네이티브, 고객 업무는 Resonance 런타임,
+            공통 스키마와 디자인 자산은 공유 런타임으로 분리합니다.
           </Typography>
         </Box>
         <Grid container spacing={2}>
           {[
             ['고유 제어 자산', CONTROL_ASSET_SUMMARY.total],
-            ['운영', CONTROL_ASSET_SUMMARY.operations],
-            ['설계', CONTROL_ASSET_SUMMARY.design],
-            ['개발', CONTROL_ASSET_SUMMARY.development],
-            ['병합 계약', CONTROL_ASSET_SUMMARY.mergedContracts],
+            ['Backstage 네이티브 대상', CONTROL_ASSET_SUMMARY.backstageNative],
+            ['Resonance 업무 런타임', CONTROL_ASSET_SUMMARY.resonanceRuntime],
+            ['공유 런타임', CONTROL_ASSET_SUMMARY.sharedRuntime],
+            ['네이티브 준비 완료', CONTROL_ASSET_SUMMARY.nativeReady],
           ].map(([label, value]) => (
             <Grid item xs={6} sm={4} lg key={String(label)}>
               <Paper className={classes.metrics} elevation={0}>
@@ -166,7 +223,37 @@ export function ResonanceControlAssetsPage() {
             onChange={event => setQuery(event.target.value)}
             InputProps={{ startAdornment: <SearchIcon fontSize="small" /> }}
           />
+          <TextField
+            select
+            variant="outlined"
+            size="small"
+            label="프로젝트"
+            value={projectId}
+            onChange={event => setProjectId(event.target.value)}
+          >
+            {projects.map(project => (
+              <MenuItem key={project.projectId} value={project.projectId}>
+                {project.projectName}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button
+            color="primary"
+            variant="contained"
+            onClick={() =>
+              void synchronize().catch(error =>
+                setSyncStatus(String(error.message || error)),
+              )
+            }
+          >
+            DB 원장 동기화
+          </Button>
         </Paper>
+        {syncStatus && (
+          <Typography variant="body2" color="textSecondary" gutterBottom>
+            {syncStatus}
+          </Typography>
+        )}
 
         <Typography variant="body2" color="textSecondary" gutterBottom>
           {filtered.length.toLocaleString()}개 자산
@@ -174,7 +261,7 @@ export function ResonanceControlAssetsPage() {
         <Box className={classes.grid}>
           {filtered.map(record => (
             <Paper
-              key={`${record.screenId}-${record.sequence}`}
+              key={record.routePath}
               className={classes.card}
               elevation={0}
               role="button"
@@ -183,11 +270,12 @@ export function ResonanceControlAssetsPage() {
             >
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="overline">#{record.sequence}</Typography>
-                <Chip size="small" label={record.implementationStatus} />
+                <Chip size="small" label={record.migrationStatus} />
               </Box>
               <Typography variant="h6">{record.screenName}</Typography>
               <Typography className={classes.path}>{record.routePath}</Typography>
               <Box className={classes.chips} mt={1.5}>
+                <Chip size="small" label={record.ownershipLane} />
                 {record.capabilities.map(capability => (
                   <Chip size="small" key={capability} label={capability} />
                 ))}
@@ -228,15 +316,17 @@ export function ResonanceControlAssetsPage() {
               </IconButton>
             </Box>
             {[
-              ['이관 방식', selected.migrationMode],
+              ['실행 소유 계층', selected.ownershipLane],
+              ['이관 상태', selected.migrationStatus],
+              ['대상 플러그인', selected.targetPlugin],
               ['설계 상태', selected.designStatus],
               ['구현 상태', selected.implementationStatus],
               ['액터', selected.actorCodes.join(', ')],
               ['프로세스', selected.processCodes.join(', ')],
-              ['데이터 계약', selected.dataContracts.join(', ')],
+              ['데이터 계약', selected.dependencyContracts.join(', ')],
               ['섹션', selected.sections.join(', ')],
               ['미해결 항목', selected.gaps.join(', ') || '없음'],
-              ['소스', selected.sourceRef],
+              ['출처', selected.sourceRef],
             ].map(([label, value]) => (
               <Box className={classes.detailRow} key={label}>
                 <Typography variant="caption" color="textSecondary">

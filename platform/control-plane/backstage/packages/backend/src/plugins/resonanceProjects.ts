@@ -21,6 +21,17 @@ type DesignContractInput = {
   createdBy?: string;
 };
 
+type ControlAssetInput = {
+  assetId?: string;
+  routePath?: string;
+  screenName?: string;
+  ownershipLane?: string;
+  migrationStatus?: string;
+  targetPlugin?: string;
+  capabilities?: string[];
+  dependencyContracts?: string[];
+};
+
 const normalizeProjectId = (value: unknown) =>
   String(value ?? '')
     .trim()
@@ -160,6 +171,42 @@ export default createBackendPlugin({
             },
           );
         }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_projects__control_asset_migration',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__control_asset_migration',
+            table => {
+              table.bigIncrements('migration_id').primary();
+              table
+                .string('project_id', 64)
+                .notNullable()
+                .references('project_id')
+                .inTable('resonance_projects__project')
+                .onDelete('CASCADE');
+              table.string('asset_id', 160).notNullable();
+              table.string('route_path', 500).notNullable();
+              table.string('screen_name', 300).notNullable();
+              table.string('ownership_lane', 40).notNullable();
+              table.string('migration_status', 40).notNullable();
+              table.string('target_plugin', 200).notNullable();
+              table.jsonb('capabilities').notNullable();
+              table.jsonb('dependency_contracts').notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.unique(
+                ['project_id', 'asset_id'],
+                'resonance_control_asset_project_asset_uq',
+              );
+              table.index(
+                ['project_id', 'ownership_lane', 'migration_status'],
+                'resonance_control_asset_status_idx',
+              );
+            },
+          );
+        }
         const taskColumns = [
           ['result', (table: any) => table.jsonb('result').nullable()],
           [
@@ -194,6 +241,136 @@ export default createBackendPlugin({
           });
           response.json({ status: 'UP', projectCount: Number(count) });
         });
+        router.get(
+          '/control-assets/:projectId',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const rows = await knex(
+              'resonance_projects__control_asset_migration',
+            )
+              .select('*')
+              .where({ project_id: projectId })
+              .orderBy('route_path', 'asc');
+            response.json({
+              projectId,
+              assets: rows.map(row => ({
+                assetId: row.asset_id,
+                routePath: row.route_path,
+                screenName: row.screen_name,
+                ownershipLane: row.ownership_lane,
+                migrationStatus: row.migration_status,
+                targetPlugin: row.target_plugin,
+                capabilities: row.capabilities,
+                dependencyContracts: row.dependency_contracts,
+                updatedAt: row.updated_at,
+              })),
+            });
+          },
+        );
+        router.post(
+          '/control-assets/:projectId/sync',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const project = await knex('resonance_projects__project')
+              .where({ project_id: projectId })
+              .first();
+            if (!project) {
+              response.status(404).json({ message: 'project not found' });
+              return;
+            }
+            const assets = Array.isArray(request.body?.assets)
+              ? (request.body.assets as ControlAssetInput[])
+              : [];
+            const lanes = new Set([
+              'BACKSTAGE_NATIVE',
+              'RESONANCE_RUNTIME',
+              'SHARED_RUNTIME',
+            ]);
+            const statuses = new Set([
+              'DISCOVERED',
+              'CLASSIFIED',
+              'NATIVE_READY',
+              'MIGRATED',
+              'VERIFIED',
+              'RETIRED_SOURCE',
+            ]);
+            const normalized = assets.map((asset, index) => {
+              const assetId = String(asset.assetId ?? '').trim();
+              const routePath = String(asset.routePath ?? '').trim();
+              const ownershipLane = String(asset.ownershipLane ?? '');
+              const migrationStatus = String(asset.migrationStatus ?? '');
+              if (
+                !assetId ||
+                !routePath.startsWith('/') ||
+                !lanes.has(ownershipLane) ||
+                !statuses.has(migrationStatus)
+              ) {
+                throw new Error(`invalid control asset at index ${index}`);
+              }
+              return {
+                project_id: projectId,
+                asset_id: assetId,
+                route_path: routePath,
+                screen_name: String(asset.screenName ?? routePath),
+                ownership_lane: ownershipLane,
+                migration_status: migrationStatus,
+                target_plugin: String(asset.targetPlugin ?? ''),
+                capabilities: JSON.stringify(asset.capabilities ?? []),
+                dependency_contracts: JSON.stringify(
+                  asset.dependencyContracts ?? [],
+                ),
+              };
+            });
+            if (new Set(normalized.map(asset => asset.asset_id)).size !== normalized.length) {
+              response.status(400).json({ message: 'duplicate asset ids' });
+              return;
+            }
+            const now = new Date();
+            await knex.transaction(async transaction => {
+              for (const asset of normalized) {
+                await transaction(
+                  'resonance_projects__control_asset_migration',
+                )
+                  .insert({
+                    ...asset,
+                    created_at: now,
+                    updated_at: now,
+                  })
+                  .onConflict(['project_id', 'asset_id'])
+                  .merge({
+                    route_path: asset.route_path,
+                    screen_name: asset.screen_name,
+                    ownership_lane: asset.ownership_lane,
+                    migration_status: asset.migration_status,
+                    target_plugin: asset.target_plugin,
+                    capabilities: asset.capabilities,
+                    dependency_contracts: asset.dependency_contracts,
+                    updated_at: now,
+                  });
+              }
+            });
+            const summary = (await knex(
+              'resonance_projects__control_asset_migration',
+            )
+              .select('ownership_lane', 'migration_status')
+              .count({ count: '*' })
+              .where({ project_id: projectId })
+              .groupBy('ownership_lane', 'migration_status')) as {
+              ownership_lane: string;
+              migration_status: string;
+              count: string | number;
+            }[];
+            response.json({
+              projectId,
+              synchronized: normalized.length,
+              summary: summary.map(row => ({
+                ownershipLane: row.ownership_lane,
+                migrationStatus: row.migration_status,
+                count: Number(row.count),
+              })),
+            });
+          },
+        );
         router.get('/', async (_request, response) => {
           const rows = await knex('resonance_projects__project')
             .select('*')
