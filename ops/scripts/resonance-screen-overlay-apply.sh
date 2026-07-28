@@ -15,6 +15,7 @@ CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}"
 SKIP_FRONTEND_BUILD="${SKIP_FRONTEND_BUILD:-false}"
 FRONTEND_TYPECHECK_MODE="${FRONTEND_TYPECHECK_MODE:-project}"
 UPDATE_GIT_METADATA="${UPDATE_GIT_METADATA:-true}"
+SHARED_FRONTEND_NODE_MODULES="${SHARED_FRONTEND_NODE_MODULES:-/opt/Resonance/projects/carbonet-frontend/source/node_modules}"
 
 usage() {
   cat <<'USAGE'
@@ -76,6 +77,37 @@ require_file "$GUARD_SCRIPT"
 
 cd "$ROOT_DIR"
 
+ensure_frontend_dependencies() {
+  local node_modules_dir="$SOURCE_DIR/node_modules"
+  local typescript_entry="$node_modules_dir/typescript/package.json"
+
+  if [[ -f "$typescript_entry" && -x "$node_modules_dir/.bin/vite" ]]; then
+    return
+  fi
+
+  # Deployment commits are built in isolated Git worktrees. Reuse the
+  # dependency tree owned by the stable checkout so every frontend-only deploy
+  # does not pay for npm ci and so prebuild generators can import TypeScript.
+  if [[ "$node_modules_dir" != "$SHARED_FRONTEND_NODE_MODULES" \
+     && -f "$SHARED_FRONTEND_NODE_MODULES/typescript/package.json" \
+     && -x "$SHARED_FRONTEND_NODE_MODULES/.bin/vite" ]]; then
+    rm -rf "$node_modules_dir"
+    ln -s "$SHARED_FRONTEND_NODE_MODULES" "$node_modules_dir"
+    echo "[screen-overlay-apply] linked shared frontend dependencies"
+    return
+  fi
+
+  echo "[screen-overlay-apply] frontend dependencies missing; installing from lockfile"
+  (
+    cd "$SOURCE_DIR"
+    npm ci --ignore-scripts --prefer-offline --no-audit --no-fund
+  )
+  [[ -f "$typescript_entry" && -x "$node_modules_dir/.bin/vite" ]] || {
+    echo "[screen-overlay-apply] frontend dependency readiness check failed" >&2
+    exit 1
+  }
+}
+
 echo "[screen-overlay-apply] mode=all-screens-no-redeploy started=$started_iso"
 echo "[screen-overlay-apply] source=$SOURCE_DIR"
 echo "[screen-overlay-apply] overlay=$OVERLAY_DIR"
@@ -93,6 +125,7 @@ echo "[screen-overlay-apply] backup overlay"
 bash "$GUARD_SCRIPT" backup >/dev/null
 
 if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
+  ensure_frontend_dependencies
   echo "[screen-overlay-apply] isolated npm build only; no gradle, no image, no rollout"
   staging_dir="$(mktemp -d "$STATUS_DIR/react-overlay-build.XXXXXX")"
   skip_build_typecheck=false
