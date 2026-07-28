@@ -118,6 +118,7 @@ const candidates: ControlAssetRecord[] = CCUS_SCREEN_DESIGN_CATALOG.records
       const capabilities = classify(record);
       return {
         ...record,
+        screenName: record.screenName.replaceAll(' 쨌 ', ' · '),
         capabilities,
         sourceUrl: `http://172.16.1.232${record.routePath}`,
         ...ownershipFor(record, capabilities),
