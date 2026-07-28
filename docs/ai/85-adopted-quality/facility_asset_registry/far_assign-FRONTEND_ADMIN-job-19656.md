@@ -2,7 +2,7 @@
 
 - Job: 19656
 - Job type: FRONTEND_ADMIN
-- Source commit: 6562b397c8eace1f8ab400604e37525047019476
+- Source commit: 7d7b246aaccc5c3d27bf0deefde275cbaafd647c
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"FACILITY_ASSET_REGISTRY","stepCode":"FAR_ASSIGN","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-19656/projects/carbonet-backend-metadata/process-runtime/generated/FACILITY_ASSET_REGISTRY/FACILITY_ASSET_REGISTRY__FAR_ASSIGN.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19656/var/test-evidence/process-package-tests/FACILITY_ASSET_REGISTRY__FAR_ASSIGN.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
