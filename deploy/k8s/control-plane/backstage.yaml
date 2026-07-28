@@ -87,6 +87,37 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+        - name: catalog-server
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["httpd", "-f", "-p", "8081", "-h", "/catalog"]
+          ports:
+            - name: catalog
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /components.yaml
+              port: catalog
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: resonance-catalog
+              mountPath: /catalog
+              readOnly: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
       volumes:
         - name: resonance-catalog
           configMap:
