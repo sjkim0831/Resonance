@@ -20,8 +20,14 @@ import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import LaunchIcon from '@material-ui/icons/Launch';
 import { CCUS_SCREEN_DESIGN_CATALOG } from './generatedCatalog';
+import {
+  GENERATION_PIPELINE,
+  TARGET_SCREEN_SPACE,
+  buildMaterializationOutputs,
+  buildScreenCoordinate,
+  calculateScreenSpace,
+} from './screenSpaceEngine';
 
-const DOMAIN_OBJECT_COUNT = 4_000;
 const STATES = [
   'DRAFT', 'SUBMITTED', 'IN_REVIEW', 'REVISION_REQUIRED', 'RESUBMITTED',
   'APPROVED', 'REJECTED', 'CANCELLED', 'EXPIRED', 'RECALCULATING',
@@ -33,6 +39,10 @@ const ARCHETYPES = [
 ];
 const DEVICES = ['DESKTOP', 'TABLET', 'MOBILE'];
 const LANGUAGES = ['ko', 'en'];
+const PERMISSIONS = [
+  'VIEW', 'CREATE', 'EDIT', 'SUBMIT', 'WITHDRAW',
+  'REVIEW', 'APPROVE', 'REJECT', 'EXPORT', 'ADMIN',
+];
 const RULES = [
   ['DATA_INPUT', '이전 화면 출력이 현재 화면 필수 입력을 충족'],
   ['ACTION_COMMAND', '모든 버튼에 명령과 권한 정책 연결'],
@@ -47,9 +57,6 @@ const RULES = [
 
 type QueueItem = { coordinate: string; seedScreenId: string; createdAt: string };
 const unique = (values: string[]) => [...new Set(values)].sort();
-const token = (value: string) =>
-  value.trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')
-    .toLowerCase() || 'default';
 
 const useStyles = makeStyles(theme => ({
   hero: {
@@ -107,12 +114,17 @@ export function ScreenSpaceEnginePage() {
   const [seedId, setSeedId] = useState(records[0]?.screenId ?? '');
   const seed = records.find(item => item.screenId === seedId) ?? records[0];
   const [domainObject, setDomainObject] = useState('CCUS-OBJECT-001');
+  const [project, setProject] = useState('CCUS-PLATFORM');
   const [actor, setActor] = useState(actors[0] ?? 'PLATFORM_OPERATOR');
   const [process, setProcess] = useState(processes[0] ?? 'GOVERNANCE_CHANGE');
+  const [step, setStep] = useState('STEP-001');
   const [state, setState] = useState(STATES[0]);
+  const [action, setAction] = useState('VIEW');
+  const [permission, setPermission] = useState(PERMISSIONS[0]);
   const [archetype, setArchetype] = useState(ARCHETYPES[0]);
   const [device, setDevice] = useState(DEVICES[0]);
   const [language, setLanguage] = useState(LANGUAGES[0]);
+  const [dataContext, setDataContext] = useState('PROJECT');
   const [queue, setQueue] = useState<QueueItem[]>([]);
 
   useEffect(() => {
@@ -124,23 +136,25 @@ export function ScreenSpaceEnginePage() {
     }
   }, []);
 
-  const total =
-    BigInt(DOMAIN_OBJECT_COUNT) * BigInt(actors.length) *
-    BigInt(processes.length) * BigInt(STATES.length) *
-    BigInt(ARCHETYPES.length) * BigInt(DEVICES.length) *
-    BigInt(LANGUAGES.length);
-  const coordinate = [
-    'ccus', domainObject, actor, process, state, archetype, device, language,
-  ].map(token).join(':');
+  const total = calculateScreenSpace(TARGET_SCREEN_SPACE);
+  const coordinateInput = {
+    project, domainObject, actor, process, step, state, action, permission,
+    archetype, device, language, dataContext,
+  };
+  const coordinate = buildScreenCoordinate(coordinateInput);
+  const outputs = buildMaterializationOutputs(coordinateInput);
   const selectDefinitions: [
     string, string, string[], (value: string) => void,
   ][] = [
     ['액터', actor, actors, setActor],
     ['프로세스', process, processes, setProcess],
     ['상태', state, STATES, setState],
+    ['작업', action, ['VIEW', 'CREATE', 'EDIT', 'SUBMIT', 'WITHDRAW', 'RESUBMIT'], setAction],
+    ['권한', permission, PERMISSIONS, setPermission],
     ['화면 원형', archetype, ARCHETYPES, setArchetype],
     ['디바이스', device, DEVICES, setDevice],
     ['언어', language, LANGUAGES, setLanguage],
+    ['데이터 문맥', dataContext, ['PROJECT', 'COMPANY', 'FACILITY', 'PRODUCT', 'REPORT'], setDataContext],
   ];
   const enqueue = () => {
     if (queue.some(item => item.coordinate === coordinate)) return;
@@ -167,7 +181,7 @@ export function ScreenSpaceEnginePage() {
         </Box>
         <Grid container spacing={2}>
           {[
-            ['가상 화면 좌표', total.toLocaleString('ko-KR')],
+            ['논리 화면 공간', total.toLocaleString('ko-KR')],
             ['구체화 설계', records.length.toLocaleString('ko-KR')],
             ['액터', actors.length], ['프로세스', processes.length],
             ['상태', STATES.length], ['자동 검증', RULES.length],
@@ -186,6 +200,7 @@ export function ScreenSpaceEnginePage() {
               indicatorColor="primary" textColor="primary" variant="scrollable">
               <Tab label="화면 좌표 설계" />
               <Tab label="규칙·검증" />
+              <Tab label="10분 생성 파이프라인" />
               <Tab label={`구체화 대기열 ${queue.length}`} />
             </Tabs>
           </Paper>
@@ -214,7 +229,13 @@ export function ScreenSpaceEnginePage() {
                   <TextField variant="outlined" size="small" label="업무 객체 좌표"
                     value={domainObject}
                     onChange={event => setDomainObject(event.target.value)}
-                    helperText={`가상 업무 객체 ${DOMAIN_OBJECT_COUNT}종 기준`} />
+                    helperText="Entity와 Data Context를 결합하는 논리 좌표" />
+                  <TextField variant="outlined" size="small" label="프로젝트"
+                    value={project}
+                    onChange={event => setProject(event.target.value)} />
+                  <TextField variant="outlined" size="small" label="프로세스 단계"
+                    value={step}
+                    onChange={event => setStep(event.target.value)} />
                   {selectDefinitions.map(([label, value, options, setter]) => (
                     <FormControl variant="outlined" size="small" key={label}>
                       <InputLabel>{label}</InputLabel>
@@ -276,6 +297,15 @@ export function ScreenSpaceEnginePage() {
                     화면으로 실행
                   </Typography>
                 </Box>
+                <Box mt={2}>
+                  <Typography variant="subtitle2">생성 산출물 계약</Typography>
+                  <Box className={classes.chips}>
+                    {Object.values(outputs).map(value => (
+                      <Chip size="small" variant="outlined" key={value}
+                        label={value} />
+                    ))}
+                  </Box>
+                </Box>
               </Paper>
             </Grid>
           </Grid>
@@ -316,6 +346,27 @@ export function ScreenSpaceEnginePage() {
         )}
 
         {tab === 2 && (
+          <Grid container spacing={2}>
+            {GENERATION_PIPELINE.map((stage, index) => (
+              <Grid item xs={12} md={6} lg={4} key={stage.code}>
+                <Paper className={classes.panel} elevation={0}>
+                  <Typography variant="overline">
+                    {index + 1}단계 · {stage.minuteRange}
+                  </Typography>
+                  <Typography variant="h6">{stage.name}</Typography>
+                  <Typography variant="caption">{stage.code}</Typography>
+                  <Box className={classes.chips}>
+                    {stage.outputs.map(output => (
+                      <Chip size="small" key={output} label={output} />
+                    ))}
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        {tab === 3 && (
           <Paper className={classes.panel} elevation={0}>
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Box>
