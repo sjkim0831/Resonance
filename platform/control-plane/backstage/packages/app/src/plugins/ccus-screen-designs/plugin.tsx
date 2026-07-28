@@ -8,6 +8,7 @@ import DashboardIcon from '@material-ui/icons/Dashboard';
 const catalogRouteRef = createRouteRef();
 const screenSpaceRouteRef = createRouteRef();
 const projectControlRouteRef = createRouteRef();
+const controlAssetsRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -50,6 +51,20 @@ const projectControlPage = PageBlueprint.make({
   },
 });
 
+const controlAssetsPage = PageBlueprint.make({
+  name: 'control-assets',
+  params: {
+    routeRef: controlAssetsRouteRef,
+    path: '/resonance-control-assets',
+    title: 'Resonance 운영·설계·개발',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./ResonanceControlAssetsPage').then(module => (
+        <module.ResonanceControlAssetsPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -58,6 +73,12 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     root: catalogRouteRef,
     screenSpace: screenSpaceRouteRef,
     projectControl: projectControlRouteRef,
+    controlAssets: controlAssetsRouteRef,
   },
-  extensions: [screenDesignsPage, screenSpacePage, projectControlPage],
+  extensions: [
+    screenDesignsPage,
+    screenSpacePage,
+    projectControlPage,
+    controlAssetsPage,
+  ],
 });

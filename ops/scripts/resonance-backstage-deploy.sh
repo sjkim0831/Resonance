@@ -139,6 +139,7 @@ case "$mode" in
     (
       cd "$APP"
       corepack yarn validate:page-extensions
+      corepack yarn validate:control-assets
       corepack yarn generate:ccus-screen-designs
       corepack yarn generate:project-registry
     )
