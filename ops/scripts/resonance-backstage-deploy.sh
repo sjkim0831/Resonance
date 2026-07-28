@@ -136,6 +136,10 @@ case "$mode" in
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
     ensure_tls
     ensure_ingress_https_port
+    (
+      cd "$APP"
+      corepack yarn generate:ccus-screen-designs
+    )
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
     # already verified image without rebuilding an identical application.

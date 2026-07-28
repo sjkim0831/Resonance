@@ -1,0 +1,30 @@
+import {
+  PageBlueprint,
+  createFrontendPlugin,
+  createRouteRef,
+} from '@backstage/frontend-plugin-api';
+import DashboardIcon from '@material-ui/icons/Dashboard';
+
+const rootRouteRef = createRouteRef();
+
+const screenDesignsPage = PageBlueprint.make({
+  params: {
+    routeRef: rootRouteRef,
+    path: '/ccus-screen-designs',
+    title: 'CCUS 화면 설계',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./ScreenDesignCatalogPage').then(module => (
+        <module.ScreenDesignCatalogPage />
+      )),
+  },
+});
+
+export const ccusScreenDesignsPlugin = createFrontendPlugin({
+  pluginId: 'ccus-screen-designs',
+  title: 'CCUS 화면 설계',
+  icon: <DashboardIcon />,
+  routes: { root: rootRouteRef },
+  extensions: [screenDesignsPage],
+});
+

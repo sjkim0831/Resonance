@@ -6,6 +6,7 @@
     "node": "22 || 24"
   },
   "scripts": {
+    "generate:ccus-screen-designs": "node scripts/generate-ccus-screen-design-catalog.mjs",
     "start": "backstage-cli repo start",
     "build:backend": "yarn workspace backend build",
     "build:all": "backstage-cli repo build --all",
