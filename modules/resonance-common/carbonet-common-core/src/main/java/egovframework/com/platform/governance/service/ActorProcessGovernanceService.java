@@ -912,16 +912,23 @@ public class ActorProcessGovernanceService {
         }catch(IllegalArgumentException|IllegalStateException expected){exceptionRejected=true;}
         List<Map<String,Object>> transitions=new java.util.ArrayList<>();
         transitions.add(Map.of("stepCode",step,"actorCode",actor,"commandCode",command,"fromState",fixture.get("fromState"),"toState",fixture.get("toState"),"accountId",account));
-        List<Map<String,Object>> processSteps=jdbc.queryForList("select step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\" from framework_process_step where process_code=? and step_order>(select step_order from framework_process_step where process_code=? and step_code=?) order by step_order",process,process,step);
         String executionStatus=String.valueOf(first.getOrDefault("executionStatus","RUNNING"));
+        String nextStepCode=String.valueOf(first.getOrDefault("nextStepCode",""));
         int sequence=1;
-        for(Map<String,Object> nextStep:processSteps){
+        java.util.Set<String> visitedSteps=new java.util.LinkedHashSet<>();visitedSteps.add(step);
+        while(!nextStepCode.isBlank()&&sequence<100){
+            if(!visitedSteps.add(nextStepCode))throw new IllegalStateException("Process runtime entered a cycle at step: "+nextStepCode);
+            List<Map<String,Object>> nextSteps=jdbc.queryForList("select step_code as \"stepCode\",actor_code as \"actorCode\",command_code as \"commandCode\",from_state as \"fromState\",to_state as \"toState\" from framework_process_step where process_code=? and step_code=?",process,nextStepCode);
+            if(nextSteps.isEmpty())throw new IllegalStateException("The next process step contract does not exist: "+nextStepCode);
+            Map<String,Object> nextStep=nextSteps.get(0);
             String nextActor=String.valueOf(nextStep.get("actorCode"));
             List<Map<String,Object>> accounts=jdbc.queryForList("select account_id as \"accountId\" from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date) order by account_id limit 1",tenant,project,nextActor);
             if(accounts.isEmpty())throw new IllegalStateException("No active account is assigned for process actor: "+nextActor);
             String nextAccount=String.valueOf(accounts.get(0).get("accountId")),nextKey=key+"-step-"+(++sequence);
             Map<String,Object> nextRequest=new LinkedHashMap<>();nextRequest.put("tenantId",tenant);nextRequest.put("projectId",project);nextRequest.put("processCode",process);nextRequest.put("stepCode",String.valueOf(nextStep.get("stepCode")));nextRequest.put("actorCode",nextActor);nextRequest.put("commandCode",String.valueOf(nextStep.get("commandCode")));nextRequest.put("idempotencyKey",nextKey);nextRequest.put("requestJson","{\"smoke\":true,\"sequence\":"+sequence+"}");nextRequest.put("resultJson","{\"rolledBack\":true}");
-            Map<String,Object> nextResult=executeProcessCommand(executionId,nextRequest,nextAccount);executionStatus=String.valueOf(nextResult.getOrDefault("executionStatus","RUNNING"));
+            Map<String,Object> nextResult=executeProcessCommand(executionId,nextRequest,nextAccount);
+            executionStatus=String.valueOf(nextResult.getOrDefault("executionStatus","RUNNING"));
+            nextStepCode=String.valueOf(nextResult.getOrDefault("nextStepCode",""));
             transitions.add(Map.of("stepCode",nextStep.get("stepCode"),"actorCode",nextActor,"commandCode",nextStep.get("commandCode"),"fromState",nextStep.get("fromState"),"toState",nextStep.get("toState"),"accountId",nextAccount));
         }
         Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
