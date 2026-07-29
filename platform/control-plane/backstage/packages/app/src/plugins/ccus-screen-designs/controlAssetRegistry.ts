@@ -45,6 +45,17 @@ const backstageNativePattern =
 const sharedRuntimePattern =
   /(theme|section|component|css|schema|column|contract|menu|permission|role|auth|code|classification|unit|conversion)/i;
 
+const nativeDesignAssetRoutes = new Set([
+  '/admin/system/theme-management',
+  '/admin/system/css-management',
+  '/admin/system/section-management',
+  '/admin/system/component-management',
+  '/admin/system/screen-management',
+  '/admin/system/menu',
+  '/admin/system/menu-management',
+  '/admin/system/design-management',
+]);
+
 const ownershipFor = (
   record: CcusScreenDesignRecord,
   capabilities: ControlCapability[],
@@ -59,6 +70,14 @@ const ownershipFor = (
       ownershipLane: 'BACKSTAGE_NATIVE',
       migrationStatus: 'NATIVE_READY',
       targetPlugin: 'ccus-screen-designs/actor-process-control',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeDesignAssetRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/design-assets',
       dependencyContracts: [...new Set(record.dataContracts)],
     };
   }

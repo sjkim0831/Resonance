@@ -209,17 +209,25 @@ export function ResonanceControlAssetsPage() {
     await loadLedger();
   };
 
-  const transitionActorProcess = async () => {
+  const transitionSelected = async () => {
     if (!selected) return;
     const current =
       ledger[selected.routePath]?.migrationStatus ?? selected.migrationStatus;
     const nextStatus =
-      current === 'NATIVE_READY'
+      current === 'CLASSIFIED'
+        ? 'NATIVE_READY'
+        : current === 'NATIVE_READY'
         ? 'MIGRATED'
         : current === 'MIGRATED'
           ? 'VERIFIED'
           : '';
     if (!nextStatus) return;
+    const targetUrl =
+      selected.targetPlugin === 'ccus-screen-designs/actor-process-control'
+        ? '/actor-process-control'
+        : selected.targetPlugin === 'ccus-screen-designs/design-assets'
+          ? '/design-assets'
+          : '/resonance-control-assets';
     const response = await fetchApi.fetch(
       `/api/resonance-projects/control-assets/${encodeURIComponent(
         projectId,
@@ -231,7 +239,7 @@ export function ResonanceControlAssetsPage() {
           assetId: selected.routePath,
           nextStatus,
           evidence: {
-            targetUrl: '/actor-process-control',
+            targetUrl,
             testStatus: 'PASS',
             verifiedBy: 'backstage-e2e',
             sourceRoute: selected.routePath,
@@ -421,8 +429,8 @@ export function ResonanceControlAssetsPage() {
               </Box>
             ))}
             <Box mt={3}>
-              {selected.routePath === '/admin/system/actor-process' &&
-                ['NATIVE_READY', 'MIGRATED'].includes(
+              {selected.ownershipLane === 'BACKSTAGE_NATIVE' &&
+                ['CLASSIFIED', 'NATIVE_READY', 'MIGRATED'].includes(
                   ledger[selected.routePath]?.migrationStatus ??
                     selected.migrationStatus,
                 ) && (
@@ -430,7 +438,7 @@ export function ResonanceControlAssetsPage() {
                     variant="outlined"
                     color="primary"
                     onClick={() =>
-                      void transitionActorProcess().catch(error =>
+                      void transitionSelected().catch(error =>
                         setSyncStatus(String(error.message || error)),
                       )
                     }

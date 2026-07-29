@@ -979,9 +979,27 @@ export default createBackendPlugin({
             const now = new Date();
             await knex.transaction(async transaction => {
               for (const asset of normalized) {
+                const existing = await transaction(
+                  'resonance_projects__control_asset_migration',
+                )
+                  .select('migration_status')
+                  .where({
+                    project_id: projectId,
+                    asset_id: asset.asset_id,
+                  })
+                  .first();
+                const migrationStatus =
+                  existing &&
+                  ['DISCOVERED', 'CLASSIFIED'].includes(
+                    existing.migration_status,
+                  ) &&
+                  asset.migration_status === 'NATIVE_READY'
+                    ? 'NATIVE_READY'
+                    : existing?.migration_status ?? asset.migration_status;
                 await transaction('resonance_projects__control_asset_migration')
                   .insert({
                     ...asset,
+                    migration_status: migrationStatus,
                     created_at: now,
                     updated_at: now,
                   })
@@ -990,6 +1008,7 @@ export default createBackendPlugin({
                     route_path: asset.route_path,
                     screen_name: asset.screen_name,
                     ownership_lane: asset.ownership_lane,
+                    migration_status: migrationStatus,
                     target_plugin: asset.target_plugin,
                     capabilities: asset.capabilities,
                     dependency_contracts: asset.dependency_contracts,
@@ -1578,10 +1597,17 @@ export default createBackendPlugin({
             const targetUrl = String(evidence.targetUrl ?? '');
             const testStatus = String(evidence.testStatus ?? '');
             const verifiedBy = String(evidence.verifiedBy ?? '');
+            const backstageTargets = [
+              '/resonance-',
+              '/actor-process-control',
+              '/design-assets',
+              '/identity-administration',
+              '/ccus-screen-designs',
+              '/ccus-screen-space',
+            ];
             if (
               ['MIGRATED', 'VERIFIED', 'RETIRED_SOURCE'].includes(nextStatus) &&
-              !targetUrl.startsWith('/resonance-') &&
-              !targetUrl.startsWith('/actor-process-control')
+              !backstageTargets.some(prefix => targetUrl.startsWith(prefix))
             ) {
               response.status(400).json({
                 message: 'a Backstage targetUrl is required',
