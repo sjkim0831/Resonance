@@ -93,6 +93,23 @@ export default createBackendPlugin({
             table.timestamp('last_seen_at', { useTz: true }).notNullable();
           });
         }
+        if (!(await knex.schema.hasTable('resonance_recovery__offsite_status'))) {
+          await knex.schema.createTable(
+            'resonance_recovery__offsite_status',
+            table => {
+              table.string('reporter_id', 160).primary();
+              table.string('status', 32).notNullable();
+              table.string('backup_name', 320).notNullable().defaultTo('');
+              table.string('sha256', 64).notNullable().defaultTo('');
+              table.bigInteger('encrypted_bytes').notNullable().defaultTo(0);
+              table.string('encryption', 120).notNullable().defaultTo('');
+              table.boolean('restore_verified').notNullable().defaultTo(false);
+              table.text('error_message').notNullable().defaultTo('');
+              table.timestamp('completed_at', { useTz: true }).nullable();
+              table.timestamp('reported_at', { useTz: true }).notNullable();
+            },
+          );
+        }
         const commandColumns = [
           [
             'attempt_count',
@@ -181,6 +198,17 @@ export default createBackendPlugin({
               automaticSchedule: true,
               intervalDays: 7,
               staleAfterDays: 8,
+            },
+          ],
+          [
+            'OFFSITE_BACKUP_SCHEDULE',
+            '독립 저장소 백업 일정',
+            {
+              automaticSchedule: true,
+              intervalHours: 6,
+              staleAfterHours: 12,
+              requireEncryption: true,
+              requireRestoreVerification: true,
             },
           ],
         ] as const;
@@ -272,7 +300,7 @@ export default createBackendPlugin({
         });
         router.get('/summary', async (request, response) => {
           await resolveUser(request);
-          const [policies, commands, workers, drillCommands] =
+          const [policies, commands, workers, drillCommands, offsiteStatuses] =
             await Promise.all([
               knex('resonance_recovery__policy')
                 .select('*')
@@ -294,6 +322,10 @@ export default createBackendPlugin({
                 .where({ command_type: 'RESTORE_DRILL' })
                 .orderBy('created_at', 'desc')
                 .limit(50),
+              knex('resonance_recovery__offsite_status')
+                .select('*')
+                .orderBy('reported_at', 'desc')
+                .limit(20),
             ]);
           const parseJsonObject = (value: unknown) => {
             if (value && typeof value === 'object') {
@@ -337,6 +369,31 @@ export default createBackendPlugin({
             : stale
             ? 'STALE'
             : 'HEALTHY';
+          const offsitePolicyRow = policies.find(
+            policy => policy.policy_code === 'OFFSITE_BACKUP_SCHEDULE',
+          );
+          const offsitePolicy = parseJsonObject(
+            offsitePolicyRow?.policy_value,
+          );
+          const offsiteStaleAfterHours = Number(
+            offsitePolicy.staleAfterHours ?? 12,
+          );
+          const latestOffsite = offsiteStatuses[0];
+          const offsiteCompletedAt = latestOffsite?.completed_at
+            ? new Date(latestOffsite.completed_at)
+            : null;
+          const offsiteStale =
+            !offsiteCompletedAt ||
+            Date.now() - offsiteCompletedAt.getTime() >
+              offsiteStaleAfterHours * 60 * 60 * 1000;
+          const offsiteHealth =
+            latestOffsite?.status === 'FAILED'
+              ? 'FAILED'
+              : offsiteStale
+              ? 'STALE'
+              : latestOffsite?.status === 'VERIFIED'
+              ? 'HEALTHY'
+              : 'STALE';
           response.json({
             checkedAt: new Date().toISOString(),
             executionMode: 'QUEUED',
@@ -355,6 +412,24 @@ export default createBackendPlugin({
               durationSeconds: successfulResult.durationSeconds ?? null,
               tableCount: successfulResult.checks?.tableCount ?? null,
               evidenceStatus: successfulResult.status ?? null,
+            },
+            offsiteBackup: {
+              health: offsiteHealth,
+              automaticSchedule:
+                offsitePolicyRow?.active !== false &&
+                offsitePolicy.automaticSchedule !== false,
+              intervalHours: Number(offsitePolicy.intervalHours ?? 6),
+              staleAfterHours: offsiteStaleAfterHours,
+              reporterId: latestOffsite?.reporter_id ?? null,
+              latestStatus: latestOffsite?.status ?? 'NOT_REPORTED',
+              backupName: latestOffsite?.backup_name ?? null,
+              sha256: latestOffsite?.sha256 ?? null,
+              encryptedBytes: Number(latestOffsite?.encrypted_bytes ?? 0),
+              encryption: latestOffsite?.encryption ?? null,
+              restoreVerified: latestOffsite?.restore_verified === true,
+              completedAt: offsiteCompletedAt?.toISOString() ?? null,
+              reportedAt: latestOffsite?.reported_at ?? null,
+              errorMessage: latestOffsite?.error_message ?? '',
             },
             workers: workers.map(worker => ({
               workerId: worker.worker_id,
@@ -741,6 +816,69 @@ export default createBackendPlugin({
             response.json({ success: true, commandId, status: updated });
           },
         );
+
+        router.post('/worker/offsite-status', async (request, response) => {
+          requireWorker(request);
+          const reporterId = String(request.body?.reporterId ?? '')
+            .trim()
+            .slice(0, 160);
+          const status = String(request.body?.status ?? '').toUpperCase();
+          if (!reporterId || !['VERIFIED', 'FAILED'].includes(status)) {
+            response
+              .status(400)
+              .json({ message: 'valid reporterId and status are required' });
+            return;
+          }
+          const completedAtValue = request.body?.completedAt
+            ? new Date(String(request.body.completedAt))
+            : null;
+          if (
+            completedAtValue &&
+            Number.isNaN(completedAtValue.getTime())
+          ) {
+            response.status(400).json({ message: 'completedAt is invalid' });
+            return;
+          }
+          const reportedAt = new Date();
+          const row = {
+            reporter_id: reporterId,
+            status,
+            backup_name: String(request.body?.backupName ?? '').slice(0, 320),
+            sha256: String(request.body?.sha256 ?? '')
+              .toLowerCase()
+              .slice(0, 64),
+            encrypted_bytes: Math.max(
+              0,
+              Number(request.body?.encryptedBytes ?? 0),
+            ),
+            encryption: String(request.body?.encryption ?? '').slice(0, 120),
+            restore_verified: request.body?.restoreVerified === true,
+            error_message: String(request.body?.errorMessage ?? '').slice(
+              0,
+              2000,
+            ),
+            completed_at: completedAtValue,
+            reported_at: reportedAt,
+          };
+          await knex('resonance_recovery__offsite_status')
+            .insert(row)
+            .onConflict('reporter_id')
+            .merge(row);
+          await knex('resonance_recovery__audit').insert({
+            command_id: null,
+            action_code: `OFFSITE_BACKUP_${status}`,
+            actor_ref: `worker:${reporterId}`,
+            details: JSON.stringify({
+              backupName: row.backup_name,
+              sha256: row.sha256,
+              encryptedBytes: row.encrypted_bytes,
+              encryption: row.encryption,
+              restoreVerified: row.restore_verified,
+            }),
+            created_at: reportedAt,
+          });
+          response.json({ success: true, reporterId, status, reportedAt });
+        });
 
         httpRouter.addAuthPolicy({
           path: '/health',

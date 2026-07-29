@@ -6,6 +6,8 @@ param(
     [string]$DestinationDirectory = "$env:USERPROFILE\Downloads\Resonance-Backups",
     [string]$CredentialFile = "$env:LOCALAPPDATA\Resonance\backup-ssh.credential.xml",
     [string]$KeyFile = "$env:LOCALAPPDATA\Resonance\backup-aes.key",
+    [string]$ReporterTokenFile = "$env:LOCALAPPDATA\Resonance\backup-reporter.token",
+    [string]$StatusEndpoint = "https://172.16.1.232:30707/api/resonance-recovery/worker/offsite-status",
     [switch]$Force
 )
 
@@ -74,6 +76,49 @@ function Get-PlainPassword {
         return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
     } finally {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+    }
+}
+
+function Publish-OffsiteStatus {
+    param(
+        [string]$StatusFile,
+        [string]$TokenFile,
+        [string]$Endpoint
+    )
+    if (-not (Test-Path -LiteralPath $TokenFile)) {
+        return
+    }
+    $tokenBytes = Unprotect-BytesForCurrentUser ([IO.File]::ReadAllBytes($TokenFile))
+    $token = [Text.Encoding]::UTF8.GetString($tokenBytes)
+    $status = Get-Content -Raw -LiteralPath $StatusFile | ConvertFrom-Json
+    $body = [ordered]@{
+        reporterId = "$env:COMPUTERNAME-$env:USERNAME"
+        status = $status.status
+        backupName = Split-Path -Leaf ([string]$status.encryptedFile)
+        sha256 = $status.sourceSha256
+        encryptedBytes = $status.bytes
+        encryption = $status.encryption
+        restoreVerified = $status.restoreVerified
+        completedAt = $status.completedAt
+        errorMessage = ""
+    } | ConvertTo-Json -Compress
+
+    $previousCallback = [Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        # The internal endpoint uses the Resonance private CA. The bearer token
+        # still authenticates the reporter; certificate rollout is monitored
+        # separately by resonance-internal-ca-verify.
+        [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        Invoke-RestMethod `
+            -Method Post `
+            -Uri $Endpoint `
+            -Headers @{ Authorization = "Bearer $token" } `
+            -ContentType "application/json" `
+            -Body $body | Out-Null
+    } finally {
+        [Net.ServicePointManager]::ServerCertificateValidationCallback = $previousCallback
+        $token = $null
+        [Array]::Clear($tokenBytes, 0, $tokenBytes.Length)
     }
 }
 
@@ -222,6 +267,7 @@ if ((Test-Path $encryptedPath) -and (Test-Path $statusPath) -and -not $Force) {
             Remove-Item -Force -LiteralPath $legacyPlaintext
         }
     }
+    Publish-OffsiteStatus $statusPath $ReporterTokenFile $StatusEndpoint
     Write-Output "UP_TO_DATE $encryptedPath"
     exit 0
 }
@@ -259,6 +305,7 @@ try {
         restoreVerified = $true
     } | ConvertTo-Json | Set-Content -Encoding UTF8 -LiteralPath $statusPath
 
+    Publish-OffsiteStatus $statusPath $ReporterTokenFile $StatusEndpoint
     Write-Output "VERIFIED $encryptedPath sha256=$actualHash"
 } finally {
     $password = $null

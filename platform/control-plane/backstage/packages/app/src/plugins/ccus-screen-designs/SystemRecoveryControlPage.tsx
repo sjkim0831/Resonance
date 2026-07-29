@@ -30,6 +30,20 @@ type RecoverySummary = {
     tableCount: number | null;
     evidenceStatus: string | null;
   };
+  offsiteBackup: {
+    health: 'HEALTHY' | 'FAILED' | 'STALE';
+    automaticSchedule: boolean;
+    intervalHours: number;
+    staleAfterHours: number;
+    reporterId: string | null;
+    latestStatus: string;
+    backupName: string | null;
+    encryptedBytes: number;
+    encryption: string | null;
+    restoreVerified: boolean;
+    completedAt: string | null;
+    errorMessage: string;
+  };
   policies: {
     code: string;
     name: string;
@@ -177,6 +191,82 @@ export function SystemRecoveryControlPage() {
               }
             />
           </Box>
+        </Paper>
+
+        <Paper className={classes.panel}>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            flexWrap="wrap"
+          >
+            <Box>
+              <Typography variant="h6">독립 저장소 암호화 백업</Typography>
+              <Typography variant="body2">
+                운영 서버와 다른 물리 장치에 암호화 복제하고 실제 복원
+                해시까지 확인합니다.
+              </Typography>
+            </Box>
+            <Chip
+              color={
+                summary?.offsiteBackup.health === 'HEALTHY'
+                  ? 'primary'
+                  : 'default'
+              }
+              label={
+                summary?.offsiteBackup.health === 'HEALTHY'
+                  ? '정상'
+                  : summary?.offsiteBackup.health === 'FAILED'
+                  ? '실패'
+                  : '확인 필요'
+              }
+            />
+          </Box>
+          <Box className={classes.form} mt={2}>
+            <Box>
+              <Typography variant="caption">실행 주기</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteBackup.automaticSchedule
+                  ? `${summary.offsiteBackup.intervalHours}시간마다`
+                  : '비활성'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">최근 성공</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteBackup.completedAt
+                  ? new Date(
+                      summary.offsiteBackup.completedAt,
+                    ).toLocaleString('ko-KR')
+                  : '성공 기록 없음'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">암호화</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteBackup.encryption ?? '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">복원 검증</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteBackup.restoreVerified
+                  ? 'SHA-256 일치'
+                  : '미검증'}
+              </Typography>
+            </Box>
+          </Box>
+          {summary?.offsiteBackup.health !== 'HEALTHY' ? (
+            <Box mt={2} className={classes.warning}>
+              <Typography variant="body2">
+                최근 {summary?.offsiteBackup.staleAfterHours ?? 12}시간 내
+                검증된 독립 백업이 없습니다.
+                {summary?.offsiteBackup.errorMessage
+                  ? ` ${summary.offsiteBackup.errorMessage}`
+                  : ' PC 예약 작업과 네트워크 상태를 확인하세요.'}
+              </Typography>
+            </Box>
+          ) : null}
         </Paper>
 
         <Paper className={classes.panel}>
