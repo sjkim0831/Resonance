@@ -6,6 +6,7 @@ import { ContractFieldControl } from "./ContractFieldControl";
 import { materializeScreen, resolveScreenCoordinate } from "./screenSpaceRuntime";
 
 type ContractItem = { code: string; label: string; [key: string]: unknown };
+type NextTask = { stepCode: string; actorCode: string; path: string };
 const list = (value: unknown) => Array.isArray(value) ? value.map(item=>typeof item === "string" ? item : String((item as Record<string,unknown>)?.label || (item as Record<string,unknown>)?.name || (item as Record<string,unknown>)?.code || "")).filter(Boolean) : [];
 const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? {code:item||`${prefix}_${index+1}`,label:item} : {...(item as Record<string,unknown>),code:String((item as Record<string,unknown>)?.code||`${prefix}_${index+1}`),label:String((item as Record<string,unknown>)?.label||(item as Record<string,unknown>)?.name||(item as Record<string,unknown>)?.code||`${prefix} ${index+1}`)}).filter(item=>item.label) : [];
 const text = (value: unknown) => typeof value === "string" ? value : "";
@@ -21,26 +22,59 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
   const scenarios = list(screen.traceability.requiredScenarioTypes);
   const kpis = items(spec.kpis,"KPI"), sections = materialized.sections as ContractItem[], fields = materialized.fields as ContractItem[], actions = materialized.actions as ContractItem[], states = list(spec.states);
   const commandCode = text(spec.commandCode) || actions[0]?.code || "COMPLETE";
-  const [tenantId, setTenantId] = useState("DEFAULT"), [projectId, setProjectId] = useState(""), [executionId, setExecutionId] = useState("");
+  const initialProjectId = useMemo(() => new URLSearchParams(location.search).get("projectId") || "", []);
+  const [tenantId, setTenantId] = useState("DEFAULT"), [projectId, setProjectId] = useState(initialProjectId), [executionId, setExecutionId] = useState("");
   const [values, setValues] = useState<Record<string, string>>({}), [draftVersion, setDraftVersion] = useState(0), [draftStatus, setDraftStatus] = useState("NOT_SAVED"), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
+  const [currentState,setCurrentState]=useState(text(spec.fromState)),[nextTask,setNextTask]=useState<NextTask|null>(null);
   const apiBase = en ? "/en/home/api/process-executions" : "/home/api/process-executions";
   const fieldEntries = useMemo<ContractItem[]>(() => fields.length ? fields : [{code:"WORK_NOTE",label:en ? "Work note" : "업무 메모"}], [en, fields]);
 
-  async function request(url: string, body: Record<string, unknown>) {
+  async function request(url: string, body: Record<string, unknown>): Promise<Record<string,unknown>|undefined> {
     setBusy(true); setError(""); setMessage("");
     try {
       const response = await fetch(url, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || (en ? "The request failed." : "업무 요청에 실패했습니다."));
-      if (result.executionId) setExecutionId(String(result.executionId));
+      const execution=(result.execution||result) as Record<string,unknown>;
+      if (execution.executionId) setExecutionId(String(execution.executionId));
+      if (execution.currentState) setCurrentState(String(execution.currentState));
       setMessage(en ? "The process state was saved successfully." : "프로세스 상태와 업무 증적을 저장했습니다.");
+      return result as Record<string,unknown>;
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   }
   async function start(event: FormEvent) { event.preventDefault(); await request(`${apiBase}/start`, { tenantId, projectId, processCode: screen.processCode, actorCode: screen.actorCode }); }
+  async function loadExecution() {
+    if (!requireDraftContext()) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const query=new URLSearchParams({tenantId,projectId,processCode:screen.processCode});
+      const response=await fetch(`${apiBase}?${query}`,{credentials:"include"});
+      const result=await response.json() as Record<string,unknown>;
+      if(!response.ok) throw new Error(String(result.message||(en?"Failed to load the process.":"프로세스 실행 정보를 불러오지 못했습니다.")));
+      const execution=((result.execution||result) as Record<string,unknown>);
+      if(!execution.executionId) throw new Error(en?"No running process exists.":"진행 중인 프로세스가 없습니다.");
+      setExecutionId(String(execution.executionId)); setCurrentState(String(execution.currentState||""));
+      setMessage(en?"The running process was loaded.":"진행 중인 프로세스를 불러왔습니다.");
+    } catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
+    finally{setBusy(false);}
+  }
   async function execute(command: string) {
     if (!executionId) { setError(en ? "Start or load a process first." : "먼저 프로세스를 시작하거나 실행 ID를 입력하세요."); return; }
-    await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, commandCode: command, idempotencyKey: crypto.randomUUID(), requestJson: JSON.stringify(values) });
+    const missing=fieldEntries.filter(field=>field.required===true&&!String(values[field.code]||"").trim());
+    if(missing.length){setError(`${en?"Complete required fields":"필수 항목을 입력하세요"}: ${missing.map(field=>field.label).join(", ")}`);return;}
+    if(draftStatus!=="DRAFT"){setError(en?"Save the work draft before completing this step.":"단계를 완료하기 전에 업무 데이터를 임시저장하세요.");return;}
+    const result=await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, commandCode: command, idempotencyKey: crypto.randomUUID(), requestJson: JSON.stringify(values), requireDraft:true });
+    if(!result)return;
+    setDraftStatus("SUBMITTED"); setCurrentState(String(result.toState||currentState));
+    const nextStepCode=String(result.nextStepCode||"");
+    if(nextStepCode){
+      const path=String((screen.audience==="ADMIN"?result.nextAdminPath:result.nextUserPath)||result.nextUserPath||result.nextAdminPath||"");
+      setNextTask({stepCode:nextStepCode,actorCode:String(result.nextActorCode||""),path});
+      setMessage(en?"Step completed. Continue with the next task.":"현재 단계가 완료되었습니다. 다음 업무를 진행하세요.");
+    }else{
+      setNextTask(null); setMessage(en?"The process is complete.":"프로세스가 완료되었습니다.");
+    }
   }
   function requireDraftContext() {
     if (tenantId.trim() && projectId.trim()) return true;
@@ -99,10 +133,16 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
       <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{fieldEntries.map(field=><ContractFieldControl field={field} key={field.code} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
       {sections.length > 0 && <section className="grid gap-4 md:grid-cols-2">{sections.map(section=><article className="krds-component min-h-36 rounded-xl border bg-white" key={section.code}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{section.label}</h2><p className="gov-text-body-sm mt-3 text-slate-600">{en ? "This section uses the registered shared component and data contract." : "등록된 공통 컴포넌트와 데이터 계약을 사용하는 영역입니다."}</p></article>)}</section>}
     </div><aside className="space-y-5">
+      <section className="krds-component rounded-xl border bg-white">
+        <h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Runtime status" : "실행 상태"}</h2>
+        <p className="gov-text-body-sm mt-2 text-slate-700">{en ? "Current state" : "현재 상태"}: <strong>{currentState || "-"}</strong></p>
+        <button className="krds-control mt-4 w-full rounded-lg border border-[#052b57] bg-white font-black text-[#052b57] disabled:opacity-50" disabled={busy} onClick={()=>void loadExecution()} type="button">{en ? "Load running process" : "진행 중 프로세스 불러오기"}</button>
+      </section>
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>
-      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Commands" : "업무 명령"}</h2><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).map((action,index)=><button className={`krds-control rounded-lg font-black ${index===0 ? "bg-[#246beb] text-white" : "border border-[#246beb] bg-white text-[#246beb]"}`} disabled={busy} key={action.code} onClick={()=>void execute(index===0 ? commandCode : action.code)} type="button">{action.label}</button>)}</div></section>
+      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).slice(0,1).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(commandCode)} type="button">{en ? "Complete and continue" : `${action.label} 완료`}</button>)}</div></section>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Required states and tests" : "필수 상태·테스트"}</h2><div className="mt-3 flex flex-wrap gap-2">{[...states,...scenarios].map(item=><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700" key={item}>{item}</span>)}</div></section>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Contract validation" : "계약 자동 검증"}</h2>{materialized.issues.length ? <ul className="mt-3 space-y-2">{materialized.issues.map(issue=><li className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700" key={issue.code}>{issue.message}</li>)}</ul> : <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{en ? "Screen, data, policy and test contracts are connected." : "화면·데이터·권한·테스트 계약이 모두 연결되었습니다."}</p>}</section>
+      {nextTask&&<section className="krds-component rounded-xl border border-emerald-300 bg-emerald-50"><h2 className="gov-text-heading-sm font-black text-emerald-900">{en ? "Next task" : "다음 업무"}</h2><p className="gov-text-body-sm mt-2 text-emerald-900">{nextTask.stepCode} · {nextTask.actorCode}</p>{nextTask.path&&<a className="krds-control mt-4 inline-flex w-full items-center justify-center rounded-lg bg-emerald-700 font-black text-white" href={`${nextTask.path}${nextTask.path.includes("?")?"&":"?"}projectId=${encodeURIComponent(projectId)}`}>{en ? "Open next task" : "다음 업무 화면 열기"}</a>}</section>}
     </aside></section>
   </main>;
 }

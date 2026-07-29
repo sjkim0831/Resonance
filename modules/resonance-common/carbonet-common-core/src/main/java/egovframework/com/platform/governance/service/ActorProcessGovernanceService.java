@@ -767,13 +767,25 @@ public class ActorProcessGovernanceService {
         if(!requiredActor.equals(actor))throw new SecurityException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
         if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
         if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
+        if(Boolean.parseBoolean(def(b,"requireDraft","false"))){
+            List<Map<String,Object>> drafts=jdbc.queryForList("select draft_status,payload_json from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
+            if(drafts.isEmpty())throw new IllegalStateException("Save the work data before completing this step.");
+            Map<String,Object> draft=drafts.get(0);
+            if(!"DRAFT".equals(String.valueOf(draft.get("draft_status"))))throw new IllegalStateException("Only a DRAFT work item can be completed.");
+            Object payload=draft.get("payload_json");
+            if(payload==null||"{}".equals(String.valueOf(payload)))throw new IllegalStateException("The work draft has no business data.");
+        }
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
         int order=((Number)contract.get("step_order")).intValue();
-        List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
+        List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code,user_path,admin_path from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
         if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,executionId);
         else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,executionId);
         jdbc.update("update framework_process_work_draft set draft_status='SUBMITTED',submitted_at=current_timestamp,updated_at=current_timestamp where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) and draft_status='DRAFT'",tenant,project,process,step,user);
-        return Map.of("success",true,"idempotent",false,"eventId",eventId,"fromState",from,"toState",to,"executionStatus",next.isEmpty()?"COMPLETED":"RUNNING","nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")),"nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("idempotent",false);result.put("eventId",eventId);result.put("fromState",from);result.put("toState",to);
+        result.put("executionStatus",next.isEmpty()?"COMPLETED":"RUNNING");result.put("nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")));
+        result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
+        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));return result;
     }
 
     /**
@@ -796,7 +808,21 @@ public class ActorProcessGovernanceService {
         Map<String,Object> request=new LinkedHashMap<>(context);
         request.put("stepCode",step);request.put("commandCode",command);request.put("idempotencyKey",key);
         request.put("requestJson","{\"smoke\":true}");request.put("resultJson","{\"rolledBack\":true}");
+        jdbc.update("""
+            insert into framework_process_work_draft(
+              tenant_id,project_id,process_code,step_code,actor_code,account_id,
+              payload_json,evidence_json,draft_status,draft_version,created_at,updated_at
+            ) values(?,?,?,?,?,?,?::jsonb,'{}'::jsonb,'DRAFT',1,current_timestamp,current_timestamp)
+            on conflict(tenant_id,project_id,process_code,step_code,account_id)
+            do update set actor_code=excluded.actor_code,payload_json=excluded.payload_json,
+                          draft_status='DRAFT',submitted_at=null,updated_at=current_timestamp
+            """,tenant,project,process,step,actor,account,"{\"runtimeSmoke\":true}");
+        request.put("requireDraft",true);
         Map<String,Object> first=executeProcessCommand(executionId,request,account);
+        String submittedDraftStatus=jdbc.queryForObject(
+            "select draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",
+            String.class,tenant,project,process,step,account);
+        boolean draftSubmittedVerified="SUBMITTED".equals(submittedDraftStatus);
         Map<String,Object> duplicate=executeProcessCommand(executionId,request,account);
         boolean recoveryVerified=Boolean.TRUE.equals(duplicate.get("idempotent"));
         boolean isolationRejected=false;
@@ -830,13 +856,14 @@ public class ActorProcessGovernanceService {
         }
         Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
         boolean workflowCompleted="COMPLETED".equals(executionStatus)&&eventCount!=null&&eventCount==transitions.size();
-        boolean passed=Boolean.TRUE.equals(first.get("success"))&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted;
+        boolean passed=Boolean.TRUE.equals(first.get("success"))&&draftSubmittedVerified&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted;
         TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",passed);result.put("rolledBack",true);result.put("executedBy",executedBy);
         result.put("executionId",executionId);result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
         result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
         result.put("idempotencyVerified",recoveryVerified);result.put("recoveryVerified",recoveryVerified);
+        result.put("draftSubmittedVerified",draftSubmittedVerified);
         result.put("tenantIsolationVerified",isolationRejected);result.put("authorityVerified",authorityRejected);result.put("exceptionVerified",exceptionRejected);
         result.put("workflowCompleted",workflowCompleted);result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
         if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
@@ -1051,9 +1078,30 @@ public class ActorProcessGovernanceService {
                    jsonb_build_object(
                      'domain',coalesce(screen_spec #>> '{dimensions,domainObject}',process_code),
                      'businessPurpose',coalesce(screen_spec #>> '{dimensions,seedScreenId}',step_code),
-                     'commandCode',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE'),
-                     'fromState',state_code,
-                     'toState',state_code,
+                     'commandCode',coalesce((
+                       select runtime_step.command_code
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),screen_spec #>> '{dimensions,action}','COMPLETE'),
+                     'fromState',coalesce((
+                       select runtime_step.from_state
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),state_code),
+                     'toState',coalesce((
+                       select runtime_step.to_state
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),state_code),
+                     'completionRule',coalesce((
+                       select runtime_step.completion_rule
+                         from framework_process_step runtime_step
+                        where runtime_step.process_code=framework_screen_space_spec.process_code
+                          and runtime_step.step_code=framework_screen_space_spec.step_code
+                     ),''),
                      'sections',coalesce(screen_spec #> '{composition,sections}','[]'::jsonb),
                      'fields',coalesce((
                        select jsonb_agg(jsonb_build_object(
@@ -1068,8 +1116,18 @@ public class ActorProcessGovernanceService {
                        where field_name not like '%%.output'
                      ),'[]'::jsonb),
                      'commands',jsonb_build_array(jsonb_build_object(
-                       'code',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE'),
-                       'label',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE')
+                       'code',coalesce((
+                         select runtime_step.command_code
+                           from framework_process_step runtime_step
+                          where runtime_step.process_code=framework_screen_space_spec.process_code
+                            and runtime_step.step_code=framework_screen_space_spec.step_code
+                       ),screen_spec #>> '{dimensions,action}','COMPLETE'),
+                       'label',coalesce((
+                         select runtime_step.step_name
+                           from framework_process_step runtime_step
+                          where runtime_step.process_code=framework_screen_space_spec.process_code
+                            and runtime_step.step_code=framework_screen_space_spec.step_code
+                       ),screen_spec #>> '{dimensions,action}','COMPLETE')
                      )),
                      'states',jsonb_build_array(state_code),
                      'responsive',coalesce(screen_spec #> '{composition,responsive}','[]'::jsonb),
