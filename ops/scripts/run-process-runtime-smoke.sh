@@ -26,7 +26,7 @@ code="$(curl -sS -b "$cookie" -o "$runtime" -w '%{http_code}' -X POST --get --da
 RUNTIME="$runtime" python3 - <<'PY'
 import json, os
 p=json.load(open(os.environ['RUNTIME'],encoding='utf-8'))
-required=('success','rolledBack','requiredValidationRejected','draftRoundTripVerified','staleVersionRejected','draftSubmittedVerified','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted','nextTaskLinkVerified')
+required=('success','rolledBack','requiredValidationVerified','draftRoundTripVerified','staleVersionRejected','draftSubmittedVerified','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted','nextTaskLinkVerified')
 if not all(p.get(k) is True for k in required):
     raise SystemExit(f'runtime assertions failed: {p}')
 for key in ('processCode','stepCode','actorCode','stateTransition'):

@@ -855,16 +855,20 @@ public class ActorProcessGovernanceService {
                and coalesce((field->>'editable')::boolean,false)
             """,Integer.class,process,step,process,step);
         jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,account);
-        Map<String,Object> incompleteDraft=saveWorkDraft(Map.of(
-            "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
-            "actorCode",actor,"payloadJson","{\"runtimeMarker\":\"incomplete\"}","evidenceJson","{}","expectedVersion",0
-        ),account);
         request.put("requireDraft",true);
         boolean requiredValidationRejected=false;
-        try{
-            executeProcessCommand(executionId,request,account);
-        }catch(IllegalStateException expected){requiredValidationRejected=expected.getMessage()!=null&&expected.getMessage().startsWith("Required work fields are missing:");}
-        int incompleteVersion=((Number)((Map<?,?>)incompleteDraft.get("draft")).get("draftVersion")).intValue();
+        int incompleteVersion=0;
+        if(requiredFieldCount!=null&&requiredFieldCount>0){
+            Map<String,Object> incompleteDraft=saveWorkDraft(Map.of(
+                "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+                "actorCode",actor,"payloadJson","{\"runtimeMarker\":\"incomplete\"}","evidenceJson","{}","expectedVersion",0
+            ),account);
+            try{
+                executeProcessCommand(executionId,request,account);
+            }catch(IllegalStateException expected){requiredValidationRejected=expected.getMessage()!=null&&expected.getMessage().startsWith("Required work fields are missing:");}
+            incompleteVersion=((Number)((Map<?,?>)incompleteDraft.get("draft")).get("draftVersion")).intValue();
+        }
+        boolean requiredValidationVerified=(requiredFieldCount==null||requiredFieldCount==0)||requiredValidationRejected;
         Map<String,Object> savedDraft=saveWorkDraft(Map.of(
             "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
             "actorCode",actor,"payloadJson",smokePayload,"evidenceJson","{\"runtimeSmoke\":true}","expectedVersion",incompleteVersion
@@ -924,7 +928,7 @@ public class ActorProcessGovernanceService {
         boolean workflowCompleted="COMPLETED".equals(executionStatus)&&eventCount!=null&&eventCount==transitions.size();
         boolean nextTaskLinkVerified=!String.valueOf(first.getOrDefault("nextStepCode","")).isBlank()
             && (!String.valueOf(first.getOrDefault("nextUserPath","")).isBlank()||!String.valueOf(first.getOrDefault("nextAdminPath","")).isBlank());
-        boolean passed=Boolean.TRUE.equals(first.get("success"))&&requiredValidationRejected&&draftRoundTripVerified&&staleVersionRejected
+        boolean passed=Boolean.TRUE.equals(first.get("success"))&&requiredValidationVerified&&draftRoundTripVerified&&staleVersionRejected
             &&draftSubmittedVerified&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted&&nextTaskLinkVerified;
         TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         Map<String,Object> result=new LinkedHashMap<>();
@@ -932,7 +936,8 @@ public class ActorProcessGovernanceService {
         result.put("executionId",executionId);result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
         result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
         result.put("idempotencyVerified",recoveryVerified);result.put("recoveryVerified",recoveryVerified);
-        result.put("requiredValidationRejected",requiredValidationRejected);result.put("draftRoundTripVerified",draftRoundTripVerified);
+        result.put("requiredValidationVerified",requiredValidationVerified);result.put("requiredValidationRejected",requiredValidationRejected);
+        result.put("draftRoundTripVerified",draftRoundTripVerified);
         result.put("staleVersionRejected",staleVersionRejected);result.put("editableFieldCount",editableFieldCount==null?0:editableFieldCount);
         result.put("requiredFieldCount",requiredFieldCount==null?0:requiredFieldCount);result.put("reloadedFieldCount",reloadedFieldCount==null?0:reloadedFieldCount);
         result.put("draftSubmittedVerified",draftSubmittedVerified);
