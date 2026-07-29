@@ -4,6 +4,7 @@ import egovframework.com.platform.codex.service.AuthGroupManageService;
 import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
 import egovframework.com.feature.auth.external.service.AuthTokenLoginService;
 import egovframework.com.feature.auth.service.AuthTokenStoreService;
+import egovframework.com.feature.auth.service.AdminConsoleAccessPolicy;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,6 +117,6 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
     }
 
     private boolean canEnterAdminConsole(LoginResponseDTO loginResult) {
-        return loginResult != null && !safeString(loginResult.getUserId()).isEmpty();
+        return loginResult != null && AdminConsoleAccessPolicy.allows(loginResult.getAuthorCode());
     }
 }

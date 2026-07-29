@@ -8,6 +8,7 @@ import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
 import egovframework.com.feature.auth.service.AuthService;
 import egovframework.com.feature.auth.service.AuthTokenStoreService;
 import egovframework.com.feature.auth.service.AccountRecoveryService;
+import egovframework.com.feature.auth.service.AdminConsoleAccessPolicy;
 import egovframework.com.feature.auth.util.ClientIpUtil;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
@@ -293,7 +294,7 @@ public class AuthApiController {
     }
 
     private boolean canEnterAdminConsole(LoginResponseDTO loginResult) {
-        return loginResult != null && !safeString(loginResult.getUserId()).isEmpty();
+        return loginResult != null && AdminConsoleAccessPolicy.allows(loginResult.getAuthorCode());
     }
 
     @GetMapping("/validateRefreshToken")

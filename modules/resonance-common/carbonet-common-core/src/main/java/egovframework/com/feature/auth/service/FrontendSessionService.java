@@ -57,7 +57,9 @@ public class FrontendSessionService {
     }
 
     private boolean canEnterAdminConsole(CurrentUserContextService.CurrentUserContext context) {
-        return context != null && context.isAuthenticated();
+        return context != null
+                && context.isAuthenticated()
+                && AdminConsoleAccessPolicy.allows(context.getAuthorCode());
     }
 
     private String safeString(String value) {
