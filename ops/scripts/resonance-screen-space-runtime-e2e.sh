@@ -147,7 +147,7 @@ curl --silent --show-error --fail \
       and (.specificationJson | fromjson | .screenSpace.coordinate) == $coordinate
       and (.specificationJson | fromjson | .fields | length) == 2
       and (.specificationJson | fromjson | .fields[0] | has("code") and has("control") and has("required"))
-      and (.specificationJson | fromjson | .apiContracts | map(.code) | sort) == ["EXECUTE_COMMAND","LOAD_DRAFT","SAVE_DRAFT"]
+      and (.specificationJson | fromjson | .apiContracts | map(.code) | sort) == ["EXECUTE_COMMAND","LOAD_DRAFT","LOAD_FIELD_OPTIONS","SAVE_DRAFT"]
       and (.specificationJson | fromjson | .permissions[0].scope) == "TENANT_PROJECT"
       and (.specificationJson | fromjson | .validations | length) == 2
       and (.traceabilityJson | fromjson | .requiredScenarioTypes | length) == 5

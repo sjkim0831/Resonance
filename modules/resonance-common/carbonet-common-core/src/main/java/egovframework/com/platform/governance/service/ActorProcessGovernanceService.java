@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -958,6 +959,43 @@ public class ActorProcessGovernanceService {
         return out;
     }
 
+    public Map<String,Object> generatedFieldOptions(String tenant,String project,String process,String step,String keyword,String user){
+        String actor=jdbc.queryForObject("select actor_code from framework_process_step where process_code=? and step_code=?",String.class,process,step);
+        requireActorAssignment(tenant,project,actor,user);
+        String search=keyword==null?"":keyword.trim().toLowerCase(Locale.ROOT);
+        String like="%"+search+"%";
+        List<Map<String,Object>> fields=jdbc.queryForList("""
+            select field->>'fieldCode' as "fieldCode",upper(coalesce(field->>'controlType','TEXT')) as "controlType"
+              from jsonb_array_elements(coalesce(
+                (select execution_spec.field_contract->'fields' from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+              )) field
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'editable')::boolean,false)
+            """,process,step,process,step);
+        Map<String,Object> optionSets=new LinkedHashMap<>();
+        for(Map<String,Object> field:fields){
+            String fieldCode=String.valueOf(field.get("fieldCode")),control=String.valueOf(field.get("controlType"));
+            List<Map<String,Object>> options;
+            switch(control){
+                case "PROJECT_SELECT" -> options=jdbc.queryForList("select project_id::text as value,project_name as label from emission_project_registry where project_id=? and tenant_id=? order by project_name limit 50",project,tenant);
+                case "ACTOR_SELECT" -> options=jdbc.queryForList("select distinct actor_code as value,actor_code as label from framework_account_actor_assignment where tenant_id=? and project_id=? and assignment_status='ACTIVE' order by actor_code limit 50",tenant,project);
+                case "ORGANIZATION_SELECT" -> options=jdbc.queryForList("select distinct coalesce(nullif(instt_id,''),entrprs_mber_id) as value,coalesce(nullif(cmpny_nm,''),entrprs_mber_id) as label from comtnentrprsmber where entrprs_mber_sttus in ('P','A') and (lower(coalesce(cmpny_nm,'')) like ? or lower(coalesce(instt_id,'')) like ?) order by label limit 50",like,like);
+                case "SITE_SELECT" -> options=jdbc.queryForList("select site_code as value,site_name as label from emission_site_registry where tenant_id=? and site_status='ACTIVE' and (lower(site_name) like ? or lower(site_code) like ?) order by site_name limit 50",tenant,like,like);
+                case "SCOPE_SELECT" -> options=List.of(option("SCOPE1","Scope 1"),option("SCOPE2","Scope 2"),option("SCOPE3","Scope 3"));
+                case "UNIT_SELECT" -> options=jdbc.queryForList("select distinct unit as value,unit as label from emission_factor_reference where nullif(unit,'') is not null and lower(unit) like ? order by unit limit 50",like);
+                case "FACTOR_SEARCH" -> options=jdbc.queryForList("select factor_id as value,factor_name||' · '||factor_value::text||' '||unit as label from emission_factor_reference where lower(factor_name) like ? or lower(factor_id) like ? order by factor_name limit 50",like,like);
+                case "QUALITY_BADGE" -> options=List.of(option("READY","정상"),option("CHECK_REQUIRED","확인 필요"),option("BLOCKED","차단"));
+                default -> options=new ArrayList<>();
+            }
+            if(!options.isEmpty())optionSets.put(fieldCode,options);
+        }
+        return Map.of("success",true,"tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,"optionSets",optionSets);
+    }
+
+    private static Map<String,Object> option(String value,String label){return Map.of("value",value,"label",label);}
+
     @Transactional public Map<String,Object> claimDevelopmentJob(String worker){
         List<Map<String,Object>> rows=jdbc.queryForList("select j.* from framework_development_job j left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y' where j.approval_status='APPROVED' and (j.job_status in ('PLANNED','RETRY') or (j.job_status='RUNNING' and j.lease_until<current_timestamp)) and j.attempt_count<j.max_attempts and not exists(select 1 from framework_development_job_dependency d join framework_development_job required_job on required_job.job_id=d.depends_on_job_id where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status not in ('VERIFIED','COMPLETED')) order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id for update of j skip locked limit 1");
         if(rows.isEmpty())return Map.of("success",true,"available",false);
@@ -1183,6 +1221,7 @@ public class ActorProcessGovernanceService {
                      'dataContracts',coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb),
                      'apiContracts',jsonb_build_array(
                        jsonb_build_object('code','LOAD_DRAFT','method','GET','path','/home/api/process-executions/draft'),
+                       jsonb_build_object('code','LOAD_FIELD_OPTIONS','method','GET','path','/home/api/process-executions/field-options'),
                        jsonb_build_object('code','SAVE_DRAFT','method','PUT','path','/home/api/process-executions/draft'),
                        jsonb_build_object('code','EXECUTE_COMMAND','method','POST','path','/home/api/process-executions/{executionId}/commands')
                      ),

@@ -26,8 +26,24 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
   const [tenantId, setTenantId] = useState("DEFAULT"), [projectId, setProjectId] = useState(initialProjectId), [executionId, setExecutionId] = useState("");
   const [values, setValues] = useState<Record<string, string>>({}), [draftVersion, setDraftVersion] = useState(0), [draftStatus, setDraftStatus] = useState("NOT_SAVED"), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
   const [currentState,setCurrentState]=useState(text(spec.fromState)),[nextTask,setNextTask]=useState<NextTask|null>(null);
+  const [optionSets,setOptionSets]=useState<Record<string,Array<{value:string;label:string}>>>({});
   const apiBase = en ? "/en/home/api/process-executions" : "/home/api/process-executions";
   const fieldEntries = useMemo<ContractItem[]>(() => fields.length ? fields : [{code:"WORK_NOTE",label:en ? "Work note" : "업무 메모"}], [en, fields]);
+  const resolvedFieldEntries=useMemo(()=>fieldEntries.map(field=>({...field,options:optionSets[field.code]||field.options})),[fieldEntries,optionSets]);
+
+  useEffect(()=>{
+    if(!tenantId.trim()||!projectId.trim())return;
+    const controller=new AbortController();
+    const query=new URLSearchParams({tenantId,projectId,processCode:screen.processCode,stepCode:screen.stepCode});
+    fetch(`${apiBase}/field-options?${query}`,{credentials:"include",signal:controller.signal})
+      .then(async response=>{
+        const result=await response.json() as Record<string,unknown>;
+        if(!response.ok)throw new Error(String(result.message||"Failed to load field options."));
+        setOptionSets((result.optionSets||{}) as Record<string,Array<{value:string;label:string}>>);
+      })
+      .catch(reason=>{if((reason as Error).name!=="AbortError")setError(reason instanceof Error?reason.message:String(reason));});
+    return()=>controller.abort();
+  },[apiBase,projectId,screen.processCode,screen.stepCode,tenantId]);
 
   async function request(url: string, body: Record<string, unknown>): Promise<Record<string,unknown>|undefined> {
     setBusy(true); setError(""); setMessage("");
@@ -130,7 +146,7 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
     {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"><div className="space-y-6">
       {kpis.length > 0 && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item=><article className="krds-component rounded-xl border bg-white" key={item.code}><span className="gov-text-label font-bold text-slate-500">{item.label}</span><strong className="gov-text-heading-md mt-2 block text-[#052b57]">-</strong></article>)}</section>}
-      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{fieldEntries.map(field=><ContractFieldControl field={field} key={field.code} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
+      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{resolvedFieldEntries.map(field=><ContractFieldControl field={field} key={field.code} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
       {sections.length > 0 && <section className="grid gap-4 md:grid-cols-2">{sections.map(section=><article className="krds-component min-h-36 rounded-xl border bg-white" key={section.code}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{section.label}</h2><p className="gov-text-body-sm mt-3 text-slate-600">{en ? "This section uses the registered shared component and data contract." : "등록된 공통 컴포넌트와 데이터 계약을 사용하는 영역입니다."}</p></article>)}</section>}
     </div><aside className="space-y-5">
       <section className="krds-component rounded-xl border bg-white">

@@ -52,6 +52,16 @@ public class ProcessExecutionApiController {
         catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
     }
 
+    @GetMapping("/field-options")
+    public ResponseEntity<?> fieldOptions(@RequestParam String tenantId,@RequestParam String projectId,
+                                          @RequestParam String processCode,@RequestParam String stepCode,
+                                          @RequestParam(defaultValue="") String keyword,HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.generatedFieldOptions(tenantId,projectId,processCode,stepCode,keyword,principal.getName()));}
+        catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
+    }
+
     @PutMapping("/draft")
     public ResponseEntity<?> saveDraft(@RequestBody Map<String,Object> body,HttpServletRequest request){
         Principal principal=request.getUserPrincipal();

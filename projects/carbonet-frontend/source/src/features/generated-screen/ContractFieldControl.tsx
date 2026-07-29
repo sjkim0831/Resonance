@@ -22,7 +22,7 @@ export function ContractFieldControl({field,value,onChange}:Props) {
   const common={id:`contract-field-${field.code}`,name:field.code,required,disabled,"aria-describedby":description?`contract-field-help-${field.code}`:undefined};
   let control;
   if(kind.includes("TEXTAREA")||kind.includes("MULTILINE")) control=<textarea {...common} className={`${controlClass} min-h-28 py-3`} maxLength={number(field.maxLength)} placeholder={String(field.placeholder||"")} value={value} onChange={event=>onChange(event.target.value)}/>;
-  else if((kind.includes("SELECT")||kind.includes("COMBO")||kind.includes("CODE"))&&choices.length>0) control=<select {...common} className={controlClass} value={value} onChange={event=>onChange(event.target.value)}><option value="">선택</option>{choices.map(choice=><option key={choice.value} value={choice.value}>{choice.label}</option>)}</select>;
+  else if((kind.includes("SELECT")||kind.includes("COMBO")||kind.includes("CODE")||kind.includes("SEARCH")||kind.includes("BADGE"))&&choices.length>0) control=<select {...common} className={controlClass} value={value} onChange={event=>onChange(event.target.value)}><option value="">선택</option>{choices.map(choice=><option key={choice.value} value={choice.value}>{choice.label}</option>)}</select>;
   else if(kind.includes("BOOLEAN")||kind.includes("CHECKBOX")) control=<input {...common} checked={value==="true"} className="mt-2 size-5 accent-[#246beb]" type="checkbox" onChange={event=>onChange(String(event.target.checked))}/>;
   else {
     const type=kind.includes("NUMBER")||kind.includes("DECIMAL")||kind.includes("INTEGER")?"number":kind.includes("DATE")?"date":kind.includes("EMAIL")?"email":kind.includes("URL")?"url":kind.includes("TEL")||kind.includes("PHONE")?"tel":"text";
