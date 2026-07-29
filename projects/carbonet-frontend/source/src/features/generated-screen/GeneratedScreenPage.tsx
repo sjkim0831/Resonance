@@ -2,11 +2,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { findGeneratedScreen, type GeneratedScreenDefinition } from "../../generated/screen-generation/generatedScreenCatalog";
 import { isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
+import { ContractFieldControl } from "./ContractFieldControl";
 import { materializeScreen, resolveScreenCoordinate } from "./screenSpaceRuntime";
 
 type ContractItem = { code: string; label: string; [key: string]: unknown };
 const list = (value: unknown) => Array.isArray(value) ? value.map(item=>typeof item === "string" ? item : String((item as Record<string,unknown>)?.label || (item as Record<string,unknown>)?.name || (item as Record<string,unknown>)?.code || "")).filter(Boolean) : [];
-const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? {code:`${prefix}_${index+1}`,label:item} : {...(item as Record<string,unknown>),code:String((item as Record<string,unknown>)?.code||`${prefix}_${index+1}`),label:String((item as Record<string,unknown>)?.label||(item as Record<string,unknown>)?.name||(item as Record<string,unknown>)?.code||`${prefix} ${index+1}`)}).filter(item=>item.label) : [];
+const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? {code:item||`${prefix}_${index+1}`,label:item} : {...(item as Record<string,unknown>),code:String((item as Record<string,unknown>)?.code||`${prefix}_${index+1}`),label:String((item as Record<string,unknown>)?.label||(item as Record<string,unknown>)?.name||(item as Record<string,unknown>)?.code||`${prefix} ${index+1}`)}).filter(item=>item.label) : [];
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const inputClass = "krds-control h-11 w-full rounded-lg border border-slate-300 bg-white px-3 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
 
@@ -21,7 +22,7 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
   const kpis = items(spec.kpis,"KPI"), sections = materialized.sections as ContractItem[], fields = materialized.fields as ContractItem[], actions = materialized.actions as ContractItem[], states = list(spec.states);
   const commandCode = text(spec.commandCode) || actions[0]?.code || "COMPLETE";
   const [tenantId, setTenantId] = useState("DEFAULT"), [projectId, setProjectId] = useState(""), [executionId, setExecutionId] = useState("");
-  const [values, setValues] = useState<Record<string, string>>({}), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
+  const [values, setValues] = useState<Record<string, string>>({}), [draftVersion, setDraftVersion] = useState(0), [draftStatus, setDraftStatus] = useState("NOT_SAVED"), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
   const apiBase = en ? "/en/home/api/process-executions" : "/home/api/process-executions";
   const fieldEntries = useMemo<ContractItem[]>(() => fields.length ? fields : [{code:"WORK_NOTE",label:en ? "Work note" : "업무 메모"}], [en, fields]);
 
@@ -41,6 +42,42 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
     if (!executionId) { setError(en ? "Start or load a process first." : "먼저 프로세스를 시작하거나 실행 ID를 입력하세요."); return; }
     await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, commandCode: command, idempotencyKey: crypto.randomUUID(), requestJson: JSON.stringify(values) });
   }
+  function requireDraftContext() {
+    if (tenantId.trim() && projectId.trim()) return true;
+    setError(en ? "Enter the tenant and project ID first." : "테넌트와 프로젝트 ID를 먼저 입력하세요.");
+    return false;
+  }
+  async function loadDraft() {
+    if (!requireDraftContext()) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const query = new URLSearchParams({tenantId,projectId,processCode:screen.processCode,stepCode:screen.stepCode});
+      const response = await fetch(`${apiBase}/draft?${query}`, {credentials:"include"});
+      const result = await response.json();
+      if(!response.ok) throw new Error(result.message||(en?"Failed to load the draft.":"임시저장을 불러오지 못했습니다."));
+      const draft=(result.draft||{}) as Record<string,unknown>;
+      if(result.found&&typeof draft.payloadJson==="string"){
+        const loaded=JSON.parse(draft.payloadJson) as Record<string,unknown>;
+        setValues(Object.fromEntries(Object.entries(loaded).map(([key,value])=>[key,value==null?"":String(value)])));
+      }
+      setDraftVersion(Number(draft.draftVersion||0)); setDraftStatus(String(draft.draftStatus||"NOT_SAVED"));
+      setMessage(result.found?(en?"The latest draft was loaded.":"최신 임시저장을 불러왔습니다."):(en?"No saved draft exists.":"저장된 임시저장이 없습니다."));
+    } catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
+    finally{setBusy(false);}
+  }
+  async function saveDraft() {
+    if (!requireDraftContext()) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const response=await fetch(`${apiBase}/draft`,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenantId,projectId,processCode:screen.processCode,stepCode:screen.stepCode,actorCode:screen.actorCode,payloadJson:JSON.stringify(values),evidenceJson:"{}",expectedVersion:draftVersion})});
+      const result=await response.json();
+      if(!response.ok) throw new Error(result.message||(en?"Failed to save the draft.":"임시저장에 실패했습니다."));
+      const draft=(result.draft||{}) as Record<string,unknown>;
+      setDraftVersion(Number(draft.draftVersion||draftVersion+1)); setDraftStatus(String(draft.draftStatus||"DRAFT"));
+      setMessage(en?"The draft was saved transactionally.":"업무 데이터가 트랜잭션으로 임시저장되었습니다.");
+    } catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
+    finally{setBusy(false);}
+  }
 
   return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="gov-text-label font-black text-[#246beb]">{screen.processCode} · {screen.stepCode}</p><h1 className="gov-text-heading-lg mt-2 font-black text-[#052b57]">{screen.pageName}</h1><p className="gov-text-body mt-2 max-w-3xl text-slate-600">{text(spec.businessPurpose) || `${screen.actorCode} · ${screen.screenType}`}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={en ? "/en/emission/my-tasks" : "/emission/my-tasks"}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></header>
@@ -59,7 +96,7 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
     {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"><div className="space-y-6">
       {kpis.length > 0 && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item=><article className="krds-component rounded-xl border bg-white" key={item.code}><span className="gov-text-label font-bold text-slate-500">{item.label}</span><strong className="gov-text-heading-md mt-2 block text-[#052b57]">-</strong></article>)}</section>}
-      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p><div className="mt-5 grid gap-4 md:grid-cols-2">{fieldEntries.map(field=><label className="gov-text-label font-bold text-slate-700" key={field.code}>{field.label}<input className={`${inputClass} mt-2`} value={values[field.code] || ""} onChange={event=>setValues(current=>({...current,[field.code]:event.target.value}))}/></label>)}</div></section>
+      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{fieldEntries.map(field=><ContractFieldControl field={field} key={field.code} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
       {sections.length > 0 && <section className="grid gap-4 md:grid-cols-2">{sections.map(section=><article className="krds-component min-h-36 rounded-xl border bg-white" key={section.code}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{section.label}</h2><p className="gov-text-body-sm mt-3 text-slate-600">{en ? "This section uses the registered shared component and data contract." : "등록된 공통 컴포넌트와 데이터 계약을 사용하는 영역입니다."}</p></article>)}</section>}
     </div><aside className="space-y-5">
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>

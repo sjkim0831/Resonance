@@ -1055,13 +1055,37 @@ public class ActorProcessGovernanceService {
                      'fromState',state_code,
                      'toState',state_code,
                      'sections',coalesce(screen_spec #> '{composition,sections}','[]'::jsonb),
-                     'fields',coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb),
+                     'fields',coalesce((
+                       select jsonb_agg(jsonb_build_object(
+                         'code',field_name,
+                         'label',initcap(replace(replace(field_name,'.',' '),'_',' ')),
+                         'dataType','STRING',
+                         'control','TEXT',
+                         'required',field_name in ('tenantId','companyId','projectId')
+                       ) order by ordinal)
+                       from jsonb_array_elements_text(coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb))
+                            with ordinality as contract_field(field_name,ordinal)
+                       where field_name not like '%%.output'
+                     ),'[]'::jsonb),
                      'commands',jsonb_build_array(jsonb_build_object(
                        'code',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE'),
                        'label',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE')
                      )),
                      'states',jsonb_build_array(state_code),
                      'responsive',coalesce(screen_spec #> '{composition,responsive}','[]'::jsonb),
+                     'dataContracts',coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb),
+                     'apiContracts',jsonb_build_array(
+                       jsonb_build_object('code','LOAD_DRAFT','method','GET','path','/home/api/process-executions/draft'),
+                       jsonb_build_object('code','SAVE_DRAFT','method','PUT','path','/home/api/process-executions/draft'),
+                       jsonb_build_object('code','EXECUTE_COMMAND','method','POST','path','/home/api/process-executions/{executionId}/commands')
+                     ),
+                     'permissions',jsonb_build_array(jsonb_build_object(
+                       'code',actor_code,'scope','TENANT_PROJECT','serverAuthorization',true
+                     )),
+                     'validations',jsonb_build_array(
+                       jsonb_build_object('code','REQUIRED_FIELDS','type','CONTRACT'),
+                       jsonb_build_object('code','OPTIMISTIC_VERSION','type','CONCURRENCY')
+                     ),
                      'screenSpace',screen_spec
                    )::text as "specificationJson",
                    jsonb_build_object(
@@ -1069,6 +1093,7 @@ public class ActorProcessGovernanceService {
                      'coordinate',coordinate_key,
                      'specSha256',specification_hash,
                      'validationStatus',validation_status,
+                     'requiredScenarioTypes',jsonb_build_array('HAPPY_PATH','VALIDATION_ERROR','FORBIDDEN','CONFLICT','RECOVERY'),
                      'publishedAt',published_at
                    )::text as "traceabilityJson",
                    validation_status as "validationStatus",
