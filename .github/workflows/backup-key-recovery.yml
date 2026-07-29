@@ -1,0 +1,95 @@
+name: Backup key emergency rewrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipient_public_key_b64:
+        description: Base64-encoded RSA public key in PEM format
+        required: true
+        type: string
+      recovery_ticket:
+        description: Approved disaster recovery ticket
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  rewrap:
+    name: Rewrap backup key for recovery custodian
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: backup-key-recovery
+    steps:
+      - name: Validate request and rewrap secret
+        shell: bash
+        env:
+          BACKUP_MASTER_KEY_B64: ${{ secrets.RESONANCE_BACKUP_MASTER_KEY_B64 }}
+          RECIPIENT_PUBLIC_KEY_B64: ${{ inputs.recipient_public_key_b64 }}
+          EXPECTED_FINGERPRINT: 7018d4223215c98b76bb64d445d65d2c15fecbb9a362391acaa8e831da4e36f8
+          RECOVERY_TICKET: ${{ inputs.recovery_ticket }}
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          work_dir="$(mktemp -d)"
+          cleanup() {
+            find "$work_dir" -type f -exec shred -u {} + 2>/dev/null || true
+            rm -rf "$work_dir"
+          }
+          trap cleanup EXIT
+
+          [[ "$RECOVERY_TICKET" =~ ^[A-Za-z0-9._/-]{4,120}$ ]] || {
+            echo "Invalid recovery ticket format" >&2
+            exit 2
+          }
+          [[ -n "$BACKUP_MASTER_KEY_B64" ]] || {
+            echo "Backup escrow secret is not configured" >&2
+            exit 3
+          }
+
+          printf '%s' "$RECIPIENT_PUBLIC_KEY_B64" |
+            base64 --decode > "$work_dir/recipient-public.pem"
+          openssl pkey -pubin -in "$work_dir/recipient-public.pem" -noout
+
+          printf '%s' "$BACKUP_MASTER_KEY_B64" |
+            base64 --decode > "$work_dir/backup-master.key"
+          [[ "$(wc -c < "$work_dir/backup-master.key")" -eq 64 ]] || {
+            echo "Escrow key length is invalid" >&2
+            exit 4
+          }
+          actual_fingerprint="$(
+            sha256sum "$work_dir/backup-master.key" | awk '{print $1}'
+          )"
+          [[ "$actual_fingerprint" == "$EXPECTED_FINGERPRINT" ]] || {
+            echo "Escrow key fingerprint mismatch" >&2
+            exit 5
+          }
+
+          openssl pkeyutl -encrypt \
+            -pubin \
+            -inkey "$work_dir/recipient-public.pem" \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in "$work_dir/backup-master.key" \
+            -out backup-master-key.rsa-oaep-sha256.enc
+
+          cat > backup-key-recovery-manifest.json <<EOF
+          {
+            "recoveryTicket": "$RECOVERY_TICKET",
+            "keyFingerprint": "$EXPECTED_FINGERPRINT",
+            "wrapping": "RSA-OAEP-SHA256",
+            "createdAt": "$(date -u +%FT%TZ)"
+          }
+          EOF
+
+      - name: Upload encrypted recovery package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: resonance-backup-key-recovery-${{ github.run_id }}
+          path: |
+            backup-master-key.rsa-oaep-sha256.enc
+            backup-key-recovery-manifest.json
+          if-no-files-found: error
+          retention-days: 1
+
