@@ -11,12 +11,20 @@ case "$(readlink -f "$TMPDIR")" in
   *) echo "[backstage] unsafe build temp path: $TMPDIR" >&2; exit 2 ;;
 esac
 export TMPDIR
+WORKTREE_LOCKED=false
+if [[ -f "$ROOT/.git" ]]; then
+  git -C "$ROOT" worktree lock --reason "resonance-backstage-deploy" "$ROOT"
+  WORKTREE_LOCKED=true
+fi
 cleanup_build_tmp() {
   local resolved
   resolved="$(readlink -f "$TMPDIR" 2>/dev/null || true)"
   case "$resolved" in
     "$(readlink -f "$BUILD_TMP_ROOT")"/*) rm -rf -- "$resolved" ;;
   esac
+  if [[ "$WORKTREE_LOCKED" == "true" ]]; then
+    git -C "$ROOT" worktree unlock "$ROOT" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup_build_tmp EXIT
 MANIFEST="$ROOT/deploy/k8s/control-plane/backstage.yaml"
