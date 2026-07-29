@@ -347,13 +347,19 @@ run_backstage_visual_e2e_if_required() {
 }
 
 run_backstage_identity_e2e_if_required() {
-  [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
+     && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* ]]; then
+    return 0
+  fi
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-identity-admin-e2e.sh
 }
 
 run_backstage_screen_space_e2e_if_required() {
-  [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
+     && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* ]]; then
+    return 0
+  fi
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-screen-space-runtime-e2e.sh
 }
