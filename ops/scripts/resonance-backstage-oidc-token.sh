@@ -23,8 +23,11 @@ mkdir -p "$WORK_ROOT"
 chmod 700 "$WORK_ROOT"
 run_dir="$(mktemp -d "$WORK_ROOT/run.XXXXXXXX")"
 trap 'rm -rf "$run_dir"' EXIT
-password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak-e2e-users \
-  -o jsonpath='{.data.PASSWORD}' | base64 -d)"
+password="${BACKSTAGE_E2E_PASSWORD:-}"
+if [[ -z "$password" ]]; then
+  password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak-e2e-users \
+    -o jsonpath='{.data.PASSWORD}' | base64 -d)"
+fi
 [[ -n "$password" ]] || {
   echo "[oidc-token] identity credential is missing" >&2
   exit 2
