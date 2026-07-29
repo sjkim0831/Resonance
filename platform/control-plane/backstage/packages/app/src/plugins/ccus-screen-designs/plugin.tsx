@@ -11,6 +11,7 @@ const projectControlRouteRef = createRouteRef();
 const controlAssetsRouteRef = createRouteRef();
 const actorProcessControlRouteRef = createRouteRef();
 const designAssetControlRouteRef = createRouteRef();
+const identityAdministrationRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -95,6 +96,20 @@ const designAssetControlPage = PageBlueprint.make({
   },
 });
 
+const identityAdministrationPage = PageBlueprint.make({
+  name: 'identity-administration',
+  params: {
+    routeRef: identityAdministrationRouteRef,
+    path: '/identity-administration',
+    title: 'Resonance 통합계정 관리',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./IdentityAdministrationPage').then(module => (
+        <module.IdentityAdministrationPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -106,6 +121,7 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     controlAssets: controlAssetsRouteRef,
     actorProcessControl: actorProcessControlRouteRef,
     designAssetControl: designAssetControlRouteRef,
+    identityAdministration: identityAdministrationRouteRef,
   },
   extensions: [
     screenDesignsPage,
@@ -114,5 +130,6 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     controlAssetsPage,
     actorProcessControlPage,
     designAssetControlPage,
+    identityAdministrationPage,
   ],
 });
