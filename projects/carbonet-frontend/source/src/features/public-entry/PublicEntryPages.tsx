@@ -267,7 +267,7 @@ export function PublicLoginPage() {
         && !requestedReturnUrl.includes("/login")
           ? requestedReturnUrl
           : null;
-      const redirectUrl = body.userSe === "USR"
+      const redirectUrl = body.canEnterAdminConsole === true
         ? buildLocalizedPath("/admin/", "/en/admin/")
         : body.certified === false
           ? buildLocalizedPath("/signin/authChoice", "/en/signin/authChoice")
