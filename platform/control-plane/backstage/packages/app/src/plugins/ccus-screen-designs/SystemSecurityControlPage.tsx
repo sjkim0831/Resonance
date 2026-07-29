@@ -6,7 +6,9 @@ import {
   Button,
   Chip,
   Grid,
+  MenuItem,
   Paper,
+  TextField,
   Typography,
   makeStyles,
 } from '@material-ui/core';
@@ -30,11 +32,34 @@ type SecuritySummary = {
   auditCounts: Record<string, number>;
 };
 
+type SecurityPolicy = {
+  policyCode: string;
+  policyName: string;
+  description: string;
+  enabled: boolean;
+  configuration: Record<string, unknown>;
+  updatedBy: string;
+  updatedAt: string;
+};
+
+type NetworkRule = {
+  ruleId: string;
+  ruleType: 'ALLOW_IP' | 'BLOCK_IP' | 'BLOCK_SUBJECT';
+  value: string;
+  reason: string;
+  enabled: boolean;
+  expiresAt?: string;
+  createdAt: string;
+};
+
 const securityRoutes = new Set([
   '/admin/system/authority-management',
   '/admin/system/access_history',
   '/admin/system/security-audit',
   '/admin/system/security-monitoring',
+  '/admin/system/security-policy',
+  '/admin/system/blocklist',
+  '/admin/system/ip_whitelist',
 ]);
 
 const useStyles = makeStyles(theme => ({
@@ -78,6 +103,13 @@ export function SystemSecurityControlPage() {
   const [summary, setSummary] = useState<SecuritySummary>();
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [policies, setPolicies] = useState<SecurityPolicy[]>([]);
+  const [networkRules, setNetworkRules] = useState<NetworkRule[]>([]);
+  const [newRule, setNewRule] = useState({
+    ruleType: 'ALLOW_IP',
+    value: '',
+    reason: '',
+  });
   const assets = useMemo(
     () =>
       RESONANCE_CONTROL_ASSETS.filter(asset =>
@@ -89,11 +121,20 @@ export function SystemSecurityControlPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await fetchApi.fetch(
-        '/api/resonance-identity-admin/summary',
-      );
-      if (!result.ok) throw new Error(`API ${result.status}`);
-      setSummary((await result.json()) as SecuritySummary);
+      const [summaryResult, controlsResult] = await Promise.all([
+        fetchApi.fetch('/api/resonance-identity-admin/summary'),
+        fetchApi.fetch('/api/resonance-identity-admin/security-controls'),
+      ]);
+      if (!summaryResult.ok || !controlsResult.ok) {
+        throw new Error(`API ${summaryResult.status}/${controlsResult.status}`);
+      }
+      setSummary((await summaryResult.json()) as SecuritySummary);
+      const controls = (await controlsResult.json()) as {
+        policies: SecurityPolicy[];
+        networkRules: NetworkRule[];
+      };
+      setPolicies(controls.policies);
+      setNetworkRules(controls.networkRules);
       setMessage('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -101,6 +142,63 @@ export function SystemSecurityControlPage() {
       setLoading(false);
     }
   }, [fetchApi]);
+
+  const updatePolicy = async (policy: SecurityPolicy) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-identity-admin/security-controls/policies/${encodeURIComponent(
+        policy.policyCode,
+      )}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          enabled: !policy.enabled,
+          configuration: policy.configuration,
+        }),
+      },
+    );
+    if (!response.ok) {
+      setMessage(`정책 변경 실패: API ${response.status}`);
+      return;
+    }
+    await refresh();
+  };
+
+  const createRule = async () => {
+    const response = await fetchApi.fetch(
+      '/api/resonance-identity-admin/security-controls/network-rules',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(newRule),
+      },
+    );
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      setMessage(payload.message ?? `규칙 등록 실패: API ${response.status}`);
+      return;
+    }
+    setNewRule({ ruleType: 'ALLOW_IP', value: '', reason: '' });
+    await refresh();
+  };
+
+  const toggleRule = async (rule: NetworkRule) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-identity-admin/security-controls/network-rules/${encodeURIComponent(
+        rule.ruleId,
+      )}`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enabled: !rule.enabled }),
+      },
+    );
+    if (!response.ok) {
+      setMessage(`규칙 상태 변경 실패: API ${response.status}`);
+      return;
+    }
+    await refresh();
+  };
 
   useEffect(() => {
     void refresh();
@@ -199,6 +297,119 @@ export function SystemSecurityControlPage() {
           <Typography variant="caption">
             최근 확인: {summary?.checkedAt ?? '확인 전'}
           </Typography>
+        </Paper>
+
+        <Paper className={classes.panel}>
+          <Typography variant="h6">보안 정책</Typography>
+          {policies.map(policy => (
+            <Box className={classes.row} key={policy.policyCode}>
+              <Box>
+                <Typography variant="subtitle1">{policy.policyName}</Typography>
+                <Typography variant="caption">
+                  {policy.policyCode} · {policy.description}
+                </Typography>
+              </Box>
+              <Chip
+                color={policy.enabled ? 'primary' : 'default'}
+                label={policy.enabled ? '활성' : '비활성'}
+              />
+              <Button
+                variant="outlined"
+                onClick={() => void updatePolicy(policy)}
+              >
+                {policy.enabled ? '비활성화' : '활성화'}
+              </Button>
+            </Box>
+          ))}
+        </Paper>
+
+        <Paper className={classes.panel}>
+          <Typography variant="h6">IP·차단 규칙</Typography>
+          <Grid container spacing={1}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                select
+                fullWidth
+                variant="outlined"
+                size="small"
+                label="규칙 유형"
+                value={newRule.ruleType}
+                onChange={event =>
+                  setNewRule(current => ({
+                    ...current,
+                    ruleType: event.target.value,
+                  }))
+                }
+              >
+                <MenuItem value="ALLOW_IP">IP 허용</MenuItem>
+                <MenuItem value="BLOCK_IP">IP 차단</MenuItem>
+                <MenuItem value="BLOCK_SUBJECT">계정·주체 차단</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                label="IP/CIDR 또는 주체"
+                value={newRule.value}
+                onChange={event =>
+                  setNewRule(current => ({
+                    ...current,
+                    value: event.target.value,
+                  }))
+                }
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                size="small"
+                label="사유"
+                value={newRule.reason}
+                onChange={event =>
+                  setNewRule(current => ({
+                    ...current,
+                    reason: event.target.value,
+                  }))
+                }
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                disabled={!newRule.value.trim()}
+                onClick={() => void createRule()}
+              >
+                규칙 등록
+              </Button>
+            </Grid>
+          </Grid>
+          <Box mt={2}>
+            {networkRules.map(rule => (
+              <Box className={classes.row} key={rule.ruleId}>
+                <Box>
+                  <Typography variant="subtitle1">{rule.value}</Typography>
+                  <Typography variant="caption">
+                    {rule.ruleType} · {rule.reason || '사유 없음'}
+                  </Typography>
+                </Box>
+                <Chip
+                  color={rule.enabled ? 'primary' : 'default'}
+                  label={rule.enabled ? '적용 중' : '중지'}
+                />
+                <Button
+                  variant="outlined"
+                  onClick={() => void toggleRule(rule)}
+                >
+                  {rule.enabled ? '중지' : '재적용'}
+                </Button>
+              </Box>
+            ))}
+          </Box>
         </Paper>
 
         <Paper className={classes.panel}>

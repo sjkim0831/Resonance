@@ -3,6 +3,8 @@ import {
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
 import { Router, json, type Request } from 'express';
+import { randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
 
 type KeycloakUser = {
   id: string;
@@ -26,6 +28,19 @@ const managedGroups = [
   'carbon-operations',
   'verification-governance',
 ];
+
+const isValidNetworkValue = (ruleType: string, value: string) => {
+  if (ruleType === 'BLOCK_SUBJECT') {
+    return /^[A-Za-z0-9@._:*\/-]{1,200}$/.test(value);
+  }
+  const [address, prefix] = value.split('/');
+  const version = isIP(address);
+  if (!version) return false;
+  if (prefix === undefined) return true;
+  if (!/^\d{1,3}$/.test(prefix)) return false;
+  const parsed = Number(prefix);
+  return parsed >= 0 && parsed <= (version === 4 ? 32 : 128);
+};
 
 const normalizeScopes = (
   value: unknown,
@@ -132,6 +147,100 @@ export default createBackendPlugin({
             },
           );
         }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_identity_admin__security_policy',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_identity_admin__security_policy',
+            table => {
+              table.string('policy_code', 80).primary();
+              table.string('policy_name', 160).notNullable();
+              table.text('description').notNullable().defaultTo('');
+              table.boolean('enabled').notNullable().defaultTo(true);
+              table.jsonb('configuration').notNullable().defaultTo('{}');
+              table.string('updated_by', 300).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_identity_admin__network_rule',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_identity_admin__network_rule',
+            table => {
+              table.string('rule_id', 36).primary();
+              table.string('rule_type', 30).notNullable();
+              table.string('rule_value', 200).notNullable();
+              table.string('reason', 500).notNullable().defaultTo('');
+              table.boolean('enabled').notNullable().defaultTo(true);
+              table.timestamp('expires_at', { useTz: true }).nullable();
+              table.string('created_by', 300).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.unique(
+                ['rule_type', 'rule_value'],
+                'resonance_identity_network_rule_unique',
+              );
+              table.index(
+                ['rule_type', 'enabled'],
+                'resonance_identity_network_rule_status_idx',
+              );
+            },
+          );
+        }
+        const now = new Date();
+        await knex('resonance_identity_admin__security_policy')
+          .insert([
+            {
+              policy_code: 'PASSWORD_BASELINE',
+              policy_name: '비밀번호 기준',
+              description: '통합 계정 비밀번호의 최소 보안 기준',
+              enabled: true,
+              configuration: JSON.stringify({
+                minimumLength: 12,
+                requireComplexity: true,
+              }),
+              updated_by: 'system:bootstrap',
+              updated_at: now,
+            },
+            {
+              policy_code: 'SESSION_SECURITY',
+              policy_name: '세션 보안',
+              description: '관리 세션 만료와 재인증 기준',
+              enabled: true,
+              configuration: JSON.stringify({
+                idleMinutes: 30,
+                absoluteMinutes: 480,
+              }),
+              updated_by: 'system:bootstrap',
+              updated_at: now,
+            },
+            {
+              policy_code: 'MFA_ADMIN',
+              policy_name: '관리자 MFA',
+              description: '관리 권한 계정의 다중 인증 적용 기준',
+              enabled: false,
+              configuration: JSON.stringify({ required: false }),
+              updated_by: 'system:bootstrap',
+              updated_at: now,
+            },
+            {
+              policy_code: 'AUDIT_RETENTION',
+              policy_name: '감사 보존',
+              description: '보안·계정 변경 감사 기록 보존 기준',
+              enabled: true,
+              configuration: JSON.stringify({ retentionDays: 365 }),
+              updated_by: 'system:bootstrap',
+              updated_at: now,
+            },
+          ])
+          .onConflict('policy_code')
+          .ignore();
 
         const metadataUrl = process.env.AUTH_OIDC_METADATA_URL ?? '';
         const clientId = process.env.AUTH_OIDC_CLIENT_ID ?? '';
@@ -333,6 +442,188 @@ export default createBackendPlugin({
             next(error);
           }
         });
+
+        router.get('/security-controls', async (request, response, next) => {
+          try {
+            await requireAdmin(request);
+            const [policies, networkRules] = await Promise.all([
+              knex('resonance_identity_admin__security_policy')
+                .select('*')
+                .orderBy('policy_code'),
+              knex('resonance_identity_admin__network_rule')
+                .select('*')
+                .orderBy('created_at', 'desc'),
+            ]);
+            response.json({
+              policies: policies.map(row => ({
+                policyCode: row.policy_code,
+                policyName: row.policy_name,
+                description: row.description,
+                enabled: Boolean(row.enabled),
+                configuration: row.configuration,
+                updatedBy: row.updated_by,
+                updatedAt: row.updated_at,
+              })),
+              networkRules: networkRules.map(row => ({
+                ruleId: row.rule_id,
+                ruleType: row.rule_type,
+                value: row.rule_value,
+                reason: row.reason,
+                enabled: Boolean(row.enabled),
+                expiresAt: row.expires_at,
+                createdBy: row.created_by,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at,
+              })),
+            });
+          } catch (error) {
+            next(error);
+          }
+        });
+
+        router.put(
+          '/security-controls/policies/:code',
+          async (request, response, next) => {
+            try {
+              const actorRef = await requireAdmin(request);
+              const policyCode = String(request.params.code ?? '')
+                .trim()
+                .toUpperCase();
+              if (!/^[A-Z][A-Z0-9_]{2,79}$/.test(policyCode)) {
+                response.status(400).json({ message: 'invalid policy code' });
+                return;
+              }
+              const configuration = request.body?.configuration;
+              if (
+                !configuration ||
+                typeof configuration !== 'object' ||
+                Array.isArray(configuration) ||
+                JSON.stringify(configuration).length > 20_000
+              ) {
+                response
+                  .status(400)
+                  .json({ message: 'invalid policy configuration' });
+                return;
+              }
+              const updatedAt = new Date();
+              await knex.transaction(async trx => {
+                const changed = await trx(
+                  'resonance_identity_admin__security_policy',
+                )
+                  .where({ policy_code: policyCode })
+                  .update({
+                    enabled: Boolean(request.body?.enabled),
+                    configuration: JSON.stringify(configuration),
+                    updated_by: actorRef,
+                    updated_at: updatedAt,
+                  });
+                if (!changed) throw new Error('security policy not found');
+                await trx('resonance_identity_admin__audit').insert({
+                  actor_ref: actorRef,
+                  target_username: policyCode,
+                  action_code: 'SECURITY_POLICY_UPDATED',
+                  details: JSON.stringify({
+                    enabled: Boolean(request.body?.enabled),
+                  }),
+                  created_at: updatedAt,
+                });
+              });
+              response.json({ policyCode, updatedAt });
+            } catch (error) {
+              next(error);
+            }
+          },
+        );
+
+        router.post(
+          '/security-controls/network-rules',
+          async (request, response, next) => {
+            try {
+              const actorRef = await requireAdmin(request);
+              const ruleType = String(request.body?.ruleType ?? '').trim();
+              const value = String(request.body?.value ?? '').trim();
+              const reason = String(request.body?.reason ?? '').trim();
+              if (
+                !['ALLOW_IP', 'BLOCK_IP', 'BLOCK_SUBJECT'].includes(ruleType) ||
+                !isValidNetworkValue(ruleType, value) ||
+                reason.length > 500
+              ) {
+                response.status(400).json({ message: 'invalid network rule' });
+                return;
+              }
+              const expiresAt = request.body?.expiresAt
+                ? new Date(String(request.body.expiresAt))
+                : null;
+              if (expiresAt && Number.isNaN(expiresAt.getTime())) {
+                response.status(400).json({ message: 'invalid expiry' });
+                return;
+              }
+              const ruleId = randomUUID();
+              const createdAt = new Date();
+              await knex.transaction(async trx => {
+                await trx('resonance_identity_admin__network_rule').insert({
+                  rule_id: ruleId,
+                  rule_type: ruleType,
+                  rule_value: value,
+                  reason,
+                  enabled: true,
+                  expires_at: expiresAt,
+                  created_by: actorRef,
+                  created_at: createdAt,
+                  updated_at: createdAt,
+                });
+                await trx('resonance_identity_admin__audit').insert({
+                  actor_ref: actorRef,
+                  target_username: value,
+                  action_code: 'NETWORK_RULE_CREATED',
+                  details: JSON.stringify({ ruleId, ruleType }),
+                  created_at: createdAt,
+                });
+              });
+              response.status(201).json({ ruleId, createdAt });
+            } catch (error) {
+              next(error);
+            }
+          },
+        );
+
+        router.patch(
+          '/security-controls/network-rules/:id',
+          async (request, response, next) => {
+            try {
+              const actorRef = await requireAdmin(request);
+              const ruleId = String(request.params.id ?? '');
+              if (!/^[0-9a-f-]{36}$/.test(ruleId)) {
+                response.status(400).json({ message: 'invalid rule id' });
+                return;
+              }
+              const updatedAt = new Date();
+              await knex.transaction(async trx => {
+                const changed = await trx(
+                  'resonance_identity_admin__network_rule',
+                )
+                  .where({ rule_id: ruleId })
+                  .update({
+                    enabled: Boolean(request.body?.enabled),
+                    updated_at: updatedAt,
+                  });
+                if (!changed) throw new Error('network rule not found');
+                await trx('resonance_identity_admin__audit').insert({
+                  actor_ref: actorRef,
+                  target_username: ruleId,
+                  action_code: 'NETWORK_RULE_STATUS_UPDATED',
+                  details: JSON.stringify({
+                    enabled: Boolean(request.body?.enabled),
+                  }),
+                  created_at: updatedAt,
+                });
+              });
+              response.json({ ruleId, updatedAt });
+            } catch (error) {
+              next(error);
+            }
+          },
+        );
 
         router.get('/identities', async (request, response, next) => {
           try {

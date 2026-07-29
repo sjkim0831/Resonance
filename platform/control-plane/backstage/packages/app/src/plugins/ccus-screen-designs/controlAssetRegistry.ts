@@ -116,6 +116,9 @@ const nativeSystemSecurityRoutes = new Set([
   '/admin/system/access_history',
   '/admin/system/security-audit',
   '/admin/system/security-monitoring',
+  '/admin/system/security-policy',
+  '/admin/system/blocklist',
+  '/admin/system/ip_whitelist',
 ]);
 
 const ownershipFor = (
