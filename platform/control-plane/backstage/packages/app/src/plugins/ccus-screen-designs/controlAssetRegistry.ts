@@ -56,6 +56,38 @@ const nativeDesignAssetRoutes = new Set([
   '/admin/system/design-management',
 ]);
 
+const nativeScreenDesignRoutes = new Set([
+  '/admin/system/page-management',
+  '/admin/system/screen-flow-management',
+  '/admin/system/screen-builder',
+  '/admin/system/screen-runtime',
+  '/admin/system/current-runtime-compare',
+  '/admin/system/platform-studio',
+  '/admin/system/home-page-workbench',
+  '/admin/system/design-governance',
+]);
+
+const nativeScreenSpaceRoutes = new Set([
+  '/admin/system/process-workspace',
+  '/admin/system/process-step-workspace',
+  '/admin/system/wbs-management',
+  '/admin/system/sr-workbench',
+]);
+
+const nativeProjectControlRoutes = new Set([
+  '/admin/system/asset-inventory',
+  '/admin/system/asset-detail',
+  '/admin/system/asset-impact',
+  '/admin/system/asset-lifecycle',
+  '/admin/system/asset-gap',
+  '/admin/system/verification-center',
+  '/admin/system/verification-assets',
+  '/admin/system/verification-asset-management',
+  '/admin/system/repair-workbench',
+  '/admin/system/builder-studio',
+  '/admin/system/build-studio',
+]);
+
 const ownershipFor = (
   record: CcusScreenDesignRecord,
   capabilities: ControlCapability[],
@@ -78,6 +110,30 @@ const ownershipFor = (
       ownershipLane: 'BACKSTAGE_NATIVE',
       migrationStatus: 'NATIVE_READY',
       targetPlugin: 'ccus-screen-designs/design-assets',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeScreenDesignRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/screen-designs',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeScreenSpaceRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/screen-space',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeProjectControlRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/project-control',
       dependencyContracts: [...new Set(record.dataContracts)],
     };
   }

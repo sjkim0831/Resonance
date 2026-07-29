@@ -227,6 +227,12 @@ export function ResonanceControlAssetsPage() {
         ? '/actor-process-control'
         : selected.targetPlugin === 'ccus-screen-designs/design-assets'
           ? '/design-assets'
+          : selected.targetPlugin === 'ccus-screen-designs/screen-designs'
+            ? '/ccus-screen-designs'
+            : selected.targetPlugin === 'ccus-screen-designs/screen-space'
+              ? '/ccus-screen-space'
+              : selected.targetPlugin === 'ccus-screen-designs/project-control'
+                ? '/resonance-projects'
           : '/resonance-control-assets';
     const response = await fetchApi.fetch(
       `/api/resonance-projects/control-assets/${encodeURIComponent(
