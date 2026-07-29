@@ -810,13 +810,13 @@ public class ActorProcessGovernanceService {
         request.put("requestJson","{\"smoke\":true}");request.put("resultJson","{\"rolledBack\":true}");
         jdbc.update("""
             insert into framework_process_work_draft(
-              tenant_id,project_id,process_code,step_code,actor_code,account_id,
+              draft_id,tenant_id,project_id,process_code,step_code,actor_code,account_id,
               payload_json,evidence_json,draft_status,draft_version,created_at,updated_at
-            ) values(?,?,?,?,?,?,?::jsonb,'{}'::jsonb,'DRAFT',1,current_timestamp,current_timestamp)
+            ) values(?,?,?,?,?,?,?,?::jsonb,'{}'::jsonb,'DRAFT',1,current_timestamp,current_timestamp)
             on conflict(tenant_id,project_id,process_code,step_code,account_id)
             do update set actor_code=excluded.actor_code,payload_json=excluded.payload_json,
                           draft_status='DRAFT',submitted_at=null,updated_at=current_timestamp
-            """,tenant,project,process,step,actor,account,"{\"runtimeSmoke\":true}");
+            """,UUID.randomUUID(),tenant,project,process,step,actor,account,"{\"runtimeSmoke\":true}");
         request.put("requireDraft",true);
         Map<String,Object> first=executeProcessCommand(executionId,request,account);
         String submittedDraftStatus=jdbc.queryForObject(
