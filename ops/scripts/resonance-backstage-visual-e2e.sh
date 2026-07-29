@@ -8,6 +8,7 @@ SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-e2e-users}"
 CA_DIR="${RESONANCE_CA_DIR:-/opt/resonance-data/pki/resonance-internal-ca}"
 CA_CERT="${CA_DIR}/ca.crt"
 EVIDENCE_ROOT="${RESONANCE_E2E_EVIDENCE_ROOT:-/opt/resonance-data/control-plane/evidence/backstage}"
+DEPENDENCY_CACHE_ROOT="${RESONANCE_E2E_DEPENDENCY_CACHE_ROOT:-/opt/resonance-data/control-plane/cache/backstage-e2e}"
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BACKSTAGE_ROOT="${ROOT}/platform/control-plane/backstage"
 VERIFY_SCRIPT="${RESONANCE_CA_VERIFY_SCRIPT:-/opt/resonance-data/deploy/resonance-internal-ca-verify.sh}"
@@ -19,7 +20,7 @@ else
   curl --silent --show-error --fail --cacert "$CA_CERT" "${BACKSTAGE_URL}/"
 fi
 
-for command in kubectl base64 corepack; do
+for command in kubectl base64 corepack flock sha256sum; do
   command -v "$command" >/dev/null || {
     echo "[backstage-e2e] missing command: $command" >&2
     exit 1
@@ -81,7 +82,22 @@ export RESONANCE_E2E_EVIDENCE_DIR="$evidence_dir"
 test -x "$PLAYWRIGHT_CHROMIUM_EXECUTABLE"
 
 cd "$BACKSTAGE_ROOT"
-corepack yarn install --immutable --inline-builds >/dev/null
+lock_hash="$(sha256sum yarn.lock | awk '{print $1}')"
+dependency_cache="${DEPENDENCY_CACHE_ROOT}/${lock_hash}"
+mkdir -p "$DEPENDENCY_CACHE_ROOT"
+if [[ ! -d node_modules ]]; then
+  if [[ ! -d "${dependency_cache}/node_modules" ]]; then
+    exec 9>"${DEPENDENCY_CACHE_ROOT}/install.lock"
+    flock 9
+    if [[ ! -d "${dependency_cache}/node_modules" ]]; then
+      corepack yarn install --immutable --inline-builds >/dev/null
+      mkdir -p "$dependency_cache"
+      mv node_modules "${dependency_cache}/node_modules"
+    fi
+    flock -u 9
+  fi
+  ln -s "${dependency_cache}/node_modules" node_modules
+fi
 corepack yarn playwright test \
   packages/app/e2e-tests/resonance-control-plane.test.ts \
   --project=app \
