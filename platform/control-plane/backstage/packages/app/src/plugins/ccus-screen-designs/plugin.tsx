@@ -14,6 +14,7 @@ const designAssetControlRouteRef = createRouteRef();
 const identityAdministrationRouteRef = createRouteRef();
 const systemOperationsRouteRef = createRouteRef();
 const systemDevelopmentRouteRef = createRouteRef();
+const systemSecurityRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -140,6 +141,20 @@ const systemDevelopmentPage = PageBlueprint.make({
   },
 });
 
+const systemSecurityPage = PageBlueprint.make({
+  name: 'system-security',
+  params: {
+    routeRef: systemSecurityRouteRef,
+    path: '/system-security',
+    title: '보안·권한 관제',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./SystemSecurityControlPage').then(module => (
+        <module.SystemSecurityControlPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -154,6 +169,7 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     identityAdministration: identityAdministrationRouteRef,
     systemOperations: systemOperationsRouteRef,
     systemDevelopment: systemDevelopmentRouteRef,
+    systemSecurity: systemSecurityRouteRef,
   },
   extensions: [
     screenDesignsPage,
@@ -165,5 +181,6 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     identityAdministrationPage,
     systemOperationsPage,
     systemDevelopmentPage,
+    systemSecurityPage,
   ],
 });

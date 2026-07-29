@@ -111,6 +111,13 @@ const nativeSystemDevelopmentRoutes = new Set([
   '/admin/system/codex-provision',
 ]);
 
+const nativeSystemSecurityRoutes = new Set([
+  '/admin/system/authority-management',
+  '/admin/system/access_history',
+  '/admin/system/security-audit',
+  '/admin/system/security-monitoring',
+]);
+
 const ownershipFor = (
   record: CcusScreenDesignRecord,
   capabilities: ControlCapability[],
@@ -173,6 +180,14 @@ const ownershipFor = (
       ownershipLane: 'BACKSTAGE_NATIVE',
       migrationStatus: 'NATIVE_READY',
       targetPlugin: 'ccus-screen-designs/system-development',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeSystemSecurityRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/system-security',
       dependencyContracts: [...new Set(record.dataContracts)],
     };
   }

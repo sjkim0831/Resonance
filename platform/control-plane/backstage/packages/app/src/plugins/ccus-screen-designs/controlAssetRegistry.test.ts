@@ -11,6 +11,7 @@ const nativeTargets = new Set([
   'ccus-screen-designs/project-control',
   'ccus-screen-designs/system-operations',
   'ccus-screen-designs/system-development',
+  'ccus-screen-designs/system-security',
 ]);
 
 describe('controlAssetRegistry', () => {
@@ -100,6 +101,24 @@ describe('controlAssetRegistry', () => {
         ownershipLane: 'BACKSTAGE_NATIVE',
         migrationStatus: 'NATIVE_READY',
         targetPlugin: 'ccus-screen-designs/system-development',
+      });
+    }
+  });
+
+  it('maps verified identity and audit screens to the security console', () => {
+    const routes = [
+      '/admin/system/authority-management',
+      '/admin/system/access_history',
+      '/admin/system/security-audit',
+      '/admin/system/security-monitoring',
+    ];
+    for (const route of routes) {
+      expect(
+        RESONANCE_CONTROL_ASSETS.find(asset => asset.routePath === route),
+      ).toMatchObject({
+        ownershipLane: 'BACKSTAGE_NATIVE',
+        migrationStatus: 'NATIVE_READY',
+        targetPlugin: 'ccus-screen-designs/system-security',
       });
     }
   });

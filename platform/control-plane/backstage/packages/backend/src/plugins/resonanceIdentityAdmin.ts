@@ -292,6 +292,48 @@ export default createBackendPlugin({
         const router = Router();
         router.use(json({ limit: '1mb' }));
 
+        router.get('/summary', async (request, response, next) => {
+          try {
+            await requireAdmin(request);
+            const [users, groups, auditRows] = await Promise.all([
+              keycloak<KeycloakUser[]>(
+                '/users?max=500&briefRepresentation=false',
+              ),
+              listGroups(),
+              knex('resonance_identity_admin__audit')
+                .select('action_code')
+                .count({ count: '*' })
+                .groupBy('action_code') as Promise<
+                { action_code: string; count: string | number }[]
+              >,
+            ]);
+            response.json({
+              checkedAt: new Date().toISOString(),
+              identityProvider: {
+                code: 'KEYCLOAK',
+                status: 'UP',
+                issuerConfigured: Boolean(issuer),
+              },
+              identities: {
+                total: users.length,
+                enabled: users.filter(user => user.enabled !== false).length,
+                disabled: users.filter(user => user.enabled === false).length,
+              },
+              groups: {
+                total: groups.length,
+                managed: groups
+                  .filter(group => managedGroups.includes(group.name))
+                  .map(group => group.name),
+              },
+              auditCounts: Object.fromEntries(
+                auditRows.map(row => [row.action_code, Number(row.count)]),
+              ),
+            });
+          } catch (error) {
+            next(error);
+          }
+        });
+
         router.get('/identities', async (request, response, next) => {
           try {
             await requireAdmin(request);
