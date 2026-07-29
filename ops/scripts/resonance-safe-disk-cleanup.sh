@@ -62,9 +62,13 @@ if [[ -d "$REPO/.git" ]]; then
     [[ "$path" == /tmp/resonance-* && -d "$path" ]] || continue
     find "$path" -maxdepth 0 -mtime "+$STALE_DAYS" -print -quit | grep -q . || continue
     if command -v lsof >/dev/null && lsof +D "$path" >/dev/null 2>&1; then echo "skip active worktree: $path"; continue; fi
-    run git -C "$REPO" worktree remove --force "$path"
-  done < <(git -C "$REPO" worktree list --porcelain | sed -n 's/^worktree //p')
-  run git -C "$REPO" worktree prune --expire="${STALE_DAYS}.days.ago"
+    run git -c "safe.directory=$REPO" -C "$REPO" worktree remove --force "$path"
+  done < <(
+    git -c "safe.directory=$REPO" -C "$REPO" worktree list --porcelain |
+      sed -n 's/^worktree //p'
+  )
+  run git -c "safe.directory=$REPO" -C "$REPO" \
+    worktree prune --expire="${STALE_DAYS}.days.ago"
 fi
 
 after="$(root_percent)"
