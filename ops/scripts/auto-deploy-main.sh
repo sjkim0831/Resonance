@@ -327,6 +327,12 @@ run_backstage_visual_e2e_if_required() {
     bash ops/scripts/resonance-backstage-visual-e2e.sh
 }
 
+run_backstage_identity_e2e_if_required() {
+  [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-identity-admin-e2e.sh
+}
+
 sync_backstage_catalog_if_required() {
   if [[ ",$PLAN_TESTS," != *",backstage:catalog-sync,"* \
      || "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
@@ -709,6 +715,7 @@ fi
 sync_backstage_catalog_if_required
 deploy_backstage_if_required
 run_backstage_visual_e2e_if_required
+run_backstage_identity_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true

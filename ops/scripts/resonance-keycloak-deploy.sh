@@ -165,6 +165,7 @@ bootstrap_realm() {
         "$K" create clients -r "$REALM" \
           -s clientId="$CLIENT_ID" -s enabled=true -s publicClient=false \
           -s standardFlowEnabled=true -s directAccessGrantsEnabled=true \
+          -s serviceAccountsEnabled=true \
           -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\"]" \
           -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\"]" \
           -s secret="$CLIENT_SECRET" >/dev/null
@@ -173,11 +174,16 @@ bootstrap_realm() {
       else
         "$K" update "clients/$cid" -r "$REALM" \
           -s enabled=true -s publicClient=false -s standardFlowEnabled=true \
-          -s directAccessGrantsEnabled=true \
+          -s directAccessGrantsEnabled=true -s serviceAccountsEnabled=true \
           -s "redirectUris=[\"https://backstage.172.16.1.232.nip.io/api/auth/oidc/handler/frame\"]" \
           -s "webOrigins=[\"https://backstage.172.16.1.232.nip.io\"]" \
           -s secret="$CLIENT_SECRET" >/dev/null
       fi
+      for role in view-realm query-users view-users manage-users; do
+        "$K" add-roles -r "$REALM" \
+          --uusername "service-account-$CLIENT_ID" \
+          --cclientid realm-management --rolename "$role" >/dev/null
+      done
       sid=$("$K" get client-scopes -r "$REALM" \
         --fields id,name --format csv --noquotes |
         grep ",groups$" | head -n1 | cut -d, -f1)

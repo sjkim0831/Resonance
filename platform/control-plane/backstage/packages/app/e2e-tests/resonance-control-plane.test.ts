@@ -13,6 +13,7 @@ const routes = [
   ['/resonance-control-assets', 'Resonance 운영·설계·개발 자산'],
   ['/actor-process-control', 'Actor·Process 프로젝트 제어'],
   ['/design-assets', '공통 디자인 자산 관리'],
+  ['/identity-administration', 'Resonance 통합계정 관리'],
 ] as const;
 
 async function signIn(page: Page) {
