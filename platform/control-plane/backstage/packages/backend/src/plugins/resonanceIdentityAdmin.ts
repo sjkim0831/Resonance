@@ -135,11 +135,25 @@ export default createBackendPlugin({
             allow: ['user'],
           });
           const user = await userInfo.getUserInfo(credentials);
-          if (
-            !user.ownershipEntityRefs.includes(
-              'group:default/verification-governance',
-            )
-          ) {
+          const catalogAuthorized = user.ownershipEntityRefs.includes(
+            'group:default/verification-governance',
+          );
+          const username = user.userEntityRef.split('/').at(-1) ?? '';
+          const keycloakUsers = catalogAuthorized
+            ? []
+            : await keycloak<KeycloakUser[]>(
+                `/users?username=${encodeURIComponent(username)}&exact=true`,
+              );
+          const keycloakGroups =
+            catalogAuthorized || !keycloakUsers[0]
+              ? []
+              : await keycloak<KeycloakGroup[]>(
+                  `/users/${encodeURIComponent(keycloakUsers[0].id)}/groups`,
+                );
+          const keycloakAuthorized = keycloakGroups.some(
+            group => group.name === 'verification-governance',
+          );
+          if (!catalogAuthorized && !keycloakAuthorized) {
             const error = new Error(
               'verification-governance membership is required',
             ) as Error & { statusCode?: number };
