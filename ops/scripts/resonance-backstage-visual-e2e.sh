@@ -37,7 +37,7 @@ test -n "$password"
 token="$(
   BACKSTAGE_E2E_USERNAME="$USERNAME" \
   BACKSTAGE_E2E_PASSWORD="$password" \
-    bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh"
+    bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME"
 )"
 test -n "$token"
 catalog_user_url="${BACKSTAGE_URL}/api/catalog/entities/by-name/user/default/${USERNAME}"
