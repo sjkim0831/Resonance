@@ -8,6 +8,7 @@ metadata:
     app.kubernetes.io/part-of: resonance-control-plane
 data:
   BACKSTAGE_BASE_URL: https://backstage.172.16.1.232.nip.io
+  CARBONET_RUNTIME_BASE_URL: http://carbonet-api.carbonet-prod.svc.cluster.local:8080
   POSTGRES_HOST: postgres-haproxy.carbonet-prod.svc.cluster.local
   POSTGRES_PORT: "5432"
   POSTGRES_DATABASE: backstage
@@ -86,6 +87,8 @@ spec:
             - secretRef:
                 name: resonance-backstage-auth
                 optional: true
+            - secretRef:
+                name: resonance-ops-bridge
           env:
             - name: NODE_EXTRA_CA_CERTS
               value: /app/internal-ca/ca.crt

@@ -779,14 +779,79 @@ export default createBackendPlugin({
               created_by: access.actorRef,
               updated_at: now,
             });
-          response.status(status === 'VERIFIED' ? 201 : 422).json({
-            success: status === 'VERIFIED',
-            coordinate,
-            status,
-            specSha256: checksum,
-            validation: { checks, missing },
-            screenSpec,
-          });
+          let runtimePublication: Record<string, unknown> = {
+            success: false,
+            status: 'NOT_PUBLISHED',
+          };
+          if (status === 'VERIFIED') {
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              runtimePublication = {
+                success: false,
+                status: 'BRIDGE_TOKEN_MISSING',
+              };
+            } else {
+              try {
+                const publishResponse = await fetch(
+                  `${runtimeBaseUrl}/internal/api/screen-space/specs`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      accept: 'application/json',
+                      'content-type': 'application/json',
+                      'x-resonance-token': bridgeToken,
+                    },
+                    body: JSON.stringify({
+                      coordinate,
+                      projectId,
+                      routePath: input.routePath,
+                      process: input.process,
+                      step: input.step,
+                      actor: input.actor,
+                      state: input.state,
+                      archetype: input.archetype,
+                      status,
+                      specSha256: checksum,
+                      sourceActor: access.actorRef,
+                      screenSpec,
+                    }),
+                  },
+                );
+                const publicationBody =
+                  (await publishResponse.json()) as Record<string, unknown>;
+                runtimePublication = {
+                  ...publicationBody,
+                  httpStatus: publishResponse.status,
+                };
+              } catch (error) {
+                logger.error(
+                  `Screen-space runtime publication failed for ${coordinate}: ${String(
+                    error,
+                  )}`,
+                );
+                runtimePublication = {
+                  success: false,
+                  status: 'PUBLISH_FAILED',
+                };
+              }
+            }
+          }
+          const published = runtimePublication.success === true;
+          response
+            .status(status !== 'VERIFIED' ? 422 : published ? 201 : 502)
+            .json({
+              success: status === 'VERIFIED' && published,
+              coordinate,
+              status,
+              specSha256: checksum,
+              validation: { checks, missing },
+              screenSpec,
+              runtimePublication,
+            });
         });
         router.get(
           '/design-assets/:projectId/access',

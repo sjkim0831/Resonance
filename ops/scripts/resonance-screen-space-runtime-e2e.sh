@@ -8,6 +8,7 @@ USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}"
 BASE_URL="${BACKSTAGE_BASE_URL:-https://backstage.172.16.1.232.nip.io}"
 CA_CERT="${RESONANCE_INTERNAL_CA:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
 API="$BASE_URL/api/resonance-projects"
+CARBONET_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1:18000}"
 
 password="$(
   kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
@@ -17,6 +18,10 @@ token="$(
   BACKSTAGE_E2E_PASSWORD="$password" \
   RESONANCE_INTERNAL_CA="$CA_CERT" \
     bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME"
+)"
+bridge_token="$(
+  kubectl -n carbonet-prod get secret resonance-ops-bridge \
+    -o jsonpath='{.data.RESONANCE_OPS_TOKEN}' | base64 -d
 )"
 
 work_pack="$(
@@ -79,10 +84,22 @@ coordinate="$(jq -er '.coordinate' <<<"$materialized")"
 jq -e '
   .success == true
   and .status == "VERIFIED"
+  and .runtimePublication.success == true
+  and .runtimePublication.status == "PUBLISHED"
   and ([.validation.checks[].status] | all(. == "PASS"))
   and (.screenSpec.materialization.strategy == "LAZY_METADATA_RUNTIME")
   and (.screenSpec.composition.responsive == ["DESKTOP","TABLET","MOBILE"])
 ' <<<"$materialized" >/dev/null
+
+curl --silent --show-error --fail \
+  -H "X-Resonance-Token: $bridge_token" \
+  "$CARBONET_URL/internal/api/screen-space/specs?routePath=%2Femission%2Fproject%2Fcreate" \
+  | jq -e --arg coordinate "$coordinate" '
+      .success == true
+      and .coordinate == $coordinate
+      and .status == "VERIFIED"
+      and (.specSha256 | length) == 64
+    ' >/dev/null
 
 curl --silent --show-error --fail \
   --cacert "$CA_CERT" \

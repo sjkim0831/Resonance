@@ -362,6 +362,10 @@ case "$mode" in
       --from-literal=POSTGRES_USER=backstage \
       --from-literal=POSTGRES_PASSWORD="$password" \
       --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n carbonet-prod get secret resonance-ops-bridge -o json \
+      | jq 'del(.metadata.namespace,.metadata.resourceVersion,.metadata.uid,.metadata.creationTimestamp,.metadata.managedFields)
+            | .metadata.namespace="resonance-ops"' \
+      | kubectl apply -f -
     kubectl -n "$NAMESPACE" create configmap resonance-backstage-catalog \
       --from-file="$ROOT/platform/control-plane/catalog/organization.yaml" \
       --from-file="$ROOT/platform/control-plane/catalog/systems.yaml" \
