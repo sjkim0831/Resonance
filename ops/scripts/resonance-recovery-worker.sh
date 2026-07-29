@@ -5,10 +5,11 @@ API_BASE="${RESONANCE_RECOVERY_API_BASE:-https://backstage.172.16.1.232.nip.io/a
 CA_CERT="${RESONANCE_RECOVERY_CA_CERT:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
 BACKUP_ROOT="${RESONANCE_RECOVERY_BACKUP_ROOT:-/opt/resonance-backups/postgresql/on-demand}"
 WORKER_ID="${RESONANCE_RECOVERY_WORKER_ID:-$(hostname)-postgres-backup}"
-WORKER_VERSION="1"
+WORKER_VERSION="2"
 NAMESPACE="${RESONANCE_RECOVERY_NAMESPACE:-carbonet-prod}"
 DATABASE="${RESONANCE_RECOVERY_DATABASE:-carbonet}"
 MIN_BACKUP_BYTES="${RESONANCE_RECOVERY_MIN_BACKUP_BYTES:-1048576}"
+ARCHIVE_VERIFY_IMAGE="${RESONANCE_RECOVERY_ARCHIVE_VERIFY_IMAGE:-localhost:5000/spilo-16-uid1000:3.2-p3}"
 KUBECONFIG="${KUBECONFIG:-/home/sjkim/.kube/config}"
 export KUBECONFIG
 
@@ -79,6 +80,40 @@ find_leader() {
   return 1
 }
 
+ARCHIVE_VERIFICATION_MODE=""
+verify_archive() {
+  local archive="$1" leader
+  [[ -f "$archive" ]] || return 1
+  case "$(readlink -f "$archive")" in
+    "$resolved_root"/*) ;;
+    *) echo "[recovery-worker] archive is outside the safe backup root" >&2; return 2 ;;
+  esac
+
+  if command -v pg_restore >/dev/null 2>&1; then
+    pg_restore -l "$archive" >/dev/null
+    ARCHIVE_VERIFICATION_MODE="host-pg-restore"
+    return 0
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    if ! docker image inspect "$ARCHIVE_VERIFY_IMAGE" >/dev/null 2>&1; then
+      docker pull "$ARCHIVE_VERIFY_IMAGE" >/dev/null
+    fi
+    docker run --rm --network none \
+      --entrypoint pg_restore \
+      -v "$resolved_root:/backup:ro" \
+      "$ARCHIVE_VERIFY_IMAGE" \
+      -l "/backup/$(basename "$archive")" >/dev/null
+    ARCHIVE_VERIFICATION_MODE="local-container-pg-restore"
+    return 0
+  fi
+
+  leader="$(find_leader)" || return 1
+  kubectl -n "$NAMESPACE" exec -i "$leader" -c patroni -- \
+    pg_restore -l <"$archive" >/dev/null
+  ARCHIVE_VERIFICATION_MODE="kubernetes-stream-pg-restore"
+}
+
 complete() {
   local success="$1" message="$2" result_json="$3"
   api -d "$(jq -nc \
@@ -103,8 +138,7 @@ run_backup() {
     pg_dump -h 127.0.0.1 -U postgres -d "$DATABASE" -Fc >"$partial"
   bytes="$(stat -c %s "$partial")"
   [[ "$bytes" -ge "$MIN_BACKUP_BYTES" ]]
-  kubectl -n "$NAMESPACE" exec -i "$leader" -c patroni -- \
-    pg_restore -l <"$partial" >/dev/null
+  verify_archive "$partial"
   checksum="$(sha256sum "$partial" | awk '{print $1}')"
   mv -- "$partial" "$final"
   jq -n \
@@ -112,14 +146,15 @@ run_backup() {
     --arg sha256 "$checksum" \
     --arg createdAt "$(date -u +%FT%TZ)" \
     --argjson bytes "$bytes" \
-    '{file:$file,sha256:$sha256,bytes:$bytes,createdAt:$createdAt,verified:true}' \
+    --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" \
+    '{file:$file,sha256:$sha256,bytes:$bytes,createdAt:$createdAt,verified:true,verificationMode:$verificationMode}' \
     >"$manifest"
   complete true "backup created and verified" \
-    "$(jq -nc --arg file "$(basename "$final")" --arg sha256 "$checksum" --argjson bytes "$bytes" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true}')"
+    "$(jq -nc --arg file "$(basename "$final")" --arg sha256 "$checksum" --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" --argjson bytes "$bytes" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true,verificationMode:$verificationMode}')"
 }
 
 run_verify() {
-  local latest manifest leader expected actual bytes
+  local latest manifest expected actual bytes
   latest="$(find "$resolved_root" -maxdepth 1 -type f -name 'carbonet-*.dump' -printf '%T@ %p\n' \
     | sort -nr | head -1 | cut -d' ' -f2-)"
   [[ -n "$latest" && -f "$latest" ]]
@@ -128,12 +163,10 @@ run_verify() {
   expected="$(jq -r '.sha256' "$manifest")"
   actual="$(sha256sum "$latest" | awk '{print $1}')"
   [[ "$expected" == "$actual" ]]
-  leader="$(find_leader)" || return 1
-  kubectl -n "$NAMESPACE" exec -i "$leader" -c patroni -- \
-    pg_restore -l <"$latest" >/dev/null
+  verify_archive "$latest"
   bytes="$(stat -c %s "$latest")"
   complete true "backup checksum and archive verified" \
-    "$(jq -nc --arg file "$(basename "$latest")" --arg sha256 "$actual" --argjson bytes "$bytes" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true}')"
+    "$(jq -nc --arg file "$(basename "$latest")" --arg sha256 "$actual" --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" --argjson bytes "$bytes" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true,verificationMode:$verificationMode}')"
 }
 
 set +e
