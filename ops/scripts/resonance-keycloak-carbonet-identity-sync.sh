@@ -75,6 +75,28 @@ users_json="$(
     /opt/keycloak/bin/kcadm.sh get users -r "$REALM" \
     --fields id,username,email,firstName,lastName,enabled --format json
 )"
+groups_catalog="$(
+  kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
+    /opt/keycloak/bin/kcadm.sh get groups -r "$REALM" \
+    --fields id,name --format json
+)"
+group_memberships='{}'
+while IFS= read -r managed_group; do
+  group_id="$(jq -r --arg name "$managed_group" '.[] | select(.name == $name) | .id' <<<"$groups_catalog" | head -n1)"
+  [[ -n "$group_id" ]] || continue
+  members="$(
+    kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
+      /opt/keycloak/bin/kcadm.sh get "groups/$group_id/members" -r "$REALM" \
+      --fields id --format json
+  )"
+  group_memberships="$(
+    jq -c --arg group "$managed_group" --argjson members "$members" '
+      reduce $members[] as $member (.;
+        .[$member.id] = ((.[$member.id] // []) + [$group] | unique)
+      )
+    ' <<<"$group_memberships"
+  )"
+done < <(jq -r '.[]' <<<"$MANAGED_GROUPS")
 
 integrated_username=""
 integrated_hash=""
@@ -107,13 +129,7 @@ while IFS= read -r user; do
   )"
   [[ -n "$display_name" ]] || display_name="$username"
   enabled="$(jq -r 'if .enabled == false then "N" else "Y" end' <<<"$user")"
-  groups_json="$(
-    kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
-      /opt/keycloak/bin/kcadm.sh get \
-      "users/$subject/groups" -r "$REALM" --fields name --format json |
-      jq -c --argjson managed "$MANAGED_GROUPS" \
-        '[.[].name | select(. as $name | $managed | index($name))] | unique'
-  )"
+  groups_json="$(jq -c --arg subject "$subject" '.[$subject] // []' <<<"$group_memberships")"
   password_hash="$(
     if [[ "$username" == "$integrated_username" && -n "$integrated_hash" ]]; then
       printf '%s' "$integrated_hash"
@@ -164,11 +180,44 @@ BEGIN
       'GROUP_KEYCLOAK','USR','ORGNZT_KEYCLOAK'
     );
   END IF;
-  SELECT user.esntl_id
+  SELECT account.esntl_id
     INTO v_essential_id
-    FROM comvnusermaster user
-   WHERE lower(trim(user.user_id))=lower(v_username)
-   ORDER BY user.esntl_id
+    FROM comvnusermaster account
+   WHERE lower(trim(account.user_id))=lower(v_username)
+   ORDER BY account.esntl_id
+   LIMIT 1;
+
+  UPDATE comtnemplyrinfo
+     SET user_nm=v_display_name,
+         email_adres=v_email,
+         password=CASE WHEN v_username=convert_from(decode('$(hex "$integrated_username")','hex'),'UTF8')
+                       THEN v_password ELSE password END,
+         emplyr_sttus_code=CASE WHEN v_enabled='Y' THEN 'P' ELSE 'D' END,
+         group_id='GROUP_KEYCLOAK',
+         orgnzt_id='ORGNZT_KEYCLOAK'
+   WHERE lower(trim(emplyr_id))=lower(v_username);
+  IF NOT FOUND THEN
+    INSERT INTO comtnemplyrinfo(
+      esntl_id,emplyr_id,user_nm,password,password_hint,password_cnsr,
+      ihidnum,sexdstn_code,zip,house_adres,area_no,emplyr_sttus_code,
+      detail_adres,house_end_telno,mbtlnum,group_id,fxnum,email_adres,
+      house_middle_telno,sbscrb_de,chg_pwd_last_pnttm,orgnzt_id,ofcps_nm,
+      offm_telno,empl_no,lock_at,lock_cnt
+    ) VALUES(
+      v_essential_id,v_username,v_display_name,v_password,'KEYCLOAK','OIDC managed account',
+      '','','','','',
+      CASE WHEN v_enabled='Y' THEN 'P' ELSE 'D' END,
+      '','','',
+      'GROUP_KEYCLOAK','',v_email,'',
+      CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'ORGNZT_KEYCLOAK','','','',
+      'N',0
+    );
+  END IF;
+  SELECT employee.esntl_id
+    INTO v_essential_id
+    FROM comtnemplyrinfo employee
+   WHERE lower(trim(employee.emplyr_id))=lower(v_username)
+   ORDER BY employee.esntl_id
    LIMIT 1;
 
   DELETE FROM comtnemplyrscrtyestbs
