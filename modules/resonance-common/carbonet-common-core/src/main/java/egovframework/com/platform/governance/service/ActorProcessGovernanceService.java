@@ -774,6 +774,17 @@ public class ActorProcessGovernanceService {
             if(!"DRAFT".equals(String.valueOf(draft.get("draft_status"))))throw new IllegalStateException("Only a DRAFT work item can be completed.");
             Object payload=draft.get("payload_json");
             if(payload==null||"{}".equals(String.valueOf(payload)))throw new IllegalStateException("The work draft has no business data.");
+            List<String> missingFields=jdbc.queryForList("""
+                select field->>'fieldName'
+                  from framework_step_execution_spec execution_spec
+                  cross join lateral jsonb_array_elements(coalesce(execution_spec.field_contract->'fields','[]'::jsonb)) field
+                 where execution_spec.process_code=? and execution_spec.step_code=?
+                   and coalesce((field->>'required')::boolean,false)
+                   and coalesce((field->>'editable')::boolean,false)
+                   and coalesce(nullif(btrim((?::jsonb)->>(field->>'fieldCode')),''),'')=''
+                 order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode'
+                """,String.class,process,step,String.valueOf(payload));
+            if(!missingFields.isEmpty())throw new IllegalStateException("Required work fields are missing: "+String.join(", ",missingFields));
         }
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
         int order=((Number)contract.get("step_order")).intValue();
@@ -808,6 +819,21 @@ public class ActorProcessGovernanceService {
         Map<String,Object> request=new LinkedHashMap<>(context);
         request.put("stepCode",step);request.put("commandCode",command);request.put("idempotencyKey",key);
         request.put("requestJson","{\"smoke\":true}");request.put("resultJson","{\"rolledBack\":true}");
+        String smokePayload=jdbc.queryForObject("""
+            select coalesce(jsonb_object_agg(
+                     field->>'fieldCode',
+                     case
+                       when upper(coalesce(field->>'dataType','')) in ('INTEGER','DECIMAL','NUMBER') then '1'::jsonb
+                       when upper(coalesce(field->>'dataType','')) in ('BOOLEAN','BOOL') then 'true'::jsonb
+                       else to_jsonb('runtime-smoke'::text)
+                     end
+                   ),'{"runtimeSmoke":true}'::jsonb)::text
+              from framework_step_execution_spec execution_spec
+              cross join lateral jsonb_array_elements(coalesce(execution_spec.field_contract->'fields','[]'::jsonb)) field
+             where execution_spec.process_code=? and execution_spec.step_code=?
+               and coalesce((field->>'required')::boolean,false)
+               and coalesce((field->>'editable')::boolean,false)
+            """,String.class,process,step);
         jdbc.update("""
             insert into framework_process_work_draft(
               draft_id,tenant_id,project_id,process_code,step_code,actor_code,account_id,
@@ -816,7 +842,7 @@ public class ActorProcessGovernanceService {
             on conflict(tenant_id,project_id,process_code,step_code,account_id)
             do update set actor_code=excluded.actor_code,payload_json=excluded.payload_json,
                           draft_status='DRAFT',submitted_at=null,updated_at=current_timestamp
-            """,UUID.randomUUID(),tenant,project,process,step,actor,account,"{\"runtimeSmoke\":true}");
+            """,UUID.randomUUID(),tenant,project,process,step,actor,account,smokePayload);
         request.put("requireDraft",true);
         Map<String,Object> first=executeProcessCommand(executionId,request,account);
         String submittedDraftStatus=jdbc.queryForObject(
@@ -1104,6 +1130,21 @@ public class ActorProcessGovernanceService {
                      ),''),
                      'sections',coalesce(screen_spec #> '{composition,sections}','[]'::jsonb),
                      'fields',coalesce((
+                       select jsonb_agg(jsonb_build_object(
+                         'code',field->>'fieldCode',
+                         'label',coalesce(field->>'fieldName',field->>'fieldCode'),
+                         'dataType',coalesce(field->>'dataType','STRING'),
+                         'control',coalesce(field->>'controlType','TEXT'),
+                         'required',coalesce((field->>'required')::boolean,false),
+                         'validation',coalesce(field->'validation','{}'::jsonb),
+                         'group',coalesce(field->>'fieldGroup','WORK')
+                       ) order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode')
+                         from framework_step_execution_spec execution_spec
+                         cross join lateral jsonb_array_elements(coalesce(execution_spec.field_contract->'fields','[]'::jsonb)) field
+                        where execution_spec.process_code=framework_screen_space_spec.process_code
+                          and execution_spec.step_code=framework_screen_space_spec.step_code
+                          and coalesce((field->>'editable')::boolean,false)
+                     ),(
                        select jsonb_agg(jsonb_build_object(
                          'code',field_name,
                          'label',initcap(replace(replace(field_name,'.',' '),'_',' ')),
