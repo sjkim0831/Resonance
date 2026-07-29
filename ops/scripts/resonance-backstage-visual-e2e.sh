@@ -33,6 +33,29 @@ password="$(
 )"
 test -n "$password"
 
+token="$(
+  BACKSTAGE_E2E_USERNAME="$USERNAME" \
+  BACKSTAGE_E2E_PASSWORD="$password" \
+    bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh"
+)"
+test -n "$token"
+catalog_user_url="${BACKSTAGE_URL}/api/catalog/entities/by-name/user/default/${USERNAME}"
+catalog_ready=false
+for _ in $(seq 1 30); do
+  if curl --silent --fail \
+    --cacert "$CA_CERT" \
+    --header "Authorization: Bearer ${token}" \
+    "$catalog_user_url" >/dev/null; then
+    catalog_ready=true
+    break
+  fi
+  sleep 5
+done
+if [[ "$catalog_ready" != true ]]; then
+  echo "[backstage-e2e] catalog identity did not converge: $USERNAME" >&2
+  exit 1
+fi
+
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 evidence_dir="${EVIDENCE_ROOT}/${timestamp}"
 mkdir -p "$evidence_dir"
@@ -40,6 +63,7 @@ mkdir -p "$evidence_dir"
 cleanup() {
   unset BACKSTAGE_E2E_PASSWORD
   password=
+  token=
 }
 trap cleanup EXIT
 
