@@ -907,8 +907,12 @@ public class ActorProcessGovernanceService {
         }catch(IllegalArgumentException|SecurityException expected){authorityRejected=true;}
         boolean exceptionRejected=false;
         try{
-            Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",String.valueOf(first.getOrDefault("nextStepCode",step)));invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
-            executeProcessCommand(executionId,invalidCommand,account);
+            String exceptionStep=String.valueOf(first.getOrDefault("nextStepCode",step));
+            String exceptionActor=String.valueOf(first.getOrDefault("nextActorCode",actor));
+            List<Map<String,Object>> exceptionAccounts=jdbc.queryForList("select account_id as \"accountId\" from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' order by account_id limit 1",tenant,project,exceptionActor);
+            if(exceptionAccounts.isEmpty())throw new IllegalStateException("No active account is assigned for exception-path actor: "+exceptionActor);
+            Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",exceptionStep);invalidCommand.put("actorCode",exceptionActor);invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
+            executeProcessCommand(executionId,invalidCommand,String.valueOf(exceptionAccounts.get(0).get("accountId")));
         }catch(IllegalArgumentException|IllegalStateException expected){exceptionRejected=true;}
         List<Map<String,Object>> transitions=new java.util.ArrayList<>();
         transitions.add(Map.of("stepCode",step,"actorCode",actor,"commandCode",command,"fromState",fixture.get("fromState"),"toState",fixture.get("toState"),"accountId",account));
