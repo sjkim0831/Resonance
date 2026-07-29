@@ -776,14 +776,16 @@ public class ActorProcessGovernanceService {
             if(payload==null||"{}".equals(String.valueOf(payload)))throw new IllegalStateException("The work draft has no business data.");
             List<String> missingFields=jdbc.queryForList("""
                 select field->>'fieldName'
-                  from framework_step_execution_spec execution_spec
-                  cross join lateral jsonb_array_elements(coalesce(execution_spec.field_contract->'fields','[]'::jsonb)) field
-                 where execution_spec.process_code=? and execution_spec.step_code=?
-                   and coalesce((field->>'required')::boolean,false)
+                  from jsonb_array_elements(coalesce(
+                    (select execution_spec.field_contract->'fields' from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                    (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                    '[]'::jsonb
+                  )) field
+                 where coalesce((field->>'required')::boolean,false)
                    and coalesce((field->>'editable')::boolean,false)
                    and coalesce(nullif(btrim((?::jsonb)->>(field->>'fieldCode')),''),'')=''
                  order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode'
-                """,String.class,process,step,String.valueOf(payload));
+                """,String.class,process,step,process,step,String.valueOf(payload));
             if(!missingFields.isEmpty())throw new IllegalStateException("Required work fields are missing: "+String.join(", ",missingFields));
         }
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
@@ -828,12 +830,14 @@ public class ActorProcessGovernanceService {
                        else to_jsonb('runtime-smoke'::text)
                      end
                    ),'{"runtimeSmoke":true}'::jsonb)::text
-              from framework_step_execution_spec execution_spec
-              cross join lateral jsonb_array_elements(coalesce(execution_spec.field_contract->'fields','[]'::jsonb)) field
-             where execution_spec.process_code=? and execution_spec.step_code=?
-               and coalesce((field->>'required')::boolean,false)
+              from jsonb_array_elements(coalesce(
+                (select execution_spec.field_contract->'fields' from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+              )) field
+             where coalesce((field->>'required')::boolean,false)
                and coalesce((field->>'editable')::boolean,false)
-            """,String.class,process,step);
+            """,String.class,process,step,process,step);
         jdbc.update("""
             insert into framework_process_work_draft(
               draft_id,tenant_id,project_id,process_code,step_code,actor_code,account_id,
@@ -1139,11 +1143,12 @@ public class ActorProcessGovernanceService {
                          'validation',coalesce(field->'validation','{}'::jsonb),
                          'group',coalesce(field->>'fieldGroup','WORK')
                        ) order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode')
-                         from framework_step_execution_spec execution_spec
-                         cross join lateral jsonb_array_elements(coalesce(execution_spec.field_contract->'fields','[]'::jsonb)) field
-                        where execution_spec.process_code=framework_screen_space_spec.process_code
-                          and execution_spec.step_code=framework_screen_space_spec.step_code
-                          and coalesce((field->>'editable')::boolean,false)
+                         from jsonb_array_elements(coalesce(
+                           (select execution_spec.field_contract->'fields' from framework_step_execution_spec execution_spec where execution_spec.process_code=framework_screen_space_spec.process_code and execution_spec.step_code=framework_screen_space_spec.step_code),
+                           (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=framework_screen_space_spec.process_code and screen_contract.step_code=framework_screen_space_spec.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                           '[]'::jsonb
+                         )) field
+                        where coalesce((field->>'editable')::boolean,false)
                      ),(
                        select jsonb_agg(jsonb_build_object(
                          'code',field_name,
