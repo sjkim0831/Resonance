@@ -55,7 +55,7 @@ cd "$BACKSTAGE_ROOT"
 corepack yarn install --immutable --inline-builds >/dev/null
 corepack yarn playwright test \
   packages/app/e2e-tests/resonance-control-plane.test.ts \
-  --project=chromium \
+  --project=app \
   --workers=1
 
 find "$evidence_dir" -maxdepth 1 -type f -name '*.png' -printf '%f\n' | sort \
