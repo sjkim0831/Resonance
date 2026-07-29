@@ -9,7 +9,7 @@ BASE_URL="${BACKSTAGE_BASE_URL:-https://backstage.172.16.1.232.nip.io}"
 
 password="$(
   kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
-    -o jsonpath='{.data.password}' | base64 -d
+    -o jsonpath='{.data.PASSWORD}' | base64 -d
 )"
 token="$(
   BACKSTAGE_E2E_PASSWORD="$password" \

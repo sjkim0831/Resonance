@@ -323,6 +323,8 @@ run_backstage_visual_e2e_if_required() {
      && ",$PLAN_TESTS," != *",backstage:catalog-sync,"* ]]; then
     return
   fi
+  BACKSTAGE_E2E_USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}" \
+  BACKSTAGE_E2E_SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}" \
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-backstage-visual-e2e.sh
 }
