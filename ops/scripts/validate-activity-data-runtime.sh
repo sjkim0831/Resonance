@@ -101,6 +101,34 @@ db_gate="$(psqlq "select
   and exists(select 1 from information_schema.tables where table_name='emission_activity_request_event')
   and exists(select 1 from information_schema.tables where table_name='emission_activity_evidence')
   and exists(select 1 from information_schema.columns where table_name='emission_activity_submission_evidence' and column_name='evidence_sha256')
+  and exists(select 1 from information_schema.table_constraints where table_name='emission_activity_submission' and constraint_name='emission_activity_submission_sealed_check')
+  and not exists(
+    select 1 from emission_activity_submission submission
+    where submission.submission_state<>'DRAFT'
+      and (submission.submitted_item_count<=0 or submission.snapshot_hash is null or submission.quality_run_id is null)
+  )
+  and not exists(
+    select 1 from emission_activity_request request
+    where request.request_status<>'REQUESTED'
+      and not exists(
+        select 1 from emission_activity_request_event event
+        where event.request_id=request.request_id and event.new_status=request.request_status
+      )
+  )
+  and not exists(
+    select 1 from emission_activity_request request
+    where request.request_status='CORRECTION_REQUIRED'
+      and (nullif(request.correction_reason,'') is null or request.correction_due_date is null)
+  )
+  and not exists(
+    select 1 from emission_activity_request request
+    where request.request_status='ACCEPTED'
+      and (request.last_submission_id is null or request.accepted_at is null)
+  )
+  and not exists(
+    select 1 from emission_activity_evidence evidence
+    where octet_length(evidence.file_content)=0 or length(evidence.sha256)<>64
+  )
   and exists(select 1 from framework_project_actor_assignment where project_id='$project_id' group by project_id having count(distinct actor_code)>=5)")"
 [[ "$db_gate" == "t" ]] || { echo "[activity-runtime] FAIL DB/actor/scenario gate" >&2; exit 1; }
 
