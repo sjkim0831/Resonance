@@ -40,6 +40,9 @@ case "$mode" in
     ;;
   deploy)
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
+    # Fail before dependency installation or image construction when the API
+    # server, node, or an admission webhook cannot accept a deployment write.
+    bash "$ROOT/ops/scripts/resonance-kubernetes-admission-preflight.sh" "$NAMESPACE"
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
     # already verified image without rebuilding an identical application.

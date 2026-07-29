@@ -42,6 +42,35 @@ spec:
         runAsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -ceu
+            - |
+              until nc -z -w 2 "${POSTGRES_HOST}" "${POSTGRES_PORT}"; do
+                echo "[backstage] waiting for PostgreSQL endpoint ${POSTGRES_HOST}:${POSTGRES_PORT}"
+                sleep 2
+              done
+          envFrom:
+            - configMapRef:
+                name: resonance-backstage-config
+          resources:
+            requests:
+              cpu: 5m
+              memory: 8Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: backstage
           image: localhost:5000/resonance-backstage:bootstrap
