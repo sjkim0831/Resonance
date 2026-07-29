@@ -113,7 +113,7 @@ runtime_payload="$(
   jq -c '
     .state = "RUNTIME_E2E"
     | .action = "PREVIEW"
-    | .permission = "VIEW"
+    | .permission = "PREVIEW"
     | .archetype = "DETAIL"
     | .seedScreenId = "screen-space-runtime-e2e"
     | .routePath = "/generated/screen-space-runtime-e2e"
