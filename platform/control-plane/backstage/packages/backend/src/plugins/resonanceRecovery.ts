@@ -151,7 +151,14 @@ export default createBackendPlugin({
           [
             'BACKUP_RETENTION',
             '백업 보존 정책',
-            { hourlyDays: 3, dailyDays: 30, baseBackupCopies: 2 },
+            {
+              hourlyDays: 3,
+              dailyDays: 30,
+              baseBackupCopies: 2,
+              maxDiskUsagePercent: 85,
+              maxDeletePerRun: 3,
+              stalePartialHours: 24,
+            },
           ],
           [
             'RESTORE_GUARD',
@@ -493,11 +500,24 @@ export default createBackendPlugin({
             response.status(204).end();
             return;
           }
+          const retentionRow = await knex('resonance_recovery__policy')
+            .where({ policy_code: 'BACKUP_RETENTION', active: true })
+            .first();
+          let retentionPolicy: Record<string, unknown> = {};
+          try {
+            retentionPolicy =
+              typeof retentionRow?.policy_value === 'string'
+                ? JSON.parse(retentionRow.policy_value)
+                : retentionRow?.policy_value ?? {};
+          } catch {
+            retentionPolicy = {};
+          }
           response.json({
             commandId: command.command_id,
             commandType: command.command_type,
             targetEnvironment: command.target_environment,
             payload: command.payload,
+            retentionPolicy,
             leaseToken,
             leaseUntil,
           });

@@ -10,6 +10,7 @@ NAMESPACE="${RESONANCE_RECOVERY_NAMESPACE:-carbonet-prod}"
 DATABASE="${RESONANCE_RECOVERY_DATABASE:-carbonet}"
 MIN_BACKUP_BYTES="${RESONANCE_RECOVERY_MIN_BACKUP_BYTES:-1048576}"
 ARCHIVE_VERIFY_IMAGE="${RESONANCE_RECOVERY_ARCHIVE_VERIFY_IMAGE:-localhost:5000/spilo-16-uid1000:3.2-p3}"
+RETENTION_SCRIPT="${RESONANCE_RECOVERY_RETENTION_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/prune-on-demand-backups.sh}"
 KUBECONFIG="${KUBECONFIG:-/home/sjkim/.kube/config}"
 export KUBECONFIG
 
@@ -61,6 +62,11 @@ status="$(curl --silent --show-error --cacert "$CA_CERT" \
 command_id="$(jq -r '.commandId' "$claim_file")"
 command_type="$(jq -r '.commandType' "$claim_file")"
 lease_token="$(jq -r '.leaseToken' "$claim_file")"
+retention_days="$(jq -r '.retentionPolicy.dailyDays // 30' "$claim_file")"
+keep_minimum="$(jq -r '.retentionPolicy.baseBackupCopies // 2' "$claim_file")"
+max_disk_usage_percent="$(jq -r '.retentionPolicy.maxDiskUsagePercent // 85' "$claim_file")"
+max_delete_per_run="$(jq -r '.retentionPolicy.maxDeletePerRun // 3' "$claim_file")"
+stale_partial_hours="$(jq -r '.retentionPolicy.stalePartialHours // 24' "$claim_file")"
 [[ "$command_id" =~ ^[0-9a-f-]{36}$ && "$lease_token" =~ ^[0-9a-f-]{36}$ ]] || {
   echo "[recovery-worker] invalid claim payload" >&2
   exit 1
@@ -127,7 +133,7 @@ complete() {
 }
 
 run_backup() {
-  local leader timestamp partial final bytes checksum manifest
+  local leader timestamp partial final bytes checksum manifest retention_result
   leader="$(find_leader)" || return 1
   timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
   partial="$resolved_root/.carbonet-${timestamp}-${command_id}.dump.partial"
@@ -149,8 +155,22 @@ run_backup() {
     --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" \
     '{file:$file,sha256:$sha256,bytes:$bytes,createdAt:$createdAt,verified:true,verificationMode:$verificationMode}' \
     >"$manifest"
+  retention_result='{"status":"SKIPPED","reason":"retention script unavailable"}'
+  if [[ -x "$RETENTION_SCRIPT" ]]; then
+    if ! retention_result="$(
+      RESONANCE_RECOVERY_RETENTION_DAYS="$retention_days" \
+      RESONANCE_RECOVERY_KEEP_MINIMUM="$keep_minimum" \
+      RESONANCE_RECOVERY_MAX_DISK_USAGE_PERCENT="$max_disk_usage_percent" \
+      RESONANCE_RECOVERY_MAX_DELETE_PER_RUN="$max_delete_per_run" \
+      RESONANCE_RECOVERY_STALE_PARTIAL_HOURS="$stale_partial_hours" \
+      RESONANCE_RECOVERY_PRUNE_DRY_RUN=false \
+      "$RETENTION_SCRIPT"
+    )"; then
+      retention_result='{"status":"ERROR","reason":"retention execution failed"}'
+    fi
+  fi
   complete true "backup created and verified" \
-    "$(jq -nc --arg file "$(basename "$final")" --arg sha256 "$checksum" --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" --argjson bytes "$bytes" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true,verificationMode:$verificationMode}')"
+    "$(jq -nc --arg file "$(basename "$final")" --arg sha256 "$checksum" --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" --argjson bytes "$bytes" --argjson retention "$retention_result" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true,verificationMode:$verificationMode,retention:$retention}')"
 }
 
 run_verify() {

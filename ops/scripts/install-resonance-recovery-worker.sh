@@ -3,14 +3,20 @@ set -euo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 SOURCE="$ROOT/ops/scripts/resonance-recovery-worker.sh"
+RETENTION_SOURCE="$ROOT/ops/scripts/prune-on-demand-backups.sh"
 INSTALL_DIR="${RESONANCE_RECOVERY_INSTALL_DIR:-$HOME/.local/lib/resonance}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 [[ -f "$SOURCE" ]] || {
   echo "[recovery-worker] source script missing" >&2
   exit 2
 }
+[[ -f "$RETENTION_SOURCE" ]] || {
+  echo "[recovery-worker] retention script missing" >&2
+  exit 2
+}
 mkdir -p "$INSTALL_DIR" "$UNIT_DIR"
 install -m 0750 "$SOURCE" "$INSTALL_DIR/resonance-recovery-worker.sh"
+install -m 0750 "$RETENTION_SOURCE" "$INSTALL_DIR/prune-on-demand-backups.sh"
 
 cat >"$UNIT_DIR/resonance-recovery-worker.service" <<EOF
 [Unit]
