@@ -2,8 +2,7 @@
 Description=Check Carbonet main for deployable commits
 
 [Timer]
-OnBootSec=2min
-OnActiveSec=1min
+OnCalendar=*-*-* *:*:00
 RandomizedDelaySec=15s
 Persistent=true
 Unit=carbonet-auto-deploy.service
