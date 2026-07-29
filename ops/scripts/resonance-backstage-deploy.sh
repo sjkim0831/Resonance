@@ -57,7 +57,7 @@ docker buildx version >/dev/null 2>&1 || {
 BACKSTAGE_HOST="${BACKSTAGE_HOST:-backstage.172.16.1.232.nip.io}"
 BACKSTAGE_URL="${BACKSTAGE_URL:-https://$BACKSTAGE_HOST}"
 BACKSTAGE_MIN_CATALOG_ENTITIES="${BACKSTAGE_MIN_CATALOG_ENTITIES:-22}"
-BACKSTAGE_TLS_DIR="${BACKSTAGE_TLS_DIR:-$HOME/.config/resonance/backstage-tls}"
+BACKSTAGE_TLS_DIR="${BACKSTAGE_TLS_DIR:-/opt/resonance-data/pki/resonance-internal-ca}"
 CURL_TLS_ARGS=()
 OIDC_READY=false
 leader=""

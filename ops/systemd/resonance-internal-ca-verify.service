@@ -1,0 +1,10 @@
+[Unit]
+Description=Verify Resonance internal TLS chain and publish client trust certificate
+After=network-online.target kubelet.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+ExecStart=/usr/bin/bash /opt/resonance-data/deploy/resonance-internal-ca-verify.sh

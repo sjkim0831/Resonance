@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Resonance internal TLS verification
+
+[Timer]
+OnCalendar=*-*-* 04:35:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
