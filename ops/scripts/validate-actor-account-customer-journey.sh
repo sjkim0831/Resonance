@@ -114,6 +114,25 @@ PY
   )
 done
 
+# Project and data scope are server-authoritative. A scoped account can open its
+# assigned project, cannot discover unrelated projects in the list, and direct
+# URL access must fail closed with an auditable 403.
+allowed_code="$(curl -sS -b "$tmp/qadata26.cookie" -o "$tmp/scope-allowed.json" -w '%{http_code}' "$BASE/home/api/emission-projects/$PROJECT")"
+[[ "$allowed_code" == 200 ]] || { echo "[actor-account-journey] FAIL assigned project scope status=$allowed_code" >&2; exit 1; }
+denied_project="$(q "select project_id from emission_project_registry where tenant_id='DEFAULT' and project_id<>'$PROJECT' and not exists(select 1 from framework_account_actor_assignment a where lower(a.account_id)='qadata26' and a.tenant_id='DEFAULT' and a.assignment_status='ACTIVE' and a.project_id in ('*',emission_project_registry.project_id) and (a.data_scope='*' or emission_project_registry.project_id=any(string_to_array(replace(a.data_scope,' ',''),',')))) order by project_id limit 1")"
+[[ -n "$denied_project" ]] || { echo '[actor-account-journey] FAIL cross-project denial fixture missing' >&2; exit 1; }
+denied_scope_code="$(curl -sS -b "$tmp/qadata26.cookie" -o "$tmp/scope-denied.json" -w '%{http_code}' "$BASE/home/api/emission-projects/$denied_project")"
+[[ "$denied_scope_code" == 403 ]] || { echo "[actor-account-journey] FAIL cross-project scope status=$denied_scope_code project=$denied_project" >&2; exit 1; }
+visible_scope="$(curl -sS -b "$tmp/qadata26.cookie" "$BASE/home/api/emission-projects?size=100")"
+VISIBLE_SCOPE="$visible_scope" DENIED_PROJECT="$denied_project" python3 - <<'PY'
+import json,os,sys
+payload=json.loads(os.environ["VISIBLE_SCOPE"])
+if any(row.get("id")==os.environ["DENIED_PROJECT"] for row in payload.get("items",[])):
+    sys.exit("cross-project item leaked through list API")
+PY
+audit_count="$(q "select count(*) from framework_scope_access_audit where lower(account_id)='qadata26' and tenant_id='DEFAULT' and project_id='$denied_project' and decision_code='DENIED' and created_at>current_timestamp-interval '5 minutes'")"
+[[ "${audit_count:-0}" -gt 0 ]] || { echo '[actor-account-journey] FAIL scope denial audit missing' >&2; exit 1; }
+
 submission_id="$(q "select regulatory_submission_id from emission_regulatory_submission where project_id='$PROJECT' and status='ACCEPTED' order by regulatory_submission_id desc limit 1")"
 [[ -n "$submission_id" ]] || { echo '[actor-account-journey] FAIL accepted regulatory fixture missing' >&2; exit 1; }
 
@@ -124,5 +143,5 @@ wrong_actor_code="$(curl -sS -b "$tmp/qacalc26.cookie" -o "$tmp/deny.json" -w '%
 anonymous_code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/home/api/emission-projects/$PROJECT/regulatory-submissions")"
 [[ "$anonymous_code" == 401 || "$anonymous_code" == 403 ]] || { echo "[actor-account-journey] FAIL anonymous protection status=$anonymous_code" >&2; exit 1; }
 
-q "update framework_customer_journey_validation_run set evidence_json=(coalesce(nullif(evidence_json,''),'{}')::jsonb || jsonb_build_object('actorAccounts',5,'actorRoles',5,'segregation','VERIFIED','fullWorkflow','7/7','workflowOrder','VERIFIED','nextTaskLinks','VERIFIED','unauthorizedStatus',403,'anonymousStatus',$anonymous_code))::text where validation_id=(select max(validation_id) from framework_customer_journey_validation_run where project_id='$PROJECT')" >/dev/null
-echo "[actor-account-journey] PASS project=$PROJECT accounts=5 roles=5 tasks=7 workflow=7/7 order=verified links=verified segregation=verified unauthorized=403 anonymous=$anonymous_code"
+q "update framework_customer_journey_validation_run set evidence_json=(coalesce(nullif(evidence_json,''),'{}')::jsonb || jsonb_build_object('actorAccounts',5,'actorRoles',5,'segregation','VERIFIED','projectScope','VERIFIED','listIsolation','VERIFIED','scopeDenialAudit','VERIFIED','fullWorkflow','7/7','workflowOrder','VERIFIED','nextTaskLinks','VERIFIED','unauthorizedStatus',403,'anonymousStatus',$anonymous_code))::text where validation_id=(select max(validation_id) from framework_customer_journey_validation_run where project_id='$PROJECT')" >/dev/null
+echo "[actor-account-journey] PASS project=$PROJECT accounts=5 roles=5 tasks=7 workflow=7/7 order=verified links=verified scopes=verified segregation=verified unauthorized=403 anonymous=$anonymous_code"

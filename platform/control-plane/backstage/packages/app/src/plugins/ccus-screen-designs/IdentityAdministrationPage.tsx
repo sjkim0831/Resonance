@@ -380,7 +380,7 @@ export function IdentityAdministrationPage() {
                     label="데이터 범위"
                     value={editDataScopes}
                     onChange={event => setEditDataScopes(event.target.value)}
-                    helperText="쉼표로 데이터 범위를 구분합니다. 전체는 *"
+                    helperText="허용 프로젝트 ID를 쉼표로 구분합니다. 전체는 *"
                   />
                   <TextField
                     className={classes.field}
@@ -490,7 +490,9 @@ export function IdentityAdministrationPage() {
                     helperText={
                       field === 'tenantId'
                         ? '기본값: DEFAULT'
-                        : '쉼표로 구분하며 전체 범위는 *를 사용합니다.'
+                        : field === 'dataScopes'
+                        ? '허용 프로젝트 ID를 쉼표로 구분하며 전체는 *입니다.'
+                        : '프로젝트 ID를 쉼표로 구분하며 전체 범위는 *입니다.'
                     }
                   />
                 ),
