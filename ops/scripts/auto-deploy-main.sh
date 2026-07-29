@@ -66,6 +66,11 @@ done < <(git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree list --po
   awk -v prefix="$deploy_worktree_root/" '$1=="worktree" && index($2,prefix)==1 {print $2}')
 git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree prune
 
+# Reserve both the post-deploy safety floor and worst-case build/backup work
+# space after reclaiming disposable worktrees, but before Git fetch, database
+# backup, or build. A blocked run leaves the timer active for a later retry.
+bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
+
 # Image/Gradle packaging can leave generated frontend trees owned by root.
 # Normalize only when a foreign-owned entry is detected so the next Git
 # fast-forward/restore cannot fail before the deployment plan is evaluated.
@@ -183,21 +188,9 @@ bash ops/scripts/ensure-protected-runtime-images.sh
 bash ops/scripts/prune-predeploy-backups.sh
 bash ops/scripts/deduplicate-verified-postgres-backups.sh
 
-opt_usage="$(df -P /opt | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
-opt_available_kb="$(df -Pk /opt | awk 'NR==2 {print $4}')"
-opt_min_free_gb="${CARBONET_OPT_MIN_FREE_GB:-150}"
-opt_min_free_kb="$((opt_min_free_gb * 1024 * 1024))"
-# /opt is a multi-terabyte volume. A percentage-only threshold rejected safe
-# database-only deployments despite hundreds of GiB remaining. Keep a hard
-# percentage ceiling, but below it use actual free capacity as the operative
-# safety guard.
-if [[ "$opt_usage" -ge 92 || "$opt_available_kb" -lt "$opt_min_free_kb" ]]; then
-  echo "[auto-deploy] refusing deployment: /opt usage=${opt_usage}% available_kb=${opt_available_kb} required_kb=${opt_min_free_kb}" >&2
-  exit 18
-fi
-if [[ "$opt_usage" -ge 82 ]]; then
-  echo "[auto-deploy] /opt usage warning: ${opt_usage}% with $((opt_available_kb / 1024 / 1024))GiB available; capacity guard passed"
-fi
+# Recheck after backup pruning because concurrent workloads can consume the
+# reservation while the deployment plan is being prepared.
+bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [[ "$root_usage" -ge 88 ]]; then
