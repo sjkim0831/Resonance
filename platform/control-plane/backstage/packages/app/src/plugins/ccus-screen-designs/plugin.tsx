@@ -34,8 +34,8 @@ const screenSpacePage = PageBlueprint.make({
     title: 'CCUS 화면 공간 엔진',
     icon: <DashboardIcon />,
     loader: () =>
-      import('./ScreenSpaceEnginePage').then(module => (
-        <module.ScreenSpaceEnginePage />
+      import('./ScreenSpaceRuntimePage').then(module => (
+        <module.ScreenSpaceRuntimePage />
       )),
   },
 });

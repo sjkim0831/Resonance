@@ -42,6 +42,105 @@ type DesignAssetSnapshotInput = {
   payload?: Record<string, unknown>;
 };
 
+type ScreenCoordinateInput = {
+  projectId?: string;
+  domainObject?: string;
+  actor?: string;
+  process?: string;
+  step?: string;
+  state?: string;
+  action?: string;
+  permission?: string;
+  archetype?: string;
+  device?: string;
+  language?: string;
+  dataContext?: string;
+  seedScreenId?: string;
+  routePath?: string;
+  sections?: string[];
+  dataContracts?: string[];
+};
+
+const SCREEN_DIMENSIONS = [
+  'projectId',
+  'domainObject',
+  'actor',
+  'process',
+  'step',
+  'state',
+  'action',
+  'permission',
+  'archetype',
+  'device',
+  'language',
+  'dataContext',
+] as const;
+
+const EMISSION_WORK_PACK = [
+  [
+    'PROJECT_SETUP',
+    '배출량 프로젝트 생성',
+    'COMPANY_MANAGER',
+    '/emission/project/create',
+    'CREATE',
+  ],
+  [
+    'ACTIVITY_DATA',
+    '활동자료 수집',
+    'SITE_DATA_OWNER',
+    '/emission/activity-data',
+    'WORKFLOW',
+  ],
+  [
+    'CALCULATION',
+    '배출량 산정',
+    'CALCULATOR',
+    '/emission/calculation',
+    'WORKFLOW',
+  ],
+  [
+    'VERIFICATION',
+    '검증 및 보완',
+    'VERIFIER',
+    '/emission/validate',
+    'APPROVAL',
+  ],
+  [
+    'APPROVAL',
+    '검토 및 승인',
+    'APPROVER',
+    '/emission/validate?tab=approval',
+    'APPROVAL',
+  ],
+  [
+    'REPORT',
+    '확정 및 보고',
+    'REPORT_MANAGER',
+    '/emission/report_submit',
+    'REPORT',
+  ],
+  [
+    'CERTIFICATE',
+    '인증서 발급·진위 확인',
+    'CERTIFICATE_MANAGER',
+    '/home/certificate-verify',
+    'REPORT',
+  ],
+] as const;
+
+const normalizeCoordinatePart = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase()
+    .slice(0, 64) || 'default';
+
+const buildCoordinate = (input: ScreenCoordinateInput) =>
+  ['ccus', ...SCREEN_DIMENSIONS.map(field => input[field])]
+    .map(normalizeCoordinatePart)
+    .join(':');
+
 const normalizeProjectId = (value: unknown) =>
   String(value ?? '')
     .trim()
@@ -113,19 +212,25 @@ export default createBackendPlugin({
       async init({ database, httpAuth, httpRouter, logger, userInfo }) {
         const knex = await database.getClient();
         if (!(await knex.schema.hasTable('resonance_projects__project'))) {
-          await knex.schema.createTable('resonance_projects__project', table => {
-            table.string('project_id', 64).primary();
-            table.string('project_name', 200).notNullable();
-            table.text('description').notNullable().defaultTo('');
-            table.string('owner', 120).notNullable();
-            table.string('source_repository', 500).notNullable().defaultTo('');
-            table.string('database_mode', 64).notNullable();
-            table.string('runtime_mode', 64).notNullable();
-            table.string('status', 32).notNullable();
-            table.integer('design_version').notNullable().defaultTo(1);
-            table.timestamp('created_at', { useTz: true }).notNullable();
-            table.timestamp('updated_at', { useTz: true }).notNullable();
-          });
+          await knex.schema.createTable(
+            'resonance_projects__project',
+            table => {
+              table.string('project_id', 64).primary();
+              table.string('project_name', 200).notNullable();
+              table.text('description').notNullable().defaultTo('');
+              table.string('owner', 120).notNullable();
+              table
+                .string('source_repository', 500)
+                .notNullable()
+                .defaultTo('');
+              table.string('database_mode', 64).notNullable();
+              table.string('runtime_mode', 64).notNullable();
+              table.string('status', 32).notNullable();
+              table.integer('design_version').notNullable().defaultTo(1);
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+            },
+          );
         }
         if (!(await knex.schema.hasTable('resonance_projects__task'))) {
           await knex.schema.createTable('resonance_projects__task', table => {
@@ -377,22 +482,60 @@ export default createBackendPlugin({
           ['result', (table: any) => table.jsonb('result').nullable()],
           [
             'attempt_count',
-            (table: any) => table.integer('attempt_count').notNullable().defaultTo(0),
+            (table: any) =>
+              table.integer('attempt_count').notNullable().defaultTo(0),
           ],
-          ['worker_id', (table: any) => table.string('worker_id', 160).nullable()],
+          [
+            'worker_id',
+            (table: any) => table.string('worker_id', 160).nullable(),
+          ],
           [
             'started_at',
-            (table: any) => table.timestamp('started_at', { useTz: true }).nullable(),
+            (table: any) =>
+              table.timestamp('started_at', { useTz: true }).nullable(),
           ],
           [
             'finished_at',
-            (table: any) => table.timestamp('finished_at', { useTz: true }).nullable(),
+            (table: any) =>
+              table.timestamp('finished_at', { useTz: true }).nullable(),
           ],
         ] as const;
         for (const [column, addColumn] of taskColumns) {
-          if (!(await knex.schema.hasColumn('resonance_projects__task', column))) {
+          if (
+            !(await knex.schema.hasColumn('resonance_projects__task', column))
+          ) {
             await knex.schema.alterTable('resonance_projects__task', addColumn);
           }
+        }
+        if (
+          !(await knex.schema.hasTable('resonance_projects__screen_space_spec'))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__screen_space_spec',
+            table => {
+              table.string('coordinate', 1200).primary();
+              table.string('project_id', 64).notNullable();
+              table.string('seed_screen_id', 200).notNullable();
+              table.string('route_path', 500).notNullable();
+              table.string('actor_code', 120).notNullable();
+              table.string('process_code', 160).notNullable();
+              table.string('step_code', 160).notNullable();
+              table.string('state_code', 80).notNullable();
+              table.string('archetype_code', 80).notNullable();
+              table.jsonb('coordinate_payload').notNullable();
+              table.jsonb('screen_spec').notNullable();
+              table.jsonb('validation_report').notNullable();
+              table.string('spec_sha256', 64).notNullable();
+              table.string('materialization_status', 40).notNullable();
+              table.string('created_by', 200).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.index(
+                ['project_id', 'process_code', 'step_code'],
+                'resonance_screen_space_process_step_idx',
+              );
+            },
+          );
         }
 
         const resolveDesignAssetAccess = async (
@@ -403,10 +546,7 @@ export default createBackendPlugin({
             allow: ['user'],
           });
           const user = await userInfo.getUserInfo(credentials);
-          const principals = [
-            user.userEntityRef,
-            ...user.ownershipEntityRefs,
-          ];
+          const principals = [user.userEntityRef, ...user.ownershipEntityRefs];
           const assignments = await knex(
             'resonance_projects__design_asset_role_assignment',
           )
@@ -434,7 +574,9 @@ export default createBackendPlugin({
               details: JSON.stringify({ requiredRole: role }),
               created_at: new Date(),
             });
-            const error = new Error(`missing required role: ${role}`) as Error & {
+            const error = new Error(
+              `missing required role: ${role}`,
+            ) as Error & {
               statusCode?: number;
             };
             error.statusCode = 403;
@@ -478,6 +620,175 @@ export default createBackendPlugin({
           response.json({ status: 'UP', projectCount: Number(count) });
         });
         router.get(
+          '/screen-space/work-pack/emission',
+          async (_request, response) => {
+            response.json({
+              workPackCode: 'EMISSION_PROJECT_END_TO_END',
+              name: '탄소배출 프로젝트 전 과정',
+              stages: EMISSION_WORK_PACK.map(
+                ([step, name, actor, routePath, archetype], index) => ({
+                  sequence: index + 1,
+                  step,
+                  name,
+                  actor,
+                  process: 'EMISSION_PROJECT',
+                  routePath,
+                  archetype,
+                  inputContract:
+                    index === 0
+                      ? ['tenantId', 'companyId']
+                      : [`${EMISSION_WORK_PACK[index - 1][0]}.output`],
+                  outputContract: [`${step}.output`],
+                  completionCondition: `${step}.status=COMPLETED`,
+                }),
+              ),
+            });
+          },
+        );
+        router.get('/screen-space/specs', async (request, response) => {
+          const projectId = normalizeProjectId(
+            request.query.projectId ?? 'CCUS-PLATFORM',
+          );
+          await requireDesignAssetRole(request, projectId, 'DESIGN_REQUESTER');
+          const rows = await knex('resonance_projects__screen_space_spec')
+            .where({ project_id: projectId })
+            .orderBy('updated_at', 'desc')
+            .limit(200);
+          response.json({
+            projectId,
+            specs: rows.map(row => ({
+              coordinate: row.coordinate,
+              seedScreenId: row.seed_screen_id,
+              routePath: row.route_path,
+              actor: row.actor_code,
+              process: row.process_code,
+              step: row.step_code,
+              state: row.state_code,
+              archetype: row.archetype_code,
+              status: row.materialization_status,
+              specSha256: row.spec_sha256,
+              validation: row.validation_report,
+              updatedAt: row.updated_at,
+            })),
+          });
+        });
+        router.post('/screen-space/materialize', async (request, response) => {
+          const input = (request.body ?? {}) as ScreenCoordinateInput;
+          const projectId = normalizeProjectId(input.projectId);
+          const access = await requireDesignAssetRole(
+            request,
+            projectId,
+            'DESIGN_REQUESTER',
+          );
+          const missing = SCREEN_DIMENSIONS.filter(
+            field => !String(input[field] ?? '').trim(),
+          );
+          const workflowStage = EMISSION_WORK_PACK.find(
+            ([step]) => step === input.step,
+          );
+          const checks = [
+            ['DIMENSIONS_COMPLETE', missing.length === 0],
+            ['PROJECT_BOUND', Boolean(projectId)],
+            ['ACTOR_BOUND', Boolean(input.actor)],
+            ['PROCESS_STEP_BOUND', Boolean(input.process && input.step)],
+            ['ROUTE_BOUND', String(input.routePath ?? '').startsWith('/')],
+            ['DATA_CONTRACT_BOUND', Boolean(input.dataContracts?.length)],
+            ['SECTIONS_BOUND', Boolean(input.sections?.length)],
+            [
+              'PERMISSION_BOUND',
+              input.action === input.permission || input.permission === 'ADMIN',
+            ],
+            [
+              'WORKFLOW_REACHABLE',
+              input.process !== 'EMISSION_PROJECT' || Boolean(workflowStage),
+            ],
+          ].map(([code, passed]) => ({
+            code,
+            status: passed ? 'PASS' : 'FAIL',
+          }));
+          const coordinate = buildCoordinate({ ...input, projectId });
+          const screenSpec = {
+            schemaVersion: 1,
+            coordinate,
+            dimensions: { ...input, projectId },
+            composition: {
+              archetype: input.archetype,
+              sections: input.sections ?? [],
+              responsive: ['DESKTOP', 'TABLET', 'MOBILE'],
+            },
+            bindings: {
+              routePath: input.routePath,
+              dataContracts: input.dataContracts ?? [],
+              actor: input.actor,
+              permission: input.permission,
+              action: input.action,
+            },
+            materialization: {
+              strategy: 'LAZY_METADATA_RUNTIME',
+              outputs: {
+                screenSpec: `screen-spec/${createHash('sha256')
+                  .update(coordinate)
+                  .digest('hex')
+                  .slice(0, 16)}.json`,
+                apiContract: `contracts/${normalizeCoordinatePart(
+                  input.process,
+                )}.openapi.yaml`,
+                schemaContract: `contracts/${normalizeCoordinatePart(
+                  input.process,
+                )}.schema.json`,
+                testContract: `tests/${normalizeCoordinatePart(
+                  input.process,
+                )}-${normalizeCoordinatePart(input.step)}.scenario.json`,
+              },
+            },
+          };
+          const canonical = JSON.stringify(screenSpec);
+          const checksum = createHash('sha256').update(canonical).digest('hex');
+          const status = checks.every(check => check.status === 'PASS')
+            ? 'VERIFIED'
+            : 'BLOCKED';
+          const now = new Date();
+          await knex('resonance_projects__screen_space_spec')
+            .insert({
+              coordinate,
+              project_id: projectId,
+              seed_screen_id: String(input.seedScreenId ?? 'UNBOUND'),
+              route_path: String(input.routePath ?? ''),
+              actor_code: String(input.actor ?? ''),
+              process_code: String(input.process ?? ''),
+              step_code: String(input.step ?? ''),
+              state_code: String(input.state ?? ''),
+              archetype_code: String(input.archetype ?? ''),
+              coordinate_payload: JSON.stringify({ ...input, projectId }),
+              screen_spec: canonical,
+              validation_report: JSON.stringify({ checks, missing }),
+              spec_sha256: checksum,
+              materialization_status: status,
+              created_by: access.actorRef,
+              created_at: now,
+              updated_at: now,
+            })
+            .onConflict('coordinate')
+            .merge({
+              route_path: String(input.routePath ?? ''),
+              coordinate_payload: JSON.stringify({ ...input, projectId }),
+              screen_spec: canonical,
+              validation_report: JSON.stringify({ checks, missing }),
+              spec_sha256: checksum,
+              materialization_status: status,
+              created_by: access.actorRef,
+              updated_at: now,
+            });
+          response.status(status === 'VERIFIED' ? 201 : 422).json({
+            success: status === 'VERIFIED',
+            coordinate,
+            status,
+            specSha256: checksum,
+            validation: { checks, missing },
+            screenSpec,
+          });
+        });
+        router.get(
           '/design-assets/:projectId/access',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
@@ -499,14 +810,8 @@ export default createBackendPlugin({
           '/design-assets/:projectId/audit',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
-            await requireDesignAssetRole(
-              request,
-              projectId,
-              'DESIGN_AUDITOR',
-            );
-            const rows = await knex(
-              'resonance_projects__design_asset_audit',
-            )
+            await requireDesignAssetRole(request, projectId, 'DESIGN_AUDITOR');
+            const rows = await knex('resonance_projects__design_asset_audit')
               .where({ project_id: projectId })
               .orderBy('audit_id', 'desc')
               .limit(200);
@@ -523,33 +828,28 @@ export default createBackendPlugin({
             });
           },
         );
-        router.get(
-          '/control-assets/:projectId',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const rows = await knex(
-              'resonance_projects__control_asset_migration',
-            )
-              .select('*')
-              .where({ project_id: projectId })
-              .orderBy('route_path', 'asc');
-            response.json({
-              projectId,
-              assets: rows.map(row => ({
-                assetId: row.asset_id,
-                routePath: row.route_path,
-                screenName: row.screen_name,
-                ownershipLane: row.ownership_lane,
-                migrationStatus: row.migration_status,
-                targetPlugin: row.target_plugin,
-                capabilities: row.capabilities,
-                dependencyContracts: row.dependency_contracts,
-                verificationEvidence: row.verification_evidence,
-                updatedAt: row.updated_at,
-              })),
-            });
-          },
-        );
+        router.get('/control-assets/:projectId', async (request, response) => {
+          const projectId = normalizeProjectId(request.params.projectId);
+          const rows = await knex('resonance_projects__control_asset_migration')
+            .select('*')
+            .where({ project_id: projectId })
+            .orderBy('route_path', 'asc');
+          response.json({
+            projectId,
+            assets: rows.map(row => ({
+              assetId: row.asset_id,
+              routePath: row.route_path,
+              screenName: row.screen_name,
+              ownershipLane: row.ownership_lane,
+              migrationStatus: row.migration_status,
+              targetPlugin: row.target_plugin,
+              capabilities: row.capabilities,
+              dependencyContracts: row.dependency_contracts,
+              verificationEvidence: row.verification_evidence,
+              updatedAt: row.updated_at,
+            })),
+          });
+        });
         router.post(
           '/control-assets/:projectId/sync',
           async (request, response) => {
@@ -604,16 +904,17 @@ export default createBackendPlugin({
                 ),
               };
             });
-            if (new Set(normalized.map(asset => asset.asset_id)).size !== normalized.length) {
+            if (
+              new Set(normalized.map(asset => asset.asset_id)).size !==
+              normalized.length
+            ) {
               response.status(400).json({ message: 'duplicate asset ids' });
               return;
             }
             const now = new Date();
             await knex.transaction(async transaction => {
               for (const asset of normalized) {
-                await transaction(
-                  'resonance_projects__control_asset_migration',
-                )
+                await transaction('resonance_projects__control_asset_migration')
                   .insert({
                     ...asset,
                     created_at: now,
@@ -653,66 +954,60 @@ export default createBackendPlugin({
             });
           },
         );
-        router.get(
-          '/design-assets/:projectId',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const assetType = String(request.query.assetType ?? '')
-              .trim()
-              .toUpperCase();
-            const search = String(request.query.search ?? '').trim();
-            const limit = Math.max(
-              1,
-              Math.min(Number(request.query.limit ?? 100), 500),
+        router.get('/design-assets/:projectId', async (request, response) => {
+          const projectId = normalizeProjectId(request.params.projectId);
+          const assetType = String(request.query.assetType ?? '')
+            .trim()
+            .toUpperCase();
+          const search = String(request.query.search ?? '').trim();
+          const limit = Math.max(
+            1,
+            Math.min(Number(request.query.limit ?? 100), 500),
+          );
+          const query = knex('resonance_projects__design_asset_snapshot')
+            .select('*')
+            .where({ project_id: projectId });
+          if (assetType) query.andWhere({ asset_type: assetType });
+          if (search) {
+            query.andWhere(builder =>
+              builder
+                .whereILike('asset_id', `%${search}%`)
+                .orWhereILike('asset_name', `%${search}%`)
+                .orWhereILike('route_path', `%${search}%`),
             );
-            const query = knex('resonance_projects__design_asset_snapshot')
-              .select('*')
-              .where({ project_id: projectId });
-            if (assetType) query.andWhere({ asset_type: assetType });
-            if (search) {
-              query.andWhere(builder =>
-                builder
-                  .whereILike('asset_id', `%${search}%`)
-                  .orWhereILike('asset_name', `%${search}%`)
-                  .orWhereILike('route_path', `%${search}%`),
-              );
-            }
-            const assets = await query
-              .orderBy('asset_type', 'asc')
-              .orderBy('asset_name', 'asc')
-              .limit(limit);
-            const counts = (await knex(
-              'resonance_projects__design_asset_snapshot',
-            )
-              .select('asset_type')
-              .count({ count: '*' })
-              .where({ project_id: projectId, active: true })
-              .groupBy('asset_type')) as {
-              asset_type: string;
-              count: string | number;
-            }[];
-            response.json({
-              projectId,
-              counts: Object.fromEntries(
-                counts.map(row => [
-                  row.asset_type,
-                  Number(row.count),
-                ]),
-              ),
-              assets: assets.map(asset => ({
-                assetType: asset.asset_type,
-                assetId: asset.asset_id,
-                assetName: asset.asset_name,
-                routePath: asset.route_path,
-                version: asset.asset_version,
-                active: asset.active,
-                payload: asset.asset_payload,
-                fingerprint: asset.asset_sha256,
-                syncedAt: asset.synced_at,
-              })),
-            });
-          },
-        );
+          }
+          const assets = await query
+            .orderBy('asset_type', 'asc')
+            .orderBy('asset_name', 'asc')
+            .limit(limit);
+          const counts = (await knex(
+            'resonance_projects__design_asset_snapshot',
+          )
+            .select('asset_type')
+            .count({ count: '*' })
+            .where({ project_id: projectId, active: true })
+            .groupBy('asset_type')) as {
+            asset_type: string;
+            count: string | number;
+          }[];
+          response.json({
+            projectId,
+            counts: Object.fromEntries(
+              counts.map(row => [row.asset_type, Number(row.count)]),
+            ),
+            assets: assets.map(asset => ({
+              assetType: asset.asset_type,
+              assetId: asset.asset_id,
+              assetName: asset.asset_name,
+              routePath: asset.route_path,
+              version: asset.asset_version,
+              active: asset.active,
+              payload: asset.asset_payload,
+              fingerprint: asset.asset_sha256,
+              syncedAt: asset.synced_at,
+            })),
+          });
+        });
         router.post(
           '/design-assets/:projectId/sync',
           async (request, response) => {
@@ -783,9 +1078,7 @@ export default createBackendPlugin({
             }
             await knex.transaction(async transaction => {
               for (const row of rows) {
-                await transaction(
-                  'resonance_projects__design_asset_snapshot',
-                )
+                await transaction('resonance_projects__design_asset_snapshot')
                   .insert(row)
                   .onConflict(['project_id', 'asset_type', 'asset_id'])
                   .merge({
@@ -805,7 +1098,10 @@ export default createBackendPlugin({
               fingerprint: createHash('sha256')
                 .update(
                   rows
-                    .map(row => `${row.asset_type}:${row.asset_id}:${row.asset_sha256}`)
+                    .map(
+                      row =>
+                        `${row.asset_type}:${row.asset_id}:${row.asset_sha256}`,
+                    )
                     .sort()
                     .join('\n'),
                 )
@@ -818,9 +1114,7 @@ export default createBackendPlugin({
           '/design-assets/:projectId/drafts',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
-            const drafts = await knex(
-              'resonance_projects__design_asset_draft',
-            )
+            const drafts = await knex('resonance_projects__design_asset_draft')
               .where({ project_id: projectId })
               .orderBy('draft_id', 'desc')
               .limit(100);
@@ -851,7 +1145,9 @@ export default createBackendPlugin({
               projectId,
               'DESIGN_REQUESTER',
             );
-            const assetType = String(request.body?.assetType ?? '').toUpperCase();
+            const assetType = String(
+              request.body?.assetType ?? '',
+            ).toUpperCase();
             const assetId = String(request.body?.assetId ?? '').trim();
             const baseFingerprint = String(
               request.body?.baseFingerprint ?? '',
@@ -872,7 +1168,9 @@ export default createBackendPlugin({
             );
             if (invalidFields.length) {
               response.status(400).json({
-                message: `unsupported patch fields: ${invalidFields.join(', ')}`,
+                message: `unsupported patch fields: ${invalidFields.join(
+                  ', ',
+                )}`,
               });
               return;
             }
@@ -895,9 +1193,7 @@ export default createBackendPlugin({
               });
               return;
             }
-            const [draft] = await knex(
-              'resonance_projects__design_asset_draft',
-            )
+            const [draft] = await knex('resonance_projects__design_asset_draft')
               .insert({
                 project_id: projectId,
                 asset_type: assetType,
@@ -934,9 +1230,7 @@ export default createBackendPlugin({
               'DESIGN_REVIEWER',
             );
             const draftId = Number(request.params.draftId);
-            const draft = await knex(
-              'resonance_projects__design_asset_draft',
-            )
+            const draft = await knex('resonance_projects__design_asset_draft')
               .where({ project_id: projectId, draft_id: draftId })
               .first();
             if (!draft) {
@@ -1002,9 +1296,7 @@ export default createBackendPlugin({
             await writeDesignAssetAudit({
               projectId,
               draftId,
-              actionCode: failures.length
-                ? 'REVIEW_BLOCKED'
-                : 'REVIEW_PASSED',
+              actionCode: failures.length ? 'REVIEW_BLOCKED' : 'REVIEW_PASSED',
               actorRef: access.actorRef,
               details: report,
             });
@@ -1051,9 +1343,7 @@ export default createBackendPlugin({
                 .orderBy('audit_id', 'desc')
                 .first();
               if (!review || review.actor_ref === access.actorRef) {
-                throw new Error(
-                  'approver must be different from the reviewer',
-                );
+                throw new Error('approver must be different from the reviewer');
               }
               const source = await transaction(
                 'resonance_projects__design_asset_snapshot',
@@ -1074,9 +1364,7 @@ export default createBackendPlugin({
                   promoted_at: now,
                   updated_at: now,
                 });
-              const [task] = await transaction(
-                'resonance_projects__task',
-              )
+              const [task] = await transaction('resonance_projects__task')
                 .insert({
                   project_id: projectId,
                   task_type: 'DESIGN_ASSET_PROMOTION',
@@ -1137,9 +1425,7 @@ export default createBackendPlugin({
                 unknown
               >;
               const backup = String(report.backup ?? '');
-              const appliedFingerprint = String(
-                report.afterFingerprint ?? '',
-              );
+              const appliedFingerprint = String(report.afterFingerprint ?? '');
               if (!backup || !/^[0-9a-f]{64}$/.test(appliedFingerprint)) {
                 throw new Error('verified runtime backup is missing');
               }
@@ -1149,9 +1435,7 @@ export default createBackendPlugin({
                   draft_status: 'ROLLBACK_QUEUED',
                   updated_at: now,
                 });
-              const [task] = await transaction(
-                'resonance_projects__task',
-              )
+              const [task] = await transaction('resonance_projects__task')
                 .insert({
                   project_id: projectId,
                   task_type: 'DESIGN_ASSET_ROLLBACK',
@@ -1218,7 +1502,9 @@ export default createBackendPlugin({
               VERIFIED: ['RETIRED_SOURCE'],
               RETIRED_SOURCE: [],
             };
-            if (!(transitions[asset.migration_status] ?? []).includes(nextStatus)) {
+            if (
+              !(transitions[asset.migration_status] ?? []).includes(nextStatus)
+            ) {
               response.status(409).json({
                 message: `invalid transition: ${asset.migration_status} -> ${nextStatus}`,
               });
@@ -1229,8 +1515,8 @@ export default createBackendPlugin({
             const verifiedBy = String(evidence.verifiedBy ?? '');
             if (
               ['MIGRATED', 'VERIFIED', 'RETIRED_SOURCE'].includes(nextStatus) &&
-              (!targetUrl.startsWith('/resonance-') &&
-                !targetUrl.startsWith('/actor-process-control'))
+              !targetUrl.startsWith('/resonance-') &&
+              !targetUrl.startsWith('/actor-process-control')
             ) {
               response.status(400).json({
                 message: 'a Backstage targetUrl is required',
@@ -1347,66 +1633,69 @@ export default createBackendPlugin({
             })),
           });
         });
-        router.post('/:projectId/design-releases', async (request, response) => {
-          const projectId = normalizeProjectId(request.params.projectId);
-          const input = (request.body ?? {}) as DesignContractInput;
-          const project = await knex('resonance_projects__project')
-            .where({ project_id: projectId })
-            .first();
-          if (!project) {
-            response.status(404).json({ message: 'Project not found' });
-            return;
-          }
-          const designVersion = Number(
-            input.designVersion ?? project.design_version,
-          );
-          const contract =
-            input.contract && typeof input.contract === 'object'
-              ? input.contract
-              : {};
-          if (!Number.isInteger(designVersion) || designVersion < 1) {
-            response.status(400).json({ message: 'Invalid designVersion' });
-            return;
-          }
-          const validation = validateDesignContract(projectId, contract);
-          const canonical = JSON.stringify(contract);
-          const checksum = createHash('sha256')
-            .update(canonical)
-            .digest('hex');
-          const now = new Date();
-          const releaseStatus =
-            validation.status === 'VERIFIED' ? 'VALIDATED' : 'DRAFT';
-          await knex('resonance_projects__design_release')
-            .insert({
-              project_id: projectId,
-              design_version: designVersion,
-              release_status: releaseStatus,
-              contract_payload: JSON.stringify(contract),
-              contract_sha256: checksum,
-              validation_report: JSON.stringify(validation),
-              created_by: String(input.createdBy ?? 'backstage-user'),
-              created_at: now,
-              updated_at: now,
-            })
-            .onConflict(['project_id', 'design_version'])
-            .merge({
-              release_status: releaseStatus,
-              contract_payload: JSON.stringify(contract),
-              contract_sha256: checksum,
-              validation_report: JSON.stringify(validation),
-              created_by: String(input.createdBy ?? 'backstage-user'),
-              updated_at: now,
-              promoted_at: null,
+        router.post(
+          '/:projectId/design-releases',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const input = (request.body ?? {}) as DesignContractInput;
+            const project = await knex('resonance_projects__project')
+              .where({ project_id: projectId })
+              .first();
+            if (!project) {
+              response.status(404).json({ message: 'Project not found' });
+              return;
+            }
+            const designVersion = Number(
+              input.designVersion ?? project.design_version,
+            );
+            const contract =
+              input.contract && typeof input.contract === 'object'
+                ? input.contract
+                : {};
+            if (!Number.isInteger(designVersion) || designVersion < 1) {
+              response.status(400).json({ message: 'Invalid designVersion' });
+              return;
+            }
+            const validation = validateDesignContract(projectId, contract);
+            const canonical = JSON.stringify(contract);
+            const checksum = createHash('sha256')
+              .update(canonical)
+              .digest('hex');
+            const now = new Date();
+            const releaseStatus =
+              validation.status === 'VERIFIED' ? 'VALIDATED' : 'DRAFT';
+            await knex('resonance_projects__design_release')
+              .insert({
+                project_id: projectId,
+                design_version: designVersion,
+                release_status: releaseStatus,
+                contract_payload: JSON.stringify(contract),
+                contract_sha256: checksum,
+                validation_report: JSON.stringify(validation),
+                created_by: String(input.createdBy ?? 'backstage-user'),
+                created_at: now,
+                updated_at: now,
+              })
+              .onConflict(['project_id', 'design_version'])
+              .merge({
+                release_status: releaseStatus,
+                contract_payload: JSON.stringify(contract),
+                contract_sha256: checksum,
+                validation_report: JSON.stringify(validation),
+                created_by: String(input.createdBy ?? 'backstage-user'),
+                updated_at: now,
+                promoted_at: null,
+              });
+            response.status(validation.status === 'VERIFIED' ? 201 : 422).json({
+              success: validation.status === 'VERIFIED',
+              projectId,
+              designVersion,
+              status: releaseStatus,
+              contractSha256: checksum,
+              validation,
             });
-          response.status(validation.status === 'VERIFIED' ? 201 : 422).json({
-            success: validation.status === 'VERIFIED',
-            projectId,
-            designVersion,
-            status: releaseStatus,
-            contractSha256: checksum,
-            validation,
-          });
-        });
+          },
+        );
         router.post(
           '/:projectId/design-releases/:designVersion/promote',
           async (request, response) => {
@@ -1419,7 +1708,9 @@ export default createBackendPlugin({
               })
               .first();
             if (!release) {
-              response.status(404).json({ message: 'Design release not found' });
+              response
+                .status(404)
+                .json({ message: 'Design release not found' });
               return;
             }
             const report =
@@ -1483,8 +1774,9 @@ export default createBackendPlugin({
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
             const preview = request.query.mode === 'preview';
-            const query = knex('resonance_projects__design_release')
-              .where({ project_id: projectId });
+            const query = knex('resonance_projects__design_release').where({
+              project_id: projectId,
+            });
             if (!preview) query.andWhere({ release_status: 'PROMOTED' });
             const release = await query
               .orderBy('design_version', 'desc')
@@ -1537,8 +1829,7 @@ export default createBackendPlugin({
             return;
           }
           const databaseMode = input.databaseMode ?? 'PROJECT_DB';
-          const runtimeMode =
-            input.runtimeMode ?? 'DEDICATED_PROJECT_RUNTIME';
+          const runtimeMode = input.runtimeMode ?? 'DEDICATED_PROJECT_RUNTIME';
           if (databaseMode !== 'PROJECT_DB') {
             response.status(400).json({
               message: 'databaseMode must be PROJECT_DB',

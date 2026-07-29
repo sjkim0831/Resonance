@@ -8,7 +8,7 @@ const evidenceDir = process.env.RESONANCE_E2E_EVIDENCE_DIR;
 
 const routes = [
   ['/ccus-screen-designs', 'CCUS 플랫폼 1,000 화면 설계'],
-  ['/ccus-screen-space', 'CCUS 초대규모 화면 공간 설계 엔진'],
+  ['/ccus-screen-space', 'CCUS 가상 화면 공간 실행엔진'],
   ['/resonance-projects', 'Resonance 프로젝트 제어'],
   ['/resonance-control-assets', 'Resonance 운영·설계·개발 자산'],
   ['/actor-process-control', 'Actor·Process 프로젝트 제어'],
