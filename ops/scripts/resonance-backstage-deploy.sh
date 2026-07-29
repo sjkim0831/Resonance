@@ -291,6 +291,10 @@ case "$mode" in
     ensure_ingress_https_port
     (
       cd "$APP"
+      # Deployment runs from an isolated Git worktree that intentionally has
+      # no node_modules state. Materialize the immutable dependency graph
+      # before invoking repository-local validators or generators.
+      corepack yarn install --immutable
       corepack yarn validate:page-extensions
       corepack yarn generate:ccus-screen-designs
       corepack yarn validate:control-assets
