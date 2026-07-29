@@ -133,7 +133,7 @@ export function ScreenSpaceRuntimePage() {
   const records = CCUS_SCREEN_DESIGN_CATALOG.records;
   const [stages, setStages] = useState<WorkStage[]>([]);
   const [specs, setSpecs] = useState<SavedSpec[]>([]);
-  const [selectedStep, setSelectedStep] = useState('PROJECT_SETUP');
+  const [selectedStep, setSelectedStep] = useState('EMISSION_PROJECT_SETUP');
   const [seedId, setSeedId] = useState(records[0]?.screenId ?? '');
   const [state, setState] = useState('DRAFT');
   const [device, setDevice] = useState('DESKTOP');
@@ -155,7 +155,7 @@ export function ScreenSpaceRuntimePage() {
       domainObject: 'EMISSION_PROJECT',
       actor: stage?.actor ?? 'COMPANY_MANAGER',
       process: stage?.process ?? 'EMISSION_PROJECT',
-      step: stage?.step ?? 'PROJECT_SETUP',
+      step: stage?.step ?? 'EMISSION_PROJECT_SETUP',
       state,
       action,
       permission,

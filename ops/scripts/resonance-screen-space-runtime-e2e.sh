@@ -37,8 +37,9 @@ jq -e '
     and (.stages | length) == 7
     and ([.stages[].sequence] == [1,2,3,4,5,6,7])
     and (.stages[3].routePath == "/emission/validate")
-    and (.stages[4].routePath == "/emission/validate?tab=approval")
-    and (.stages[5].routePath == "/emission/report_submit")
+    and (.stages[4].routePath == "/emission/data_input?mode=correction")
+    and (.stages[5].routePath == "/emission/validate?tab=approval")
+    and (.stages[6].routePath == "/emission/report_submit")
     and all(
       range(1; .stages | length);
       . as $index
@@ -48,7 +49,7 @@ jq -e '
 ' <<<"$work_pack" >/dev/null
 
 stage="$(
-  jq -c '.stages[] | select(.step == "PROJECT_SETUP")' <<<"$work_pack"
+  jq -c '.stages[] | select(.step == "EMISSION_PROJECT_SETUP")' <<<"$work_pack"
 )"
 payload="$(
   jq -cn --argjson stage "$stage" '{

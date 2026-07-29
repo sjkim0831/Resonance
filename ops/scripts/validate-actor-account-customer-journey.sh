@@ -52,16 +52,16 @@ for account in "${accounts[@]}"; do
   grep -Eq '^\s*[\{\[]' "$body" || { echo "[actor-account-journey] FAIL invalid task payload account=$account" >&2; exit 1; }
   if [[ "$account" == "qaowner26" ]]; then
     draft_get="$tmp/draft-get.json"; draft_save="$tmp/draft-save.json"; draft_reload="$tmp/draft-reload.json"
-    draft_query="tenantId=DEFAULT&projectId=$PROJECT&processCode=EMISSION_PROJECT&stepCode=PROJECT_SETUP"
+    draft_query="tenantId=DEFAULT&projectId=$PROJECT&processCode=EMISSION_PROJECT&stepCode=EMISSION_PROJECT_SETUP"
     code="$(curl -sS -b "$cookie" -o "$draft_get" -w '%{http_code}' "$BASE/home/api/process-executions/draft?$draft_query")"
-    [[ "$code" == 200 ]] || { echo "[actor-account-journey] FAIL draft load account=$account status=$code" >&2; exit 1; }
+    [[ "$code" == 200 ]] || { echo "[actor-account-journey] FAIL draft load account=$account status=$code body=$(tr -d '\n' < "$draft_get" | head -c 300)" >&2; exit 1; }
     expected_version="$(jq -er '.draft.draftVersion // 0' "$draft_get")"
     draft_marker="actor-journey-$(date +%s%N)"
     draft_payload="$(jq -cn \
       --arg project "$PROJECT" \
       --arg marker "$draft_marker" \
       --argjson version "$expected_version" \
-      '{tenantId:"DEFAULT",projectId:$project,processCode:"EMISSION_PROJECT",stepCode:"PROJECT_SETUP",actorCode:"COMPANY_MANAGER",payloadJson:({tenantId:"DEFAULT",companyId:$marker}|tojson),evidenceJson:"{}",expectedVersion:$version}')"
+      '{tenantId:"DEFAULT",projectId:$project,processCode:"EMISSION_PROJECT",stepCode:"EMISSION_PROJECT_SETUP",actorCode:"COMPANY_MANAGER",payloadJson:({tenantId:"DEFAULT",companyId:$marker}|tojson),evidenceJson:"{}",expectedVersion:$version}')"
     code="$(curl -sS -b "$cookie" -o "$draft_save" -w '%{http_code}' -H 'Content-Type: application/json' -X PUT --data "$draft_payload" "$BASE/home/api/process-executions/draft")"
     [[ "$code" == 200 ]] || { echo "[actor-account-journey] FAIL draft save account=$account status=$code" >&2; exit 1; }
     code="$(curl -sS -b "$cookie" -o "$draft_reload" -w '%{http_code}' "$BASE/home/api/process-executions/draft?$draft_query")"
