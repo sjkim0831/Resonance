@@ -93,7 +93,7 @@ jq -e '
 
 curl --silent --show-error --fail \
   -H "X-Resonance-Token: $bridge_token" \
-  "$CARBONET_URL/admin/api/internal/screen-space/specs?routePath=%2Femission%2Fproject%2Fcreate" \
+  "$CARBONET_URL/api/internal/screen-space/specs?routePath=%2Femission%2Fproject%2Fcreate" \
   | jq -e --arg coordinate "$coordinate" '
       .success == true
       and .coordinate == $coordinate
