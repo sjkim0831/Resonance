@@ -294,8 +294,10 @@ body {
 
 .help-fab {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: auto;
+  right: auto;
+  bottom: 20px;
+  left: 20px;
   z-index: 2147483000;
   display: inline-flex;
   align-items: center;
@@ -489,8 +491,9 @@ body {
 @media (max-width: 768px) {
   .help-fab {
     top: auto;
-    right: 16px;
+    right: auto;
     bottom: 16px;
+    left: 16px;
   }
 
   .help-overlay-header,

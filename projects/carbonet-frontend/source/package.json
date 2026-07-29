@@ -20,6 +20,7 @@
     "audit:framework-contract-metadata": "node scripts/check-framework-contract-metadata.mjs",
     "audit:generated-output": "npm run audit:framework-contract-metadata && node scripts/check-generated-output-governance.mjs",
     "audit:ui-governance": "node scripts/check-ui-governance.mjs",
+    "audit:floating-controls": "node scripts/verify-floating-control-safe-zones.mjs",
     "audit:customer-journey": "node scripts/check-customer-journey-governance.mjs",
     "audit:route-registry": "node scripts/check-route-registry-uniqueness.mjs",
     "lane:05:loop": "bash scripts/run-resonance-lane-05-loop.sh",
