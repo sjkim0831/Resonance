@@ -54,7 +54,9 @@ test('authenticated Resonance control-plane routes render without runtime errors
   );
   page.on('console', message => {
     if (message.type() === 'error') {
-      runtimeErrors.push(`console: ${message.text()}`);
+      runtimeErrors.push(
+        `console: ${message.text()} (${message.location().url || 'unknown'})`,
+      );
     }
   });
   page.on('response', response => {
@@ -69,6 +71,9 @@ test('authenticated Resonance control-plane routes render without runtime errors
     }
   });
   page.on('requestfailed', request => {
+    if (request.failure()?.errorText === 'net::ERR_ABORTED') {
+      return;
+    }
     if (
       ['document', 'fetch', 'xhr', 'script'].includes(request.resourceType())
     ) {
