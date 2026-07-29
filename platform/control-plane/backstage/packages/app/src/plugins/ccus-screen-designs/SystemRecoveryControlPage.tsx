@@ -18,6 +18,18 @@ type RecoverySummary = {
   executionMode: string;
   directShellExecution: boolean;
   workerConnected: boolean;
+  restoreDrill: {
+    health: 'HEALTHY' | 'RUNNING' | 'FAILED' | 'STALE';
+    automaticSchedule: boolean;
+    intervalDays: number;
+    staleAfterDays: number;
+    latestCommandId: string | null;
+    latestStatus: string;
+    lastSuccessAt: string | null;
+    durationSeconds: number | null;
+    tableCount: number | null;
+    evidenceStatus: string | null;
+  };
   policies: {
     code: string;
     name: string;
@@ -44,6 +56,12 @@ const commandOptions = [
   ['SYNC_DEPLOY', 'DB 동기화·배포'],
 ] as const;
 const highRisk = new Set(['RESTORE_BACKUP', 'PROMOTE_PRIMARY', 'SYNC_DEPLOY']);
+const drillHealthLabels = {
+  HEALTHY: '정상',
+  RUNNING: '실행 중',
+  FAILED: '실패',
+  STALE: '확인 필요',
+} as const;
 
 const useStyles = makeStyles(theme => ({
   warning: {
@@ -80,8 +98,7 @@ export function SystemRecoveryControlPage() {
   const fetchApi = useApi(fetchApiRef);
   const [summary, setSummary] = useState<RecoverySummary>();
   const [commandType, setCommandType] = useState('CREATE_BACKUP');
-  const [targetEnvironment, setTargetEnvironment] =
-    useState('CARBONET_PROD');
+  const [targetEnvironment, setTargetEnvironment] = useState('CARBONET_PROD');
   const [changeTicket, setChangeTicket] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [message, setMessage] = useState('');
@@ -91,7 +108,8 @@ export function SystemRecoveryControlPage() {
     const payload = (await response.json()) as RecoverySummary & {
       message?: string;
     };
-    if (!response.ok) throw new Error(payload.message ?? `API ${response.status}`);
+    if (!response.ok)
+      throw new Error(payload.message ?? `API ${response.status}`);
     setSummary(payload);
   }, [fetchApi]);
 
@@ -162,6 +180,81 @@ export function SystemRecoveryControlPage() {
         </Paper>
 
         <Paper className={classes.panel}>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            flexWrap="wrap"
+          >
+            <Box>
+              <Typography variant="h6">격리 복원 리허설</Typography>
+              <Typography variant="body2">
+                최신 백업을 운영 환경과 단절된 임시 PostgreSQL에 실제 복원하여
+                복구 가능성을 검증합니다.
+              </Typography>
+            </Box>
+            <Chip
+              color={
+                summary?.restoreDrill.health === 'HEALTHY'
+                  ? 'primary'
+                  : 'default'
+              }
+              label={
+                summary?.restoreDrill
+                  ? drillHealthLabels[summary.restoreDrill.health]
+                  : '확인 중'
+              }
+            />
+          </Box>
+          <Box className={classes.form} mt={2}>
+            <Box>
+              <Typography variant="caption">자동 실행</Typography>
+              <Typography variant="body1">
+                {summary?.restoreDrill.automaticSchedule
+                  ? `${summary.restoreDrill.intervalDays}일마다`
+                  : '비활성'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">최근 성공</Typography>
+              <Typography variant="body1">
+                {summary?.restoreDrill.lastSuccessAt
+                  ? new Date(summary.restoreDrill.lastSuccessAt).toLocaleString(
+                      'ko-KR',
+                    )
+                  : '성공 기록 없음'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">복원 소요 시간</Typography>
+              <Typography variant="body1">
+                {summary?.restoreDrill.durationSeconds != null
+                  ? `${summary.restoreDrill.durationSeconds}초`
+                  : '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">검증 테이블</Typography>
+              <Typography variant="body1">
+                {summary?.restoreDrill.tableCount != null
+                  ? `${summary.restoreDrill.tableCount.toLocaleString()}개`
+                  : '-'}
+              </Typography>
+            </Box>
+          </Box>
+          {summary?.restoreDrill.health === 'FAILED' ||
+          summary?.restoreDrill.health === 'STALE' ? (
+            <Box mt={2} className={classes.warning}>
+              <Typography variant="body2">
+                최근 격리 복원 검증이 실패했거나{' '}
+                {summary.restoreDrill.staleAfterDays}일 이상 성공 기록이
+                없습니다. 백업과 워커 상태를 확인하세요.
+              </Typography>
+            </Box>
+          ) : null}
+        </Paper>
+
+        <Paper className={classes.panel}>
           <Box display="flex" justifyContent="space-between" mb={2}>
             <Typography variant="h6">운영 명령 등록</Typography>
             <Button startIcon={<RefreshIcon />} onClick={() => void refresh()}>
@@ -215,7 +308,11 @@ export function SystemRecoveryControlPage() {
             />
           </Box>
           <Box mt={2}>
-            <Button variant="contained" color="primary" onClick={() => void submit()}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => void submit()}
+            >
               검증 후 명령 큐 등록
             </Button>
             <Box mt={1}>

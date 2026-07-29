@@ -3,11 +3,7 @@ import {
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
 import { Router, json, type Request } from 'express';
-import {
-  createHash,
-  randomUUID,
-  timingSafeEqual,
-} from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 
 const COMMANDS = [
   'CREATE_BACKUP',
@@ -25,8 +21,7 @@ const HIGH_RISK = new Set<RecoveryCommand>([
   'SYNC_DEPLOY',
 ]);
 
-const requiredConfirmation = (command: RecoveryCommand) =>
-  `EXECUTE ${command}`;
+const requiredConfirmation = (command: RecoveryCommand) => `EXECUTE ${command}`;
 
 export default createBackendPlugin({
   pluginId: 'resonance-recovery',
@@ -42,16 +37,13 @@ export default createBackendPlugin({
       async init({ database, httpAuth, httpRouter, logger, userInfo }) {
         const knex = await database.getClient();
         if (!(await knex.schema.hasTable('resonance_recovery__policy'))) {
-          await knex.schema.createTable(
-            'resonance_recovery__policy',
-            table => {
-              table.string('policy_code', 80).primary();
-              table.string('policy_name', 200).notNullable();
-              table.jsonb('policy_value').notNullable();
-              table.boolean('active').notNullable().defaultTo(true);
-              table.timestamp('updated_at', { useTz: true }).notNullable();
-            },
-          );
+          await knex.schema.createTable('resonance_recovery__policy', table => {
+            table.string('policy_code', 80).primary();
+            table.string('policy_name', 200).notNullable();
+            table.jsonb('policy_value').notNullable();
+            table.boolean('active').notNullable().defaultTo(true);
+            table.timestamp('updated_at', { useTz: true }).notNullable();
+          });
         }
         if (!(await knex.schema.hasTable('resonance_recovery__command'))) {
           await knex.schema.createTable(
@@ -80,32 +72,26 @@ export default createBackendPlugin({
           );
         }
         if (!(await knex.schema.hasTable('resonance_recovery__audit'))) {
-          await knex.schema.createTable(
-            'resonance_recovery__audit',
-            table => {
-              table.bigIncrements('audit_id').primary();
-              table.uuid('command_id').nullable();
-              table.string('action_code', 80).notNullable();
-              table.string('actor_ref', 300).notNullable();
-              table.jsonb('details').notNullable();
-              table.timestamp('created_at', { useTz: true }).notNullable();
-              table.index(
-                ['created_at', 'action_code'],
-                'resonance_recovery_audit_lookup_idx',
-              );
-            },
-          );
+          await knex.schema.createTable('resonance_recovery__audit', table => {
+            table.bigIncrements('audit_id').primary();
+            table.uuid('command_id').nullable();
+            table.string('action_code', 80).notNullable();
+            table.string('actor_ref', 300).notNullable();
+            table.jsonb('details').notNullable();
+            table.timestamp('created_at', { useTz: true }).notNullable();
+            table.index(
+              ['created_at', 'action_code'],
+              'resonance_recovery_audit_lookup_idx',
+            );
+          });
         }
         if (!(await knex.schema.hasTable('resonance_recovery__worker'))) {
-          await knex.schema.createTable(
-            'resonance_recovery__worker',
-            table => {
-              table.string('worker_id', 160).primary();
-              table.string('worker_version', 80).notNullable();
-              table.jsonb('capabilities').notNullable();
-              table.timestamp('last_seen_at', { useTz: true }).notNullable();
-            },
-          );
+          await knex.schema.createTable('resonance_recovery__worker', table => {
+            table.string('worker_id', 160).primary();
+            table.string('worker_version', 80).notNullable();
+            table.jsonb('capabilities').notNullable();
+            table.timestamp('last_seen_at', { useTz: true }).notNullable();
+          });
         }
         const commandColumns = [
           [
@@ -188,6 +174,15 @@ export default createBackendPlugin({
               directShellExecution: false,
             },
           ],
+          [
+            'RESTORE_DRILL_SCHEDULE',
+            '격리 복원 리허설 일정',
+            {
+              automaticSchedule: true,
+              intervalDays: 7,
+              staleAfterDays: 8,
+            },
+          ],
         ] as const;
         for (const [code, name, value] of policySeeds) {
           await knex('resonance_recovery__policy')
@@ -206,8 +201,7 @@ export default createBackendPlugin({
         router.use(json({ limit: '256kb' }));
 
         const requireWorker = (request: Request) => {
-          const configured =
-            process.env.RESONANCE_RECOVERY_WORKER_TOKEN ?? '';
+          const configured = process.env.RESONANCE_RECOVERY_WORKER_TOKEN ?? '';
           const authorization = request.header('authorization') ?? '';
           const supplied = authorization.startsWith('Bearer ')
             ? authorization.slice(7)
@@ -215,12 +209,11 @@ export default createBackendPlugin({
           const valid =
             configured.length >= 32 &&
             supplied.length === configured.length &&
-            timingSafeEqual(
-              Buffer.from(supplied),
-              Buffer.from(configured),
-            );
+            timingSafeEqual(Buffer.from(supplied), Buffer.from(configured));
           if (!valid) {
-            const error = new Error('worker authentication required') as Error & {
+            const error = new Error(
+              'worker authentication required',
+            ) as Error & {
               statusCode?: number;
             };
             error.statusCode = 401;
@@ -262,8 +255,9 @@ export default createBackendPlugin({
               }),
               created_at: new Date(),
             });
-            const error = new Error('recovery operator permission required') as
-              Error & { statusCode?: number };
+            const error = new Error(
+              'recovery operator permission required',
+            ) as Error & { statusCode?: number };
             error.statusCode = 403;
             throw error;
           }
@@ -278,28 +272,90 @@ export default createBackendPlugin({
         });
         router.get('/summary', async (request, response) => {
           await resolveUser(request);
-          const [policies, commands, workers] = await Promise.all([
-            knex('resonance_recovery__policy')
-              .select('*')
-              .orderBy('policy_code'),
-            knex('resonance_recovery__command')
-              .select('*')
-              .orderBy('created_at', 'desc')
-              .limit(50),
-            knex('resonance_recovery__worker')
-              .select('*')
-              .where(
-                'last_seen_at',
-                '>',
-                new Date(Date.now() - 3 * 60 * 1000),
-              )
-              .orderBy('last_seen_at', 'desc'),
-          ]);
+          const [policies, commands, workers, drillCommands] =
+            await Promise.all([
+              knex('resonance_recovery__policy')
+                .select('*')
+                .orderBy('policy_code'),
+              knex('resonance_recovery__command')
+                .select('*')
+                .orderBy('created_at', 'desc')
+                .limit(50),
+              knex('resonance_recovery__worker')
+                .select('*')
+                .where(
+                  'last_seen_at',
+                  '>',
+                  new Date(Date.now() - 3 * 60 * 1000),
+                )
+                .orderBy('last_seen_at', 'desc'),
+              knex('resonance_recovery__command')
+                .select('*')
+                .where({ command_type: 'RESTORE_DRILL' })
+                .orderBy('created_at', 'desc')
+                .limit(50),
+            ]);
+          const parseJsonObject = (value: unknown) => {
+            if (value && typeof value === 'object') {
+              return value as Record<string, any>;
+            }
+            if (typeof value === 'string') {
+              try {
+                return JSON.parse(value) as Record<string, any>;
+              } catch {
+                return {};
+              }
+            }
+            return {};
+          };
+          const drillPolicyRow = policies.find(
+            policy => policy.policy_code === 'RESTORE_DRILL_SCHEDULE',
+          );
+          const drillPolicy = parseJsonObject(drillPolicyRow?.policy_value);
+          const staleAfterDays = Number(drillPolicy.staleAfterDays ?? 8);
+          const latestDrill = drillCommands[0];
+          const latestSuccessfulDrill = drillCommands.find(
+            command => command.status === 'COMPLETED',
+          );
+          const successfulPayload = parseJsonObject(
+            latestSuccessfulDrill?.payload,
+          );
+          const successfulResult = parseJsonObject(successfulPayload.result);
+          const lastSuccessAt = latestSuccessfulDrill?.finished_at
+            ? new Date(latestSuccessfulDrill.finished_at)
+            : null;
+          const stale =
+            !lastSuccessAt ||
+            Date.now() - lastSuccessAt.getTime() >
+              staleAfterDays * 24 * 60 * 60 * 1000;
+          const drillHealth = ['PLANNED', 'RUNNING', 'RETRY'].includes(
+            latestDrill?.status,
+          )
+            ? 'RUNNING'
+            : latestDrill?.status === 'FAILED'
+            ? 'FAILED'
+            : stale
+            ? 'STALE'
+            : 'HEALTHY';
           response.json({
             checkedAt: new Date().toISOString(),
             executionMode: 'QUEUED',
             directShellExecution: false,
             workerConnected: workers.length > 0,
+            restoreDrill: {
+              health: drillHealth,
+              automaticSchedule:
+                drillPolicyRow?.active !== false &&
+                drillPolicy.automaticSchedule !== false,
+              intervalDays: Number(drillPolicy.intervalDays ?? 7),
+              staleAfterDays,
+              latestCommandId: latestDrill?.command_id ?? null,
+              latestStatus: latestDrill?.status ?? 'NOT_RUN',
+              lastSuccessAt: lastSuccessAt?.toISOString() ?? null,
+              durationSeconds: successfulResult.durationSeconds ?? null,
+              tableCount: successfulResult.checks?.tableCount ?? null,
+              evidenceStatus: successfulResult.status ?? null,
+            },
             workers: workers.map(worker => ({
               workerId: worker.worker_id,
               version: worker.worker_version,
@@ -408,7 +464,10 @@ export default createBackendPlugin({
             });
           });
           const command = await knex('resonance_recovery__command')
-            .where({ target_environment: targetEnvironment, idempotency_key: idempotencyKey })
+            .where({
+              target_environment: targetEnvironment,
+              idempotency_key: idempotencyKey,
+            })
             .first();
           response.status(inserted ? 201 : 200).json({
             success: true,
@@ -428,6 +487,82 @@ export default createBackendPlugin({
             return;
           }
           const now = new Date();
+          const drillScheduleRow = await knex('resonance_recovery__policy')
+            .where({
+              policy_code: 'RESTORE_DRILL_SCHEDULE',
+              active: true,
+            })
+            .first();
+          let drillSchedule: Record<string, any> = {};
+          try {
+            drillSchedule =
+              typeof drillScheduleRow?.policy_value === 'string'
+                ? JSON.parse(drillScheduleRow.policy_value)
+                : drillScheduleRow?.policy_value ?? {};
+          } catch {
+            drillSchedule = {};
+          }
+          if (drillScheduleRow && drillSchedule.automaticSchedule !== false) {
+            const activeDrill = await knex('resonance_recovery__command')
+              .where({ command_type: 'RESTORE_DRILL' })
+              .whereIn('status', ['PLANNED', 'RUNNING', 'RETRY'])
+              .first();
+            const latestSuccessfulDrill = await knex(
+              'resonance_recovery__command',
+            )
+              .where({
+                command_type: 'RESTORE_DRILL',
+                status: 'COMPLETED',
+              })
+              .orderBy('finished_at', 'desc')
+              .first();
+            const intervalDays = Math.max(
+              1,
+              Math.min(30, Number(drillSchedule.intervalDays ?? 7)),
+            );
+            const due =
+              !latestSuccessfulDrill?.finished_at ||
+              now.getTime() -
+                new Date(latestSuccessfulDrill.finished_at).getTime() >=
+                intervalDays * 24 * 60 * 60 * 1000;
+            if (!activeDrill && due) {
+              const commandId = randomUUID();
+              const idempotencyKey = `auto-restore-drill-${now
+                .toISOString()
+                .slice(0, 10)}`;
+              const inserted = await knex('resonance_recovery__command')
+                .insert({
+                  command_id: commandId,
+                  command_type: 'RESTORE_DRILL',
+                  target_environment: 'ISOLATED_LOCAL',
+                  status: 'PLANNED',
+                  requested_by: 'system:restore-drill-scheduler',
+                  change_ticket: 'AUTO-RESTORE-DRILL',
+                  idempotency_key: idempotencyKey,
+                  payload: JSON.stringify({
+                    automaticSchedule: true,
+                    intervalDays,
+                  }),
+                  created_at: now,
+                  updated_at: now,
+                })
+                .onConflict(['target_environment', 'idempotency_key'])
+                .ignore()
+                .returning('command_id');
+              if (inserted.length > 0) {
+                await knex('resonance_recovery__audit').insert({
+                  command_id: commandId,
+                  action_code: 'RESTORE_DRILL_AUTO_PLANNED',
+                  actor_ref: 'system:restore-drill-scheduler',
+                  details: JSON.stringify({
+                    intervalDays,
+                    idempotencyKey,
+                  }),
+                  created_at: now,
+                });
+              }
+            }
+          }
           await knex('resonance_recovery__worker')
             .insert({
               worker_id: workerId,
@@ -456,9 +591,7 @@ export default createBackendPlugin({
           let leaseUntil = new Date(now.getTime() + 15 * 60 * 1000);
           const leaseToken = randomUUID();
           const command = await knex.transaction(async transaction => {
-            const candidate = await transaction(
-              'resonance_recovery__command',
-            )
+            const candidate = await transaction('resonance_recovery__command')
               .whereIn('command_type', [
                 'CREATE_BACKUP',
                 'VERIFY_BACKUP',
@@ -543,18 +676,16 @@ export default createBackendPlugin({
               .trim()
               .slice(0, 160);
             const result =
-              request.body?.result &&
-              typeof request.body.result === 'object'
+              request.body?.result && typeof request.body.result === 'object'
                 ? request.body.result
                 : {};
-            const resultMessage = String(
-              request.body?.message ?? '',
-            ).slice(0, 2000);
+            const resultMessage = String(request.body?.message ?? '').slice(
+              0,
+              2000,
+            );
             const now = new Date();
             const updated = await knex.transaction(async transaction => {
-              const command = await transaction(
-                'resonance_recovery__command',
-              )
+              const command = await transaction('resonance_recovery__command')
                 .where({
                   command_id: commandId,
                   status: 'RUNNING',
@@ -567,8 +698,8 @@ export default createBackendPlugin({
               const status = success
                 ? 'COMPLETED'
                 : exhausted
-                  ? 'FAILED'
-                  : 'RETRY';
+                ? 'FAILED'
+                : 'RETRY';
               await transaction('resonance_recovery__command')
                 .where({ command_id: commandId })
                 .update({
@@ -581,9 +712,10 @@ export default createBackendPlugin({
                   }),
                   result_message: resultMessage,
                   lease_token: null,
-                  lease_until: success || exhausted
-                    ? null
-                    : new Date(now.getTime() + 5 * 60 * 1000),
+                  lease_until:
+                    success || exhausted
+                      ? null
+                      : new Date(now.getTime() + 5 * 60 * 1000),
                   finished_at: success || exhausted ? now : null,
                   updated_at: now,
                 });
@@ -592,8 +724,8 @@ export default createBackendPlugin({
                 action_code: success
                   ? 'COMMAND_COMPLETED'
                   : exhausted
-                    ? 'COMMAND_FAILED'
-                    : 'COMMAND_RETRY_SCHEDULED',
+                  ? 'COMMAND_FAILED'
+                  : 'COMMAND_RETRY_SCHEDULED',
                 actor_ref: `worker:${workerId || 'unknown'}`,
                 details: JSON.stringify({ result, resultMessage }),
                 created_at: now,
