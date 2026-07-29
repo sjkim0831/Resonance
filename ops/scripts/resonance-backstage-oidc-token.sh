@@ -22,7 +22,14 @@ done
 mkdir -p "$WORK_ROOT"
 chmod 700 "$WORK_ROOT"
 run_dir="$(mktemp -d "$WORK_ROOT/run.XXXXXXXX")"
-trap 'rm -rf "$run_dir"' EXIT
+cleanup() {
+  if [[ "${OIDC_TOKEN_KEEP_WORK:-false}" == "true" ]]; then
+    echo "[oidc-token] diagnostic directory: $run_dir" >&2
+  else
+    rm -rf "$run_dir"
+  fi
+}
+trap cleanup EXIT
 password="${BACKSTAGE_E2E_PASSWORD:-}"
 if [[ -z "$password" ]]; then
   password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak-e2e-users \
@@ -63,7 +70,10 @@ RESULT_HTML="$run_dir/result.html" EXPECTED_USER="$USERNAME" node -e '
   const fs = require("fs");
   const html = fs.readFileSync(process.env.RESULT_HTML, "utf8");
   const encoded = (html.match(/decodeURIComponent\(\x27([^\x27]+)\x27\)/) || [])[1];
-  const message = JSON.parse(decodeURIComponent(encoded || ""));
+  if (!encoded) {
+    throw new Error("Backstage OIDC callback payload is missing");
+  }
+  const message = JSON.parse(decodeURIComponent(encoded));
   if (message.error) throw new Error(message.error.message);
   const identity = message.response?.backstageIdentity;
   const expected = `user:default/${process.env.EXPECTED_USER}`;

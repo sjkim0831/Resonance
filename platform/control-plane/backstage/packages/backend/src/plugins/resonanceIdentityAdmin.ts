@@ -11,6 +11,8 @@ type KeycloakUser = {
   firstName?: string;
   lastName?: string;
   enabled?: boolean;
+  emailVerified?: boolean;
+  requiredActions?: string[];
   attributes?: Record<string, string[]>;
 };
 
@@ -78,6 +80,27 @@ const requestedIdentityAttributes = (
     dataScopes: body.dataScopes ?? current.resonanceDataScopes,
   });
 };
+
+const keycloakUpdateRepresentation = (
+  current: KeycloakUser,
+  body: Record<string, unknown>,
+) => ({
+  username: current.username,
+  email:
+    current.email ||
+    `${current.username || String(body.username ?? 'account')}@resonance.local`,
+  firstName:
+    current.firstName || current.username || String(body.username ?? 'Account'),
+  lastName: current.lastName || current.username || 'Account',
+  emailVerified: current.emailVerified !== false,
+  requiredActions: current.requiredActions ?? [],
+  enabled:
+    'enabled' in body ? Boolean(body.enabled) : current.enabled !== false,
+  attributes: {
+    ...(current.attributes ?? {}),
+    ...requestedIdentityAttributes(body, current.attributes),
+  },
+});
 
 export default createBackendPlugin({
   pluginId: 'resonance-identity-admin',
@@ -331,6 +354,7 @@ export default createBackendPlugin({
                   request.body?.email ?? `${username}@resonance.local`,
                 ),
                 firstName: String(request.body?.displayName ?? username),
+                lastName: username,
                 emailVerified: true,
                 requiredActions: [],
                 attributes: identityAttributes(request.body ?? {}),
@@ -372,16 +396,9 @@ export default createBackendPlugin({
             if ('enabled' in (request.body ?? {})) {
               await keycloak(`/users/${encodeURIComponent(id)}`, {
                 method: 'PUT',
-                body: JSON.stringify({
-                  enabled: Boolean(request.body.enabled),
-                  attributes: {
-                    ...(current.attributes ?? {}),
-                    ...requestedIdentityAttributes(
-                      request.body ?? {},
-                      current.attributes,
-                    ),
-                  },
-                }),
+                body: JSON.stringify(
+                  keycloakUpdateRepresentation(current, request.body ?? {}),
+                ),
               });
             } else if (
               'tenantId' in (request.body ?? {}) ||
@@ -390,15 +407,9 @@ export default createBackendPlugin({
             ) {
               await keycloak(`/users/${encodeURIComponent(id)}`, {
                 method: 'PUT',
-                body: JSON.stringify({
-                  attributes: {
-                    ...(current.attributes ?? {}),
-                    ...requestedIdentityAttributes(
-                      request.body ?? {},
-                      current.attributes,
-                    ),
-                  },
-                }),
+                body: JSON.stringify(
+                  keycloakUpdateRepresentation(current, request.body ?? {}),
+                ),
               });
             }
             if (Array.isArray(request.body?.groups)) {
