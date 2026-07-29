@@ -86,10 +86,19 @@ eval "$(bash "$PLANNER" "$builder_test" "$control_plane" --format env)"
 [[ "$PLAN_TESTS" == *"control-plane:validate"* ]]
 [[ "$PLAN_REASONS" == *"control-plane-only"* ]]
 
+printf 'kind: Group\n' > platform/control-plane/catalog/organization.yaml
+git add . && git commit -qm backstage-catalog
+backstage_catalog="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$control_plane" "$backstage_catalog" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_BACKSTAGE_REQUIRED" == false ]]
+[[ "$PLAN_TESTS" == *"backstage:catalog-sync"* ]]
+[[ "$PLAN_REASONS" == *"backstage-catalog"* ]]
+
 printf 'export const page = true;\n' > platform/control-plane/backstage/packages/app/src/page.tsx
 git add . && git commit -qm backstage
 backstage="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$control_plane" "$backstage" --format env)"
+eval "$(bash "$PLANNER" "$backstage_catalog" "$backstage" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == false ]]
@@ -99,5 +108,17 @@ eval "$(bash "$PLANNER" "$control_plane" "$backstage" --format env)"
 [[ "$PLAN_CATALOG_ONLY" == true ]]
 [[ "$PLAN_TESTS" == *"backstage:build-deploy"* ]]
 [[ "$PLAN_REASONS" == *"backstage-runtime"* ]]
+
+mkdir -p platform/control-plane/backstage/packages/app/e2e-tests
+printf 'test(\"live\", async () => {});\n' \
+  > platform/control-plane/backstage/packages/app/e2e-tests/live.test.ts
+git add . && git commit -qm backstage-test
+backstage_test="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$backstage" "$backstage_test" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_BACKSTAGE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"backstage:visual-e2e"* ]]
+[[ "$PLAN_REASONS" == *"backstage-test-only"* ]]
 
 echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build"

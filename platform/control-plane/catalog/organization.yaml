@@ -8,6 +8,36 @@ spec:
   children: []
 ---
 apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: resonance-requester
+  title: Resonance Requester
+spec:
+  profile:
+    displayName: Resonance Requester
+  memberOf: [platform-engineering]
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: resonance-reviewer
+  title: Resonance Reviewer
+spec:
+  profile:
+    displayName: Resonance Reviewer
+  memberOf: [carbon-operations]
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: resonance-approver
+  title: Resonance Approver
+spec:
+  profile:
+    displayName: Resonance Approver
+  memberOf: [verification-governance]
+---
+apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: carbon-operations

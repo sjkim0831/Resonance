@@ -317,6 +317,34 @@ deploy_backstage_if_required() {
   echo "[auto-deploy] Backstage runtime verified"
 }
 
+run_backstage_visual_e2e_if_required() {
+  if [[ "$PLAN_BACKSTAGE_REQUIRED" != "true" \
+     && ",$PLAN_TESTS," != *",backstage:visual-e2e,"* \
+     && ",$PLAN_TESTS," != *",backstage:catalog-sync,"* ]]; then
+    return
+  fi
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-backstage-visual-e2e.sh
+}
+
+sync_backstage_catalog_if_required() {
+  if [[ ",$PLAN_TESTS," != *",backstage:catalog-sync,"* \
+     || "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
+    return
+  fi
+  kubectl -n resonance-ops create configmap resonance-backstage-catalog \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/organization.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/systems.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/components.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/apis.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/resources.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/environments.yaml" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl -n resonance-ops rollout restart deployment/resonance-backstage
+  kubectl -n resonance-ops rollout status deployment/resonance-backstage \
+    --timeout=180s
+}
+
 # The standard build updates tracked generated bundles and Gradle state. They are
 # deployment artifacts, not server-authored source changes, so restore only these
 # known paths before the fast-forward merge.
@@ -364,7 +392,9 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
   bash ops/scripts/sync-unified-asset-catalog.sh
   bash ops/scripts/validate-e4b-selectable-assets.sh
+  sync_backstage_catalog_if_required
   deploy_backstage_if_required
+  run_backstage_visual_e2e_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
@@ -676,7 +706,9 @@ else
   # the healthy runtime. Mixed/frontend/database changes retain the full gate.
   bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
 fi
+sync_backstage_catalog_if_required
 deploy_backstage_if_required
+run_backstage_visual_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true

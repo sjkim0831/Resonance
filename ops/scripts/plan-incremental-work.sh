@@ -67,6 +67,14 @@ while IFS= read -r path; do
       add_test "backend:related-test"
       add_reason "backend-test"
       ;;
+    platform/control-plane/backstage/packages/app/e2e-tests/*|\
+    platform/control-plane/backstage/playwright.config.ts)
+      # Browser specifications and their runner configuration verify the live
+      # control plane; they must not rebuild its production image.
+      infrastructure_required=true
+      add_test "backstage:visual-e2e"
+      add_reason "backstage-test-only"
+      ;;
     platform/control-plane/backstage/*|deploy/k8s/control-plane/backstage.yaml)
       # Backstage owns the design/development/operations control-plane UI and
       # has an independent image and rollout. Never rebuild Carbonet for it,
@@ -75,6 +83,14 @@ while IFS= read -r path; do
       add_test "control-plane:validate"
       add_test "backstage:build-deploy"
       add_reason "backstage-runtime"
+      ;;
+    platform/control-plane/catalog/*)
+      # Production Backstage serves these files from a ConfigMap. Synchronize
+      # and verify the live catalog without rebuilding the Backstage image.
+      infrastructure_required=true
+      add_test "control-plane:validate"
+      add_test "backstage:catalog-sync"
+      add_reason "backstage-catalog"
       ;;
     platform/control-plane/*|deploy/k8s/control-plane/*)
       # Backstage catalog and control-plane boundary declarations describe
