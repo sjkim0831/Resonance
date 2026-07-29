@@ -1019,8 +1019,84 @@ public class ActorProcessGovernanceService {
     }
 
     public Map<String,Object> resolveGeneratedScreen(String routePath){
-        String route=ScreenDevelopmentNoteService.cleanRoute(routePath);List<Map<String,Object>> rows=jdbc.queryForList("select blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",audience,page_id as \"pageId\",page_name as \"pageName\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",implementation_strategy as \"implementationStrategy\",updated_at as \"updatedAt\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) and validation_status='VALID' and implementation_strategy='GENERATED_RUNTIME' order by updated_at desc limit 1",route);
-        if(rows.isEmpty())return Map.of("enabled",false,"routePath",route);Map<String,Object> result=new LinkedHashMap<>(rows.get(0));result.put("enabled",true);return result;
+        String route=ScreenDevelopmentNoteService.cleanRoute(routePath);
+        Integer protectedExisting=jdbc.queryForObject("""
+            select count(*)
+              from framework_screen_blueprint
+             where lower(split_part(route_path,'?',1))=lower(?)
+               and validation_status='VALID'
+               and implementation_strategy='ADOPT_EXISTING'
+            """,Integer.class,route);
+        if(protectedExisting!=null&&protectedExisting>0){
+            return Map.of(
+                "enabled",false,
+                "routePath",route,
+                "protectedExisting",true,
+                "source","REGISTERED_IMPLEMENTATION"
+            );
+        }
+        List<Map<String,Object>> screenSpace=jdbc.queryForList("""
+            select 'SS_'||upper(substr(specification_hash,1,20)) as "blueprintCode",
+                   process_code as "processCode",
+                   step_code as "stepCode",
+                   actor_code as "actorCode",
+                   case when route_path like '/admin/%' then 'ADMIN' else 'USER' end as audience,
+                   coalesce(nullif(screen_spec #>> '{dimensions,seedScreenId}',''),
+                            'screen-space-'||substr(specification_hash,1,12)) as "pageId",
+                   coalesce(nullif(initcap(replace(screen_spec #>> '{dimensions,seedScreenId}','-',' ')),''),
+                            initcap(replace(step_code,'_',' '))) as "pageName",
+                   route_path as "routePath",
+                   archetype_code as "screenType",
+                   'KRDS_'||archetype_code as "templateCode",
+                   jsonb_build_object(
+                     'domain',coalesce(screen_spec #>> '{dimensions,domainObject}',process_code),
+                     'businessPurpose',coalesce(screen_spec #>> '{dimensions,seedScreenId}',step_code),
+                     'commandCode',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE'),
+                     'fromState',state_code,
+                     'toState',state_code,
+                     'sections',coalesce(screen_spec #> '{composition,sections}','[]'::jsonb),
+                     'fields',coalesce(screen_spec #> '{bindings,dataContracts}','[]'::jsonb),
+                     'commands',jsonb_build_array(jsonb_build_object(
+                       'code',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE'),
+                       'label',coalesce(screen_spec #>> '{dimensions,action}','COMPLETE')
+                     )),
+                     'states',jsonb_build_array(state_code),
+                     'responsive',coalesce(screen_spec #> '{composition,responsive}','[]'::jsonb),
+                     'screenSpace',screen_spec
+                   )::text as "specificationJson",
+                   jsonb_build_object(
+                     'source','BACKSTAGE_SCREEN_SPACE',
+                     'coordinate',coordinate_key,
+                     'specSha256',specification_hash,
+                     'validationStatus',validation_status,
+                     'publishedAt',published_at
+                   )::text as "traceabilityJson",
+                   validation_status as "validationStatus",
+                   'SCREEN_SPACE_RUNTIME' as "implementationStrategy",
+                   100 as "designScore",
+                   true as "designComplete",
+                   updated_at as "updatedAt"
+              from framework_screen_space_spec
+             where lower(split_part(route_path,'?',1))=lower(?)
+               and validation_status='VERIFIED'
+             order by updated_at desc
+             limit 1
+            """,route);
+        if(!screenSpace.isEmpty()){
+            Map<String,Object> result=new LinkedHashMap<>(screenSpace.get(0));
+            result.put("enabled",true);
+            result.put("source","SCREEN_SPACE_RUNTIME");
+            return result;
+        }
+        List<Map<String,Object>> rows=jdbc.queryForList(
+            "select blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",audience,page_id as \"pageId\",page_name as \"pageName\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",implementation_strategy as \"implementationStrategy\",updated_at as \"updatedAt\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) and validation_status='VALID' and implementation_strategy='GENERATED_RUNTIME' order by updated_at desc limit 1",
+            route
+        );
+        if(rows.isEmpty())return Map.of("enabled",false,"routePath",route);
+        Map<String,Object> result=new LinkedHashMap<>(rows.get(0));
+        result.put("enabled",true);
+        result.put("source","LEGACY_GENERATED_RUNTIME");
+        return result;
     }
 
     @Transactional public Map<String,Object> adoptExistingScreens(Map<String,Object>b,String actor){

@@ -102,6 +102,52 @@ curl --silent --show-error --fail \
     ' >/dev/null
 
 curl --silent --show-error --fail \
+  "$CARBONET_URL/home/api/process-executions/screen-contract?routePath=%2Femission%2Fproject%2Fcreate" \
+  | jq -e '
+      .enabled == false
+      and .protectedExisting == true
+      and .source == "REGISTERED_IMPLEMENTATION"
+    ' >/dev/null
+
+runtime_payload="$(
+  jq -c '
+    .state = "RUNTIME_E2E"
+    | .action = "PREVIEW"
+    | .permission = "VIEW"
+    | .archetype = "DETAIL"
+    | .seedScreenId = "screen-space-runtime-e2e"
+    | .routePath = "/generated/screen-space-runtime-e2e"
+  ' <<<"$payload"
+)"
+runtime_materialized="$(
+  curl --silent --show-error --fail \
+    --cacert "$CA_CERT" \
+    -H "authorization: Bearer $token" \
+    -H 'content-type: application/json' \
+    -X POST \
+    --data "$runtime_payload" \
+    "$API/screen-space/materialize"
+)"
+runtime_coordinate="$(jq -er '.coordinate' <<<"$runtime_materialized")"
+jq -e '
+  .success == true
+  and .status == "VERIFIED"
+  and .runtimePublication.success == true
+  and .runtimePublication.status == "PUBLISHED"
+' <<<"$runtime_materialized" >/dev/null
+
+curl --silent --show-error --fail \
+  "$CARBONET_URL/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Fscreen-space-runtime-e2e" \
+  | jq -e --arg coordinate "$runtime_coordinate" '
+      .enabled == true
+      and .source == "SCREEN_SPACE_RUNTIME"
+      and .implementationStrategy == "SCREEN_SPACE_RUNTIME"
+      and .validationStatus == "VERIFIED"
+      and (.specificationJson | fromjson | .screenSpace.coordinate) == $coordinate
+      and (.traceabilityJson | fromjson | .specSha256 | length) == 64
+    ' >/dev/null
+
+curl --silent --show-error --fail \
   --cacert "$CA_CERT" \
   -H "authorization: Bearer $token" \
   "$API/screen-space/specs?projectId=CCUS-PLATFORM" \
@@ -114,4 +160,4 @@ curl --silent --show-error --fail \
         )
     ' >/dev/null
 
-echo "[screen-space-runtime-e2e] PASS stages=7 coordinate=$coordinate status=VERIFIED"
+echo "[screen-space-runtime-e2e] PASS stages=7 coordinate=$coordinate runtimeCoordinate=$runtime_coordinate protectedExisting=true status=VERIFIED"
