@@ -2,10 +2,11 @@
 set -euo pipefail
 
 ROOT="${RESONANCE_ROOT:-/opt/Resonance}"
-NAMESPACE="${NAMESPACE:-resonance-control-plane}"
+NAMESPACE="${NAMESPACE:-resonance-ops}"
 SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}"
 USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}"
 BASE_URL="${BACKSTAGE_BASE_URL:-https://backstage.172.16.1.232.nip.io}"
+CA_CERT="${RESONANCE_INTERNAL_CA:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
 
 password="$(
   kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
@@ -13,12 +14,13 @@ password="$(
 )"
 token="$(
   BACKSTAGE_E2E_PASSWORD="$password" \
+  RESONANCE_INTERNAL_CA="$CA_CERT" \
     bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME"
 )"
 
 identities="$(
   curl --silent --show-error --fail \
-    --cacert "$ROOT/ops/security/internal-ca/ca.crt" \
+    --cacert "$CA_CERT" \
     -H "authorization: Bearer $token" \
     "$BASE_URL/api/resonance-identity-admin/identities"
 )"
@@ -37,7 +39,7 @@ user_id="$(
 )"
 
 curl --silent --show-error --fail \
-  --cacert "$ROOT/ops/security/internal-ca/ca.crt" \
+  --cacert "$CA_CERT" \
   -H "authorization: Bearer $token" \
   -H 'content-type: application/json' \
   -X PUT \
@@ -56,7 +58,7 @@ curl --silent --show-error --fail \
   | jq -e '.status == "UPDATED"' >/dev/null
 
 curl --silent --show-error --fail \
-  --cacert "$ROOT/ops/security/internal-ca/ca.crt" \
+  --cacert "$CA_CERT" \
   -H "authorization: Bearer $token" \
   "$BASE_URL/api/resonance-identity-admin/audit" \
   | jq -e --arg username "$USERNAME" '
