@@ -56,6 +56,7 @@ export default defineConfig({
     baseURL:
       process.env.PLAYWRIGHT_URL ??
       (process.env.CI ? 'http://localhost:7007' : 'http://localhost:3000'),
+    ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === 'true',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },
