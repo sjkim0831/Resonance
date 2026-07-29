@@ -37,7 +37,13 @@ find_leader() {
 find_keycloak_pod() {
   kubectl -n "$NAMESPACE" get pods \
     -l app.kubernetes.io/name=resonance-keycloak \
-    -o jsonpath='{.items[0].metadata.name}'
+    --field-selector=status.phase=Running \
+    -o json |
+    jq -r '
+      [.items[]
+       | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))
+       | .metadata.name][0] // empty
+    '
 }
 
 hex() {
