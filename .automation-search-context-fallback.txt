@@ -1,6 +1,6 @@
-process=CHAIN_OF_CUSTODY
-step=CHAIN_OF_CUSTODY_S3
-type=FRONTEND_ADMIN
-target=schema-set/chain_of_custody/chain_of_custody_s3/frontend_admin
+process=DISCLOSURE_CORRECTION
+step=DISCLOSURE_CORRECTION_S3
+type=BACKEND
+target=schema-set/disclosure_correction/disclosure_correction_s3/backend
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
