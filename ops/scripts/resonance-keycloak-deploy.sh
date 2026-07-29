@@ -212,6 +212,56 @@ bootstrap_realm() {
     --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 }
 
+sync_integrated_master_admin() {
+  local pod bootstrap_password admin_username admin_password
+  if ! kubectl -n "$NAMESPACE" get secret \
+    resonance-keycloak-integrated-admin >/dev/null 2>&1; then
+    return
+  fi
+  pod="$(find_keycloak_pod)"
+  test -n "$pod"
+  bootstrap_password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak \
+    -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d)"
+  admin_username="$(kubectl -n "$NAMESPACE" get secret \
+    resonance-keycloak-integrated-admin \
+    -o jsonpath='{.data.USERNAME}' | base64 -d)"
+  admin_password="$(kubectl -n "$NAMESPACE" get secret \
+    resonance-keycloak-integrated-admin \
+    -o jsonpath='{.data.PASSWORD}' | base64 -d)"
+  test -n "$admin_username"
+  test -n "$admin_password"
+
+  kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
+    BOOTSTRAP_PASSWORD="$bootstrap_password" \
+    ADMIN_USERNAME="$admin_username" \
+    ADMIN_PASSWORD="$admin_password" bash -ceu '
+      K=/opt/keycloak/bin/kcadm.sh
+      "$K" config credentials --server http://localhost:8080 \
+        --realm master --user resonance-admin \
+        --password "$BOOTSTRAP_PASSWORD" >/dev/null
+      uid=$("$K" get users -r master -q username="$ADMIN_USERNAME" \
+        --fields id --format csv --noquotes | head -n1)
+      if [ -z "$uid" ]; then
+        "$K" create users -r master -s username="$ADMIN_USERNAME" \
+          -s enabled=true -s email="$ADMIN_USERNAME@resonance.local" \
+          -s firstName=Resonance -s lastName=Administrator \
+          -s emailVerified=true >/dev/null
+        uid=$("$K" get users -r master -q username="$ADMIN_USERNAME" \
+          --fields id --format csv --noquotes | head -n1)
+      fi
+      "$K" update "users/$uid" -r master \
+        -s enabled=true -s email="$ADMIN_USERNAME@resonance.local" \
+        -s firstName=Resonance -s lastName=Administrator \
+        -s emailVerified=true -s "requiredActions=[]" >/dev/null
+      "$K" set-password -r master --username "$ADMIN_USERNAME" \
+        --new-password "$ADMIN_PASSWORD" --temporary=false >/dev/null
+      "$K" add-roles -r master --uusername "$ADMIN_USERNAME" \
+        --rolename admin >/dev/null
+    '
+  bootstrap_password=
+  admin_password=
+}
+
 migrate_users() {
   local leader pod admin_password test_password
   leader="$(find_leader)"
@@ -363,6 +413,7 @@ case "$mode" in
     curl --cacert "$TLS_ROOT/ca.crt" -fsS --max-time 15 \
       "$KEYCLOAK_URL/realms/master/.well-known/openid-configuration" >/dev/null
     bootstrap_realm
+    sync_integrated_master_admin
     migrate_users
     authorization_status="$(curl --cacert "$TLS_ROOT/ca.crt" -sS -o /dev/null \
       -w '%{http_code}' \
@@ -373,6 +424,11 @@ case "$mode" in
     }
     echo "[keycloak] PASS realm, client, groups, and member identities are synchronized"
     ;;
+  sync-admin)
+    bootstrap_realm
+    sync_integrated_master_admin
+    echo "[keycloak] PASS integrated master administrator synchronized"
+    ;;
   status)
     kubectl -n "$NAMESPACE" get deployment,pod,service,ingress \
       -l app.kubernetes.io/name=resonance-keycloak -o wide
@@ -381,7 +437,7 @@ case "$mode" in
     echo "[keycloak] PASS $KEYCLOAK_URL"
     ;;
   *)
-    echo "usage: $0 {deploy|status}" >&2
+    echo "usage: $0 {deploy|sync-admin|status}" >&2
     exit 64
     ;;
 esac
