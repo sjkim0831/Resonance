@@ -1,0 +1,14 @@
+[Unit]
+Description=Keep unused Rook Ceph workloads disabled
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/resonance-unused-ceph-guard.sh
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+CPUQuota=25%
+MemoryMax=128M
+TasksMax=64
