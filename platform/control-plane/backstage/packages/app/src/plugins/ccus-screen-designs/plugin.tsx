@@ -12,6 +12,7 @@ const controlAssetsRouteRef = createRouteRef();
 const actorProcessControlRouteRef = createRouteRef();
 const designAssetControlRouteRef = createRouteRef();
 const identityAdministrationRouteRef = createRouteRef();
+const systemOperationsRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -110,6 +111,20 @@ const identityAdministrationPage = PageBlueprint.make({
   },
 });
 
+const systemOperationsPage = PageBlueprint.make({
+  name: 'system-operations',
+  params: {
+    routeRef: systemOperationsRouteRef,
+    path: '/system-operations',
+    title: '시스템 운영 관제',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./SystemOperationsControlPage').then(module => (
+        <module.SystemOperationsControlPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -122,6 +137,7 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     actorProcessControl: actorProcessControlRouteRef,
     designAssetControl: designAssetControlRouteRef,
     identityAdministration: identityAdministrationRouteRef,
+    systemOperations: systemOperationsRouteRef,
   },
   extensions: [
     screenDesignsPage,
@@ -131,5 +147,6 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     actorProcessControlPage,
     designAssetControlPage,
     identityAdministrationPage,
+    systemOperationsPage,
   ],
 });

@@ -219,21 +219,23 @@ export function ResonanceControlAssetsPage() {
         : current === 'NATIVE_READY'
         ? 'MIGRATED'
         : current === 'MIGRATED'
-          ? 'VERIFIED'
-          : '';
+        ? 'VERIFIED'
+        : '';
     if (!nextStatus) return;
     const targetUrl =
       selected.targetPlugin === 'ccus-screen-designs/actor-process-control'
         ? '/actor-process-control'
         : selected.targetPlugin === 'ccus-screen-designs/design-assets'
-          ? '/design-assets'
-          : selected.targetPlugin === 'ccus-screen-designs/screen-designs'
-            ? '/ccus-screen-designs'
-            : selected.targetPlugin === 'ccus-screen-designs/screen-space'
-              ? '/ccus-screen-space'
-              : selected.targetPlugin === 'ccus-screen-designs/project-control'
-                ? '/resonance-projects'
-          : '/resonance-control-assets';
+        ? '/design-assets'
+        : selected.targetPlugin === 'ccus-screen-designs/screen-designs'
+        ? '/ccus-screen-designs'
+        : selected.targetPlugin === 'ccus-screen-designs/screen-space'
+        ? '/ccus-screen-space'
+        : selected.targetPlugin === 'ccus-screen-designs/project-control'
+        ? '/resonance-projects'
+        : selected.targetPlugin === 'ccus-screen-designs/system-operations'
+        ? '/system-operations'
+        : '/resonance-control-assets';
     const response = await fetchApi.fetch(
       `/api/resonance-projects/control-assets/${encodeURIComponent(
         projectId,
@@ -271,8 +273,8 @@ export function ResonanceControlAssetsPage() {
         <Box className={classes.hero}>
           <Typography variant="h5">Framework Control Plane</Typography>
           <Typography variant="body2">
-            관리 기능은 Backstage 네이티브, 고객 업무는 Resonance 런타임,
-            공통 스키마와 디자인 자산은 공유 런타임으로 분리합니다.
+            관리 기능은 Backstage 네이티브, 고객 업무는 Resonance 런타임, 공통
+            스키마와 디자인 자산은 공유 런타임으로 분리합니다.
           </Typography>
         </Box>
         <Grid container spacing={2}>
@@ -368,7 +370,9 @@ export function ResonanceControlAssetsPage() {
                 />
               </Box>
               <Typography variant="h6">{record.screenName}</Typography>
-              <Typography className={classes.path}>{record.routePath}</Typography>
+              <Typography className={classes.path}>
+                {record.routePath}
+              </Typography>
               <Box className={classes.chips} mt={1.5}>
                 <Chip size="small" label={record.ownershipLane} />
                 {record.capabilities.map(capability => (

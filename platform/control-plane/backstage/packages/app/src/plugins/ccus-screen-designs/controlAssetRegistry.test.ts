@@ -9,6 +9,7 @@ const nativeTargets = new Set([
   'ccus-screen-designs/screen-designs',
   'ccus-screen-designs/screen-space',
   'ccus-screen-designs/project-control',
+  'ccus-screen-designs/system-operations',
 ]);
 
 describe('controlAssetRegistry', () => {
@@ -54,5 +55,26 @@ describe('controlAssetRegistry', () => {
     expect(byRoute.get('/admin/system/asset-inventory')?.targetPlugin).toBe(
       'ccus-screen-designs/project-control',
     );
+  });
+
+  it('maps operational monitoring screens to the native operations console', () => {
+    const routes = [
+      '/admin/system/monitoring-dashboard',
+      '/admin/system/db-monitoring',
+      '/admin/system/batch-monitoring',
+      '/admin/system/cron-monitoring',
+      '/admin/system/git-build-monitoring',
+      '/admin/system/performance',
+    ];
+    for (const route of routes) {
+      const asset = RESONANCE_CONTROL_ASSETS.find(
+        candidate => candidate.routePath === route,
+      );
+      expect(asset).toMatchObject({
+        ownershipLane: 'BACKSTAGE_NATIVE',
+        migrationStatus: 'NATIVE_READY',
+        targetPlugin: 'ccus-screen-designs/system-operations',
+      });
+    }
   });
 });

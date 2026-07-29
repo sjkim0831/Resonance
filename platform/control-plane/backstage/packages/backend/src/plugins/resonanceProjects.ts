@@ -619,6 +619,50 @@ export default createBackendPlugin({
           });
           response.json({ status: 'UP', projectCount: Number(count) });
         });
+        router.get('/operations/summary', async (_request, response) => {
+          const countRows = async (tableName: string) => {
+            const [{ count }] = await knex(tableName).count({ count: '*' });
+            return Number(count);
+          };
+          const [projectCount, taskCount, controlAssetCount, designAssetCount] =
+            await Promise.all([
+              countRows('resonance_projects__project'),
+              countRows('resonance_projects__task'),
+              countRows('resonance_projects__control_asset'),
+              countRows('resonance_projects__design_asset'),
+            ]);
+          const taskStatusRows = (await knex('resonance_projects__task')
+            .select('status')
+            .count({ count: '*' })
+            .groupBy('status')) as { status: string; count: string | number }[];
+          const taskStatuses = Object.fromEntries(
+            taskStatusRows.map(row => [row.status, Number(row.count)]),
+          );
+          response.json({
+            checkedAt: new Date().toISOString(),
+            services: [
+              {
+                code: 'BACKSTAGE',
+                name: 'Backstage control plane',
+                status: 'UP',
+                evidence: 'operations summary API responded',
+              },
+              {
+                code: 'CONTROL_DB',
+                name: 'Control-plane PostgreSQL',
+                status: 'UP',
+                evidence: 'transactional catalog queries passed',
+              },
+            ],
+            inventory: {
+              projectCount,
+              taskCount,
+              controlAssetCount,
+              designAssetCount,
+            },
+            taskStatuses,
+          });
+        });
         router.get(
           '/screen-space/work-pack/emission',
           async (_request, response) => {

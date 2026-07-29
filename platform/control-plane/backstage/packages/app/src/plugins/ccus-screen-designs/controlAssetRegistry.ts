@@ -88,6 +88,15 @@ const nativeProjectControlRoutes = new Set([
   '/admin/system/build-studio',
 ]);
 
+const nativeSystemOperationsRoutes = new Set([
+  '/admin/system/monitoring-dashboard',
+  '/admin/system/db-monitoring',
+  '/admin/system/batch-monitoring',
+  '/admin/system/cron-monitoring',
+  '/admin/system/git-build-monitoring',
+  '/admin/system/performance',
+]);
+
 const ownershipFor = (
   record: CcusScreenDesignRecord,
   capabilities: ControlCapability[],
@@ -137,6 +146,14 @@ const ownershipFor = (
       dependencyContracts: [...new Set(record.dataContracts)],
     };
   }
+  if (nativeSystemOperationsRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/system-operations',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
   if (
     controlPrefixes.some(prefix => record.routePath.startsWith(prefix)) ||
     (record.routePath.includes('/generated/') &&
@@ -173,10 +190,7 @@ const classify = (record: CcusScreenDesignRecord): ControlCapability[] => {
     record.processCodes.join(' '),
     record.actorCodes.join(' '),
   ].join(' ');
-  const capabilities = (Object.entries(rules) as [
-    ControlCapability,
-    RegExp,
-  ][])
+  const capabilities = (Object.entries(rules) as [ControlCapability, RegExp][])
     .filter(([, pattern]) => pattern.test(searchable))
     .map(([capability]) => capability);
   if (
@@ -189,17 +203,17 @@ const classify = (record: CcusScreenDesignRecord): ControlCapability[] => {
 };
 
 const candidates: ControlAssetRecord[] = CCUS_SCREEN_DESIGN_CATALOG.records
-    .map(record => {
-      const capabilities = classify(record);
-      return {
-        ...record,
-        screenName: record.screenName.replaceAll(' 쨌 ', ' · '),
-        capabilities,
-        sourceUrl: `http://172.16.1.232${record.routePath}`,
-        ...ownershipFor(record, capabilities),
-      };
-    })
-    .filter(record => record.capabilities.length > 0);
+  .map(record => {
+    const capabilities = classify(record);
+    return {
+      ...record,
+      screenName: record.screenName.replaceAll(' 쨌 ', ' · '),
+      capabilities,
+      sourceUrl: `http://172.16.1.232${record.routePath}`,
+      ...ownershipFor(record, capabilities),
+    };
+  })
+  .filter(record => record.capabilities.length > 0);
 
 const byRoute = new Map<string, ControlAssetRecord>();
 for (const candidate of candidates) {
@@ -214,7 +228,9 @@ for (const candidate of candidates) {
     processCodes: [
       ...new Set([...current.processCodes, ...candidate.processCodes]),
     ],
-    contractIds: [...new Set([...current.contractIds, ...candidate.contractIds])],
+    contractIds: [
+      ...new Set([...current.contractIds, ...candidate.contractIds]),
+    ],
     requiredScenarios: [
       ...new Set([
         ...current.requiredScenarios,
