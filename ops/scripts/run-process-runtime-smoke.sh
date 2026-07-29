@@ -26,7 +26,7 @@ code="$(curl -sS -b "$cookie" -o "$runtime" -w '%{http_code}' -X POST --get --da
 RUNTIME="$runtime" python3 - <<'PY'
 import json, os
 p=json.load(open(os.environ['RUNTIME'],encoding='utf-8'))
-required=('success','rolledBack','requiredValidationVerified','draftRoundTripVerified','staleVersionRejected','draftSubmittedVerified','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted','nextTaskLinkVerified')
+required=('success','rolledBack','requiredValidationVerified','draftRoundTripVerified','staleVersionRejected','draftSubmittedVerified','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted','nextTaskLinkVerified','workflowDraftsVerified')
 if not all(p.get(k) is True for k in required):
     raise SystemExit(f'runtime assertions failed: {p}')
 for key in ('processCode','stepCode','actorCode','stateTransition'):
@@ -35,6 +35,8 @@ if p.get('editableFieldCount',0) < p.get('requiredFieldCount',0) or p.get('reloa
     raise SystemExit(f'professional field round-trip mismatch: {p}')
 if not p.get('nextUserPath') and not p.get('nextAdminPath'):
     raise SystemExit(f'next task route missing: {p}')
+if p.get('workflowDraftStepCount',0) < 1 or p.get('workflowDraftFieldCount',0) < p.get('editableFieldCount',0):
+    raise SystemExit(f'workflow draft coverage mismatch: {p}')
 if p.get('stepCount',0) < 1 or len(p.get('transitions',[])) != p.get('stepCount'):
     raise SystemExit(f'invalid transition evidence: {p}')
 PY
