@@ -403,6 +403,17 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
   run_backstage_visual_e2e_if_required
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/auto-deploy-main.sh \
+      ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
+      ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh \
+      ops/scripts/validate-keycloak-carbonet-identity-sync.sh \
+      | grep -q .; then
+    RESONANCE_ROOT="$ROOT_DIR" \
+      bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
+    bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+    bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+  fi
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
