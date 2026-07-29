@@ -1,0 +1,9 @@
+# Verified existing server adoption: LEGAL_NOTIFICATION_DELIVERY / LND_DELIVER
+
+- Job: 21293
+- Job type: BACKEND
+- Source commit: 0cdb3523c11d46369b424a725d2739ad5131d759
+- Requirement: SMS·이메일·국민비서로 발송하고 실패 시 정책에 따라 재시도·대체한다.
+- Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"LEGAL_NOTIFICATION_DELIVERY","stepCode":"LND_DELIVER","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21293/projects/carbonet-backend-metadata/process-runtime/generated/LEGAL_NOTIFICATION_DELIVERY/LEGAL_NOTIFICATION_DELIVERY__LND_DELIVER.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21293/var/test-evidence/process-package-tests/LEGAL_NOTIFICATION_DELIVERY__LND_DELIVER.json","status":"PASSED"}
+
+The deterministic validator requires the step-specific controller routes, service methods, executable SQL tests, tenant boundary evidence, and a healthy live emission workflow. A missing server contract leaves the job incomplete.
