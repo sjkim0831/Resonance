@@ -11,6 +11,7 @@ type KeycloakUser = {
   firstName?: string;
   lastName?: string;
   enabled?: boolean;
+  attributes?: Record<string, string[]>;
 };
 
 type KeycloakGroup = {
@@ -23,6 +24,60 @@ const managedGroups = [
   'carbon-operations',
   'verification-governance',
 ];
+
+const normalizeScopes = (
+  value: unknown,
+  fallback: string[],
+  pattern: RegExp,
+) => {
+  const values = Array.isArray(value) ? value.map(String) : [];
+  const normalized = [
+    ...new Set(values.map(item => item.trim()).filter(Boolean)),
+  ];
+  const resolved = normalized.length > 0 ? normalized : fallback;
+  if (!resolved.every(item => pattern.test(item))) {
+    throw new Error('invalid identity scope');
+  }
+  return resolved;
+};
+
+const identityAttributes = (body: Record<string, unknown>) => {
+  const tenantId = String(body.tenantId ?? 'DEFAULT').trim() || 'DEFAULT';
+  if (!/^[A-Za-z0-9_.:-]{1,80}$/.test(tenantId)) {
+    throw new Error('invalid tenant scope');
+  }
+  return {
+    resonanceTenantId: [tenantId],
+    resonanceProjectScopes: normalizeScopes(
+      body.projectScopes,
+      ['*'],
+      /^[A-Za-z0-9*_.:-]{1,100}$/,
+    ),
+    resonanceDataScopes: normalizeScopes(
+      body.dataScopes,
+      ['*'],
+      /^[A-Za-z0-9*_.:/-]{1,80}$/,
+    ),
+  };
+};
+
+const requestedIdentityAttributes = (
+  body: Record<string, unknown>,
+  current: Record<string, string[]> = {},
+) => {
+  if (
+    !('tenantId' in body) &&
+    !('projectScopes' in body) &&
+    !('dataScopes' in body)
+  ) {
+    return {};
+  }
+  return identityAttributes({
+    tenantId: body.tenantId ?? current.resonanceTenantId?.[0],
+    projectScopes: body.projectScopes ?? current.resonanceProjectScopes,
+    dataScopes: body.dataScopes ?? current.resonanceDataScopes,
+  });
+};
 
 export default createBackendPlugin({
   pluginId: 'resonance-identity-admin',
@@ -218,7 +273,7 @@ export default createBackendPlugin({
           try {
             await requireAdmin(request);
             const users = await keycloak<KeycloakUser[]>(
-              '/users?max=500&briefRepresentation=true',
+              '/users?max=500&briefRepresentation=false',
             );
             const identities = await Promise.all(
               users.map(async user => ({
@@ -229,6 +284,9 @@ export default createBackendPlugin({
                   .join(' '),
                 email: user.email ?? '',
                 enabled: user.enabled !== false,
+                tenantId: user.attributes?.resonanceTenantId?.[0] ?? 'DEFAULT',
+                projectScopes: user.attributes?.resonanceProjectScopes ?? ['*'],
+                dataScopes: user.attributes?.resonanceDataScopes ?? ['*'],
                 groups: (
                   await keycloak<KeycloakGroup[]>(
                     `/users/${encodeURIComponent(user.id)}/groups`,
@@ -275,6 +333,7 @@ export default createBackendPlugin({
                 firstName: String(request.body?.displayName ?? username),
                 emailVerified: true,
                 requiredActions: [],
+                attributes: identityAttributes(request.body ?? {}),
               }),
             });
             const matches = await keycloak<KeycloakUser[]>(
@@ -307,11 +366,38 @@ export default createBackendPlugin({
             const actorRef = await requireAdmin(request);
             const id = String(request.params.id);
             const username = String(request.body?.username ?? '');
+            const current = await keycloak<KeycloakUser>(
+              `/users/${encodeURIComponent(id)}`,
+            );
             if ('enabled' in (request.body ?? {})) {
               await keycloak(`/users/${encodeURIComponent(id)}`, {
                 method: 'PUT',
                 body: JSON.stringify({
                   enabled: Boolean(request.body.enabled),
+                  attributes: {
+                    ...(current.attributes ?? {}),
+                    ...requestedIdentityAttributes(
+                      request.body ?? {},
+                      current.attributes,
+                    ),
+                  },
+                }),
+              });
+            } else if (
+              'tenantId' in (request.body ?? {}) ||
+              'projectScopes' in (request.body ?? {}) ||
+              'dataScopes' in (request.body ?? {})
+            ) {
+              await keycloak(`/users/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                  attributes: {
+                    ...(current.attributes ?? {}),
+                    ...requestedIdentityAttributes(
+                      request.body ?? {},
+                      current.attributes,
+                    ),
+                  },
                 }),
               });
             }
@@ -341,6 +427,9 @@ export default createBackendPlugin({
             await audit(actorRef, username, 'IDENTITY_UPDATED', {
               enabled: request.body?.enabled,
               groups: request.body?.groups,
+              tenantId: request.body?.tenantId,
+              projectScopes: request.body?.projectScopes,
+              dataScopes: request.body?.dataScopes,
               passwordReset: Boolean(password),
             });
             response.json({ status: 'UPDATED' });

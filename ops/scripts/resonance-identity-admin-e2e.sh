@@ -37,6 +37,21 @@ user_id="$(
     | .id
   ' <<<"$identities"
 )"
+tenant_id="$(
+  jq -er --arg username "$USERNAME" '
+    .identities[] | select(.username == $username) | .tenantId
+  ' <<<"$identities"
+)"
+project_scopes="$(
+  jq -cer --arg username "$USERNAME" '
+    .identities[] | select(.username == $username) | .projectScopes
+  ' <<<"$identities"
+)"
+data_scopes="$(
+  jq -cer --arg username "$USERNAME" '
+    .identities[] | select(.username == $username) | .dataScopes
+  ' <<<"$identities"
+)"
 
 curl --silent --show-error --fail \
   --cacert "$CA_CERT" \
@@ -44,9 +59,16 @@ curl --silent --show-error --fail \
   -H 'content-type: application/json' \
   -X PUT \
   --data "$(
-    jq -cn --arg username "$USERNAME" '{
+    jq -cn \
+      --arg username "$USERNAME" \
+      --arg tenantId "$tenant_id" \
+      --argjson projectScopes "$project_scopes" \
+      --argjson dataScopes "$data_scopes" '{
       username: $username,
       enabled: true,
+      tenantId: $tenantId,
+      projectScopes: $projectScopes,
+      dataScopes: $dataScopes,
       groups: [
         "platform-engineering",
         "carbon-operations",
@@ -60,10 +82,28 @@ curl --silent --show-error --fail \
 curl --silent --show-error --fail \
   --cacert "$CA_CERT" \
   -H "authorization: Bearer $token" \
+  "$BASE_URL/api/resonance-identity-admin/identities" \
+  | jq -e \
+      --arg username "$USERNAME" \
+      --arg tenantId "$tenant_id" \
+      --argjson projectScopes "$project_scopes" \
+      --argjson dataScopes "$data_scopes" '
+        .identities
+        | any(
+            .username == $username
+            and .tenantId == $tenantId
+            and .projectScopes == $projectScopes
+            and .dataScopes == $dataScopes
+          )
+      ' >/dev/null
+
+curl --silent --show-error --fail \
+  --cacert "$CA_CERT" \
+  -H "authorization: Bearer $token" \
   "$BASE_URL/api/resonance-identity-admin/audit" \
   | jq -e --arg username "$USERNAME" '
       .audit
       | any(.targetUsername == $username and .actionCode == "IDENTITY_UPDATED")
     ' >/dev/null
 
-echo "[identity-admin-e2e] PASS username=$USERNAME groups=3 audit=verified"
+echo "[identity-admin-e2e] PASS username=$USERNAME groups=3 scopes=persisted audit=verified"

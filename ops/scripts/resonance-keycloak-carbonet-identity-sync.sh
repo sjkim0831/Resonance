@@ -73,7 +73,7 @@ admin_password=
 users_json="$(
   kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
     /opt/keycloak/bin/kcadm.sh get users -r "$REALM" \
-    --fields id,username,email,firstName,lastName,enabled --format json
+    --fields id,username,email,firstName,lastName,enabled,attributes --format json
 )"
 groups_catalog="$(
   kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
@@ -129,6 +129,33 @@ while IFS= read -r user; do
   )"
   [[ -n "$display_name" ]] || display_name="$username"
   enabled="$(jq -r 'if .enabled == false then "N" else "Y" end' <<<"$user")"
+  tenant_id="$(
+    jq -r '
+      (.attributes.resonanceTenantId[0] // "DEFAULT")
+      | select(test("^[A-Za-z0-9_.:-]{1,80}$")) // "DEFAULT"
+    ' <<<"$user"
+  )"
+  project_scopes_json="$(
+    jq -c '
+      [
+        (.attributes.resonanceProjectScopes // ["*"])[]
+        | select(test("^[A-Za-z0-9*_.:-]{1,100}$"))
+      ]
+      | unique
+      | if length == 0 then ["*"] else . end
+    ' <<<"$user"
+  )"
+  data_scope="$(
+    jq -r '
+      [
+        (.attributes.resonanceDataScopes // ["*"])[]
+        | select(test("^[A-Za-z0-9*_.:/-]{1,80}$"))
+      ]
+      | unique
+      | if length == 0 then ["*"] else . end
+      | join(",")
+    ' <<<"$user"
+  )"
   groups_json="$(jq -c --arg subject "$subject" '.[$subject] // []' <<<"$group_memberships")"
   password_hash="$(
     if [[ "$username" == "$integrated_username" && -n "$integrated_hash" ]]; then
@@ -152,11 +179,15 @@ DECLARE
   v_password text := convert_from(decode('$(hex "$password_hash")','hex'),'UTF8');
   v_essential_id text := convert_from(decode('$(hex "$essential_id")','hex'),'UTF8');
   v_groups jsonb := convert_from(decode('$(hex "$groups_json")','hex'),'UTF8')::jsonb;
+  v_tenant_id text := convert_from(decode('$(hex "$tenant_id")','hex'),'UTF8');
+  v_project_scopes jsonb := convert_from(decode('$(hex "$project_scopes_json")','hex'),'UTF8')::jsonb;
+  v_data_scope text := convert_from(decode('$(hex "$data_scope")','hex'),'UTF8');
   v_enabled char(1) := '$enabled';
   v_author_code text;
   v_assignment_id bigint;
   v_actor_codes jsonb;
   policy record;
+  project_scope text;
 BEGIN
   SELECT role.author_code
     INTO v_author_code
@@ -245,6 +276,8 @@ BEGIN
              AND v_groups ? actor_policy.group_name
              AND actor_policy.group_name=link.group_name
              AND actor_policy.actor_code=link.actor_code
+             AND link.tenant_id=v_tenant_id
+             AND v_project_scopes ? link.project_id
         )
    );
   UPDATE framework_identity_actor_assignment_link link
@@ -257,6 +290,8 @@ BEGIN
           AND v_groups ? actor_policy.group_name
           AND actor_policy.group_name=link.group_name
           AND actor_policy.actor_code=link.actor_code
+          AND link.tenant_id=v_tenant_id
+          AND v_project_scopes ? link.project_id
      );
 
   IF v_enabled='Y' THEN
@@ -267,29 +302,35 @@ BEGIN
          AND v_groups ? actor_policy.group_name
        ORDER BY actor_policy.group_name,actor_policy.actor_code
     LOOP
-      INSERT INTO framework_account_actor_assignment(
-        account_id,tenant_id,project_id,actor_code,data_scope,
-        valid_from,valid_until,assignment_status,created_at
-      ) VALUES(
-        v_username,policy.tenant_id,policy.project_scope,policy.actor_code,
-        policy.data_scope,current_date,NULL,'ACTIVE',current_timestamp
-      )
-      ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE
-        SET data_scope=excluded.data_scope,
-            valid_from=least(framework_account_actor_assignment.valid_from,current_date),
-            valid_until=NULL,
-            assignment_status='ACTIVE'
-      RETURNING assignment_id INTO v_assignment_id;
+      FOR project_scope IN
+        SELECT jsonb_array_elements_text(v_project_scopes)
+      LOOP
+        INSERT INTO framework_account_actor_assignment(
+          account_id,tenant_id,project_id,actor_code,data_scope,
+          valid_from,valid_until,assignment_status,created_at
+        ) VALUES(
+          v_username,v_tenant_id,project_scope,policy.actor_code,
+          v_data_scope,current_date,NULL,'ACTIVE',current_timestamp
+        )
+        ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE
+          SET data_scope=excluded.data_scope,
+              valid_from=least(framework_account_actor_assignment.valid_from,current_date),
+              valid_until=NULL,
+              assignment_status='ACTIVE'
+        RETURNING assignment_id INTO v_assignment_id;
 
-      INSERT INTO framework_identity_actor_assignment_link(
-        account_id,group_name,actor_code,assignment_id,active_yn,updated_at
-      ) VALUES(
-        v_username,policy.group_name,policy.actor_code,v_assignment_id,'Y',current_timestamp
-      )
-      ON CONFLICT(account_id,group_name,actor_code) DO UPDATE
-        SET assignment_id=excluded.assignment_id,
-            active_yn='Y',
-            updated_at=current_timestamp;
+        INSERT INTO framework_identity_actor_assignment_link(
+          account_id,group_name,actor_code,tenant_id,project_id,
+          assignment_id,active_yn,updated_at
+        ) VALUES(
+          v_username,policy.group_name,policy.actor_code,v_tenant_id,
+          project_scope,v_assignment_id,'Y',current_timestamp
+        )
+        ON CONFLICT(account_id,group_name,actor_code,tenant_id,project_id) DO UPDATE
+          SET assignment_id=excluded.assignment_id,
+              active_yn='Y',
+              updated_at=current_timestamp;
+      END LOOP;
     END LOOP;
   ELSE
     UPDATE framework_account_actor_assignment assignment
@@ -324,6 +365,9 @@ BEGIN
        AND previous.author_code IS NOT DISTINCT FROM v_author_code
        AND previous.group_names=v_groups
        AND previous.actor_codes=v_actor_codes
+       AND previous.detail_json->>'tenantId'=v_tenant_id
+       AND previous.detail_json->'projectScopes'=v_project_scopes
+       AND previous.detail_json->>'dataScope'=v_data_scope
        AND previous.result_code='SYNCHRONIZED'
      ORDER BY previous.sync_id DESC
      LIMIT 1
@@ -334,7 +378,11 @@ BEGIN
     ) VALUES(
       v_username,'KEYCLOAK',v_subject,v_enabled,v_author_code,
       v_groups,v_actor_codes,'SYNCHRONIZED',
-      jsonb_build_object('tenantId','DEFAULT','projectScope','*'),current_timestamp
+      jsonb_build_object(
+        'tenantId',v_tenant_id,
+        'projectScopes',v_project_scopes,
+        'dataScope',v_data_scope
+      ),current_timestamp
     );
   END IF;
 END

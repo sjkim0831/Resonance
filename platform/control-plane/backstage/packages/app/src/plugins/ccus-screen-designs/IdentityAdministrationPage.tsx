@@ -24,6 +24,9 @@ type Identity = {
   email: string;
   enabled: boolean;
   groups: string[];
+  tenantId: string;
+  projectScopes: string[];
+  dataScopes: string[];
 };
 
 type AuditRow = {
@@ -93,9 +96,15 @@ export function IdentityAdministrationPage() {
     email: '',
     password: '',
     groups: ['platform-engineering'],
+    tenantId: 'DEFAULT',
+    projectScopes: '*',
+    dataScopes: '*',
   });
   const [editGroups, setEditGroups] = useState<string[]>([]);
   const [editEnabled, setEditEnabled] = useState(true);
+  const [editTenantId, setEditTenantId] = useState('DEFAULT');
+  const [editProjectScopes, setEditProjectScopes] = useState('*');
+  const [editDataScopes, setEditDataScopes] = useState('*');
   const [resetPassword, setResetPassword] = useState('');
   const [temporaryPassword, setTemporaryPassword] = useState(true);
 
@@ -132,6 +141,9 @@ export function IdentityAdministrationPage() {
     if (!selected) return;
     setEditGroups(selected.groups);
     setEditEnabled(selected.enabled);
+    setEditTenantId(selected.tenantId);
+    setEditProjectScopes(selected.projectScopes.join(', '));
+    setEditDataScopes(selected.dataScopes.join(', '));
     setResetPassword('');
   }, [selected]);
 
@@ -142,7 +154,18 @@ export function IdentityAdministrationPage() {
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...create, temporaryPassword: true }),
+        body: JSON.stringify({
+          ...create,
+          projectScopes: create.projectScopes
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean),
+          dataScopes: create.dataScopes
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean),
+          temporaryPassword: true,
+        }),
       },
     );
     if (!response.ok) {
@@ -156,6 +179,9 @@ export function IdentityAdministrationPage() {
       email: '',
       password: '',
       groups: ['platform-engineering'],
+      tenantId: 'DEFAULT',
+      projectScopes: '*',
+      dataScopes: '*',
     });
     setMessage('통합계정을 생성했습니다.');
     await load();
@@ -175,6 +201,15 @@ export function IdentityAdministrationPage() {
           username: selected.username,
           enabled: editEnabled,
           groups: editGroups,
+          tenantId: editTenantId,
+          projectScopes: editProjectScopes
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean),
+          dataScopes: editDataScopes
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean),
           password: resetPassword || undefined,
           temporaryPassword,
         }),
@@ -266,6 +301,10 @@ export function IdentityAdministrationPage() {
                       />
                     ))}
                   </Box>
+                  <Typography variant="caption" color="textSecondary">
+                    {identity.tenantId} · {identity.projectScopes.join(', ')} ·{' '}
+                    {identity.dataScopes.join(', ')}
+                  </Typography>
                 </button>
               ))}
             </Box>
@@ -319,6 +358,30 @@ export function IdentityAdministrationPage() {
                       label={group}
                     />
                   ))}
+                  <TextField
+                    className={classes.field}
+                    fullWidth
+                    label="테넌트 ID"
+                    value={editTenantId}
+                    onChange={event => setEditTenantId(event.target.value)}
+                    helperText="계정 격리 범위입니다. 기본값: DEFAULT"
+                  />
+                  <TextField
+                    className={classes.field}
+                    fullWidth
+                    label="프로젝트 범위"
+                    value={editProjectScopes}
+                    onChange={event => setEditProjectScopes(event.target.value)}
+                    helperText="쉼표로 프로젝트 ID를 구분합니다. 전체는 *"
+                  />
+                  <TextField
+                    className={classes.field}
+                    fullWidth
+                    label="데이터 범위"
+                    value={editDataScopes}
+                    onChange={event => setEditDataScopes(event.target.value)}
+                    helperText="쉼표로 데이터 범위를 구분합니다. 전체는 *"
+                  />
                   <TextField
                     className={classes.field}
                     fullWidth
@@ -404,6 +467,34 @@ export function IdentityAdministrationPage() {
                   </MenuItem>
                 ))}
               </Select>
+              {(['tenantId', 'projectScopes', 'dataScopes'] as const).map(
+                field => (
+                  <TextField
+                    key={field}
+                    className={classes.field}
+                    fullWidth
+                    label={
+                      {
+                        tenantId: '테넌트 ID',
+                        projectScopes: '프로젝트 범위',
+                        dataScopes: '데이터 범위',
+                      }[field]
+                    }
+                    value={create[field]}
+                    onChange={event =>
+                      setCreate(current => ({
+                        ...current,
+                        [field]: event.target.value,
+                      }))
+                    }
+                    helperText={
+                      field === 'tenantId'
+                        ? '기본값: DEFAULT'
+                        : '쉼표로 구분하며 전체 범위는 *를 사용합니다.'
+                    }
+                  />
+                ),
+              )}
               <Box className={classes.actions}>
                 <Button
                   variant="contained"
