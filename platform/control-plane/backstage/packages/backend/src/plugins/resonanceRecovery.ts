@@ -198,7 +198,8 @@ export default createBackendPlugin({
         router.use(json({ limit: '256kb' }));
 
         const requireWorker = (request: Request) => {
-          const configured = process.env.RESONANCE_OPS_TOKEN ?? '';
+          const configured =
+            process.env.RESONANCE_RECOVERY_WORKER_TOKEN ?? '';
           const authorization = request.header('authorization') ?? '';
           const supplied = authorization.startsWith('Bearer ')
             ? authorization.slice(7)

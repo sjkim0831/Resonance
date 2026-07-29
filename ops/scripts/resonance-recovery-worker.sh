@@ -30,7 +30,7 @@ case "$resolved_root" in
 esac
 
 token="$(kubectl -n resonance-ops get secret resonance-ops-bridge \
-  -o jsonpath='{.data.RESONANCE_OPS_TOKEN}' | base64 -d)"
+  -o jsonpath='{.data.RESONANCE_RECOVERY_WORKER_TOKEN}' | base64 -d)"
 [[ "${#token}" -ge 32 ]] || {
   echo "[recovery-worker] service token is unavailable" >&2
   exit 1
