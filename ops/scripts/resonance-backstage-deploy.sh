@@ -283,6 +283,9 @@ case "$mode" in
     ;;
   deploy)
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
+    # Exercise the complete API admission chain before dependency installation,
+    # image construction, secret mutation, or rollout.
+    bash "$ROOT/ops/scripts/resonance-kubernetes-admission-preflight.sh" "$NAMESPACE"
     ensure_tls
     ensure_auth_secret
     ensure_ingress_https_port
