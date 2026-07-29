@@ -695,6 +695,8 @@ bash ops/scripts/validate-customer-work-journey.sh
 bash ops/scripts/validate-actor-account-customer-journey.sh
 bash ops/scripts/validate-design-direct-development.sh
 bash ops/scripts/validate-common-design-assets.sh
+RESONANCE_ROOT="$ROOT_DIR" \
+  bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
 bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
 bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
 bash ops/scripts/validate-project-auto-completion.sh
