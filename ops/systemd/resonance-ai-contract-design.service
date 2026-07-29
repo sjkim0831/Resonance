@@ -10,3 +10,6 @@ ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-ai-contract-designs.
 Nice=15
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
+CPUQuota=400%
+MemoryMax=8G
+TasksMax=1024

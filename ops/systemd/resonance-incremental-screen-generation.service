@@ -10,3 +10,6 @@ ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-db-first-framework.s
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
+CPUQuota=200%
+MemoryMax=4G
+TasksMax=512
