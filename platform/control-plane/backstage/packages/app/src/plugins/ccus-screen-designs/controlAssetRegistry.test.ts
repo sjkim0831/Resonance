@@ -10,6 +10,7 @@ const nativeTargets = new Set([
   'ccus-screen-designs/screen-space',
   'ccus-screen-designs/project-control',
   'ccus-screen-designs/system-operations',
+  'ccus-screen-designs/system-development',
 ]);
 
 describe('controlAssetRegistry', () => {
@@ -74,6 +75,31 @@ describe('controlAssetRegistry', () => {
         ownershipLane: 'BACKSTAGE_NATIVE',
         migrationStatus: 'NATIVE_READY',
         targetPlugin: 'ccus-screen-designs/system-operations',
+      });
+    }
+  });
+
+  it('maps development registries to the native development console', () => {
+    const routes = [
+      '/admin/system/api-management',
+      '/admin/system/feature-management',
+      '/admin/system/controller-management',
+      '/admin/system/function-console',
+      '/admin/system/module',
+      '/admin/system/code',
+      '/admin/system/column-management',
+      '/admin/system/full-stack-management',
+      '/admin/system/package-governance',
+      '/admin/system/version-management',
+      '/admin/system/codex-provision',
+    ];
+    for (const route of routes) {
+      expect(
+        RESONANCE_CONTROL_ASSETS.find(asset => asset.routePath === route),
+      ).toMatchObject({
+        ownershipLane: 'BACKSTAGE_NATIVE',
+        migrationStatus: 'NATIVE_READY',
+        targetPlugin: 'ccus-screen-designs/system-development',
       });
     }
   });

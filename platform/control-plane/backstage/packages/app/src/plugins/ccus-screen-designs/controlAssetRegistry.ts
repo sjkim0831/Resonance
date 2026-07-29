@@ -97,6 +97,20 @@ const nativeSystemOperationsRoutes = new Set([
   '/admin/system/performance',
 ]);
 
+const nativeSystemDevelopmentRoutes = new Set([
+  '/admin/system/api-management',
+  '/admin/system/feature-management',
+  '/admin/system/controller-management',
+  '/admin/system/function-console',
+  '/admin/system/module',
+  '/admin/system/code',
+  '/admin/system/column-management',
+  '/admin/system/full-stack-management',
+  '/admin/system/package-governance',
+  '/admin/system/version-management',
+  '/admin/system/codex-provision',
+]);
+
 const ownershipFor = (
   record: CcusScreenDesignRecord,
   capabilities: ControlCapability[],
@@ -151,6 +165,14 @@ const ownershipFor = (
       ownershipLane: 'BACKSTAGE_NATIVE',
       migrationStatus: 'NATIVE_READY',
       targetPlugin: 'ccus-screen-designs/system-operations',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeSystemDevelopmentRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/system-development',
       dependencyContracts: [...new Set(record.dataContracts)],
     };
   }

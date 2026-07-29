@@ -235,6 +235,8 @@ export function ResonanceControlAssetsPage() {
         ? '/resonance-projects'
         : selected.targetPlugin === 'ccus-screen-designs/system-operations'
         ? '/system-operations'
+        : selected.targetPlugin === 'ccus-screen-designs/system-development'
+        ? '/system-development'
         : '/resonance-control-assets';
     const response = await fetchApi.fetch(
       `/api/resonance-projects/control-assets/${encodeURIComponent(
