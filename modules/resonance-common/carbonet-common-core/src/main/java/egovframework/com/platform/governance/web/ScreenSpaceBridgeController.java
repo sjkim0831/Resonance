@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/internal/api/screen-space")
+@RequestMapping("/admin/api/internal/screen-space")
 public class ScreenSpaceBridgeController {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;

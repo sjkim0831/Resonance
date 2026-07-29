@@ -797,7 +797,7 @@ export default createBackendPlugin({
             } else {
               try {
                 const publishResponse = await fetch(
-                  `${runtimeBaseUrl}/internal/api/screen-space/specs`,
+                  `${runtimeBaseUrl}/admin/api/internal/screen-space/specs`,
                   {
                     method: 'POST',
                     headers: {
