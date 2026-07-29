@@ -21,6 +21,7 @@ bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-/opt/Resonance}}"
+PLAN_SCRIPT="${CARBONET_DEPLOY_PLAN_SCRIPT:-ops/scripts/plan-incremental-work.sh}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
@@ -173,7 +174,8 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
   exit 0
 fi
 
-eval "$(bash ops/scripts/plan-incremental-work.sh "$deployed_commit" "$target_commit" --format env)"
+eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
+PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
