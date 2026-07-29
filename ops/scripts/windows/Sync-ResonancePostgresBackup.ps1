@@ -7,7 +7,7 @@ param(
     [string]$CredentialFile = "$env:LOCALAPPDATA\Resonance\backup-ssh.credential.xml",
     [string]$KeyFile = "$env:LOCALAPPDATA\Resonance\backup-aes.key",
     [string]$ReporterTokenFile = "$env:LOCALAPPDATA\Resonance\backup-reporter.token",
-    [string]$StatusEndpoint = "https://172.16.1.232:30707/api/resonance-recovery/worker/offsite-status",
+    [string]$StatusEndpoint = "https://backstage.172.16.1.232.nip.io/api/resonance-recovery/worker/offsite-status",
     [switch]$Force
 )
 
