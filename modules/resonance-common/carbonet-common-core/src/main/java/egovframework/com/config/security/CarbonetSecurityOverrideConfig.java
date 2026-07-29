@@ -70,6 +70,7 @@ public class CarbonetSecurityOverrideConfig {
                 "/en/api/menu/**",
                 "/api/runtime/project-info",
                 "/api/runtime/info",
+                "/api/internal/screen-space/**",
                 "/api/platform/**",
                 "/en/api/platform/**",
                 "/admin/api/**",
