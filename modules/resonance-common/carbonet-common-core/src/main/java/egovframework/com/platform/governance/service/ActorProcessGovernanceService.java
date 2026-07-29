@@ -842,7 +842,7 @@ public class ActorProcessGovernanceService {
              where nullif(field->>'fieldCode','') is not null
                and coalesce((field->>'editable')::boolean,false)
             """,String.class,project,actor,process,step,process,step);
-        Integer editableFieldCount=jdbc.queryForObject("select jsonb_object_length(?::jsonb)",Integer.class,smokePayload);
+        Integer editableFieldCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,smokePayload);
         Integer requiredFieldCount=jdbc.queryForObject("""
             select count(*)
               from jsonb_array_elements(coalesce(
@@ -872,7 +872,7 @@ public class ActorProcessGovernanceService {
         Map<String,Object> reloadedDraft=loadWorkDraft(tenant,project,process,step,account);
         Map<?,?> reloaded=(Map<?,?>)reloadedDraft.get("draft");
         int savedVersion=((Number)((Map<?,?>)savedDraft.get("draft")).get("draftVersion")).intValue();
-        Integer reloadedFieldCount=jdbc.queryForObject("select jsonb_object_length(?::jsonb)",Integer.class,String.valueOf(reloaded.get("payloadJson")));
+        Integer reloadedFieldCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,String.valueOf(reloaded.get("payloadJson")));
         boolean draftRoundTripVerified=Boolean.TRUE.equals(reloadedDraft.get("found"))
             && savedVersion==incompleteVersion+1
             && savedVersion==((Number)reloaded.get("draftVersion")).intValue()
