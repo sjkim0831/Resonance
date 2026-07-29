@@ -5,12 +5,13 @@ API_BASE="${RESONANCE_RECOVERY_API_BASE:-https://backstage.172.16.1.232.nip.io/a
 CA_CERT="${RESONANCE_RECOVERY_CA_CERT:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
 BACKUP_ROOT="${RESONANCE_RECOVERY_BACKUP_ROOT:-/opt/resonance-backups/postgresql/on-demand}"
 WORKER_ID="${RESONANCE_RECOVERY_WORKER_ID:-$(hostname)-postgres-backup}"
-WORKER_VERSION="2"
+WORKER_VERSION="3"
 NAMESPACE="${RESONANCE_RECOVERY_NAMESPACE:-carbonet-prod}"
 DATABASE="${RESONANCE_RECOVERY_DATABASE:-carbonet}"
 MIN_BACKUP_BYTES="${RESONANCE_RECOVERY_MIN_BACKUP_BYTES:-1048576}"
 ARCHIVE_VERIFY_IMAGE="${RESONANCE_RECOVERY_ARCHIVE_VERIFY_IMAGE:-localhost:5000/spilo-16-uid1000:3.2-p3}"
 RETENTION_SCRIPT="${RESONANCE_RECOVERY_RETENTION_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/prune-on-demand-backups.sh}"
+RESTORE_DRILL_SCRIPT="${RESONANCE_RECOVERY_RESTORE_DRILL_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/run-isolated-restore-drill.sh}"
 KUBECONFIG="${KUBECONFIG:-/home/sjkim/.kube/config}"
 export KUBECONFIG
 
@@ -189,10 +190,18 @@ run_verify() {
     "$(jq -nc --arg file "$(basename "$latest")" --arg sha256 "$actual" --arg verificationMode "$ARCHIVE_VERIFICATION_MODE" --argjson bytes "$bytes" '{file:$file,sha256:$sha256,bytes:$bytes,verified:true,verificationMode:$verificationMode}')"
 }
 
+run_restore_drill() {
+  local drill_result
+  [[ -x "$RESTORE_DRILL_SCRIPT" ]] || return 1
+  drill_result="$("$RESTORE_DRILL_SCRIPT")"
+  complete true "isolated restore drill completed" "$drill_result"
+}
+
 set +e
 case "$command_type" in
   CREATE_BACKUP) run_backup; result=$? ;;
   VERIFY_BACKUP) run_verify; result=$? ;;
+  RESTORE_DRILL) run_restore_drill; result=$? ;;
   *) result=64 ;;
 esac
 set -e

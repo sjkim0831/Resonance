@@ -36,6 +36,7 @@ type RecoverySummary = {
 };
 
 const commandOptions = [
+  ['RESTORE_DRILL', '격리 복원 리허설'],
   ['CREATE_BACKUP', '백업 생성'],
   ['VERIFY_BACKUP', '백업 검증'],
   ['RESTORE_BACKUP', '백업 복구'],

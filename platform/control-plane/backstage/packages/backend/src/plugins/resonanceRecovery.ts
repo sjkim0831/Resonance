@@ -12,6 +12,7 @@ import {
 const COMMANDS = [
   'CREATE_BACKUP',
   'VERIFY_BACKUP',
+  'RESTORE_DRILL',
   'RESTORE_BACKUP',
   'PROMOTE_PRIMARY',
   'SYNC_DEPLOY',
@@ -436,6 +437,7 @@ export default createBackendPlugin({
               capabilities: JSON.stringify([
                 'CREATE_BACKUP',
                 'VERIFY_BACKUP',
+                'RESTORE_DRILL',
               ]),
               last_seen_at: now,
             })
@@ -447,16 +449,21 @@ export default createBackendPlugin({
               capabilities: JSON.stringify([
                 'CREATE_BACKUP',
                 'VERIFY_BACKUP',
+                'RESTORE_DRILL',
               ]),
               last_seen_at: now,
             });
-          const leaseUntil = new Date(now.getTime() + 15 * 60 * 1000);
+          let leaseUntil = new Date(now.getTime() + 15 * 60 * 1000);
           const leaseToken = randomUUID();
           const command = await knex.transaction(async transaction => {
             const candidate = await transaction(
               'resonance_recovery__command',
             )
-              .whereIn('command_type', ['CREATE_BACKUP', 'VERIFY_BACKUP'])
+              .whereIn('command_type', [
+                'CREATE_BACKUP',
+                'VERIFY_BACKUP',
+                'RESTORE_DRILL',
+              ])
               .where(builder =>
                 builder
                   .where({ status: 'PLANNED' })
@@ -477,6 +484,9 @@ export default createBackendPlugin({
               .skipLocked()
               .first();
             if (!candidate) return null;
+            if (candidate.command_type === 'RESTORE_DRILL') {
+              leaseUntil = new Date(now.getTime() + 90 * 60 * 1000);
+            }
             await transaction('resonance_recovery__command')
               .where({ command_id: candidate.command_id })
               .update({
