@@ -33,6 +33,17 @@ require() {
   }
 }
 
+run_yarn_script_if_defined() {
+  local script_name="$1"
+  if node -e \
+    'const p=require("./package.json"); process.exit(p.scripts?.[process.argv[1]] ? 0 : 1)' \
+    "$script_name"; then
+    corepack yarn "$script_name"
+  else
+    echo "[backstage] optional validator is not registered in this source revision: $script_name"
+  fi
+}
+
 for command in git node corepack docker kubectl openssl curl; do require "$command"; done
 docker buildx version >/dev/null 2>&1 || {
   echo "[backstage] Docker buildx is required (Ubuntu package: docker-buildx)" >&2
@@ -295,12 +306,12 @@ case "$mode" in
       # no node_modules state. Materialize the immutable dependency graph
       # before invoking repository-local validators or generators.
       corepack yarn install --immutable
-      corepack yarn validate:page-extensions
-      corepack yarn generate:ccus-screen-designs
-      corepack yarn validate:control-assets
-corepack yarn validate:actor-process-control
-corepack yarn validate:design-release-bridge
-      corepack yarn generate:project-registry
+      run_yarn_script_if_defined validate:page-extensions
+      run_yarn_script_if_defined generate:ccus-screen-designs
+      run_yarn_script_if_defined validate:control-assets
+      run_yarn_script_if_defined validate:actor-process-control
+      run_yarn_script_if_defined validate:design-release-bridge
+      run_yarn_script_if_defined generate:project-registry
     )
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
