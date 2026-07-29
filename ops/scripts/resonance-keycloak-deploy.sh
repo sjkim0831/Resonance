@@ -113,11 +113,18 @@ ensure_database() {
     --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 }
 
+find_keycloak_pod() {
+  kubectl -n "$NAMESPACE" get pod \
+    -l app.kubernetes.io/name=resonance-keycloak \
+    --field-selector=status.phase=Running \
+    --sort-by=.metadata.creationTimestamp \
+    -o name | tail -n1 | cut -d/ -f2
+}
+
 keycloak_exec() {
   local pod
-  pod="$(kubectl -n "$NAMESPACE" get pod \
-    -l app.kubernetes.io/name=resonance-keycloak \
-    -o jsonpath='{.items[0].metadata.name}')"
+  pod="$(find_keycloak_pod)"
+  test -n "$pod"
   kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- "$@"
 }
 
@@ -131,9 +138,8 @@ bootstrap_realm() {
   else
     client_secret="$(openssl rand -hex 32)"
   fi
-  pod="$(kubectl -n "$NAMESPACE" get pod \
-    -l app.kubernetes.io/name=resonance-keycloak \
-    -o jsonpath='{.items[0].metadata.name}')"
+  pod="$(find_keycloak_pod)"
+  test -n "$pod"
 
   kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
     ADMIN_PASSWORD="$admin_password" CLIENT_SECRET="$client_secret" \
@@ -209,9 +215,8 @@ bootstrap_realm() {
 migrate_users() {
   local leader pod admin_password test_password
   leader="$(find_leader)"
-  pod="$(kubectl -n "$NAMESPACE" get pod \
-    -l app.kubernetes.io/name=resonance-keycloak \
-    -o jsonpath='{.items[0].metadata.name}')"
+  pod="$(find_keycloak_pod)"
+  test -n "$pod"
   admin_password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak \
     -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d)"
   test_password="$(openssl rand -base64 24 | tr -d '\n')"
