@@ -19,6 +19,7 @@ import {
 import { SignInPageBlueprint } from '@backstage/plugin-app-react';
 import catalogPlugin from '@backstage/plugin-catalog/alpha';
 import { navModule } from './modules/nav';
+import { ccusScreenDesignsPlugin } from './plugins/ccus-screen-designs/plugin';
 
 const resonanceOidcAuthApiRef = createApiRef<
   OpenIdConnectApi & ProfileInfoApi & BackstageIdentityApi & SessionApi
@@ -80,6 +81,7 @@ const resonanceSignInPage = SignInPageBlueprint.make({
 export default createApp({
   features: [
     catalogPlugin,
+    ccusScreenDesignsPlugin,
     navModule,
     createFrontendModule({
       pluginId: 'app',
