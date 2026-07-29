@@ -584,6 +584,10 @@ export default createBackendPlugin({
           path: '/health',
           allow: 'unauthenticated',
         });
+        httpRouter.addAuthPolicy({
+          path: '/worker',
+          allow: 'unauthenticated',
+        });
         httpRouter.use(router);
         logger.info('Resonance recovery control API initialized');
       },
