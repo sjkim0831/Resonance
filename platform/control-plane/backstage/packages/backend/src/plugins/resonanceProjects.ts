@@ -432,17 +432,6 @@ export default createBackendPlugin({
             .merge({ active: true });
         }
         if (
-          !(await knex.schema.hasColumn(
-            'resonance_projects__control_asset_migration',
-            'verification_evidence',
-          ))
-        ) {
-          await knex.schema.alterTable(
-            'resonance_projects__control_asset_migration',
-            table => table.jsonb('verification_evidence').nullable(),
-          );
-        }
-        if (
           !(await knex.schema.hasTable(
             'resonance_projects__control_asset_migration',
           ))
@@ -476,6 +465,17 @@ export default createBackendPlugin({
                 'resonance_control_asset_status_idx',
               );
             },
+          );
+        }
+        if (
+          !(await knex.schema.hasColumn(
+            'resonance_projects__control_asset_migration',
+            'verification_evidence',
+          ))
+        ) {
+          await knex.schema.alterTable(
+            'resonance_projects__control_asset_migration',
+            table => table.jsonb('verification_evidence').nullable(),
           );
         }
         const taskColumns = [
@@ -1648,6 +1648,8 @@ export default createBackendPlugin({
               '/identity-administration',
               '/ccus-screen-designs',
               '/ccus-screen-space',
+              '/system-',
+              '/migration-cutover',
             ];
             if (
               ['MIGRATED', 'VERIFIED', 'RETIRED_SOURCE'].includes(nextStatus) &&

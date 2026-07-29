@@ -15,6 +15,7 @@ const identityAdministrationRouteRef = createRouteRef();
 const systemOperationsRouteRef = createRouteRef();
 const systemDevelopmentRouteRef = createRouteRef();
 const systemSecurityRouteRef = createRouteRef();
+const migrationCutoverRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -155,6 +156,20 @@ const systemSecurityPage = PageBlueprint.make({
   },
 });
 
+const migrationCutoverPage = PageBlueprint.make({
+  name: 'migration-cutover',
+  params: {
+    routeRef: migrationCutoverRouteRef,
+    path: '/migration-cutover',
+    title: 'Resonance 이관 대장',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./MigrationCutoverPage').then(module => (
+        <module.MigrationCutoverPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -170,6 +185,7 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     systemOperations: systemOperationsRouteRef,
     systemDevelopment: systemDevelopmentRouteRef,
     systemSecurity: systemSecurityRouteRef,
+    migrationCutover: migrationCutoverRouteRef,
   },
   extensions: [
     screenDesignsPage,
@@ -182,5 +198,6 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     systemOperationsPage,
     systemDevelopmentPage,
     systemSecurityPage,
+    migrationCutoverPage,
   ],
 });

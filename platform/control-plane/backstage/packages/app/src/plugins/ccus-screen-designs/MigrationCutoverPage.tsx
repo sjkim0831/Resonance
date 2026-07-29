@@ -1,0 +1,142 @@
+import { useMemo, useState } from 'react';
+import { Content, Header, Page } from '@backstage/core-components';
+import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
+import {
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Typography,
+  makeStyles,
+} from '@material-ui/core';
+import SaveIcon from '@material-ui/icons/Save';
+import {
+  MIGRATION_CUTOVER_LEDGER,
+  MIGRATION_CUTOVER_SUMMARY,
+  toControlAssetPayload,
+} from './migrationCutoverRegistry';
+
+const useStyles = makeStyles(theme => ({
+  summary: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4,minmax(0,1fr))',
+    gap: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    [theme.breakpoints.down('sm')]: { gridTemplateColumns: '1fr 1fr' },
+  },
+  metric: { padding: theme.spacing(2), borderRadius: 12 },
+  row: {
+    display: 'grid',
+    gridTemplateColumns:
+      'minmax(240px,1.1fr) minmax(220px,1fr) 130px minmax(220px,1fr)',
+    gap: theme.spacing(2),
+    alignItems: 'center',
+    padding: theme.spacing(1.5),
+    borderBottom: '1px solid #e2e8f0',
+    [theme.breakpoints.down('sm')]: { gridTemplateColumns: '1fr' },
+  },
+}));
+
+export function MigrationCutoverPage() {
+  const classes = useStyles();
+  const fetchApi = useApi(fetchApiRef);
+  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const rows = useMemo(() => MIGRATION_CUTOVER_LEDGER, []);
+
+  const synchronize = async () => {
+    setSaving(true);
+    setMessage('이관 대장을 DB에 기록하는 중입니다.');
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/control-assets/CCUS-PLATFORM/sync',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            assets: rows.map(toControlAssetPayload),
+          }),
+        },
+      );
+      const payload = (await response.json()) as {
+        synchronized?: number;
+        message?: string;
+      };
+      if (!response.ok) throw new Error(payload.message ?? `API ${response.status}`);
+      setMessage(`${payload.synchronized ?? rows.length}개 이관 항목을 DB에 기록했습니다.`);
+    } catch (error) {
+      setMessage(
+        `이관 대장 기록 실패: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Page themeId="tool">
+      <Header
+        title="Resonance → Backstage 이관 대장"
+        subtitle="기능·API·DB·권한·테스트 증적이 모두 확인된 항목만 원본 메뉴 전환 대상으로 승인합니다."
+      />
+      <Content>
+        <Box className={classes.summary}>
+          {[
+            ['전체 이관 단위', MIGRATION_CUTOVER_SUMMARY.total],
+            ['액터·프로세스 탭', MIGRATION_CUTOVER_SUMMARY.actorProcessTabs],
+            ['잔여 시스템 화면', MIGRATION_CUTOVER_SUMMARY.systemScreens],
+            ['전환 가능', MIGRATION_CUTOVER_SUMMARY.cutoverEligible],
+          ].map(([label, value]) => (
+            <Paper className={classes.metric} key={String(label)}>
+              <Typography variant="body2">{label}</Typography>
+              <Typography variant="h4">{value}</Typography>
+            </Paper>
+          ))}
+        </Box>
+
+        <Box mb={2} display="flex" alignItems="center" gridGap={12}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<SaveIcon />}
+            disabled={saving}
+            onClick={() => void synchronize()}
+          >
+            DB 이관 대장 동기화
+          </Button>
+          <Typography variant="body2">{message}</Typography>
+        </Box>
+
+        <Paper>
+          {rows.map(entry => (
+            <Box className={classes.row} key={entry.assetId}>
+              <Box>
+                <Typography variant="subtitle1">{entry.sourceName}</Typography>
+                <Typography variant="caption">{entry.sourceRoute}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2">대상: {entry.targetRoute}</Typography>
+                <Typography variant="caption">{entry.category}</Typography>
+              </Box>
+              <Box>
+                <Chip size="small" label={entry.migrationStatus} />
+                <Box mt={0.5}>
+                  <Chip size="small" variant="outlined" label={entry.implementation} />
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="textSecondary">
+                  {entry.cutoverBlockedBy.length
+                    ? entry.cutoverBlockedBy.join(' · ')
+                    : '전환 조건 충족'}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+        </Paper>
+      </Content>
+    </Page>
+  );
+}
