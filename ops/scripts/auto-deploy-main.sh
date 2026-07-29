@@ -26,6 +26,7 @@ BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
@@ -43,7 +44,11 @@ if [[ ! -r "$KUBECONFIG" ]]; then
   exit 8
 fi
 
-mkdir -p "$(dirname "$LOCK_FILE")" "$BACKUP_DIR" "$(dirname "$DEPLOY_STATE_FILE")"
+mkdir -p \
+  "$(dirname "$LOCK_FILE")" \
+  "$BACKUP_DIR" \
+  "$(dirname "$DEPLOY_STATE_FILE")" \
+  "$(dirname "$BACKSTAGE_DEPLOY_STATE_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
@@ -305,15 +310,27 @@ restore_live_frontend_overlay() {
 
 deploy_backstage_if_required() {
   [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
+  local checkpoint status
+  checkpoint="$(cat "$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  if [[ "$checkpoint" == "$target_commit" ]]; then
+    status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+      https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+    if [[ "$status" == "200" ]]; then
+      echo "[auto-deploy] Backstage runtime checkpoint verified; resuming at E2E gates"
+      return 0
+    fi
+    echo "[auto-deploy] stale Backstage checkpoint ignored: readiness returned $status" >&2
+  fi
   echo "[auto-deploy] Backstage-only image build and rollout started"
   bash ops/scripts/resonance-backstage-deploy.sh
-  local status
   status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
     https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
   if [[ "$status" != "200" ]]; then
     echo "[auto-deploy] refusing success marker: Backstage readiness returned $status" >&2
     exit 24
   fi
+  printf '%s\n' "$target_commit" > "${BACKSTAGE_DEPLOY_STATE_FILE}.tmp"
+  mv "${BACKSTAGE_DEPLOY_STATE_FILE}.tmp" "$BACKSTAGE_DEPLOY_STATE_FILE"
   echo "[auto-deploy] Backstage runtime verified"
 }
 

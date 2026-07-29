@@ -42,7 +42,7 @@ spec:
             - name: KC_DB_URL
               value: jdbc:postgresql://postgres-haproxy.carbonet-prod.svc.cluster.local:5432/keycloak
             - name: JAVA_OPTS_KC_HEAP
-              value: -Xms128m -Xmx384m
+              value: -Xms192m -Xmx512m
           envFrom:
             - secretRef:
                 name: resonance-keycloak
@@ -69,10 +69,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 320Mi
+              memory: 512Mi
             limits:
               cpu: "1"
-              memory: 640Mi
+              memory: 1Gi
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false

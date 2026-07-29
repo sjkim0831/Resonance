@@ -9,4 +9,9 @@ User=sjkim
 WorkingDirectory=/opt/Resonance
 ExecStart=/usr/bin/bash /opt/resonance-data/deploy/auto-deploy-main-launcher.sh
 Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+MemoryHigh=6G
+MemoryMax=8G
+OOMScoreAdjust=500
 

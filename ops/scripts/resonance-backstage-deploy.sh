@@ -300,38 +300,33 @@ case "$mode" in
     ensure_tls
     ensure_auth_secret
     ensure_ingress_https_port
-    (
-      cd "$APP"
-      # Deployment runs from an isolated Git worktree that intentionally has
-      # no node_modules state. Materialize the immutable dependency graph
-      # before invoking repository-local validators or generators.
-      corepack yarn install --immutable
-      run_yarn_script_if_defined validate:page-extensions
-      run_yarn_script_if_defined generate:ccus-screen-designs
-      run_yarn_script_if_defined validate:control-assets
-      run_yarn_script_if_defined validate:actor-process-control
-      run_yarn_script_if_defined validate:design-release-bridge
-      run_yarn_script_if_defined generate:project-registry
-    )
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
     # already verified image without rebuilding an identical application.
     tag="$(git -C "$ROOT" rev-parse HEAD:platform/control-plane/backstage | cut -c1-12)"
     image="$IMAGE_REPOSITORY:$tag"
 
-    # The dependency and Docker caches make subsequent control-plane builds
-    # incremental. Carbonet's Java/Vite runtime is never rebuilt here.
+    # An immutable image with the same source-tree hash has already passed all
+    # dependency-backed generators, TypeScript checks and the backend build.
+    # Do not materialize node_modules in a disposable worktree merely to deploy
+    # that exact image again after a transient readiness or browser-test error.
     if ! docker image inspect "$image" >/dev/null 2>&1; then
       (
         cd "$APP"
         corepack yarn install --immutable
+        run_yarn_script_if_defined validate:page-extensions
+        run_yarn_script_if_defined generate:ccus-screen-designs
+        run_yarn_script_if_defined validate:control-assets
+        run_yarn_script_if_defined validate:actor-process-control
+        run_yarn_script_if_defined validate:design-release-bridge
+        run_yarn_script_if_defined generate:project-registry
         corepack yarn tsc
         corepack yarn build:backend
       )
       DOCKER_BUILDKIT=1 docker build -t "$image" -f "$APP/packages/backend/Dockerfile" "$APP"
       docker push "$image"
     else
-      echo "[backstage] reusing unchanged application image: $image"
+      echo "[backstage] reusing verified application image without dependency install: $image"
     fi
 
     find_patroni_leader
