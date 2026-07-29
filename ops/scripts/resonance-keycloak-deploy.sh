@@ -301,6 +301,51 @@ migrate_users() {
         "$K" update "users/$uid/groups/$gid" -r "$REALM" -n >/dev/null
       '
   done
+
+  # Named integrated administrators are sourced from a Kubernetes Secret so
+  # credentials never enter Git, generated assets, logs, or container images.
+  if kubectl -n "$NAMESPACE" get secret resonance-keycloak-integrated-admin \
+    >/dev/null 2>&1; then
+    integrated_admin_username="$(kubectl -n "$NAMESPACE" get secret \
+      resonance-keycloak-integrated-admin \
+      -o jsonpath='{.data.USERNAME}' | base64 -d)"
+    integrated_admin_password="$(kubectl -n "$NAMESPACE" get secret \
+      resonance-keycloak-integrated-admin \
+      -o jsonpath='{.data.PASSWORD}' | base64 -d)"
+    kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
+      ADMIN_USERNAME="$integrated_admin_username" \
+      ADMIN_PASSWORD="$integrated_admin_password" \
+      REALM="$REALM" bash -ceu '
+        K=/opt/keycloak/bin/kcadm.sh
+        uid=$("$K" get users -r "$REALM" -q username="$ADMIN_USERNAME" \
+          --fields id --format csv --noquotes | head -n1)
+        if [ -z "$uid" ]; then
+          "$K" create users -r "$REALM" -s username="$ADMIN_USERNAME" \
+            -s enabled=true \
+            -s email="$ADMIN_USERNAME@resonance.local" \
+            -s firstName=Resonance -s lastName=Administrator \
+            -s emailVerified=true >/dev/null
+          uid=$("$K" get users -r "$REALM" -q username="$ADMIN_USERNAME" \
+            --fields id --format csv --noquotes | head -n1)
+        fi
+        "$K" update "users/$uid" -r "$REALM" \
+          -s enabled=true -s email="$ADMIN_USERNAME@resonance.local" \
+          -s firstName=Resonance -s lastName=Administrator \
+          -s emailVerified=true -s "requiredActions=[]" >/dev/null
+        "$K" set-password -r "$REALM" --username "$ADMIN_USERNAME" \
+          --new-password "$ADMIN_PASSWORD" --temporary=false >/dev/null
+        for group in \
+          platform-engineering carbon-operations verification-governance; do
+          uid=$("$K" get users -r "$REALM" -q username="$ADMIN_USERNAME" \
+            --fields id --format csv --noquotes | head -n1)
+          gid=$("$K" get groups -r "$REALM" -q exact=true -q search="$group" \
+            --fields id --format csv --noquotes | head -n1)
+          [ -n "$uid" ] && [ -n "$gid" ]
+          "$K" update "users/$uid/groups/$gid" -r "$REALM" -n >/dev/null
+        done
+      '
+    integrated_admin_password=
+  fi
 }
 
 mode="${1:-deploy}"

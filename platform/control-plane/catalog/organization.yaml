@@ -38,6 +38,19 @@ spec:
   memberOf: [verification-governance]
 ---
 apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: sjkim
+  title: Resonance Integrated Administrator
+spec:
+  profile:
+    displayName: sjkim
+  memberOf:
+    - platform-engineering
+    - carbon-operations
+    - verification-governance
+---
+apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: carbon-operations
