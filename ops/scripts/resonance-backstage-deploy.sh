@@ -44,6 +44,27 @@ run_yarn_script_if_defined() {
   fi
 }
 
+install_backstage_dependencies() {
+  if corepack yarn install --immutable; then
+    return 0
+  fi
+  local modules_path resolved_app resolved_modules
+  modules_path="$APP/node_modules"
+  resolved_app="$(readlink -f "$APP")"
+  resolved_modules="$(readlink -m "$modules_path")"
+  case "$resolved_modules" in
+    "$resolved_app"/node_modules)
+      echo "[backstage] dependency link failed; rebuilding the isolated node_modules tree once" >&2
+      rm -rf -- "$resolved_modules"
+      corepack yarn install --immutable
+      ;;
+    *)
+      echo "[backstage] refusing unsafe node_modules cleanup: $resolved_modules" >&2
+      return 2
+      ;;
+  esac
+}
+
 for command in git node corepack docker kubectl openssl curl; do require "$command"; done
 docker buildx version >/dev/null 2>&1 || {
   echo "[backstage] Docker buildx is required (Ubuntu package: docker-buildx)" >&2
@@ -287,7 +308,7 @@ case "$mode" in
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
     (
       cd "$APP"
-      corepack yarn install --immutable
+      install_backstage_dependencies
       corepack yarn tsc
     )
     echo "[backstage] PASS configuration and TypeScript contracts are valid"
@@ -313,7 +334,7 @@ case "$mode" in
     if ! docker image inspect "$image" >/dev/null 2>&1; then
       (
         cd "$APP"
-        corepack yarn install --immutable
+        install_backstage_dependencies
         run_yarn_script_if_defined validate:page-extensions
         run_yarn_script_if_defined generate:ccus-screen-designs
         run_yarn_script_if_defined validate:control-assets
