@@ -829,9 +829,22 @@ public class ActorProcessGovernanceService {
                      case
                        when upper(coalesce(field->>'dataType','')) in ('INTEGER','DECIMAL','NUMBER') then '1'::jsonb
                        when upper(coalesce(field->>'dataType','')) in ('BOOLEAN','BOOL') then 'true'::jsonb
+                       when upper(coalesce(field->>'controlType','')) = 'PROJECT_SELECT' then to_jsonb(?::text)
+                       when upper(coalesce(field->>'controlType','')) = 'ACTOR_SELECT' then to_jsonb(?::text)
                        else to_jsonb('runtime-smoke'::text)
                      end
                    ),'{"runtimeSmoke":true}'::jsonb)::text
+              from jsonb_array_elements(coalesce(
+                (select execution_spec.field_contract->'fields' from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
+                '[]'::jsonb
+             )) field
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'editable')::boolean,false)
+            """,String.class,project,actor,process,step,process,step);
+        Integer editableFieldCount=jdbc.queryForObject("select jsonb_object_length(?::jsonb)",Integer.class,smokePayload);
+        Integer requiredFieldCount=jdbc.queryForObject("""
+            select count(*)
               from jsonb_array_elements(coalesce(
                 (select execution_spec.field_contract->'fields' from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
@@ -840,17 +853,37 @@ public class ActorProcessGovernanceService {
              where nullif(field->>'fieldCode','') is not null
                and coalesce((field->>'required')::boolean,false)
                and coalesce((field->>'editable')::boolean,false)
-            """,String.class,process,step,process,step);
-        jdbc.update("""
-            insert into framework_process_work_draft(
-              draft_id,tenant_id,project_id,process_code,step_code,actor_code,account_id,
-              payload_json,evidence_json,draft_status,draft_version,created_at,updated_at
-            ) values(?,?,?,?,?,?,?,?::jsonb,'{}'::jsonb,'DRAFT',1,current_timestamp,current_timestamp)
-            on conflict(tenant_id,project_id,process_code,step_code,account_id)
-            do update set actor_code=excluded.actor_code,payload_json=excluded.payload_json,
-                          draft_status='DRAFT',submitted_at=null,updated_at=current_timestamp
-            """,UUID.randomUUID(),tenant,project,process,step,actor,account,smokePayload);
+            """,Integer.class,process,step,process,step);
+        jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,account);
+        Map<String,Object> incompleteDraft=saveWorkDraft(Map.of(
+            "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+            "actorCode",actor,"payloadJson","{\"runtimeMarker\":\"incomplete\"}","evidenceJson","{}","expectedVersion",0
+        ),account);
         request.put("requireDraft",true);
+        boolean requiredValidationRejected=false;
+        try{
+            executeProcessCommand(executionId,request,account);
+        }catch(IllegalStateException expected){requiredValidationRejected=expected.getMessage()!=null&&expected.getMessage().startsWith("Required work fields are missing:");}
+        int incompleteVersion=((Number)((Map<?,?>)incompleteDraft.get("draft")).get("draftVersion")).intValue();
+        Map<String,Object> savedDraft=saveWorkDraft(Map.of(
+            "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+            "actorCode",actor,"payloadJson",smokePayload,"evidenceJson","{\"runtimeSmoke\":true}","expectedVersion",incompleteVersion
+        ),account);
+        Map<String,Object> reloadedDraft=loadWorkDraft(tenant,project,process,step,account);
+        Map<?,?> reloaded=(Map<?,?>)reloadedDraft.get("draft");
+        int savedVersion=((Number)((Map<?,?>)savedDraft.get("draft")).get("draftVersion")).intValue();
+        Integer reloadedFieldCount=jdbc.queryForObject("select jsonb_object_length(?::jsonb)",Integer.class,String.valueOf(reloaded.get("payloadJson")));
+        boolean draftRoundTripVerified=Boolean.TRUE.equals(reloadedDraft.get("found"))
+            && savedVersion==incompleteVersion+1
+            && savedVersion==((Number)reloaded.get("draftVersion")).intValue()
+            && java.util.Objects.equals(editableFieldCount,reloadedFieldCount);
+        boolean staleVersionRejected=false;
+        try{
+            saveWorkDraft(Map.of(
+                "tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,
+                "actorCode",actor,"payloadJson",smokePayload,"evidenceJson","{}","expectedVersion",incompleteVersion
+            ),account);
+        }catch(IllegalStateException expected){staleVersionRejected=true;}
         Map<String,Object> first=executeProcessCommand(executionId,request,account);
         String submittedDraftStatus=jdbc.queryForObject(
             "select draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",
@@ -889,16 +922,24 @@ public class ActorProcessGovernanceService {
         }
         Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
         boolean workflowCompleted="COMPLETED".equals(executionStatus)&&eventCount!=null&&eventCount==transitions.size();
-        boolean passed=Boolean.TRUE.equals(first.get("success"))&&draftSubmittedVerified&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted;
+        boolean nextTaskLinkVerified=!String.valueOf(first.getOrDefault("nextStepCode","")).isBlank()
+            && (!String.valueOf(first.getOrDefault("nextUserPath","")).isBlank()||!String.valueOf(first.getOrDefault("nextAdminPath","")).isBlank());
+        boolean passed=Boolean.TRUE.equals(first.get("success"))&&requiredValidationRejected&&draftRoundTripVerified&&staleVersionRejected
+            &&draftSubmittedVerified&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted&&nextTaskLinkVerified;
         TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",passed);result.put("rolledBack",true);result.put("executedBy",executedBy);
         result.put("executionId",executionId);result.put("tenantId",tenant);result.put("projectId",project);result.put("processCode",process);result.put("stepCode",step);
         result.put("actorCode",actor);result.put("stateTransition",fixture.get("fromState")+" -> "+fixture.get("toState"));
         result.put("idempotencyVerified",recoveryVerified);result.put("recoveryVerified",recoveryVerified);
+        result.put("requiredValidationRejected",requiredValidationRejected);result.put("draftRoundTripVerified",draftRoundTripVerified);
+        result.put("staleVersionRejected",staleVersionRejected);result.put("editableFieldCount",editableFieldCount==null?0:editableFieldCount);
+        result.put("requiredFieldCount",requiredFieldCount==null?0:requiredFieldCount);result.put("reloadedFieldCount",reloadedFieldCount==null?0:reloadedFieldCount);
         result.put("draftSubmittedVerified",draftSubmittedVerified);
         result.put("tenantIsolationVerified",isolationRejected);result.put("authorityVerified",authorityRejected);result.put("exceptionVerified",exceptionRejected);
-        result.put("workflowCompleted",workflowCompleted);result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
+        result.put("workflowCompleted",workflowCompleted);result.put("nextTaskLinkVerified",nextTaskLinkVerified);
+        result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
+        result.put("nextUserPath",first.getOrDefault("nextUserPath",""));result.put("nextAdminPath",first.getOrDefault("nextAdminPath",""));
         if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
         return result;
     }
