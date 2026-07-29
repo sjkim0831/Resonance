@@ -1,0 +1,9 @@
+# Verified existing server adoption: PROJECT_LIFECYCLE_CONTROL / PROJECT_LIFECYCLE_CONTROL_S3
+
+- Job: 20418
+- Job type: BACKEND
+- Source commit: ec590b437ac388fefdd722d317e8781e8323712b
+- Requirement: 권한분리 승인 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.
+- Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"PROJECT_LIFECYCLE_CONTROL","stepCode":"PROJECT_LIFECYCLE_CONTROL_S3","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-20418/projects/carbonet-backend-metadata/process-runtime/generated/PROJECT_LIFECYCLE_CONTROL/PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S3.json","evidence":"/opt/Resonance/var/ai-worktrees/job-20418/var/test-evidence/process-package-tests/PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S3.json","status":"PASSED"}
+
+The deterministic validator requires the step-specific controller routes, service methods, executable SQL tests, tenant boundary evidence, and a healthy live emission workflow. A missing server contract leaves the job incomplete.
