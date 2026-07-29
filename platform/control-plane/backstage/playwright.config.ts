@@ -60,6 +60,7 @@ export default defineConfig({
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
       : undefined,
+    viewport: { width: 1440, height: 1000 },
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },

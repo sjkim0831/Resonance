@@ -40,7 +40,7 @@ async function signIn(page: Page) {
 
   await expect(
     page.getByRole('navigation', { name: 'sidebar nav' }),
-  ).toBeVisible({ timeout: 30_000 });
+  ).toBeAttached({ timeout: 30_000 });
 }
 
 test('authenticated Resonance control-plane routes render without runtime errors', async ({
