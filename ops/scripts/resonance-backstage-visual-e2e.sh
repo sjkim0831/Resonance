@@ -46,10 +46,15 @@ trap cleanup EXIT
 export CI=true
 export PLAYWRIGHT_URL="$BACKSTAGE_URL"
 export PLAYWRIGHT_IGNORE_HTTPS_ERRORS=true
+export PLAYWRIGHT_CHROMIUM_EXECUTABLE="$(
+  find "${HOME}/.cache/ms-playwright" -path '*/chrome-linux64/chrome' \
+    -type f -print -quit
+)"
 export NODE_EXTRA_CA_CERTS="$CA_CERT"
 export BACKSTAGE_E2E_USERNAME="$USERNAME"
 export BACKSTAGE_E2E_PASSWORD="$password"
 export RESONANCE_E2E_EVIDENCE_DIR="$evidence_dir"
+test -x "$PLAYWRIGHT_CHROMIUM_EXECUTABLE"
 
 cd "$BACKSTAGE_ROOT"
 corepack yarn install --immutable --inline-builds >/dev/null
