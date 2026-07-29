@@ -8,7 +8,7 @@ USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}"
 BASE_URL="${BACKSTAGE_BASE_URL:-https://backstage.172.16.1.232.nip.io}"
 CA_CERT="${RESONANCE_INTERNAL_CA:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
 API="$BASE_URL/api/resonance-projects"
-CARBONET_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1:18000}"
+CARBONET_URL="${CARBONET_RUNTIME_BASE_URL:-http://172.16.1.232}"
 
 password="$(
   kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
