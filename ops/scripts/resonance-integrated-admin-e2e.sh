@@ -26,24 +26,23 @@ token="$(
   BACKSTAGE_E2E_PASSWORD="$password" \
     bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$username"
 )"
+test -n "$token"
 
-curl --cacert "$CA_CERT" --silent --show-error --fail \
+access_json="$(curl --cacert "$CA_CERT" --silent --show-error --fail \
   --header "authorization: Bearer $token" \
-  "$BACKSTAGE_URL/api/resonance-projects/design-assets/$PROJECT_ID/access" |
-  EXPECTED_ACTOR="user:default/$username" node -e '
-    let body = "";
-    process.stdin.on("data", chunk => { body += chunk; });
-    process.stdin.on("end", () => {
-      const value = JSON.parse(body);
-      const required = [
-        "DESIGN_REQUESTER",
-        "DESIGN_REVIEWER",
-        "DESIGN_APPROVER",
-        "DESIGN_AUDITOR",
-      ];
-      if (value.actorRef !== process.env.EXPECTED_ACTOR) process.exit(1);
-      if (required.some(role => !value.roles?.includes(role))) process.exit(2);
-    });
+  "$BACKSTAGE_URL/api/resonance-projects/design-assets/$PROJECT_ID/access")"
+test -n "$access_json"
+ACCESS_JSON="$access_json" EXPECTED_ACTOR="user:default/$username" node -e '
+    const body = process.env.ACCESS_JSON;
+    const value = JSON.parse(body);
+    const required = [
+      "DESIGN_REQUESTER",
+      "DESIGN_REVIEWER",
+      "DESIGN_APPROVER",
+      "DESIGN_AUDITOR",
+    ];
+    if (value.actorRef !== process.env.EXPECTED_ACTOR) process.exit(1);
+    if (required.some(role => !value.roles?.includes(role))) process.exit(2);
   '
 
 echo "[integrated-admin-e2e] PASS username=$username roles=4"
