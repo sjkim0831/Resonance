@@ -201,6 +201,17 @@ export default createBackendPlugin({
             },
           ],
           [
+            'BACKUP_SCHEDULE',
+            'PostgreSQL 자동 백업 일정',
+            {
+              automaticSchedule: true,
+              intervalHours: 24,
+              staleAfterHours: 30,
+              requireArchiveVerification: true,
+              requireChecksum: true,
+            },
+          ],
+          [
             'OFFSITE_BACKUP_SCHEDULE',
             '독립 저장소 백업 일정',
             {
@@ -369,6 +380,42 @@ export default createBackendPlugin({
             : stale
             ? 'STALE'
             : 'HEALTHY';
+          const backupPolicyRow = policies.find(
+            policy => policy.policy_code === 'BACKUP_SCHEDULE',
+          );
+          const backupPolicy = parseJsonObject(backupPolicyRow?.policy_value);
+          const backupStaleAfterHours = Number(
+            backupPolicy.staleAfterHours ?? 30,
+          );
+          const backupCommands = commands.filter(
+            command => command.command_type === 'CREATE_BACKUP',
+          );
+          const latestBackup = backupCommands[0];
+          const latestSuccessfulBackup = backupCommands.find(
+            command => command.status === 'COMPLETED',
+          );
+          const successfulBackupPayload = parseJsonObject(
+            latestSuccessfulBackup?.payload,
+          );
+          const successfulBackupResult = parseJsonObject(
+            successfulBackupPayload.result,
+          );
+          const backupCompletedAt = latestSuccessfulBackup?.finished_at
+            ? new Date(latestSuccessfulBackup.finished_at)
+            : null;
+          const backupStale =
+            !backupCompletedAt ||
+            Date.now() - backupCompletedAt.getTime() >
+              backupStaleAfterHours * 60 * 60 * 1000;
+          const backupHealth = ['PLANNED', 'RUNNING', 'RETRY'].includes(
+            latestBackup?.status,
+          )
+            ? 'RUNNING'
+            : latestBackup?.status === 'FAILED'
+            ? 'FAILED'
+            : backupStale
+            ? 'STALE'
+            : 'HEALTHY';
           const offsitePolicyRow = policies.find(
             policy => policy.policy_code === 'OFFSITE_BACKUP_SCHEDULE',
           );
@@ -412,6 +459,23 @@ export default createBackendPlugin({
               durationSeconds: successfulResult.durationSeconds ?? null,
               tableCount: successfulResult.checks?.tableCount ?? null,
               evidenceStatus: successfulResult.status ?? null,
+            },
+            backupSchedule: {
+              health: backupHealth,
+              automaticSchedule:
+                backupPolicyRow?.active !== false &&
+                backupPolicy.automaticSchedule !== false,
+              intervalHours: Number(backupPolicy.intervalHours ?? 24),
+              staleAfterHours: backupStaleAfterHours,
+              latestCommandId: latestBackup?.command_id ?? null,
+              latestStatus: latestBackup?.status ?? 'NOT_RUN',
+              lastSuccessAt: backupCompletedAt?.toISOString() ?? null,
+              file: successfulBackupResult.file ?? null,
+              bytes: Number(successfulBackupResult.bytes ?? 0),
+              sha256: successfulBackupResult.sha256 ?? null,
+              verificationMode:
+                successfulBackupResult.verificationMode ?? null,
+              verified: successfulBackupResult.verified === true,
             },
             offsiteBackup: {
               health: offsiteHealth,
@@ -562,6 +626,82 @@ export default createBackendPlugin({
             return;
           }
           const now = new Date();
+          const backupScheduleRow = await knex('resonance_recovery__policy')
+            .where({
+              policy_code: 'BACKUP_SCHEDULE',
+              active: true,
+            })
+            .first();
+          let backupSchedule: Record<string, any> = {};
+          try {
+            backupSchedule =
+              typeof backupScheduleRow?.policy_value === 'string'
+                ? JSON.parse(backupScheduleRow.policy_value)
+                : backupScheduleRow?.policy_value ?? {};
+          } catch {
+            backupSchedule = {};
+          }
+          if (backupScheduleRow && backupSchedule.automaticSchedule !== false) {
+            const activeBackup = await knex('resonance_recovery__command')
+              .where({ command_type: 'CREATE_BACKUP' })
+              .whereIn('status', ['PLANNED', 'RUNNING', 'RETRY'])
+              .first();
+            const latestSuccessfulBackup = await knex(
+              'resonance_recovery__command',
+            )
+              .where({
+                command_type: 'CREATE_BACKUP',
+                status: 'COMPLETED',
+              })
+              .orderBy('finished_at', 'desc')
+              .first();
+            const intervalHours = Math.max(
+              1,
+              Math.min(168, Number(backupSchedule.intervalHours ?? 24)),
+            );
+            const due =
+              !latestSuccessfulBackup?.finished_at ||
+              now.getTime() -
+                new Date(latestSuccessfulBackup.finished_at).getTime() >=
+                intervalHours * 60 * 60 * 1000;
+            if (!activeBackup && due) {
+              const commandId = randomUUID();
+              const idempotencyKey = `auto-backup-${now
+                .toISOString()
+                .slice(0, 10)}`;
+              const inserted = await knex('resonance_recovery__command')
+                .insert({
+                  command_id: commandId,
+                  command_type: 'CREATE_BACKUP',
+                  target_environment: 'CARBONET_PROD',
+                  status: 'PLANNED',
+                  requested_by: 'system:backup-scheduler',
+                  change_ticket: 'AUTO-DAILY-BACKUP',
+                  idempotency_key: idempotencyKey,
+                  payload: JSON.stringify({
+                    automaticSchedule: true,
+                    intervalHours,
+                  }),
+                  created_at: now,
+                  updated_at: now,
+                })
+                .onConflict(['target_environment', 'idempotency_key'])
+                .ignore()
+                .returning('command_id');
+              if (inserted.length > 0) {
+                await knex('resonance_recovery__audit').insert({
+                  command_id: commandId,
+                  action_code: 'BACKUP_AUTO_PLANNED',
+                  actor_ref: 'system:backup-scheduler',
+                  details: JSON.stringify({
+                    intervalHours,
+                    idempotencyKey,
+                  }),
+                  created_at: now,
+                });
+              }
+            }
+          }
           const drillScheduleRow = await knex('resonance_recovery__policy')
             .where({
               policy_code: 'RESTORE_DRILL_SCHEDULE',
