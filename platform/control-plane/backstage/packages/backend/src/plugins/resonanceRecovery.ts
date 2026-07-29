@@ -3,7 +3,11 @@ import {
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
 import { Router, json, type Request } from 'express';
-import { createHash, randomUUID } from 'node:crypto';
+import {
+  createHash,
+  randomUUID,
+  timingSafeEqual,
+} from 'node:crypto';
 
 const COMMANDS = [
   'CREATE_BACKUP',
@@ -91,6 +95,56 @@ export default createBackendPlugin({
             },
           );
         }
+        if (!(await knex.schema.hasTable('resonance_recovery__worker'))) {
+          await knex.schema.createTable(
+            'resonance_recovery__worker',
+            table => {
+              table.string('worker_id', 160).primary();
+              table.string('worker_version', 80).notNullable();
+              table.jsonb('capabilities').notNullable();
+              table.timestamp('last_seen_at', { useTz: true }).notNullable();
+            },
+          );
+        }
+        const commandColumns = [
+          [
+            'attempt_count',
+            (table: any) =>
+              table.integer('attempt_count').notNullable().defaultTo(0),
+          ],
+          [
+            'lease_token',
+            (table: any) => table.string('lease_token', 64).nullable(),
+          ],
+          [
+            'lease_until',
+            (table: any) =>
+              table.timestamp('lease_until', { useTz: true }).nullable(),
+          ],
+          [
+            'started_at',
+            (table: any) =>
+              table.timestamp('started_at', { useTz: true }).nullable(),
+          ],
+          [
+            'finished_at',
+            (table: any) =>
+              table.timestamp('finished_at', { useTz: true }).nullable(),
+          ],
+        ] as const;
+        for (const [columnName, addColumn] of commandColumns) {
+          if (
+            !(await knex.schema.hasColumn(
+              'resonance_recovery__command',
+              columnName,
+            ))
+          ) {
+            await knex.schema.alterTable(
+              'resonance_recovery__command',
+              addColumn,
+            );
+          }
+        }
 
         const now = new Date();
         const policySeeds = [
@@ -143,6 +197,28 @@ export default createBackendPlugin({
         const router = Router();
         router.use(json({ limit: '256kb' }));
 
+        const requireWorker = (request: Request) => {
+          const configured = process.env.RESONANCE_OPS_TOKEN ?? '';
+          const authorization = request.header('authorization') ?? '';
+          const supplied = authorization.startsWith('Bearer ')
+            ? authorization.slice(7)
+            : '';
+          const valid =
+            configured.length >= 32 &&
+            supplied.length === configured.length &&
+            timingSafeEqual(
+              Buffer.from(supplied),
+              Buffer.from(configured),
+            );
+          if (!valid) {
+            const error = new Error('worker authentication required') as Error & {
+              statusCode?: number;
+            };
+            error.statusCode = 401;
+            throw error;
+          }
+        };
+
         const resolveUser = async (request: Request) => {
           const credentials = await httpAuth.credentials(request, {
             allow: ['user'],
@@ -193,7 +269,7 @@ export default createBackendPlugin({
         });
         router.get('/summary', async (request, response) => {
           await resolveUser(request);
-          const [policies, commands] = await Promise.all([
+          const [policies, commands, workers] = await Promise.all([
             knex('resonance_recovery__policy')
               .select('*')
               .orderBy('policy_code'),
@@ -201,13 +277,26 @@ export default createBackendPlugin({
               .select('*')
               .orderBy('created_at', 'desc')
               .limit(50),
+            knex('resonance_recovery__worker')
+              .select('*')
+              .where(
+                'last_seen_at',
+                '>',
+                new Date(Date.now() - 3 * 60 * 1000),
+              )
+              .orderBy('last_seen_at', 'desc'),
           ]);
           response.json({
             checkedAt: new Date().toISOString(),
             executionMode: 'QUEUED',
             directShellExecution: false,
-            workerConnected:
-              process.env.RESONANCE_RECOVERY_WORKER_CONNECTED === 'true',
+            workerConnected: workers.length > 0,
+            workers: workers.map(worker => ({
+              workerId: worker.worker_id,
+              version: worker.worker_version,
+              capabilities: worker.capabilities,
+              lastSeenAt: worker.last_seen_at,
+            })),
             policies: policies.map(policy => ({
               code: policy.policy_code,
               name: policy.policy_name,
@@ -320,6 +409,175 @@ export default createBackendPlugin({
             executionMode: 'QUEUED',
           });
         });
+        router.post('/worker/claim', async (request, response) => {
+          requireWorker(request);
+          const workerId = String(request.body?.workerId ?? '')
+            .trim()
+            .slice(0, 160);
+          if (!workerId) {
+            response.status(400).json({ message: 'workerId is required' });
+            return;
+          }
+          const now = new Date();
+          await knex('resonance_recovery__worker')
+            .insert({
+              worker_id: workerId,
+              worker_version: String(
+                request.body?.workerVersion ?? 'unknown',
+              ).slice(0, 80),
+              capabilities: JSON.stringify([
+                'CREATE_BACKUP',
+                'VERIFY_BACKUP',
+              ]),
+              last_seen_at: now,
+            })
+            .onConflict('worker_id')
+            .merge({
+              worker_version: String(
+                request.body?.workerVersion ?? 'unknown',
+              ).slice(0, 80),
+              capabilities: JSON.stringify([
+                'CREATE_BACKUP',
+                'VERIFY_BACKUP',
+              ]),
+              last_seen_at: now,
+            });
+          const leaseUntil = new Date(now.getTime() + 15 * 60 * 1000);
+          const leaseToken = randomUUID();
+          const command = await knex.transaction(async transaction => {
+            const candidate = await transaction(
+              'resonance_recovery__command',
+            )
+              .whereIn('command_type', ['CREATE_BACKUP', 'VERIFY_BACKUP'])
+              .where(builder =>
+                builder
+                  .where({ status: 'PLANNED' })
+                  .orWhere(subquery =>
+                    subquery
+                      .where({ status: 'RETRY' })
+                      .andWhere('lease_until', '<', now),
+                  )
+                  .orWhere(subquery =>
+                    subquery
+                      .where({ status: 'RUNNING' })
+                      .andWhere('lease_until', '<', now),
+                  ),
+              )
+              .andWhere('attempt_count', '<', 3)
+              .orderBy('created_at', 'asc')
+              .forUpdate()
+              .skipLocked()
+              .first();
+            if (!candidate) return null;
+            await transaction('resonance_recovery__command')
+              .where({ command_id: candidate.command_id })
+              .update({
+                status: 'RUNNING',
+                attempt_count: Number(candidate.attempt_count ?? 0) + 1,
+                lease_token: leaseToken,
+                lease_until: leaseUntil,
+                started_at: candidate.started_at ?? now,
+                updated_at: now,
+              });
+            await transaction('resonance_recovery__audit').insert({
+              command_id: candidate.command_id,
+              action_code: 'COMMAND_CLAIMED',
+              actor_ref: `worker:${workerId}`,
+              details: JSON.stringify({ leaseUntil }),
+              created_at: now,
+            });
+            return candidate;
+          });
+          if (!command) {
+            response.status(204).end();
+            return;
+          }
+          response.json({
+            commandId: command.command_id,
+            commandType: command.command_type,
+            targetEnvironment: command.target_environment,
+            payload: command.payload,
+            leaseToken,
+            leaseUntil,
+          });
+        });
+        router.post(
+          '/worker/commands/:commandId/complete',
+          async (request, response) => {
+            requireWorker(request);
+            const commandId = String(request.params.commandId);
+            const leaseToken = String(request.body?.leaseToken ?? '');
+            const success = request.body?.success === true;
+            const workerId = String(request.body?.workerId ?? '')
+              .trim()
+              .slice(0, 160);
+            const result =
+              request.body?.result &&
+              typeof request.body.result === 'object'
+                ? request.body.result
+                : {};
+            const resultMessage = String(
+              request.body?.message ?? '',
+            ).slice(0, 2000);
+            const now = new Date();
+            const updated = await knex.transaction(async transaction => {
+              const command = await transaction(
+                'resonance_recovery__command',
+              )
+                .where({
+                  command_id: commandId,
+                  status: 'RUNNING',
+                  lease_token: leaseToken,
+                })
+                .forUpdate()
+                .first();
+              if (!command) return null;
+              const exhausted = Number(command.attempt_count ?? 0) >= 3;
+              const status = success
+                ? 'COMPLETED'
+                : exhausted
+                  ? 'FAILED'
+                  : 'RETRY';
+              await transaction('resonance_recovery__command')
+                .where({ command_id: commandId })
+                .update({
+                  status,
+                  payload: JSON.stringify({
+                    ...(typeof command.payload === 'string'
+                      ? JSON.parse(command.payload)
+                      : command.payload),
+                    result,
+                  }),
+                  result_message: resultMessage,
+                  lease_token: null,
+                  lease_until: success || exhausted
+                    ? null
+                    : new Date(now.getTime() + 5 * 60 * 1000),
+                  finished_at: success || exhausted ? now : null,
+                  updated_at: now,
+                });
+              await transaction('resonance_recovery__audit').insert({
+                command_id: commandId,
+                action_code: success
+                  ? 'COMMAND_COMPLETED'
+                  : exhausted
+                    ? 'COMMAND_FAILED'
+                    : 'COMMAND_RETRY_SCHEDULED',
+                actor_ref: `worker:${workerId || 'unknown'}`,
+                details: JSON.stringify({ result, resultMessage }),
+                created_at: now,
+              });
+              return status;
+            });
+            if (!updated) {
+              response.status(409).json({
+                message: 'command lease is stale or command is not running',
+              });
+              return;
+            }
+            response.json({ success: true, commandId, status: updated });
+          },
+        );
 
         httpRouter.addAuthPolicy({
           path: '/health',
